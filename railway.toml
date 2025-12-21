@@ -1,0 +1,99 @@
+# FILE: railway.toml
+# PURPOSE: Railway deployment configuration for 3-service architecture
+# PHASE: 10 (Deployment)
+# TASK: DEP-001
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/api/v1/health"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+# ============================================================================
+# Service Configuration
+# ============================================================================
+# Railway uses multiple services defined via the dashboard/CLI.
+# This file configures the primary API service.
+# Additional services (Worker, Prefect) use their own Dockerfiles.
+
+# API Service Configuration
+[deploy.api]
+numReplicas = 1
+startCommand = "uvicorn src.api.main:app --host 0.0.0.0 --port $PORT"
+
+# ============================================================================
+# Environment Variables (set via Railway dashboard)
+# ============================================================================
+# Required environment variables:
+#
+# Database:
+#   DATABASE_URL - Supabase PostgreSQL connection (port 6543 transaction pooler)
+#   SUPABASE_URL - Supabase project URL
+#   SUPABASE_KEY - Supabase anon key
+#   SUPABASE_SERVICE_KEY - Supabase service role key
+#
+# Redis:
+#   REDIS_URL - Upstash Redis connection string
+#
+# AI:
+#   ANTHROPIC_API_KEY - Claude API key
+#   AI_DAILY_SPEND_LIMIT_AUD - Daily AI spend limit (default: 50)
+#
+# Integrations:
+#   APOLLO_API_KEY - Apollo enrichment
+#   APIFY_API_KEY - Apify scraping
+#   CLAY_API_KEY - Clay enrichment (premium fallback)
+#   RESEND_API_KEY - Email sending
+#   POSTMARK_API_KEY - Inbound email webhooks
+#   TWILIO_ACCOUNT_SID - Twilio account
+#   TWILIO_AUTH_TOKEN - Twilio auth
+#   HEYREACH_API_KEY - LinkedIn automation
+#   SYNTHFLOW_API_KEY - Voice AI
+#   LOB_API_KEY - Direct mail
+#
+# Stripe:
+#   STRIPE_SECRET_KEY - Stripe API key
+#   STRIPE_WEBHOOK_SECRET - Stripe webhook signing
+#
+# Sentry:
+#   SENTRY_DSN - Error tracking
+#
+# App:
+#   ENVIRONMENT - production/staging/development
+#   SECRET_KEY - JWT signing key
+#   CORS_ORIGINS - Allowed CORS origins (comma-separated)
+
+# ============================================================================
+# Notes
+# ============================================================================
+# 1. Create 3 services in Railway:
+#    - api: Main FastAPI application (uses this config)
+#    - worker: Prefect agent (uses Dockerfile.prefect, command: prefect agent start)
+#    - prefect: Prefect server (optional, uses Dockerfile.prefect, command: prefect server start)
+#
+# 2. Database Connection:
+#    - Use Transaction Pooler (port 6543) for application connections
+#    - Pool limits: pool_size=5, max_overflow=10
+#
+# 3. Health Checks:
+#    - API: /api/v1/health
+#    - Worker: Prefect agent status
+#
+# 4. Scaling:
+#    - Start with 1 replica per service
+#    - Scale horizontally as needed
+#    - Worker can handle multiple concurrent flows
+
+# ============================================================================
+# Verification Checklist
+# ============================================================================
+# [x] Dockerfile builder specified
+# [x] Health check path configured
+# [x] Restart policy configured
+# [x] Start command specified
+# [x] Environment variables documented
+# [x] Multi-service architecture documented

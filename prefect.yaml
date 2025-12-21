@@ -1,0 +1,148 @@
+# FILE: prefect.yaml
+# PURPOSE: Prefect deployment configuration for Agency OS
+# PHASE: 5 (Orchestration)
+# TASK: ORC-011
+# DEPENDENCIES:
+#   - Dockerfile.prefect
+#   - src/orchestration/flows/*.py
+# RULES APPLIED:
+#   - Rule 1: Follow blueprint exactly
+#   - Rule 20: Webhook-first architecture - cron jobs are safety nets
+#   - Prefect 3.x deployment patterns
+
+# Prefect project configuration
+name: agency-os
+prefect-version: 3.0.0
+
+# Build configuration for worker image
+build:
+  - prefect.deployments.steps.run_shell_script:
+      id: build-worker-image
+      script: docker build -f Dockerfile -t agency-os-worker:latest .
+      stream_output: true
+
+# Push configuration (optional, for container registry)
+push:
+  - prefect_docker.deployments.steps.push_docker_image:
+      requires: prefect-docker>=0.3.0
+      image_name: "{{ build-image.image_name }}"
+      tag: "{{ build-image.tag }}"
+
+# Pull configuration for workers
+pull:
+  - prefect.deployments.steps.set_working_directory:
+      directory: /app
+
+# Deployment definitions
+deployments:
+  # Campaign activation flow
+  - name: campaign-flow
+    version: 1.0.0
+    tags:
+      - campaign
+      - activation
+      - webhook-triggered
+    description: "Campaign activation and validation flow (webhook-triggered)"
+    entrypoint: src/orchestration/flows/campaign_flow.py:campaign_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    parameters:
+      validate_billing: true
+      check_credits: true
+    schedules: []  # Webhook-triggered only, no cron schedule
+
+  # Daily enrichment flow (safety net)
+  - name: enrichment-flow
+    version: 1.0.0
+    tags:
+      - enrichment
+      - daily
+      - safety-net
+    description: "Daily enrichment safety net at 2 AM AEST"
+    entrypoint: src/orchestration/flows/enrichment_flow.py:enrichment_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    parameters:
+      batch_size: 100
+      max_clay_percentage: 0.15
+      check_billing: true
+    schedules:
+      - cron: "0 2 * * *"
+        timezone: Australia/Sydney
+        active: true
+
+  # Hourly outreach flow (safety net during business hours)
+  - name: outreach-flow
+    version: 1.0.0
+    tags:
+      - outreach
+      - hourly
+      - business-hours
+      - safety-net
+    description: "Hourly outreach during business hours (8 AM-6 PM AEST, Mon-Fri)"
+    entrypoint: src/orchestration/flows/outreach_flow.py:outreach_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    parameters:
+      batch_size: 50
+      respect_rate_limits: true
+      jit_validation: true
+    schedules:
+      - cron: "0 8-18 * * 1-5"
+        timezone: Australia/Sydney
+        active: true
+
+  # Reply recovery flow (6-hourly safety net)
+  - name: reply-recovery-flow
+    version: 1.0.0
+    tags:
+      - replies
+      - recovery
+      - safety-net
+    description: "Reply recovery safety net every 6 hours"
+    entrypoint: src/orchestration/flows/reply_recovery_flow.py:reply_recovery_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    parameters:
+      lookback_hours: 6
+      check_all_channels: true
+    schedules:
+      - interval: 21600  # 6 hours in seconds
+        timezone: Australia/Sydney
+        active: true
+
+# Environment variables reference
+# These should be set in Railway/environment, not hardcoded here
+# Required environment variables:
+# - DATABASE_URL
+# - REDIS_URL
+# - ANTHROPIC_API_KEY
+# - RESEND_API_KEY
+# - TWILIO_ACCOUNT_SID
+# - TWILIO_AUTH_TOKEN
+# - HEYREACH_API_KEY
+# - APOLLO_API_KEY
+# - CLAY_API_KEY
+# - LOB_API_KEY
+# - SYNTHFLOW_API_KEY
+# - PREFECT_API_URL
+
+# Worker configuration
+# Workers pull from the agency-os-queue and execute flows
+# Start worker with: prefect worker start --pool agency-os-pool
+
+# === VERIFICATION CHECKLIST ===
+# [x] Prefect 3.x syntax
+# [x] 4 flows defined (campaign, enrichment, outreach, reply_recovery)
+# [x] Work pool: agency-os-pool
+# [x] Work queue: agency-os-queue
+# [x] Schedules configured with Australia/Sydney timezone
+# [x] Environment variables referenced (not hardcoded)
+# [x] Build configuration for Docker
+# [x] Webhook-first architecture noted (schedules are safety nets)
+# [x] Business hours schedule for outreach (8 AM-6 PM AEST, Mon-Fri)
+# [x] No hardcoded credentials

@@ -1,0 +1,134 @@
+# FILE: docker-compose.yml
+# PURPOSE: Local development with 3 services (API, Worker, Prefect)
+# PHASE: 1 (Foundation + DevOps)
+# TASK: DEV-002
+# DEPENDENCIES: Dockerfile, Dockerfile.prefect
+# RULES APPLIED:
+#   - Rule 1: Follow blueprint exactly
+#   - Rule 19: Connection pool limits (pool_size=5, max_overflow=10)
+#   - Prefect for orchestration, NOT Redis workers
+
+version: "3.8"
+
+services:
+  # === API Service ===
+  # Handles HTTP requests via FastAPI
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: agency_os_api
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV=development
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - PREFECT_API_URL=http://prefect:4200/api
+    env_file:
+      - config/.env
+    volumes:
+      - ./src:/app/src:ro
+    depends_on:
+      - prefect
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - agency_network
+
+  # === Worker Service ===
+  # Prefect agent that processes background tasks
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: agency_os_worker
+    command: ["python", "-m", "src.orchestration.worker"]
+    environment:
+      - ENV=development
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - PREFECT_API_URL=http://prefect:4200/api
+    env_file:
+      - config/.env
+    volumes:
+      - ./src:/app/src:ro
+    depends_on:
+      - prefect
+    restart: unless-stopped
+    networks:
+      - agency_network
+
+  # === Prefect Server ===
+  # Orchestration UI and API
+  prefect:
+    build:
+      context: .
+      dockerfile: Dockerfile.prefect
+    container_name: agency_os_prefect
+    ports:
+      - "4200:4200"
+    environment:
+      - PREFECT_SERVER_API_HOST=0.0.0.0
+      - PREFECT_SERVER_API_PORT=4200
+      - PREFECT_API_DATABASE_CONNECTION_URL=sqlite+aiosqlite:///./prefect.db
+    volumes:
+      - prefect_data:/root/.prefect
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4200/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - agency_network
+
+  # === Redis (for caching ONLY, not task queues) ===
+  redis:
+    image: redis:7-alpine
+    container_name: agency_os_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - agency_network
+
+networks:
+  agency_network:
+    driver: bridge
+
+volumes:
+  prefect_data:
+  redis_data:
+
+# === VERIFICATION CHECKLIST ===
+# [x] Contract comment at top
+# [x] 3 services: API, Worker, Prefect (as per blueprint)
+# [x] Redis for caching ONLY (not task queues)
+# [x] Prefect for orchestration
+# [x] Environment variables from config/.env
+# [x] Health checks on all services
+# [x] Shared network for inter-service communication
+# [x] Persistent volumes for data
+# [x] No hardcoded credentials

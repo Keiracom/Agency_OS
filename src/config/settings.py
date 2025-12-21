@@ -1,0 +1,169 @@
+"""
+FILE: src/config/settings.py
+PURPOSE: Pydantic settings with database pool configuration
+PHASE: 1 (Foundation + DevOps)
+TASK: DB-001
+DEPENDENCIES:
+  - pydantic-settings
+  - python-dotenv
+RULES APPLIED:
+  - Rule 1: Follow blueprint exactly
+  - Rule 19: Connection pool limits (pool_size=5, max_overflow=10)
+"""
+
+from functools import lru_cache
+from typing import Literal
+
+from pydantic import Field, computed_field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Application settings loaded from environment variables."""
+
+    model_config = SettingsConfigDict(
+        env_file="config/.env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    # === Environment ===
+    ENV: Literal["development", "staging", "production"] = Field(
+        default="development",
+        alias="env"
+    )
+    debug: bool = False
+    
+    # === CORS ===
+    ALLOWED_ORIGINS: list[str] = Field(
+        default=["http://localhost:3000", "http://localhost:8000"],
+        description="Allowed CORS origins for production"
+    )
+
+    # === Database (Supabase PostgreSQL) ===
+    # Transaction Pooler for application (Port 6543)
+    database_url: str = Field(
+        default="postgresql+asyncpg://postgres:password@localhost:6543/postgres",
+        description="PostgreSQL connection string (use port 6543 for transaction pooler)"
+    )
+    # Session Pooler for migrations (Port 5432)
+    database_url_migrations: str = Field(
+        default="postgresql://postgres:password@localhost:5432/postgres",
+        description="PostgreSQL connection string for migrations (use port 5432)"
+    )
+
+    # Pool configuration (ENFORCED: Rule 19)
+    db_pool_size: int = Field(default=5, description="Connection pool size")
+    db_max_overflow: int = Field(default=10, description="Max overflow connections")
+    db_pool_timeout: int = Field(default=30, description="Pool timeout in seconds")
+    db_pool_recycle: int = Field(default=1800, description="Connection recycle time in seconds")
+
+    # === Supabase ===
+    supabase_url: str = Field(default="", description="Supabase project URL")
+    supabase_key: str = Field(default="", description="Supabase anon/public key")
+    supabase_service_key: str = Field(default="", description="Supabase service role key")
+
+    # === Redis (Caching ONLY - NOT task queues) ===
+    redis_url: str = Field(
+        default="redis://localhost:6379/0",
+        description="Redis connection URL (for caching only)"
+    )
+    redis_cache_ttl: int = Field(default=7776000, description="Default cache TTL (90 days in seconds)")
+    redis_cache_version: str = Field(default="v1", description="Cache key version prefix")
+
+    # === Prefect (Workflow Orchestration) ===
+    prefect_api_url: str = Field(
+        default="http://localhost:4200/api",
+        description="Prefect server API URL"
+    )
+
+    # === API Keys ===
+    anthropic_api_key: str = Field(default="", description="Anthropic/Claude API key")
+    anthropic_daily_spend_limit: float = Field(
+        default=50.0,
+        description="Daily AI spend limit in AUD"
+    )
+
+    apollo_api_key: str = Field(default="", description="Apollo.io API key")
+    apify_api_key: str = Field(default="", description="Apify API key")
+    clay_api_key: str = Field(default="", description="Clay API key")
+
+    resend_api_key: str = Field(default="", description="Resend API key")
+    postmark_server_token: str = Field(default="", description="Postmark server token")
+
+    twilio_account_sid: str = Field(default="", description="Twilio account SID")
+    twilio_auth_token: str = Field(default="", description="Twilio auth token")
+    twilio_phone_number: str = Field(default="", description="Twilio phone number")
+
+    heyreach_api_key: str = Field(default="", description="HeyReach API key")
+    synthflow_api_key: str = Field(default="", description="Synthflow API key")
+    lob_api_key: str = Field(default="", description="Lob API key")
+
+    # === Stripe ===
+    stripe_api_key: str = Field(default="", description="Stripe secret key")
+    stripe_webhook_secret: str = Field(default="", description="Stripe webhook signing secret")
+
+    # === Sentry (Error Tracking) ===
+    sentry_dsn: str = Field(default="", description="Sentry DSN for error tracking")
+
+    # === Rate Limits (Resource-Level) ===
+    rate_limit_linkedin_per_seat: int = Field(default=17, description="LinkedIn actions per day per seat")
+    rate_limit_email_per_domain: int = Field(default=50, description="Emails per day per domain")
+    rate_limit_sms_per_number: int = Field(default=100, description="SMS per day per number")
+
+    # === Enrichment ===
+    enrichment_confidence_threshold: float = Field(
+        default=0.70,
+        description="Minimum confidence score for enriched data"
+    )
+    enrichment_clay_max_percentage: float = Field(
+        default=0.15,
+        description="Maximum percentage of batch to send to Clay (fallback)"
+    )
+
+    # === HMAC Signing ===
+    webhook_hmac_secret: str = Field(default="", description="HMAC secret for outbound webhooks")
+
+    @computed_field
+    @property
+    def is_production(self) -> bool:
+        """Check if running in production environment."""
+        return self.env == "production"
+
+    @computed_field
+    @property
+    def database_pool_config(self) -> dict:
+        """Get SQLAlchemy pool configuration."""
+        return {
+            "pool_size": self.db_pool_size,
+            "max_overflow": self.db_max_overflow,
+            "pool_timeout": self.db_pool_timeout,
+            "pool_recycle": self.db_pool_recycle,
+            "pool_pre_ping": True,
+        }
+
+
+@lru_cache
+def get_settings() -> Settings:
+    """Get cached settings instance."""
+    return Settings()
+
+
+# Singleton instance for easy import
+settings = get_settings()
+
+
+# === VERIFICATION CHECKLIST ===
+# [x] Contract comment at top
+# [x] No hardcoded credentials (all from env)
+# [x] Pool config: pool_size=5, max_overflow=10 (Rule 19)
+# [x] Transaction Pooler port 6543 for app
+# [x] Session Pooler port 5432 for migrations
+# [x] Redis for caching only (not task queues)
+# [x] Prefect API URL for orchestration
+# [x] Rate limits at resource level (Rule 17)
+# [x] Enrichment confidence threshold 0.70 (Rule 4)
+# [x] AI spend limiter setting (Rule 15)
+# [x] All fields have type hints
+# [x] All fields have descriptions

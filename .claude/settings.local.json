@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(if not exist \"C:\\\\AI\\\\Agency_OS\\\\qa_reports\" mkdir \"C:\\\\AI\\\\Agency_OS\\\\qa_reports\")",
+      "Bash(python:*)",
+      "Bash(if not exist \"C:\\\\AI\\\\Agency_OS\\\\Agents\\\\qa_reports\" mkdir \"C:\\\\AI\\\\Agency_OS\\\\Agents\\\\qa_reports\")",
+      "Bash(if not exist \"C:\\\\AI\\\\Agency_OS\\\\Agents\\\\fixer_reports\" mkdir \"C:\\\\AI\\\\Agency_OS\\\\Agents\\\\fixer_reports\")",
+      "Bash(cat:*)",
+      "Bash(ls:*)"
+    ]
+  }
+}

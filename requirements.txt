@@ -1,0 +1,56 @@
+# Agency OS - Python Dependencies
+# PHASE: 1 (Foundation + DevOps)
+# See PROJECT_BLUEPRINT.md PART 4 for specifications
+
+# === Core Framework ===
+fastapi>=0.109.0
+uvicorn>=0.27.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+python-dotenv>=1.0.0
+
+# === Database ===
+supabase>=2.3.0
+sqlalchemy>=2.0.0
+asyncpg>=0.29.0
+
+# === Cache ===
+redis>=5.0.0
+
+# === HTTP Client ===
+httpx>=0.26.0
+
+# === AI ===
+anthropic>=0.39.0
+pydantic-ai>=0.1.0
+
+# === Orchestration ===
+prefect>=3.0.0
+
+# === Retry Logic ===
+tenacity>=8.2.0
+
+# === Auth ===
+python-jose>=3.3.0
+
+# === Email ===
+resend>=0.8.0
+
+# === SMS ===
+twilio>=8.10.0
+
+# === Direct Mail ===
+lob-python>=6.0.0
+
+# === Web Scraping ===
+apify-client>=1.5.0
+
+# === Utilities ===
+uuid-extensions>=0.1.0
+
+# === Error Tracking ===
+sentry-sdk>=1.39.0
+
+# === Testing ===
+pytest>=7.4.0
+pytest-asyncio>=0.21.0

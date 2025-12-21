@@ -1,0 +1,33 @@
+# FILE: Dockerfile.prefect
+# PURPOSE: Prefect server container for orchestration
+# PHASE: 1 (Foundation + DevOps)
+# TASK: DEV-002 (supplement)
+# DEPENDENCIES: None
+# RULES APPLIED:
+#   - Rule 1: Follow blueprint exactly
+#   - Prefect for orchestration (not Redis workers)
+
+FROM prefecthq/prefect:3-python3.11
+
+# Set working directory
+WORKDIR /app
+
+# Environment variables
+ENV PREFECT_SERVER_API_HOST=0.0.0.0
+ENV PREFECT_SERVER_API_PORT=4200
+
+# Expose Prefect server port
+EXPOSE 4200
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:4200/api/health || exit 1
+
+# Start Prefect server
+CMD ["prefect", "server", "start"]
+
+# === VERIFICATION CHECKLIST ===
+# [x] Uses official Prefect image
+# [x] Python 3.11 as specified
+# [x] Health check configured
+# [x] Port 4200 exposed

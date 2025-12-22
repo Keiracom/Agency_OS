@@ -45,9 +45,6 @@ lob-python>=5.1.0
 # === Web Scraping ===
 apify-client>=1.5.0
 
-# === Utilities ===
-uuid-extensions>=0.1.0
-
 # === Error Tracking ===
 sentry-sdk>=1.39.0
 

@@ -25,7 +25,7 @@ from prefect.settings import PREFECT_API_URL
 
 from src.config.settings import settings
 from src.integrations.redis import close_redis, get_redis
-from src.integrations.supabase import close_db, get_async_session
+from src.integrations.supabase import cleanup as close_db, get_db_session as get_async_session
 
 # Configure logging
 logging.basicConfig(

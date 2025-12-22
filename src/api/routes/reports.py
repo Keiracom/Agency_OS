@@ -24,7 +24,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.reporter import get_reporter_engine
-from src.integrations.supabase import get_async_session
+from src.integrations.supabase import get_db_session as get_async_session
 
 # Router will be created after dependencies.py is available
 router = APIRouter(

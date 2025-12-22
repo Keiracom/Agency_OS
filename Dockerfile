@@ -50,16 +50,16 @@ RUN adduser --disabled-password --gecos '' appuser && \
     chown -R appuser:appuser /app
 USER appuser
 
-# Health check
+# Health check - uses PORT env var set by Railway
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8000}/api/v1/health || exit 1
 
-# Default port
+# Default port (Railway overrides with PORT env var)
 EXPOSE 8000
 
 # Default command (API service)
-# Override with docker-compose for worker service
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Uses shell form to expand $PORT env var (Railway sets this dynamically)
+CMD uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000}
 
 # === VERIFICATION CHECKLIST ===
 # [x] Contract comment at top

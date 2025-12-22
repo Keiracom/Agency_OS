@@ -20,7 +20,7 @@ from typing import Literal
 
 from src.config.settings import settings
 from src.integrations.redis import get_redis
-from src.integrations.supabase import get_async_session
+from src.integrations.supabase import get_db_session as get_async_session
 
 
 # ============================================

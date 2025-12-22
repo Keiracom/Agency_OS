@@ -208,7 +208,7 @@ class GlobalSuppression(Base, UUIDMixin):
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     source: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     added_by: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    metadata: Mapped[dict] = mapped_column(JSONB, default=dict)
+    extra_data: Mapped[dict] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         nullable=False,
         default=datetime.utcnow,

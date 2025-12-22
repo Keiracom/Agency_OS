@@ -324,6 +324,18 @@ class WebhookError(IntegrationError):
 
 
 # ============================================
+# Engine Errors
+# ============================================
+
+
+class EngineError(AgencyOSError):
+    """Engine processing error."""
+
+    def __init__(self, message: str = "Engine error", details: dict[str, Any] | None = None):
+        super().__init__(message, code="ENGINE_ERROR", details=details)
+
+
+# ============================================
 # Orchestration Errors
 # ============================================
 

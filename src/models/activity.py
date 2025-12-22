@@ -101,7 +101,7 @@ class Activity(Base, UUIDMixin):
     provider_response: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
 
     # === Engagement Metadata ===
-    metadata: Mapped[dict] = mapped_column(JSONB, default=dict)
+    extra_data: Mapped[dict] = mapped_column(JSONB, default=dict)
 
     # Link tracking
     link_clicked: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

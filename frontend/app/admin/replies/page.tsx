@@ -155,7 +155,7 @@ export default function AdminRepliesPage() {
   const [clientFilter, setClientFilter] = useState("all");
   const [channelFilter, setChannelFilter] = useState("all");
 
-  const clients = [...new Set(mockReplies.map((r) => r.client))];
+  const clients = Array.from(new Set(mockReplies.map((r) => r.client)));
 
   const filteredReplies = mockReplies.filter((reply) => {
     const matchesSearch =

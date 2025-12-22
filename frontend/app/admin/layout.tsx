@@ -6,7 +6,7 @@
  */
 
 import { redirect } from "next/navigation";
-import { isPlatformAdmin, getAdminUser } from "@/lib/supabase";
+import { isPlatformAdmin, getAdminUser } from "@/lib/supabase-server";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 

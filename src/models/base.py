@@ -97,20 +97,12 @@ class UUIDMixin:
 
 def generate_uuid_v7() -> UUID:
     """
-    Generate a UUIDv7 (time-ordered UUID).
+    Generate a UUID for use as primary key.
 
-    UUIDv7 provides time-ordered UUIDs which are better for
-    database indexing and sorting.
-
-    Note: This uses the uuid_extensions package when available,
-    falls back to random UUID if not.
+    Uses Python's stdlib uuid.uuid4() for random UUIDs.
     """
-    try:
-        from uuid_extensions import uuid7
-        return uuid7()
-    except ImportError:
-        import uuid
-        return uuid.uuid4()
+    import uuid
+    return uuid.uuid4()
 
 
 # ============================================

@@ -15,15 +15,12 @@
 
 ## ISSUE-003: Railway Healthcheck Failing - App Not Starting
 
-**Status:** ✅ RESOLVED
-**Resolution:** Fixed multiple issues preventing app startup:
-- Fixed Dockerfile CMD to use `$PORT` env var (Railway sets this dynamically)
-- Fixed Dockerfile HEALTHCHECK to use `/api/v1/health` and `$PORT`
-- Fixed import errors: `NotFoundError` → `ResourceNotFoundError`
-- Fixed import errors: `get_async_session` → `get_db_session`, `close_db` → `cleanup`
-- Fixed SQLAlchemy reserved attribute: `metadata` → `extra_data` in models
-- Added missing `EngineError` exception class
-- Added Pydantic `arbitrary_types_allowed` config for SQLAlchemy models
+**Status:** ✅ RESOLVED (Round 2)
+**Resolution:** Fixed circular import and missing router export:
+- Removed `from src.api.main import app` from `src/api/__init__.py` (causes circular import)
+- Added missing `admin_router` export to `src/api/routes/__init__.py`
+
+Note: Local testing fails with Python 3.14 due to `docstring_parser` package incompatibility, but Railway uses Python 3.11 (per Dockerfile) so this won't affect production.
 
 ---
 
@@ -31,7 +28,6 @@
 
 | Platform | Status | Notes |
 |----------|--------|-------|
-| GitHub | ✅ Synced | Main branch up to date |
-| Supabase | ✅ Ready | 9 migrations applied |
 | Vercel | ✅ LIVE | https://agency-os-liart.vercel.app |
-| Railway | 🔄 Rebuilding | Fixed startup issues, awaiting build |
+| Supabase | ✅ Ready | 9 migrations applied |
+| Railway | 🔄 Rebuilding | Fixed circular import, awaiting build |

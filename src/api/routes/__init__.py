@@ -26,6 +26,7 @@ from src.api.routes.leads import router as leads_router
 from src.api.routes.webhooks import router as webhooks_router
 from src.api.routes.webhooks_outbound import router as webhooks_outbound_router
 from src.api.routes.reports import router as reports_router
+from src.api.routes.admin import router as admin_router
 
 __all__ = [
     "health_router",
@@ -34,4 +35,5 @@ __all__ = [
     "webhooks_router",
     "webhooks_outbound_router",
     "reports_router",
+    "admin_router",
 ]

@@ -33,12 +33,12 @@ from src.exceptions import (
     AISpendLimitError,
     AuthenticationError,
     AuthorizationError,
-    NotFoundError,
+    ResourceNotFoundError,
     RateLimitError,
     ValidationError,
 )
 from src.integrations.redis import close_redis, get_redis
-from src.integrations.supabase import close_db, get_async_session
+from src.integrations.supabase import cleanup as close_db, get_db_session as get_async_session
 
 # Configure logging
 logging.basicConfig(
@@ -227,16 +227,16 @@ async def authorization_error_handler(request: Request, exc: AuthorizationError)
     )
 
 
-@app.exception_handler(NotFoundError)
-async def not_found_error_handler(request: Request, exc: NotFoundError):
+@app.exception_handler(ResourceNotFoundError)
+async def not_found_error_handler(request: Request, exc: ResourceNotFoundError):
     """Handle not found errors."""
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
         content={
             "error": "not_found",
             "message": str(exc),
-            "resource": exc.resource if hasattr(exc, "resource") else None,
-            "resource_id": str(exc.resource_id) if hasattr(exc, "resource_id") else None,
+            "resource": exc.details.get("resource_type") if exc.details else None,
+            "resource_id": exc.details.get("resource_id") if exc.details else None,
         },
     )
 

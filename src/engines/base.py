@@ -21,7 +21,7 @@ from uuid import UUID
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.exceptions import EngineError, NotFoundError, ValidationError
+from src.exceptions import EngineError, ResourceNotFoundError as NotFoundError, ValidationError
 from src.models.base import ChannelType, LeadStatus, SoftDeleteMixin
 
 

@@ -1,0 +1,11 @@
+nul
+.git
+.vercel
+node_modules
+__pycache__
+*.pyc
+.pytest_cache
+.mypy_cache
+.env.local
+.env*.local
+frontend/

@@ -40,7 +40,7 @@ resend>=0.8.0
 twilio>=8.10.0
 
 # === Direct Mail ===
-lob-python>=6.0.0
+lob-python>=5.1.0
 
 # === Web Scraping ===
 apify-client>=1.5.0

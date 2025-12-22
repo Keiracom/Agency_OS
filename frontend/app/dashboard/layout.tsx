@@ -6,7 +6,7 @@
  */
 
 import { redirect } from "next/navigation";
-import { createServerClient, getCurrentUser, getUserMemberships } from "@/lib/supabase";
+import { getCurrentUser, getUserMemberships } from "@/lib/supabase-server";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 
 export default async function DashboardRootLayout({

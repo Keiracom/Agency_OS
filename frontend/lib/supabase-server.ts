@@ -8,6 +8,19 @@ import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import type { Database } from "./supabase";
 
+// Type for membership data with joined client
+type MembershipWithClient = {
+  id: string;
+  role: string;
+  accepted_at: string | null;
+  client: {
+    id: string;
+    name: string;
+    tier: string;
+    subscription_status: string;
+  } | null;
+};
+
 /**
  * Create a Supabase client for use in server components.
  * Requires cookies() from next/headers.
@@ -34,7 +47,7 @@ export async function getCurrentUser() {
 /**
  * Get the current user's memberships.
  */
-export async function getUserMemberships() {
+export async function getUserMemberships(): Promise<MembershipWithClient[]> {
   const user = await getCurrentUser();
   if (!user) return [];
 
@@ -55,7 +68,7 @@ export async function getUserMemberships() {
     return [];
   }
 
-  return data;
+  return (data || []) as MembershipWithClient[];
 }
 
 /**

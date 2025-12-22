@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * FILE: frontend/app/dashboard/campaigns/page.tsx
  * PURPOSE: Campaign list page

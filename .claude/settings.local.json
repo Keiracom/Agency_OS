@@ -7,7 +7,14 @@
       "Bash(if not exist \"C:\\\\AI\\\\Agency_OS\\\\Agents\\\\qa_reports\" mkdir \"C:\\\\AI\\\\Agency_OS\\\\Agents\\\\qa_reports\")",
       "Bash(if not exist \"C:\\\\AI\\\\Agency_OS\\\\Agents\\\\fixer_reports\" mkdir \"C:\\\\AI\\\\Agency_OS\\\\Agents\\\\fixer_reports\")",
       "Bash(cat:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(dir \"C:\\\\AI\\\\Agency_OS\\\\src\" /B)",
+      "Bash(PYTHONPATH=. python:*)"
     ]
   }
 }

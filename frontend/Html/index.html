@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agency OS v3.0</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #123499;
+            --primary-light: #1a4bc7;
+            --primary-dark: #0d2570;
+            --bg-main: #f3f3f3;
+            --bg-white: #ffffff;
+            --text-primary: #1a1a1a;
+            --text-secondary: #5a5a5a;
+            --text-muted: #8a8a8a;
+            --border: #e1e1e1;
+            --success: #107c10;
+            --warning: #ff8c00;
+            --danger: #d13438;
+            --accent-purple: #886ce4;
+            --accent-orange: #f7630c;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 240px;
+            background: var(--bg-white);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            position: fixed;
+            overflow-y: auto;
+        }
+
+        .logo {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--primary);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .logo-text {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .logo-version {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .nav-section {
+            padding: 16px 0;
+        }
+
+        .nav-section-title {
+            padding: 8px 20px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border-left: 3px solid transparent;
+            color: var(--text-secondary);
+            font-size: 13px;
+            text-decoration: none;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-main);
+        }
+
+        .nav-item.active {
+            background: rgba(18, 52, 153, 0.08);
+            border-left-color: var(--primary);
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .nav-icon {
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-badge {
+            margin-left: auto;
+            background: var(--primary);
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        .nav-badge.warning { background: var(--warning); }
+        .nav-badge.success { background: var(--success); }
+        .nav-badge.danger { background: var(--danger); }
+
+        /* Main Content */
+        .main {
+            margin-left: 240px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .page-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .breadcrumb {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .mode-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-main);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .mode-toggle-label { color: var(--text-muted); }
+        .mode-toggle-value { font-weight: 600; color: var(--success); }
+        .mode-toggle-value.boss { color: var(--warning); }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 8px 12px;
+            gap: 8px;
+            width: 280px;
+        }
+
+        .search-box input {
+            border: none;
+            background: transparent;
+            outline: none;
+            font-size: 13px;
+            flex: 1;
+            color: var(--text-primary);
+        }
+
+        .search-box input::placeholder { color: var(--text-muted); }
+
+        .header-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            background: var(--bg-white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            color: var(--text-secondary);
+            position: relative;
+        }
+
+        .header-btn:hover {
+            background: var(--bg-main);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .header-btn .alert-dot {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 8px;
+            height: 8px;
+            background: var(--danger);
+            border-radius: 50%;
+            border: 2px solid var(--bg-white);
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        /* Content Area */
+        .content {
+            padding: 24px 32px;
+            flex: 1;
+        }
+
+        /* Page Container for Dynamic Content */
+        #page-content {
+            min-height: calc(100vh - 100px);
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="logo">
+            <div class="logo-icon">AO</div>
+            <div>
+                <div class="logo-text">Agency OS</div>
+                <div class="logo-version">v3.0</div>
+            </div>
+        </div>
+
+        <nav class="nav-section">
+            <div class="nav-section-title">Overview</div>
+            <a href="#dashboard" class="nav-item active" data-page="dashboard">
+                <span class="nav-icon">📊</span>
+                Dashboard
+            </a>
+            <a href="#analytics" class="nav-item" data-page="analytics">
+                <span class="nav-icon">📈</span>
+                Analytics
+            </a>
+        </nav>
+
+        <nav class="nav-section">
+            <div class="nav-section-title">Acquisition</div>
+            <a href="#campaigns" class="nav-item" data-page="campaigns">
+                <span class="nav-icon">📦</span>
+                Campaigns
+                <span class="nav-badge">12</span>
+            </a>
+            <a href="#leads" class="nav-item" data-page="leads">
+                <span class="nav-icon">👥</span>
+                Leads
+                <span class="nav-badge success">847</span>
+            </a>
+        </nav>
+
+        <nav class="nav-section">
+            <div class="nav-section-title">Channels</div>
+            <a href="#email" class="nav-item" data-page="email">
+                <span class="nav-icon">✉️</span>
+                Email
+            </a>
+            <a href="#linkedin" class="nav-item" data-page="linkedin">
+                <span class="nav-icon">💼</span>
+                LinkedIn
+            </a>
+            <a href="#sms" class="nav-item" data-page="sms">
+                <span class="nav-icon">💬</span>
+                SMS
+            </a>
+            <a href="#voice" class="nav-item" data-page="voice">
+                <span class="nav-icon">📞</span>
+                Voice AI
+            </a>
+            <a href="#directmail" class="nav-item" data-page="directmail">
+                <span class="nav-icon">📬</span>
+                Direct Mail
+            </a>
+        </nav>
+
+        <nav class="nav-section">
+            <div class="nav-section-title">Manage</div>
+            <a href="#inbox" class="nav-item" data-page="inbox">
+                <span class="nav-icon">📥</span>
+                Inbox
+                <span class="nav-badge">8</span>
+            </a>
+            <a href="#meetings" class="nav-item" data-page="meetings">
+                <span class="nav-icon">📅</span>
+                Meetings
+            </a>
+            <a href="#pipeline" class="nav-item" data-page="pipeline">
+                <span class="nav-icon">💰</span>
+                Pipeline
+            </a>
+            <a href="#settings" class="nav-item" data-page="settings">
+                <span class="nav-icon">⚙️</span>
+                Settings
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1 class="page-title" id="page-title">Dashboard</h1>
+                <span class="breadcrumb" id="breadcrumb">Monday, 22 December 2025</span>
+            </div>
+            <div class="header-right">
+                <div class="mode-toggle" id="mode-toggle">
+                    <span class="mode-toggle-label">Mode:</span>
+                    <span class="mode-toggle-value" id="mode-value">Auto Pilot</span>
+                </div>
+                <div class="search-box">
+                    <span>🔍</span>
+                    <input type="text" placeholder="Search leads, campaigns...">
+                </div>
+                <button class="header-btn">
+                    🔔
+                    <span class="alert-dot"></span>
+                </button>
+                <div class="user-avatar">DM</div>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <div class="content">
+            <div id="page-content">
+                <!-- Dynamic content loaded here -->
+            </div>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -12,6 +12,9 @@ import { useEffect, useRef, useState } from "react";
 import { WaitlistForm } from "@/components/marketing/waitlist-form";
 import { useFoundingSpots } from "@/components/marketing/founding-spots";
 import { FloatingFoundingSpots } from "@/components/marketing/floating-founding-spots";
+import ActivityFeed from "@/components/landing/ActivityFeed";
+import TypingDemo from "@/components/landing/TypingDemo";
+import HowItWorksTabs from "@/components/landing/HowItWorksTabs";
 import {
   Search,
   Eye,
@@ -240,8 +243,8 @@ export default function LandingPage() {
 
             {/* Main Headline */}
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 max-w-5xl animate-slide-up" style={{ animationDelay: "100ms" }}>
-              Find perfect-fit leads and book meetings
-              <span className="gradient-text"> — while you focus on client work.</span>
+              Stop chasing clients.
+              <span className="gradient-text"> Let them find you.</span>
             </h1>
 
             {/* Audience qualifier */}
@@ -335,9 +338,10 @@ export default function LandingPage() {
                       <div className="text-sm font-semibold mb-3 text-white">ALS Score™ Distribution</div>
                       <div className="space-y-3">
                         {[
-                          { label: "Hot (80-100)", count: "127", pct: 85, color: "bg-gradient-to-r from-orange-500 to-red-500" },
-                          { label: "Warm (50-79)", count: "892", pct: 60, color: "bg-gradient-to-r from-yellow-500 to-orange-500" },
-                          { label: "Nurture (0-49)", count: "1,828", pct: 40, color: "bg-gray-500" },
+                          { label: "Hot (85-100)", count: "127", pct: 85, color: "bg-gradient-to-r from-orange-500 to-red-500" },
+                          { label: "Warm (60-84)", count: "892", pct: 70, color: "bg-gradient-to-r from-yellow-500 to-orange-500" },
+                          { label: "Cool (35-59)", count: "456", pct: 50, color: "bg-blue-500" },
+                          { label: "Cold (20-34)", count: "312", pct: 30, color: "bg-gray-500" },
                         ].map((tier, i) => (
                           <div key={i}>
                             <div className="flex justify-between text-xs mb-1">
@@ -364,8 +368,8 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
             {[
-              { value: 35, suffix: "%+", label: "Open rate", sub: "Industry avg: 15-20%" },
-              { value: 12, suffix: "%", label: "Reply rate", sub: "3x typical cold email" },
+              { value: 55, suffix: "%+", label: "Open rate", sub: "Industry avg: 15-20%" },
+              { value: 12, suffix: "%+", label: "Reply rate", sub: "3x typical cold email" },
               { value: 14, prefix: "<", suffix: " days", label: "To first meeting", sub: "From campaign launch" },
               { value: 5, suffix: " channels", label: "Unified", sub: "One dashboard" },
             ].map((stat, i) => (
@@ -379,6 +383,37 @@ export default function LandingPage() {
                 </div>
               </ScrollReveal>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* LIVE DEMO SECTION */}
+      <section className="py-20 md:py-28 bg-slate-900 text-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <ScrollReveal>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
+                See it in action
+              </h2>
+              <p className="text-lg text-white/60 max-w-2xl mx-auto">
+                Watch how Agency OS automates your outreach while you focus on closing deals.
+              </p>
+            </div>
+          </ScrollReveal>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            <ScrollReveal delay={100}>
+              <div>
+                <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-4">Live Activity</h3>
+                <ActivityFeed className="h-[360px]" />
+              </div>
+            </ScrollReveal>
+            <ScrollReveal delay={200}>
+              <div>
+                <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-4">AI Personalization</h3>
+                <TypingDemo className="h-[360px]" />
+              </div>
+            </ScrollReveal>
           </div>
         </div>
       </section>
@@ -461,93 +496,19 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* HOW IT WORKS */}
-      <section id="how-it-works" className="py-20 md:py-28 bg-gradient-to-b from-white to-gray-50">
+      {/* HOW IT WORKS - Interactive Tabs */}
+      <section id="how-it-works" className="py-20 md:py-28 bg-gradient-to-b from-slate-900 to-slate-800 text-white">
         <div className="max-w-6xl mx-auto px-6">
           <ScrollReveal>
-            <div className="text-center mb-16">
+            <div className="text-center mb-12">
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">How it works</h2>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">From setup to your first booked meeting in less than 2 weeks</p>
+              <p className="text-lg text-white/60 max-w-2xl mx-auto">From setup to your first booked meeting in less than 2 weeks</p>
             </div>
           </ScrollReveal>
 
-          <div className="grid md:grid-cols-5 gap-6">
-            {/* Discover */}
-            <ScrollReveal delay={0}>
-              <div className="text-center group">
-                <div className="relative inline-block mb-4">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg mx-auto group-hover:scale-110 transition-transform">
-                    <Search className="w-8 h-8 text-white" />
-                  </div>
-                  <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-white border-2 border-blue-500 flex items-center justify-center text-xs font-bold text-blue-600 shadow">
-                    01
-                  </div>
-                </div>
-                <h3 className="font-bold text-lg mb-2">Discover</h3>
-                <p className="text-sm text-gray-600">ICP extracted from your website in 5 minutes.</p>
-              </div>
-            </ScrollReveal>
-            {/* Find */}
-            <ScrollReveal delay={100}>
-              <div className="text-center group">
-                <div className="relative inline-block mb-4">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg mx-auto group-hover:scale-110 transition-transform">
-                    <Eye className="w-8 h-8 text-white" />
-                  </div>
-                  <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-white border-2 border-blue-500 flex items-center justify-center text-xs font-bold text-blue-600 shadow">
-                    02
-                  </div>
-                </div>
-                <h3 className="font-bold text-lg mb-2">Find</h3>
-                <p className="text-sm text-gray-600">AI scouts Australian businesses showing buying signals.</p>
-              </div>
-            </ScrollReveal>
-            {/* Score */}
-            <ScrollReveal delay={200}>
-              <div className="text-center group">
-                <div className="relative inline-block mb-4">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg mx-auto group-hover:scale-110 transition-transform">
-                    <BarChart3 className="w-8 h-8 text-white" />
-                  </div>
-                  <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-white border-2 border-blue-500 flex items-center justify-center text-xs font-bold text-blue-600 shadow">
-                    03
-                  </div>
-                </div>
-                <h3 className="font-bold text-lg mb-2">Score</h3>
-                <p className="text-sm text-gray-600">ALS Score™ ranks by budget, timeline, and fit.</p>
-              </div>
-            </ScrollReveal>
-            {/* Reach */}
-            <ScrollReveal delay={300}>
-              <div className="text-center group">
-                <div className="relative inline-block mb-4">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg mx-auto group-hover:scale-110 transition-transform">
-                    <Rocket className="w-8 h-8 text-white" />
-                  </div>
-                  <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-white border-2 border-blue-500 flex items-center justify-center text-xs font-bold text-blue-600 shadow">
-                    04
-                  </div>
-                </div>
-                <h3 className="font-bold text-lg mb-2">Reach</h3>
-                <p className="text-sm text-gray-600">5-channel outreach: Email, SMS, LinkedIn, Voice, Mail.</p>
-              </div>
-            </ScrollReveal>
-            {/* Convert */}
-            <ScrollReveal delay={400}>
-              <div className="text-center group">
-                <div className="relative inline-block mb-4">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg mx-auto group-hover:scale-110 transition-transform">
-                    <Calendar className="w-8 h-8 text-white" />
-                  </div>
-                  <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-white border-2 border-blue-500 flex items-center justify-center text-xs font-bold text-blue-600 shadow">
-                    05
-                  </div>
-                </div>
-                <h3 className="font-bold text-lg mb-2">Convert</h3>
-                <p className="text-sm text-gray-600">Meetings booked on your calendar. Automatically.</p>
-              </div>
-            </ScrollReveal>
-          </div>
+          <ScrollReveal delay={100}>
+            <HowItWorksTabs autoRotate={true} rotateInterval={6000} />
+          </ScrollReveal>
         </div>
       </section>
 

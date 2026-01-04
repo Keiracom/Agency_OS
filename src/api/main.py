@@ -355,6 +355,7 @@ from src.api.routes.campaigns import router as campaigns_router
 from src.api.routes.health import router as health_router
 from src.api.routes.leads import router as leads_router
 from src.api.routes.meetings import router as meetings_router
+from src.api.routes.onboarding import router as onboarding_router
 from src.api.routes.patterns import router as patterns_router
 from src.api.routes.replies import router as replies_router
 from src.api.routes.reports import router as reports_router
@@ -371,6 +372,8 @@ app.include_router(reports_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.include_router(replies_router, prefix="/api/v1")
 app.include_router(meetings_router, prefix="/api/v1")
+# Phase 11: ICP Discovery / Onboarding
+app.include_router(onboarding_router, prefix="/api/v1")
 # Phase 16: Conversion Intelligence
 app.include_router(patterns_router, prefix="/api/v1/patterns")
 

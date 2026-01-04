@@ -1,0 +1,23 @@
+Create an interactive tabbed "How It Works" section with 5 steps for a dark theme SaaS landing page.
+
+Tabs: Discover → Find → Score → Reach → Convert
+
+Each tab content:
+1. Discover: "ICP extracted from your website in 5 minutes" - Description: "Just enter your website URL. Our AI analyzes your existing clients, case studies, and messaging to understand exactly who you serve best." - Icon: Search
+2. Find: "AI scouts Australian businesses showing buying signals" - Description: "Our AI continuously monitors the Australian market for businesses matching your ICP. We look for hiring patterns, tech stack changes, funding announcements." - Icon: Eye
+3. Score: "ALS Score™ ranks by budget, timeline, and fit" - Description: "Every lead gets an Agency Lead Score (ALS) from 0-100. Focus only on Hot leads (85+) that are ready to close." - Icon: BarChart3
+4. Reach: "5-channel outreach: Email, SMS, LinkedIn, Voice, Mail" - Description: "True multi-channel engagement. LinkedIn warms them up, email provides value, voice AI books the meeting." - Icon: Rocket
+5. Convert: "Meetings booked on your calendar. Automatically." - Description: "When a lead is ready, our AI handles the booking conversation. You just show up and close." - Icon: Calendar
+
+Requirements:
+- Dark theme compatible (works on dark backgrounds)
+- Tab bar: horizontal, glass background (bg-white/5, backdrop-blur), gradient indicator on active tab
+- Tab buttons: px-4 py-2.5, text-sm, inactive=text-white/50, active=text-white with gradient underline
+- Content area: smooth fade transition between tabs (300ms)
+- Step number badge: "01", "02", etc. in gradient circle
+- Auto-rotate tabs every 6 seconds when section is in view (use IntersectionObserver)
+- Pause auto-rotate on hover or click, resume after 10 seconds of no interaction
+- Progress indicator dots below tabs showing current position
+- Use Tailwind CSS, React, TypeScript
+- Use lucide-react for icons
+- Export as default with props for autoRotate (boolean) and rotateInterval (number)

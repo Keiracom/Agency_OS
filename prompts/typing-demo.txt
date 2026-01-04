@@ -1,0 +1,26 @@
+Create a React component showing an AI writing a personalized email in real-time.
+
+Requirements:
+- Dark card with glass morphism (bg-white/5, backdrop-blur-[20px], border border-white/10, rounded-lg)
+- Email compose UI style with:
+  - To field: "sarah@bloomdigital.com.au"
+  - Subject field: "Quick question about your healthcare marketing expansion"
+- Body area with typewriter effect typing this email:
+  "Hi Sarah,
+
+  I noticed Bloom Digital has been expanding into healthcare marketing — congrats on the recent wins with Medicare providers.
+
+  We've helped similar agencies book 40+ qualified meetings per month using our multi-channel approach. Given your focus on regulated industries, I think our compliance-first platform could be a great fit.
+
+  Would you be open to a quick 15-min call next week to explore?
+
+  Best,
+  Alex"
+- Variable typing speed: faster for normal text (25ms), pause 150ms at periods, 100ms at commas, 200ms at newlines
+- Blinking cursor (animate with opacity toggle)
+- "AI is writing..." indicator at top with pulsing purple dot
+- Changes to "AI finished" when complete
+- Restart animation after 5 second pause at end
+- Use Tailwind CSS, React, TypeScript
+- Use lucide-react for Sparkles icon
+- Export as default with TypeScript props interface

@@ -54,24 +54,25 @@ async function generate(options: GenerateOptions): Promise<string> {
   console.log('📝 Prompt preview:', prompt.substring(0, 200) + '...')
 
   // Create initial chat with design system context
-  const chat = await v0.chats.create({
+  const chatResponse = await v0.chats.create({
     message: prompt,
     system: DESIGN_SYSTEM
-  })
+  }) as any // Type assertion to handle union type
 
-  console.log(`\n🌐 Web URL: ${chat.webUrl}`)
-  console.log(`📺 Preview URL: ${chat.latestVersion?.demoUrl || 'pending...'}`)
-  console.log(`🔑 Chat ID: ${chat.id}`)
+  const chatId = chatResponse.id
+  console.log(`\n🌐 Web URL: ${chatResponse.webUrl}`)
+  console.log(`📺 Preview URL: ${chatResponse.latestVersion?.demoUrl || 'pending...'}`)
+  console.log(`🔑 Chat ID: ${chatId}`)
 
   // Wait for completion if status is pending
-  let currentChat = chat
+  let currentChat = chatResponse
   let attempts = 0
-  const maxAttempts = 30 // 30 seconds max wait
+  const maxAttempts = 60 // 60 seconds max wait
 
   while (currentChat.latestVersion?.status === 'pending' && attempts < maxAttempts) {
     console.log(`⏳ Generation in progress... (${attempts + 1}/${maxAttempts})`)
     await new Promise(resolve => setTimeout(resolve, 1000))
-    currentChat = await v0.chats.getById({ chatId: chat.id })
+    currentChat = await v0.chats.getById({ chatId })
     attempts++
   }
 
@@ -84,17 +85,17 @@ async function generate(options: GenerateOptions): Promise<string> {
     const followUp = iterate[i]
     console.log(`\n🔄 Iteration ${i + 1}: ${followUp.substring(0, 50)}...`)
 
-    const response = await v0.chats.sendMessage({
-      chatId: chat.id,
+    await v0.chats.sendMessage({
+      chatId,
       message: followUp
     })
 
     // Wait for iteration to complete
     attempts = 0
-    currentChat = await v0.chats.getById({ chatId: chat.id })
+    currentChat = await v0.chats.getById({ chatId })
     while (currentChat.latestVersion?.status === 'pending' && attempts < maxAttempts) {
       await new Promise(resolve => setTimeout(resolve, 1000))
-      currentChat = await v0.chats.getById({ chatId: chat.id })
+      currentChat = await v0.chats.getById({ chatId })
       attempts++
     }
 
@@ -104,7 +105,7 @@ async function generate(options: GenerateOptions): Promise<string> {
   }
 
   // Get final chat state with files
-  currentChat = await v0.chats.getById({ chatId: chat.id })
+  currentChat = await v0.chats.getById({ chatId })
   const files = currentChat.latestVersion?.files
 
   // Write generated files
@@ -121,7 +122,7 @@ async function generate(options: GenerateOptions): Promise<string> {
     console.log(`   ${currentChat.webUrl}`)
   }
 
-  return chat.id
+  return chatId
 }
 
 // CLI interface

@@ -1,0 +1,21 @@
+Create a dark mode SaaS landing page hero section for "Agency OS" - a client acquisition platform for Australian marketing agencies.
+
+Requirements:
+- Dark background (#0a0a0f) with subtle blue/purple gradient orbs that float gently
+- Headline: "Stop chasing clients. Let them find you." with gradient text effect (blue to purple)
+- Subheadline: "Five channels. Fully automated. One platform."
+- Urgency badge: "Only 17 of 20 founding spots remaining" with pulsing green dot
+- Primary CTA button: "See It In Action" with gradient background (blue-500 to purple-600), hover glow effect
+- Secondary CTA: "How it works →" text link
+- Live activity feed component on the right side showing rotating notifications:
+  - "Email opened by Sarah Williams" (blue icon)
+  - "Connection accepted: Marcus Chen" (blue icon)
+  - "Voice AI: Meeting booked with Pixel Studios" (green icon)
+  - "SMS delivered to James Cooper" (purple icon)
+  - Rotate every 3 seconds, max 5 visible, new items slide in from top
+- Glass morphism effects on cards (backdrop-blur-[20px], border border-white/10, bg-white/5)
+- Smooth fade-up animations on load with staggered delays
+- Use Tailwind CSS, React, TypeScript
+- Use lucide-react for icons (Mail, Linkedin, Phone, MessageSquare)
+- Export as default component with proper TypeScript types
+- Make it responsive - stack on mobile

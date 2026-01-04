@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import { WaitlistForm } from "@/components/marketing/waitlist-form";
 import { useFoundingSpots } from "@/components/marketing/founding-spots";
 import { FloatingFoundingSpots } from "@/components/marketing/floating-founding-spots";
-import ActivityFeed from "@/components/landing/ActivityFeed";
+import HeroSection from "@/components/landing/HeroSection";
 import TypingDemo from "@/components/landing/TypingDemo";
 import HowItWorksTabs from "@/components/landing/HowItWorksTabs";
 import {
@@ -387,34 +387,31 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* LIVE DEMO SECTION */}
-      <section className="py-20 md:py-28 bg-slate-900 text-white">
-        <div className="max-w-7xl mx-auto px-6">
+      {/* LIVE DEMO SECTION - Using v0 Components */}
+      <section className="py-20 md:py-28 bg-[#0a0a0f] text-white relative overflow-hidden">
+        {/* Subtle background orbs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[120px]" />
+          <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-[120px]" />
+        </div>
+
+        <div className="max-w-7xl mx-auto px-6 relative z-10">
           <ScrollReveal>
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-                See it in action
+                See the AI in action
               </h2>
               <p className="text-lg text-white/60 max-w-2xl mx-auto">
-                Watch how Agency OS automates your outreach while you focus on closing deals.
+                Watch how Agency OS crafts personalized outreach while you focus on closing deals.
               </p>
             </div>
           </ScrollReveal>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            <ScrollReveal delay={100}>
-              <div>
-                <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-4">Live Activity</h3>
-                <ActivityFeed className="h-[360px]" />
-              </div>
-            </ScrollReveal>
-            <ScrollReveal delay={200}>
-              <div>
-                <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-4">AI Personalization</h3>
-                <TypingDemo className="h-[360px]" />
-              </div>
-            </ScrollReveal>
-          </div>
+          <ScrollReveal delay={100}>
+            <div className="flex justify-center">
+              <TypingDemo className="w-full max-w-2xl" />
+            </div>
+          </ScrollReveal>
         </div>
       </section>
 
@@ -496,19 +493,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* HOW IT WORKS - Interactive Tabs */}
-      <section id="how-it-works" className="py-20 md:py-28 bg-gradient-to-b from-slate-900 to-slate-800 text-white">
-        <div className="max-w-6xl mx-auto px-6">
-          <ScrollReveal>
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">How it works</h2>
-              <p className="text-lg text-white/60 max-w-2xl mx-auto">From setup to your first booked meeting in less than 2 weeks</p>
-            </div>
-          </ScrollReveal>
+      {/* HOW IT WORKS - v0 Interactive Tabs */}
+      <section id="how-it-works" className="bg-[#0a0a0f] text-white relative overflow-hidden">
+        {/* Subtle background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0f] via-[#0f0f13] to-[#0a0a0f] pointer-events-none" />
 
-          <ScrollReveal delay={100}>
-            <HowItWorksTabs autoRotate={true} rotateInterval={6000} />
-          </ScrollReveal>
+        <div className="relative z-10">
+          <HowItWorksTabs autoRotate={true} rotateInterval={6000} />
         </div>
       </section>
 

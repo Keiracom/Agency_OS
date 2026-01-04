@@ -233,7 +233,7 @@ async def run_extraction_background(
     This is called by background_tasks.add_task().
     """
     from src.agents.icp_discovery_agent import get_icp_discovery_agent
-    from src.integrations.supabase import get_db_session_context
+    from src.integrations.supabase import get_db_session as get_db_session_context
 
     agent = get_icp_discovery_agent()
 

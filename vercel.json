@@ -49,10 +49,9 @@
     }
   ],
   "env": {
-    "NEXT_PUBLIC_SUPABASE_URL": "@supabase-url",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase-anon-key",
-    "NEXT_PUBLIC_API_URL": "@api-url",
-    "NEXT_PUBLIC_SENTRY_DSN": "@sentry-dsn-frontend"
+    "NEXT_PUBLIC_SUPABASE_URL": "https://jatzvazlbusedwsnqxzr.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "REDACTED_SUPABASE_ANON_KEY",
+    "NEXT_PUBLIC_API_URL": "https://agency-os-api.railway.app"
   },
   "crons": []
 }

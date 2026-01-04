@@ -15,6 +15,7 @@ import { FloatingFoundingSpots } from "@/components/marketing/floating-founding-
 import HeroSection from "@/components/landing/HeroSection";
 import TypingDemo from "@/components/landing/TypingDemo";
 import HowItWorksTabs from "@/components/landing/HowItWorksTabs";
+import DashboardDemo from "@/components/landing/DashboardDemo";
 import {
   Search,
   Eye,
@@ -282,82 +283,9 @@ export default function LandingPage() {
               <span>✓ Cancel anytime</span>
             </div>
 
-            {/* Dashboard Preview */}
+            {/* Animated Dashboard Demo */}
             <div className="w-full max-w-5xl animate-slide-up" style={{ animationDelay: "400ms" }}>
-              <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-gray-200 bg-white group hover:shadow-blue-500/20 transition-all duration-500">
-                {/* Browser chrome */}
-                <div className="absolute top-0 left-0 right-0 h-10 bg-gray-100 border-b border-gray-200 flex items-center px-4 gap-2 z-10">
-                  <div className="flex gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                    <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                    <div className="w-3 h-3 rounded-full bg-green-400"></div>
-                  </div>
-                  <div className="flex-1 mx-4">
-                    <div className="bg-white rounded px-3 py-1 text-xs text-gray-500 max-w-sm mx-auto flex items-center justify-center gap-2">
-                      <Lock className="w-3 h-3 text-green-500" />
-                      app.agencyos.com.au/dashboard
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Dashboard mockup */}
-                <div className="pt-10 h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-                  <div className="grid grid-cols-4 gap-4 mb-4">
-                    {[
-                      { label: "Pipeline Value", value: "$284K", change: "↑ 23% this month", color: "text-green-400" },
-                      { label: "Meetings Booked", value: "47", change: "↑ 12 this week", color: "text-green-400" },
-                      { label: "Reply Rate", value: "12.4%", change: "3x industry avg", color: "text-blue-400" },
-                      { label: "Active Leads", value: "2,847", change: "Across 5 channels", color: "text-purple-400" },
-                    ].map((stat, i) => (
-                      <div key={i} className="bg-white/5 backdrop-blur rounded-lg p-4 border border-white/10">
-                        <div className="text-xs text-gray-400 mb-1">{stat.label}</div>
-                        <div className="text-2xl font-bold text-white">{stat.value}</div>
-                        <div className={`text-xs ${stat.color}`}>{stat.change}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="col-span-2 bg-white/5 backdrop-blur rounded-lg p-4 border border-white/10">
-                      <div className="text-sm font-semibold mb-3 flex items-center gap-2 text-white">
-                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                        Live Activity Feed
-                      </div>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2 text-gray-300 bg-blue-500/10 rounded p-2 border border-blue-500/20">
-                          <span className="text-green-400">✓</span> Meeting booked with Pixel Studios — Thursday 2pm
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-300 bg-white/5 rounded p-2">
-                          <span className="text-blue-400">→</span> Sarah Williams replied — interested in demo
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-300 bg-white/5 rounded p-2">
-                          <Mail className="w-4 h-4 text-purple-400" /> AI sent personalized email to Marcus Chen
-                        </div>
-                      </div>
-                    </div>
-                    <div className="bg-white/5 backdrop-blur rounded-lg p-4 border border-white/10">
-                      <div className="text-sm font-semibold mb-3 text-white">ALS Score™ Distribution</div>
-                      <div className="space-y-3">
-                        {[
-                          { label: "Hot (85-100)", count: "127", pct: 85, color: "bg-gradient-to-r from-orange-500 to-red-500" },
-                          { label: "Warm (60-84)", count: "892", pct: 70, color: "bg-gradient-to-r from-yellow-500 to-orange-500" },
-                          { label: "Cool (35-59)", count: "456", pct: 50, color: "bg-blue-500" },
-                          { label: "Cold (20-34)", count: "312", pct: 30, color: "bg-gray-500" },
-                        ].map((tier, i) => (
-                          <div key={i}>
-                            <div className="flex justify-between text-xs mb-1">
-                              <span className="text-gray-400">{tier.label}</span>
-                              <span className="text-gray-300">{tier.count}</span>
-                            </div>
-                            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                              <div className={`h-full ${tier.color} rounded-full`} style={{ width: `${tier.pct}%` }}></div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <DashboardDemo />
             </div>
           </div>
         </div>

@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { createBrowserClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { getInitials, getAvatarColor } from "@/lib/utils";
+import { CreditsBadge } from "./credits-badge";
 
 interface HeaderProps {
   user?: {
@@ -64,15 +65,10 @@ export function Header({ user, client }: HeaderProps) {
 
       {/* Right side */}
       <div className="flex items-center gap-4">
-        {/* Credits */}
-        {client && (
-          <div className="hidden md:flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Credits:</span>
-            <Badge variant="secondary">
-              {client.creditsRemaining.toLocaleString()}
-            </Badge>
-          </div>
-        )}
+        {/* Credits Badge */}
+        <div className="hidden md:block">
+          <CreditsBadge />
+        </div>
 
         {/* Notifications */}
         <Button variant="ghost" size="icon" className="relative">

@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agency OS — The Client Acquisition Machine</title>
+  <meta name="description" content="Stop chasing clients. Multi-channel outbound automation built for Australian marketing agencies.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { 
+            sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Inter', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html { scroll-behavior: smooth; }
+    
+    /* Apple-style animations */
+    @keyframes fadeUp { 
+      from { opacity: 0; transform: translateY(30px); } 
+      to { opacity: 1; transform: translateY(0); } 
+    }
+    @keyframes float { 
+      0%, 100% { transform: translateY(0); } 
+      50% { transform: translateY(-8px); } 
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    @keyframes pulse-soft {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    
+    .fade-up { animation: fadeUp 0.8s ease-out forwards; }
+    .fade-up-delay-1 { animation: fadeUp 0.8s ease-out 0.1s forwards; opacity: 0; }
+    .fade-up-delay-2 { animation: fadeUp 0.8s ease-out 0.2s forwards; opacity: 0; }
+    .fade-up-delay-3 { animation: fadeUp 0.8s ease-out 0.3s forwards; opacity: 0; }
+    .float { animation: float 6s ease-in-out infinite; }
+    .pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
+    
+    /* Gradient text */
+    .gradient-text {
+      background: linear-gradient(135deg, #0066CC 0%, #5856D6 50%, #AF52DE 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    /* Glassmorphism */
+    .glass {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    
+    /* Hover lift */
+    .hover-lift {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .hover-lift:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    }
+    
+    /* Counter animation */
+    .counter {
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body class="bg-[#fbfbfd] text-[#1d1d1f] antialiased">
+
+  <!-- Navigation - Apple style fixed nav -->
+  <nav class="fixed top-0 left-0 right-0 z-50 glass border-b border-black/5">
+    <div class="max-w-[980px] mx-auto px-6 h-12 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-2 group">
+        <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center transition-transform group-hover:scale-105">
+          <span class="text-white font-bold text-xs">A</span>
+        </div>
+        <span class="font-semibold text-sm tracking-tight">Agency OS</span>
+      </a>
+      
+      <div class="hidden md:flex items-center gap-8 text-xs">
+        <a href="#how-it-works" class="text-[#1d1d1f]/70 hover:text-[#1d1d1f] transition-colors">How It Works</a>
+        <a href="#results" class="text-[#1d1d1f]/70 hover:text-[#1d1d1f] transition-colors">Results</a>
+        <a href="#pricing" class="text-[#1d1d1f]/70 hover:text-[#1d1d1f] transition-colors">Pricing</a>
+      </div>
+      
+      <a href="#claim" class="text-xs font-medium px-4 py-1.5 rounded-full bg-[#0066CC] text-white hover:bg-[#0055AA] transition-colors">
+        Claim Founding Spot
+      </a>
+    </div>
+  </nav>
+
+  <!-- Hero Section - Apple style with outcome-focused headline -->
+  <section class="pt-24 pb-12 px-6 overflow-hidden">
+    <div class="max-w-[980px] mx-auto">
+      
+      <!-- Urgency badge -->
+      <div class="flex justify-center mb-8 fade-up">
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#fef3c7] border border-[#fcd34d]/30">
+          <span class="w-2 h-2 rounded-full bg-[#f59e0b] pulse-soft"></span>
+          <span class="text-xs font-medium text-[#92400e]">Only 17 of 20 founding spots remaining</span>
+        </div>
+      </div>
+      
+      <!-- Main headline - Apple style: short, punchy, outcome-focused -->
+      <div class="text-center max-w-3xl mx-auto">
+        <h1 class="text-[52px] md:text-[72px] font-semibold tracking-tight leading-[1.05] mb-6 fade-up-delay-1">
+          Stop chasing clients.<br>
+          <span class="gradient-text">Let them find you.</span>
+        </h1>
+        
+        <p class="text-xl md:text-2xl text-[#86868b] leading-relaxed mb-8 fade-up-delay-2">
+          The client acquisition machine built specifically for<br class="hidden md:block">
+          Australian marketing agencies. Fully automated.
+        </p>
+        
+        <!-- CTA - Single focused action -->
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 fade-up-delay-3">
+          <a href="#claim" class="group inline-flex items-center gap-2 px-8 py-4 rounded-full bg-[#0066CC] text-white text-lg font-medium hover:bg-[#0055AA] transition-all">
+            See It In Action
+            <svg class="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
+          </a>
+        </div>
+      </div>
+      
+    </div>
+  </section>
+
+  <!-- Social Proof Strip - within first scroll -->
+  <section class="py-8 px-6 border-y border-black/5 bg-white/50">
+    <div class="max-w-[980px] mx-auto">
+      <div class="flex flex-wrap items-center justify-center gap-8 md:gap-16">
+        <div class="text-center">
+          <p class="text-3xl md:text-4xl font-semibold gradient-text">35%+</p>
+          <p class="text-xs text-[#86868b] mt-1">Average open rate</p>
+        </div>
+        <div class="hidden md:block w-px h-12 bg-black/10"></div>
+        <div class="text-center">
+          <p class="text-3xl md:text-4xl font-semibold gradient-text">12%</p>
+          <p class="text-xs text-[#86868b] mt-1">Reply rate</p>
+        </div>
+        <div class="hidden md:block w-px h-12 bg-black/10"></div>
+        <div class="text-center">
+          <p class="text-3xl md:text-4xl font-semibold gradient-text">&lt;14</p>
+          <p class="text-xs text-[#86868b] mt-1">Days to first meeting</p>
+        </div>
+        <div class="hidden md:block w-px h-12 bg-black/10"></div>
+        <div class="text-center">
+          <p class="text-3xl md:text-4xl font-semibold gradient-text">5</p>
+          <p class="text-xs text-[#86868b] mt-1">Channels unified</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Product Hero Image -->
+  <section class="py-16 px-6">
+    <div class="max-w-[1200px] mx-auto">
+      <div class="relative rounded-2xl overflow-hidden shadow-2xl shadow-black/10 border border-black/5">
+        <!-- Browser chrome -->
+        <div class="flex items-center gap-2 px-4 py-3 bg-[#f5f5f7] border-b border-black/5">
+          <div class="flex gap-1.5">
+            <div class="w-3 h-3 rounded-full bg-[#ff5f57]"></div>
+            <div class="w-3 h-3 rounded-full bg-[#febc2e]"></div>
+            <div class="w-3 h-3 rounded-full bg-[#28c840]"></div>
+          </div>
+          <div class="flex-1 flex justify-center">
+            <div class="px-4 py-1 rounded-md bg-white text-[#86868b] text-xs border border-black/5">
+              app.agencyos.com.au
+            </div>
+          </div>
+        </div>
+        
+        <!-- Dashboard mockup -->
+        <div class="bg-gradient-to-br from-[#1a1a2e] to-[#0f0f1a] p-6 md:p-10">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="p-5 rounded-xl bg-white/5 border border-white/10 hover-lift">
+              <p class="text-white/50 text-xs uppercase tracking-wider mb-2">Pipeline Value</p>
+              <p class="text-white text-3xl font-semibold">$284K</p>
+              <p class="text-emerald-400 text-xs mt-1">↑ $42K this month</p>
+            </div>
+            <div class="p-5 rounded-xl bg-white/5 border border-white/10 hover-lift">
+              <p class="text-white/50 text-xs uppercase tracking-wider mb-2">Meetings Booked</p>
+              <p class="text-white text-3xl font-semibold">47</p>
+              <p class="text-emerald-400 text-xs mt-1">↑ 8 this week</p>
+            </div>
+            <div class="p-5 rounded-xl bg-white/5 border border-white/10 hover-lift">
+              <p class="text-white/50 text-xs uppercase tracking-wider mb-2">Active Sequences</p>
+              <p class="text-white text-3xl font-semibold">12</p>
+              <p class="text-white/50 text-xs mt-1">Across 5 channels</p>
+            </div>
+            <div class="p-5 rounded-xl bg-white/5 border border-white/10 hover-lift">
+              <p class="text-white/50 text-xs uppercase tracking-wider mb-2">Conversion Rate</p>
+              <p class="text-white text-3xl font-semibold">3.2%</p>
+              <p class="text-emerald-400 text-xs mt-1">↑ 0.4% vs last month</p>
+            </div>
+          </div>
+          
+          <!-- Lead table preview -->
+          <div class="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+            <div class="px-5 py-3 border-b border-white/10">
+              <p class="text-white/70 text-sm font-medium">Hot Leads — Ready to Close</p>
+            </div>
+            <div class="divide-y divide-white/5">
+              <div class="px-5 py-4 flex items-center justify-between hover:bg-white/5 transition-colors">
+                <div class="flex items-center gap-4">
+                  <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center text-white text-sm font-bold">92</div>
+                  <div>
+                    <p class="text-white font-medium">Bloom Digital</p>
+                    <p class="text-white/50 text-sm">Marketing Director • Healthcare</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <p class="text-emerald-400 text-sm font-medium">Meeting Booked</p>
+                  <p class="text-white/40 text-xs">Tomorrow 2pm</p>
+                </div>
+              </div>
+              <div class="px-5 py-4 flex items-center justify-between hover:bg-white/5 transition-colors">
+                <div class="flex items-center gap-4">
+                  <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center text-white text-sm font-bold">88</div>
+                  <div>
+                    <p class="text-white font-medium">Growth Labs</p>
+                    <p class="text-white/50 text-sm">CMO • Professional Services</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <p class="text-blue-400 text-sm font-medium">Replied</p>
+                  <p class="text-white/40 text-xs">2 hours ago</p>
+                </div>
+              </div>
+              <div class="px-5 py-4 flex items-center justify-between hover:bg-white/5 transition-colors">
+                <div class="flex items-center gap-4">
+                  <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-yellow-500 flex items-center justify-center text-white text-sm font-bold">85</div>
+                  <div>
+                    <p class="text-white font-medium">Pixel Perfect</p>
+                    <p class="text-white/50 text-sm">CEO • Real Estate</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <p class="text-purple-400 text-sm font-medium">Call Scheduled</p>
+                  <p class="text-white/40 text-xs">Voice AI follow-up</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- The Problem / Before-After - NO tool names -->
+  <section class="py-20 px-6 bg-white">
+    <div class="max-w-[980px] mx-auto">
+      
+      <div class="text-center mb-16">
+        <h2 class="text-4xl md:text-5xl font-semibold tracking-tight mb-4">
+          One platform.<br>
+          <span class="text-[#86868b]">Not seven.</span>
+        </h2>
+      </div>
+      
+      <div class="grid md:grid-cols-2 gap-6">
+        <!-- Before -->
+        <div class="p-8 rounded-2xl bg-[#f5f5f7]">
+          <p class="text-xs font-semibold text-[#86868b] uppercase tracking-wider mb-6">Your Current Reality</p>
+          
+          <div class="space-y-3 mb-8">
+            <div class="flex items-center gap-3 p-4 rounded-xl bg-white">
+              <div class="w-10 h-10 rounded-lg bg-[#e5e5e5] flex items-center justify-center text-lg">📊</div>
+              <div>
+                <p class="font-medium text-sm">Lead database tool</p>
+                <p class="text-xs text-[#86868b]">$99-299/mo</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 p-4 rounded-xl bg-white">
+              <div class="w-10 h-10 rounded-lg bg-[#e5e5e5] flex items-center justify-center text-lg">✉️</div>
+              <div>
+                <p class="font-medium text-sm">Email sending platform</p>
+                <p class="text-xs text-[#86868b]">$97-286/mo</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 p-4 rounded-xl bg-white">
+              <div class="w-10 h-10 rounded-lg bg-[#e5e5e5] flex items-center justify-center text-lg">💼</div>
+              <div>
+                <p class="font-medium text-sm">LinkedIn automation</p>
+                <p class="text-xs text-[#86868b]">$79-99/mo</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 p-4 rounded-xl bg-white">
+              <div class="w-10 h-10 rounded-lg bg-[#e5e5e5] flex items-center justify-center text-lg">📱</div>
+              <div>
+                <p class="font-medium text-sm">SMS/calling platform</p>
+                <p class="text-xs text-[#86868b]">$50-200/mo</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 p-4 rounded-xl bg-white">
+              <div class="w-10 h-10 rounded-lg bg-[#e5e5e5] flex items-center justify-center text-lg">📋</div>
+              <div>
+                <p class="font-medium text-sm">Spreadsheets & manual tracking</p>
+                <p class="text-xs text-[#86868b]">Hours of your time</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="p-4 rounded-xl bg-red-50 border border-red-100">
+            <p class="text-red-700 font-semibold">$500-900+/month</p>
+            <p class="text-red-600/70 text-sm">Plus hours switching between tabs</p>
+          </div>
+        </div>
+        
+        <!-- After -->
+        <div class="p-8 rounded-2xl bg-gradient-to-br from-[#0066CC] to-[#5856D6] text-white relative overflow-hidden">
+          <!-- Grid pattern overlay -->
+          <div class="absolute inset-0 opacity-10" style="background-image: linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px); background-size: 20px 20px;"></div>
+          
+          <div class="relative">
+            <p class="text-xs font-semibold text-white/60 uppercase tracking-wider mb-6">With Agency OS</p>
+            
+            <div class="flex items-center gap-4 mb-8">
+              <div class="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
+                <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center">
+                  <span class="text-[#0066CC] font-bold text-lg">A</span>
+                </div>
+              </div>
+              <div>
+                <p class="text-2xl font-semibold">Agency OS</p>
+                <p class="text-white/70">Everything. Unified. Automated.</p>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3 mb-8">
+              <div class="p-4 rounded-xl bg-white/10 backdrop-blur border border-white/20">
+                <span class="text-2xl mb-2 block">✉️</span>
+                <p class="font-medium">Email</p>
+                <p class="text-xs text-white/60">Personalized sequences</p>
+              </div>
+              <div class="p-4 rounded-xl bg-white/10 backdrop-blur border border-white/20">
+                <span class="text-2xl mb-2 block">💼</span>
+                <p class="font-medium">LinkedIn</p>
+                <p class="text-xs text-white/60">Connections + InMails</p>
+              </div>
+              <div class="p-4 rounded-xl bg-white/10 backdrop-blur border border-white/20">
+                <span class="text-2xl mb-2 block">💬</span>
+                <p class="font-medium">SMS</p>
+                <p class="text-xs text-white/60">DNCR compliant</p>
+              </div>
+              <div class="p-4 rounded-xl bg-white/10 backdrop-blur border border-white/20">
+                <span class="text-2xl mb-2 block">📞</span>
+                <p class="font-medium">Voice AI</p>
+                <p class="text-xs text-white/60">Conversational calls</p>
+              </div>
+              <div class="p-4 rounded-xl bg-white/10 backdrop-blur border border-white/20 col-span-2">
+                <span class="text-2xl mb-2 block">📬</span>
+                <p class="font-medium">Direct Mail</p>
+                <p class="text-xs text-white/60">Physical postcards & letters</p>
+              </div>
+            </div>
+            
+            <div class="p-4 rounded-xl bg-white/20 backdrop-blur border border-white/30">
+              <p class="font-semibold">From $1,250/month AUD</p>
+              <p class="text-sm text-white/70">Founding price • 50% off for life</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+  </section>
+
+  <!-- How It Works - Apple style stepped flow -->
+  <section id="how-it-works" class="py-20 px-6">
+    <div class="max-w-[980px] mx-auto">
+      
+      <div class="text-center mb-16">
+        <p class="text-[#0066CC] font-semibold text-sm uppercase tracking-wider mb-3">How It Works</p>
+        <h2 class="text-4xl md:text-5xl font-semibold tracking-tight">
+          From zero to booked meetings.<br>
+          <span class="text-[#86868b]">In days, not months.</span>
+        </h2>
+      </div>
+      
+      <div class="space-y-6">
+        
+        <!-- Step 1 -->
+        <div class="group p-8 rounded-2xl bg-white border border-black/5 hover-lift">
+          <div class="flex flex-col md:flex-row md:items-center gap-6">
+            <div class="flex-shrink-0">
+              <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center text-white font-bold text-xl">
+                1
+              </div>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-3 mb-2">
+                <h3 class="text-xl font-semibold">Enter your website URL</h3>
+                <span class="text-xs px-2 py-1 rounded-full bg-[#f5f5f7] text-[#86868b]">5 minutes</span>
+              </div>
+              <p class="text-[#86868b] leading-relaxed">
+                Our AI scans your services, case studies, and testimonials. It extracts exactly who your ideal clients are — industries, company sizes, decision-maker titles. No forms. No questionnaires.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Step 2 -->
+        <div class="group p-8 rounded-2xl bg-white border border-black/5 hover-lift">
+          <div class="flex flex-col md:flex-row md:items-center gap-6">
+            <div class="flex-shrink-0">
+              <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center text-white font-bold text-xl">
+                2
+              </div>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-3 mb-2">
+                <h3 class="text-xl font-semibold">We scout and score your leads</h3>
+                <span class="text-xs px-2 py-1 rounded-full bg-[#f5f5f7] text-[#86868b]">Automated</span>
+              </div>
+              <p class="text-[#86868b] leading-relaxed">
+                Our enrichment engine finds prospects matching your ICP. Each lead gets an Agency Lead Score (ALS) across 5 dimensions — so you always know who's hottest. Verified emails, direct dials, LinkedIn profiles. Ready to reach.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Step 3 -->
+        <div class="group p-8 rounded-2xl bg-white border border-black/5 hover-lift">
+          <div class="flex flex-col md:flex-row md:items-center gap-6">
+            <div class="flex-shrink-0">
+              <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center text-white font-bold text-xl">
+                3
+              </div>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-3 mb-2">
+                <h3 class="text-xl font-semibold">Multi-channel outreach begins</h3>
+                <span class="text-xs px-2 py-1 rounded-full bg-[#f5f5f7] text-[#86868b]">24/7</span>
+              </div>
+              <p class="text-[#86868b] leading-relaxed">
+                Email → LinkedIn → SMS → Voice AI → Direct Mail. All orchestrated automatically. Hot leads get all channels. Cooler leads get email-first. AI generates personalized content that sounds like you wrote it.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Step 4 -->
+        <div class="group p-8 rounded-2xl bg-white border border-black/5 hover-lift">
+          <div class="flex flex-col md:flex-row md:items-center gap-6">
+            <div class="flex-shrink-0">
+              <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center text-white font-bold text-xl">
+                4
+              </div>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-3 mb-2">
+                <h3 class="text-xl font-semibold">Meetings land in your calendar</h3>
+                <span class="text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-700">Results</span>
+              </div>
+              <p class="text-[#86868b] leading-relaxed">
+                When prospects reply or pick up, we capture the win, book the meeting, and update your pipeline. Conversion Intelligence learns what works for YOUR agency — and gets smarter every day.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+      
+    </div>
+  </section>
+
+  <!-- Results / Why It Works -->
+  <section id="results" class="py-20 px-6 bg-[#1d1d1f] text-white">
+    <div class="max-w-[980px] mx-auto">
+      
+      <div class="text-center mb-16">
+        <p class="text-[#0066CC] font-semibold text-sm uppercase tracking-wider mb-3">Built Different</p>
+        <h2 class="text-4xl md:text-5xl font-semibold tracking-tight">
+          Not another generic B2B tool.<br>
+          <span class="text-white/50">Built specifically for agencies.</span>
+        </h2>
+      </div>
+      
+      <div class="grid md:grid-cols-3 gap-6">
+        
+        <div class="p-8 rounded-2xl bg-white/5 border border-white/10 hover-lift">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center mb-6">
+            <span class="text-2xl">🇦🇺</span>
+          </div>
+          <h3 class="text-xl font-semibold mb-3">Australian-First</h3>
+          <p class="text-white/60 leading-relaxed">
+            DNCR compliance built-in. AEST-optimized sending. Local data sources. AUD pricing. Built for how Australian agencies actually operate.
+          </p>
+        </div>
+        
+        <div class="p-8 rounded-2xl bg-white/5 border border-white/10 hover-lift">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center mb-6">
+            <span class="text-2xl">🧠</span>
+          </div>
+          <h3 class="text-xl font-semibold mb-3">Conversion Intelligence</h3>
+          <p class="text-white/60 leading-relaxed">
+            Most tools are black boxes. Ours shows you exactly WHY leads convert. Machine learning that gets smarter with every interaction — specific to your agency.
+          </p>
+        </div>
+        
+        <div class="p-8 rounded-2xl bg-white/5 border border-white/10 hover-lift">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center mb-6">
+            <span class="text-2xl">🎯</span>
+          </div>
+          <h3 class="text-xl font-semibold mb-3">Agency Lead Score</h3>
+          <p class="text-white/60 leading-relaxed">
+            Not all leads are equal. Our ALS scores every prospect across 5 dimensions — so you focus on the 20% that drive 80% of results.
+          </p>
+        </div>
+        
+        <div class="p-8 rounded-2xl bg-white/5 border border-white/10 hover-lift">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center mb-6">
+            <span class="text-2xl">⚡</span>
+          </div>
+          <h3 class="text-xl font-semibold mb-3">True Multi-Channel</h3>
+          <p class="text-white/60 leading-relaxed">
+            Not just email with LinkedIn bolted on. Five channels working in harmony — orchestrated sequences that adapt based on engagement.
+          </p>
+        </div>
+        
+        <div class="p-8 rounded-2xl bg-white/5 border border-white/10 hover-lift">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center mb-6">
+            <span class="text-2xl">✍️</span>
+          </div>
+          <h3 class="text-xl font-semibold mb-3">Your Voice, Amplified</h3>
+          <p class="text-white/60 leading-relaxed">
+            AI content that actually sounds like you. Train it on your best emails, your case studies, your tone. No robotic templates.
+          </p>
+        </div>
+        
+        <div class="p-8 rounded-2xl bg-white/5 border border-white/10 hover-lift">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center mb-6">
+            <span class="text-2xl">🔒</span>
+          </div>
+          <h3 class="text-xl font-semibold mb-3">Control When You Want It</h3>
+          <p class="text-white/60 leading-relaxed">
+            Full autopilot when you're confident. Co-pilot mode when you want to approve every message. Switch anytime. Your call.
+          </p>
+        </div>
+        
+      </div>
+      
+    </div>
+  </section>
+
+  <!-- Pricing - Founding Tier Focus -->
+  <section id="pricing" class="py-20 px-6">
+    <div class="max-w-[980px] mx-auto">
+      
+      <div class="text-center mb-16">
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-50 border border-red-100 mb-6">
+          <span class="w-2 h-2 rounded-full bg-red-500 pulse-soft"></span>
+          <span class="text-xs font-medium text-red-700">Founding Tier: 50% off for life • 17 spots left</span>
+        </div>
+        <h2 class="text-4xl md:text-5xl font-semibold tracking-tight mb-4">
+          Transparent pricing.<br>
+          <span class="text-[#86868b]">No surprises.</span>
+        </h2>
+        <p class="text-lg text-[#86868b]">
+          All prices in AUD. Cancel anytime. No contracts.
+        </p>
+      </div>
+      
+      <div class="grid md:grid-cols-3 gap-6">
+        
+        <!-- Ignition -->
+        <div class="p-8 rounded-2xl bg-white border border-black/10 hover-lift">
+          <p class="text-xs font-semibold text-[#86868b] uppercase tracking-wider mb-4">Ignition</p>
+          <div class="mb-6">
+            <span class="text-sm text-[#86868b] line-through">$2,500</span>
+            <div class="flex items-baseline gap-1">
+              <span class="text-4xl font-bold">$1,250</span>
+              <span class="text-[#86868b]">/mo</span>
+            </div>
+            <p class="text-xs text-emerald-600 font-medium mt-1">Founding price locked for life</p>
+          </div>
+          
+          <p class="text-[#86868b] text-sm mb-6">For agencies starting with outbound</p>
+          
+          <ul class="space-y-3 mb-8">
+            <li class="flex items-start gap-3 text-sm">
+              <svg class="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>1,250 lead credits/month</span>
+            </li>
+            <li class="flex items-start gap-3 text-sm">
+              <svg class="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>Email + LinkedIn channels</span>
+            </li>
+            <li class="flex items-start gap-3 text-sm">
+              <svg class="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>Agency Lead Scoring</span>
+            </li>
+            <li class="flex items-start gap-3 text-sm">
+              <svg class="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>Co-Pilot mode</span>
+            </li>
+            <li class="flex items-start gap-3 text-sm">
+              <svg class="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>Email support</span>
+            </li>
+          </ul>
+          
+          <a href="#claim" class="block text-center py-3 rounded-full bg-[#1d1d1f] text-white font-medium hover:bg-black transition-colors">
+            Claim Spot
+          </a>
+        </div>
+        
+        <!-- Velocity - Popular -->
+        <div class="p-8 rounded-2xl bg-[#1d1d1f] text-white relative md:-mt-4 md:mb-[-16px] shadow-2xl hover-lift">
+          <div class="absolute -top-3 left-1/2 -translate-x-1/2">
+            <span class="px-3 py-1 rounded-full bg-gradient-to-r from-[#0066CC] to-[#5856D6] text-white text-xs font-medium">Most Popular</span>
+          </div>
+          
+          <p class="text-xs font-semibold text-white/50 uppercase tracking-wider mb-4">Velocity</p>
+          <div class="mb-6">
+            <span class="text-sm text-white/40 line-through">$5,000</span>
+            <div class="flex items-baseline gap-1">
+              <span class="text-4xl font-bold">$2,500</span>
+              <span class="text-white/60">/mo</span>
+            </div>
+            <p class="text-xs text-emerald-400 font-medium mt-1">Founding price locked for life</p>
+          </div>
+          
+          <p class="text-white/60 text-sm mb-6">For agencies ready to scale</p>
+          
+          <ul class="space-y-3 mb-8">
+            <li class="flex items-start gap-3 text-sm">
+              <svg class="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>5,000 lead credits/month</span>
+            </li>
+            <li class="flex items-start gap-3 text-sm">
+              <svg class="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span><strong>All 5 channels</strong> unlocked</span>
+            </li>
+            <li class="flex items-start gap-3 text-sm">
+              <svg class="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span><strong>Conversion Intelligence</strong></span>
+            </li>
+            <li class="flex items-start gap-3 text-sm">
+              <svg class="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>Autopilot mode</span>
+            </li>
+            <li class="flex items-start gap-3 text-sm">
+              <svg class="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>Priority support + Slack</span>
+            </li>
+          </ul>
+          
+          <a href="#claim" class="block text-center py-3 rounded-full bg-white text-[#1d1d1f] font-medium hover:bg-white/90 transition-colors">
+            Claim Spot
+          </a>
+        </div>
+        
+        <!-- Dominance -->
+        <div class="p-8 rounded-2xl bg-white border border-black/10 hover-lift">
+          <p class="text-xs font-semibold text-[#86868b] uppercase tracking-wider mb-4">Dominance</p>
+          <div class="mb-6">
+            <span class="text-sm text-[#86868b] line-through">$7,500</span>
+            <div class="flex items-baseline gap-1">
+              <span class="text-4xl font-bold">$3,750</span>
+              <span class="text-[#86868b]">/mo</span>
+            </div>
+            <p class="text-xs text-emerald-600 font-medium mt-1">Founding price locked for life</p>
+          </div>
+          
+          <p class="text-[#86868b] text-sm mb-6">For agencies ready to dominate</p>
+          
+          <ul class="space-y-3 mb-8">
+            <li class="flex items-start gap-3 text-sm">
+              <svg class="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>12,500 lead credits/month</span>
+            </li>
+            <li class="flex items-start gap-3 text-sm">
+              <svg class="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>Voice AI priority queue</span>
+            </li>
+            <li class="flex items-start gap-3 text-sm">
+              <svg class="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>White-glove onboarding</span>
+            </li>
+            <li class="flex items-start gap-3 text-sm">
+              <svg class="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>Dedicated success manager</span>
+            </li>
+            <li class="flex items-start gap-3 text-sm">
+              <svg class="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>API access</span>
+            </li>
+          </ul>
+          
+          <a href="#claim" class="block text-center py-3 rounded-full bg-[#1d1d1f] text-white font-medium hover:bg-black transition-colors">
+            Claim Spot
+          </a>
+        </div>
+        
+      </div>
+      
+      <p class="text-center text-[#86868b] text-sm mt-8">
+        At $2,500/month, you need just <strong class="text-[#1d1d1f]">1 new client</strong> to break even.
+      </p>
+      
+    </div>
+  </section>
+
+  <!-- Final CTA / Waitlist -->
+  <section id="claim" class="py-20 px-6 bg-gradient-to-b from-white to-[#f5f5f7]">
+    <div class="max-w-[600px] mx-auto text-center">
+      
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 mb-8">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 pulse-soft"></span>
+        <span class="text-xs font-medium text-emerald-700">Limited to 20 founding agencies</span>
+      </div>
+      
+      <h2 class="text-4xl md:text-5xl font-semibold tracking-tight mb-4">
+        Ready to automate your<br>client acquisition?
+      </h2>
+      <p class="text-lg text-[#86868b] mb-10">
+        Join the waitlist. Get early access at 50% off for life.
+      </p>
+      
+      <!-- Email form -->
+      <form id="waitlist-form" class="max-w-md mx-auto">
+        <div class="flex flex-col sm:flex-row gap-3">
+          <input 
+            type="email" 
+            id="email-input"
+            placeholder="Your work email"
+            required
+            class="flex-1 px-5 py-4 rounded-xl border border-black/10 bg-white focus:outline-none focus:ring-2 focus:ring-[#0066CC] focus:border-transparent text-base"
+          >
+          <button 
+            type="submit"
+            class="px-8 py-4 rounded-xl bg-[#0066CC] text-white font-medium hover:bg-[#0055AA] transition-colors whitespace-nowrap"
+          >
+            Claim Spot
+          </button>
+        </div>
+        <p id="form-message" class="text-sm text-[#86868b] mt-4">
+          No spam. Just early access and founding pricing.
+        </p>
+      </form>
+      
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="py-12 px-6 bg-[#1d1d1f] text-white">
+    <div class="max-w-[980px] mx-auto">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+        
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center">
+            <span class="text-white font-bold text-xs">A</span>
+          </div>
+          <span class="font-semibold text-sm">Agency OS</span>
+        </div>
+        
+        <div class="flex items-center gap-8 text-xs text-white/50">
+          <a href="#how-it-works" class="hover:text-white transition-colors">How It Works</a>
+          <a href="#results" class="hover:text-white transition-colors">Why Us</a>
+          <a href="#pricing" class="hover:text-white transition-colors">Pricing</a>
+          <a href="#" class="hover:text-white transition-colors">Privacy</a>
+          <a href="#" class="hover:text-white transition-colors">Terms</a>
+        </div>
+        
+        <p class="text-xs text-white/40">
+          © 2025 Agency OS · Made in Australia 🇦🇺
+        </p>
+        
+      </div>
+    </div>
+  </footer>
+
+  <!-- Form handling -->
+  <script>
+    document.getElementById('waitlist-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const email = document.getElementById('email-input').value;
+      const message = document.getElementById('form-message');
+      const button = this.querySelector('button');
+      
+      if (!email || !email.includes('@')) {
+        message.textContent = 'Please enter a valid email address';
+        message.className = 'text-sm text-red-600 mt-4';
+        return;
+      }
+      
+      // Disable button and show loading
+      button.disabled = true;
+      button.textContent = 'Joining...';
+      
+      // Simulate API call (replace with actual endpoint)
+      setTimeout(() => {
+        message.innerHTML = `
+          <span class="inline-flex items-center gap-2">
+            <svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span class="text-emerald-700 font-medium">You're on the list! Check your inbox.</span>
+          </span>
+        `;
+        message.className = 'text-sm mt-4';
+        document.getElementById('email-input').value = '';
+        button.textContent = 'Claimed!';
+        button.className = 'px-8 py-4 rounded-xl bg-emerald-500 text-white font-medium cursor-default whitespace-nowrap';
+      }, 1000);
+    });
+    
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function(e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>

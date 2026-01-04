@@ -1,81 +1,241 @@
 /**
  * FILE: frontend/app/dashboard/leads/[id]/page.tsx
- * PURPOSE: Lead detail page with ALS scoring breakdown
- * PHASE: 8 (Frontend)
- * TASK: FE-012
+ * PURPOSE: Lead detail page with ALS scoring breakdown and activity timeline with content visibility
+ * PHASE: 14 (Missing UI)
+ * TASK: MUI-004 (Content visibility in timeline)
  */
 
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Mail, Phone, Linkedin, Building2, MapPin, Globe, Calendar, TrendingUp } from "lucide-react";
-import Link from "next/link";
+import {
+  ArrowLeft,
+  Mail,
+  Phone,
+  Linkedin,
+  Building2,
+  MapPin,
+  Globe,
+  TrendingUp,
+  Copy,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  MessageSquare,
+} from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { useLead, useLeadActivities } from "@/hooks/use-leads";
+import { DetailPageSkeleton } from "@/components/ui/loading-skeleton";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
+import { useToast } from "@/hooks/use-toast";
 import { getTierColor } from "@/lib/utils";
 
-// Placeholder data - would be fetched based on id
-const lead = {
-  id: "1",
-  firstName: "Sarah",
-  lastName: "Chen",
-  email: "sarah.chen@techvision.io",
-  phone: "+61 412 345 678",
-  linkedinUrl: "https://linkedin.com/in/sarahchen",
-  title: "Chief Technology Officer",
-  company: {
-    name: "TechVision AI",
-    domain: "techvision.io",
-    industry: "Artificial Intelligence",
-    size: "51-200",
-    location: "Sydney, Australia",
-    founded: 2019,
-    funding: "Series A",
-  },
-  als: {
-    total: 87,
-    tier: "hot",
-    components: {
-      dataQuality: 92,
-      authority: 95,
-      companyFit: 85,
-      timing: 78,
-      risk: 85,
-    },
-  },
-  campaign: {
-    id: "1",
-    name: "Tech Startups Q1 2025",
-  },
-  status: "contacted",
-  sequenceStep: 2,
-  lastActivity: "2025-01-18T14:30:00Z",
-  createdAt: "2025-01-10T09:00:00Z",
-  timeline: [
-    { date: "2025-01-18T14:30:00Z", action: "Email opened", channel: "email" },
-    { date: "2025-01-17T10:00:00Z", action: "Email sent (Step 2)", channel: "email" },
-    { date: "2025-01-15T09:00:00Z", action: "Email opened", channel: "email" },
-    { date: "2025-01-14T11:00:00Z", action: "Email sent (Step 1)", channel: "email" },
-    { date: "2025-01-10T09:00:00Z", action: "Lead created", channel: "system" },
-  ],
-};
-
 const alsLabels: Record<string, string> = {
-  dataQuality: "Data Quality",
+  data_quality: "Data Quality",
   authority: "Authority",
-  companyFit: "Company Fit",
+  company_fit: "Company Fit",
   timing: "Timing",
   risk: "Risk",
 };
 
 const alsDescriptions: Record<string, string> = {
-  dataQuality: "Completeness and accuracy of lead data",
+  data_quality: "Completeness and accuracy of lead data",
   authority: "Decision-making power and seniority",
-  companyFit: "Match with ideal customer profile",
+  company_fit: "Match with ideal customer profile",
   timing: "Buying signals and readiness",
   risk: "Deliverability and compliance risk",
 };
 
+function ActivityTimelineItem({
+  activity,
+  isLast,
+}: {
+  activity: {
+    id: string;
+    channel: string;
+    action: string;
+    sequence_step: number | null;
+    subject: string | null;
+    content_preview: string | null;
+    created_at: string;
+    intent: string | null;
+  };
+  isLast: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
+
+  const hasContent = activity.content_preview && activity.content_preview.length > 0;
+  const isSent = activity.action.includes("sent");
+  const isReceived = activity.action.includes("replied") || activity.action.includes("received");
+
+  const handleCopy = async () => {
+    if (activity.content_preview) {
+      await navigator.clipboard.writeText(activity.content_preview);
+      setCopied(true);
+      toast({ title: "Copied to clipboard" });
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const channelColors: Record<string, string> = {
+    email: "bg-blue-500",
+    sms: "bg-green-500",
+    linkedin: "bg-sky-500",
+    voice: "bg-purple-500",
+    mail: "bg-amber-500",
+    system: "bg-gray-500",
+  };
+
+  return (
+    <div className="flex gap-4">
+      {/* Timeline indicator */}
+      <div className="flex flex-col items-center">
+        <div
+          className={`h-3 w-3 rounded-full ${channelColors[activity.channel] || "bg-gray-500"}`}
+        />
+        {!isLast && <div className="w-0.5 flex-1 bg-muted my-1" />}
+      </div>
+
+      {/* Content */}
+      <div className={`flex-1 pb-4 ${isReceived ? "pl-0" : ""}`}>
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-sm font-medium">{activity.action}</p>
+            <p className="text-xs text-muted-foreground">
+              {new Date(activity.created_at).toLocaleString()}
+            </p>
+          </div>
+          {activity.intent && (
+            <Badge variant="outline" className="capitalize text-xs">
+              {activity.intent.replace("_", " ")}
+            </Badge>
+          )}
+        </div>
+
+        {/* Subject line for emails */}
+        {activity.subject && (
+          <p className="text-sm font-medium mt-2">
+            Subject: {activity.subject}
+          </p>
+        )}
+
+        {/* Content preview with expand */}
+        {hasContent && (
+          <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mt-2">
+            <div
+              className={`rounded-lg p-3 text-sm ${
+                isReceived
+                  ? "bg-blue-50 dark:bg-blue-950 border-l-4 border-blue-500"
+                  : "bg-muted"
+              }`}
+            >
+              {/* Preview (always shown) */}
+              <p className={`whitespace-pre-wrap ${!isOpen && "line-clamp-2"}`}>
+                {isOpen
+                  ? activity.content_preview
+                  : activity.content_preview.slice(0, 100) +
+                    (activity.content_preview.length > 100 ? "..." : "")}
+              </p>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 mt-2">
+                {activity.content_preview.length > 100 && (
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs">
+                      {isOpen ? (
+                        <>
+                          <ChevronUp className="h-3 w-3 mr-1" />
+                          Show less
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-3 w-3 mr-1" />
+                          Show more
+                        </>
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={handleCopy}
+                >
+                  {copied ? (
+                    <Check className="h-3 w-3 mr-1" />
+                  ) : (
+                    <Copy className="h-3 w-3 mr-1" />
+                  )}
+                  Copy
+                </Button>
+              </div>
+            </div>
+          </Collapsible>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function LeadDetailPage({ params }: { params: { id: string } }) {
-  const tierColor = getTierColor(lead.als.tier);
+  const { data: lead, isLoading: leadLoading, error: leadError, refetch: refetchLead } = useLead(params.id);
+  const { data: activitiesData, isLoading: activitiesLoading } = useLeadActivities(params.id);
+
+  if (leadLoading) {
+    return <DetailPageSkeleton />;
+  }
+
+  if (leadError) {
+    return (
+      <div className="space-y-6">
+        <Link href="/dashboard/leads">
+          <Button variant="ghost" className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Leads
+          </Button>
+        </Link>
+        <ErrorState error={leadError} onRetry={refetchLead} />
+      </div>
+    );
+  }
+
+  if (!lead) {
+    return (
+      <div className="space-y-6">
+        <Link href="/dashboard/leads">
+          <Button variant="ghost" className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Leads
+          </Button>
+        </Link>
+        <EmptyState title="Lead not found" description="This lead may have been deleted" />
+      </div>
+    );
+  }
+
+  const tierColor = lead.als_tier ? getTierColor(lead.als_tier) : "bg-gray-500";
+  const activities = activitiesData?.activities || [];
+
+  // Build ALS components from lead data
+  const alsComponents = {
+    data_quality: lead.als_data_quality ?? 0,
+    authority: lead.als_authority ?? 0,
+    company_fit: lead.als_company_fit ?? 0,
+    timing: lead.als_timing ?? 0,
+    risk: lead.als_risk ?? 0,
+  };
 
   return (
     <div className="space-y-6">
@@ -92,17 +252,19 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
         <div className="space-y-1">
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold tracking-tight">
-              {lead.firstName} {lead.lastName}
+              {lead.first_name} {lead.last_name}
             </h1>
-            <Badge className={tierColor}>
-              ALS: {lead.als.total}
-            </Badge>
+            {lead.als_score !== null && (
+              <Badge className={tierColor}>
+                ALS: {lead.als_score}
+              </Badge>
+            )}
             <Badge variant="secondary" className="capitalize">
-              {lead.status}
+              {lead.status.replace("_", " ")}
             </Badge>
           </div>
           <p className="text-lg text-muted-foreground">
-            {lead.title} at {lead.company.name}
+            {lead.title && `${lead.title} at `}{lead.company || "Unknown Company"}
           </p>
         </div>
         <div className="flex gap-2">
@@ -138,11 +300,11 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                 </a>
               </div>
             )}
-            {lead.linkedinUrl && (
+            {lead.linkedin_url && (
               <div className="flex items-center gap-3">
                 <Linkedin className="h-4 w-4 text-muted-foreground" />
                 <a
-                  href={lead.linkedinUrl}
+                  href={lead.linkedin_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm hover:underline"
@@ -160,42 +322,44 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
             <CardTitle>Company</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-3">
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">{lead.company.name}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Globe className="h-4 w-4 text-muted-foreground" />
-              <a
-                href={`https://${lead.company.domain}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm hover:underline"
-              >
-                {lead.company.domain}
-              </a>
-            </div>
-            <div className="flex items-center gap-3">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm">{lead.company.location}</span>
-            </div>
+            {lead.company && (
+              <div className="flex items-center gap-3">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">{lead.company}</span>
+              </div>
+            )}
+            {lead.domain && (
+              <div className="flex items-center gap-3">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                <a
+                  href={`https://${lead.domain}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm hover:underline"
+                >
+                  {lead.domain}
+                </a>
+              </div>
+            )}
+            {lead.organization_country && (
+              <div className="flex items-center gap-3">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm">{lead.organization_country}</span>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2 pt-2 border-t">
-              <div>
-                <p className="text-xs text-muted-foreground">Industry</p>
-                <p className="text-sm font-medium">{lead.company.industry}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Size</p>
-                <p className="text-sm font-medium">{lead.company.size}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Founded</p>
-                <p className="text-sm font-medium">{lead.company.founded}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Funding</p>
-                <p className="text-sm font-medium">{lead.company.funding}</p>
-              </div>
+              {lead.organization_industry && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Industry</p>
+                  <p className="text-sm font-medium">{lead.organization_industry}</p>
+                </div>
+              )}
+              {lead.organization_employee_count && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Size</p>
+                  <p className="text-sm font-medium">{lead.organization_employee_count} employees</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -207,21 +371,23 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
           </CardHeader>
           <CardContent className="space-y-4">
             <Link
-              href={`/dashboard/campaigns/${lead.campaign.id}`}
+              href={`/dashboard/campaigns/${lead.campaign_id}`}
               className="text-sm font-medium hover:underline"
             >
-              {lead.campaign.name}
+              View Campaign
             </Link>
             <div className="grid grid-cols-2 gap-2 pt-2 border-t">
               <div>
-                <p className="text-xs text-muted-foreground">Sequence Step</p>
-                <p className="text-sm font-medium">{lead.sequenceStep} of 5</p>
-              </div>
-              <div>
                 <p className="text-xs text-muted-foreground">Status</p>
                 <Badge variant="secondary" className="capitalize">
-                  {lead.status}
+                  {lead.status.replace("_", " ")}
                 </Badge>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Created</p>
+                <p className="text-sm font-medium">
+                  {new Date(lead.created_at).toLocaleDateString()}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -229,82 +395,92 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
       </div>
 
       {/* ALS Score Breakdown */}
-      <Card>
-        <CardHeader>
-          <CardTitle>ALS Score Breakdown</CardTitle>
-          <CardDescription>
-            Agency OS Lead Score - 5 component scoring system
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4 mb-6">
-            <div className={`text-5xl font-bold ${tierColor.replace("bg-", "text-").replace("-500", "-600")}`}>
-              {lead.als.total}
-            </div>
-            <div>
-              <Badge className={`${tierColor} capitalize text-base px-3 py-1`}>
-                {lead.als.tier} Lead
-              </Badge>
-              <p className="text-sm text-muted-foreground mt-1">
-                Top 15% of leads in this campaign
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-5">
-            {Object.entries(lead.als.components).map(([key, value]) => (
-              <div key={key} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{alsLabels[key]}</span>
-                  <span className="text-sm font-bold">{value}</span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-muted">
-                  <div
-                    className={`h-2 rounded-full ${
-                      value >= 85 ? "bg-green-500" :
-                      value >= 60 ? "bg-yellow-500" :
-                      value >= 35 ? "bg-orange-500" : "bg-red-500"
-                    }`}
-                    style={{ width: `${value}%` }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">{alsDescriptions[key]}</p>
+      {lead.als_score !== null && (
+        <Card>
+          <CardHeader>
+            <CardTitle>ALS Score Breakdown</CardTitle>
+            <CardDescription>
+              Agency OS Lead Score - 5 component scoring system
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4 mb-6">
+              <div className={`text-5xl font-bold ${tierColor.replace("bg-", "text-").replace("-500", "-600")}`}>
+                {lead.als_score}
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              <div>
+                {lead.als_tier && (
+                  <Badge className={`${tierColor} capitalize text-base px-3 py-1`}>
+                    {lead.als_tier} Lead
+                  </Badge>
+                )}
+              </div>
+            </div>
 
-      {/* Activity Timeline */}
+            <div className="grid gap-4 md:grid-cols-5">
+              {Object.entries(alsComponents).map(([key, value]) => (
+                <div key={key} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{alsLabels[key]}</span>
+                    <span className="text-sm font-bold">{value}</span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-muted">
+                    <div
+                      className={`h-2 rounded-full ${
+                        value >= 85 ? "bg-green-500" :
+                        value >= 60 ? "bg-yellow-500" :
+                        value >= 35 ? "bg-orange-500" : "bg-red-500"
+                      }`}
+                      style={{ width: `${value}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">{alsDescriptions[key]}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Activity Timeline with Content Visibility */}
       <Card>
         <CardHeader>
           <CardTitle>Activity Timeline</CardTitle>
-          <CardDescription>Recent interactions with this lead</CardDescription>
+          <CardDescription>
+            Recent interactions with this lead - click to expand message content
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {lead.timeline.map((event, index) => (
-              <div key={index} className="flex gap-4">
-                <div className="flex flex-col items-center">
-                  <div className={`h-3 w-3 rounded-full ${
-                    event.channel === "email" ? "bg-blue-500" :
-                    event.channel === "sms" ? "bg-green-500" :
-                    event.channel === "linkedin" ? "bg-sky-500" :
-                    "bg-gray-500"
-                  }`} />
-                  {index < lead.timeline.length - 1 && (
-                    <div className="w-0.5 h-full bg-muted my-1" />
-                  )}
+          {activitiesLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex gap-4 animate-pulse">
+                  <div className="h-3 w-3 rounded-full bg-muted" />
+                  <div className="flex-1">
+                    <div className="h-4 w-32 bg-muted rounded mb-2" />
+                    <div className="h-3 w-24 bg-muted rounded" />
+                  </div>
                 </div>
-                <div className="flex-1 pb-4">
-                  <p className="text-sm font-medium">{event.action}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(event.date).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : activities.length === 0 ? (
+            <EmptyState
+              icon={MessageSquare}
+              title="No activity yet"
+              description="Outreach activity will appear here once the campaign starts"
+              className="py-8"
+            />
+          ) : (
+            <div className="space-y-0">
+              {activities.map((activity, index) => (
+                <ActivityTimelineItem
+                  key={activity.id}
+                  activity={activity}
+                  isLast={index === activities.length - 1}
+                />
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

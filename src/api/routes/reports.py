@@ -16,17 +16,19 @@ RULES APPLIED:
   - All endpoints require authentication
 """
 
-from datetime import date
-from typing import Any
+from datetime import date, datetime
+from typing import Any, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.dependencies import CurrentUser, get_current_user_from_token
 from src.engines.reporter import get_reporter_engine
 from src.integrations.supabase import get_db_session as get_async_session
 
-# Router will be created after dependencies.py is available
+# FIXED by fixer-agent: added auth imports from dependencies.py
 router = APIRouter(
     prefix="/reports",
     tags=["reports"],
@@ -38,29 +40,134 @@ router = APIRouter(
 # ============================================
 
 
-class CampaignMetricsResponse:
+class ChannelMetrics(BaseModel):
+    """Metrics breakdown by channel."""
+    sent: int = 0
+    delivered: int = 0
+    opened: int = 0
+    clicked: int = 0
+    replied: int = 0
+    bounced: int = 0
+    delivery_rate: float = 0.0
+    open_rate: float = 0.0
+    click_rate: float = 0.0
+    reply_rate: float = 0.0
+
+
+class CampaignMetricsResponse(BaseModel):
     """Response model for campaign metrics."""
-    pass
+    campaign_id: UUID
+    campaign_name: str
+    status: str
+    total_leads: int = 0
+    leads_contacted: int = 0
+    emails: ChannelMetrics = Field(default_factory=ChannelMetrics)
+    sms: ChannelMetrics = Field(default_factory=ChannelMetrics)
+    linkedin: ChannelMetrics = Field(default_factory=ChannelMetrics)
+    voice: ChannelMetrics = Field(default_factory=ChannelMetrics)
+    mail: ChannelMetrics = Field(default_factory=ChannelMetrics)
+    overall_reply_rate: float = 0.0
+    overall_conversion_rate: float = 0.0
+    meetings_booked: int = 0
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
 
 
-class ClientMetricsResponse:
+class CampaignSummary(BaseModel):
+    """Summary of a single campaign for client metrics."""
+    campaign_id: UUID
+    campaign_name: str
+    status: str
+    leads: int = 0
+    replies: int = 0
+    conversions: int = 0
+    reply_rate: float = 0.0
+    conversion_rate: float = 0.0
+
+
+class ClientMetricsResponse(BaseModel):
     """Response model for client metrics."""
-    pass
+    client_id: UUID
+    client_name: str
+    total_campaigns: int = 0
+    active_campaigns: int = 0
+    total_leads: int = 0
+    total_replies: int = 0
+    total_conversions: int = 0
+    overall_reply_rate: float = 0.0
+    overall_conversion_rate: float = 0.0
+    campaigns: list[CampaignSummary] = Field(default_factory=list)
+    channel_performance: dict[str, ChannelMetrics] = Field(default_factory=dict)
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
 
 
-class ALSDistributionResponse:
+class TierDistribution(BaseModel):
+    """Distribution data for a single ALS tier."""
+    count: int = 0
+    percentage: float = 0.0
+
+
+class ALSDistributionResponse(BaseModel):
     """Response model for ALS tier distribution."""
-    pass
+    hot: TierDistribution = Field(default_factory=TierDistribution)
+    warm: TierDistribution = Field(default_factory=TierDistribution)
+    cool: TierDistribution = Field(default_factory=TierDistribution)
+    cold: TierDistribution = Field(default_factory=TierDistribution)
+    dead: TierDistribution = Field(default_factory=TierDistribution)
+    total: int = 0
+    campaign_id: Optional[UUID] = None
+    client_id: Optional[UUID] = None
 
 
-class LeadEngagementResponse:
+class ActivityItem(BaseModel):
+    """Single activity in engagement timeline."""
+    id: UUID
+    channel: str
+    action: str
+    timestamp: datetime
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class LeadEngagementResponse(BaseModel):
     """Response model for lead engagement metrics."""
-    pass
+    lead_id: UUID
+    email: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    company: Optional[str] = None
+    als_score: Optional[int] = None
+    als_tier: Optional[str] = None
+    open_count: int = 0
+    click_count: int = 0
+    reply_count: int = 0
+    is_engaged: bool = False
+    last_contacted: Optional[datetime] = None
+    last_replied: Optional[datetime] = None
+    channels_used: list[str] = Field(default_factory=list)
+    timeline: list[ActivityItem] = Field(default_factory=list)
 
 
-class DailyActivityResponse:
+class DailyMetrics(BaseModel):
+    """Metrics for a single day."""
+    date: date
+    sent: int = 0
+    delivered: int = 0
+    opened: int = 0
+    clicked: int = 0
+    replied: int = 0
+    bounced: int = 0
+    conversions: int = 0
+
+
+class DailyActivityResponse(BaseModel):
     """Response model for daily activity summary."""
-    pass
+    campaign_id: Optional[UUID] = None
+    client_id: Optional[UUID] = None
+    start_date: date
+    end_date: date
+    days: list[DailyMetrics] = Field(default_factory=list)
+    totals: ChannelMetrics = Field(default_factory=ChannelMetrics)
 
 
 # ============================================
@@ -74,7 +181,8 @@ async def get_campaign_metrics(
     start_date: date | None = Query(None, description="Start date for metrics (YYYY-MM-DD)"),
     end_date: date | None = Query(None, description="End date for metrics (YYYY-MM-DD)"),
     db: AsyncSession = Depends(get_async_session),
-    # current_user: dict = Depends(get_current_user),  # TODO: Add auth dependency when available
+    # FIXED by fixer-agent: enabled auth dependency (CRIT-001)
+    current_user: CurrentUser = Depends(get_current_user_from_token),
 ) -> dict[str, Any]:
     """
     Get comprehensive performance metrics for a campaign.
@@ -121,7 +229,8 @@ async def get_campaign_daily_metrics(
     start_date: date | None = Query(None, description="Start date for metrics (YYYY-MM-DD)"),
     end_date: date | None = Query(None, description="End date for metrics (YYYY-MM-DD)"),
     db: AsyncSession = Depends(get_async_session),
-    # current_user: dict = Depends(get_current_user),  # TODO: Add auth dependency when available
+    # FIXED by fixer-agent: enabled auth dependency (CRIT-001)
+    current_user: CurrentUser = Depends(get_current_user_from_token),
 ) -> dict[str, Any]:
     """
     Get daily metrics breakdown for a campaign.
@@ -168,7 +277,8 @@ async def get_client_metrics(
     start_date: date | None = Query(None, description="Start date for metrics (YYYY-MM-DD)"),
     end_date: date | None = Query(None, description="End date for metrics (YYYY-MM-DD)"),
     db: AsyncSession = Depends(get_async_session),
-    # current_user: dict = Depends(get_current_user),  # TODO: Add auth dependency when available
+    # FIXED by fixer-agent: enabled auth dependency (CRIT-001)
+    current_user: CurrentUser = Depends(get_current_user_from_token),
 ) -> dict[str, Any]:
     """
     Get aggregated metrics for a client across all campaigns.
@@ -215,7 +325,8 @@ async def get_als_distribution(
     campaign_id: UUID | None = Query(None, description="Filter by campaign ID"),
     client_id: UUID | None = Query(None, description="Filter by client ID"),
     db: AsyncSession = Depends(get_async_session),
-    # current_user: dict = Depends(get_current_user),  # TODO: Add auth dependency when available
+    # FIXED by fixer-agent: enabled auth dependency (CRIT-001)
+    current_user: CurrentUser = Depends(get_current_user_from_token),
 ) -> dict[str, Any]:
     """
     Get ALS tier distribution for leads.
@@ -267,7 +378,8 @@ async def get_als_distribution(
 async def get_lead_engagement(
     lead_id: UUID,
     db: AsyncSession = Depends(get_async_session),
-    # current_user: dict = Depends(get_current_user),  # TODO: Add auth dependency when available
+    # FIXED by fixer-agent: enabled auth dependency (CRIT-001)
+    current_user: CurrentUser = Depends(get_current_user_from_token),
 ) -> dict[str, Any]:
     """
     Get detailed engagement metrics for a specific lead.
@@ -311,7 +423,8 @@ async def get_daily_activity(
     client_id: UUID = Query(..., description="Client ID to get activity for"),
     target_date: date | None = Query(None, description="Target date (defaults to today)"),
     db: AsyncSession = Depends(get_async_session),
-    # current_user: dict = Depends(get_current_user),  # TODO: Add auth dependency when available
+    # FIXED by fixer-agent: enabled auth dependency (CRIT-001)
+    current_user: CurrentUser = Depends(get_current_user_from_token),
 ) -> dict[str, Any]:
     """
     Get daily activity summary for a client.
@@ -367,7 +480,7 @@ async def get_daily_activity(
 # [x] All endpoints support date range filters where applicable
 # [x] Query parameters with descriptions
 # [x] Session passed via Depends(get_async_session) (Rule 11)
-# [x] Auth dependency placeholder (to be added when dependencies.py exists)
+# [x] Auth dependency enabled - FIXED by fixer-agent 2025-12-24 (CRIT-001)
 # [x] Proper HTTP status codes (404 for not found, 400 for validation)
 # [x] Docstrings for all endpoints
 # [x] Type hints for all parameters and returns

@@ -37,6 +37,7 @@ These decisions are final. Do not deviate.
 | **Task Queues** | Prefect | NOT Redis workers |
 | **Error Tracking** | Sentry | Production monitoring, alerting |
 | **Dev Tunnels** | ngrok | Local webhook development |
+| **Voice AI** | Vapi + Twilio + ElevenLabs | Maximum control, high quality voice, low latency |
 
 ### What Redis IS Used For
 - Enrichment data cache (90-day TTL, versioned keys)
@@ -59,6 +60,78 @@ Three separate services (not one monolith):
 1. **API Service** - FastAPI, handles HTTP requests
 2. **Worker Service** - Prefect agent, processes background tasks
 3. **Prefect Service** - Prefect server, orchestration UI
+
+---
+
+# PART 1B: PRICING & COST MODEL (LOCKED)
+
+**Full specification:** `docs/specs/TIER_PRICING_COST_MODEL_v2.md`
+
+These numbers are final. Do not deviate.
+
+## Tier Pricing (AUD)
+
+### Founding Member Pricing (50% off - 20 spots)
+
+| Tier | Founding Price | Regular Price | Lead Pool | Max Campaigns | HeyReach Seats |
+|------|----------------|---------------|-----------|---------------|----------------|
+| **Ignition** | $1,250/mo | $2,500/mo | 1,250 | 5 | 1 |
+| **Velocity** | $2,500/mo | $5,000/mo | 2,250 | 10 | 3 |
+| **Dominance** | $3,750/mo | $7,500/mo | 4,500 | 20 | 5 |
+
+### Tier Differentiation Rule
+
+**IMPORTANT:** All tiers include ALL features. The ONLY differences between tiers are:
+1. Lead pool (monthly prospect quota)
+2. Max campaigns (simultaneous active campaigns)
+3. HeyReach seats (LinkedIn automation capacity)
+
+Every tier gets:
+- Full 5-channel outreach (Email, LinkedIn, Voice AI, SMS, Direct Mail)
+- Advanced Conversion Intelligence (WHO/WHAT/WHEN/HOW pattern detection)
+- ALS scoring with learned weights
+- ICP auto-discovery
+- All support channels
+- All reporting and insights
+- API access
+
+This keeps pricing simple: **pay for volume, not features**.
+
+## COGS & Margins
+
+| Tier | COGS | Gross Margin |
+|------|------|--------------|
+| Ignition | $666 | **73.4%** |
+| Velocity | $1,323 | **66.9%** |
+| Dominance | $2,502 | **66.6%** |
+
+## Provider Costs (AUD, January 2026)
+
+| Provider | Unit Cost | Notes |
+|----------|-----------|-------|
+| HeyReach | $122/seat | LinkedIn automation |
+| Clay | $0.039-0.077/credit | Waterfall enrichment |
+| Hunter.io | $0.023/email | Tier 1 enrichment |
+| Vapi | $0.35/min | Voice AI (all-in) |
+| Twilio SMS (AU) | $0.08/msg | Outbound SMS |
+| Lob | $0.98/postcard | US direct mail only |
+| Resend | $0.0009/email | Transactional email |
+
+## Enrichment Strategy: Hybrid Clay Waterfall
+
+- **Cold/Cool leads (65%):** Hunter.io direct — $0.02/lead
+- **Warm/Hot leads (35%):** Clay full waterfall — $0.25-0.50/lead
+- **Blended cost:** $0.13/lead
+
+## Channel Access by ALS Score
+
+| Channel | Cold (20-34) | Cool (35-59) | Warm (60-84) | Hot (85-100) |
+|---------|--------------|--------------|--------------|--------------|
+| Email | ✅ | ✅ | ✅ | ✅ |
+| LinkedIn | ❌ | ✅ | ✅ | ✅ |
+| Voice AI | ❌ | ❌ | ✅ | ✅ |
+| SMS | ❌ | ❌ | ❌ | ✅ |
+| Direct Mail | ❌ | ❌ | ❌ | ✅ |
 
 ---
 
@@ -116,7 +189,9 @@ C:\AI\Agency_OS\
 │   │   ├── postmark.py
 │   │   ├── twilio.py
 │   │   ├── heyreach.py
-│   │   ├── synthflow.py
+│   │   ├── vapi.py               # Voice AI orchestration (Vapi + Twilio + ElevenLabs)
+│   │   ├── elevenlabs.py         # Voice synthesis
+│   │   ├── deepgram.py           # Speech-to-text
 │   │   ├── lob.py
 │   │   └── anthropic.py          # Includes spend limiter
 │   ├── engines/                   # LAYER 3 - Can import models, integrations
@@ -273,9 +348,11 @@ LAYER 4 (Top): src/orchestration/
 | INT-005 | Clay integration | Premium fallback | `src/integrations/clay.py` | M |
 | INT-006 | Resend integration | Email with threading | `src/integrations/resend.py` | M |
 | INT-007 | Postmark integration | Inbound webhooks | `src/integrations/postmark.py` | M |
-| INT-008 | Twilio integration | SMS + DNCR check | `src/integrations/twilio.py` | M |
+| INT-008 | Twilio integration | SMS + DNCR + Voice telephony | `src/integrations/twilio.py` | M |
 | INT-009 | HeyReach integration | LinkedIn + proxy | `src/integrations/heyreach.py` | M |
-| INT-010 | Synthflow integration | Voice AI | `src/integrations/synthflow.py` | M |
+| INT-010 | Vapi integration | Voice AI orchestration | `src/integrations/vapi.py` | L |
+| INT-010a | ElevenLabs integration | Voice synthesis (TTS) | `src/integrations/elevenlabs.py` | M |
+| INT-010b | Deepgram integration | Speech-to-text (STT) | `src/integrations/deepgram.py` | M |
 | INT-011 | Lob integration | Direct mail | `src/integrations/lob.py` | M |
 | INT-012 | Anthropic integration | AI with spend limiter | `src/integrations/anthropic.py` | L |
 
@@ -292,7 +369,7 @@ LAYER 4 (Top): src/orchestration/
 | ENG-005 | Email engine + test | Email with threading | `src/engines/email.py`, `tests/test_engines/test_email.py` | M |
 | ENG-006 | SMS engine + test | SMS with DNCR | `src/engines/sms.py`, `tests/test_engines/test_sms.py` | M |
 | ENG-007 | LinkedIn engine + test | LinkedIn via HeyReach | `src/engines/linkedin.py`, `tests/test_engines/test_linkedin.py` | M |
-| ENG-008 | Voice engine + test | Voice via Synthflow | `src/engines/voice.py`, `tests/test_engines/test_voice.py` | M |
+| ENG-008 | Voice engine + test | Voice via Vapi + Twilio + ElevenLabs | `src/engines/voice.py`, `tests/test_engines/test_voice.py` | L |
 | ENG-009 | Mail engine + test | Direct mail via Lob | `src/engines/mail.py`, `tests/test_engines/test_mail.py` | M |
 | ENG-010 | Closer engine + test | Reply handling | `src/engines/closer.py`, `tests/test_engines/test_closer.py` | L |
 | ENG-011 | Content engine + test | AI content generation | `src/engines/content.py`, `tests/test_engines/test_content.py` | M |
@@ -742,3 +819,618 @@ class ScoutEngine:
 **Checkpoints:** 6  
 
 **Next Step:** CEO says "START PHASE 1" and Claude Code begins execution.
+
+
+---
+
+# PART 11: POST-LAUNCH PHASES
+
+## PHASE 11: ICP Discovery System (Skills-Based Architecture)
+**Dependencies:** Phase 10 complete (Production deployed)
+**Purpose:** Automatically discover client ICP from their digital footprint using modular skills
+
+### Overview
+
+When a marketing agency signs up, they provide their website URL. The system:
+1. Scrapes their website and digital presence
+2. Uses modular skills to extract structured ICP data
+3. Analyzes their existing clients to derive patterns
+4. Auto-configures ALS weights for their specific ICP
+5. User confirms or adjusts
+
+### Skills Architecture
+
+Skills are modular, testable capabilities that agents can use. Each skill:
+- Has a single focused purpose
+- Defines input/output schemas
+- Contains its own system prompt
+- Can be tested independently
+- Can be reused across agents
+
+```
+src/agents/
+├── base_agent.py              # Base class with skill loading
+├── skills/
+│   ├── __init__.py
+│   ├── base_skill.py          # Skill base class + registry
+│   ├── website_parser.py      # Parse raw HTML → structured pages
+│   ├── service_extractor.py   # Find services offered
+│   ├── value_prop_extractor.py # Find value proposition
+│   ├── portfolio_extractor.py # Find client logos/case studies
+│   ├── industry_classifier.py # Classify target industries
+│   ├── company_size_estimator.py # Estimate team size
+│   ├── icp_deriver.py         # Derive ICP from portfolio
+│   └── als_weight_suggester.py # Suggest custom ALS weights
+└── icp_discovery_agent.py     # Orchestrates skills
+```
+
+### Skill Base Class
+
+**File:** `src/agents/skills/base_skill.py`
+
+```python
+from abc import ABC, abstractmethod
+from typing import TypeVar, Generic
+from pydantic import BaseModel
+
+InputT = TypeVar("InputT", bound=BaseModel)
+OutputT = TypeVar("OutputT", bound=BaseModel)
+
+class BaseSkill(ABC, Generic[InputT, OutputT]):
+    """
+    Base class for all agent skills.
+    
+    Each skill is a focused, testable capability with:
+    - name: Unique identifier
+    - description: When to use this skill
+    - Input: Pydantic model for input validation
+    - Output: Pydantic model for output validation
+    - system_prompt: Instructions for Claude
+    """
+    
+    name: str
+    description: str
+    
+    class Input(BaseModel):
+        pass
+    
+    class Output(BaseModel):
+        pass
+    
+    system_prompt: str = ""
+    
+    @abstractmethod
+    async def execute(
+        self, 
+        input: InputT, 
+        anthropic: "AnthropicClient"
+    ) -> OutputT:
+        """Execute the skill and return structured output."""
+        pass
+    
+    def validate_input(self, data: dict) -> InputT:
+        """Validate input data against schema."""
+        return self.Input(**data)
+    
+    def validate_output(self, data: dict) -> OutputT:
+        """Validate output data against schema."""
+        return self.Output(**data)
+
+
+class SkillRegistry:
+    """Registry for discovering and loading skills."""
+    
+    _skills: dict[str, BaseSkill] = {}
+    
+    @classmethod
+    def register(cls, skill: BaseSkill):
+        cls._skills[skill.name] = skill
+    
+    @classmethod
+    def get(cls, name: str) -> BaseSkill:
+        return cls._skills[name]
+    
+    @classmethod
+    def all(cls) -> list[BaseSkill]:
+        return list(cls._skills.values())
+```
+
+### ICP Discovery Skills
+
+#### Skill 1: Website Parser
+**File:** `src/agents/skills/website_parser.py`
+
+| Attribute | Value |
+|-----------|-------|
+| name | `parse_website` |
+| description | Extract structured content from raw website HTML |
+| Input | `html: str, url: str` |
+| Output | `pages: list[PageContent], company_name: str, navigation: list[str]` |
+
+#### Skill 2: Service Extractor
+**File:** `src/agents/skills/service_extractor.py`
+
+| Attribute | Value |
+|-----------|-------|
+| name | `extract_services` |
+| description | Identify services a marketing agency offers |
+| Input | `pages: list[PageContent]` |
+| Output | `services: list[str], confidence: float, source_pages: list[str]` |
+
+#### Skill 3: Value Prop Extractor
+**File:** `src/agents/skills/value_prop_extractor.py`
+
+| Attribute | Value |
+|-----------|-------|
+| name | `extract_value_prop` |
+| description | Find the agency's value proposition and key messaging |
+| Input | `pages: list[PageContent]` |
+| Output | `value_proposition: str, taglines: list[str], differentiators: list[str]` |
+
+#### Skill 4: Portfolio Extractor
+**File:** `src/agents/skills/portfolio_extractor.py`
+
+| Attribute | Value |
+|-----------|-------|
+| name | `extract_portfolio` |
+| description | Find client logos, case studies, testimonials |
+| Input | `pages: list[PageContent]` |
+| Output | `companies: list[PortfolioCompany], source: str` |
+
+#### Skill 5: Industry Classifier
+**File:** `src/agents/skills/industry_classifier.py`
+
+| Attribute | Value |
+|-----------|-------|
+| name | `classify_industries` |
+| description | Determine target industries from services and portfolio |
+| Input | `services: list[str], portfolio: list[PortfolioCompany]` |
+| Output | `industries: list[str], confidence: float` |
+
+#### Skill 6: Company Size Estimator
+**File:** `src/agents/skills/company_size_estimator.py`
+
+| Attribute | Value |
+|-----------|-------|
+| name | `estimate_company_size` |
+| description | Estimate agency team size from website and LinkedIn |
+| Input | `about_page: PageContent, linkedin_data: Optional[LinkedInData]` |
+| Output | `team_size: int, size_range: str, confidence: float` |
+
+#### Skill 7: ICP Deriver
+**File:** `src/agents/skills/icp_deriver.py`
+
+| Attribute | Value |
+|-----------|-------|
+| name | `derive_icp` |
+| description | Analyze portfolio companies to derive ICP pattern |
+| Input | `enriched_portfolio: list[EnrichedCompany]` |
+| Output | `icp_industries: list[str], icp_sizes: list[str], icp_locations: list[str], pattern_description: str` |
+
+#### Skill 8: ALS Weight Suggester
+**File:** `src/agents/skills/als_weight_suggester.py`
+
+| Attribute | Value |
+|-----------|-------|
+| name | `suggest_als_weights` |
+| description | Suggest custom ALS scoring weights based on ICP |
+| Input | `icp_profile: ICPProfile` |
+| Output | `weights: dict[str, int], reasoning: str` |
+
+### Database Schema Updates
+
+**Migration: 012_client_icp_profile.sql**
+
+```sql
+-- Add ICP fields to clients table
+ALTER TABLE clients ADD COLUMN website_url TEXT;
+ALTER TABLE clients ADD COLUMN company_description TEXT;
+ALTER TABLE clients ADD COLUMN services_offered TEXT[];
+ALTER TABLE clients ADD COLUMN years_in_business INTEGER;
+ALTER TABLE clients ADD COLUMN team_size INTEGER;
+ALTER TABLE clients ADD COLUMN value_proposition TEXT;
+ALTER TABLE clients ADD COLUMN default_offer TEXT;
+
+-- ICP Configuration
+ALTER TABLE clients ADD COLUMN icp_industries TEXT[];
+ALTER TABLE clients ADD COLUMN icp_company_sizes TEXT[];
+ALTER TABLE clients ADD COLUMN icp_revenue_range TEXT;
+ALTER TABLE clients ADD COLUMN icp_locations TEXT[];
+ALTER TABLE clients ADD COLUMN icp_titles TEXT[];
+ALTER TABLE clients ADD COLUMN icp_pain_points TEXT[];
+
+-- Custom ALS weights (overrides defaults)
+ALTER TABLE clients ADD COLUMN als_weights JSONB DEFAULT '{}';
+
+-- ICP extraction status
+ALTER TABLE clients ADD COLUMN icp_extracted_at TIMESTAMPTZ;
+ALTER TABLE clients ADD COLUMN icp_extraction_source TEXT;
+ALTER TABLE clients ADD COLUMN icp_confirmed_at TIMESTAMPTZ;
+
+-- Discovered client logos/case studies
+CREATE TABLE client_portfolio (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    company_name TEXT NOT NULL,
+    company_domain TEXT,
+    company_industry TEXT,
+    company_size TEXT,
+    company_location TEXT,
+    source TEXT,
+    enriched_data JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_client_portfolio_client ON client_portfolio(client_id);
+```
+
+### ICP Discovery Agent
+
+**File:** `src/agents/icp_discovery_agent.py`
+
+```python
+class ICPDiscoveryAgent(BaseAgent):
+    """
+    Orchestrates ICP extraction using modular skills.
+    
+    Flow:
+    1. Scrape website (via ICP Scraper Engine)
+    2. Parse content (WebsiteParserSkill)
+    3. Extract agency info (ServiceExtractor, ValuePropExtractor)
+    4. Find portfolio (PortfolioExtractor)
+    5. Enrich portfolio companies (via Apollo)
+    6. Derive ICP pattern (ICPDeriver)
+    7. Suggest ALS weights (ALSWeightSuggester)
+    """
+    
+    skills = [
+        WebsiteParserSkill(),
+        ServiceExtractorSkill(),
+        ValuePropExtractorSkill(),
+        PortfolioExtractorSkill(),
+        IndustryClassifierSkill(),
+        CompanySizeEstimatorSkill(),
+        ICPDeriverSkill(),
+        ALSWeightSuggesterSkill(),
+    ]
+    
+    async def extract_icp(self, website_url: str) -> ICPProfile:
+        # 1. Scrape raw content
+        raw_html = await self.scraper.scrape_website(website_url)
+        
+        # 2. Parse website structure
+        parsed = await self.use_skill("parse_website", 
+            html=raw_html, 
+            url=website_url
+        )
+        
+        # 3. Extract agency info (parallel)
+        services, value_prop, portfolio = await asyncio.gather(
+            self.use_skill("extract_services", pages=parsed.pages),
+            self.use_skill("extract_value_prop", pages=parsed.pages),
+            self.use_skill("extract_portfolio", pages=parsed.pages),
+        )
+        
+        # 4. Enrich portfolio companies
+        enriched = await self.scraper.enrich_portfolio(portfolio.companies)
+        
+        # 5. Derive ICP from portfolio
+        icp = await self.use_skill("derive_icp", 
+            enriched_portfolio=enriched
+        )
+        
+        # 6. Suggest ALS weights
+        weights = await self.use_skill("suggest_als_weights",
+            icp_profile=icp
+        )
+        
+        return ICPProfile(
+            services_offered=services.services,
+            value_proposition=value_prop.value_proposition,
+            portfolio_companies=portfolio.companies,
+            icp_industries=icp.icp_industries,
+            icp_company_sizes=icp.icp_sizes,
+            icp_locations=icp.icp_locations,
+            als_weights=weights.weights,
+            ...
+        )
+```
+
+### ICP Scraper Engine
+
+**File:** `src/engines/icp_scraper.py`
+
+**Purpose:** Coordinate scraping from multiple sources (not AI - just data fetching)
+
+**Methods:**
+- `scrape_website(url: str) -> str` - Raw HTML via Apify
+- `scrape_linkedin(company_name: str) -> LinkedInData` - Company data via Apollo
+- `enrich_portfolio(companies: list[PortfolioCompany]) -> list[EnrichedCompany]` - Enrich via Apollo
+
+### API Endpoints
+
+**File:** `src/api/routes/onboarding.py`
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/v1/onboarding/analyze` | POST | Submit website URL, trigger extraction |
+| `/api/v1/onboarding/status/{job_id}` | GET | Check extraction progress |
+| `/api/v1/onboarding/result/{job_id}` | GET | Get extracted ICP profile |
+| `/api/v1/onboarding/confirm` | POST | User confirms/edits ICP |
+| `/api/v1/clients/{id}/icp` | GET | Get client ICP profile |
+| `/api/v1/clients/{id}/icp` | PUT | Update client ICP profile |
+
+### Frontend Updates
+
+**Onboarding Flow:** `frontend/app/onboarding/page.tsx`
+1. User enters website URL
+2. Loading state with progress steps
+3. Display extracted ICP for confirmation
+4. User edits if needed
+5. Confirm → redirect to dashboard
+
+**ICP Settings:** `frontend/app/dashboard/settings/icp/page.tsx`
+- View/edit ICP configuration
+- Re-run extraction
+- Manual adjustments
+
+**Create Campaign:** `frontend/app/dashboard/campaigns/new/page.tsx`
+- Simplified: name, description, permission mode only
+- Shows inherited ICP from client profile
+- Link to edit ICP
+
+### Phase 11 Tasks
+
+| Task ID | Task Name | Description | Files to Create | Complexity |
+|---------|-----------|-------------|-----------------|------------|
+| ICP-001 | Database migration | Add ICP fields to clients | `supabase/migrations/012_client_icp_profile.sql` | M |
+| ICP-002 | Skill base class | Base skill + registry | `src/agents/skills/base_skill.py` | M |
+| ICP-003 | Website Parser Skill | Parse HTML → structured pages | `src/agents/skills/website_parser.py` | M |
+| ICP-004 | Service Extractor Skill | Find agency services | `src/agents/skills/service_extractor.py` | M |
+| ICP-005 | Value Prop Extractor Skill | Find value proposition | `src/agents/skills/value_prop_extractor.py` | M |
+| ICP-006 | Portfolio Extractor Skill | Find client logos/cases | `src/agents/skills/portfolio_extractor.py` | M |
+| ICP-007 | Industry Classifier Skill | Classify industries | `src/agents/skills/industry_classifier.py` | M |
+| ICP-008 | Company Size Estimator Skill | Estimate team size | `src/agents/skills/company_size_estimator.py` | S |
+| ICP-009 | ICP Deriver Skill | Derive ICP from portfolio | `src/agents/skills/icp_deriver.py` | L |
+| ICP-010 | ALS Weight Suggester Skill | Suggest scoring weights | `src/agents/skills/als_weight_suggester.py` | M |
+| ICP-011 | ICP Scraper Engine | Multi-source scraping | `src/engines/icp_scraper.py` | L |
+| ICP-012 | ICP Discovery Agent | Orchestrate skills | `src/agents/icp_discovery_agent.py` | L |
+| ICP-013 | Onboarding API routes | Extraction endpoints | `src/api/routes/onboarding.py` | M |
+| ICP-014 | Onboarding flow | Prefect async flow | `src/orchestration/flows/onboarding_flow.py` | M |
+| ICP-015 | Onboarding UI | Website input + confirm | `frontend/app/onboarding/page.tsx` | M |
+| ICP-016 | ICP Settings page | View/edit ICP | `frontend/app/dashboard/settings/icp/page.tsx` | M |
+| ICP-017 | Update Create Campaign | Simplified form | `frontend/app/dashboard/campaigns/new/page.tsx` | S |
+| ICP-018 | Skill unit tests | Test each skill | `tests/test_skills/*.py` | M |
+
+**Total New Tasks:** 18
+**Phase 11 Checkpoint:** ICP extraction working end-to-end with all skills
+
+### Checkpoint 7: After Phase 11 (ICP Discovery)
+- [ ] All 8 skills implemented and tested
+- [ ] ICP Scraper Engine fetches from website + LinkedIn
+- [ ] ICP Discovery Agent orchestrates skills correctly
+- [ ] Onboarding API endpoints work
+- [ ] Prefect flow runs end-to-end
+- [ ] Onboarding UI shows extraction progress
+- [ ] User can confirm/edit ICP
+- [ ] Create Campaign inherits ICP from client
+- [ ] Custom ALS weights applied to scoring
+
+---
+
+## PHASE 12: Campaign Execution (Connect Live APIs)
+*To be defined after Phase 11*
+
+---
+
+# UPDATED TOTALS
+
+**Total Tasks:** 116 (98 original + 18 Phase 11)
+**Checkpoints:** 7
+
+
+
+---
+
+## PHASE 16: Conversion Intelligence System
+**Dependencies:** Phase 11 complete (ICP Discovery working)  
+**Purpose:** Transform Agency OS from "dumb pipe" to learning platform that improves based on outcomes
+**Specification Documents:** `docs/phase16/`
+
+### Overview
+
+The Conversion Intelligence System answers the billion-dollar question:
+> "How do we 1) Find correct candidates to convert and 2) Convert those candidates into bookings?"
+
+**Core Architecture Principle:**
+- **ENGINES** execute deterministically (no AI)
+- **AGENTS** decide using AI (Claude)
+- **LEARNING** happens offline via statistical algorithms (Python + scipy)
+- Claude CANNOT learn between conversations - all "learning" = database + scheduled jobs
+
+### The Four Pattern Detectors
+
+| Detector | Question | Output | Consumer |
+|----------|----------|--------|----------|
+| **WHO** | Which leads convert? | Optimized ALS weights | Scorer Engine |
+| **WHAT** | Which content converts? | Effective messaging patterns | MessagingGeneratorSkill |
+| **WHEN** | When do leads convert? | Optimal timing patterns | AllocatorEngine, SequenceBuilderSkill |
+| **HOW** | Which channels convert? | Winning sequence patterns | AllocatorEngine, SequenceBuilderSkill |
+
+### Database Schema (Migration 014)
+
+```sql
+-- Lead tracking
+ALTER TABLE leads ADD COLUMN als_components JSONB;
+ALTER TABLE leads ADD COLUMN als_weights_used JSONB;
+ALTER TABLE leads ADD COLUMN scored_at TIMESTAMPTZ;
+
+-- Activity tracking  
+ALTER TABLE activities ADD COLUMN led_to_booking BOOLEAN DEFAULT FALSE;
+ALTER TABLE activities ADD COLUMN content_snapshot JSONB;
+
+-- Client learned weights
+ALTER TABLE clients ADD COLUMN als_learned_weights JSONB;
+ALTER TABLE clients ADD COLUMN als_weights_updated_at TIMESTAMPTZ;
+ALTER TABLE clients ADD COLUMN conversion_sample_count INTEGER DEFAULT 0;
+
+-- Pattern storage
+CREATE TABLE conversion_patterns (
+    id UUID PRIMARY KEY,
+    client_id UUID REFERENCES clients(id),
+    pattern_type TEXT CHECK (pattern_type IN ('who', 'what', 'when', 'how')),
+    patterns JSONB NOT NULL,
+    sample_size INTEGER NOT NULL,
+    confidence FLOAT,
+    computed_at TIMESTAMPTZ NOT NULL,
+    valid_until TIMESTAMPTZ NOT NULL,
+    UNIQUE (client_id, pattern_type)
+);
+
+-- Pattern history
+CREATE TABLE conversion_pattern_history (...);
+
+-- Trigger: Mark converting touch
+CREATE TRIGGER on_lead_converted;
+```
+
+### File Structure
+
+```
+src/
+├── algorithms/
+│   ├── who_detector.py       # Lead attribute analysis
+│   ├── what_detector.py      # Content pattern analysis
+│   ├── when_detector.py      # Timing pattern analysis
+│   └── how_detector.py       # Channel sequence analysis
+├── engines/
+│   ├── content_utils.py      # Shared utilities
+│   ├── scorer.py             # Modified: reads WHO patterns
+│   ├── allocator.py          # Modified: reads WHEN/HOW patterns
+│   ├── email.py              # Modified: stores content_snapshot
+│   ├── sms.py                # Modified: stores content_snapshot
+│   ├── linkedin.py           # Modified: stores content_snapshot
+│   └── voice.py              # Modified: stores content_snapshot
+├── orchestration/
+│   └── flows/
+│       ├── pattern_learning_flow.py   # Weekly batch learning
+│       ├── pattern_health_flow.py     # Daily validation
+│       └── pattern_backfill_flow.py   # Historical analysis
+└── api/routes/
+    └── patterns.py           # Pattern API endpoints
+```
+
+### Phase 16 Tasks (30 tasks, ~50.5 hours)
+
+#### 16A: Data Capture + WHO Detector (8 tasks, ~12 hours)
+
+| Task | Description | File(s) | Hours |
+|------|-------------|---------|-------|
+| 16A.1 | Create migration 014 | `migrations/014_conversion_intelligence.sql` | 1 |
+| 16A.2 | Create ConversionPattern model | `src/models/conversion_patterns.py` | 0.5 |
+| 16A.3 | Create WhoDetector class | `src/algorithms/who_detector.py` | 2.5 |
+| 16A.4 | Implement conversion_rate_by analysis | `src/algorithms/who_detector.py` | 2 |
+| 16A.5 | Implement weight optimization (scipy) | `src/algorithms/who_detector.py` | 3 |
+| 16A.6 | Integrate with Scorer engine | `src/engines/scorer.py` | 1.5 |
+| 16A.7 | Write unit tests | `tests/algorithms/test_who_detector.py` | 1.5 |
+| 16A.8 | Integration tests | `tests/integration/test_who_integration.py` | 1 |
+
+#### 16B: WHAT Detector (5 tasks, ~9 hours)
+
+| Task | Description | File(s) | Hours |
+|------|-------------|---------|-------|
+| 16B.1 | Create WhatDetector class | `src/algorithms/what_detector.py` | 2.5 |
+| 16B.2 | Implement pain point extraction | `src/algorithms/what_detector.py` | 1.5 |
+| 16B.3 | Implement subject/CTA/angle analysis | `src/algorithms/what_detector.py` | 2 |
+| 16B.4 | Integrate with MessagingGeneratorSkill | `src/agents/skills/messaging_generator.py` | 1.5 |
+| 16B.5 | Write unit tests | `tests/algorithms/test_what_detector.py` | 1.5 |
+
+#### 16C: WHEN Detector (4 tasks, ~7 hours)
+
+| Task | Description | File(s) | Hours |
+|------|-------------|---------|-------|
+| 16C.1 | Create WhenDetector class | `src/algorithms/when_detector.py` | 2.5 |
+| 16C.2 | Integrate with SequenceBuilderSkill | `src/agents/skills/sequence_builder.py` | 1.5 |
+| 16C.3 | Integrate with AllocatorEngine | `src/engines/allocator.py` | 1.5 |
+| 16C.4 | Write unit tests | `tests/algorithms/test_when_detector.py` | 1.5 |
+
+#### 16D: HOW Detector (4 tasks, ~8 hours)
+
+| Task | Description | File(s) | Hours |
+|------|-------------|---------|-------|
+| 16D.1 | Create HowDetector class | `src/algorithms/how_detector.py` | 3 |
+| 16D.2 | Integrate with SequenceBuilderSkill | `src/agents/skills/sequence_builder.py` | 1.5 |
+| 16D.3 | Integrate with AllocatorEngine | `src/engines/allocator.py` | 2 |
+| 16D.4 | Write unit tests | `tests/algorithms/test_how_detector.py` | 1.5 |
+
+#### 16E: Engine Modifications (5 tasks, ~8 hours)
+
+| Task | Description | File(s) | Hours |
+|------|-------------|---------|-------|
+| 16E.1 | Create shared content_utils module | `src/engines/content_utils.py` | 1 |
+| 16E.2 | Modify Email engine | `src/engines/email.py` | 1.5 |
+| 16E.3 | Modify SMS + LinkedIn + Voice engines | `src/engines/sms.py`, `linkedin.py`, `voice.py` | 2 |
+| 16E.4 | Modify Scorer engine | `src/engines/scorer.py` | 1.5 |
+| 16E.5 | Modify Allocator engine | `src/engines/allocator.py` | 2 |
+
+#### 16F: Prefect Flows (4 tasks, ~6.5 hours)
+
+| Task | Description | File(s) | Hours |
+|------|-------------|---------|-------|
+| 16F.1 | Create pattern_learning_flow | `src/orchestration/flows/pattern_learning_flow.py` | 2 |
+| 16F.2 | Create pattern_health_flow | `src/orchestration/flows/pattern_health_flow.py` | 1.5 |
+| 16F.3 | Create pattern_backfill_flow | `src/orchestration/flows/pattern_backfill_flow.py` | 1.5 |
+| 16F.4 | Create schedules + API endpoints | `schedules/`, `api/routes/patterns.py` | 1.5 |
+
+### Schedules
+
+| Flow | Schedule | Purpose |
+|------|----------|---------|
+| Pattern Learning | Sunday 2am UTC | Weekly batch learning for all clients |
+| Pattern Health | Daily 6am UTC | Validation + alerts for pattern quality |
+| Pattern Backfill | Manual | One-time historical data analysis |
+
+### Success Metrics
+
+| Metric | Baseline | Target |
+|--------|----------|--------|
+| Booking rate | 3% | 5%+ |
+| Time to conversion | ~14 days | <10 days |
+| Touches to convert | 6 avg | <5 avg |
+| Multi-channel lift | Unknown | Measured |
+
+### Checkpoint 8: After Phase 16 (Conversion Intelligence)
+- [ ] Migration 014 applied successfully
+- [ ] All 4 detectors implemented and tested
+- [ ] Engines capture content_snapshot on send
+- [ ] Scorer uses learned weights from patterns
+- [ ] Allocator uses WHEN/HOW patterns for scheduling
+- [ ] Weekly pattern learning flow runs successfully
+- [ ] Patterns visible in admin dashboard
+- [ ] Pattern health alerts working
+
+### Specification Documents
+
+Full specifications in `docs/phase16/`:
+- `PHASE_16_MASTER_INDEX.md` - Overview and build order
+- `PHASE_16_CONVERSION_INTELLIGENCE_SPEC.md` - Data model + WHO Detector
+- `PHASE_16B_WHAT_DETECTOR_SPEC.md` - Content pattern analysis
+- `PHASE_16C_WHEN_DETECTOR_SPEC.md` - Timing pattern analysis
+- `PHASE_16D_HOW_DETECTOR_SPEC.md` - Channel sequence analysis
+- `PHASE_16E_ENGINE_MODIFICATIONS_SPEC.md` - Engine updates
+- `PHASE_16F_PREFECT_FLOWS_SPEC.md` - Orchestration
+
+### Dependencies (add to requirements.txt)
+
+```
+numpy>=1.24.0
+scipy>=1.10.0
+```
+
+---
+
+# UPDATED TOTALS
+
+**Total Tasks:** 146 (116 original + 30 Phase 16)
+**Checkpoints:** 8
+

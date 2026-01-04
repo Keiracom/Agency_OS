@@ -208,6 +208,14 @@ class AuditAction(str, Enum):
     WEBHOOK_FAILED = "webhook_failed"
 
 
+class PatternType(str, Enum):
+    """Conversion intelligence pattern types."""
+    WHO = "who"      # Lead attribute patterns
+    WHAT = "what"    # Content patterns
+    WHEN = "when"    # Timing patterns
+    HOW = "how"      # Channel sequence patterns
+
+
 # ============================================
 # VERIFICATION CHECKLIST
 # ============================================

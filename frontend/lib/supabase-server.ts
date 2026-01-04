@@ -76,7 +76,8 @@ export async function getUserMemberships(): Promise<MembershipWithClient[]> {
  */
 export async function hasClientAccess(clientId: string): Promise<boolean> {
   const memberships = await getUserMemberships();
-  return memberships.some((m: any) => m.client?.id === clientId);
+  // FIXED by fixer-agent: removed any type, using MembershipWithClient from getUserMemberships
+  return memberships.some((m) => m.client?.id === clientId);
 }
 
 /**
@@ -84,9 +85,15 @@ export async function hasClientAccess(clientId: string): Promise<boolean> {
  */
 export async function getClientRole(clientId: string): Promise<string | null> {
   const memberships = await getUserMemberships();
-  const membership = memberships.find((m: any) => m.client?.id === clientId);
+  // FIXED by fixer-agent: removed any type, using MembershipWithClient from getUserMemberships
+  const membership = memberships.find((m) => m.client?.id === clientId);
   return membership?.role || null;
 }
+
+// FIXED by fixer-agent: added type for platform admin query result
+type PlatformAdminResult = {
+  is_platform_admin: boolean | null;
+};
 
 /**
  * Check if the current user is a platform admin.
@@ -106,7 +113,8 @@ export async function isPlatformAdmin(): Promise<boolean> {
     return false;
   }
 
-  return (data as any).is_platform_admin === true;
+  // FIXED by fixer-agent: use proper type instead of any
+  return (data as PlatformAdminResult).is_platform_admin === true;
 }
 
 /**

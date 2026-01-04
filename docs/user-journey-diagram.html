@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agency OS - User Journey</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #8892b0;
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+        }
+        
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+        
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(0, 217, 255, 0.3);
+        }
+        
+        .tab.active {
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.2), rgba(0, 255, 136, 0.2));
+            border-color: #00d9ff;
+            color: #00d9ff;
+        }
+        
+        .diagram-container {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            overflow-x: auto;
+        }
+        
+        .diagram {
+            display: none;
+        }
+        
+        .diagram.active {
+            display: block;
+        }
+        
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+        
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 12px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #8892b0;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+        
+        .color-user { background: #00d9ff; }
+        .color-system { background: #00ff88; }
+        .color-ai { background: #ff6b6b; }
+        .color-channel { background: #ffd93d; }
+        
+        /* Mermaid theme overrides */
+        .mermaid .node rect,
+        .mermaid .node circle,
+        .mermaid .node ellipse,
+        .mermaid .node polygon {
+            fill: #1e3a5f !important;
+            stroke: #00d9ff !important;
+        }
+        
+        .mermaid .edgeLabel {
+            background-color: #16213e !important;
+            color: #8892b0 !important;
+        }
+        
+        @media (max-width: 768px) {
+            h1 { font-size: 1.8rem; }
+            .tabs { gap: 8px; }
+            .tab { padding: 10px 16px; font-size: 0.85rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Agency OS User Journey</h1>
+        <p class="subtitle">Interactive flow diagrams for the platform experience</p>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showDiagram('overview')">🗺️ Overview</button>
+            <button class="tab" onclick="showDiagram('onboarding')">👋 Signup → Onboarding</button>
+            <button class="tab" onclick="showDiagram('campaign')">🚀 Campaign Creation</button>
+            <button class="tab" onclick="showDiagram('execution')">⚡ Campaign Execution</button>
+            <button class="tab" onclick="showDiagram('conversion')">📈 Conversion Flow</button>
+        </div>
+        
+        <div class="diagram-container">
+            <!-- Overview Diagram -->
+            <div id="overview" class="diagram active">
+                <pre class="mermaid">
+flowchart TB
+    subgraph SIGNUP["🚪 SIGNUP"]
+        A[Landing Page] --> B[Create Account]
+        B --> C[Email Verification]
+    end
+    
+    subgraph ONBOARDING["🎯 ONBOARDING"]
+        C --> D[Enter Website URL]
+        D --> E[AI Analyzes Your Agency]
+        E --> F[Review ICP Profile]
+        F --> G[Confirm Settings]
+    end
+    
+    subgraph CAMPAIGN["🚀 CAMPAIGN"]
+        G --> H[Create Campaign]
+        H --> I[AI Generates Content]
+        I --> J[Choose Permission Mode]
+        J --> K[Activate Campaign]
+    end
+    
+    subgraph EXECUTION["⚡ EXECUTION"]
+        K --> L{Multi-Channel Outreach}
+        L --> M[📧 Email]
+        L --> N[💬 SMS]
+        L --> O[👔 LinkedIn]
+        L --> P[📞 Voice]
+        L --> Q[📬 Mail]
+    end
+    
+    subgraph CONVERSION["📈 CONVERSION"]
+        M & N & O & P & Q --> R[Lead Responds]
+        R --> S[AI Classifies Intent]
+        S --> T{Outcome}
+        T -->|Meeting| U[🎉 Booking]
+        T -->|Interested| V[Continue Sequence]
+        T -->|Not Interested| W[Suppress]
+    end
+    
+    U --> X[🏆 Customer Acquired]
+    
+    style A fill:#1e3a5f,stroke:#00d9ff
+    style X fill:#1e3a5f,stroke:#00ff88
+    style E fill:#1e3a5f,stroke:#ff6b6b
+    style I fill:#1e3a5f,stroke:#ff6b6b
+    style S fill:#1e3a5f,stroke:#ff6b6b
+                </pre>
+            </div>
+            
+            <!-- Onboarding Diagram -->
+            <div id="onboarding" class="diagram">
+                <pre class="mermaid">
+flowchart LR
+    subgraph STEP1["Step 1: Account"]
+        A[🌐 Landing Page] --> B[Click 'Get Started']
+        B --> C[Enter Email & Password]
+        C --> D[Verify Email]
+    end
+    
+    subgraph STEP2["Step 2: Agency Setup"]
+        D --> E[Enter Agency Website]
+        E --> F[Enter Agency Name]
+        F --> G[Select Team Size]
+    end
+    
+    subgraph STEP3["Step 3: AI Analysis"]
+        G --> H[🤖 Scrape Website]
+        H --> I[🤖 Extract Services]
+        I --> J[🤖 Find Client Portfolio]
+        J --> K[🤖 Derive ICP]
+    end
+    
+    subgraph STEP4["Step 4: Confirm"]
+        K --> L[Review ICP Profile]
+        L --> M{Approve?}
+        M -->|Yes| N[✅ Complete]
+        M -->|Edit| O[Adjust Settings]
+        O --> M
+    end
+    
+    N --> P[→ Dashboard]
+    
+    style H fill:#1e3a5f,stroke:#ff6b6b
+    style I fill:#1e3a5f,stroke:#ff6b6b
+    style J fill:#1e3a5f,stroke:#ff6b6b
+    style K fill:#1e3a5f,stroke:#ff6b6b
+                </pre>
+            </div>
+            
+            <!-- Campaign Creation Diagram -->
+            <div id="campaign" class="diagram">
+                <pre class="mermaid">
+flowchart TB
+    subgraph CREATE["📝 Create Campaign"]
+        A[Dashboard] --> B[Click 'New Campaign']
+        B --> C[Enter Campaign Name]
+        C --> D[Describe Your Offer]
+    end
+    
+    subgraph GENERATE["🤖 AI Generation"]
+        D --> E[AI Analyzes ICP + Offer]
+        E --> F[Generate Email Templates]
+        E --> G[Generate SMS Templates]
+        E --> H[Generate LinkedIn Messages]
+        E --> I[Generate Call Scripts]
+        
+        F & G & H & I --> J[Build Sequence]
+    end
+    
+    subgraph PERMISSION["🎛️ Permission Mode"]
+        J --> K{Select Mode}
+        K -->|Autopilot| L[Full automation]
+        K -->|Co-Pilot| M[AI suggests, you approve]
+        K -->|Manual| N[Full control]
+    end
+    
+    subgraph CHANNELS["📡 Channel Budget"]
+        L & M & N --> O[Set Daily Limits]
+        O --> P[Email: 50/day]
+        O --> Q[SMS: 20/day]
+        O --> R[LinkedIn: 17/day]
+        O --> S[Voice: 10/day]
+    end
+    
+    P & Q & R & S --> T[🚀 Activate Campaign]
+    
+    style E fill:#1e3a5f,stroke:#ff6b6b
+    style F fill:#1e3a5f,stroke:#ff6b6b
+    style G fill:#1e3a5f,stroke:#ff6b6b
+    style H fill:#1e3a5f,stroke:#ff6b6b
+    style I fill:#1e3a5f,stroke:#ff6b6b
+                </pre>
+            </div>
+            
+            <!-- Execution Diagram -->
+            <div id="execution" class="diagram">
+                <pre class="mermaid">
+flowchart TB
+    subgraph DAILY["⏰ Daily Execution"]
+        A[Campaign Active] --> B[Prefect Scheduler]
+        B --> C[Check Client Billing]
+        C --> D{Active?}
+        D -->|No| E[Skip Today]
+        D -->|Yes| F[Load Lead Queue]
+    end
+    
+    subgraph SCORING["📊 Lead Scoring"]
+        F --> G[Calculate ALS Score]
+        G --> H{Score Tier}
+        H -->|85-100 Hot| I[All 5 Channels]
+        H -->|60-84 Warm| J[Email + LinkedIn + Voice]
+        H -->|35-59 Cool| K[Email + LinkedIn]
+        H -->|20-34 Cold| L[Email Only]
+        H -->|0-19 Dead| M[Suppress]
+    end
+    
+    subgraph OUTREACH["📤 Send Messages"]
+        I & J & K & L --> N[Allocator Engine]
+        N --> O{Channel Queue}
+        O --> P[📧 Resend API]
+        O --> Q[💬 Twilio API]
+        O --> R[👔 HeyReach API]
+        O --> S[📞 Synthflow API]
+        O --> T[📬 Lob API]
+    end
+    
+    P & Q & R & S & T --> U[Log Activity]
+    U --> V[Update Lead Status]
+    
+    style G fill:#1e3a5f,stroke:#00ff88
+    style N fill:#1e3a5f,stroke:#00ff88
+                </pre>
+            </div>
+            
+            <!-- Conversion Diagram -->
+            <div id="conversion" class="diagram">
+                <pre class="mermaid">
+flowchart TB
+    subgraph RECEIVE["📥 Reply Received"]
+        A[Webhook Triggered] --> B{Channel}
+        B -->|Email| C[Postmark Webhook]
+        B -->|SMS| D[Twilio Webhook]
+        B -->|LinkedIn| E[HeyReach Webhook]
+    end
+    
+    subgraph CLASSIFY["🤖 AI Classification"]
+        C & D & E --> F[Reply Agent]
+        F --> G[Analyze Intent]
+        G --> H{Intent Type}
+        
+        H -->|Meeting Request| I[🎯 MEETING]
+        H -->|Interested| J[👍 INTERESTED]
+        H -->|Question| K[❓ QUESTION]
+        H -->|Not Interested| L[👎 DECLINE]
+        H -->|Unsubscribe| M[🚫 UNSUB]
+        H -->|Out of Office| N[✈️ OOO]
+    end
+    
+    subgraph ACTION["⚡ Auto-Action"]
+        I --> O[Create Calendar Link]
+        J --> P[Move to Hot List]
+        K --> Q[AI Draft Response]
+        L --> R[Mark Declined]
+        M --> S[Add to Suppression]
+        N --> T[Reschedule +7 Days]
+    end
+    
+    subgraph LEARN["📈 System Learns"]
+        O & P & Q & R & S & T --> U[Log Conversion Event]
+        U --> V[WHO Detector: Update ALS Weights]
+        U --> W[WHAT Detector: Best Content]
+        U --> X[WHEN Detector: Best Timing]
+        U --> Y[HOW Detector: Best Sequence]
+    end
+    
+    style F fill:#1e3a5f,stroke:#ff6b6b
+    style G fill:#1e3a5f,stroke:#ff6b6b
+    style Q fill:#1e3a5f,stroke:#ff6b6b
+    style V fill:#1e3a5f,stroke:#00ff88
+    style W fill:#1e3a5f,stroke:#00ff88
+    style X fill:#1e3a5f,stroke:#00ff88
+    style Y fill:#1e3a5f,stroke:#00ff88
+                </pre>
+            </div>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color color-user"></div>
+                <span>User Action</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color color-system"></div>
+                <span>System Process</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color color-ai"></div>
+                <span>AI-Powered</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color color-channel"></div>
+                <span>Channel Output</span>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            },
+            themeVariables: {
+                primaryColor: '#1e3a5f',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#00d9ff',
+                lineColor: '#4a5568',
+                secondaryColor: '#16213e',
+                tertiaryColor: '#0f3460',
+                edgeLabelBackground: '#16213e',
+                fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif'
+            }
+        });
+        
+        function showDiagram(id) {
+            // Hide all diagrams
+            document.querySelectorAll('.diagram').forEach(d => d.classList.remove('active'));
+            // Show selected
+            document.getElementById(id).classList.add('active');
+            
+            // Update tabs
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

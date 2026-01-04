@@ -1,10 +1,11 @@
 """
 FILE: src/engines/email.py
 PURPOSE: Email engine using Resend integration with threading support
-PHASE: 4 (Engines)
-TASK: ENG-005
+PHASE: 4 (Engines), modified Phase 16 for Conversion Intelligence
+TASK: ENG-005, 16E-002
 DEPENDENCIES:
   - src/engines/base.py
+  - src/engines/content_utils.py (Phase 16)
   - src/integrations/resend.py
   - src/integrations/redis.py
   - src/models/lead.py
@@ -12,10 +13,13 @@ DEPENDENCIES:
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 11: Session passed as argument
-  - Rule 12: No imports from other engines
+  - Rule 12: No imports from other engines (content_utils is utilities, not engine)
   - Rule 14: Soft deletes only
   - Rule 17: Resource-level rate limits (50/day/domain)
   - Rule 18: Email threading via In-Reply-To headers
+PHASE 16 CHANGES:
+  - Added content_snapshot capture for WHAT Detector learning
+  - Tracks touch_number and sequence context
 """
 
 from datetime import datetime
@@ -26,6 +30,7 @@ from sqlalchemy import and_, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import EngineResult, OutreachEngine
+from src.engines.content_utils import build_content_snapshot
 from src.exceptions import ResourceRateLimitError, ValidationError
 from src.integrations.redis import rate_limiter
 from src.integrations.resend import ResendClient, get_resend_client
@@ -178,7 +183,7 @@ class EmailEngine(OutreachEngine):
 
             message_id = result.get("message_id")
 
-            # Log activity
+            # Log activity with content snapshot (Phase 16)
             await self._log_activity(
                 db=db,
                 lead=lead,
@@ -190,6 +195,8 @@ class EmailEngine(OutreachEngine):
                 sequence_step=kwargs.get("sequence_step"),
                 subject=subject,
                 content_preview=self._get_content_preview(content),
+                html_content=content,  # Phase 16: Pass full content for snapshot
+                sequence_id=kwargs.get("sequence_id"),  # Phase 16: Sequence context
                 provider_response=result,
             )
 
@@ -363,9 +370,30 @@ class EmailEngine(OutreachEngine):
         sequence_step: int | None = None,
         subject: str | None = None,
         content_preview: str | None = None,
+        html_content: str | None = None,
+        sequence_id: str | None = None,
         provider_response: dict | None = None,
     ) -> None:
-        """Log email activity to database."""
+        """
+        Log email activity to database.
+
+        Phase 16: Now captures content_snapshot for WHAT Detector learning.
+        """
+        # Build content snapshot for Conversion Intelligence (Phase 16)
+        snapshot = None
+        if html_content:
+            # Strip HTML for analysis
+            import re
+            text_content = re.sub(r'<[^>]+>', '', html_content).strip()
+            snapshot = build_content_snapshot(
+                body=text_content,
+                lead=lead,
+                subject=subject,
+                touch_number=sequence_step or 1,
+                sequence_id=sequence_id,
+                channel="email",
+            )
+
         activity = Activity(
             client_id=lead.client_id,
             campaign_id=campaign_id,
@@ -378,6 +406,7 @@ class EmailEngine(OutreachEngine):
             sequence_step=sequence_step,
             subject=subject,
             content_preview=content_preview,
+            content_snapshot=snapshot,  # Phase 16: Store content snapshot
             provider="resend",
             provider_status="sent",
             provider_response=provider_response,
@@ -437,3 +466,5 @@ def get_email_engine() -> EmailEngine:
 # [x] EngineResult wrapper for responses
 # [x] All functions have type hints
 # [x] All functions have docstrings
+# [x] Phase 16: content_snapshot captured for WHAT Detector
+# [x] Phase 16: touch_number and sequence_id tracked

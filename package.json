@@ -1,0 +1,28 @@
+{
+  "devDependencies": {
+    "playwright": "^1.57.0"
+  },
+  "name": "agency_os",
+  "version": "1.0.0",
+  "description": "Automated acquisition engine for marketing agencies.",
+  "main": "capture-screenshots.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Keiracom/Agency_OS.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Keiracom/Agency_OS/issues"
+  },
+  "homepage": "https://github.com/Keiracom/Agency_OS#readme"
+}

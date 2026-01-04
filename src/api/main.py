@@ -349,21 +349,30 @@ async def root() -> dict[str, Any]:
 # Router Includes
 # ============================================
 
-from src.api.routes.health import router as health_router
+from src.api.routes.admin import router as admin_router
+from src.api.routes.campaign_generation import router as campaign_generation_router
 from src.api.routes.campaigns import router as campaigns_router
+from src.api.routes.health import router as health_router
 from src.api.routes.leads import router as leads_router
+from src.api.routes.meetings import router as meetings_router
+from src.api.routes.patterns import router as patterns_router
+from src.api.routes.replies import router as replies_router
+from src.api.routes.reports import router as reports_router
 from src.api.routes.webhooks import router as webhooks_router
 from src.api.routes.webhooks_outbound import router as webhooks_outbound_router
-from src.api.routes.reports import router as reports_router
-from src.api.routes.admin import router as admin_router
 
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(campaigns_router, prefix="/api/v1")
+app.include_router(campaign_generation_router, prefix="/api/v1")
 app.include_router(leads_router, prefix="/api/v1")
 app.include_router(webhooks_router, prefix="/api/v1/webhooks")
 app.include_router(webhooks_outbound_router, prefix="/api/v1/webhooks-outbound")
 app.include_router(reports_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
+app.include_router(replies_router, prefix="/api/v1")
+app.include_router(meetings_router, prefix="/api/v1")
+# Phase 16: Conversion Intelligence
+app.include_router(patterns_router, prefix="/api/v1/patterns")
 
 
 # ============================================

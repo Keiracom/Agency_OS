@@ -97,15 +97,37 @@ class Settings(BaseSettings):
     twilio_phone_number: str = Field(default="", description="Twilio phone number")
 
     heyreach_api_key: str = Field(default="", description="HeyReach API key")
-    synthflow_api_key: str = Field(default="", description="Synthflow API key")
     lob_api_key: str = Field(default="", description="Lob API key")
+
+    # === DataForSEO (SEO Metrics Enrichment) ===
+    dataforseo_login: str = Field(default="", description="DataForSEO login email")
+    dataforseo_password: str = Field(default="", description="DataForSEO API password")
+
+    # === Voice AI Stack (Vapi + ElevenLabs) ===
+    vapi_api_key: str = Field(default="", description="Vapi API key")
+    vapi_phone_number_id: str = Field(default="", description="Twilio number linked in Vapi")
+    elevenlabs_api_key: str = Field(default="", description="ElevenLabs API key")
 
     # === Stripe ===
     stripe_api_key: str = Field(default="", description="Stripe secret key")
+    stripe_publishable_key: str = Field(default="", description="Stripe publishable key")
     stripe_webhook_secret: str = Field(default="", description="Stripe webhook signing secret")
+    stripe_price_ignition: str = Field(default="", description="Stripe Price ID for Ignition tier")
+    stripe_price_velocity: str = Field(default="", description="Stripe Price ID for Velocity tier")
+    stripe_price_dominance: str = Field(default="", description="Stripe Price ID for Dominance tier")
+
+    # === Calendar/Meetings ===
+    calcom_api_key: str = Field(default="", description="Cal.com API key")
+    calendly_api_key: str = Field(default="", description="Calendly API key")
+
+    # === Web Search (Phase 12B) ===
+    serper_api_key: str = Field(default="", description="Serper.dev Google Search API key")
 
     # === Sentry (Error Tracking) ===
     sentry_dsn: str = Field(default="", description="Sentry DSN for error tracking")
+
+    # === Development ===
+    ngrok_authtoken: str = Field(default="", description="ngrok auth token for local webhooks")
 
     # === Rate Limits (Resource-Level) ===
     rate_limit_linkedin_per_seat: int = Field(default=17, description="LinkedIn actions per day per seat")

@@ -1,16 +1,23 @@
 """
 FILE: src/engines/scorer.py
 PURPOSE: Calculate ALS (Agency Lead Score) using 5-component formula
-PHASE: 4 (Engines)
-TASK: ENG-003
+PHASE: 4 (Engines), modified Phase 16 for Conversion Intelligence
+TASK: ENG-003, 16A-006, 16E-004
 DEPENDENCIES:
   - src/engines/base.py
   - src/models/lead.py
+  - src/models/conversion_patterns.py (Phase 16)
+  - src/models/client.py (Phase 16)
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 11: Session passed as argument
   - Rule 12: No imports from other engines
   - Rule 14: Soft deletes only
+PHASE 16 CHANGES:
+  - Loads learned weights from client's WHO patterns
+  - Stores raw component scores in als_components
+  - Stores weights used in als_weights_used
+  - Stores scored_at timestamp for learning analysis
 """
 
 from datetime import date, datetime, timedelta
@@ -22,6 +29,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import BaseEngine, EngineResult
 from src.models.base import ChannelType, LeadStatus
+from src.models.client import Client
+from src.models.conversion_patterns import ConversionPattern
 from src.models.lead import Lead
 
 
@@ -75,6 +84,16 @@ TIER_WARM = 60
 TIER_COOL = 35
 TIER_COLD = 20
 
+# Default component weights (Phase 16)
+# These are used when no learned weights are available
+DEFAULT_WEIGHTS = {
+    "data_quality": 0.20,  # 20 points -> 20%
+    "authority": 0.25,     # 25 points -> 25%
+    "company_fit": 0.25,   # 25 points -> 25%
+    "timing": 0.15,        # 15 points -> 15%
+    "risk": 0.15,          # 15 points -> 15%
+}
+
 # Bad titles to penalize
 BAD_TITLES = ["assistant", "intern", "student", "coordinator", "receptionist"]
 
@@ -123,32 +142,61 @@ class ScorerEngine(BaseEngine):
         lead_id: UUID,
         target_industries: list[str] | None = None,
         competitor_domains: list[str] | None = None,
+        use_learned_weights: bool = True,
     ) -> EngineResult[dict[str, Any]]:
         """
         Calculate ALS score for a lead.
+
+        Phase 16: Now supports learned weights from Conversion Intelligence.
 
         Args:
             db: Database session (passed by caller)
             lead_id: Lead UUID to score
             target_industries: Optional list of target industries
             competitor_domains: Optional list of competitor domains to penalize
+            use_learned_weights: Whether to use client's learned weights (default: True)
 
         Returns:
             EngineResult with scoring breakdown
         """
         lead = await self.get_lead_by_id(db, lead_id)
 
-        # Calculate each component
-        data_quality = self._score_data_quality(lead)
-        authority = self._score_authority(lead)
-        company_fit = self._score_company_fit(lead, target_industries)
-        timing = self._score_timing(lead)
-        risk = self._score_risk(lead, competitor_domains)
+        # Phase 16: Get learned weights if available
+        weights = DEFAULT_WEIGHTS.copy()
+        weights_source = "default"
 
-        # Calculate total score (capped at 0-100)
-        total_score = max(0, min(100,
-            data_quality + authority + company_fit + timing + risk
-        ))
+        if use_learned_weights:
+            learned = await self._get_learned_weights(db, lead.client_id)
+            if learned:
+                weights = learned
+                weights_source = "learned"
+
+        # Calculate raw component scores (0-100 scale for learning)
+        # These are the raw scores before weighting
+        raw_data_quality = self._score_data_quality(lead)
+        raw_authority = self._score_authority(lead)
+        raw_company_fit = self._score_company_fit(lead, target_industries)
+        raw_timing = self._score_timing(lead)
+        raw_risk = self._score_risk(lead, competitor_domains)
+
+        # Phase 16: Normalize to 0-100 scale for each component
+        # (multiply by factor to get 0-100 range)
+        normalized = {
+            "data_quality": raw_data_quality * 5,      # 0-20 -> 0-100
+            "authority": raw_authority * 4,            # 0-25 -> 0-100
+            "company_fit": raw_company_fit * 4,        # 0-25 -> 0-100
+            "timing": raw_timing * 6.67,               # 0-15 -> 0-100
+            "risk": raw_risk * 6.67,                   # 0-15 -> 0-100
+        }
+
+        # Phase 16: Calculate weighted score
+        weighted_score = sum(
+            normalized[comp] * weights.get(comp, 0.2)
+            for comp in normalized
+        )
+
+        # Cap at 0-100
+        total_score = int(max(0, min(100, weighted_score)))
 
         # Determine tier
         tier = self._get_tier(total_score)
@@ -156,20 +204,32 @@ class ScorerEngine(BaseEngine):
         # Get available channels for this tier
         channels = self._get_channels_for_tier(tier)
 
+        # Phase 16: Store raw components for learning
+        als_components = {
+            "data_quality": raw_data_quality,
+            "authority": raw_authority,
+            "company_fit": raw_company_fit,
+            "timing": raw_timing,
+            "risk": raw_risk,
+        }
+
         # Build result
         score_breakdown = {
             "als_score": total_score,
             "als_tier": tier,
-            "als_data_quality": data_quality,
-            "als_authority": authority,
-            "als_company_fit": company_fit,
-            "als_timing": timing,
-            "als_risk": risk,
+            "als_data_quality": raw_data_quality,
+            "als_authority": raw_authority,
+            "als_company_fit": raw_company_fit,
+            "als_timing": raw_timing,
+            "als_risk": raw_risk,
+            "als_components": als_components,
+            "als_weights_used": weights,
+            "weights_source": weights_source,
             "available_channels": [c.value for c in channels],
             "lead_id": str(lead_id),
         }
 
-        # Update lead in database
+        # Update lead in database (now includes Phase 16 fields)
         await self._update_lead_score(db, lead, score_breakdown)
 
         return EngineResult.ok(
@@ -178,6 +238,7 @@ class ScorerEngine(BaseEngine):
                 "engine": self.name,
                 "tier": tier,
                 "channels_available": len(channels),
+                "weights_source": weights_source,
             },
         )
 
@@ -482,13 +543,64 @@ class ScorerEngine(BaseEngine):
         }
         return tier_channels.get(tier, [])
 
+    async def _get_learned_weights(
+        self,
+        db: AsyncSession,
+        client_id: UUID,
+    ) -> dict[str, float] | None:
+        """
+        Get learned ALS weights for a client.
+
+        Phase 16: Checks client's als_learned_weights first,
+        then falls back to WHO pattern's recommended weights.
+
+        Args:
+            db: Database session
+            client_id: Client UUID
+
+        Returns:
+            Learned weights dict if available, None otherwise
+        """
+        # First check client's stored learned weights
+        client_stmt = select(Client).where(Client.id == client_id)
+        client_result = await db.execute(client_stmt)
+        client = client_result.scalar_one_or_none()
+
+        if client and client.als_learned_weights:
+            return client.als_learned_weights
+
+        # Fall back to WHO pattern's recommended weights
+        pattern_stmt = select(ConversionPattern).where(
+            and_(
+                ConversionPattern.client_id == client_id,
+                ConversionPattern.pattern_type == "who",
+                ConversionPattern.valid_until > datetime.utcnow(),
+            )
+        )
+        pattern_result = await db.execute(pattern_stmt)
+        pattern = pattern_result.scalar_one_or_none()
+
+        if pattern and pattern.patterns:
+            recommended = pattern.patterns.get("recommended_weights")
+            if recommended:
+                return recommended
+
+        return None
+
     async def _update_lead_score(
         self,
         db: AsyncSession,
         lead: Lead,
         score_data: dict[str, Any],
     ) -> None:
-        """Update lead with scoring data."""
+        """
+        Update lead with scoring data.
+
+        Phase 16: Now stores als_components, als_weights_used, and scored_at
+        for Conversion Intelligence learning.
+        """
+        now = datetime.utcnow()
+
         stmt = (
             update(Lead)
             .where(Lead.id == lead.id)
@@ -500,8 +612,12 @@ class ScorerEngine(BaseEngine):
                 als_company_fit=score_data["als_company_fit"],
                 als_timing=score_data["als_timing"],
                 als_risk=score_data["als_risk"],
+                # Phase 16: Store for learning
+                als_components=score_data.get("als_components"),
+                als_weights_used=score_data.get("als_weights_used"),
+                scored_at=now,
                 status=LeadStatus.SCORED,
-                updated_at=datetime.utcnow(),
+                updated_at=now,
             )
         )
         await db.execute(stmt)

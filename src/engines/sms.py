@@ -1,10 +1,11 @@
 """
 FILE: src/engines/sms.py
 PURPOSE: SMS engine using Twilio integration with DNCR compliance
-PHASE: 4 (Engines)
-TASK: ENG-006
+PHASE: 4 (Engines), modified Phase 16 for Conversion Intelligence
+TASK: ENG-006, 16E-003
 DEPENDENCIES:
   - src/engines/base.py
+  - src/engines/content_utils.py (Phase 16)
   - src/integrations/twilio.py
   - src/integrations/redis.py
   - src/models/lead.py
@@ -12,10 +13,13 @@ DEPENDENCIES:
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 11: Session passed as argument
-  - Rule 12: No imports from other engines
+  - Rule 12: No imports from other engines (content_utils is utilities, not engine)
   - Rule 14: Soft deletes only
   - Rule 17: Resource-level rate limits (100/day/number)
   - DNCR compliance for Australian numbers
+PHASE 16 CHANGES:
+  - Added content_snapshot capture for WHAT Detector learning
+  - Tracks touch_number, sequence context, and segment count
 """
 
 from datetime import datetime
@@ -25,6 +29,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import EngineResult, OutreachEngine
+from src.engines.content_utils import build_sms_snapshot
 from src.exceptions import DNCRError, ResourceRateLimitError, ValidationError
 from src.integrations.redis import rate_limiter
 from src.integrations.twilio import TwilioClient, get_twilio_client
@@ -141,7 +146,7 @@ class SMSEngine(OutreachEngine):
 
             message_sid = result.get("message_sid")
 
-            # Log activity
+            # Log activity with content snapshot (Phase 16)
             await self._log_activity(
                 db=db,
                 lead=lead,
@@ -149,6 +154,9 @@ class SMSEngine(OutreachEngine):
                 action="sent",
                 provider_message_id=message_sid,
                 content_preview=content[:200] if len(content) > 200 else content,
+                message_content=content,  # Phase 16: Pass full content for snapshot
+                sequence_step=kwargs.get("sequence_step"),
+                sequence_id=kwargs.get("sequence_id"),
                 provider_response=result,
                 from_number=from_number,
             )
@@ -322,13 +330,30 @@ class SMSEngine(OutreachEngine):
         action: str,
         provider_message_id: str | None = None,
         content_preview: str | None = None,
+        message_content: str | None = None,
+        sequence_step: int | None = None,
+        sequence_id: str | None = None,
         provider_response: dict | None = None,
         from_number: str | None = None,
     ) -> None:
-        """Log SMS activity to database."""
+        """
+        Log SMS activity to database.
+
+        Phase 16: Now captures content_snapshot for WHAT Detector learning.
+        """
         metadata = {}
         if from_number:
             metadata["from_number"] = from_number
+
+        # Build content snapshot for Conversion Intelligence (Phase 16)
+        snapshot = None
+        if message_content and action == "sent":
+            snapshot = build_sms_snapshot(
+                message=message_content,
+                lead=lead,
+                touch_number=sequence_step or 1,
+                sequence_id=sequence_id,
+            )
 
         activity = Activity(
             client_id=lead.client_id,
@@ -337,7 +362,9 @@ class SMSEngine(OutreachEngine):
             channel=ChannelType.SMS,
             action=action,
             provider_message_id=provider_message_id,
+            sequence_step=sequence_step,
             content_preview=content_preview,
+            content_snapshot=snapshot,  # Phase 16: Store content snapshot
             provider="twilio",
             provider_status=action,
             provider_response=provider_response,
@@ -378,3 +405,5 @@ def get_sms_engine() -> SMSEngine:
 # [x] EngineResult wrapper for responses
 # [x] All functions have type hints
 # [x] All functions have docstrings
+# [x] Phase 16: content_snapshot captured for WHAT Detector
+# [x] Phase 16: touch_number, sequence_id, and segment_count tracked

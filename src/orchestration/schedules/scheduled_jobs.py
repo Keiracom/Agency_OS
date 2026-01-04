@@ -1,12 +1,14 @@
 """
 FILE: src/orchestration/schedules/scheduled_jobs.py
 PURPOSE: Prefect schedule configurations for automated flows
-PHASE: 5 (Orchestration)
-TASK: ORC-010
+PHASE: 5 (Orchestration), modified Phase 16 for Conversion Intelligence
+TASK: ORC-010, 16F-004
 DEPENDENCIES:
   - src/orchestration/flows/enrichment_flow.py
   - src/orchestration/flows/outreach_flow.py
   - src/orchestration/flows/reply_recovery_flow.py
+  - src/orchestration/flows/pattern_learning_flow.py (Phase 16)
+  - src/orchestration/flows/pattern_backfill_flow.py (Phase 16)
   - src/engines/reporter.py
 RULES APPLIED:
   - Rule 20: Webhook-first architecture - cron jobs are safety nets only
@@ -93,6 +95,46 @@ def get_metrics_schedule() -> CronSchedule:
     )
 
 
+# ============================================
+# Phase 16: Conversion Intelligence Schedules
+# ============================================
+
+
+def get_pattern_learning_schedule() -> CronSchedule:
+    """
+    Weekly pattern learning at 3 AM Sunday AEST.
+
+    Runs all 4 detectors (WHO, WHAT, WHEN, HOW) for eligible clients
+    and optimizes ALS weights based on conversion history.
+
+    Weekly frequency balances data freshness with compute cost.
+    Runs on Sunday to minimize impact on weekday operations.
+
+    Returns:
+        CronSchedule: Sunday 3 AM AEST
+    """
+    return CronSchedule(
+        cron="0 3 * * 0",  # 3 AM every Sunday
+        timezone="Australia/Sydney",
+    )
+
+
+def get_pattern_backfill_schedule() -> CronSchedule:
+    """
+    Daily pattern backfill check at 4 AM AEST.
+
+    Catches new clients or those missing patterns.
+    Runs after pattern learning to handle any gaps.
+
+    Returns:
+        CronSchedule: Daily at 4 AM AEST
+    """
+    return CronSchedule(
+        cron="0 4 * * *",  # 4 AM daily
+        timezone="Australia/Sydney",
+    )
+
+
 # Schedule registry for deployment configuration
 SCHEDULE_REGISTRY: Dict[str, Any] = {
     "enrichment": {
@@ -133,6 +175,25 @@ SCHEDULE_REGISTRY: Dict[str, Any] = {
         "parameters": {
             "include_als_distribution": True,
             "include_engagement": True,
+        },
+    },
+    # Phase 16: Conversion Intelligence
+    "pattern_learning": {
+        "schedule": get_pattern_learning_schedule(),
+        "description": "Weekly pattern learning at 3 AM Sunday AEST",
+        "work_queue": "agency-os-queue",
+        "tags": ["conversion-intelligence", "patterns", "weekly"],
+        "parameters": {
+            "min_conversions": 20,
+        },
+    },
+    "pattern_backfill": {
+        "schedule": get_pattern_backfill_schedule(),
+        "description": "Daily pattern backfill check at 4 AM AEST",
+        "work_queue": "agency-os-queue",
+        "tags": ["conversion-intelligence", "backfill", "daily"],
+        "parameters": {
+            "min_activities": 50,
         },
     },
 }
@@ -187,3 +248,7 @@ def list_all_schedules() -> Dict[str, str]:
 # [x] 6-hourly reply recovery
 # [x] Midnight metrics aggregation
 # [x] Schedule registry for deployment automation
+# --- Phase 16 Additions ---
+# [x] Weekly pattern learning at 3 AM Sunday AEST
+# [x] Daily pattern backfill at 4 AM AEST
+# [x] Conversion Intelligence schedules in registry

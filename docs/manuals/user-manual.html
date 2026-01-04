@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agency OS User Dashboard Manual v3.0</title>
+  <style>
+    :root {
+      --primary: #1e40af;
+      --primary-light: #3b82f6;
+      --secondary: #f97316;
+      --success: #22c55e;
+      --warning: #eab308;
+      --danger: #ef4444;
+      --text: #1f2937;
+      --text-muted: #6b7280;
+      --bg-light: #f9fafb;
+      --border: #e5e7eb;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 11pt;
+    }
+
+    /* Page breaks */
+    .page-break {
+      page-break-before: always;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      color: white;
+      padding: 60px 40px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 36pt;
+      margin-bottom: 10px;
+    }
+
+    .header .subtitle {
+      font-size: 16pt;
+      opacity: 0.9;
+    }
+
+    .header .version {
+      font-size: 12pt;
+      margin-top: 25px;
+      background: rgba(255,255,255,0.2);
+      display: inline-block;
+      padding: 10px 25px;
+      border-radius: 25px;
+    }
+
+    /* Table of Contents */
+    .toc {
+      padding: 40px;
+      background: white;
+    }
+
+    .toc h2 {
+      color: var(--primary);
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+
+    .toc ul {
+      list-style: none;
+    }
+
+    .toc li {
+      padding: 8px 0;
+      border-bottom: 1px dotted var(--border);
+    }
+
+    .toc a {
+      color: var(--text);
+      text-decoration: none;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .toc .section-title {
+      font-weight: 600;
+      color: var(--primary);
+      margin-top: 20px;
+      margin-bottom: 10px;
+      font-size: 12pt;
+    }
+
+    /* Page sections */
+    .section {
+      padding: 40px;
+    }
+
+    .section-header {
+      background: var(--primary);
+      color: white;
+      padding: 20px 40px;
+      margin: -40px -40px 40px -40px;
+    }
+
+    .section-header h2 {
+      font-size: 24pt;
+      margin: 0;
+    }
+
+    .section-header .path {
+      font-family: 'Courier New', monospace;
+      opacity: 0.9;
+      margin-top: 5px;
+    }
+
+    /* Layout diagram */
+    .layout-diagram {
+      background: var(--bg-light);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .layout-row {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    .layout-box {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 15px;
+      flex: 1;
+      text-align: center;
+    }
+
+    .layout-box.full {
+      flex: 1 0 100%;
+    }
+
+    .layout-box.half {
+      flex: 1 0 calc(50% - 8px);
+    }
+
+    .layout-box.quarter {
+      flex: 1 0 calc(25% - 12px);
+    }
+
+    .layout-box.fifth {
+      flex: 1 0 calc(20% - 12px);
+    }
+
+    .layout-box .widget-title {
+      font-weight: 600;
+      font-size: 10pt;
+      color: var(--primary);
+      margin-bottom: 5px;
+    }
+
+    .layout-box .widget-desc {
+      font-size: 9pt;
+      color: var(--text-muted);
+    }
+
+    /* Metric tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: var(--bg-light);
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    tr:hover {
+      background: var(--bg-light);
+    }
+
+    /* Info boxes */
+    .info-box {
+      padding: 15px 20px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+
+    .info-box.warning {
+      background: #fef3c7;
+      border-left: 4px solid var(--warning);
+    }
+
+    .info-box.danger {
+      background: #fee2e2;
+      border-left: 4px solid var(--danger);
+    }
+
+    .info-box.success {
+      background: #dcfce7;
+      border-left: 4px solid var(--success);
+    }
+
+    .info-box.info {
+      background: #dbeafe;
+      border-left: 4px solid var(--primary-light);
+    }
+
+    .info-box-title {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    /* Tier badges */
+    .tier-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 9pt;
+      font-weight: 600;
+    }
+
+    .tier-hot {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .tier-warm {
+      background: #ffedd5;
+      color: #9a3412;
+    }
+
+    .tier-cool {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .tier-cold {
+      background: #f3f4f6;
+      color: #4b5563;
+    }
+
+    .tier-dead {
+      background: #1f2937;
+      color: white;
+    }
+
+    /* Thresholds */
+    .threshold {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 9pt;
+      font-weight: 600;
+    }
+
+    .threshold.good {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .threshold.warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .threshold.critical {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    /* Status badges */
+    .status-active {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-paused {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-draft {
+      background: #f3f4f6;
+      color: #4b5563;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-muted);
+      font-size: 10pt;
+      border-top: 1px solid var(--border);
+    }
+
+    h3 {
+      color: var(--primary);
+      margin: 30px 0 15px 0;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h4 {
+      color: var(--text);
+      margin: 20px 0 10px 0;
+    }
+
+    p {
+      margin: 10px 0;
+    }
+
+    ul, ol {
+      margin: 10px 0 10px 25px;
+    }
+
+    li {
+      margin: 5px 0;
+    }
+
+    code {
+      background: var(--bg-light);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      font-size: 10pt;
+    }
+
+    /* Channel colors */
+    .channel-email { color: #3b82f6; }
+    .channel-sms { color: #22c55e; }
+    .channel-linkedin { color: #0ea5e9; }
+    .channel-voice { color: #8b5cf6; }
+    .channel-mail { color: #f97316; }
+
+    @media print {
+      .page-break {
+        page-break-before: always;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Cover Page -->
+<div class="header">
+  <h1>Agency OS</h1>
+  <p class="subtitle">User Dashboard Manual</p>
+  <p class="version">Version 3.0 | December 2025</p>
+</div>
+
+<!-- Table of Contents -->
+<div class="toc">
+  <h2>Table of Contents</h2>
+
+  <p class="section-title">Getting Started</p>
+  <ul>
+    <li><a href="#overview"><span>1. Dashboard Overview</span><span>/dashboard</span></a></li>
+  </ul>
+
+  <p class="section-title">Campaign Management</p>
+  <ul>
+    <li><a href="#campaigns"><span>2. Campaigns List</span><span>/dashboard/campaigns</span></a></li>
+    <li><a href="#new-campaign"><span>3. Create New Campaign</span><span>/dashboard/campaigns/new</span></a></li>
+    <li><a href="#campaign-detail"><span>4. Campaign Detail</span><span>/dashboard/campaigns/[id]</span></a></li>
+  </ul>
+
+  <p class="section-title">Lead Management</p>
+  <ul>
+    <li><a href="#leads"><span>5. Leads List</span><span>/dashboard/leads</span></a></li>
+    <li><a href="#lead-detail"><span>6. Lead Detail</span><span>/dashboard/leads/[id]</span></a></li>
+  </ul>
+
+  <p class="section-title">Analytics & Settings</p>
+  <ul>
+    <li><a href="#reports"><span>7. Reports & Analytics</span><span>/dashboard/reports</span></a></li>
+    <li><a href="#settings"><span>8. Account Settings</span><span>/dashboard/settings</span></a></li>
+  </ul>
+
+  <p class="section-title">Reference</p>
+  <ul>
+    <li><a href="#als-scoring"><span>Understanding ALS Scoring</span><span></span></a></li>
+    <li><a href="#permission-modes"><span>Permission Modes Guide</span><span></span></a></li>
+    <li><a href="#glossary"><span>Glossary of Terms</span><span></span></a></li>
+  </ul>
+</div>
+
+<!-- Page 1: Dashboard Overview -->
+<div class="section page-break" id="overview">
+  <div class="section-header">
+    <h2>1. Dashboard Overview</h2>
+    <p class="path">/dashboard</p>
+  </div>
+
+  <p>Your main dashboard provides a real-time snapshot of campaign performance, lead activity, and key metrics. This is the first page you see when logging in.</p>
+
+  <h3>Page Layout</h3>
+  <div class="layout-diagram">
+    <div class="layout-row">
+      <div class="layout-box quarter"><div class="widget-title">Active Campaigns</div><div class="widget-desc">Running campaigns</div></div>
+      <div class="layout-box quarter"><div class="widget-title">Total Leads</div><div class="widget-desc">All leads in system</div></div>
+      <div class="layout-box quarter"><div class="widget-title">Replies This Week</div><div class="widget-desc">Inbound responses</div></div>
+      <div class="layout-box quarter"><div class="widget-title">Conversion Rate</div><div class="widget-desc">Lead to meeting %</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box half"><div class="widget-title">Recent Activity</div><div class="widget-desc">Latest interactions across campaigns</div></div>
+      <div class="layout-box half"><div class="widget-title">ALS Tier Distribution</div><div class="widget-desc">Lead quality breakdown</div></div>
+    </div>
+  </div>
+
+  <h3>KPI Cards Explained</h3>
+  <table>
+    <tr>
+      <th>Metric</th>
+      <th>Description</th>
+      <th>What to Watch For</th>
+    </tr>
+    <tr>
+      <td><strong>Active Campaigns</strong></td>
+      <td>Number of campaigns currently sending outreach</td>
+      <td>Sudden drops may indicate paused campaigns</td>
+    </tr>
+    <tr>
+      <td><strong>Total Leads</strong></td>
+      <td>All leads across all your campaigns</td>
+      <td>Growth indicates healthy pipeline</td>
+    </tr>
+    <tr>
+      <td><strong>Replies This Week</strong></td>
+      <td>Inbound responses received in last 7 days</td>
+      <td>Goal: Steady week-over-week growth</td>
+    </tr>
+    <tr>
+      <td><strong>Conversion Rate</strong></td>
+      <td>Percentage of contacted leads that convert to meetings/opportunities</td>
+      <td><span class="threshold good">&gt;3% is good</span> <span class="threshold warning">&lt;2% needs attention</span></td>
+    </tr>
+  </table>
+
+  <h3>Recent Activity Feed</h3>
+  <p>The activity feed shows real-time interactions across all your campaigns:</p>
+  <table>
+    <tr>
+      <th>Activity Type</th>
+      <th>Icon</th>
+      <th>Description</th>
+    </tr>
+    <tr>
+      <td><strong>Reply</strong></td>
+      <td class="channel-email">Email icon</td>
+      <td>Lead responded to your outreach</td>
+    </tr>
+    <tr>
+      <td><strong>Sent</strong></td>
+      <td class="channel-linkedin">LinkedIn icon</td>
+      <td>Connection request or message sent</td>
+    </tr>
+    <tr>
+      <td><strong>Enriched</strong></td>
+      <td>User icon</td>
+      <td>Lead data enhanced with additional information</td>
+    </tr>
+  </table>
+
+  <h4>Intent Badges</h4>
+  <p>Replies are automatically classified by AI to help you prioritize:</p>
+  <ul>
+    <li><span class="threshold good">Interested</span> - Lead wants to learn more</li>
+    <li><span class="threshold good">Meeting Request</span> - Lead wants to schedule a call</li>
+    <li><span class="threshold warning">Question</span> - Lead needs information</li>
+    <li><span class="threshold critical">Not Interested</span> - Lead declined</li>
+  </ul>
+
+  <h3>ALS Tier Distribution</h3>
+  <p>This chart shows the quality breakdown of your leads using the Agency Lead Score (ALS) system:</p>
+  <table>
+    <tr>
+      <th>Tier</th>
+      <th>Score Range</th>
+      <th>Meaning</th>
+      <th>Priority</th>
+    </tr>
+    <tr>
+      <td><span class="tier-badge tier-hot">Hot</span></td>
+      <td>90-100</td>
+      <td>Ideal fit, high intent signals</td>
+      <td>Highest - multi-channel engagement</td>
+    </tr>
+    <tr>
+      <td><span class="tier-badge tier-warm">Warm</span></td>
+      <td>70-89</td>
+      <td>Strong match, good potential</td>
+      <td>High - email + LinkedIn</td>
+    </tr>
+    <tr>
+      <td><span class="tier-badge tier-cool">Cool</span></td>
+      <td>50-69</td>
+      <td>Moderate match</td>
+      <td>Medium - email sequence</td>
+    </tr>
+    <tr>
+      <td><span class="tier-badge tier-cold">Cold</span></td>
+      <td>30-49</td>
+      <td>Weak match</td>
+      <td>Low - nurture only</td>
+    </tr>
+    <tr>
+      <td><span class="tier-badge tier-dead">Dead</span></td>
+      <td>0-29</td>
+      <td>Poor fit or invalid data</td>
+      <td>None - excluded from outreach</td>
+    </tr>
+  </table>
+
+  <div class="info-box info">
+    <div class="info-box-title">Tip: Focus on Hot and Warm Leads</div>
+    <p>Your best ROI comes from Hot and Warm leads. A healthy pipeline should have at least 20% of leads in these top tiers.</p>
+  </div>
+</div>
+
+<!-- Page 2: Campaigns List -->
+<div class="section page-break" id="campaigns">
+  <div class="section-header">
+    <h2>2. Campaigns List</h2>
+    <p class="path">/dashboard/campaigns</p>
+  </div>
+
+  <p>View and manage all your outreach campaigns from this central hub. Each campaign represents a targeted outreach effort to a specific audience.</p>
+
+  <h3>Page Layout</h3>
+  <div class="layout-diagram">
+    <div class="layout-row">
+      <div class="layout-box full"><div class="widget-title">Campaign Grid</div><div class="widget-desc">Cards showing all campaigns with key metrics</div></div>
+    </div>
+  </div>
+
+  <h3>Campaign Card Information</h3>
+  <table>
+    <tr>
+      <th>Element</th>
+      <th>Description</th>
+    </tr>
+    <tr>
+      <td><strong>Campaign Name</strong></td>
+      <td>Descriptive name for the campaign (e.g., "Tech Startups Q1 2025")</td>
+    </tr>
+    <tr>
+      <td><strong>Status Badge</strong></td>
+      <td><span class="threshold good">Active</span> - Running | <span class="threshold warning">Paused</span> - Stopped | <span class="threshold">Draft</span> - Not launched</td>
+    </tr>
+    <tr>
+      <td><strong>Description</strong></td>
+      <td>Brief summary of target audience</td>
+    </tr>
+    <tr>
+      <td><strong>Leads Count</strong></td>
+      <td>Total number of leads in this campaign</td>
+    </tr>
+    <tr>
+      <td><strong>Replies Count</strong></td>
+      <td>Number of responses received</td>
+    </tr>
+    <tr>
+      <td><strong>Reply Rate</strong></td>
+      <td>Percentage of contacted leads that replied</td>
+    </tr>
+    <tr>
+      <td><strong>Channel Allocation Bar</strong></td>
+      <td>Visual breakdown of outreach channels used</td>
+    </tr>
+  </table>
+
+  <h3>Channel Allocation Colors</h3>
+  <table>
+    <tr>
+      <th>Channel</th>
+      <th>Color</th>
+      <th>Description</th>
+    </tr>
+    <tr>
+      <td><strong>Email</strong></td>
+      <td><span style="background:#3b82f6;color:white;padding:2px 8px;border-radius:4px;">Blue</span></td>
+      <td>Resend-powered email outreach</td>
+    </tr>
+    <tr>
+      <td><strong>SMS</strong></td>
+      <td><span style="background:#22c55e;color:white;padding:2px 8px;border-radius:4px;">Green</span></td>
+      <td>Twilio-powered text messages</td>
+    </tr>
+    <tr>
+      <td><strong>LinkedIn</strong></td>
+      <td><span style="background:#0ea5e9;color:white;padding:2px 8px;border-radius:4px;">Sky Blue</span></td>
+      <td>HeyReach-powered social outreach</td>
+    </tr>
+    <tr>
+      <td><strong>Voice</strong></td>
+      <td><span style="background:#8b5cf6;color:white;padding:2px 8px;border-radius:4px;">Purple</span></td>
+      <td>Synthflow AI voice calls</td>
+    </tr>
+  </table>
+
+  <h3>Campaign Actions</h3>
+  <p>Click the menu icon on any campaign card for actions:</p>
+  <ul>
+    <li><strong>Pause Campaign</strong> - Temporarily stop all outreach (Active campaigns)</li>
+    <li><strong>Resume Campaign</strong> - Restart paused campaigns</li>
+    <li><strong>Activate Campaign</strong> - Launch a draft campaign</li>
+  </ul>
+
+  <div class="info-box success">
+    <div class="info-box-title">Reply Rate Benchmarks</div>
+    <p><strong>&gt;8%</strong> - Excellent | <strong>5-8%</strong> - Good | <strong>2-5%</strong> - Average | <strong>&lt;2%</strong> - Needs improvement</p>
+  </div>
+</div>
+
+<!-- Page 3: Create New Campaign -->
+<div class="section page-break" id="new-campaign">
+  <div class="section-header">
+    <h2>3. Create New Campaign</h2>
+    <p class="path">/dashboard/campaigns/new</p>
+  </div>
+
+  <p>Set up a new outreach campaign with this step-by-step form. Configure your target audience, automation level, and channel mix.</p>
+
+  <h3>Campaign Setup Steps</h3>
+
+  <h4>Step 1: Basic Information</h4>
+  <table>
+    <tr>
+      <th>Field</th>
+      <th>Description</th>
+      <th>Example</th>
+    </tr>
+    <tr>
+      <td><strong>Campaign Name</strong></td>
+      <td>Clear, descriptive name for internal reference</td>
+      <td>"Tech Startups Q1 2025"</td>
+    </tr>
+    <tr>
+      <td><strong>Description</strong></td>
+      <td>Brief summary of target audience and goals</td>
+      <td>"Series A-B tech startups in Australia"</td>
+    </tr>
+    <tr>
+      <td><strong>Daily Outreach Limit</strong></td>
+      <td>Maximum leads to contact per day (1-500)</td>
+      <td>50</td>
+    </tr>
+  </table>
+
+  <h4>Step 2: Permission Mode</h4>
+  <p>Choose your automation level. This determines how much control you have vs. how much the AI handles automatically:</p>
+
+  <table>
+    <tr>
+      <th>Mode</th>
+      <th>Description</th>
+      <th>Best For</th>
+    </tr>
+    <tr>
+      <td><strong>Autopilot</strong></td>
+      <td>Full automation. AI handles all decisions autonomously without requiring your approval.</td>
+      <td>Experienced users with established templates</td>
+    </tr>
+    <tr>
+      <td><strong>Co-Pilot</strong> (Recommended)</td>
+      <td>AI suggests content and decisions, you approve before sending. Best balance of automation and control.</td>
+      <td>Most users - best results with oversight</td>
+    </tr>
+    <tr>
+      <td><strong>Manual</strong></td>
+      <td>Full control. Review and approve every single action before it happens.</td>
+      <td>High-stakes campaigns, learning the platform</td>
+    </tr>
+  </table>
+
+  <h4>Step 3: Channel Allocation</h4>
+  <p>Distribute your outreach across channels. Allocations must sum to 100%.</p>
+
+  <table>
+    <tr>
+      <th>Channel</th>
+      <th>Recommended %</th>
+      <th>Notes</th>
+    </tr>
+    <tr>
+      <td><strong>Email</strong></td>
+      <td>50-70%</td>
+      <td>Primary channel, most scalable</td>
+    </tr>
+    <tr>
+      <td><strong>SMS</strong></td>
+      <td>10-20%</td>
+      <td>High engagement, use for warm leads</td>
+    </tr>
+    <tr>
+      <td><strong>LinkedIn</strong></td>
+      <td>20-30%</td>
+      <td>Professional audience, B2B focused</td>
+    </tr>
+    <tr>
+      <td><strong>Voice</strong></td>
+      <td>0-10%</td>
+      <td>Reserve for hot leads only</td>
+    </tr>
+  </table>
+
+  <div class="info-box warning">
+    <div class="info-box-title">Validation Required</div>
+    <p>Channel allocations must add up to exactly 100%. The form will show an error if the total is incorrect.</p>
+  </div>
+</div>
+
+<!-- Page 4: Campaign Detail -->
+<div class="section page-break" id="campaign-detail">
+  <div class="section-header">
+    <h2>4. Campaign Detail</h2>
+    <p class="path">/dashboard/campaigns/[id]</p>
+  </div>
+
+  <p>Deep dive into a specific campaign's performance, settings, and leads.</p>
+
+  <h3>Page Layout</h3>
+  <div class="layout-diagram">
+    <div class="layout-row">
+      <div class="layout-box full"><div class="widget-title">Campaign Header</div><div class="widget-desc">Name, Status, Description + Action Buttons</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box quarter"><div class="widget-title">Total Leads</div></div>
+      <div class="layout-box quarter"><div class="widget-title">Contacted</div></div>
+      <div class="layout-box quarter"><div class="widget-title">Reply Rate</div></div>
+      <div class="layout-box quarter"><div class="widget-title">Converted</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box half"><div class="widget-title">Channel Allocation</div><div class="widget-desc">Visual breakdown with progress bars</div></div>
+      <div class="layout-box half"><div class="widget-title">Target Settings</div><div class="widget-desc">Industries, Titles, Sizes, Locations</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box full"><div class="widget-title">Campaign Leads</div><div class="widget-desc">Lead list with View All button</div></div>
+    </div>
+  </div>
+
+  <h3>Campaign Stats</h3>
+  <table>
+    <tr>
+      <th>Metric</th>
+      <th>Description</th>
+      <th>Good Benchmark</th>
+    </tr>
+    <tr>
+      <td><strong>Total Leads</strong></td>
+      <td>All leads added to this campaign</td>
+      <td>Varies by campaign scope</td>
+    </tr>
+    <tr>
+      <td><strong>Contacted</strong></td>
+      <td>Leads that received at least one outreach</td>
+      <td>Should grow daily based on limit</td>
+    </tr>
+    <tr>
+      <td><strong>Reply Rate</strong></td>
+      <td>(Replies / Contacted) x 100</td>
+      <td><span class="threshold good">&gt;5%</span></td>
+    </tr>
+    <tr>
+      <td><strong>Converted</strong></td>
+      <td>Leads that became opportunities</td>
+      <td>Ultimate success metric</td>
+    </tr>
+  </table>
+
+  <h3>Target Settings Display</h3>
+  <p>Shows the ICP (Ideal Customer Profile) criteria for this campaign:</p>
+  <ul>
+    <li><strong>Industries</strong> - Technology, SaaS, Fintech, etc.</li>
+    <li><strong>Job Titles</strong> - CEO, CTO, Founder, VP Engineering, etc.</li>
+    <li><strong>Company Sizes</strong> - 10-50, 51-200, 201-500 employees</li>
+    <li><strong>Locations</strong> - Sydney, Melbourne, Brisbane, etc.</li>
+  </ul>
+
+  <h3>Campaign Actions</h3>
+  <table>
+    <tr>
+      <th>Action</th>
+      <th>When to Use</th>
+    </tr>
+    <tr>
+      <td><strong>Pause</strong></td>
+      <td>Temporarily stop outreach (e.g., holiday period, need to adjust messaging)</td>
+    </tr>
+    <tr>
+      <td><strong>Activate</strong></td>
+      <td>Resume a paused campaign or launch a draft</td>
+    </tr>
+    <tr>
+      <td><strong>Settings</strong></td>
+      <td>Modify campaign configuration</td>
+    </tr>
+    <tr>
+      <td><strong>View All Leads</strong></td>
+      <td>Navigate to leads page filtered by this campaign</td>
+    </tr>
+  </table>
+</div>
+
+<!-- Page 5: Leads List -->
+<div class="section page-break" id="leads">
+  <div class="section-header">
+    <h2>5. Leads List</h2>
+    <p class="path">/dashboard/leads</p>
+  </div>
+
+  <p>View and manage all leads across your campaigns. Filter by tier, status, or campaign to focus on specific segments.</p>
+
+  <h3>Page Layout</h3>
+  <div class="layout-diagram">
+    <div class="layout-row">
+      <div class="layout-box full"><div class="widget-title">Search & Filters</div><div class="widget-desc">Search by name, email, company + Filter options</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box fifth"><div class="widget-title">Hot</div><div class="widget-desc">45</div></div>
+      <div class="layout-box fifth"><div class="widget-title">Warm</div><div class="widget-desc">123</div></div>
+      <div class="layout-box fifth"><div class="widget-title">Cool</div><div class="widget-desc">234</div></div>
+      <div class="layout-box fifth"><div class="widget-title">Cold</div><div class="widget-desc">189</div></div>
+      <div class="layout-box fifth"><div class="widget-title">Dead</div><div class="widget-desc">23</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box full"><div class="widget-title">Leads Table</div><div class="widget-desc">Lead | Company | ALS Score | Status | Campaign | Last Activity</div></div>
+    </div>
+  </div>
+
+  <h3>Lead Table Columns</h3>
+  <table>
+    <tr>
+      <th>Column</th>
+      <th>Description</th>
+    </tr>
+    <tr>
+      <td><strong>Lead</strong></td>
+      <td>Name and email address</td>
+    </tr>
+    <tr>
+      <td><strong>Company</strong></td>
+      <td>Company name and job title</td>
+    </tr>
+    <tr>
+      <td><strong>ALS Score</strong></td>
+      <td>Numeric score (0-100) with tier badge</td>
+    </tr>
+    <tr>
+      <td><strong>Status</strong></td>
+      <td>Current state in the outreach process</td>
+    </tr>
+    <tr>
+      <td><strong>Campaign</strong></td>
+      <td>Which campaign this lead belongs to</td>
+    </tr>
+    <tr>
+      <td><strong>Last Activity</strong></td>
+      <td>Most recent action or event for this lead</td>
+    </tr>
+  </table>
+
+  <h3>Lead Statuses</h3>
+  <table>
+    <tr>
+      <th>Status</th>
+      <th>Description</th>
+    </tr>
+    <tr>
+      <td><strong>New</strong></td>
+      <td>Just added, not yet processed</td>
+    </tr>
+    <tr>
+      <td><strong>Enriched</strong></td>
+      <td>Data enhanced but not yet scored</td>
+    </tr>
+    <tr>
+      <td><strong>In Sequence</strong></td>
+      <td>Actively receiving outreach</td>
+    </tr>
+    <tr>
+      <td><strong>Converted</strong></td>
+      <td>Became an opportunity or customer</td>
+    </tr>
+    <tr>
+      <td><strong>Unsubscribed</strong></td>
+      <td>Opted out of communications</td>
+    </tr>
+  </table>
+
+  <h3>Actions</h3>
+  <ul>
+    <li><strong>Export</strong> - Download leads as CSV</li>
+    <li><strong>Import</strong> - Upload new leads from CSV</li>
+    <li><strong>Filters</strong> - Refine by tier, status, campaign, date</li>
+  </ul>
+</div>
+
+<!-- Page 6: Lead Detail -->
+<div class="section page-break" id="lead-detail">
+  <div class="section-header">
+    <h2>6. Lead Detail</h2>
+    <p class="path">/dashboard/leads/[id]</p>
+  </div>
+
+  <p>Complete view of a single lead including contact info, company details, ALS score breakdown, and activity timeline.</p>
+
+  <h3>Page Layout</h3>
+  <div class="layout-diagram">
+    <div class="layout-row">
+      <div class="layout-box full"><div class="widget-title">Lead Header</div><div class="widget-desc">Name, Title, Company, ALS Score, Status + Actions</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box"><div class="widget-title">Contact Info</div></div>
+      <div class="layout-box"><div class="widget-title">Company Info</div></div>
+      <div class="layout-box"><div class="widget-title">Campaign Info</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box full"><div class="widget-title">ALS Score Breakdown</div><div class="widget-desc">5-component scoring with progress bars</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box full"><div class="widget-title">Activity Timeline</div><div class="widget-desc">Chronological history of all interactions</div></div>
+    </div>
+  </div>
+
+  <h3>ALS Score Components</h3>
+  <p>The Agency Lead Score is calculated from 5 weighted components:</p>
+  <table>
+    <tr>
+      <th>Component</th>
+      <th>Weight</th>
+      <th>What It Measures</th>
+    </tr>
+    <tr>
+      <td><strong>Data Quality</strong></td>
+      <td>20%</td>
+      <td>Completeness and accuracy of contact data (email verified, phone valid, etc.)</td>
+    </tr>
+    <tr>
+      <td><strong>Authority</strong></td>
+      <td>25%</td>
+      <td>Decision-making power based on job title and seniority</td>
+    </tr>
+    <tr>
+      <td><strong>Company Fit</strong></td>
+      <td>25%</td>
+      <td>Match with your Ideal Customer Profile (industry, size, revenue)</td>
+    </tr>
+    <tr>
+      <td><strong>Timing</strong></td>
+      <td>20%</td>
+      <td>Buying signals like recent funding, growth hiring, tech stack changes</td>
+    </tr>
+    <tr>
+      <td><strong>Risk</strong></td>
+      <td>10%</td>
+      <td>Deliverability risk (bounce probability, spam likelihood)</td>
+    </tr>
+  </table>
+
+  <h3>Activity Timeline</h3>
+  <p>Shows all interactions with this lead in chronological order:</p>
+  <table>
+    <tr>
+      <th>Channel</th>
+      <th>Dot Color</th>
+      <th>Example Events</th>
+    </tr>
+    <tr>
+      <td><strong>Email</strong></td>
+      <td><span style="background:#3b82f6;color:white;padding:2px 8px;border-radius:50%;">Blue</span></td>
+      <td>Email sent, Email opened, Email clicked, Reply received</td>
+    </tr>
+    <tr>
+      <td><strong>SMS</strong></td>
+      <td><span style="background:#22c55e;color:white;padding:2px 8px;border-radius:50%;">Green</span></td>
+      <td>SMS sent, SMS delivered, Reply received</td>
+    </tr>
+    <tr>
+      <td><strong>LinkedIn</strong></td>
+      <td><span style="background:#0ea5e9;color:white;padding:2px 8px;border-radius:50%;">Sky</span></td>
+      <td>Connection sent, Message sent, Connection accepted</td>
+    </tr>
+    <tr>
+      <td><strong>System</strong></td>
+      <td><span style="background:#6b7280;color:white;padding:2px 8px;border-radius:50%;">Gray</span></td>
+      <td>Lead created, Lead enriched, Score updated</td>
+    </tr>
+  </table>
+
+  <h3>Lead Actions</h3>
+  <ul>
+    <li><strong>Send Email</strong> - Compose and send a manual email</li>
+    <li><strong>Re-score</strong> - Trigger a fresh ALS calculation</li>
+  </ul>
+</div>
+
+<!-- Page 7: Reports -->
+<div class="section page-break" id="reports">
+  <div class="section-header">
+    <h2>7. Reports & Analytics</h2>
+    <p class="path">/dashboard/reports</p>
+  </div>
+
+  <p>Comprehensive analytics and performance metrics for all your campaigns.</p>
+
+  <h3>Page Layout</h3>
+  <div class="layout-diagram">
+    <div class="layout-row">
+      <div class="layout-box quarter"><div class="widget-title">Total Sent</div></div>
+      <div class="layout-box quarter"><div class="widget-title">Total Opens</div></div>
+      <div class="layout-box quarter"><div class="widget-title">Total Replies</div></div>
+      <div class="layout-box quarter"><div class="widget-title">Meetings Booked</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box full"><div class="widget-title">Channel Performance Table</div><div class="widget-desc">Sent | Delivered | Opened | Replied | Reply Rate</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box full"><div class="widget-title">Campaign Performance Table</div><div class="widget-desc">Campaign | Status | Leads | Contacted | Replied | Converted | Conv. Rate</div></div>
+    </div>
+  </div>
+
+  <h3>Overview Metrics</h3>
+  <table>
+    <tr>
+      <th>Metric</th>
+      <th>Description</th>
+      <th>Good Benchmark</th>
+    </tr>
+    <tr>
+      <td><strong>Total Sent</strong></td>
+      <td>All outreach messages sent across all channels</td>
+      <td>Varies by volume</td>
+    </tr>
+    <tr>
+      <td><strong>Total Opens</strong></td>
+      <td>Emails and LinkedIn messages opened</td>
+      <td>&gt;30% open rate</td>
+    </tr>
+    <tr>
+      <td><strong>Total Replies</strong></td>
+      <td>Inbound responses received</td>
+      <td>&gt;5% reply rate</td>
+    </tr>
+    <tr>
+      <td><strong>Meetings Booked</strong></td>
+      <td>Calls/demos scheduled from outreach</td>
+      <td>Ultimate success metric</td>
+    </tr>
+  </table>
+
+  <h3>Channel Performance</h3>
+  <p>Compare effectiveness across different outreach channels:</p>
+  <table>
+    <tr>
+      <th>Channel</th>
+      <th>Typical Reply Rate</th>
+      <th>Best Use Case</th>
+    </tr>
+    <tr>
+      <td><strong>Email</strong></td>
+      <td>2-4%</td>
+      <td>Primary channel, scalable outreach</td>
+    </tr>
+    <tr>
+      <td><strong>SMS</strong></td>
+      <td>3-6%</td>
+      <td>High engagement, use selectively</td>
+    </tr>
+    <tr>
+      <td><strong>LinkedIn</strong></td>
+      <td>1-3%</td>
+      <td>Professional B2B, relationship building</td>
+    </tr>
+  </table>
+
+  <h3>Date Range</h3>
+  <p>Use the date picker to adjust the reporting period. Default is last 30 days.</p>
+
+  <h3>Export</h3>
+  <p>Click "Export Report" to download a comprehensive PDF or CSV of all metrics.</p>
+</div>
+
+<!-- Page 8: Settings -->
+<div class="section page-break" id="settings">
+  <div class="section-header">
+    <h2>8. Account Settings</h2>
+    <p class="path">/dashboard/settings</p>
+  </div>
+
+  <p>Manage your organization, profile, default settings, and integrations.</p>
+
+  <h3>Settings Sections</h3>
+
+  <h4>Organization</h4>
+  <table>
+    <tr>
+      <th>Field</th>
+      <th>Description</th>
+    </tr>
+    <tr>
+      <td><strong>Organization Name</strong></td>
+      <td>Your company or team name</td>
+    </tr>
+    <tr>
+      <td><strong>Subscription Tier</strong></td>
+      <td>Current plan (Ignition / Velocity / Dominance)</td>
+    </tr>
+  </table>
+
+  <h4>Profile</h4>
+  <table>
+    <tr>
+      <th>Field</th>
+      <th>Description</th>
+    </tr>
+    <tr>
+      <td><strong>Full Name</strong></td>
+      <td>Your display name</td>
+    </tr>
+    <tr>
+      <td><strong>Email</strong></td>
+      <td>Login email address</td>
+    </tr>
+  </table>
+
+  <h4>Default Permission Mode</h4>
+  <p>Set the default automation level for new campaigns:</p>
+  <table>
+    <tr>
+      <th>Mode</th>
+      <th>Description</th>
+    </tr>
+    <tr>
+      <td><strong>Autopilot</strong></td>
+      <td>Full automation, AI handles everything</td>
+    </tr>
+    <tr>
+      <td><strong>Co-Pilot</strong></td>
+      <td>AI suggests, you approve key decisions</td>
+    </tr>
+    <tr>
+      <td><strong>Manual</strong></td>
+      <td>Full control over every action</td>
+    </tr>
+  </table>
+
+  <h4>Integrations</h4>
+  <p>View connection status for external services:</p>
+  <table>
+    <tr>
+      <th>Integration</th>
+      <th>Purpose</th>
+    </tr>
+    <tr>
+      <td><strong>Apollo</strong></td>
+      <td>Lead enrichment data</td>
+    </tr>
+    <tr>
+      <td><strong>LinkedIn (HeyReach)</strong></td>
+      <td>LinkedIn automation</td>
+    </tr>
+    <tr>
+      <td><strong>Resend</strong></td>
+      <td>Email sending</td>
+    </tr>
+    <tr>
+      <td><strong>Twilio</strong></td>
+      <td>SMS sending</td>
+    </tr>
+  </table>
+
+  <div class="info-box danger">
+    <div class="info-box-title">Danger Zone</div>
+    <p><strong>Delete Organization</strong> - Permanently deletes your organization and all associated data. This action cannot be undone.</p>
+  </div>
+</div>
+
+<!-- ALS Scoring Deep Dive -->
+<div class="section page-break" id="als-scoring">
+  <div class="section-header">
+    <h2>Understanding ALS Scoring</h2>
+    <p class="path">Reference</p>
+  </div>
+
+  <p>The Agency Lead Score (ALS) is a proprietary algorithm that predicts how likely a lead is to convert. Understanding the components helps you improve lead quality.</p>
+
+  <h3>Score Calculation</h3>
+  <p>Total ALS = (Data Quality x 0.20) + (Authority x 0.25) + (Company Fit x 0.25) + (Timing x 0.20) + (Risk x 0.10)</p>
+
+  <h3>Component Details</h3>
+
+  <h4>Data Quality (20%)</h4>
+  <table>
+    <tr>
+      <th>Factor</th>
+      <th>Points</th>
+    </tr>
+    <tr>
+      <td>Verified email address</td>
+      <td>+25</td>
+    </tr>
+    <tr>
+      <td>Valid phone number</td>
+      <td>+20</td>
+    </tr>
+    <tr>
+      <td>LinkedIn profile found</td>
+      <td>+20</td>
+    </tr>
+    <tr>
+      <td>Complete company data</td>
+      <td>+20</td>
+    </tr>
+    <tr>
+      <td>Recent activity detected</td>
+      <td>+15</td>
+    </tr>
+  </table>
+
+  <h4>Authority (25%)</h4>
+  <table>
+    <tr>
+      <th>Title Level</th>
+      <th>Score</th>
+    </tr>
+    <tr>
+      <td>C-Level (CEO, CTO, CFO)</td>
+      <td>95-100</td>
+    </tr>
+    <tr>
+      <td>VP / Director</td>
+      <td>80-94</td>
+    </tr>
+    <tr>
+      <td>Senior Manager</td>
+      <td>60-79</td>
+    </tr>
+    <tr>
+      <td>Manager</td>
+      <td>40-59</td>
+    </tr>
+    <tr>
+      <td>Individual Contributor</td>
+      <td>20-39</td>
+    </tr>
+  </table>
+
+  <h4>Company Fit (25%)</h4>
+  <table>
+    <tr>
+      <th>Criteria</th>
+      <th>Match</th>
+      <th>Score Impact</th>
+    </tr>
+    <tr>
+      <td>Industry</td>
+      <td>Exact match to ICP</td>
+      <td>+30</td>
+    </tr>
+    <tr>
+      <td>Company Size</td>
+      <td>Within target range</td>
+      <td>+25</td>
+    </tr>
+    <tr>
+      <td>Revenue</td>
+      <td>Within target range</td>
+      <td>+25</td>
+    </tr>
+    <tr>
+      <td>Location</td>
+      <td>Target geography</td>
+      <td>+20</td>
+    </tr>
+  </table>
+
+  <h4>Timing (20%)</h4>
+  <table>
+    <tr>
+      <th>Signal</th>
+      <th>Score Boost</th>
+    </tr>
+    <tr>
+      <td>Recent funding round</td>
+      <td>+30</td>
+    </tr>
+    <tr>
+      <td>Job postings in relevant areas</td>
+      <td>+25</td>
+    </tr>
+    <tr>
+      <td>Tech stack changes</td>
+      <td>+20</td>
+    </tr>
+    <tr>
+      <td>Company expansion signals</td>
+      <td>+15</td>
+    </tr>
+  </table>
+
+  <h4>Risk (10%)</h4>
+  <table>
+    <tr>
+      <th>Factor</th>
+      <th>Score Impact</th>
+    </tr>
+    <tr>
+      <td>Low bounce probability</td>
+      <td>+40</td>
+    </tr>
+    <tr>
+      <td>No spam history</td>
+      <td>+30</td>
+    </tr>
+    <tr>
+      <td>Not on suppression lists</td>
+      <td>+30</td>
+    </tr>
+  </table>
+
+  <div class="info-box success">
+    <div class="info-box-title">Improving Your ALS Distribution</div>
+    <p>To increase the percentage of Hot and Warm leads: 1) Refine your ICP criteria, 2) Use higher quality data sources, 3) Target decision-makers specifically, 4) Look for timing signals like funding or hiring.</p>
+  </div>
+</div>
+
+<!-- Permission Modes Guide -->
+<div class="section page-break" id="permission-modes">
+  <div class="section-header">
+    <h2>Permission Modes Guide</h2>
+    <p class="path">Reference</p>
+  </div>
+
+  <p>Choose the right automation level for your campaigns based on your experience, risk tolerance, and desired control level.</p>
+
+  <h3>Autopilot Mode</h3>
+  <table>
+    <tr>
+      <th>Feature</th>
+      <th>Behavior</th>
+    </tr>
+    <tr>
+      <td>Lead Enrichment</td>
+      <td>Automatic - no approval needed</td>
+    </tr>
+    <tr>
+      <td>Content Generation</td>
+      <td>AI writes and sends automatically</td>
+    </tr>
+    <tr>
+      <td>Channel Selection</td>
+      <td>AI decides based on lead score and availability</td>
+    </tr>
+    <tr>
+      <td>Send Approval</td>
+      <td>Not required - messages send immediately</td>
+    </tr>
+    <tr>
+      <td>Reply Handling</td>
+      <td>AI classifies and may auto-respond to simple queries</td>
+    </tr>
+  </table>
+
+  <div class="info-box info">
+    <div class="info-box-title">Best For</div>
+    <p>Experienced users with established templates and messaging that has proven effective. Maximum throughput with minimal oversight.</p>
+  </div>
+
+  <h3>Co-Pilot Mode (Recommended)</h3>
+  <table>
+    <tr>
+      <th>Feature</th>
+      <th>Behavior</th>
+    </tr>
+    <tr>
+      <td>Lead Enrichment</td>
+      <td>Automatic - no approval needed</td>
+    </tr>
+    <tr>
+      <td>Content Generation</td>
+      <td>AI drafts, you review and approve</td>
+    </tr>
+    <tr>
+      <td>Channel Selection</td>
+      <td>AI suggests, you can override</td>
+    </tr>
+    <tr>
+      <td>Send Approval</td>
+      <td>Required for initial sends, optional for follow-ups</td>
+    </tr>
+    <tr>
+      <td>Reply Handling</td>
+      <td>AI classifies and drafts response for your approval</td>
+    </tr>
+  </table>
+
+  <div class="info-box success">
+    <div class="info-box-title">Best For</div>
+    <p>Most users. Balances AI efficiency with human oversight. You maintain control while benefiting from AI suggestions.</p>
+  </div>
+
+  <h3>Manual Mode</h3>
+  <table>
+    <tr>
+      <th>Feature</th>
+      <th>Behavior</th>
+    </tr>
+    <tr>
+      <td>Lead Enrichment</td>
+      <td>Requires approval before processing</td>
+    </tr>
+    <tr>
+      <td>Content Generation</td>
+      <td>You write all content (AI can assist if asked)</td>
+    </tr>
+    <tr>
+      <td>Channel Selection</td>
+      <td>You choose for each lead</td>
+    </tr>
+    <tr>
+      <td>Send Approval</td>
+      <td>Required for every single message</td>
+    </tr>
+    <tr>
+      <td>Reply Handling</td>
+      <td>You handle all responses manually</td>
+    </tr>
+  </table>
+
+  <div class="info-box warning">
+    <div class="info-box-title">Best For</div>
+    <p>New users learning the platform, high-stakes campaigns requiring careful oversight, or situations where every message must be personally crafted.</p>
+  </div>
+
+  <h3>Changing Modes</h3>
+  <p>You can change a campaign's permission mode at any time in Campaign Settings. The new mode applies to all future actions; past actions are not affected.</p>
+</div>
+
+<!-- Glossary -->
+<div class="section page-break" id="glossary">
+  <div class="section-header">
+    <h2>Glossary of Terms</h2>
+    <p class="path">Reference</p>
+  </div>
+
+  <h3>Campaign Terms</h3>
+  <table>
+    <tr>
+      <th>Term</th>
+      <th>Definition</th>
+    </tr>
+    <tr>
+      <td><strong>Campaign</strong></td>
+      <td>An organized outreach effort targeting a specific audience</td>
+    </tr>
+    <tr>
+      <td><strong>Sequence</strong></td>
+      <td>Multi-step outreach plan with defined touchpoints</td>
+    </tr>
+    <tr>
+      <td><strong>Touchpoint</strong></td>
+      <td>Single point of contact (email, SMS, LinkedIn message, etc.)</td>
+    </tr>
+    <tr>
+      <td><strong>Daily Limit</strong></td>
+      <td>Maximum leads to contact per day</td>
+    </tr>
+    <tr>
+      <td><strong>Channel Allocation</strong></td>
+      <td>Percentage distribution across outreach channels</td>
+    </tr>
+  </table>
+
+  <h3>Lead Terms</h3>
+  <table>
+    <tr>
+      <th>Term</th>
+      <th>Definition</th>
+    </tr>
+    <tr>
+      <td><strong>Lead</strong></td>
+      <td>A potential customer contact in your database</td>
+    </tr>
+    <tr>
+      <td><strong>ALS (Agency Lead Score)</strong></td>
+      <td>Proprietary 0-100 score predicting conversion likelihood</td>
+    </tr>
+    <tr>
+      <td><strong>ICP (Ideal Customer Profile)</strong></td>
+      <td>Description of your perfect target customer</td>
+    </tr>
+    <tr>
+      <td><strong>Enrichment</strong></td>
+      <td>Process of enhancing lead data with additional information</td>
+    </tr>
+    <tr>
+      <td><strong>Conversion</strong></td>
+      <td>When a lead becomes an opportunity or customer</td>
+    </tr>
+  </table>
+
+  <h3>Tier Terms</h3>
+  <table>
+    <tr>
+      <th>Term</th>
+      <th>Definition</th>
+    </tr>
+    <tr>
+      <td><strong>Hot Lead</strong></td>
+      <td>ALS 90-100, ideal fit with high intent</td>
+    </tr>
+    <tr>
+      <td><strong>Warm Lead</strong></td>
+      <td>ALS 70-89, strong match with good potential</td>
+    </tr>
+    <tr>
+      <td><strong>Cool Lead</strong></td>
+      <td>ALS 50-69, moderate match</td>
+    </tr>
+    <tr>
+      <td><strong>Cold Lead</strong></td>
+      <td>ALS 30-49, weak match</td>
+    </tr>
+    <tr>
+      <td><strong>Dead Lead</strong></td>
+      <td>ALS 0-29, poor fit or invalid data</td>
+    </tr>
+  </table>
+
+  <h3>Channel Terms</h3>
+  <table>
+    <tr>
+      <th>Term</th>
+      <th>Definition</th>
+    </tr>
+    <tr>
+      <td><strong>Email</strong></td>
+      <td>Outreach via email (powered by Resend)</td>
+    </tr>
+    <tr>
+      <td><strong>SMS</strong></td>
+      <td>Text message outreach (powered by Twilio)</td>
+    </tr>
+    <tr>
+      <td><strong>LinkedIn</strong></td>
+      <td>Social outreach via LinkedIn (powered by HeyReach)</td>
+    </tr>
+    <tr>
+      <td><strong>Voice</strong></td>
+      <td>AI phone calls (powered by Synthflow)</td>
+    </tr>
+    <tr>
+      <td><strong>Direct Mail</strong></td>
+      <td>Physical mail pieces (powered by Lob)</td>
+    </tr>
+  </table>
+
+  <h3>Mode Terms</h3>
+  <table>
+    <tr>
+      <th>Term</th>
+      <th>Definition</th>
+    </tr>
+    <tr>
+      <td><strong>Autopilot</strong></td>
+      <td>Fully automated, no approval needed</td>
+    </tr>
+    <tr>
+      <td><strong>Co-Pilot</strong></td>
+      <td>AI suggests, human approves</td>
+    </tr>
+    <tr>
+      <td><strong>Manual</strong></td>
+      <td>Human controls everything</td>
+    </tr>
+  </table>
+
+  <h3>Metric Terms</h3>
+  <table>
+    <tr>
+      <th>Term</th>
+      <th>Definition</th>
+    </tr>
+    <tr>
+      <td><strong>Reply Rate</strong></td>
+      <td>(Replies / Contacted) x 100</td>
+    </tr>
+    <tr>
+      <td><strong>Conversion Rate</strong></td>
+      <td>(Converted / Contacted) x 100</td>
+    </tr>
+    <tr>
+      <td><strong>Open Rate</strong></td>
+      <td>(Opens / Delivered) x 100</td>
+    </tr>
+    <tr>
+      <td><strong>Bounce Rate</strong></td>
+      <td>(Bounces / Sent) x 100</td>
+    </tr>
+  </table>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <p>Agency OS User Dashboard Manual v3.0 | Generated December 2025</p>
+  <p>For support, contact your organization administrator</p>
+</div>
+
+</body>
+</html>

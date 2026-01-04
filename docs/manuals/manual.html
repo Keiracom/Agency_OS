@@ -1,0 +1,1884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agency OS Admin Dashboard Manual v3.0</title>
+  <style>
+    :root {
+      --primary: #1e40af;
+      --primary-light: #3b82f6;
+      --secondary: #f97316;
+      --success: #22c55e;
+      --warning: #eab308;
+      --danger: #ef4444;
+      --text: #1f2937;
+      --text-muted: #6b7280;
+      --bg-light: #f9fafb;
+      --border: #e5e7eb;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 11pt;
+    }
+
+    /* Page breaks */
+    .page-break {
+      page-break-before: always;
+    }
+
+    /* Header */
+    .header {
+      background: var(--primary);
+      color: white;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 32pt;
+      margin-bottom: 10px;
+    }
+
+    .header .subtitle {
+      font-size: 14pt;
+      opacity: 0.9;
+    }
+
+    .header .version {
+      font-size: 12pt;
+      margin-top: 20px;
+      background: rgba(255,255,255,0.2);
+      display: inline-block;
+      padding: 8px 20px;
+      border-radius: 20px;
+    }
+
+    /* Table of Contents */
+    .toc {
+      padding: 40px;
+      background: white;
+    }
+
+    .toc h2 {
+      color: var(--primary);
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+
+    .toc ul {
+      list-style: none;
+    }
+
+    .toc li {
+      padding: 8px 0;
+      border-bottom: 1px dotted var(--border);
+    }
+
+    .toc a {
+      color: var(--text);
+      text-decoration: none;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .toc .section-title {
+      font-weight: 600;
+      color: var(--primary);
+      margin-top: 20px;
+      margin-bottom: 10px;
+      font-size: 12pt;
+    }
+
+    /* Page sections */
+    .section {
+      padding: 40px;
+    }
+
+    .section-header {
+      background: var(--primary);
+      color: white;
+      padding: 20px 40px;
+      margin: -40px -40px 40px -40px;
+    }
+
+    .section-header h2 {
+      font-size: 24pt;
+      margin: 0;
+    }
+
+    .section-header .path {
+      font-family: 'Courier New', monospace;
+      opacity: 0.9;
+      margin-top: 5px;
+    }
+
+    /* Layout diagram */
+    .layout-diagram {
+      background: var(--bg-light);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .layout-row {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    .layout-box {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 15px;
+      flex: 1;
+      text-align: center;
+    }
+
+    .layout-box.full {
+      flex: 1 0 100%;
+    }
+
+    .layout-box.half {
+      flex: 1 0 calc(50% - 8px);
+    }
+
+    .layout-box.quarter {
+      flex: 1 0 calc(25% - 12px);
+    }
+
+    .layout-box .widget-title {
+      font-weight: 600;
+      font-size: 10pt;
+      color: var(--primary);
+      margin-bottom: 5px;
+    }
+
+    .layout-box .widget-desc {
+      font-size: 9pt;
+      color: var(--text-muted);
+    }
+
+    /* Metric tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: var(--bg-light);
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    tr:hover {
+      background: var(--bg-light);
+    }
+
+    /* Info boxes */
+    .info-box {
+      padding: 15px 20px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+
+    .info-box.warning {
+      background: #fef3c7;
+      border-left: 4px solid var(--warning);
+    }
+
+    .info-box.danger {
+      background: #fee2e2;
+      border-left: 4px solid var(--danger);
+    }
+
+    .info-box.success {
+      background: #dcfce7;
+      border-left: 4px solid var(--success);
+    }
+
+    .info-box.info {
+      background: #dbeafe;
+      border-left: 4px solid var(--primary-light);
+    }
+
+    .info-box-title {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    /* Metric card style */
+    .metric-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin: 10px 0;
+    }
+
+    .metric-card h4 {
+      color: var(--primary);
+      margin-bottom: 10px;
+    }
+
+    .metric-value {
+      font-size: 24pt;
+      font-weight: bold;
+      color: var(--text);
+    }
+
+    /* Thresholds */
+    .threshold {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 9pt;
+      font-weight: 600;
+    }
+
+    .threshold.good {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .threshold.warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .threshold.critical {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-muted);
+      font-size: 10pt;
+      border-top: 1px solid var(--border);
+    }
+
+    h3 {
+      color: var(--primary);
+      margin: 30px 0 15px 0;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h4 {
+      color: var(--text);
+      margin: 20px 0 10px 0;
+    }
+
+    p {
+      margin: 10px 0;
+    }
+
+    ul, ol {
+      margin: 10px 0 10px 25px;
+    }
+
+    li {
+      margin: 5px 0;
+    }
+
+    code {
+      background: var(--bg-light);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      font-size: 10pt;
+    }
+
+    @media print {
+      .page-break {
+        page-break-before: always;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Cover Page -->
+<div class="header">
+  <h1>Agency OS</h1>
+  <p class="subtitle">Admin Dashboard Manual</p>
+  <p class="version">Version 3.0 | December 2025</p>
+</div>
+
+<!-- Table of Contents -->
+<div class="toc">
+  <h2>Table of Contents</h2>
+
+  <p class="section-title">Command Center</p>
+  <ul>
+    <li><a href="#command-center"><span>1. Command Center</span><span>/admin</span></a></li>
+  </ul>
+
+  <p class="section-title">Revenue & Costs</p>
+  <ul>
+    <li><a href="#revenue"><span>2. Revenue Dashboard</span><span>/admin/revenue</span></a></li>
+    <li><a href="#costs"><span>3. Costs Overview</span><span>/admin/costs</span></a></li>
+    <li><a href="#ai-costs"><span>4. AI Costs</span><span>/admin/costs/ai</span></a></li>
+    <li><a href="#channel-costs"><span>5. Channel Costs</span><span>/admin/costs/channels</span></a></li>
+  </ul>
+
+  <p class="section-title">Clients & Operations</p>
+  <ul>
+    <li><a href="#clients"><span>6. Clients List</span><span>/admin/clients</span></a></li>
+    <li><a href="#client-detail"><span>7. Client Detail</span><span>/admin/clients/[id]</span></a></li>
+    <li><a href="#campaigns"><span>8. Campaigns</span><span>/admin/campaigns</span></a></li>
+    <li><a href="#leads"><span>9. Leads</span><span>/admin/leads</span></a></li>
+    <li><a href="#activity"><span>10. Activity Feed</span><span>/admin/activity</span></a></li>
+    <li><a href="#replies"><span>11. Replies</span><span>/admin/replies</span></a></li>
+  </ul>
+
+  <p class="section-title">Compliance</p>
+  <ul>
+    <li><a href="#compliance"><span>12. Compliance Overview</span><span>/admin/compliance</span></a></li>
+    <li><a href="#bounces"><span>13. Bounces</span><span>/admin/compliance/bounces</span></a></li>
+    <li><a href="#suppression"><span>14. Suppression</span><span>/admin/compliance/suppression</span></a></li>
+  </ul>
+
+  <p class="section-title">System</p>
+  <ul>
+    <li><a href="#system"><span>15. System Overview</span><span>/admin/system</span></a></li>
+    <li><a href="#errors"><span>16. Errors</span><span>/admin/system/errors</span></a></li>
+    <li><a href="#queues"><span>17. Queues</span><span>/admin/system/queues</span></a></li>
+    <li><a href="#rate-limits"><span>18. Rate Limits</span><span>/admin/system/rate-limits</span></a></li>
+  </ul>
+
+  <p class="section-title">Settings</p>
+  <ul>
+    <li><a href="#settings"><span>19. Settings</span><span>/admin/settings</span></a></li>
+    <li><a href="#users"><span>20. User Management</span><span>/admin/settings/users</span></a></li>
+  </ul>
+
+  <p class="section-title">Reference</p>
+  <ul>
+    <li><a href="#glossary"><span>Glossary of Terms</span><span></span></a></li>
+  </ul>
+</div>
+
+<!-- Page 1: Command Center -->
+<div class="section page-break" id="command-center">
+  <div class="section-header">
+    <h2>1. Command Center</h2>
+    <p class="path">/admin</p>
+  </div>
+
+  <p>The Command Center is your primary dashboard for monitoring the entire Agency OS platform at a glance. It provides real-time visibility into business metrics, system health, and alerts.</p>
+
+  <h3>Page Layout</h3>
+  <div class="layout-diagram">
+    <div class="layout-row">
+      <div class="layout-box quarter"><div class="widget-title">MRR</div><div class="widget-desc">Monthly Revenue</div></div>
+      <div class="layout-box quarter"><div class="widget-title">Active Clients</div><div class="widget-desc">Client Count</div></div>
+      <div class="layout-box quarter"><div class="widget-title">Leads Today</div><div class="widget-desc">Daily Leads</div></div>
+      <div class="layout-box quarter"><div class="widget-title">AI Spend Today</div><div class="widget-desc">Budget Usage</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box full"><div class="widget-title">System Status</div><div class="widget-desc">API | Database | Redis | Prefect | Webhooks</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box half"><div class="widget-title">Alerts</div><div class="widget-desc">Critical & Warning Notifications</div></div>
+      <div class="layout-box half"><div class="widget-title">Live Activity</div><div class="widget-desc">Real-time Action Feed</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box"><div class="widget-title">Campaigns Running</div></div>
+      <div class="layout-box"><div class="widget-title">Emails Sent Today</div></div>
+      <div class="layout-box"><div class="widget-title">Pending Approvals</div></div>
+    </div>
+  </div>
+
+  <h3>Widget Details</h3>
+
+  <h4>KPI Cards (Top Row)</h4>
+  <table>
+    <tr>
+      <th>Widget</th>
+      <th>Metric</th>
+      <th>Description</th>
+      <th>Action Threshold</th>
+    </tr>
+    <tr>
+      <td><strong>MRR</strong></td>
+      <td>$47,500 (+12% MoM)</td>
+      <td>Monthly Recurring Revenue from all active subscriptions</td>
+      <td><span class="threshold warning">Monitor if &lt;5% growth</span></td>
+    </tr>
+    <tr>
+      <td><strong>Active Clients</strong></td>
+      <td>19 (+2 new)</td>
+      <td>Count of clients with active subscriptions</td>
+      <td><span class="threshold good">Target: Steady growth</span></td>
+    </tr>
+    <tr>
+      <td><strong>Leads Today</strong></td>
+      <td>1,247</td>
+      <td>Total leads processed across all clients today</td>
+      <td><span class="threshold good">Monitor for unusual drops</span></td>
+    </tr>
+    <tr>
+      <td><strong>AI Spend Today</strong></td>
+      <td>$89 / $500</td>
+      <td>Anthropic API costs vs daily limit</td>
+      <td><span class="threshold critical">Circuit breaker at 100%</span></td>
+    </tr>
+  </table>
+
+  <h4>System Status Indicator</h4>
+  <p>Displays health of all core services with latency metrics:</p>
+  <table>
+    <tr>
+      <th>Service</th>
+      <th>What It Does</th>
+      <th>Healthy Latency</th>
+      <th>When to Worry</th>
+    </tr>
+    <tr>
+      <td><strong>API</strong></td>
+      <td>FastAPI backend server</td>
+      <td>&lt;100ms</td>
+      <td>&gt;500ms or red status</td>
+    </tr>
+    <tr>
+      <td><strong>Database</strong></td>
+      <td>Supabase PostgreSQL</td>
+      <td>&lt;50ms</td>
+      <td>&gt;200ms indicates connection issues</td>
+    </tr>
+    <tr>
+      <td><strong>Redis</strong></td>
+      <td>Upstash cache layer</td>
+      <td>&lt;10ms</td>
+      <td>&gt;50ms degrades enrichment</td>
+    </tr>
+    <tr>
+      <td><strong>Prefect</strong></td>
+      <td>Workflow orchestration</td>
+      <td>&lt;500ms</td>
+      <td>Check if flows are stuck</td>
+    </tr>
+    <tr>
+      <td><strong>Webhooks</strong></td>
+      <td>Incoming event receivers</td>
+      <td>&lt;100ms</td>
+      <td>Replies may be missed if unhealthy</td>
+    </tr>
+  </table>
+
+  <h4>Alerts Banner</h4>
+  <div class="info-box danger">
+    <div class="info-box-title">Critical Alerts</div>
+    <p>Require immediate action. Examples: Failed enrichments, payment failures, system errors.</p>
+  </div>
+  <div class="info-box warning">
+    <div class="info-box-title">Warning Alerts</div>
+    <p>Monitor closely. Examples: Rate limits at 80%, client inactivity, approaching budget limits.</p>
+  </div>
+
+  <h4>Live Activity Feed</h4>
+  <p>Real-time stream of actions across all clients. Shows:</p>
+  <ul>
+    <li><strong>Email sent</strong> - Outbound email dispatched</li>
+    <li><strong>Lead enriched</strong> - Contact data enhanced with ALS score</li>
+    <li><strong>Reply received</strong> - Inbound response detected</li>
+    <li><strong>LinkedIn sent</strong> - Connection request or message sent</li>
+    <li><strong>SMS sent</strong> - Text message dispatched</li>
+    <li><strong>Voice call</strong> - AI call completed</li>
+    <li><strong>Mail sent</strong> - Physical mail queued</li>
+  </ul>
+</div>
+
+<!-- Page 2: Revenue Dashboard -->
+<div class="section page-break" id="revenue">
+  <div class="section-header">
+    <h2>2. Revenue Dashboard</h2>
+    <p class="path">/admin/revenue</p>
+  </div>
+
+  <p>Comprehensive financial overview showing all revenue metrics, tier breakdowns, and billing status.</p>
+
+  <h3>Page Layout</h3>
+  <div class="layout-diagram">
+    <div class="layout-row">
+      <div class="layout-box"><div class="widget-title">MRR</div></div>
+      <div class="layout-box"><div class="widget-title">ARR</div></div>
+      <div class="layout-box"><div class="widget-title">New MRR</div></div>
+      <div class="layout-box"><div class="widget-title">Churned MRR</div></div>
+      <div class="layout-box"><div class="widget-title">Net Growth</div></div>
+      <div class="layout-box"><div class="widget-title">Churn Rate</div></div>
+      <div class="layout-box"><div class="widget-title">ARPU</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box full"><div class="widget-title">Revenue by Tier</div><div class="widget-desc">Dominance | Velocity | Ignition</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box half"><div class="widget-title">Recent Transactions</div></div>
+      <div class="layout-box half"><div class="widget-title">Upcoming Renewals</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box full"><div class="widget-title">At-Risk Clients</div><div class="widget-desc">Past due payments</div></div>
+    </div>
+  </div>
+
+  <h3>Revenue Metrics Explained</h3>
+  <table>
+    <tr>
+      <th>Metric</th>
+      <th>Formula / Description</th>
+      <th>Example</th>
+      <th>Target</th>
+    </tr>
+    <tr>
+      <td><strong>MRR</strong></td>
+      <td>Sum of all monthly subscription fees</td>
+      <td>$47,500</td>
+      <td>Steady month-over-month growth</td>
+    </tr>
+    <tr>
+      <td><strong>ARR</strong></td>
+      <td>MRR x 12</td>
+      <td>$570,000</td>
+      <td>Annualized revenue projection</td>
+    </tr>
+    <tr>
+      <td><strong>New MRR</strong></td>
+      <td>Revenue from new clients this month</td>
+      <td>+$2,497</td>
+      <td>Should exceed Churned MRR</td>
+    </tr>
+    <tr>
+      <td><strong>Churned MRR</strong></td>
+      <td>Lost revenue from cancellations</td>
+      <td>-$499</td>
+      <td>Keep below 3% of MRR</td>
+    </tr>
+    <tr>
+      <td><strong>Net Growth</strong></td>
+      <td>New MRR - Churned MRR</td>
+      <td>+$1,998</td>
+      <td>Must be positive</td>
+    </tr>
+    <tr>
+      <td><strong>Churn Rate</strong></td>
+      <td>(Churned MRR / MRR) x 100</td>
+      <td>1.05%</td>
+      <td><span class="threshold good">&lt;2%</span> <span class="threshold warning">2-5%</span> <span class="threshold critical">&gt;5%</span></td>
+    </tr>
+    <tr>
+      <td><strong>ARPU</strong></td>
+      <td>MRR / Active Clients</td>
+      <td>$2,500</td>
+      <td>Monitor for upsell opportunities</td>
+    </tr>
+  </table>
+
+  <h3>Pricing Tiers</h3>
+  <table>
+    <tr>
+      <th>Tier</th>
+      <th>Monthly Price</th>
+      <th>Target Market</th>
+    </tr>
+    <tr>
+      <td><strong>Ignition</strong></td>
+      <td>$199/month</td>
+      <td>Startups, small agencies</td>
+    </tr>
+    <tr>
+      <td><strong>Velocity</strong></td>
+      <td>$499/month</td>
+      <td>Growing businesses</td>
+    </tr>
+    <tr>
+      <td><strong>Dominance</strong></td>
+      <td>$999/month</td>
+      <td>Enterprise, high-volume clients</td>
+    </tr>
+  </table>
+
+  <div class="info-box danger">
+    <div class="info-box-title">At-Risk Clients Section</div>
+    <p>Shows clients with past-due payments. Take immediate action: contact client, check Stripe, consider service suspension if >7 days overdue.</p>
+  </div>
+</div>
+
+<!-- Page 3: Costs Overview -->
+<div class="section page-break" id="costs">
+  <div class="section-header">
+    <h2>3. Costs Overview</h2>
+    <p class="path">/admin/costs</p>
+  </div>
+
+  <p>Platform-wide cost tracking combining AI and channel costs for margin analysis.</p>
+
+  <h3>Page Layout</h3>
+  <div class="layout-diagram">
+    <div class="layout-row">
+      <div class="layout-box"><div class="widget-title">Total MTD</div></div>
+      <div class="layout-box"><div class="widget-title">Last Month</div></div>
+      <div class="layout-box"><div class="widget-title">Projected EOM</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box half"><div class="widget-title">AI Costs</div><div class="widget-desc">Anthropic API usage</div></div>
+      <div class="layout-box half"><div class="widget-title">Channel Costs</div><div class="widget-desc">Email, SMS, LinkedIn, Voice, Mail</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box full"><div class="widget-title">Cost Distribution Bar</div></div>
+    </div>
+  </div>
+
+  <h3>Cost Breakdown</h3>
+  <table>
+    <tr>
+      <th>Category</th>
+      <th>Components</th>
+      <th>Target %</th>
+    </tr>
+    <tr>
+      <td><strong>AI Costs</strong></td>
+      <td>Content Agent, Reply Agent, CMO Agent</td>
+      <td>~40-45% of total costs</td>
+    </tr>
+    <tr>
+      <td><strong>Channel Costs</strong></td>
+      <td>Email (Resend), SMS (Twilio), LinkedIn (HeyReach), Voice (Synthflow), Mail (Lob)</td>
+      <td>~55-60% of total costs</td>
+    </tr>
+  </table>
+
+  <div class="info-box info">
+    <div class="info-box-title">Gross Margin Target</div>
+    <p>Target: 75%+ gross margin. Calculate as: (MRR - Total Costs) / MRR x 100. If margin drops below 70%, investigate high-cost clients or inefficient operations.</p>
+  </div>
+</div>
+
+<!-- Page 4: AI Costs -->
+<div class="section page-break" id="ai-costs">
+  <div class="section-header">
+    <h2>4. AI Costs</h2>
+    <p class="path">/admin/costs/ai</p>
+  </div>
+
+  <p>Detailed Anthropic API spend tracking with daily limits and circuit breaker monitoring.</p>
+
+  <h3>Page Layout</h3>
+  <div class="layout-diagram">
+    <div class="layout-row">
+      <div class="layout-box half"><div class="widget-title">Today</div><div class="widget-desc">$89 / $500 (18%)</div></div>
+      <div class="layout-box half"><div class="widget-title">Month to Date</div><div class="widget-desc">$1,247.83</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box full"><div class="widget-title">Spend by Agent</div><div class="widget-desc">Content | Reply | CMO</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box full"><div class="widget-title">Spend by Client (Top 10)</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box full"><div class="widget-title">Daily Trend (Last 10 Days)</div></div>
+    </div>
+    <div class="layout-row">
+      <div class="layout-box full"><div class="widget-title">Model Usage</div><div class="widget-desc">Sonnet | Haiku | Opus</div></div>
+    </div>
+  </div>
+
+  <h3>AI Agents Explained</h3>
+  <table>
+    <tr>
+      <th>Agent</th>
+      <th>Purpose</th>
+      <th>Typical % of AI Spend</th>
+    </tr>
+    <tr>
+      <td><strong>Content Agent</strong></td>
+      <td>Generates personalized outreach emails, LinkedIn messages, SMS</td>
+      <td>~42%</td>
+    </tr>
+    <tr>
+      <td><strong>Reply Agent</strong></td>
+      <td>Analyzes incoming replies, classifies intent, drafts responses</td>
+      <td>~33%</td>
+    </tr>
+    <tr>
+      <td><strong>CMO Agent</strong></td>
+      <td>Campaign strategy, ICP analysis, messaging optimization</td>
+      <td>~25%</td>
+    </tr>
+  </table>
+
+  <h3>Model Usage</h3>
+  <table>
+    <tr>
+      <th>Model</th>
+      <th>Use Case</th>
+      <th>Cost Factor</th>
+    </tr>
+    <tr>
+      <td><strong>Claude Sonnet</strong></td>
+      <td>Primary model for most tasks</td>
+      <td>Medium</td>
+    </tr>
+    <tr>
+      <td><strong>Claude Haiku</strong></td>
+      <td>Fast, simple tasks (classification)</td>
+      <td>Low</td>
+    </tr>
+    <tr>
+      <td><strong>Claude Opus</strong></td>
+      <td>Complex reasoning tasks</td>
+      <td>High</td>
+    </tr>
+  </table>
+
+  <div class="info-box danger">
+    <div class="info-box-title">Circuit Breaker</div>
+    <p>When daily AI spend reaches 100% of limit ($500), the system automatically stops all AI-powered operations to prevent runaway costs. If this occurs, review high-consumption clients and consider raising the limit if justified.</p>
+  </div>
+</div>
+
+<!-- Page 5: Channel Costs -->
+<div class="section page-break" id="channel-costs">
+  <div class="section-header">
+    <h2>5. Channel Costs</h2>
+    <p class="path">/admin/costs/channels</p>
+  </div>
+
+  <p>Per-channel spend breakdown for all outreach platforms.</p>
+
+  <h3>Channel Cost Details</h3>
+  <table>
+    <tr>
+      <th>Channel</th>
+      <th>Provider</th>
+      <th>Cost Per Unit</th>
+      <th>Typical Monthly Volume</th>
+    </tr>
+    <tr>
+      <td><strong>Email</strong></td>
+      <td>Resend</td>
+      <td>$0.025 per email</td>
+      <td>18,470 emails</td>
+    </tr>
+    <tr>
+      <td><strong>SMS</strong></td>
+      <td>Twilio</td>
+      <td>$0.166 per message</td>
+      <td>2,340 messages</td>
+    </tr>
+    <tr>
+      <td><strong>LinkedIn</strong></td>
+      <td>HeyReach</td>
+      <td>$0.117 per action</td>
+      <td>4,560 actions</td>
+    </tr>
+    <tr>
+      <td><strong>Voice</strong></td>
+      <td>Synthflow</td>
+      <td>$1.00 per call</td>
+      <td>156 calls</td>
+    </tr>
+    <tr>
+      <td><strong>Direct Mail</strong></td>
+      <td>Lob</td>
+      <td>$1.42 per piece</td>
+      <td>45 pieces</td>
+    </tr>
+  </table>
+
+  <h3>Actions to Take</h3>
+  <ul>
+    <li><strong>High email costs:</strong> Review list quality, implement better targeting</li>
+    <li><strong>High SMS costs:</strong> Ensure SMS is used only for high-value leads</li>
+    <li><strong>High LinkedIn costs:</strong> Optimize connection acceptance rate</li>
+    <li><strong>High voice costs:</strong> Reserve for hottest leads only</li>
+  </ul>
+</div>
+
+<!-- Page 6: Clients List -->
+<div class="section page-break" id="clients">
+  <div class="section-header">
+    <h2>6. Clients List</h2>
+    <p class="path">/admin/clients</p>
+  </div>
+
+  <p>Master directory of all clients with filtering, health scores, and quick actions.</p>
+
+  <h3>Client Table Columns</h3>
+  <table>
+    <tr>
+      <th>Column</th>
+      <th>Description</th>
+      <th>Action Guidance</th>
+    </tr>
+    <tr>
+      <td><strong>Client Name</strong></td>
+      <td>Company name (clickable to detail view)</td>
+      <td>Click to view full details</td>
+    </tr>
+    <tr>
+      <td><strong>Tier</strong></td>
+      <td>Ignition / Velocity / Dominance</td>
+      <td>Consider upsell if high activity</td>
+    </tr>
+    <tr>
+      <td><strong>MRR</strong></td>
+      <td>Monthly subscription amount</td>
+      <td>Track for revenue reporting</td>
+    </tr>
+    <tr>
+      <td><strong>Status</strong></td>
+      <td>Active / Trialing / Past Due / Paused / Cancelled</td>
+      <td>Act on past_due immediately</td>
+    </tr>
+    <tr>
+      <td><strong>Campaigns</strong></td>
+      <td>Number of active campaigns</td>
+      <td>Low count may indicate disengagement</td>
+    </tr>
+    <tr>
+      <td><strong>Leads</strong></td>
+      <td>Total leads in system</td>
+      <td>High volume = good engagement</td>
+    </tr>
+    <tr>
+      <td><strong>Last Activity</strong></td>
+      <td>Time since last platform action</td>
+      <td><span class="threshold warning">&gt;24h</span> <span class="threshold critical">&gt;48h warrants outreach</span></td>
+    </tr>
+    <tr>
+      <td><strong>Health</strong></td>
+      <td>Health score (0-100)</td>
+      <td>See Health Score section</td>
+    </tr>
+  </table>
+
+  <h3>Health Score Explained</h3>
+  <table>
+    <tr>
+      <th>Score Range</th>
+      <th>Status</th>
+      <th>Meaning</th>
+      <th>Action</th>
+    </tr>
+    <tr>
+      <td>70-100</td>
+      <td><span class="threshold good">Healthy</span></td>
+      <td>Active, engaged, no issues</td>
+      <td>Maintain relationship, consider upsell</td>
+    </tr>
+    <tr>
+      <td>40-69</td>
+      <td><span class="threshold warning">At Risk</span></td>
+      <td>Declining activity or issues</td>
+      <td>Proactive outreach, check-in call</td>
+    </tr>
+    <tr>
+      <td>0-39</td>
+      <td><span class="threshold critical">Critical</span></td>
+      <td>High churn risk</td>
+      <td>Immediate intervention required</td>
+    </tr>
+  </table>
+</div>
+
+<!-- Page 7: Client Detail -->
+<div class="section page-break" id="client-detail">
+  <div class="section-header">
+    <h2>7. Client Detail View</h2>
+    <p class="path">/admin/clients/[id]</p>
+  </div>
+
+  <p>Deep dive into a single client with all metrics, team members, campaigns, and billing history.</p>
+
+  <h3>Page Tabs</h3>
+
+  <h4>Overview Tab</h4>
+  <ul>
+    <li><strong>MRR Card:</strong> Current subscription and renewal date</li>
+    <li><strong>Credits Card:</strong> Remaining vs total credits</li>
+    <li><strong>Active Campaigns:</strong> Count of running campaigns</li>
+    <li><strong>Last Activity:</strong> Most recent platform action</li>
+    <li><strong>Team Members:</strong> List of users with roles (owner/admin/member)</li>
+  </ul>
+
+  <h4>Campaigns Tab</h4>
+  <p>All campaigns for this client with:</p>
+  <ul>
+    <li>Campaign name and status (active/paused/completed/draft)</li>
+    <li>Leads count and sent count</li>
+    <li>Replies and reply rate percentage</li>
+  </ul>
+
+  <h4>Activity Tab</h4>
+  <p>Chronological log of all actions for this client including emails sent, leads enriched, replies received, etc.</p>
+
+  <h4>Billing Tab</h4>
+  <p>Payment history with invoice numbers, amounts, and status.</p>
+
+  <h3>Admin Actions</h3>
+  <table>
+    <tr>
+      <th>Action</th>
+      <th>When to Use</th>
+    </tr>
+    <tr>
+      <td><strong>Impersonate</strong></td>
+      <td>Login as client to troubleshoot issues</td>
+    </tr>
+    <tr>
+      <td><strong>Pause</strong></td>
+      <td>Temporarily suspend campaigns (billing continues)</td>
+    </tr>
+    <tr>
+      <td><strong>Cancel</strong></td>
+      <td>End subscription (requires confirmation)</td>
+    </tr>
+  </table>
+</div>
+
+<!-- Page 8: Campaigns -->
+<div class="section page-break" id="campaigns">
+  <div class="section-header">
+    <h2>8. Campaigns</h2>
+    <p class="path">/admin/campaigns</p>
+  </div>
+
+  <p>Global view of all campaigns across all clients.</p>
+
+  <h3>Campaign Statuses</h3>
+  <table>
+    <tr>
+      <th>Status</th>
+      <th>Description</th>
+    </tr>
+    <tr>
+      <td><span class="threshold good">Active</span></td>
+      <td>Currently sending outreach</td>
+    </tr>
+    <tr>
+      <td><span class="threshold warning">Paused</span></td>
+      <td>Temporarily stopped (manual or automatic)</td>
+    </tr>
+    <tr>
+      <td>Completed</td>
+      <td>All leads processed</td>
+    </tr>
+    <tr>
+      <td>Draft</td>
+      <td>Not yet launched</td>
+    </tr>
+  </table>
+
+  <h3>Key Metrics</h3>
+  <table>
+    <tr>
+      <th>Metric</th>
+      <th>Good Benchmark</th>
+    </tr>
+    <tr>
+      <td><strong>Reply Rate</strong></td>
+      <td>&gt;5% is good, &gt;8% is excellent</td>
+    </tr>
+    <tr>
+      <td><strong>Leads to Sent Ratio</strong></td>
+      <td>Should be high (80%+) indicating good data quality</td>
+    </tr>
+  </table>
+</div>
+
+<!-- Page 9: Leads -->
+<div class="section page-break" id="leads">
+  <div class="section-header">
+    <h2>9. Leads</h2>
+    <p class="path">/admin/leads</p>
+  </div>
+
+  <p>Global leads database with ALS (Agency Lead Score) distribution.</p>
+
+  <h3>ALS Tier System</h3>
+  <table>
+    <tr>
+      <th>Score</th>
+      <th>Tier</th>
+      <th>Description</th>
+      <th>Priority</th>
+    </tr>
+    <tr>
+      <td>90-100</td>
+      <td><span class="threshold critical">Hot</span></td>
+      <td>Ideal fit, high intent signals</td>
+      <td>Highest - multi-channel engagement</td>
+    </tr>
+    <tr>
+      <td>70-89</td>
+      <td><span class="threshold warning">Warm</span></td>
+      <td>Strong match, some intent</td>
+      <td>High - email + LinkedIn</td>
+    </tr>
+    <tr>
+      <td>50-69</td>
+      <td>Cool</td>
+      <td>Moderate match</td>
+      <td>Medium - email sequence</td>
+    </tr>
+    <tr>
+      <td>30-49</td>
+      <td>Cold</td>
+      <td>Weak match</td>
+      <td>Low - nurture only</td>
+    </tr>
+    <tr>
+      <td>0-29</td>
+      <td>Dead</td>
+      <td>Poor fit or invalid</td>
+      <td>None - do not contact</td>
+    </tr>
+  </table>
+
+  <h3>Lead Statuses</h3>
+  <ul>
+    <li><strong>New:</strong> Just uploaded, not yet processed</li>
+    <li><strong>Enriched:</strong> Data enhanced, scored</li>
+    <li><strong>Scored:</strong> ALS calculated</li>
+    <li><strong>In Sequence:</strong> Active in campaign</li>
+    <li><strong>Converted:</strong> Became opportunity/customer</li>
+    <li><strong>Unsubscribed:</strong> Opted out</li>
+    <li><strong>Bounced:</strong> Invalid email</li>
+  </ul>
+</div>
+
+<!-- Page 10: Activity Feed -->
+<div class="section page-break" id="activity">
+  <div class="section-header">
+    <h2>10. Activity Feed</h2>
+    <p class="path">/admin/activity</p>
+  </div>
+
+  <p>Real-time log of all platform activity across all clients.</p>
+
+  <h3>Activity Types</h3>
+  <table>
+    <tr>
+      <th>Channel</th>
+      <th>Actions Logged</th>
+    </tr>
+    <tr>
+      <td><strong>Email</strong></td>
+      <td>Sent, Opened, Clicked, Bounced, Reply Received</td>
+    </tr>
+    <tr>
+      <td><strong>SMS</strong></td>
+      <td>Sent, Delivered, Reply Received</td>
+    </tr>
+    <tr>
+      <td><strong>LinkedIn</strong></td>
+      <td>Connection Sent, Message Sent, Reply Received</td>
+    </tr>
+    <tr>
+      <td><strong>Voice</strong></td>
+      <td>Call Initiated, Call Completed, Voicemail Left</td>
+    </tr>
+    <tr>
+      <td><strong>Mail</strong></td>
+      <td>Queued, Sent, Delivered</td>
+    </tr>
+    <tr>
+      <td><strong>System</strong></td>
+      <td>Lead Enriched, Lead Scored, Error Occurred</td>
+    </tr>
+  </table>
+
+  <div class="info-box info">
+    <div class="info-box-title">Live Indicator</div>
+    <p>The pulsing green dot indicates the feed is updating in real-time. Activity appears within seconds of occurring.</p>
+  </div>
+</div>
+
+<!-- Page 11: Replies -->
+<div class="section page-break" id="replies">
+  <div class="section-header">
+    <h2>11. Replies Management</h2>
+    <p class="path">/admin/replies</p>
+  </div>
+
+  <p>Global inbox for all replies across all clients with intent classification.</p>
+
+  <h3>Intent Classifications</h3>
+  <table>
+    <tr>
+      <th>Intent</th>
+      <th>Description</th>
+      <th>Action</th>
+    </tr>
+    <tr>
+      <td><span class="threshold good">Interested</span></td>
+      <td>Positive response, wants to learn more</td>
+      <td>Alert client immediately, prioritize follow-up</td>
+    </tr>
+    <tr>
+      <td><span class="threshold good">Meeting Request</span></td>
+      <td>Wants to schedule a call</td>
+      <td>Book meeting ASAP</td>
+    </tr>
+    <tr>
+      <td>Question</td>
+      <td>Asking for information</td>
+      <td>Respond with helpful answer</td>
+    </tr>
+    <tr>
+      <td><span class="threshold critical">Not Interested</span></td>
+      <td>Decline, negative response</td>
+      <td>Mark as closed, analyze for patterns</td>
+    </tr>
+    <tr>
+      <td><span class="threshold critical">Unsubscribe</span></td>
+      <td>Request to stop contact</td>
+      <td>Add to suppression list immediately</td>
+    </tr>
+    <tr>
+      <td>Out of Office</td>
+      <td>Auto-reply, person unavailable</td>
+      <td>Schedule follow-up after return date</td>
+    </tr>
+    <tr>
+      <td>Auto Reply</td>
+      <td>Automated response, no human</td>
+      <td>Ignore or retry later</td>
+    </tr>
+  </table>
+</div>
+
+<!-- Page 12: Compliance Overview -->
+<div class="section page-break" id="compliance">
+  <div class="section-header">
+    <h2>12. Compliance Overview</h2>
+    <p class="path">/admin/compliance</p>
+  </div>
+
+  <p>Email deliverability and regulatory compliance monitoring.</p>
+
+  <h3>Key Metrics</h3>
+  <table>
+    <tr>
+      <th>Metric</th>
+      <th>Target</th>
+      <th>Warning</th>
+      <th>Critical</th>
+    </tr>
+    <tr>
+      <td><strong>Bounce Rate</strong></td>
+      <td><span class="threshold good">&lt;2%</span></td>
+      <td><span class="threshold warning">2-5%</span></td>
+      <td><span class="threshold critical">&gt;5%</span></td>
+    </tr>
+    <tr>
+      <td><strong>Spam Complaint Rate</strong></td>
+      <td><span class="threshold good">&lt;0.1%</span></td>
+      <td><span class="threshold warning">0.1-0.3%</span></td>
+      <td><span class="threshold critical">&gt;0.3%</span></td>
+    </tr>
+  </table>
+
+  <h3>Suppression Categories</h3>
+  <ul>
+    <li><strong>Spam Complaints:</strong> Recipients marked as spam</li>
+    <li><strong>Unsubscribes:</strong> Requested removal</li>
+    <li><strong>Bounces:</strong> Invalid addresses</li>
+    <li><strong>Manual Blocks:</strong> Admin-added (competitors, etc.)</li>
+  </ul>
+
+  <div class="info-box danger">
+    <div class="info-box-title">DNCR Compliance</div>
+    <p>The Do Not Call Register (DNCR) blocks track Australian phone numbers that cannot receive SMS or voice calls. Violating DNCR can result in significant fines.</p>
+  </div>
+</div>
+
+<!-- Page 13: Bounces -->
+<div class="section page-break" id="bounces">
+  <div class="section-header">
+    <h2>13. Bounce Tracker</h2>
+    <p class="path">/admin/compliance/bounces</p>
+  </div>
+
+  <p>Detailed bounce and spam complaint monitoring by client.</p>
+
+  <h3>Bounce Types</h3>
+  <table>
+    <tr>
+      <th>Type</th>
+      <th>Description</th>
+      <th>Action</th>
+    </tr>
+    <tr>
+      <td><span class="threshold critical">Hard Bounce</span></td>
+      <td>Permanent failure (mailbox doesn't exist, domain invalid)</td>
+      <td>Remove immediately, never retry</td>
+    </tr>
+    <tr>
+      <td><span class="threshold warning">Soft Bounce</span></td>
+      <td>Temporary failure (mailbox full, server down)</td>
+      <td>Retry 2-3 times, then remove</td>
+    </tr>
+    <tr>
+      <td>Spam</td>
+      <td>Recipient marked as spam</td>
+      <td>Add to suppression, analyze content</td>
+    </tr>
+  </table>
+
+  <div class="info-box warning">
+    <div class="info-box-title">Client Risk Alert</div>
+    <p>Clients with &gt;5% bounce rate are flagged "At Risk" and may damage sender reputation. Consider pausing campaigns and cleaning their lead list.</p>
+  </div>
+</div>
+
+<!-- Page 14: Suppression -->
+<div class="section page-break" id="suppression">
+  <div class="section-header">
+    <h2>14. Suppression List</h2>
+    <p class="path">/admin/compliance/suppression</p>
+  </div>
+
+  <p>Global list of blocked email addresses. Emails on this list will never receive outreach from any client.</p>
+
+  <h3>Suppression Reasons</h3>
+  <table>
+    <tr>
+      <th>Reason</th>
+      <th>How Added</th>
+      <th>Can Remove?</th>
+    </tr>
+    <tr>
+      <td><strong>Spam</strong></td>
+      <td>Automatic from spam complaints</td>
+      <td>No - legal requirement</td>
+    </tr>
+    <tr>
+      <td><strong>Unsubscribe</strong></td>
+      <td>User request via unsubscribe link</td>
+      <td>Only if user re-opts in</td>
+    </tr>
+    <tr>
+      <td><strong>Bounce</strong></td>
+      <td>Hard bounce auto-added</td>
+      <td>Yes, if email verified valid</td>
+    </tr>
+    <tr>
+      <td><strong>Manual</strong></td>
+      <td>Admin manually added</td>
+      <td>Yes, with caution</td>
+    </tr>
+  </table>
+
+  <h3>Actions</h3>
+  <ul>
+    <li><strong>Add Email:</strong> Manually add an address to block</li>
+    <li><strong>Bulk Import:</strong> Upload CSV of addresses to block</li>
+    <li><strong>Remove:</strong> Delete from list (use with extreme caution)</li>
+  </ul>
+</div>
+
+<!-- Page 15: System Overview -->
+<div class="section page-break" id="system">
+  <div class="section-header">
+    <h2>15. System Overview</h2>
+    <p class="path">/admin/system</p>
+  </div>
+
+  <p>Infrastructure health monitoring, Prefect flows, and database stats.</p>
+
+  <h3>Service Health</h3>
+  <table>
+    <tr>
+      <th>Service</th>
+      <th>Status Indicators</th>
+      <th>Healthy Metrics</th>
+    </tr>
+    <tr>
+      <td><strong>API</strong></td>
+      <td>Green = Healthy, Yellow = Degraded, Red = Down</td>
+      <td>99.9% uptime, &lt;100ms latency</td>
+    </tr>
+    <tr>
+      <td><strong>Database</strong></td>
+      <td>Connection pool status, query latency</td>
+      <td>&lt;50ms p50 latency</td>
+    </tr>
+    <tr>
+      <td><strong>Redis</strong></td>
+      <td>Cache hit rate, connection status</td>
+      <td>&lt;10ms latency</td>
+    </tr>
+    <tr>
+      <td><strong>Prefect</strong></td>
+      <td>Active workers, flow success rate</td>
+      <td>All flows succeeding</td>
+    </tr>
+    <tr>
+      <td><strong>Webhooks</strong></td>
+      <td>Endpoint availability</td>
+      <td>All endpoints responding</td>
+    </tr>
+  </table>
+
+  <h3>Prefect Flows</h3>
+  <table>
+    <tr>
+      <th>Flow</th>
+      <th>Schedule</th>
+      <th>Purpose</th>
+    </tr>
+    <tr>
+      <td><code>daily-enrichment</code></td>
+      <td>2:00 AM daily</td>
+      <td>Enrich new leads with Apollo/Clay</td>
+    </tr>
+    <tr>
+      <td><code>hourly-outreach</code></td>
+      <td>Every hour 8AM-6PM weekdays</td>
+      <td>Send scheduled messages</td>
+    </tr>
+    <tr>
+      <td><code>reply-recovery</code></td>
+      <td>Every 6 hours</td>
+      <td>Check for missed replies</td>
+    </tr>
+    <tr>
+      <td><code>billing-sync</code></td>
+      <td>Midnight daily</td>
+      <td>Sync Stripe data</td>
+    </tr>
+  </table>
+
+  <h3>Database Stats</h3>
+  <p>Shows connection pool usage, query latency percentiles (p50, p95, p99), and table sizes.</p>
+</div>
+
+<!-- Page 16: Errors -->
+<div class="section page-break" id="errors">
+  <div class="section-header">
+    <h2>16. Error Logs</h2>
+    <p class="path">/admin/system/errors</p>
+  </div>
+
+  <p>Application errors and warnings from Sentry integration.</p>
+
+  <h3>Error Levels</h3>
+  <table>
+    <tr>
+      <th>Level</th>
+      <th>Description</th>
+      <th>Action</th>
+    </tr>
+    <tr>
+      <td><span class="threshold critical">Error</span></td>
+      <td>Operation failed, requires attention</td>
+      <td>Investigate immediately</td>
+    </tr>
+    <tr>
+      <td><span class="threshold warning">Warning</span></td>
+      <td>Potential issue, operation continued</td>
+      <td>Monitor, investigate if recurring</td>
+    </tr>
+    <tr>
+      <td>Info</td>
+      <td>Notable event, not a problem</td>
+      <td>For context only</td>
+    </tr>
+  </table>
+
+  <h3>Common Error Types</h3>
+  <table>
+    <tr>
+      <th>Error Type</th>
+      <th>Cause</th>
+      <th>Resolution</th>
+    </tr>
+    <tr>
+      <td><code>ConnectionTimeout</code></td>
+      <td>External API not responding</td>
+      <td>Check API status, retry later</td>
+    </tr>
+    <tr>
+      <td><code>RateLimitExceeded</code></td>
+      <td>API quota exhausted</td>
+      <td>Wait for reset, reduce volume</td>
+    </tr>
+    <tr>
+      <td><code>ValidationError</code></td>
+      <td>Invalid data format</td>
+      <td>Check input data quality</td>
+    </tr>
+    <tr>
+      <td><code>AuthenticationError</code></td>
+      <td>Invalid API key or credentials</td>
+      <td>Check and rotate API keys</td>
+    </tr>
+    <tr>
+      <td><code>DatabaseError</code></td>
+      <td>Connection or query failure</td>
+      <td>Check Supabase status</td>
+    </tr>
+    <tr>
+      <td><code>AISpendLimitError</code></td>
+      <td>Daily AI budget exhausted</td>
+      <td>Wait for reset or increase limit</td>
+    </tr>
+  </table>
+</div>
+
+<!-- Page 17: Queues -->
+<div class="section page-break" id="queues">
+  <div class="section-header">
+    <h2>17. Prefect Queues</h2>
+    <p class="path">/admin/system/queues</p>
+  </div>
+
+  <p>Flow status and task queue monitoring for the Prefect orchestration system.</p>
+
+  <h3>Queue Stats</h3>
+  <table>
+    <tr>
+      <th>Status</th>
+      <th>Meaning</th>
+      <th>Healthy Range</th>
+    </tr>
+    <tr>
+      <td><strong>Active</strong></td>
+      <td>Currently executing</td>
+      <td>0-5 typical</td>
+    </tr>
+    <tr>
+      <td><strong>Pending</strong></td>
+      <td>Waiting to start</td>
+      <td>&lt;10 healthy, &gt;50 backlogged</td>
+    </tr>
+    <tr>
+      <td><strong>Completed</strong></td>
+      <td>Finished successfully (24h)</td>
+      <td>Normal volume varies</td>
+    </tr>
+    <tr>
+      <td><strong>Failed</strong></td>
+      <td>Errors (24h)</td>
+      <td>&lt;1% of completed</td>
+    </tr>
+  </table>
+
+  <h3>Flow Actions</h3>
+  <ul>
+    <li><strong>Run Now:</strong> Manually trigger a flow</li>
+    <li><strong>Pause:</strong> Temporarily disable scheduled runs</li>
+    <li><strong>Resume:</strong> Re-enable paused flow</li>
+  </ul>
+
+  <h3>Work Pool</h3>
+  <p>The system uses a dedicated Prefect work pool (<code>agency-os-pool</code>) with workers that execute flows. Monitor worker count to ensure capacity.</p>
+</div>
+
+<!-- Page 18: Rate Limits -->
+<div class="section page-break" id="rate-limits">
+  <div class="section-header">
+    <h2>18. Rate Limits</h2>
+    <p class="path">/admin/system/rate-limits</p>
+  </div>
+
+  <p>Resource usage and API limits across all integrated services.</p>
+
+  <h3>Service Rate Limits</h3>
+  <table>
+    <tr>
+      <th>Service</th>
+      <th>Resource</th>
+      <th>Daily Limit</th>
+      <th>Reset Time</th>
+    </tr>
+    <tr>
+      <td><strong>Apollo</strong></td>
+      <td>API Enrichments</td>
+      <td>100/day</td>
+      <td>2:00 PM</td>
+    </tr>
+    <tr>
+      <td><strong>HeyReach</strong></td>
+      <td>LinkedIn Actions</td>
+      <td>17/day/seat</td>
+      <td>Midnight</td>
+    </tr>
+    <tr>
+      <td><strong>Resend</strong></td>
+      <td>Emails</td>
+      <td>10,000/day</td>
+      <td>Midnight</td>
+    </tr>
+    <tr>
+      <td><strong>Twilio</strong></td>
+      <td>SMS</td>
+      <td>1,000/day</td>
+      <td>Midnight</td>
+    </tr>
+    <tr>
+      <td><strong>Synthflow</strong></td>
+      <td>Voice Calls</td>
+      <td>50/day</td>
+      <td>Midnight</td>
+    </tr>
+    <tr>
+      <td><strong>Lob</strong></td>
+      <td>Mail Pieces</td>
+      <td>100/day</td>
+      <td>Midnight</td>
+    </tr>
+    <tr>
+      <td><strong>Anthropic</strong></td>
+      <td>AI Spend ($)</td>
+      <td>$500/day</td>
+      <td>Midnight</td>
+    </tr>
+  </table>
+
+  <h3>Per-Client Limits (Rule 17)</h3>
+  <table>
+    <tr>
+      <th>Channel</th>
+      <th>Limit</th>
+      <th>Per</th>
+    </tr>
+    <tr>
+      <td><strong>Email</strong></td>
+      <td>50/day</td>
+      <td>per sending domain</td>
+    </tr>
+    <tr>
+      <td><strong>SMS</strong></td>
+      <td>100/day</td>
+      <td>per phone number</td>
+    </tr>
+    <tr>
+      <td><strong>LinkedIn</strong></td>
+      <td>17/day</td>
+      <td>per seat</td>
+    </tr>
+  </table>
+
+  <div class="info-box warning">
+    <div class="info-box-title">When Limits Are Reached</div>
+    <p>When a service hits 80%, an alert is triggered. At 100%, outreach pauses automatically until reset. Monitor closely during high-volume campaigns.</p>
+  </div>
+</div>
+
+<!-- Page 19: Settings -->
+<div class="section page-break" id="settings">
+  <div class="section-header">
+    <h2>19. Platform Settings</h2>
+    <p class="path">/admin/settings</p>
+  </div>
+
+  <p>Global configuration, feature flags, and emergency controls.</p>
+
+  <h3>Limits Configuration</h3>
+  <table>
+    <tr>
+      <th>Setting</th>
+      <th>Description</th>
+      <th>Default</th>
+    </tr>
+    <tr>
+      <td><strong>Daily AI Spend Limit</strong></td>
+      <td>Maximum Anthropic API spend per day</td>
+      <td>$500 AUD</td>
+    </tr>
+    <tr>
+      <td><strong>Clay Fallback %</strong></td>
+      <td>% of leads to enrich via Clay when primary fails</td>
+      <td>15%</td>
+    </tr>
+  </table>
+
+  <h3>Feature Flags</h3>
+  <table>
+    <tr>
+      <th>Flag</th>
+      <th>Description</th>
+    </tr>
+    <tr>
+      <td><strong>Voice Channel</strong></td>
+      <td>Enable/disable AI voice calls via Vapi</td>
+    </tr>
+    <tr>
+      <td><strong>Direct Mail Channel</strong></td>
+      <td>Enable/disable physical mail via PostGrid</td>
+    </tr>
+    <tr>
+      <td><strong>Maintenance Mode</strong></td>
+      <td>Pause all outreach and show maintenance banner</td>
+    </tr>
+  </table>
+
+  <h3>Notification Settings</h3>
+  <ul>
+    <li><strong>Alert Email:</strong> Email address for critical alerts</li>
+    <li><strong>Slack Webhook:</strong> URL to post alerts to Slack channel</li>
+  </ul>
+
+  <div class="info-box danger">
+    <div class="info-box-title">Danger Zone</div>
+    <p>Emergency controls for critical situations:</p>
+    <ul>
+      <li><strong>Pause All Campaigns:</strong> Immediately stops all outreach</li>
+      <li><strong>Reset Rate Limits:</strong> Clears all counters in Redis</li>
+      <li><strong>Clear Redis Cache:</strong> Flushes all cached data</li>
+    </ul>
+    <p>Use these only in emergencies - they affect all clients.</p>
+  </div>
+</div>
+
+<!-- Page 20: Users -->
+<div class="section page-break" id="users">
+  <div class="section-header">
+    <h2>20. User Management</h2>
+    <p class="path">/admin/settings/users</p>
+  </div>
+
+  <p>Manage all users across all clients with role assignments.</p>
+
+  <h3>User Roles</h3>
+  <table>
+    <tr>
+      <th>Role</th>
+      <th>Access Level</th>
+    </tr>
+    <tr>
+      <td><strong>Platform Admin</strong></td>
+      <td>Full access to all admin pages, all clients</td>
+    </tr>
+    <tr>
+      <td><strong>Owner</strong></td>
+      <td>Full access to their client account</td>
+    </tr>
+    <tr>
+      <td><strong>Admin</strong></td>
+      <td>Manage campaigns, leads, settings for their client</td>
+    </tr>
+    <tr>
+      <td><strong>Member</strong></td>
+      <td>View and basic actions for their client</td>
+    </tr>
+    <tr>
+      <td><strong>Viewer</strong></td>
+      <td>Read-only access</td>
+    </tr>
+  </table>
+
+  <h3>User Statuses</h3>
+  <table>
+    <tr>
+      <th>Status</th>
+      <th>Description</th>
+    </tr>
+    <tr>
+      <td><span class="threshold good">Active</span></td>
+      <td>Can login and use platform</td>
+    </tr>
+    <tr>
+      <td><span class="threshold warning">Inactive</span></td>
+      <td>No activity for 7+ days</td>
+    </tr>
+    <tr>
+      <td><span class="threshold critical">Suspended</span></td>
+      <td>Account disabled, cannot login</td>
+    </tr>
+  </table>
+
+  <h3>Admin Actions</h3>
+  <ul>
+    <li><strong>View Details:</strong> See user's full profile</li>
+    <li><strong>Make Admin:</strong> Grant platform admin access</li>
+    <li><strong>Suspend:</strong> Disable account temporarily</li>
+    <li><strong>Unsuspend:</strong> Re-enable suspended account</li>
+  </ul>
+</div>
+
+<!-- Glossary -->
+<div class="section page-break" id="glossary">
+  <div class="section-header">
+    <h2>Glossary of Terms</h2>
+    <p class="path">Reference</p>
+  </div>
+
+  <h3>Revenue Terms</h3>
+  <table>
+    <tr>
+      <th>Term</th>
+      <th>Definition</th>
+    </tr>
+    <tr>
+      <td><strong>MRR</strong></td>
+      <td>Monthly Recurring Revenue - total subscription revenue per month</td>
+    </tr>
+    <tr>
+      <td><strong>ARR</strong></td>
+      <td>Annual Recurring Revenue - MRR multiplied by 12</td>
+    </tr>
+    <tr>
+      <td><strong>ARPU</strong></td>
+      <td>Average Revenue Per User - MRR divided by active client count</td>
+    </tr>
+    <tr>
+      <td><strong>LTV</strong></td>
+      <td>Lifetime Value - total revenue expected from a client over their lifetime</td>
+    </tr>
+    <tr>
+      <td><strong>CAC</strong></td>
+      <td>Customer Acquisition Cost - cost to acquire a new client</td>
+    </tr>
+    <tr>
+      <td><strong>Churn</strong></td>
+      <td>Rate at which clients cancel subscriptions</td>
+    </tr>
+    <tr>
+      <td><strong>Net MRR</strong></td>
+      <td>New MRR minus Churned MRR</td>
+    </tr>
+  </table>
+
+  <h3>Lead Scoring Terms</h3>
+  <table>
+    <tr>
+      <th>Term</th>
+      <th>Definition</th>
+    </tr>
+    <tr>
+      <td><strong>YES Score</strong></td>
+      <td>Lead qualification score 0-100 based on fit and intent signals</td>
+    </tr>
+    <tr>
+      <td><strong>ALS</strong></td>
+      <td>Agency Lead Score - proprietary lead qualification algorithm</td>
+    </tr>
+    <tr>
+      <td><strong>ICP</strong></td>
+      <td>Ideal Customer Profile - description of the perfect target customer</td>
+    </tr>
+    <tr>
+      <td><strong>Hot Lead</strong></td>
+      <td>Score 70-100, highest priority</td>
+    </tr>
+    <tr>
+      <td><strong>Warm Lead</strong></td>
+      <td>Score 40-69, good potential</td>
+    </tr>
+    <tr>
+      <td><strong>Cold Lead</strong></td>
+      <td>Score below 40, low potential</td>
+    </tr>
+  </table>
+
+  <h3>Operation Modes</h3>
+  <table>
+    <tr>
+      <th>Mode</th>
+      <th>Definition</th>
+    </tr>
+    <tr>
+      <td><strong>Autopilot</strong></td>
+      <td>Fully automated outreach, no approval needed</td>
+    </tr>
+    <tr>
+      <td><strong>Co-pilot</strong></td>
+      <td>AI drafts content, human approves before sending</td>
+    </tr>
+    <tr>
+      <td><strong>Manual</strong></td>
+      <td>Human writes all content, platform assists with delivery</td>
+    </tr>
+  </table>
+
+  <h3>Compliance Terms</h3>
+  <table>
+    <tr>
+      <th>Term</th>
+      <th>Definition</th>
+    </tr>
+    <tr>
+      <td><strong>Enrichment</strong></td>
+      <td>Process of enhancing lead data with additional information</td>
+    </tr>
+    <tr>
+      <td><strong>Suppression</strong></td>
+      <td>Blocking an email from receiving outreach</td>
+    </tr>
+    <tr>
+      <td><strong>Hard Bounce</strong></td>
+      <td>Permanent email delivery failure</td>
+    </tr>
+    <tr>
+      <td><strong>Soft Bounce</strong></td>
+      <td>Temporary email delivery failure</td>
+    </tr>
+    <tr>
+      <td><strong>DNCR</strong></td>
+      <td>Do Not Call Register (Australian phone number registry)</td>
+    </tr>
+  </table>
+
+  <h3>System Terms</h3>
+  <table>
+    <tr>
+      <th>Term</th>
+      <th>Definition</th>
+    </tr>
+    <tr>
+      <td><strong>Rate Limiting</strong></td>
+      <td>Restricting the number of API calls within a time period</td>
+    </tr>
+    <tr>
+      <td><strong>Queue</strong></td>
+      <td>List of pending tasks waiting to be processed</td>
+    </tr>
+    <tr>
+      <td><strong>Webhook</strong></td>
+      <td>URL endpoint that receives real-time event notifications</td>
+    </tr>
+    <tr>
+      <td><strong>Flow</strong></td>
+      <td>Prefect workflow that executes scheduled tasks</td>
+    </tr>
+    <tr>
+      <td><strong>Circuit Breaker</strong></td>
+      <td>Safety mechanism that stops operations when limits are reached</td>
+    </tr>
+  </table>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <p>Agency OS Admin Dashboard Manual v3.0 | Generated December 2025</p>
+  <p>For support, contact the platform administrator</p>
+</div>
+
+</body>
+</html>

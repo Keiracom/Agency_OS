@@ -5,11 +5,13 @@
  * TASK: FE-014
  */
 
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Target, ChevronRight } from "lucide-react";
 
 export default function SettingsPage() {
   return (
@@ -21,6 +23,26 @@ export default function SettingsPage() {
           Manage your account and organization settings
         </p>
       </div>
+
+      {/* ICP Settings Link */}
+      <Link href="/dashboard/settings/icp">
+        <Card className="cursor-pointer hover:border-primary/50 transition-colors">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <Target className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium">Ideal Customer Profile</p>
+                <p className="text-sm text-muted-foreground">
+                  Define your target audience for all campaigns
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </CardContent>
+        </Card>
+      </Link>
 
       {/* Organization */}
       <Card>

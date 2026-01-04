@@ -1,20 +1,27 @@
 """
 FILE: src/engines/voice.py
-PURPOSE: Voice engine using Synthflow integration for AI voice calls
-PHASE: 4 (Engines)
-TASK: ENG-008
+PURPOSE: Voice engine using Vapi + Twilio + ElevenLabs for AI voice calls
+PHASE: 4 (Engines), modified Phase 16 for Conversion Intelligence, Phase 17 for Vapi
+TASK: ENG-008, 16E-003, CRED-007
 DEPENDENCIES:
   - src/engines/base.py
-  - src/integrations/synthflow.py
+  - src/engines/content_utils.py (Phase 16)
+  - src/integrations/vapi.py
   - src/integrations/redis.py
   - src/models/lead.py
   - src/models/activity.py
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 11: Session passed as argument
-  - Rule 12: No imports from other engines
+  - Rule 12: No imports from other engines (content_utils is utilities, not engine)
   - Rule 14: Soft deletes only
   - Rule 17: Resource-level rate limit (50/day/number)
+PHASE 16 CHANGES:
+  - Added content_snapshot capture for WHAT Detector learning
+  - Tracks touch_number, sequence context, outcome, and duration
+PHASE 17 CHANGES:
+  - Replaced Synthflow with Vapi + ElevenLabs stack
+  - Vapi orchestrates: STT (built-in) -> LLM (Claude) -> TTS (ElevenLabs)
 """
 
 from datetime import datetime
@@ -25,8 +32,15 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import EngineResult, OutreachEngine
+from src.engines.content_utils import build_voice_snapshot
 from src.exceptions import ValidationError
-from src.integrations.synthflow import SynthflowClient, get_synthflow_client
+from src.integrations.vapi import (
+    VapiClient,
+    VapiAssistantConfig,
+    VapiCallRequest,
+    VapiCallResult,
+    get_vapi_client,
+)
 from src.models.activity import Activity
 from src.models.base import ChannelType, LeadStatus
 from src.models.lead import Lead
@@ -34,25 +48,35 @@ from src.models.lead import Lead
 
 class VoiceEngine(OutreachEngine):
     """
-    Voice engine for AI voice calls via Synthflow.
+    Voice engine for AI voice calls via Vapi.
 
     Handles:
-    - Voice call initiation with AI agents
+    - Voice call initiation with AI assistants
     - Call status tracking
     - Transcript retrieval and storage
     - Activity logging
     - ALS requirement: 70+ only (Rule from blueprint)
     - Resource-level rate limit: 50/day/number (Rule 17)
+
+    Flow:
+    1. Create/get assistant for campaign
+    2. Initiate outbound call via Twilio (through Vapi)
+    3. Vapi orchestrates: STT (built-in) -> LLM (Claude) -> TTS (ElevenLabs)
+    4. Webhook receives call result
+    5. Log activity + transcript
     """
 
-    def __init__(self, synthflow_client: SynthflowClient | None = None):
+    # Default voice - ElevenLabs "Adam" (professional male)
+    DEFAULT_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
+
+    def __init__(self, vapi_client: VapiClient | None = None):
         """
-        Initialize Voice engine with Synthflow client.
+        Initialize Voice engine with Vapi client.
 
         Args:
-            synthflow_client: Optional Synthflow client (uses singleton if not provided)
+            vapi_client: Optional Vapi client (uses singleton if not provided)
         """
-        self._synthflow = synthflow_client
+        self._vapi = vapi_client
 
     @property
     def name(self) -> str:
@@ -63,10 +87,41 @@ class VoiceEngine(OutreachEngine):
         return ChannelType.VOICE
 
     @property
-    def synthflow(self) -> SynthflowClient:
-        if self._synthflow is None:
-            self._synthflow = get_synthflow_client()
-        return self._synthflow
+    def vapi(self) -> VapiClient:
+        if self._vapi is None:
+            self._vapi = get_vapi_client()
+        return self._vapi
+
+    async def create_campaign_assistant(
+        self,
+        db: AsyncSession,
+        campaign_id: str,
+        script: str,
+        first_message: str,
+        voice_id: str = None,
+    ) -> str:
+        """
+        Create a Vapi assistant for a campaign.
+
+        Args:
+            db: Database session (passed by caller)
+            campaign_id: Campaign UUID
+            script: System prompt/script for the assistant
+            first_message: Opening message for calls
+            voice_id: ElevenLabs voice ID (optional, uses default)
+
+        Returns:
+            assistant_id to store in campaign record
+        """
+        config = VapiAssistantConfig(
+            name=f"AgencyOS-{campaign_id[:8]}",
+            first_message=first_message,
+            system_prompt=self._build_system_prompt(script),
+            voice_id=voice_id or self.DEFAULT_VOICE_ID,
+        )
+
+        result = await self.vapi.create_assistant(config)
+        return result["id"]
 
     async def send(
         self,
@@ -83,10 +138,9 @@ class VoiceEngine(OutreachEngine):
             db: Database session (passed by caller)
             lead_id: Target lead UUID
             campaign_id: Campaign UUID
-            content: Call script or context (not used, AI agent handles)
+            content: Call script or context (not used, AI assistant handles)
             **kwargs: Additional options:
-                - agent_id: Synthflow agent ID to use
-                - callback_url: Webhook URL for call events
+                - assistant_id: Vapi assistant ID to use
                 - from_number: Phone number to call from (resource)
 
         Returns:
@@ -116,40 +170,36 @@ class VoiceEngine(OutreachEngine):
         campaign = await self.get_campaign_by_id(db, campaign_id)
 
         # Extract options
-        agent_id = kwargs.get("agent_id")
-        if not agent_id:
+        assistant_id = kwargs.get("assistant_id")
+        if not assistant_id:
             return EngineResult.fail(
-                error="agent_id is required for voice calls",
+                error="assistant_id is required for voice calls",
                 metadata={"lead_id": str(lead_id)},
             )
 
-        callback_url = kwargs.get("callback_url")
         from_number = kwargs.get("from_number")
 
-        # Prepare lead data for personalization
-        lead_data = {
-            "first_name": lead.first_name,
-            "last_name": lead.last_name,
-            "company": lead.company,
-            "title": lead.title,
-            "campaign_name": campaign.name,
-        }
-
         try:
-            # Initiate call via Synthflow
-            result = await self.synthflow.initiate_call(
+            # Initiate call via Vapi
+            request = VapiCallRequest(
+                assistant_id=assistant_id,
                 phone_number=lead.phone,
-                agent_id=agent_id,
-                lead_data=lead_data,
-                callback_url=callback_url,
+                customer_name=f"{lead.first_name} {lead.last_name}",
+                metadata={
+                    "lead_id": str(lead_id),
+                    "campaign_id": str(campaign_id),
+                    "client_id": str(lead.client_id),
+                },
             )
+
+            result = await self.vapi.start_outbound_call(request)
 
             # Log activity
             await self._log_call_activity(
                 db=db,
                 lead=lead,
                 campaign_id=campaign_id,
-                call_id=result.get("call_id"),
+                call_id=result.get("id"),
                 status=result.get("status"),
                 from_number=from_number,
             )
@@ -160,9 +210,9 @@ class VoiceEngine(OutreachEngine):
 
             return EngineResult.ok(
                 data={
-                    "call_id": result.get("call_id"),
+                    "call_id": result.get("id"),
                     "status": result.get("status"),
-                    "provider": "synthflow",
+                    "provider": "vapi",
                     "phone_number": lead.phone,
                     "lead_id": str(lead_id),
                 },
@@ -192,16 +242,24 @@ class VoiceEngine(OutreachEngine):
 
         Args:
             db: Database session (passed by caller)
-            call_id: Synthflow call ID
+            call_id: Vapi call ID
 
         Returns:
             EngineResult with call status
         """
         try:
-            status = await self.synthflow.get_call_status(call_id)
+            result = await self.vapi.get_call(call_id)
 
             return EngineResult.ok(
-                data=status,
+                data={
+                    "call_id": result.call_id,
+                    "status": result.status,
+                    "duration_seconds": result.duration_seconds,
+                    "transcript": result.transcript,
+                    "recording_url": result.recording_url,
+                    "cost": result.cost,
+                    "ended_reason": result.ended_reason,
+                },
                 metadata={"call_id": call_id},
             )
 
@@ -221,16 +279,20 @@ class VoiceEngine(OutreachEngine):
 
         Args:
             db: Database session (passed by caller)
-            call_id: Synthflow call ID
+            call_id: Vapi call ID
 
         Returns:
             EngineResult with transcript
         """
         try:
-            transcript = await self.synthflow.get_transcript(call_id)
+            result = await self.vapi.get_call(call_id)
 
             return EngineResult.ok(
-                data=transcript,
+                data={
+                    "call_id": result.call_id,
+                    "transcript": result.transcript,
+                    "duration_seconds": result.duration_seconds,
+                },
                 metadata={"call_id": call_id},
             )
 
@@ -246,7 +308,7 @@ class VoiceEngine(OutreachEngine):
         payload: dict[str, Any],
     ) -> EngineResult[dict[str, Any]]:
         """
-        Process Synthflow call event webhook.
+        Process Vapi call event webhook.
 
         Args:
             db: Database session (passed by caller)
@@ -257,7 +319,7 @@ class VoiceEngine(OutreachEngine):
         """
         try:
             # Parse webhook
-            event = self.synthflow.parse_call_webhook(payload)
+            event = self.vapi.parse_webhook(payload)
 
             call_id = event.get("call_id")
             event_type = event.get("event")
@@ -285,7 +347,27 @@ class VoiceEngine(OutreachEngine):
                 )
 
             # Update activity based on event
-            if event_type == "ended":
+            if event_type in ["call-ended", "end-of-call-report"]:
+                # Get lead for content_snapshot (Phase 16)
+                lead = await self.get_lead_by_id(db, activity.lead_id)
+
+                # Build content snapshot for Conversion Intelligence (Phase 16)
+                outcome = event.get("ended_reason", "completed")
+                duration = event.get("duration", 0)
+                snapshot = build_voice_snapshot(
+                    lead=lead,
+                    script_id=activity.metadata.get("script_id") if activity.metadata else None,
+                    script_content=None,
+                    outcome=outcome,
+                    duration_seconds=duration,
+                    notes=event.get("transcript"),
+                    touch_number=activity.sequence_step or 1,
+                    sequence_id=activity.metadata.get("sequence_id") if activity.metadata else None,
+                )
+
+                # Check if meeting was booked (from transcript analysis or metadata)
+                meeting_booked = event.get("metadata", {}).get("meeting_booked", False)
+
                 # Create new activity for call completion
                 completion_activity = Activity(
                     client_id=activity.client_id,
@@ -294,23 +376,24 @@ class VoiceEngine(OutreachEngine):
                     channel=ChannelType.VOICE,
                     action="completed",
                     provider_message_id=call_id,
-                    provider="synthflow",
-                    provider_status=event.get("outcome"),
+                    provider="vapi",
+                    provider_status=outcome,
+                    sequence_step=activity.sequence_step,
+                    content_snapshot=snapshot,  # Phase 16: Store content snapshot
+                    led_to_booking=meeting_booked,  # Phase 16: Track converting touch
                     metadata={
-                        "duration": event.get("duration"),
-                        "outcome": event.get("outcome"),
+                        "duration": duration,
+                        "outcome": outcome,
                         "transcript": event.get("transcript"),
-                        "sentiment": event.get("sentiment"),
-                        "intent": event.get("intent"),
-                        "meeting_booked": event.get("meeting_booked"),
-                        "meeting_time": event.get("meeting_time"),
+                        "recording_url": event.get("recording_url"),
+                        "cost": event.get("cost"),
+                        "meeting_booked": meeting_booked,
                     },
                 )
                 db.add(completion_activity)
 
                 # Update lead if meeting booked
-                if event.get("meeting_booked"):
-                    lead = await self.get_lead_by_id(db, activity.lead_id)
+                if meeting_booked:
                     lead.status = LeadStatus.CONVERTED
                     lead.last_replied_at = datetime.utcnow()
                     lead.reply_count += 1
@@ -348,7 +431,7 @@ class VoiceEngine(OutreachEngine):
             db: Database session
             lead: Lead being called
             campaign_id: Campaign UUID
-            call_id: Synthflow call ID
+            call_id: Vapi call ID
             status: Call status
             from_number: Phone number calling from
         """
@@ -359,7 +442,7 @@ class VoiceEngine(OutreachEngine):
             channel=ChannelType.VOICE,
             action="sent",
             provider_message_id=call_id,
-            provider="synthflow",
+            provider="vapi",
             provider_status=status,
             metadata={
                 "to_number": lead.phone,
@@ -370,6 +453,30 @@ class VoiceEngine(OutreachEngine):
         )
         db.add(activity)
         await db.commit()
+
+    def _build_system_prompt(self, script: str) -> str:
+        """Build the system prompt for the voice assistant."""
+        return f"""You are a friendly, professional sales development representative for a marketing agency.
+
+SCRIPT GUIDANCE:
+{script}
+
+RULES:
+- Be conversational and natural, not robotic
+- Listen actively and respond to what the person actually says
+- If they seem busy, offer to call back at a better time
+- If they're not interested, thank them politely and end the call
+- If they're interested, book a meeting or transfer to a human
+- Keep responses concise (1-2 sentences max)
+- Use Australian English spellings and expressions
+
+GOAL:
+Qualify the lead and either:
+1. Book a meeting if interested
+2. Gather objection data if not interested
+3. Schedule a callback if timing is bad
+
+Always be respectful of their time."""
 
 
 # Singleton instance
@@ -395,8 +502,8 @@ def get_voice_engine() -> VoiceEngine:
 # [x] Resource-level rate limit: 50/day/number (Rule 17)
 # [x] ALS score validation (70+ required)
 # [x] Extends OutreachEngine from base.py
-# [x] Uses Synthflow integration
-# [x] Call initiation with AI agent
+# [x] Uses Vapi integration (replaced Synthflow)
+# [x] Call initiation with AI assistant
 # [x] Call status retrieval
 # [x] Transcript retrieval
 # [x] Webhook processing
@@ -406,3 +513,7 @@ def get_voice_engine() -> VoiceEngine:
 # [x] Test file created: tests/test_engines/test_voice.py
 # [x] All functions have type hints
 # [x] All functions have docstrings
+# [x] Phase 16: content_snapshot captured for WHAT Detector
+# [x] Phase 16: outcome, duration, touch_number tracked
+# [x] Phase 16: led_to_booking flag for converting touches
+# [x] Phase 17: Vapi + ElevenLabs stack (STT handled by Vapi)

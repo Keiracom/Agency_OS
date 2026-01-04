@@ -1,16 +1,31 @@
 /**
  * FILE: frontend/app/dashboard/reports/page.tsx
- * PURPOSE: Reports and analytics page
- * PHASE: 8 (Frontend)
- * TASK: FE-013
+ * PURPOSE: Reports and analytics page with real data
+ * PHASE: 13 (Frontend-Backend Connection)
+ * TASK: FBC-006
  */
+
+"use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Download, Calendar } from "lucide-react";
+import {
+  useDashboardStats,
+  useChannelMetrics,
+  useCampaignPerformance,
+} from "@/hooks/use-reports";
+import { StatsGridSkeleton, TableSkeleton } from "@/components/ui/loading-skeleton";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
+import type { ChannelMetrics, CampaignPerformance } from "@/lib/api/types";
 
 export default function ReportsPage() {
+  const { data: stats, isLoading: statsLoading, error: statsError } = useDashboardStats();
+  const { data: channelMetrics, isLoading: channelsLoading, error: channelsError, refetch: refetchChannels } = useChannelMetrics();
+  const { data: campaignPerformance, isLoading: campaignsLoading, error: campaignsError, refetch: refetchCampaigns } = useCampaignPerformance();
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -34,22 +49,44 @@ export default function ReportsPage() {
       </div>
 
       {/* Overview Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        {[
-          { label: "Total Sent", value: "12,450", change: "+8.2%" },
-          { label: "Total Opens", value: "4,890", change: "+5.4%" },
-          { label: "Total Replies", value: "342", change: "+12.1%" },
-          { label: "Meetings Booked", value: "28", change: "+15.3%" },
-        ].map((stat) => (
-          <Card key={stat.label}>
+      {statsLoading ? (
+        <StatsGridSkeleton />
+      ) : statsError ? (
+        <ErrorState error={statsError} title="Failed to load stats" />
+      ) : stats ? (
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
             <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
-              <p className="text-3xl font-bold mt-1">{stat.value}</p>
-              <p className="text-sm text-green-600 mt-1">{stat.change} vs last period</p>
+              <p className="text-sm text-muted-foreground">Total Leads</p>
+              <p className="text-3xl font-bold mt-1">{stats.total_leads.toLocaleString()}</p>
+              <p className="text-sm text-muted-foreground mt-1">Across all campaigns</p>
             </CardContent>
           </Card>
-        ))}
-      </div>
+          <Card>
+            <CardContent className="p-6">
+              <p className="text-sm text-muted-foreground">Contacted</p>
+              <p className="text-3xl font-bold mt-1">{stats.leads_contacted.toLocaleString()}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {stats.total_leads > 0 ? ((stats.leads_contacted / stats.total_leads) * 100).toFixed(1) : 0}% of leads
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <p className="text-sm text-muted-foreground">Replies</p>
+              <p className="text-3xl font-bold mt-1">{stats.leads_replied.toLocaleString()}</p>
+              <p className="text-sm text-green-600 mt-1">{stats.reply_rate.toFixed(1)}% reply rate</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <p className="text-sm text-muted-foreground">Conversions</p>
+              <p className="text-3xl font-bold mt-1">{stats.leads_converted.toLocaleString()}</p>
+              <p className="text-sm text-green-600 mt-1">{stats.conversion_rate.toFixed(1)}% conversion rate</p>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
 
       {/* Channel Performance */}
       <Card>
@@ -58,40 +95,47 @@ export default function ReportsPage() {
           <CardDescription>Metrics broken down by outreach channel</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="p-3 text-left text-sm font-medium">Channel</th>
-                  <th className="p-3 text-right text-sm font-medium">Sent</th>
-                  <th className="p-3 text-right text-sm font-medium">Delivered</th>
-                  <th className="p-3 text-right text-sm font-medium">Opened</th>
-                  <th className="p-3 text-right text-sm font-medium">Replied</th>
-                  <th className="p-3 text-right text-sm font-medium">Reply Rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  { channel: "Email", sent: 8500, delivered: 8245, opened: 3450, replied: 245, rate: 2.9 },
-                  { channel: "SMS", sent: 2100, delivered: 2089, opened: null, replied: 67, rate: 3.2 },
-                  { channel: "LinkedIn", sent: 1850, delivered: 1823, opened: 1440, replied: 30, rate: 1.6 },
-                ].map((row) => (
-                  <tr key={row.channel} className="border-b">
-                    <td className="p-3 font-medium">{row.channel}</td>
-                    <td className="p-3 text-right">{row.sent.toLocaleString()}</td>
-                    <td className="p-3 text-right">{row.delivered.toLocaleString()}</td>
-                    <td className="p-3 text-right">{row.opened?.toLocaleString() ?? "N/A"}</td>
-                    <td className="p-3 text-right">{row.replied.toLocaleString()}</td>
-                    <td className="p-3 text-right">
-                      <Badge variant={row.rate >= 3 ? "active" : "secondary"}>
-                        {row.rate}%
-                      </Badge>
-                    </td>
+          {channelsLoading ? (
+            <TableSkeleton rows={4} />
+          ) : channelsError ? (
+            <ErrorState error={channelsError} onRetry={refetchChannels} title="Failed to load channel metrics" />
+          ) : !channelMetrics || channelMetrics.length === 0 ? (
+            <EmptyState
+              title="No channel data yet"
+              description="Channel metrics will appear once your campaigns start sending messages"
+            />
+          ) : (
+            <div className="rounded-md border">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="p-3 text-left text-sm font-medium">Channel</th>
+                    <th className="p-3 text-right text-sm font-medium">Sent</th>
+                    <th className="p-3 text-right text-sm font-medium">Delivered</th>
+                    <th className="p-3 text-right text-sm font-medium">Opened</th>
+                    <th className="p-3 text-right text-sm font-medium">Replied</th>
+                    <th className="p-3 text-right text-sm font-medium">Reply Rate</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {channelMetrics.map((row: ChannelMetrics) => (
+                    <tr key={row.channel} className="border-b">
+                      <td className="p-3 font-medium capitalize">{row.channel}</td>
+                      <td className="p-3 text-right">{row.sent.toLocaleString()}</td>
+                      <td className="p-3 text-right">{row.delivered.toLocaleString()}</td>
+                      <td className="p-3 text-right">{row.opened > 0 ? row.opened.toLocaleString() : "N/A"}</td>
+                      <td className="p-3 text-right">{row.replied.toLocaleString()}</td>
+                      <td className="p-3 text-right">
+                        <Badge variant={row.reply_rate >= 3 ? "active" : "secondary"}>
+                          {row.reply_rate.toFixed(1)}%
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -102,46 +146,53 @@ export default function ReportsPage() {
           <CardDescription>Compare performance across all campaigns</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="p-3 text-left text-sm font-medium">Campaign</th>
-                  <th className="p-3 text-left text-sm font-medium">Status</th>
-                  <th className="p-3 text-right text-sm font-medium">Leads</th>
-                  <th className="p-3 text-right text-sm font-medium">Contacted</th>
-                  <th className="p-3 text-right text-sm font-medium">Replied</th>
-                  <th className="p-3 text-right text-sm font-medium">Converted</th>
-                  <th className="p-3 text-right text-sm font-medium">Conv. Rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  { name: "Tech Startups Q1", status: "active", leads: 450, contacted: 234, replied: 45, converted: 12 },
-                  { name: "SaaS Decision Makers", status: "active", leads: 320, contacted: 180, replied: 28, converted: 8 },
-                  { name: "E-commerce Brands", status: "paused", leads: 280, contacted: 150, replied: 22, converted: 5 },
-                ].map((campaign) => (
-                  <tr key={campaign.name} className="border-b">
-                    <td className="p-3 font-medium">{campaign.name}</td>
-                    <td className="p-3">
-                      <Badge variant={campaign.status as "active" | "paused"} className="capitalize">
-                        {campaign.status}
-                      </Badge>
-                    </td>
-                    <td className="p-3 text-right">{campaign.leads}</td>
-                    <td className="p-3 text-right">{campaign.contacted}</td>
-                    <td className="p-3 text-right">{campaign.replied}</td>
-                    <td className="p-3 text-right">{campaign.converted}</td>
-                    <td className="p-3 text-right">
-                      <Badge variant="outline">
-                        {((campaign.converted / campaign.contacted) * 100).toFixed(1)}%
-                      </Badge>
-                    </td>
+          {campaignsLoading ? (
+            <TableSkeleton rows={4} />
+          ) : campaignsError ? (
+            <ErrorState error={campaignsError} onRetry={refetchCampaigns} title="Failed to load campaign metrics" />
+          ) : !campaignPerformance || campaignPerformance.length === 0 ? (
+            <EmptyState
+              title="No campaign data yet"
+              description="Create and run campaigns to see performance metrics"
+            />
+          ) : (
+            <div className="rounded-md border">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="p-3 text-left text-sm font-medium">Campaign</th>
+                    <th className="p-3 text-left text-sm font-medium">Status</th>
+                    <th className="p-3 text-right text-sm font-medium">Leads</th>
+                    <th className="p-3 text-right text-sm font-medium">Contacted</th>
+                    <th className="p-3 text-right text-sm font-medium">Replied</th>
+                    <th className="p-3 text-right text-sm font-medium">Converted</th>
+                    <th className="p-3 text-right text-sm font-medium">Conv. Rate</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {campaignPerformance.map((campaign: CampaignPerformance) => (
+                    <tr key={campaign.campaign_id} className="border-b">
+                      <td className="p-3 font-medium">{campaign.campaign_name}</td>
+                      <td className="p-3">
+                        <Badge variant={campaign.status as "active" | "paused" | "draft"} className="capitalize">
+                          {campaign.status}
+                        </Badge>
+                      </td>
+                      <td className="p-3 text-right">{campaign.total_leads.toLocaleString()}</td>
+                      <td className="p-3 text-right">{campaign.contacted.toLocaleString()}</td>
+                      <td className="p-3 text-right">{campaign.replied.toLocaleString()}</td>
+                      <td className="p-3 text-right">{campaign.converted.toLocaleString()}</td>
+                      <td className="p-3 text-right">
+                        <Badge variant="outline">
+                          {campaign.conversion_rate.toFixed(1)}%
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

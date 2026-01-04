@@ -78,3 +78,12 @@ secrets/
 # Auto-Claude worktrees
 .worktrees/
 .auto-claude/
+
+# Test results
+test-results/
+
+# Docs build artifacts
+docs/node_modules/
+
+# Null file (Windows artifact)
+nul

@@ -82,7 +82,7 @@ export default function SignupPage() {
         </div>
         <CardTitle className="text-2xl text-center">Create an account</CardTitle>
         <CardDescription className="text-center">
-          Start your 14-day free trial of Agency OS
+          Join Agency OS - 16+ meetings guaranteed or money back
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

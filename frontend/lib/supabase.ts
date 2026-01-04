@@ -122,3 +122,8 @@ export function createAnonClient() {
 
   return createClient<Database>(supabaseUrl, supabaseAnonKey);
 }
+
+/**
+ * Alias for createBrowserClient - used by onboarding and other client components.
+ */
+export { createBrowserClient as createClient };

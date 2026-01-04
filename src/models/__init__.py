@@ -12,19 +12,21 @@ RULES APPLIED:
 """
 
 # Agency OS - Models Package
-from src.models.base import Base, SoftDeleteMixin, TimestampMixin
+from src.models.base import Base, SoftDeleteMixin, TimestampMixin, PatternType
 from src.models.client import Client
 from src.models.user import User
 from src.models.membership import Membership
 from src.models.campaign import Campaign, CampaignResource, CampaignSequence
 from src.models.lead import Lead, GlobalSuppression, ClientSuppression, DomainSuppression
 from src.models.activity import Activity, ActivityStats
+from src.models.conversion_patterns import ConversionPattern, ConversionPatternHistory
 
 __all__ = [
     # Base
     "Base",
     "SoftDeleteMixin",
     "TimestampMixin",
+    "PatternType",
     # Models
     "Client",
     "User",
@@ -38,4 +40,7 @@ __all__ = [
     "DomainSuppression",
     "Activity",
     "ActivityStats",
+    # Conversion Intelligence
+    "ConversionPattern",
+    "ConversionPatternHistory",
 ]

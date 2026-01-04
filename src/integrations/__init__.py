@@ -12,3 +12,16 @@ RULES APPLIED:
 """
 
 # Agency OS - Integrations Package
+
+from src.integrations.serper import SerperClient, get_serper_client
+from src.integrations.vapi import VapiClient, get_vapi_client
+from src.integrations.elevenlabs import ElevenLabsClient, get_elevenlabs_client
+
+__all__ = [
+    "SerperClient",
+    "get_serper_client",
+    "VapiClient",
+    "get_vapi_client",
+    "ElevenLabsClient",
+    "get_elevenlabs_client",
+]

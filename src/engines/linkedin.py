@@ -1,10 +1,11 @@
 """
 FILE: src/engines/linkedin.py
 PURPOSE: LinkedIn engine using HeyReach integration
-PHASE: 4 (Engines)
-TASK: ENG-007
+PHASE: 4 (Engines), modified Phase 16 for Conversion Intelligence
+TASK: ENG-007, 16E-003
 DEPENDENCIES:
   - src/engines/base.py
+  - src/engines/content_utils.py (Phase 16)
   - src/integrations/heyreach.py
   - src/integrations/redis.py
   - src/models/lead.py
@@ -12,9 +13,12 @@ DEPENDENCIES:
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 11: Session passed as argument
-  - Rule 12: No imports from other engines
+  - Rule 12: No imports from other engines (content_utils is utilities, not engine)
   - Rule 14: Soft deletes only
   - Rule 17: Resource-level rate limits (17/day/seat)
+PHASE 16 CHANGES:
+  - Added content_snapshot capture for WHAT Detector learning
+  - Tracks touch_number, sequence context, and message_type
 """
 
 from datetime import datetime
@@ -24,6 +28,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import EngineResult, OutreachEngine
+from src.engines.content_utils import build_linkedin_snapshot
 from src.exceptions import ResourceRateLimitError, ValidationError
 from src.integrations.heyreach import HeyReachClient, get_heyreach_client
 from src.integrations.redis import rate_limiter
@@ -156,7 +161,7 @@ class LinkedInEngine(OutreachEngine):
             # Get message/request ID
             provider_id = result.get("message_id") or result.get("request_id")
 
-            # Log activity
+            # Log activity with content snapshot (Phase 16)
             await self._log_activity(
                 db=db,
                 lead=lead,
@@ -164,6 +169,11 @@ class LinkedInEngine(OutreachEngine):
                 action=activity_action,
                 provider_message_id=provider_id,
                 content_preview=content[:200] if len(content) > 200 else content,
+                message_content=content,  # Phase 16: Pass full content for snapshot
+                message_type="connection" if action == "connection" else "message",
+                connection_note=content if action == "connection" else None,
+                sequence_step=kwargs.get("sequence_step"),
+                sequence_id=kwargs.get("sequence_id"),
                 provider_response=result,
                 seat_id=seat_id,
             )
@@ -407,13 +417,34 @@ class LinkedInEngine(OutreachEngine):
         action: str,
         provider_message_id: str | None = None,
         content_preview: str | None = None,
+        message_content: str | None = None,
+        message_type: str = "message",
+        connection_note: str | None = None,
+        sequence_step: int | None = None,
+        sequence_id: str | None = None,
         provider_response: dict | None = None,
         seat_id: str | None = None,
     ) -> None:
-        """Log LinkedIn activity to database."""
+        """
+        Log LinkedIn activity to database.
+
+        Phase 16: Now captures content_snapshot for WHAT Detector learning.
+        """
         metadata = {}
         if seat_id:
             metadata["seat_id"] = seat_id
+
+        # Build content snapshot for Conversion Intelligence (Phase 16)
+        snapshot = None
+        if message_content or connection_note:
+            snapshot = build_linkedin_snapshot(
+                message=message_content or "",
+                lead=lead,
+                message_type=message_type,
+                connection_note=connection_note,
+                touch_number=sequence_step or 1,
+                sequence_id=sequence_id,
+            )
 
         activity = Activity(
             client_id=lead.client_id,
@@ -422,7 +453,9 @@ class LinkedInEngine(OutreachEngine):
             channel=ChannelType.LINKEDIN,
             action=action,
             provider_message_id=provider_message_id,
+            sequence_step=sequence_step,
             content_preview=content_preview,
+            content_snapshot=snapshot,  # Phase 16: Store content snapshot
             provider="heyreach",
             provider_status=action,
             provider_response=provider_response,
@@ -465,3 +498,5 @@ def get_linkedin_engine() -> LinkedInEngine:
 # [x] EngineResult wrapper for responses
 # [x] All functions have type hints
 # [x] All functions have docstrings
+# [x] Phase 16: content_snapshot captured for WHAT Detector
+# [x] Phase 16: touch_number, sequence_id, and message_type tracked

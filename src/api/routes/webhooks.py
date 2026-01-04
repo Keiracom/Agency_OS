@@ -1,13 +1,15 @@
 """
 FILE: src/api/routes/webhooks.py
-PURPOSE: Inbound webhook routes for Postmark, Twilio, and HeyReach
-PHASE: 7 (API Routes)
-TASK: API-006
+PURPOSE: Inbound webhook routes for Postmark, Twilio, HeyReach, and Vapi
+PHASE: 7 (API Routes), Phase 17 (Vapi Voice)
+TASK: API-006, CRED-007
 DEPENDENCIES:
   - src/engines/closer.py
+  - src/engines/voice.py
   - src/integrations/postmark.py
   - src/integrations/twilio.py
   - src/integrations/heyreach.py
+  - src/integrations/vapi.py
   - src/models/lead.py
   - src/models/activity.py
 RULES APPLIED:
@@ -33,6 +35,7 @@ from src.integrations.postmark import get_postmark_client
 from src.integrations.supabase import get_db_session
 from src.integrations.twilio import get_twilio_client
 from src.integrations.heyreach import get_heyreach_client
+from src.engines.voice import get_voice_engine
 from src.models.base import ChannelType
 from src.models.lead import Lead
 from src.models.activity import Activity
@@ -734,6 +737,69 @@ async def heyreach_inbound_webhook(
 
 
 # ============================================
+# Vapi Webhooks (Voice AI)
+# ============================================
+
+
+@router.post("/vapi")
+async def vapi_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Handle Vapi call webhooks.
+
+    Events:
+    - call-started: Call has been initiated
+    - call-ended: Call has ended
+    - end-of-call-report: Final call summary with transcript
+
+    Webhook-first architecture (Rule 20). This is the primary method
+    for processing voice call completions and transcripts.
+
+    Args:
+        request: FastAPI request
+        db: Database session
+
+    Returns:
+        Success response
+    """
+    try:
+        payload = await request.json()
+
+        # Get event type
+        event_type = payload.get("message", {}).get("type", payload.get("type"))
+
+        # Only process call completion events
+        if event_type not in ["call-ended", "end-of-call-report"]:
+            return {"status": "acknowledged", "event": event_type}
+
+        # Process via Voice engine
+        voice = get_voice_engine()
+        result = await voice.process_call_webhook(db, payload)
+
+        if not result.success:
+            # Log error but return 200 to prevent Vapi retries
+            return {
+                "status": "error",
+                "error": result.error,
+            }
+
+        return {
+            "status": "processed",
+            "call_id": result.data.get("call_id"),
+            "event": result.data.get("event"),
+        }
+
+    except Exception as e:
+        # Return 200 to prevent Vapi retries
+        return {
+            "status": "error",
+            "error": str(e),
+        }
+
+
+# ============================================
 # VERIFICATION CHECKLIST
 # ============================================
 # [x] Contract comment at top
@@ -744,11 +810,13 @@ async def heyreach_inbound_webhook(
 # [x] Twilio inbound webhook with SMS reply handling
 # [x] Twilio status webhook with delivery tracking
 # [x] HeyReach inbound webhook with LinkedIn reply handling
+# [x] Vapi webhook with voice call completion handling (Phase 17)
 # [x] Webhook signature verification for Postmark (placeholder)
 # [x] Webhook signature verification for Twilio (HMAC-SHA1)
 # [x] Lead lookup by email/phone/LinkedIn URL
 # [x] Duplicate activity detection (deduplication)
 # [x] Process via Closer engine for intent classification
+# [x] Process via Voice engine for call webhooks
 # [x] Update lead status based on intent
 # [x] Activity logging for all webhook events
 # [x] Soft delete checks in lead queries (Rule 14)

@@ -18,6 +18,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,11 @@ const navItems: NavItem[] = [
     title: "Leads",
     href: "/dashboard/leads",
     icon: Users,
+  },
+  {
+    title: "Replies",
+    href: "/dashboard/replies",
+    icon: MessageSquare,
   },
   {
     title: "Reports",

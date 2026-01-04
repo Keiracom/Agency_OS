@@ -19,12 +19,12 @@ Before we have our first paying customer, ALL of the following must be true:
 - [ ] Error monitoring active (Sentry)
 
 ### End-to-End Flow Works
-- [ ] Signup → Onboarding → ICP extraction completes
-- [ ] Campaign creation with AI content generation works
-- [ ] Real email sent and received in inbox
-- [ ] Reply handling and intent classification works
-- [ ] Dashboard shows accurate real-time data
-- [ ] Admin panel shows platform-wide metrics
+- [ ] Signup → Onboarding → ICP extraction completes *(M1)*
+- [ ] Campaign creation with AI content generation works *(M2)*
+- [ ] Real email sent and received in inbox *(M3)*
+- [ ] Reply handling and intent classification works *(M4)*
+- [ ] Dashboard shows accurate real-time data *(M5)*
+- [ ] Admin panel shows platform-wide metrics *(M6)*
 
 ### Marketing Ready
 - [ ] Landing page live with waitlist capture
@@ -52,10 +52,11 @@ Before we have our first paying customer, ALL of the following must be true:
 | 14 | Missing UI | ✅ | 4 | 4 |
 | 15 | Live UX Testing | ✅ | 6 | 6 |
 | 16 | Conversion Intelligence | ✅ | 30 | 30 |
-| **17** | **Launch Prerequisites** | 🟡 | **20** | **0** |
+| **17** | **Launch Prerequisites** | 🟡 | **20** | **8** |
+| **18** | **E2E Journey Test** | 🔴 | **47** | **0** |
 
 **Platform Tasks:** 174/174 (100% complete)
-**Launch Tasks:** 8/21 (38% complete)
+**Launch Tasks:** 8/68 (12% complete)
 
 ---
 
@@ -154,6 +155,178 @@ Before we have our first paying customer, ALL of the following must be true:
 | MKT-001 | HeyGen account + avatar setup | 🔴 | — |
 | MKT-002 | Content automation flow (Prefect) | 🔴 | `src/orchestration/flows/marketing_automation_flow.py` |
 | MKT-003 | Day 1 video script + post | 🔴 | — |
+
+---
+
+## PHASE 18: E2E Journey Test
+
+**Purpose:** Validate complete user journey before launch
+**Spec:** `docs/audits/UX_AUDIT_2026-01-04.md`
+
+### Pre-Flight Checks (7 tests)
+
+| # | Test | Expected | Status |
+|---|------|----------|--------|
+| 1 | Backend health check | 200 OK | 🔴 |
+| 2 | Frontend loads | No console errors | 🔴 |
+| 3 | Supabase connection | Can query | 🔴 |
+| 4 | Resend API works | Can send | 🔴 |
+| 5 | Anthropic API works | Can generate | 🔴 |
+| 6 | Apollo API works | Can enrich | 🔴 |
+| 7 | Apify API works | Can scrape | 🔴 |
+
+**Pre-Flight Result:** 🔴 Not Started
+
+---
+
+### M1: Signup & Onboarding (10 tests)
+
+| # | Test | Expected | Status |
+|---|------|----------|--------|
+| 1 | Go to /login | Login page loads | 🔴 |
+| 2 | Click "Sign Up" | Signup form shows | 🔴 |
+| 3 | Enter email + password | Form validates | 🔴 |
+| 4 | Submit signup | Confirmation sent | 🔴 |
+| 5 | Confirm email | Redirected to onboarding | 🔴 |
+| 6 | Enter website URL | ICP extraction starts | 🔴 |
+| 7 | Wait for extraction | Progress shown | 🔴 |
+| 8 | Review ICP | Extracted data displayed | 🔴 |
+| 9 | Confirm ICP | Saved to database | 🔴 |
+| 10 | Redirected to dashboard | Dashboard loads | 🔴 |
+
+**M1 Result:** 🔴 Not Started
+
+---
+
+### M2: Campaign & Leads (10 tests)
+
+| # | Test | Expected | Status |
+|---|------|----------|--------|
+| 11 | Go to /dashboard/campaigns | Campaigns page loads | 🔴 |
+| 12 | Click "New Campaign" | Creation form loads | 🔴 |
+| 13 | Enter campaign name | Field validates | 🔴 |
+| 14 | Select permission mode | Mode saved | 🔴 |
+| 15 | Create campaign | Campaign created | 🔴 |
+| 16 | Go to /dashboard/leads | Leads page loads | 🔴 |
+| 17 | Click "Import" | Import UI shows | 🔴 |
+| 18 | Add test lead manually | Lead created | 🔴 |
+| 19 | View lead detail | Lead data correct | 🔴 |
+| 20 | Assign lead to campaign | Lead assigned | 🔴 |
+
+**M2 Result:** 🔴 Not Started
+
+---
+
+### M3: Email Send (5 tests)
+
+| # | Test | Expected | Status |
+|---|------|----------|--------|
+| 21 | Go to campaign detail | Shows 1 lead assigned | 🔴 |
+| 22 | Click "Activate Campaign" | Status → Active | 🔴 |
+| 23 | Trigger send | Email queued | 🔴 |
+| 24 | Check inbox | Email received | 🔴 |
+| 25 | Verify email content | Personalization correct | 🔴 |
+
+**Email Checks:**
+- [ ] From address is verified domain
+- [ ] Subject line rendered
+- [ ] {first_name} replaced
+- [ ] Unsubscribe link works
+
+**M3 Result:** 🔴 Not Started
+
+---
+
+### M4: Reply Handling (5 tests)
+
+| # | Test | Expected | Status |
+|---|------|----------|--------|
+| 26 | Reply to email: "I'm interested" | Email sent | 🔴 |
+| 27 | Wait 1-2 min for webhook | Reply processed | 🔴 |
+| 28 | Check lead status in UI | Shows "Replied" | 🔴 |
+| 29 | Check intent classification | Classified as "interested" | 🔴 |
+| 30 | Check activity feed | Reply activity visible | 🔴 |
+
+**M4 Result:** 🔴 Not Started
+
+---
+
+### M5: Dashboard Validation (5 tests)
+
+| # | Test | Expected | Status |
+|---|------|----------|--------|
+| 31 | View dashboard | Shows 1 campaign, 1 lead | 🔴 |
+| 32 | Stats cards accurate | 1 sent, 1 open, 1 reply | 🔴 |
+| 33 | Activity feed shows events | Send + reply visible | 🔴 |
+| 34 | ALS distribution shows 1 lead | Correct tier | 🔴 |
+| 35 | Refresh page | Data persists | 🔴 |
+
+**M5 Result:** 🔴 Not Started
+
+---
+
+### M6: Admin Dashboard (5 tests)
+
+**Requires:** Admin frontend wired to backend APIs (ADM fixes below)
+
+| # | Test | Expected | Status |
+|---|------|----------|--------|
+| 36 | Go to /admin | Admin dashboard loads | 🔴 |
+| 37 | Platform stats correct | 1 client, 1 campaign, real numbers | 🔴 |
+| 38 | Client list shows your client | Name, tier, status visible | 🔴 |
+| 39 | Activity log shows events | Platform-wide activities | 🔴 |
+| 40 | System health all green | Integrations healthy | 🔴 |
+
+**M6 Result:** 🔴 Not Started
+
+---
+
+### Admin Dashboard Fixes (Required for M6)
+
+The audit found Admin frontend uses mock data. These fixes required before M6:
+
+| Task | Description | File | Status |
+|------|-------------|------|--------|
+| ADM-001 | Create admin hooks | `frontend/hooks/use-admin.ts` | 🔴 |
+| ADM-002 | Create admin API functions | `frontend/lib/api/admin.ts` | 🔴 |
+| ADM-003 | Wire Admin Command Center | `frontend/app/admin/page.tsx` | 🔴 |
+| ADM-004 | Wire Admin Clients page | `frontend/app/admin/clients/page.tsx` | 🔴 |
+| ADM-005 | Wire Admin Activity page | `frontend/app/admin/activity/page.tsx` | 🔴 |
+
+---
+
+### Phase 18 Summary
+
+| Milestone | Tests | Passed | Status |
+|-----------|-------|--------|--------|
+| Pre-Flight | 7 | 0 | 🔴 |
+| M1: Signup & Onboarding | 10 | 0 | 🔴 |
+| M2: Campaign & Leads | 10 | 0 | 🔴 |
+| M3: Email Send | 5 | 0 | 🔴 |
+| M4: Reply Handling | 5 | 0 | 🔴 |
+| M5: Dashboard Validation | 5 | 0 | 🔴 |
+| M6: Admin Dashboard | 5 | 0 | 🔴 |
+| **TOTAL** | **47** | **0** | 🔴 |
+
+---
+
+### Blockers Log
+
+| ID | Milestone | Description | Severity | Fix | Status |
+|----|-----------|-------------|----------|-----|--------|
+| | | | | | |
+
+*(Fill in as blockers discovered during testing)*
+
+---
+
+### Test Session Log
+
+| Date | Tester | Milestones | Passed | Failed | Blocked | Notes |
+|------|--------|------------|--------|--------|---------|-------|
+| | | | | | | |
+
+*(Add entry for each test session)*
 
 ---
 

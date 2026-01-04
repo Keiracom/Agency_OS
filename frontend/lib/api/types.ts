@@ -187,6 +187,11 @@ export interface Activity {
   content_preview?: string | null;
   intent?: string | null;
 
+  // Admin activity fields
+  client_name?: string;
+  details?: string;
+  timestamp?: string;
+
   // Joined data (optional)
   lead?: Lead;
   campaign?: Campaign;
@@ -263,6 +268,15 @@ export interface AdminStats {
   leads_this_month: number;
   ai_spend_today_aud: number;
   ai_spend_month_aud: number;
+
+  // Admin dashboard stats
+  mrr?: number;
+  mrr_change?: number;
+  new_clients_this_month?: number;
+  leads_today?: number;
+  leads_change?: number;
+  ai_spend_today?: number;
+  ai_spend_limit?: number;
 }
 
 export interface SystemHealth {
@@ -271,6 +285,14 @@ export interface SystemHealth {
   redis: "healthy" | "degraded" | "down";
   prefect: "healthy" | "degraded" | "down";
   overall: "healthy" | "degraded" | "down";
+
+  // Detailed services array from API
+  services: Array<{
+    name: string;
+    status: "healthy" | "degraded" | "down";
+    latency_ms?: number | null;
+    message?: string | null;
+  }>;
 }
 
 export interface ClientHealth {
@@ -282,6 +304,12 @@ export interface ClientHealth {
   active_campaigns: number;
   total_leads: number;
   last_activity_at: string | null;
+
+  // Admin client fields
+  mrr?: number;
+  campaigns_count?: number;
+  leads_count?: number;
+  last_activity?: string | null;
 }
 
 export interface AISpendBreakdown {

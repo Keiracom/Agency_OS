@@ -1,17 +1,18 @@
 /**
  * FILE: frontend/app/admin/activity/page.tsx
- * PURPOSE: Global activity log for admin
- * PHASE: Admin Dashboard
- * TASK: Admin Dashboard - Activity
+ * PURPOSE: Global activity log for admin (LIVE DATA)
+ * PHASE: 18 (Admin Dashboard Fixes)
  */
 
 "use client";
 
 import { useState } from "react";
-import { Search, Filter } from "lucide-react";
+import { Search, RefreshCw, Mail, MessageSquare, Linkedin, Phone, Package } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -27,23 +28,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Mail, MessageSquare, Linkedin, Phone, Package } from "lucide-react";
+import { useGlobalActivity } from "@/hooks/use-admin";
 
-// Mock data
-const mockActivities = [
-  { id: "1", client: "LeadGen Pro", action: "Email sent", lead: "john@acme.com", channel: "email", timestamp: new Date(Date.now() - 1000 * 60 * 2) },
-  { id: "2", client: "GrowthLab", action: "Lead enriched", lead: "sarah@tech.co", channel: null, timestamp: new Date(Date.now() - 1000 * 60 * 5) },
-  { id: "3", client: "ScaleUp Co", action: "Reply received", lead: "mike@startup.io", channel: "email", timestamp: new Date(Date.now() - 1000 * 60 * 8) },
-  { id: "4", client: "Marketing Plus", action: "SMS sent", lead: "lisa@enterprise.com", channel: "sms", timestamp: new Date(Date.now() - 1000 * 60 * 12) },
-  { id: "5", client: "Enterprise Co", action: "LinkedIn connection", lead: "david@agency.com", channel: "linkedin", timestamp: new Date(Date.now() - 1000 * 60 * 15) },
-  { id: "6", client: "LeadGen Pro", action: "Voice call completed", lead: "emma@corp.net", channel: "voice", timestamp: new Date(Date.now() - 1000 * 60 * 20) },
-  { id: "7", client: "GrowthLab", action: "Direct mail queued", lead: "james@biz.com", channel: "mail", timestamp: new Date(Date.now() - 1000 * 60 * 25) },
-  { id: "8", client: "ScaleUp Co", action: "Email opened", lead: "anna@global.io", channel: "email", timestamp: new Date(Date.now() - 1000 * 60 * 30) },
-  { id: "9", client: "Marketing Plus", action: "Lead scored", lead: "tom@sales.co", channel: null, timestamp: new Date(Date.now() - 1000 * 60 * 35) },
-  { id: "10", client: "Enterprise Co", action: "Email bounced", lead: "invalid@bounce.net", channel: "email", timestamp: new Date(Date.now() - 1000 * 60 * 40) },
-];
-
-const channelIcons = {
+const channelIcons: Record<string, typeof Mail> = {
   email: Mail,
   sms: MessageSquare,
   linkedin: Linkedin,
@@ -51,7 +38,7 @@ const channelIcons = {
   mail: Package,
 };
 
-const channelColors = {
+const channelColors: Record<string, string> = {
   email: "bg-blue-500/10 text-blue-600",
   sms: "bg-green-500/10 text-green-600",
   linkedin: "bg-sky-500/10 text-sky-600",
@@ -59,7 +46,8 @@ const channelColors = {
   mail: "bg-orange-500/10 text-orange-600",
 };
 
-function formatTimeAgo(date: Date): string {
+function formatTimeAgo(dateStr: string): string {
+  const date = new Date(dateStr);
   const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
   if (seconds < 60) return "Just now";
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
@@ -67,19 +55,46 @@ function formatTimeAgo(date: Date): string {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
+function TableSkeleton() {
+  return (
+    <div className="space-y-3 p-4">
+      {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+        <div key={i} className="flex gap-4">
+          <Skeleton className="h-8 w-20" />
+          <Skeleton className="h-8 w-32" />
+          <Skeleton className="h-8 w-10" />
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-8 w-48" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AdminActivityPage() {
   const [search, setSearch] = useState("");
   const [channelFilter, setChannelFilter] = useState("all");
 
-  const filteredActivities = mockActivities.filter((activity) => {
+  const { data: activities, isLoading, error, refetch } = useGlobalActivity(100);
+
+  // Filter activities
+  const filteredActivities = (activities || []).filter((activity) => {
     const matchesSearch =
-      activity.client.toLowerCase().includes(search.toLowerCase()) ||
-      activity.lead.toLowerCase().includes(search.toLowerCase()) ||
-      activity.action.toLowerCase().includes(search.toLowerCase());
+      activity.client_name?.toLowerCase().includes(search.toLowerCase()) ||
+      activity.details?.toLowerCase().includes(search.toLowerCase()) ||
+      activity.action?.toLowerCase().includes(search.toLowerCase());
     const matchesChannel =
       channelFilter === "all" || activity.channel === channelFilter;
     return matchesSearch && matchesChannel;
   });
+
+  // Count by channel
+  const channelCounts = (activities || []).reduce((acc, a) => {
+    if (a.channel) {
+      acc[a.channel] = (acc[a.channel] || 0) + 1;
+    }
+    return acc;
+  }, {} as Record<string, number>);
 
   return (
     <div className="space-y-6">
@@ -91,10 +106,16 @@ export default function AdminActivityPage() {
             Real-time activity across all clients
           </p>
         </div>
-        <Badge variant="outline" className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-          Live
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+            Live
+          </Badge>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -106,7 +127,9 @@ export default function AdminActivityPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2,847</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? <Skeleton className="h-8 w-16" /> : (activities?.length || 0).toLocaleString()}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -117,7 +140,9 @@ export default function AdminActivityPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,847</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? <Skeleton className="h-8 w-16" /> : (channelCounts.email || 0).toLocaleString()}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -128,7 +153,9 @@ export default function AdminActivityPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">456</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? <Skeleton className="h-8 w-16" /> : (channelCounts.linkedin || 0).toLocaleString()}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -139,7 +166,9 @@ export default function AdminActivityPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">234</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? <Skeleton className="h-8 w-16" /> : (channelCounts.sms || 0).toLocaleString()}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -150,7 +179,9 @@ export default function AdminActivityPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">89</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? <Skeleton className="h-8 w-16" /> : (channelCounts.voice || 0).toLocaleString()}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -188,47 +219,63 @@ export default function AdminActivityPage() {
       {/* Table */}
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Time</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Channel</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Lead</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredActivities.map((activity) => {
-                const Icon = activity.channel
-                  ? channelIcons[activity.channel as keyof typeof channelIcons]
-                  : null;
-                return (
-                  <TableRow key={activity.id}>
-                    <TableCell className="text-muted-foreground">
-                      {formatTimeAgo(activity.timestamp)}
-                    </TableCell>
-                    <TableCell className="font-medium">{activity.client}</TableCell>
-                    <TableCell>
-                      {activity.channel && Icon && (
-                        <div
-                          className={`inline-flex items-center justify-center h-8 w-8 rounded ${
-                            channelColors[activity.channel as keyof typeof channelColors]
-                          }`}
-                        >
-                          <Icon className="h-4 w-4" />
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>{activity.action}</TableCell>
-                    <TableCell className="text-muted-foreground font-mono text-sm">
-                      {activity.lead}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          {isLoading ? (
+            <TableSkeleton />
+          ) : error ? (
+            <div className="p-8 text-center text-muted-foreground">
+              <p>Failed to load activity</p>
+              <Button variant="outline" size="sm" className="mt-2" onClick={() => refetch()}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry
+              </Button>
+            </div>
+          ) : filteredActivities.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground">
+              No activity found
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Channel</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Details</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredActivities.map((activity) => {
+                  const Icon = activity.channel
+                    ? channelIcons[activity.channel]
+                    : null;
+                  return (
+                    <TableRow key={activity.id}>
+                      <TableCell className="text-muted-foreground">
+                        {formatTimeAgo(activity.timestamp || activity.created_at)}
+                      </TableCell>
+                      <TableCell className="font-medium">{activity.client_name}</TableCell>
+                      <TableCell>
+                        {activity.channel && Icon && (
+                          <div
+                            className={`inline-flex items-center justify-center h-8 w-8 rounded ${
+                              channelColors[activity.channel] || ""
+                            }`}
+                          >
+                            <Icon className="h-4 w-4" />
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>{activity.action}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm max-w-[300px] truncate">
+                        {activity.details}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

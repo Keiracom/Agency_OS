@@ -1,12 +1,12 @@
 /**
  * FILE: frontend/app/admin/page.tsx
- * PURPOSE: Admin Command Center - main dashboard
- * PHASE: Admin Dashboard
- * TASK: Admin Dashboard Foundation
+ * PURPOSE: Admin Command Center - main dashboard (LIVE DATA)
+ * PHASE: 18 (Admin Dashboard Fixes)
  */
 
-import { Suspense } from "react";
-import { DollarSign, Users, Target, Cpu } from "lucide-react";
+"use client";
+
+import { DollarSign, Users, Target, Cpu, RefreshCw } from "lucide-react";
 import {
   KPICard,
   AlertBanner,
@@ -18,110 +18,13 @@ import {
 } from "@/components/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-
-// Mock data - would be fetched from API in production
-const mockKPIs = {
-  mrr: 47500,
-  mrrChange: 12,
-  activeClients: 19,
-  newClients: 2,
-  leadsToday: 1247,
-  aiSpend: 89,
-  aiLimit: 500,
-};
-
-const mockAlerts: Alert[] = [
-  {
-    id: "1",
-    severity: "critical",
-    message: 'Client "GrowthLab" - 3 failed enrichments',
-    timestamp: new Date(Date.now() - 1000 * 60 * 15),
-    link: "/admin/clients/growthlab",
-    dismissible: true,
-  },
-  {
-    id: "2",
-    severity: "warning",
-    message: "Apollo API rate limit 80% consumed",
-    timestamp: new Date(Date.now() - 1000 * 60 * 30),
-    link: "/admin/system/rate-limits",
-    dismissible: true,
-  },
-  {
-    id: "3",
-    severity: "warning",
-    message: 'Client "ScaleUp" - no activity 48hrs',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    link: "/admin/clients/scaleup",
-    dismissible: true,
-  },
-];
-
-const mockServices: ServiceStatus[] = [
-  { name: "API", status: "healthy", latency: 45 },
-  { name: "Database", status: "healthy", latency: 12 },
-  { name: "Redis", status: "healthy", latency: 3 },
-  { name: "Prefect", status: "healthy", message: "2 running" },
-  { name: "Webhooks", status: "healthy" },
-];
-
-const mockActivities: Activity[] = [
-  {
-    id: "1",
-    client_name: "LeadGen Pro",
-    action: "email_sent",
-    details: "Email sent to john@acme.com",
-    timestamp: new Date(Date.now() - 1000 * 60 * 2),
-    channel: "email",
-  },
-  {
-    id: "2",
-    client_name: "GrowthLab",
-    action: "lead_enriched",
-    details: "Lead enriched (ALS: 78)",
-    timestamp: new Date(Date.now() - 1000 * 60 * 3),
-  },
-  {
-    id: "3",
-    client_name: "ScaleUp Co",
-    action: "reply_received",
-    details: "Reply received (interested)",
-    timestamp: new Date(Date.now() - 1000 * 60 * 3),
-    channel: "email",
-  },
-  {
-    id: "4",
-    client_name: "LeadGen Pro",
-    action: "linkedin_sent",
-    details: "LinkedIn connection sent",
-    timestamp: new Date(Date.now() - 1000 * 60 * 4),
-    channel: "linkedin",
-  },
-  {
-    id: "5",
-    client_name: "Marketing Plus",
-    action: "sms_sent",
-    details: "SMS sent to +1234567890",
-    timestamp: new Date(Date.now() - 1000 * 60 * 5),
-    channel: "sms",
-  },
-  {
-    id: "6",
-    client_name: "GrowthLab",
-    action: "voice_call",
-    details: "Voice call completed (2m 34s)",
-    timestamp: new Date(Date.now() - 1000 * 60 * 8),
-    channel: "voice",
-  },
-  {
-    id: "7",
-    client_name: "Enterprise Co",
-    action: "mail_sent",
-    details: "Direct mail queued",
-    timestamp: new Date(Date.now() - 1000 * 60 * 10),
-    channel: "mail",
-  },
-];
+import { Button } from "@/components/ui/button";
+import {
+  useAdminStats,
+  useSystemHealth,
+  useAlerts,
+  useGlobalActivity,
+} from "@/hooks/use-admin";
 
 function KPISkeleton() {
   return (
@@ -141,36 +44,57 @@ function KPISkeleton() {
   );
 }
 
-async function KPISection() {
-  // In production, fetch from API:
-  // const stats = await fetch('/api/v1/admin/stats').then(r => r.json())
+function KPISection() {
+  const { data: stats, isLoading, error, refetch } = useAdminStats();
 
-  const aiSpendPercent = Math.round((mockKPIs.aiSpend / mockKPIs.aiLimit) * 100);
+  if (isLoading) return <KPISkeleton />;
+
+  if (error || !stats) {
+    return (
+      <Card className="p-6">
+        <div className="text-center text-muted-foreground">
+          <p>Failed to load stats</p>
+          <Button variant="outline" size="sm" className="mt-2" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
+  const spendLimit = stats.ai_spend_limit ?? 100;
+  const spendToday = stats.ai_spend_today ?? 0;
+  const aiSpendPercent = spendLimit > 0
+    ? Math.round((Number(spendToday) / Number(spendLimit)) * 100)
+    : 0;
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <KPICard
         title="MRR"
-        value={`$${mockKPIs.mrr.toLocaleString()}`}
-        change={mockKPIs.mrrChange}
+        value={`$${Number(stats.mrr ?? stats.mrr_aud ?? 0).toLocaleString()}`}
+        change={stats.mrr_change ?? 0}
         changeLabel="MoM"
         icon={<DollarSign className="h-4 w-4" />}
       />
       <KPICard
         title="Active Clients"
-        value={mockKPIs.activeClients}
-        change={mockKPIs.newClients}
+        value={stats.active_clients}
+        change={stats.new_clients_this_month ?? 0}
         changeLabel="new this month"
         icon={<Users className="h-4 w-4" />}
       />
       <KPICard
         title="Leads Today"
-        value={mockKPIs.leadsToday.toLocaleString()}
+        value={(stats.leads_today ?? 0).toLocaleString()}
+        change={stats.leads_change ?? 0}
+        changeLabel="vs yesterday"
         icon={<Target className="h-4 w-4" />}
       />
       <KPICard
         title="AI Spend Today"
-        value={`$${mockKPIs.aiSpend} / $${mockKPIs.aiLimit}`}
+        value={`$${Number(spendToday).toFixed(0)} / $${Number(spendLimit).toFixed(0)}`}
         change={aiSpendPercent}
         changeLabel="of daily limit"
         icon={<Cpu className="h-4 w-4" />}
@@ -179,28 +103,134 @@ async function KPISection() {
   );
 }
 
-async function SystemStatusSection() {
-  // In production, fetch from API:
-  // const status = await fetch('/api/v1/admin/system/status').then(r => r.json())
+function SystemStatusSection() {
+  const { data: health, isLoading, error } = useSystemHealth();
 
-  return <SystemStatusIndicator services={mockServices} />;
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">System Status</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-16 w-24" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error || !health) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">System Status</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">Failed to load system status</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const services: ServiceStatus[] = health.services.map((s) => ({
+    name: s.name,
+    status: s.status as "healthy" | "degraded" | "down",
+    latency: s.latency_ms ?? undefined,
+    message: s.message ?? undefined,
+  }));
+
+  return <SystemStatusIndicator services={services} />;
 }
 
-async function AlertsSection() {
-  // In production, fetch from API:
-  // const alerts = await fetch('/api/v1/admin/alerts').then(r => r.json())
+function AlertsSection() {
+  const { data: alertsData, isLoading, error } = useAlerts();
 
-  return <AlertBanner alerts={mockAlerts} />;
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Alerts</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-32 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error || !alertsData) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Alerts</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">Failed to load alerts</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const alerts: Alert[] = alertsData.map((a) => ({
+    id: a.id,
+    severity: a.severity,
+    message: a.title || a.description,
+    timestamp: new Date(a.created_at),
+    link: undefined,
+    dismissible: !a.acknowledged,
+  }));
+
+  return <AlertBanner alerts={alerts} />;
 }
 
-async function ActivitySection() {
-  // In production, fetch from API:
-  // const activity = await fetch('/api/v1/admin/activity?limit=10').then(r => r.json())
+function ActivitySection() {
+  const { data: activities, isLoading, error } = useGlobalActivity(10);
 
-  return <LiveActivityFeed activities={mockActivities} maxItems={10} />;
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Live Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-32 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error || !activities) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Live Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">Failed to load activity</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const activityItems: Activity[] = activities.map((a) => ({
+    id: a.id,
+    client_name: a.client_name || "Unknown",
+    action: a.action,
+    details: a.details || "",
+    timestamp: new Date(a.timestamp || a.created_at),
+    channel: a.channel ?? undefined,
+  }));
+
+  return <LiveActivityFeed activities={activityItems} maxItems={10} />;
 }
 
 export default function AdminCommandCenter() {
+  const { data: stats } = useAdminStats();
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -214,61 +244,15 @@ export default function AdminCommandCenter() {
       </div>
 
       {/* KPIs */}
-      <Suspense fallback={<KPISkeleton />}>
-        <KPISection />
-      </Suspense>
+      <KPISection />
 
       {/* System Status */}
-      <Suspense
-        fallback={
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">System Status</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-4">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Skeleton key={i} className="h-16 w-24" />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        }
-      >
-        <SystemStatusSection />
-      </Suspense>
+      <SystemStatusSection />
 
       {/* Alerts and Activity */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <Suspense
-          fallback={
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium">Alerts</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-32 w-full" />
-              </CardContent>
-            </Card>
-          }
-        >
-          <AlertsSection />
-        </Suspense>
-
-        <Suspense
-          fallback={
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium">Live Activity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-32 w-full" />
-              </CardContent>
-            </Card>
-          }
-        >
-          <ActivitySection />
-        </Suspense>
+        <AlertsSection />
+        <ActivitySection />
       </div>
 
       {/* Quick Stats */}
@@ -280,30 +264,42 @@ export default function AdminCommandCenter() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">23</div>
-            <p className="text-xs text-muted-foreground">across 19 clients</p>
+            <div className="text-2xl font-bold">
+              {stats ? "—" : "—"}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              across {stats?.active_clients ?? "—"} clients
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Emails Sent Today
+              Leads Today
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,847</div>
-            <p className="text-xs text-muted-foreground">2.3% reply rate</p>
+            <div className="text-2xl font-bold">
+              {stats?.leads_today?.toLocaleString() ?? "—"}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {stats?.leads_change ? `${stats.leads_change > 0 ? "+" : ""}${stats.leads_change.toFixed(1)}% vs yesterday` : "—"}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Pending Approvals
+              AI Budget Used
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">co-pilot mode content</p>
+            <div className="text-2xl font-bold">
+              {stats ? `${Math.round((Number(stats.ai_spend_today) / Number(stats.ai_spend_limit)) * 100)}%` : "—"}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              ${stats ? Number(stats.ai_spend_today).toFixed(2) : "—"} of ${stats ? Number(stats.ai_spend_limit).toFixed(0) : "—"} daily limit
+            </p>
           </CardContent>
         </Card>
       </div>

@@ -24,7 +24,9 @@ export default async function DashboardRootLayout({
 
   // Check onboarding status
   const supabase = await createServerClient();
-  const { data: onboardingStatus } = await supabase.rpc('get_onboarding_status');
+  const { data: onboardingStatus } = await supabase.rpc('get_onboarding_status') as {
+    data: Array<{ client_id: string; needs_onboarding: boolean }> | null
+  };
 
   // If user needs onboarding, redirect
   if (onboardingStatus && onboardingStatus.length > 0 && onboardingStatus[0].needs_onboarding) {

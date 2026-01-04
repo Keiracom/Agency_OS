@@ -63,11 +63,11 @@ function ActivityTimelineItem({
     id: string;
     channel: string;
     action: string;
-    sequence_step: number | null;
-    subject: string | null;
-    content_preview: string | null;
+    sequence_step?: number | null;
+    subject?: string | null;
+    content_preview?: string | null;
     created_at: string;
-    intent: string | null;
+    intent?: string | null;
   };
   isLast: boolean;
 }) {
@@ -144,13 +144,13 @@ function ActivityTimelineItem({
               <p className={`whitespace-pre-wrap ${!isOpen && "line-clamp-2"}`}>
                 {isOpen
                   ? activity.content_preview
-                  : activity.content_preview.slice(0, 100) +
-                    (activity.content_preview.length > 100 ? "..." : "")}
+                  : (activity.content_preview?.slice(0, 100) ?? "") +
+                    ((activity.content_preview?.length ?? 0) > 100 ? "..." : "")}
               </p>
 
               {/* Actions */}
               <div className="flex items-center gap-2 mt-2">
-                {activity.content_preview.length > 100 && (
+                {(activity.content_preview?.length ?? 0) > 100 && (
                   <CollapsibleTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-7 text-xs">
                       {isOpen ? (
@@ -226,7 +226,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
   }
 
   const tierColor = lead.als_tier ? getTierColor(lead.als_tier) : "bg-gray-500";
-  const activities = activitiesData?.activities || [];
+  const activities = activitiesData || [];
 
   // Build ALS components from lead data
   const alsComponents = {

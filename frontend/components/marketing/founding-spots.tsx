@@ -24,7 +24,8 @@ export function FoundingSpots({
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    const supabase = createAnonClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = createAnonClient() as any;
 
     async function fetchSpots() {
       try {
@@ -56,7 +57,8 @@ export function FoundingSpots({
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "founding_spots" },
-        (payload) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
           const { total_spots, spots_taken } = payload.new as {
             total_spots: number;
             spots_taken: number;
@@ -139,7 +141,8 @@ export function useFoundingSpots() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const supabase = createAnonClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = createAnonClient() as any;
 
     async function fetchSpots() {
       try {
@@ -168,7 +171,8 @@ export function useFoundingSpots() {
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "founding_spots" },
-        (payload) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
           const { total_spots, spots_taken } = payload.new as {
             total_spots: number;
             spots_taken: number;

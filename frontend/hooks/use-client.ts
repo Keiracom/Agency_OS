@@ -26,7 +26,8 @@ async function fetchCurrentClient(): Promise<ClientWithMembership | null> {
   if (!user) return null;
 
   // Get user's primary membership (first accepted membership)
-  const { data: membership, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: membership, error } = await (supabase as any)
     .from("memberships")
     .select(`
       role,
@@ -46,7 +47,7 @@ async function fetchCurrentClient(): Promise<ClientWithMembership | null> {
   }
 
   // Transform the joined clients data to Client type
-  const clientData = membership.clients as unknown as Client;
+  const clientData = membership.clients as Client;
 
   return {
     client: clientData,

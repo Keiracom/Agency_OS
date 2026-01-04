@@ -33,8 +33,10 @@ export default function SkipOnboardingPage() {
       }
 
       // Get user's client
-      const { data: onboardingStatus } = await supabase.rpc('get_onboarding_status');
-      
+      const { data: onboardingStatus } = await supabase.rpc('get_onboarding_status') as {
+        data: Array<{ client_id: string; needs_onboarding: boolean }> | null
+      };
+
       if (!onboardingStatus || onboardingStatus.length === 0) {
         setError('No client found. Please sign up first.');
         return;
@@ -43,7 +45,8 @@ export default function SkipOnboardingPage() {
       const clientId = onboardingStatus[0].client_id;
 
       // Update client with default ICP values and mark as confirmed
-      const { error: updateError } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: updateError } = await (supabase as any)
         .from('clients')
         .update({
           icp_industries: ['professional_services', 'technology', 'healthcare'],

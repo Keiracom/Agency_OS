@@ -181,6 +181,12 @@ export interface Activity {
   metadata: Record<string, unknown>;
   created_at: string;
 
+  // Activity details (from metadata or API)
+  sequence_step?: number | null;
+  subject?: string | null;
+  content_preview?: string | null;
+  intent?: string | null;
+
   // Joined data (optional)
   lead?: Lead;
   campaign?: Campaign;

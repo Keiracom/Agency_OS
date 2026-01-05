@@ -8,4 +8,4 @@
 # Note: app is imported from src.api.main directly, not from this __init__.py
 # to avoid circular imports during module initialization.
 
-__all__ = ["app"]
+__all__: list[str] = []

@@ -17,6 +17,7 @@ from src.engines.scout import (
     ScoutEngine,
     get_scout_engine,
 )
+from src.engines.base import EngineResult
 from src.models.base import LeadStatus
 
 
@@ -322,7 +323,6 @@ class TestBatchEnrichment:
             # Simulate all needing Clay (tier 2)
             async def enrich_result(db, lead_id, force_refresh, use_clay):
                 if use_clay:
-                    from src.engines.base import EngineResult
                     return EngineResult.ok(data={}, metadata={"tier": 2, "source": "clay"})
                 else:
                     return EngineResult.fail(error="Clay not allowed")
@@ -346,7 +346,6 @@ class TestBatchEnrichment:
         lead_ids = [uuid4() for _ in range(5)]
 
         with patch.object(scout_engine, "_enrich_single") as mock_enrich:
-            from src.engines.base import EngineResult
             # Simulate mixed results
             results_cycle = [
                 EngineResult.ok(data={}, metadata={"tier": 0, "source": "cache"}),

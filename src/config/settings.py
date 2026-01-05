@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     # === Environment ===
     ENV: Literal["development", "staging", "production"] = Field(
         default="development",
-        alias="env"
+        alias="environment"
     )
     debug: bool = False
     
@@ -154,7 +154,7 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         """Check if running in production environment."""
-        return self.env == "production"
+        return self.ENV == "production"
 
     @computed_field
     @property

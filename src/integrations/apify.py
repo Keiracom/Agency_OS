@@ -79,7 +79,7 @@ class ApifyClient:
                 message=f"LinkedIn scraping failed: {str(e)}",
             )
 
-    async def google_search(
+    async def search_google(
         self,
         queries: list[str],
         results_per_query: int = 10,

@@ -81,6 +81,9 @@ config/VERCEL_ENV_VARS.txt
 .worktrees/
 .auto-claude/
 
+# Claude Code local settings (contains credentials)
+.claude/settings.local.json
+
 # Test results
 test-results/
 

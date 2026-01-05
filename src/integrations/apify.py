@@ -118,6 +118,7 @@ class ApifyClient:
         self,
         url: str,
         max_pages: int = 10,
+        use_javascript: bool = True,
     ) -> dict[str, Any]:
         """
         Scrape website content.
@@ -125,16 +126,20 @@ class ApifyClient:
         Args:
             url: Website URL to scrape
             max_pages: Maximum pages to crawl
+            use_javascript: Whether to use Playwright for JS-heavy sites
 
         Returns:
             Scraped content
         """
         actor = self._get_actor(self.WEBSITE_CONTENT)
 
+        # Use playwright for JavaScript rendering (most agency sites need this)
+        crawler_type = "playwright" if use_javascript else "cheerio"
+
         run_input = {
             "startUrls": [{"url": url}],
             "maxCrawlPages": max_pages,
-            "crawlerType": "cheerio",
+            "crawlerType": crawler_type,
             "saveHtml": True,  # Include HTML content in output
         }
 
@@ -142,6 +147,19 @@ class ApifyClient:
             run = actor.call(run_input=run_input)
             dataset = self._client.dataset(run["defaultDatasetId"])
             items = list(dataset.iterate_items())
+
+            # Check if we got valid content
+            has_content = any(
+                item.get("html") or item.get("text")
+                for item in items
+            )
+
+            # If playwright failed, try cheerio as fallback
+            if not has_content and use_javascript:
+                run_input["crawlerType"] = "cheerio"
+                run = actor.call(run_input=run_input)
+                dataset = self._client.dataset(run["defaultDatasetId"])
+                items = list(dataset.iterate_items())
 
             return {
                 "url": url,

@@ -226,6 +226,13 @@ Extract all relevant information following the guidelines. Return valid JSON."""
         Returns:
             SkillResult containing parsed website content
         """
+        # Check for empty HTML before calling AI
+        if not input_data.html or len(input_data.html.strip()) < 100:
+            return SkillResult.fail(
+                error="Website returned no HTML content. The site may require JavaScript rendering or have anti-bot protection.",
+                metadata={"url": input_data.url, "html_length": len(input_data.html) if input_data.html else 0},
+            )
+
         prompt = self.build_prompt(input_data)
 
         try:

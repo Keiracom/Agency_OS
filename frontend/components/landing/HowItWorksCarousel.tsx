@@ -317,6 +317,11 @@ export default function HowItWorksCarousel() {
                 >
                   <div className="rounded-2xl bg-[#12121a] border border-white/10 overflow-hidden">
                     <div className="p-6 md:p-10">
+                      {/* Step Eyebrow Label */}
+                      <p className="text-xs font-semibold tracking-widest text-gray-500 uppercase text-center mb-6">
+                        Step {parseInt(slide.number)} • {slide.id.charAt(0).toUpperCase() + slide.id.slice(1)}
+                      </p>
+
                       <div className="grid md:grid-cols-2 gap-8 items-center">
                         {/* Left: Text Content */}
                         <div>

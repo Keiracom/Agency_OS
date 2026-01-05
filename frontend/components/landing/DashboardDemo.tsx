@@ -7,7 +7,8 @@
  */
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Mail, Linkedin, MessageSquare, Phone, Calendar, Lock, Sparkles } from "lucide-react";
+import { Mail, Linkedin, MessageSquare, Phone, Calendar, Lock, TrendingUp } from "lucide-react";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from "recharts";
 
 // Activity feed data
 const activities = [
@@ -37,14 +38,15 @@ const channelStyles = {
   calendar: { icon: "text-emerald-400", bg: "bg-emerald-500/20" },
 };
 
-// Email content for typing animation
-const emailText = `Hi Sarah,
-
-I noticed Bloom Digital has been expanding into healthcare marketing — congrats on the recent wins with Medicare providers.
-
-We've helped similar agencies book 40+ qualified meetings per month using our multi-channel approach. Given your focus on regulated industries, I think our compliance-first platform could be a great fit.
-
-Would you be open to a quick 15-min call next week to explore?`;
+// Pipeline growth data - 6 months showing upward trend to $284K
+const pipelineData = [
+  { month: "Aug", value: 142 },
+  { month: "Sep", value: 168 },
+  { month: "Oct", value: 195 },
+  { month: "Nov", value: 221 },
+  { month: "Dec", value: 256 },
+  { month: "Jan", value: 284 },
+];
 
 interface DashboardDemoProps {
   className?: string;
@@ -52,11 +54,7 @@ interface DashboardDemoProps {
 
 export default function DashboardDemo({ className = "" }: DashboardDemoProps) {
   const [visibleActivities, setVisibleActivities] = useState(() => activities.slice(0, 5));
-  const [typedText, setTypedText] = useState("");
-  const [isTyping, setIsTyping] = useState(true);
   const activityIndexRef = useRef(5);
-  const charIndexRef = useRef(0);
-  const typingTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Pre-compute time ago values to avoid re-renders
   const timeAgoValues = useMemo(() => [2, 5, 12, 18, 31], []);
@@ -72,42 +70,6 @@ export default function DashboardDemo({ className = "" }: DashboardDemoProps) {
     }, 4000); // Slower rotation
 
     return () => clearInterval(interval);
-  }, []);
-
-  // Smooth typing animation using refs
-  useEffect(() => {
-    const typeChar = () => {
-      if (charIndexRef.current < emailText.length) {
-        const char = emailText[charIndexRef.current];
-        charIndexRef.current += 1;
-        setTypedText(emailText.slice(0, charIndexRef.current));
-
-        // Variable delay based on character
-        let delay = 40; // Base delay
-        if (char === "\n") delay = 300;
-        else if (char === ".") delay = 200;
-        else if (char === ",") delay = 100;
-
-        typingTimeoutRef.current = setTimeout(typeChar, delay);
-      } else {
-        setIsTyping(false);
-        // Restart after 6 seconds
-        typingTimeoutRef.current = setTimeout(() => {
-          charIndexRef.current = 0;
-          setTypedText("");
-          setIsTyping(true);
-          typeChar();
-        }, 6000);
-      }
-    };
-
-    typeChar();
-
-    return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-    };
   }, []);
 
   return (
@@ -199,33 +161,60 @@ export default function DashboardDemo({ className = "" }: DashboardDemoProps) {
             </div>
           </div>
 
-          {/* AI Email Composer */}
+          {/* Pipeline Growth Chart */}
           <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
             <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
               <h3 className="font-semibold text-sm text-white flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-purple-400" />
-                AI Writing Email
+                <TrendingUp className="w-4 h-4 text-emerald-400" />
+                Pipeline Growth
               </h3>
-              <span className={`text-xs px-2 py-1 rounded-full ${isTyping ? "bg-purple-500/20 text-purple-300" : "bg-emerald-500/20 text-emerald-300"}`}>
-                {isTyping ? "Generating" : "Complete"}
+              <span className="text-xs px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300">
+                +100% YoY
               </span>
             </div>
             <div className="p-4">
-              <div className="mb-3 space-y-1.5">
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-white/50">To:</span>
-                  <span className="text-white">Sarah Chen, Marketing Director</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-white/50">Company:</span>
-                  <span className="text-white">Bloom Digital</span>
-                </div>
-              </div>
-              <div className="p-3 rounded-lg bg-[#12121a] border border-white/10 h-[140px] overflow-hidden">
-                <p className="text-xs text-white/90 leading-relaxed whitespace-pre-wrap font-mono">
-                  {typedText}
-                  {isTyping && <span className="inline-block w-0.5 h-3 bg-purple-400 ml-0.5 animate-pulse" />}
-                </p>
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={pipelineData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="pipelineGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#22c55e" stopOpacity={0.8} />
+                        <stop offset="100%" stopColor="#22c55e" stopOpacity={0.2} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis
+                      dataKey="month"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }}
+                      tickFormatter={(value) => `$${value}K`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1a1a24',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '8px',
+                        color: '#fff',
+                        fontSize: '12px',
+                      }}
+                      formatter={(value: number) => [`$${value}K`, 'Pipeline']}
+                      labelStyle={{ color: 'rgba(255,255,255,0.6)' }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#22c55e"
+                      strokeWidth={3}
+                      dot={{ fill: '#22c55e', strokeWidth: 0, r: 4 }}
+                      activeDot={{ fill: '#22c55e', strokeWidth: 2, stroke: '#fff', r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </div>

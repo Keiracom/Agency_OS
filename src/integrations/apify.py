@@ -175,7 +175,7 @@ class ApifyClient:
 
         query = f'site:linkedin.com/in "{company_name}" ({title_query})'
 
-        results = await self.google_search([query], results_per_query=20)
+        results = await self.search_google([query], results_per_query=20)
 
         contacts = []
         for result in results:

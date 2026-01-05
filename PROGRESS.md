@@ -1,8 +1,8 @@
 # PROGRESS.md — Agency OS Build Tracker
 
-**Last Updated:** January 4, 2026
+**Last Updated:** January 5, 2026
 **Current Phase:** PHASE 17-19 - Launch Prerequisites + Email Infrastructure
-**Status:** Platform built (174/174), preparing for launch, Phase 20 documented
+**Status:** Platform built (174/174), all credentials configured, Railway synced, ready for E2E testing
 
 > **Archive:** Completed phases 1-16 detailed in [`docs/progress/COMPLETED_PHASES.md`](docs/progress/COMPLETED_PHASES.md)
 
@@ -13,7 +13,7 @@
 Before we have our first paying customer, ALL of the following must be true:
 
 ### Infrastructure Ready
-- [ ] All API credentials collected and configured
+- [x] All API credentials collected and configured
 - [ ] Health checks pass for all integrations
 - [ ] Production database seeded with test data
 - [ ] Error monitoring active (Sentry)
@@ -52,15 +52,15 @@ Before we have our first paying customer, ALL of the following must be true:
 | 14 | Missing UI | ✅ | 4 | 4 |
 | 15 | Live UX Testing | ✅ | 6 | 6 |
 | 16 | Conversion Intelligence | ✅ | 30 | 30 |
-| **17** | **Launch Prerequisites** | 🟡 | **20** | **8** |
+| **17** | **Launch Prerequisites** | 🟡 | **20** | **11** |
 | **18** | **E2E Journey Test** | 🟡 | **47** | **5** |
 | **19** | **Email Infrastructure** | 🟡 | **20** | **1** |
 | **20** | **Platform Intelligence** | 📋 | **18** | **0** |
-| **21** | **Landing Page + UI Overhaul** | 🟡 | **18** | **15** |
+| **21** | **Landing Page + UI Overhaul** | 🟡 | **18** | **17** |
 
 **Platform Tasks:** 174/174 (100% complete)
 **Launch Tasks:** 16/88 (18% complete)
-**UI/Marketing Tasks:** 15/18 (83% - Phase 21)
+**UI/Marketing Tasks:** 17/18 (94% - Phase 21)
 **Post-Launch Tasks:** 0/18 (Phase 20 - planned)
 
 ---
@@ -93,7 +93,7 @@ Before we have our first paying customer, ALL of the following must be true:
 | CRED-006 | HeyReach API key + LinkedIn seats | ✅ | P1 |
 | CRED-007 | Vapi API key + phone number link | ✅ | P1 |
 | CRED-007a | ElevenLabs API key | ✅ | P1 |
-| CRED-008 | ClickSend credentials (AU direct mail) | 🔴 | P2 |
+| CRED-008 | ClickSend credentials (AU direct mail) | ✅ | P2 |
 | CRED-009 | DataForSEO credentials | ✅ | P1 |
 | CRED-010 | v0.dev API key (UI generation) | ✅ | P1 |
 
@@ -762,13 +762,17 @@ Comparison analysis identified strengths in both versions:
 | V0-001 | Install v0-sdk and configure API key | ✅ | P0 |
 | V0-002 | Create `scripts/v0-generate.ts` helper script | ✅ | P0 |
 | V0-003 | Generate landing page components via v0 API | ✅ | P0 |
-| V0-004 | Generate dashboard components via v0 API | 🔴 | P0 |
+| V0-004 | Generate dashboard components via v0 API | ✅ | P0 |
 
 **V0-003 Note (Jan 5, 2026):** Created components directly based on design specs:
 - `frontend/components/landing/ActivityFeed.tsx` - Live activity feed with rotation
 - `frontend/components/landing/TypingDemo.tsx` - AI email typing animation
 - `frontend/components/landing/HowItWorksTabs.tsx` - Interactive 5-step tabs with auto-rotate
 - `frontend/components/landing/SocialProofBar.tsx` - Stats bar component
+
+**V0-004 Note (Jan 5, 2026):** Dashboard demo enhanced:
+- `frontend/components/landing/DashboardDemo.tsx` - Animated dashboard with Pipeline Growth chart (recharts)
+- `frontend/components/landing/HowItWorksCarousel.tsx` - Instagram-style carousel with prev/next arrows
 
 ### 21E: Optional Enhancements (2 tasks)
 
@@ -1008,9 +1012,11 @@ Correct per codebase: Hot (85+), Warm (60-84), Cool (35-59), Cold (20-34), Dead 
 | 21A: Content Merges | 5 | ✅ |
 | 21B: Keep from Vercel | 4 | ✅ |
 | 21C: Consistency Fixes | 3 | ✅ |
-| 21D: v0.dev Integration | 4 | 🟡 3/4 |
+| 21D: v0.dev Integration | 4 | ✅ |
 | 21E: Optional | 2 | 🔴 |
-| **TOTAL** | **18** | **15/18** |
+| **TOTAL** | **18** | **17/18** |
+
+**21D Note:** Dashboard components created manually with recharts integration (V0-004 complete)
 
 ### Session: January 5, 2026
 
@@ -1041,6 +1047,72 @@ Correct per codebase: Hot (85+), Warm (60-84), Cool (35-59), Cold (20-34), Dead 
 - V0-004: Generate dashboard components (optional - can use existing)
 - LP-013/014: Optional dark mode toggle and A/B testing
 - Final deployment to Vercel
+
+### Session: January 5, 2026 (Afternoon) - UI Refinements
+
+#### Completed
+- **Dashboard Demo Fixes:**
+  - Fixed text visibility issues (added explicit `text-white` to stat values)
+  - Reduced animation jitter (static stats, slower activity feed rotation 4s)
+  - Replaced AI Email card with Pipeline Growth line chart (recharts)
+  - Smoother typing animation using refs instead of state
+
+- **How It Works - Instagram-style Carousel:**
+  - Converted tabbed interface to horizontal carousel
+  - Added prev/next arrow navigation (ChevronLeft/Right)
+  - Side slides show blurred/scaled (blur-[2px], scale-90, opacity-40)
+  - Auto-advances every 6 seconds (pauses on hover)
+  - Dot indicators with gradient active state
+  - Keyboard navigation support (arrow keys)
+
+- **Carousel Step Eyebrow Labels:**
+  - Added "Step X • Title" at top center of each card
+  - Format: "Step 1 • Discover", "Step 5 • Convert", etc.
+  - Styling: `text-xs font-semibold tracking-widest text-gray-500 uppercase text-center mb-6`
+
+- **Pipeline Growth Chart:**
+  - Using recharts (ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip)
+  - 6-month data showing upward trend (Aug $142K → Jan $284K)
+  - Green stroke (#22c55e) with "+100% YoY" badge
+  - Matches styling of Live Activity card
+
+#### Files Created
+- `frontend/components/landing/HowItWorksCarousel.tsx` - Instagram-style carousel
+
+#### Files Modified
+- `frontend/components/landing/DashboardDemo.tsx` - Fixed colors, replaced email with chart
+- `frontend/app/page.tsx` - Updated to use HowItWorksCarousel
+
+#### Deployment
+- Deployed to Vercel: https://agency-os-liart.vercel.app
+- Commits: b90d2e8, 3dda270, b73fdec
+
+---
+
+### Session: January 5, 2026 (Evening)
+
+#### Completed
+- CRED-008: ClickSend credentials configured (direct mail channel)
+- Synced all missing env vars to Railway via MCP:
+  - TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
+  - HEYREACH_API_KEY
+  - VAPI_API_KEY, ELEVENLABS_API_KEY
+  - CLICKSEND_USERNAME, CLICKSEND_API_KEY
+- Verified Railway deployment healthy: `{"status":"healthy","service":"agency-os-api","version":"3.0.0"}`
+
+#### Files Modified
+- `config/.env` - Added ClickSend credentials
+- `config/RAILWAY_ENV_VARS.txt` - Full sync with all channel credentials
+
+#### Status
+- All 11 API credentials now configured ✅
+- Railway production environment fully synced ✅
+- Health check passing ✅
+- Ready for E2E journey testing (M1-M6)
+
+#### Next Steps
+- Run M1: Signup & Onboarding test
+- Run M2-M6: Full journey validation
 
 ---
 

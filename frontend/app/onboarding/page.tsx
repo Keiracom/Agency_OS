@@ -166,9 +166,19 @@ export default function OnboardingPage() {
 
     try {
       const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      // Debug logging
+      console.log('[Onboarding] Session check:', {
+        hasSession: !!session,
+        sessionError: sessionError?.message,
+        tokenPreview: session?.access_token?.substring(0, 50),
+        userId: session?.user?.id,
+        expiresAt: session?.expires_at,
+      });
 
       if (!session) {
+        console.error('[Onboarding] No session found, redirecting to login');
         router.push('/login');
         return;
       }

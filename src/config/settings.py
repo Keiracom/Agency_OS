@@ -63,6 +63,7 @@ class Settings(BaseSettings):
     supabase_url: str = Field(default="", description="Supabase project URL")
     supabase_key: str = Field(default="", description="Supabase anon/public key")
     supabase_service_key: str = Field(default="", description="Supabase service role key")
+    supabase_jwt_secret: str = Field(default="", description="Supabase JWT secret for token verification")
 
     # === Redis (Caching ONLY - NOT task queues) ===
     redis_url: str = Field(

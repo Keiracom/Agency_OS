@@ -38,10 +38,17 @@ def create_database_engine() -> AsyncEngine:
 
     Uses Transaction Pooler (Port 6543) for application connections.
     Pool limits: pool_size=5, max_overflow=10 (Rule 19)
+
+    Note: Supabase Supavisor (transaction pooler) doesn't support prepared
+    statements, so we disable statement caching.
     """
     return create_async_engine(
         settings.database_url,
         echo=settings.debug,
+        connect_args={
+            "statement_cache_size": 0,
+            "prepared_statement_cache_size": 0,
+        },
         **settings.database_pool_config,
     )
 

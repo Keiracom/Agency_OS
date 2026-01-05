@@ -188,17 +188,19 @@ class ICPScraperEngine(BaseEngine):
             all_html = []
 
             for page_data in result.get("pages", []):
+                # Apify returns 'html' if saveHtml=true, otherwise use 'text' as fallback
+                html_content = page_data.get("html", "") or page_data.get("text", "")
                 page = ScrapedPage(
                     url=page_data.get("url", ""),
                     title=page_data.get("title", ""),
-                    html=page_data.get("html", ""),
+                    html=html_content,
                     text=page_data.get("text", ""),
                     links=page_data.get("links", []),
                     images=page_data.get("images", []),
                 )
                 pages.append(page)
-                if page.html:
-                    all_html.append(page.html)
+                if html_content:
+                    all_html.append(html_content)
 
             scraped = ScrapedWebsite(
                 url=url,

@@ -72,14 +72,14 @@ class Campaign(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[CampaignStatus] = mapped_column(
-        ENUM(CampaignStatus, name="campaign_status", create_type=False),
+        ENUM(CampaignStatus, name="campaign_status", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         default=CampaignStatus.DRAFT,
     )
 
     # Permission mode (overrides client default)
     permission_mode: Mapped[Optional[PermissionMode]] = mapped_column(
-        ENUM(PermissionMode, name="permission_mode", create_type=False),
+        ENUM(PermissionMode, name="permission_mode", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=True,
     )
 
@@ -267,7 +267,7 @@ class CampaignResource(Base, UUIDMixin, TimestampMixin):
 
     # Resource info
     channel: Mapped[ChannelType] = mapped_column(
-        ENUM(ChannelType, name="channel_type", create_type=False),
+        ENUM(ChannelType, name="channel_type", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
     )
     resource_id: Mapped[str] = mapped_column(Text, nullable=False)
@@ -326,7 +326,7 @@ class CampaignSequence(Base, UUIDMixin, TimestampMixin):
     # Sequence config
     step_number: Mapped[int] = mapped_column(Integer, nullable=False)
     channel: Mapped[ChannelType] = mapped_column(
-        ENUM(ChannelType, name="channel_type", create_type=False),
+        ENUM(ChannelType, name="channel_type", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
     )
     delay_days: Mapped[int] = mapped_column(Integer, default=3)

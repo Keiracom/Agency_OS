@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Optional
 from uuid import UUID
 
-from sqlalchemy import Float, Integer, String, Text
+from sqlalchemy import Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import ENUM, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -48,6 +48,7 @@ class ConversionPattern(Base, UUIDMixin, TimestampMixin):
 
     # Foreign key to client
     client_id: Mapped[UUID] = mapped_column(
+        ForeignKey("clients.id"),
         nullable=False,
         index=True,
     )
@@ -161,6 +162,7 @@ class ConversionPatternHistory(Base, UUIDMixin):
 
     # Foreign key to client
     client_id: Mapped[UUID] = mapped_column(
+        ForeignKey("clients.id"),
         nullable=False,
         index=True,
     )

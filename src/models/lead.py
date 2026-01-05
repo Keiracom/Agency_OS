@@ -102,7 +102,7 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
 
     # === Status & Tracking ===
     status: Mapped[LeadStatus] = mapped_column(
-        ENUM(LeadStatus, name="lead_status", create_type=False),
+        ENUM(LeadStatus, name="lead_status", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         default=LeadStatus.NEW,
     )

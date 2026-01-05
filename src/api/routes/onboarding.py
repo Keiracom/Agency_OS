@@ -24,17 +24,20 @@ from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel, Field, HttpUrl
-from sqlalchemy import and_, select, update
+from sqlalchemy import and_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import (
     ClientContext,
+    CurrentUser,
     get_current_client,
+    get_current_user_from_token,
     get_db_session,
     require_admin,
     require_member,
 )
 from src.exceptions import ResourceNotFoundError
+from src.models.membership import Membership
 
 
 router = APIRouter(tags=["onboarding"])
@@ -166,7 +169,7 @@ class ConfirmICPRequest(BaseModel):
 async def analyze_website(
     request: AnalyzeWebsiteRequest,
     background_tasks: BackgroundTasks,
-    client: Annotated[ClientContext, Depends(get_current_client)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_from_token)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> AnalyzeWebsiteResponse:
     """
@@ -174,8 +177,30 @@ async def analyze_website(
 
     This starts an async extraction job that runs in the background.
     Use the returned job_id to check status and get results.
+
+    Note: Uses user-only auth since during onboarding the user may not have
+    full client context yet. Looks up the user's client from memberships.
     """
     from uuid import uuid4
+
+    # Look up user's client from memberships (they should be owner)
+    result = await db.execute(
+        select(Membership.client_id)
+        .where(
+            and_(
+                Membership.user_id == current_user.id,
+                Membership.deleted_at.is_(None),
+            )
+        )
+        .limit(1)
+    )
+    client_id = result.scalar_one_or_none()
+
+    if not client_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No client found for user. Please complete signup first.",
+        )
 
     # Normalize URL
     url = request.website_url
@@ -189,28 +214,29 @@ async def analyze_website(
     try:
         # Try to insert job record
         await db.execute(
-            """
+            text("""
             INSERT INTO icp_extraction_jobs
             (id, client_id, status, website_url, created_at)
             VALUES (:id, :client_id, 'pending', :url, :now)
-            """,
+            """),
             {
                 "id": str(job_id),
-                "client_id": str(client.client_id),
+                "client_id": str(client_id),
                 "url": url,
                 "now": datetime.utcnow(),
             },
         )
         await db.commit()
-    except Exception:
-        # Fallback if table doesn't exist yet
-        pass
+    except Exception as e:
+        # Log error but continue - extraction can still run
+        import logging
+        logging.error(f"Failed to insert ICP extraction job: {e}")
 
     # Queue background extraction
     background_tasks.add_task(
         run_extraction_background,
         job_id=job_id,
-        client_id=client.client_id,
+        client_id=client_id,
         website_url=url,
     )
 
@@ -241,11 +267,11 @@ async def run_extraction_background(
         # Update status to running
         async with get_db_session_context() as db:
             await db.execute(
-                """
+                text("""
                 UPDATE icp_extraction_jobs
                 SET status = 'running', started_at = :now
                 WHERE id = :job_id
-                """,
+                """),
                 {"job_id": str(job_id), "now": datetime.utcnow()},
             )
             await db.commit()
@@ -258,13 +284,13 @@ async def run_extraction_background(
             if result.success and result.profile:
                 # Update job with success
                 await db.execute(
-                    """
+                    text("""
                     UPDATE icp_extraction_jobs
                     SET status = 'completed',
                         completed_at = :now,
                         extracted_icp = :icp
                     WHERE id = :job_id
-                    """,
+                    """),
                     {
                         "job_id": str(job_id),
                         "now": datetime.utcnow(),
@@ -274,13 +300,13 @@ async def run_extraction_background(
             else:
                 # Update job with failure
                 await db.execute(
-                    """
+                    text("""
                     UPDATE icp_extraction_jobs
                     SET status = 'failed',
                         completed_at = :now,
                         error_message = :error
                     WHERE id = :job_id
-                    """,
+                    """),
                     {
                         "job_id": str(job_id),
                         "now": datetime.utcnow(),
@@ -291,16 +317,18 @@ async def run_extraction_background(
 
     except Exception as e:
         # Handle unexpected errors
+        import logging
+        logging.error(f"ICP extraction failed for job {job_id}: {e}")
         try:
             async with get_db_session_context() as db:
                 await db.execute(
-                    """
+                    text("""
                     UPDATE icp_extraction_jobs
                     SET status = 'failed',
                         completed_at = :now,
                         error_message = :error
                     WHERE id = :job_id
-                    """,
+                    """),
                     {
                         "job_id": str(job_id),
                         "now": datetime.utcnow(),
@@ -318,20 +346,41 @@ async def run_extraction_background(
 )
 async def get_extraction_status(
     job_id: UUID,
-    client: Annotated[ClientContext, Depends(get_current_client)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_from_token)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> ExtractionStatus:
     """
     Get the status of an ICP extraction job.
+
+    Uses user-only auth during onboarding, looks up client from memberships.
     """
+    # Look up user's client from memberships
+    client_result = await db.execute(
+        select(Membership.client_id)
+        .where(
+            and_(
+                Membership.user_id == current_user.id,
+                Membership.deleted_at.is_(None),
+            )
+        )
+        .limit(1)
+    )
+    client_id = client_result.scalar_one_or_none()
+
+    if not client_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No client found for user.",
+        )
+
     result = await db.execute(
-        """
+        text("""
         SELECT id, status, current_step, completed_steps, total_steps,
                started_at, completed_at, error_message
         FROM icp_extraction_jobs
         WHERE id = :job_id AND client_id = :client_id
-        """,
-        {"job_id": str(job_id), "client_id": str(client.client_id)},
+        """),
+        {"job_id": str(job_id), "client_id": str(client_id)},
     )
     row = result.fetchone()
 
@@ -364,21 +413,42 @@ async def get_extraction_status(
 )
 async def get_extraction_result(
     job_id: UUID,
-    client: Annotated[ClientContext, Depends(get_current_client)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_from_token)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> ICPProfileResponse:
     """
     Get the extracted ICP profile from a completed job.
+
+    Uses user-only auth during onboarding, looks up client from memberships.
     """
     import json
 
+    # Look up user's client from memberships
+    client_result = await db.execute(
+        select(Membership.client_id)
+        .where(
+            and_(
+                Membership.user_id == current_user.id,
+                Membership.deleted_at.is_(None),
+            )
+        )
+        .limit(1)
+    )
+    client_id = client_result.scalar_one_or_none()
+
+    if not client_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No client found for user.",
+        )
+
     result = await db.execute(
-        """
+        text("""
         SELECT status, extracted_icp, error_message
         FROM icp_extraction_jobs
         WHERE id = :job_id AND client_id = :client_id
-        """,
-        {"job_id": str(job_id), "client_id": str(client.client_id)},
+        """),
+        {"job_id": str(job_id), "client_id": str(client_id)},
     )
     row = result.fetchone()
 

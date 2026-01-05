@@ -135,6 +135,7 @@ class ApifyClient:
             "startUrls": [{"url": url}],
             "maxCrawlPages": max_pages,
             "crawlerType": "cheerio",
+            "saveHtml": True,  # Include HTML content in output
         }
 
         try:

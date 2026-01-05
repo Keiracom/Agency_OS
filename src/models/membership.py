@@ -58,8 +58,14 @@ class Membership(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     )
 
     # Role
+    # Note: values_callable uses lowercase values to match PostgreSQL enum
     role: Mapped[MembershipRole] = mapped_column(
-        ENUM(MembershipRole, name="membership_role", create_type=False),
+        ENUM(
+            MembershipRole,
+            name="membership_role",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         nullable=False,
         default=MembershipRole.MEMBER,
     )

@@ -118,7 +118,7 @@ class BaseAgent(ABC):
     """
 
     # Anthropic model configuration
-    DEFAULT_MODEL = "claude-3-sonnet-20240229"
+    DEFAULT_MODEL = "claude-sonnet-4-20250514"
     DEFAULT_MAX_TOKENS = 1024
     DEFAULT_TEMPERATURE = 0.7
 
@@ -141,10 +141,8 @@ class BaseAgent(ABC):
         self.temperature = temperature or self.DEFAULT_TEMPERATURE
 
         # Create Anthropic model for Pydantic AI
-        self._model = AnthropicModel(
-            self.model_name,
-            api_key=settings.anthropic_api_key,
-        )
+        # Note: AnthropicModel reads api_key from ANTHROPIC_API_KEY env var
+        self._model = AnthropicModel(self.model_name)
 
         # Reference to spend limiter
         self._spend_tracker = ai_spend_tracker

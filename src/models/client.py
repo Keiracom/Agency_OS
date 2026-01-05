@@ -51,12 +51,12 @@ class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
 
     # Subscription
     tier: Mapped[TierType] = mapped_column(
-        ENUM(TierType, name="tier_type", create_type=False),
+        ENUM(TierType, name="tier_type", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         default=TierType.IGNITION,
     )
     subscription_status: Mapped[SubscriptionStatus] = mapped_column(
-        ENUM(SubscriptionStatus, name="subscription_status", create_type=False),
+        ENUM(SubscriptionStatus, name="subscription_status", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         default=SubscriptionStatus.TRIALING,
     )
@@ -73,7 +73,7 @@ class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
 
     # Default settings
     default_permission_mode: Mapped[Optional[PermissionMode]] = mapped_column(
-        ENUM(PermissionMode, name="permission_mode", create_type=False),
+        ENUM(PermissionMode, name="permission_mode", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=True,
         default=PermissionMode.CO_PILOT,
     )

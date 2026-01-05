@@ -154,7 +154,7 @@ class ICPDiscoveryAgent(BaseAgent):
     """
 
     # Anthropic model config
-    DEFAULT_MODEL = "claude-3-sonnet-20240229"
+    DEFAULT_MODEL = "claude-sonnet-4-20250514"
 
     def __init__(
         self,

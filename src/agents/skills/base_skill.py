@@ -161,7 +161,7 @@ class BaseSkill(ABC, Generic[InputT, OutputT]):
     system_prompt: ClassVar[str] = ""
 
     # Default model settings
-    default_model: ClassVar[str] = "claude-3-sonnet-20240229"
+    default_model: ClassVar[str] = "claude-sonnet-4-20250514"
     default_max_tokens: ClassVar[int] = 1024
     default_temperature: ClassVar[float] = 0.7
 

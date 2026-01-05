@@ -149,14 +149,17 @@ async def get_current_user_from_token(
     token = parts[1]
 
     try:
-        # Verify JWT using Supabase service client
-        supabase = get_supabase_service_client()
-
         # Decode JWT to get user_id
-        # Supabase JWT uses HS256 with the JWT secret (service key)
+        # Supabase JWT uses HS256 with the JWT secret (NOT the service key!)
+        # Get JWT secret from Supabase Dashboard > Settings > API > JWT Secret
+        jwt_secret = settings.supabase_jwt_secret
+        if not jwt_secret:
+            # Fallback to service key if JWT secret not configured (will fail validation)
+            jwt_secret = settings.supabase_service_key
+
         payload = jwt.decode(
             token,
-            settings.supabase_service_key,
+            jwt_secret,
             algorithms=["HS256"],
             options={"verify_aud": False},  # Supabase doesn't use aud claim
         )

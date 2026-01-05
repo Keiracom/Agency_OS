@@ -69,6 +69,10 @@ class PageContent(BaseModel):
         default=False,
         description="Whether page contains client logos"
     )
+    social_links: dict[str, str] = Field(
+        default_factory=dict,
+        description="Social media links found on page: {linkedin, instagram, facebook, twitter}"
+    )
 
 
 class WebsiteParserSkill(BaseSkill["WebsiteParserSkill.Input", "WebsiteParserSkill.Output"]):
@@ -146,8 +150,18 @@ EXTRACTION GUIDELINES:
    - Main headings and content summary
    - Key points and highlights
    - CTAs and important elements
+   - Social links found on that page (usually in header/footer)
 4. Note presence of testimonials, case studies, and client logos
 5. Extract social links and contact information
+
+SOCIAL LINKS EXTRACTION:
+- Look for social media links in header and footer sections
+- Extract LinkedIn company page URL (linkedin.com/company/...)
+- Extract Instagram profile URL (instagram.com/...)
+- Extract Facebook page URL (facebook.com/...)
+- Extract Twitter/X profile URL (twitter.com/... or x.com/...)
+- For each page, include a social_links dict with the platform as key and URL as value
+- Also aggregate all social links at the top level
 
 OUTPUT FORMAT:
 Return valid JSON matching this structure:
@@ -167,7 +181,13 @@ Return valid JSON matching this structure:
             "ctas": ["Get Started", "Contact Us"],
             "has_testimonials": true,
             "has_case_studies": false,
-            "has_client_logos": true
+            "has_client_logos": true,
+            "social_links": {
+                "linkedin": "https://linkedin.com/company/agencyname",
+                "instagram": "https://instagram.com/agencyname",
+                "facebook": "https://facebook.com/agencyname",
+                "twitter": "https://twitter.com/agencyname"
+            }
         }
     ],
     "meta_description": "Site description...",
@@ -183,7 +203,8 @@ IMPORTANT:
 - Extract actual content, not placeholder text
 - If a field cannot be determined, use reasonable defaults
 - Limit content_summary to 500 characters
-- Be thorough but concise in your extraction"""
+- Be thorough but concise in your extraction
+- Social links may only appear on certain pages (usually home) - extract them where found"""
 
     default_max_tokens = 4096  # Larger output for comprehensive parsing
     default_temperature = 0.3  # Lower temperature for accurate extraction

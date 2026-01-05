@@ -16,6 +16,7 @@ EXPORTS:
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
@@ -25,6 +26,87 @@ from src.agents.skills.website_parser import PageContent
 
 if TYPE_CHECKING:
     from src.integrations.anthropic import AnthropicClient
+
+
+def _extract_portfolio_sections(raw_html: str, max_chars: int = 30000) -> str:
+    """
+    Extract relevant sections from raw HTML for portfolio extraction.
+
+    Focuses on testimonials, case studies, client logos, and about sections
+    to find company names without sending the full 400KB+ HTML.
+
+    Args:
+        raw_html: Full raw HTML from website scrape
+        max_chars: Maximum characters to return
+
+    Returns:
+        Extracted sections with context markers
+    """
+    if not raw_html:
+        return ""
+
+    sections = []
+
+    # Pattern definitions for relevant sections
+    patterns = [
+        # Testimonials
+        (r'(?i)<(?:div|section)[^>]*(?:testimonial|review|quote|feedback)[^>]*>.*?</(?:div|section)>', 'TESTIMONIALS'),
+        (r'(?i)<blockquote[^>]*>.*?</blockquote>', 'QUOTE'),
+        # Case studies
+        (r'(?i)<(?:div|section|article)[^>]*(?:case.?study|portfolio|work|project)[^>]*>.*?</(?:div|section|article)>', 'CASE_STUDIES'),
+        # Client logos
+        (r'(?i)<(?:div|section)[^>]*(?:client|partner|logo|trusted|brand)[^>]*>.*?</(?:div|section)>', 'CLIENT_LOGOS'),
+        # Image alt text (often contains client names)
+        (r'<img[^>]*alt=["\']([^"\']+)["\'][^>]*>', 'IMAGE_ALT'),
+        # About/team sections for context
+        (r'(?i)<(?:div|section)[^>]*(?:about|team|story)[^>]*>.*?</(?:div|section)>', 'ABOUT'),
+    ]
+
+    # Extract matching sections
+    for pattern, label in patterns:
+        try:
+            matches = re.findall(pattern, raw_html, re.DOTALL)
+            for match in matches[:10]:  # Limit matches per pattern
+                if isinstance(match, str) and len(match) > 50:
+                    # Clean up HTML but preserve text
+                    text = re.sub(r'<[^>]+>', ' ', match)
+                    text = re.sub(r'\s+', ' ', text).strip()
+                    if text and len(text) > 20:
+                        sections.append(f"[{label}]\n{text[:2000]}\n")
+        except re.error:
+            continue
+
+    # Also extract all image alt texts (client logos often hidden in alt)
+    alt_pattern = r'<img[^>]*alt=["\']([^"\']{3,100})["\'][^>]*>'
+    alt_texts = re.findall(alt_pattern, raw_html, re.IGNORECASE)
+    if alt_texts:
+        unique_alts = list(set(alt_texts))[:50]
+        sections.append(f"[IMAGE_ALTS]\n{', '.join(unique_alts)}\n")
+
+    # Extract any names that look like company names from the full text
+    # This catches mentions in prose that might not be in specific sections
+    company_patterns = [
+        r'(?:worked with|client|partner|helped|trusted by|featuring)[:\s]+([A-Z][a-zA-Z\s&]+(?:Pty Ltd|Ltd|Inc|Corp|Co\.?)?)',
+        r'(?:testimonial from|quote from|says)[:\s]+([A-Z][a-zA-Z\s]+)',
+    ]
+
+    for pattern in company_patterns:
+        try:
+            matches = re.findall(pattern, raw_html)
+            if matches:
+                unique_matches = list(set(m.strip() for m in matches if len(m.strip()) > 2))[:30]
+                if unique_matches:
+                    sections.append(f"[MENTIONED_COMPANIES]\n{', '.join(unique_matches)}\n")
+        except re.error:
+            continue
+
+    result = "\n---\n".join(sections)
+
+    # Truncate if too long
+    if len(result) > max_chars:
+        result = result[:max_chars] + "\n\n[CONTENT TRUNCATED]"
+
+    return result
 
 
 class PortfolioCompany(BaseModel):
@@ -96,6 +178,10 @@ class PortfolioExtractorSkill(BaseSkill["PortfolioExtractorSkill.Input", "Portfo
             default="",
             description="Agency name for context"
         )
+        raw_html: str = Field(
+            default="",
+            description="Raw HTML content for extracting company names from testimonials/case studies"
+        )
 
     class Output(BaseModel):
         """Output from portfolio extraction."""
@@ -127,62 +213,76 @@ class PortfolioExtractorSkill(BaseSkill["PortfolioExtractorSkill.Input", "Portfo
 
     system_prompt = """You are a portfolio analyst extracting client information from agency websites.
 
+CRITICAL: Your primary goal is to extract EVERY company name mentioned in testimonials, case studies, and client sections.
+The raw HTML sections provided contain the actual text where company names appear - extract them ALL.
+
 EXTRACTION GUIDELINES:
 
-1. CLIENT LOGOS:
+1. CLIENT LOGOS (Source: "logo"):
    - Look for "Our Clients", "Trusted by", logo grids
-   - Note company names from image descriptions
-   - Source: "logo"
+   - Extract company names from IMAGE_ALTS section (alt text often contains logo names)
+   - IMPORTANT: Image alt text like "Vermeer logo" means the client is "Vermeer"
 
-2. CASE STUDIES:
+2. CASE STUDIES (Source: "case_study"):
    - Look for "Work", "Portfolio", "Case Studies" pages
-   - Extract company name, industry, results
-   - Source: "case_study"
+   - Extract EVERY company name mentioned in case study sections
+   - Note industry and results if available
+   - Names often appear as headings or in attribution
 
-3. TESTIMONIALS:
-   - Look for quotes with attribution
-   - Note: person name, title, company
-   - Extract the testimonial text
-   - Source: "testimonial"
+3. TESTIMONIALS (Source: "testimonial"):
+   - Extract company names from attribution lines (e.g., "John Smith, CEO at Acme Corp")
+   - Look for patterns: "- Name, Title, Company" or "Name from Company"
+   - Extract testimonial_person, testimonial_title, and company_name
+   - CRITICAL: The company name is the CLIENT, extract it even if only partially visible
 
-4. INDUSTRIES:
-   - Infer industry from company names/context
-   - Common: tech, ecommerce, healthcare, finance, manufacturing, professional_services, retail, real_estate, education
+4. MENTIONED_COMPANIES:
+   - The RAW HTML SECTIONS may contain a [MENTIONED_COMPANIES] section
+   - These are companies explicitly mentioned in the text - add them all
 
-5. NOTABLE BRANDS:
-   - Flag well-known companies (Fortune 500, household names)
-   - These validate agency credibility
+5. INDUSTRIES:
+   - Infer industry from company names and context
+   - Common: mining, construction, healthcare, retail, manufacturing, professional_services, real_estate, education, automotive
+
+6. NOTABLE BRANDS:
+   - Flag well-known companies (Fortune 500, household names, major Australian companies)
+   - Include large Australian companies (BHP, Telstra, Woolworths, etc.)
+
+IMPORTANT REMINDERS:
+- Extract ALL company names, even if you only have partial information
+- A name like "APM" or "Vermeer" is a valid company name - include it
+- If a testimonial mentions a person's company, that company is a CLIENT
+- Better to include a company with minimal info than to miss it entirely
 
 OUTPUT FORMAT:
 Return valid JSON:
 {
     "companies": [
         {
-            "company_name": "Acme Corp",
-            "company_domain": "acme.com",
+            "company_name": "Vermeer",
+            "company_domain": null,
+            "source": "testimonial",
+            "industry_hint": "mining",
+            "testimonial_person": "John Smith",
+            "testimonial_title": "Marketing Manager",
+            "testimonial_text": "Dilate helped us achieve...",
+            "case_study_summary": null,
+            "results_mentioned": []
+        },
+        {
+            "company_name": "Kustom Timber",
+            "company_domain": "kustomtimber.com.au",
             "source": "case_study",
             "industry_hint": "manufacturing",
             "testimonial_person": null,
             "testimonial_title": null,
             "testimonial_text": null,
-            "case_study_summary": "Increased lead generation by 200% in 6 months",
-            "results_mentioned": ["200% lead increase", "6 month timeline"]
-        },
-        {
-            "company_name": "TechStartup",
-            "company_domain": null,
-            "source": "testimonial",
-            "industry_hint": "tech",
-            "testimonial_person": "Jane Smith",
-            "testimonial_title": "CMO",
-            "testimonial_text": "They transformed our digital presence...",
-            "case_study_summary": null,
-            "results_mentioned": []
+            "case_study_summary": "Increased online leads by 300%",
+            "results_mentioned": ["300% lead increase"]
         }
     ],
     "total_clients_claimed": 150,
-    "notable_brands": ["Microsoft", "Adobe"],
-    "industries_represented": ["tech", "manufacturing", "retail"],
+    "notable_brands": ["APM", "Vermeer"],
+    "industries_represented": ["mining", "manufacturing", "retail", "construction"],
     "source_distribution": {
         "logo": 8,
         "case_study": 4,
@@ -233,10 +333,25 @@ Key Points: {', '.join(page.key_points)}
 
         context = f"Agency: {input_data.company_name}\n\n" if input_data.company_name else ""
 
+        # Extract relevant sections from raw HTML
+        raw_html_sections = ""
+        if input_data.raw_html:
+            extracted = _extract_portfolio_sections(input_data.raw_html)
+            if extracted:
+                raw_html_sections = f"""
+
+=== RAW HTML SECTIONS (Contains actual company names) ===
+{extracted}
+=== END RAW HTML SECTIONS ===
+
+IMPORTANT: The sections above contain the ACTUAL TEXT from testimonials, case studies, and client logos.
+Extract ALL company names you find in these sections. These are the real client names!
+"""
+
         return f"""{context}Extract client portfolio information from this website content:
 
 {'---'.join(pages_text)}
-
+{raw_html_sections}
 Identify all clients, case studies, and testimonials. Return valid JSON."""
 
     async def execute(

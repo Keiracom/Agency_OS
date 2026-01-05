@@ -50,6 +50,14 @@ from src.engines.icp_scraper import (
     get_icp_scraper_engine,
 )
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
+from src.integrations.apify import ApifyClient, get_apify_client
+from src.models.social_profile import (
+    FacebookPageProfile,
+    GoogleBusinessProfile,
+    InstagramProfile,
+    LinkedInCompanyProfile,
+    SocialProfiles,
+)
 
 if TYPE_CHECKING:
     pass
@@ -108,6 +116,14 @@ class ICPProfile(BaseModel):
         default_factory=dict, description="Custom ALS weights"
     )
 
+    # Social profiles
+    social_links: dict[str, str] = Field(
+        default_factory=dict, description="Social media links from website"
+    )
+    social_profiles: SocialProfiles | None = Field(
+        default=None, description="Scraped social media profiles"
+    )
+
     # Metadata
     pattern_description: str = Field(default="", description="ICP pattern description")
     confidence: float = Field(default=0.0, description="Overall confidence")
@@ -160,6 +176,7 @@ class ICPDiscoveryAgent(BaseAgent):
         self,
         anthropic: AnthropicClient | None = None,
         scraper: ICPScraperEngine | None = None,
+        apify: ApifyClient | None = None,
     ):
         """
         Initialize ICP Discovery Agent.
@@ -167,10 +184,12 @@ class ICPDiscoveryAgent(BaseAgent):
         Args:
             anthropic: Optional Anthropic client override
             scraper: Optional scraper engine override
+            apify: Optional Apify client override
         """
         super().__init__()
         self._anthropic = anthropic
         self._scraper = scraper
+        self._apify = apify
 
         # Initialize skills
         self._skills = {
@@ -207,6 +226,132 @@ class ICPDiscoveryAgent(BaseAgent):
         if self._scraper is None:
             self._scraper = get_icp_scraper_engine()
         return self._scraper
+
+    @property
+    def apify(self) -> ApifyClient:
+        """Get Apify client."""
+        if self._apify is None:
+            self._apify = get_apify_client()
+        return self._apify
+
+    async def _scrape_social_profiles(
+        self,
+        social_links: dict[str, str],
+        company_name: str,
+    ) -> SocialProfiles:
+        """
+        Scrape social media profiles from collected links.
+
+        Args:
+            social_links: Dict of platform -> URL
+            company_name: Company name for Google Business search
+
+        Returns:
+            SocialProfiles with scraped data
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        linkedin_profile = None
+        instagram_profile = None
+        facebook_profile = None
+        google_profile = None
+
+        # Scrape LinkedIn if URL available
+        linkedin_url = social_links.get("linkedin")
+        if linkedin_url:
+            try:
+                logger.info(f"Scraping LinkedIn company: {linkedin_url}")
+                data = await self.apify.scrape_linkedin_company(linkedin_url)
+                if data.get("found"):
+                    linkedin_profile = LinkedInCompanyProfile(
+                        name=data.get("name"),
+                        followers=data.get("followers"),
+                        employee_count=data.get("employee_count"),
+                        employee_range=data.get("employee_range"),
+                        specialties=data.get("specialties", []),
+                        description=data.get("description"),
+                        industry=data.get("industry"),
+                        headquarters=data.get("headquarters"),
+                        website=data.get("website"),
+                        founded_year=data.get("founded_year"),
+                        linkedin_url=linkedin_url,
+                    )
+            except Exception as e:
+                logger.warning(f"LinkedIn scraping failed: {e}")
+
+        # Scrape Instagram if URL available
+        instagram_url = social_links.get("instagram")
+        if instagram_url:
+            try:
+                logger.info(f"Scraping Instagram profile: {instagram_url}")
+                data = await self.apify.scrape_instagram_profile(instagram_url)
+                if data.get("found"):
+                    instagram_profile = InstagramProfile(
+                        username=data.get("username"),
+                        followers=data.get("followers"),
+                        following=data.get("following"),
+                        posts_count=data.get("posts_count"),
+                        bio=data.get("bio"),
+                        is_verified=data.get("is_verified", False),
+                        full_name=data.get("full_name"),
+                        profile_pic_url=data.get("profile_pic_url"),
+                        external_url=data.get("external_url"),
+                        instagram_url=instagram_url,
+                    )
+            except Exception as e:
+                logger.warning(f"Instagram scraping failed: {e}")
+
+        # Scrape Facebook if URL available
+        facebook_url = social_links.get("facebook")
+        if facebook_url:
+            try:
+                logger.info(f"Scraping Facebook page: {facebook_url}")
+                data = await self.apify.scrape_facebook_page(facebook_url)
+                if data.get("found"):
+                    facebook_profile = FacebookPageProfile(
+                        name=data.get("name"),
+                        likes=data.get("likes"),
+                        followers=data.get("followers"),
+                        category=data.get("category"),
+                        about=data.get("about"),
+                        rating=data.get("rating"),
+                        review_count=data.get("review_count"),
+                        website=data.get("website"),
+                        phone=data.get("phone"),
+                        address=data.get("address"),
+                        facebook_url=facebook_url,
+                    )
+            except Exception as e:
+                logger.warning(f"Facebook scraping failed: {e}")
+
+        # Always search Google Business by company name
+        if company_name:
+            try:
+                logger.info(f"Scraping Google Business: {company_name}")
+                data = await self.apify.scrape_google_business(company_name, "Australia")
+                if data.get("found"):
+                    google_profile = GoogleBusinessProfile(
+                        name=data.get("name"),
+                        rating=data.get("rating"),
+                        review_count=data.get("review_count"),
+                        address=data.get("address"),
+                        phone=data.get("phone"),
+                        website=data.get("website"),
+                        category=data.get("category"),
+                        place_id=data.get("place_id"),
+                        google_maps_url=data.get("google_maps_url"),
+                        opening_hours=data.get("opening_hours"),
+                    )
+            except Exception as e:
+                logger.warning(f"Google Business scraping failed: {e}")
+
+        return SocialProfiles(
+            linkedin=linkedin_profile,
+            instagram=instagram_profile,
+            facebook=facebook_profile,
+            google_business=google_profile,
+        )
 
     async def use_skill(
         self,
@@ -293,6 +438,37 @@ class ICPDiscoveryAgent(BaseAgent):
             total_tokens += parse_result.tokens_used
             total_cost += parse_result.cost_aud
 
+            # Collect social links from parsed pages
+            collected_social_links: dict[str, str] = {}
+            for page in parsed.pages:
+                if hasattr(page, 'social_links') and page.social_links:
+                    # Merge social links from all pages (first found wins)
+                    for platform, url in page.social_links.items():
+                        if platform not in collected_social_links and url:
+                            collected_social_links[platform] = url
+
+            # Also check top-level social_links from parser output
+            if hasattr(parsed, 'social_links') and parsed.social_links:
+                for url in parsed.social_links:
+                    url_lower = url.lower()
+                    if 'linkedin.com' in url_lower and 'linkedin' not in collected_social_links:
+                        collected_social_links['linkedin'] = url
+                    elif 'instagram.com' in url_lower and 'instagram' not in collected_social_links:
+                        collected_social_links['instagram'] = url
+                    elif 'facebook.com' in url_lower and 'facebook' not in collected_social_links:
+                        collected_social_links['facebook'] = url
+                    elif ('twitter.com' in url_lower or 'x.com' in url_lower) and 'twitter' not in collected_social_links:
+                        collected_social_links['twitter'] = url
+
+            logger.info(f"Collected social links: {collected_social_links}")
+
+            # Scrape social profiles (non-blocking, errors logged but don't fail extraction)
+            social_profiles = await self._scrape_social_profiles(
+                collected_social_links,
+                parsed.company_name,
+            )
+            logger.info(f"Scraped social profiles: {social_profiles.platforms_found}")
+
             # Step 3: Extract services, value prop, portfolio (parallel)
             services_task = self.use_skill(
                 "extract_services",
@@ -308,6 +484,7 @@ class ICPDiscoveryAgent(BaseAgent):
                 "extract_portfolio",
                 pages=[p.model_dump() for p in parsed.pages],
                 company_name=parsed.company_name,
+                raw_html=scraped.raw_html,  # Pass raw HTML for company name extraction
             )
 
             services_result, value_prop_result, portfolio_result = await asyncio.gather(
@@ -523,6 +700,8 @@ class ICPDiscoveryAgent(BaseAgent):
                     if als_weights_result and als_weights_result.success
                     else {}
                 ),
+                social_links=collected_social_links,
+                social_profiles=social_profiles,
                 pattern_description=(
                     icp_data.icp.pattern_description
                     if icp_data and icp_data.icp

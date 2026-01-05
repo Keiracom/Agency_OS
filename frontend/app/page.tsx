@@ -421,8 +421,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* HOW IT WORKS - v0 Interactive Tabs */}
-      <section id="how-it-works" className="bg-[#0a0a0f] text-white relative overflow-hidden">
+      {/* HOW IT WORKS - Interactive Tabs matching landing-page-v2 */}
+      <section className="bg-[#0a0a0f] text-white relative overflow-hidden">
         {/* Subtle background gradient */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0f] via-[#0f0f13] to-[#0a0a0f] pointer-events-none" />
 

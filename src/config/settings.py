@@ -97,7 +97,10 @@ class Settings(BaseSettings):
     twilio_phone_number: str = Field(default="", description="Twilio phone number")
 
     heyreach_api_key: str = Field(default="", description="HeyReach API key")
-    lob_api_key: str = Field(default="", description="Lob API key")
+    
+    # === ClickSend (Australian Direct Mail) ===
+    clicksend_username: str = Field(default="", description="ClickSend username/email")
+    clicksend_api_key: str = Field(default="", description="ClickSend API key")
 
     # === DataForSEO (SEO Metrics Enrichment) ===
     dataforseo_login: str = Field(default="", description="DataForSEO login email")

@@ -2,7 +2,21 @@
 
 **Purpose:** Master index of all skills available for Claude Code agents.  
 **Location:** `C:\AI\Agency_OS\skills\`  
-**Last Updated:** December 27, 2025
+**Last Updated:** January 5, 2026
+
+---
+
+## Related Documentation
+
+| Resource | Location | Purpose |
+|----------|----------|--------|
+| Slim Blueprint | `PROJECT_BLUEPRINT.md` | Quick overview |
+| Architecture | `docs/architecture/` | System design docs |
+| Phase Specs | `docs/phases/` | Phase-specific details |
+| Database Schema | `docs/specs/database/` | Schema definitions |
+| Engine Specs | `docs/specs/engines/` | Engine specifications |
+| Integration Specs | `docs/specs/integrations/` | API wrapper specs |
+| Full Archive | `PROJECT_BLUEPRINT_FULL_ARCHIVE.md` | Original complete blueprint |
 
 ---
 
@@ -36,9 +50,11 @@ These skills define how the 3-agent pipeline operates:
 
 | Skill | Location | Purpose | Status |
 |-------|----------|---------|--------|
-| Admin Dashboard | `skills/frontend/ADMIN_DASHBOARD.md` | Platform owner dashboard | ✅ Complete |
+| Admin Dashboard | `skills/frontend/ADMIN_DASHBOARD.md` | Platform owner dashboard | ⚠️ Outdated (see Phase 21) |
 | **Frontend-Backend Connection** | `skills/frontend/FRONTEND_BACKEND_SKILL.md` | Phase 13 API integration | ✅ Ready |
 | **Missing UI Features** | `skills/frontend/MISSING_UI_SKILL.md` | Phase 14 Replies, Meetings, Credits | ✅ Ready |
+| **v0.dev Integration** | `skills/frontend/V0_SKILL.md` | v0 SDK usage, prompts, iteration | ✅ Ready |
+| **Phase 21 UI Overhaul** | `skills/frontend/PHASE_21_UI_SKILL.md` | Design system, components, layouts | ✅ Ready |
 | User Dashboard | `skills/frontend/USER_DASHBOARD.md` | Client-facing dashboard | 🔴 Not Started |
 
 ---

@@ -68,6 +68,8 @@ Thumbs.db
 *.pem
 *.key
 secrets/
+config/RAILWAY_ENV_VARS.txt
+config/VERCEL_ENV_VARS.txt
 
 # Prefect
 .prefect/
@@ -87,3 +89,5 @@ docs/node_modules/
 
 # Null file (Windows artifact)
 nul
+
+.vercel

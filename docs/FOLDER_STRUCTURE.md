@@ -218,28 +218,92 @@ agents/
 
 ```
 docs/
-├── manuals/               # User documentation
-│   ├── ADMIN_DASHBOARD_MANUAL.md
-│   ├── ADMIN_DASHBOARD_MANUAL.pdf
-│   ├── USER_DASHBOARD_MANUAL.pdf
-│   ├── admin-manual.html
-│   ├── user-manual.html
-│   └── manual.html
+├── architecture/           # System design (LOCKED)
+│   ├── DECISIONS.md         # Technology choices
+│   ├── FILE_STRUCTURE.md    # Complete file tree
+│   ├── IMPORT_HIERARCHY.md  # Layer rules (ENFORCED)
+│   └── RULES.md             # Claude Code rules
 │
-├── specs/                 # Technical specifications
-│   ├── phase16/           # Conversion Intelligence specs
-│   ├── BOMBORA_INTEGRATION_SPEC.md
-│   ├── CAMPAIGN_SKILLS_SPEC.md
-│   ├── CC_PROMPT_PHASE11_ICP_SKILLS.md
-│   └── FULL_SYSTEM_ARCHITECTURE.md
+├── phases/                 # Phase specifications
+│   ├── PHASE_INDEX.md       # Master index
+│   ├── PHASE_01_FOUNDATION.md
+│   ├── PHASE_02_MODELS.md
+│   ├── PHASE_03_INTEGRATIONS.md
+│   ├── PHASE_04_ENGINES.md
+│   ├── PHASE_05_ORCHESTRATION.md
+│   ├── PHASE_06_AGENTS.md
+│   ├── PHASE_07_API.md
+│   ├── PHASE_08_FRONTEND.md
+│   ├── PHASE_09_TESTING.md
+│   ├── PHASE_10_DEPLOYMENT.md
+│   ├── PHASE_11_ICP.md
+│   ├── PHASE_12_CAMPAIGN_EXEC.md
+│   ├── PHASE_13_FRONTEND_BACKEND.md
+│   ├── PHASE_14_MISSING_UI.md
+│   ├── PHASE_15_UX_TEST.md
+│   ├── PHASE_16_CONVERSION.md
+│   ├── PHASE_17_LAUNCH_PREREQ.md
+│   ├── PHASE_18_E2E_JOURNEY.md
+│   ├── PHASE_19_EMAIL_INFRA.md
+│   ├── PHASE_20_PLATFORM_INTEL.md
+│   └── PHASE_21_UI_OVERHAUL.md
 │
-├── progress/              # Build tracking
-│   └── COMPLETED_PHASES.md
+├── specs/                  # Technical specifications
+│   ├── database/            # Schema definitions
+│   │   ├── SCHEMA_OVERVIEW.md
+│   │   ├── CLIENTS_USERS.md
+│   │   ├── CAMPAIGNS.md
+│   │   ├── LEADS.md
+│   │   ├── ACTIVITIES.md
+│   │   ├── CONVERSION_PATTERNS.md
+│   │   └── EMAIL_INFRASTRUCTURE.md
+│   │
+│   ├── engines/             # Engine specifications
+│   │   ├── ENGINE_INDEX.md
+│   │   ├── SCOUT_ENGINE.md
+│   │   ├── SCORER_ENGINE.md
+│   │   ├── ALLOCATOR_ENGINE.md
+│   │   ├── EMAIL_ENGINE.md
+│   │   ├── SMS_ENGINE.md
+│   │   ├── LINKEDIN_ENGINE.md
+│   │   ├── VOICE_ENGINE.md
+│   │   ├── MAIL_ENGINE.md
+│   │   ├── CLOSER_ENGINE.md
+│   │   ├── CONTENT_ENGINE.md
+│   │   └── REPORTER_ENGINE.md
+│   │
+│   ├── integrations/        # API wrapper specs
+│   │   ├── INTEGRATION_INDEX.md
+│   │   ├── SUPABASE.md
+│   │   ├── REDIS.md
+│   │   ├── ANTHROPIC.md
+│   │   ├── APOLLO.md
+│   │   ├── APIFY.md
+│   │   ├── CLAY.md
+│   │   ├── DATAFORSEO.md
+│   │   ├── RESEND.md
+│   │   ├── POSTMARK.md
+│   │   ├── TWILIO.md
+│   │   ├── HEYREACH.md
+│   │   ├── VAPI.md
+│   │   ├── ELEVENLABS.md
+│   │   ├── DEEPGRAM.md
+│   │   ├── CLICKSEND.md
+│   │   ├── INFRAFORGE.md
+│   │   └── SMARTLEAD.md
+│   │
+│   ├── phase16/             # Conversion Intelligence
+│   ├── phase17/             # Launch Prerequisites
+│   ├── PRICING_TIERS.md
+│   └── TIER_PRICING_COST_MODEL_v2.md
 │
-├── marketing/             # Marketing materials
-│   └── MARKETING_LAUNCH_PLAN.md
-│
-└── screenshots/           # UI screenshots
+├── audits/                 # QA audits
+├── finance/                # Financial models
+├── manuals/                # User documentation
+├── marketing/              # Marketing materials
+├── progress/               # Build tracking
+├── research/               # Market research
+└── screenshots/            # UI screenshots
 ```
 
 ---
@@ -317,11 +381,15 @@ supabase/
 
 | What you need | Where to look |
 |---------------|---------------|
-| Architecture decisions | `PROJECT_BLUEPRINT.md` |
+| Architecture decisions | `PROJECT_BLUEPRINT.md`, `docs/architecture/DECISIONS.md` |
 | Build progress | `PROGRESS.md` |
 | Claude Code instructions | `CLAUDE.md` |
+| Phase specifications | `docs/phases/PHASE_INDEX.md` |
+| Database schema | `docs/specs/database/SCHEMA_OVERVIEW.md` |
+| Engine specs | `docs/specs/engines/ENGINE_INDEX.md` |
+| Integration specs | `docs/specs/integrations/INTEGRATION_INDEX.md` |
 | Run QA check | `agents/qa/FULL_CODEBASE_QA_PROMPT.md` |
 | API routes | `src/api/routes/` |
-| Database schema | `supabase/migrations/` |
 | Frontend pages | `frontend/app/` |
 | Deploy instructions | `DEPLOYMENT.md` |
+| Skills | `skills/SKILL_INDEX.md` |

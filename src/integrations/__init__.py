@@ -16,6 +16,7 @@ RULES APPLIED:
 from src.integrations.serper import SerperClient, get_serper_client
 from src.integrations.vapi import VapiClient, get_vapi_client
 from src.integrations.elevenlabs import ElevenLabsClient, get_elevenlabs_client
+from src.integrations.clicksend import ClickSendClient, get_clicksend_client
 
 __all__ = [
     "SerperClient",
@@ -24,4 +25,6 @@ __all__ = [
     "get_vapi_client",
     "ElevenLabsClient",
     "get_elevenlabs_client",
+    "ClickSendClient",
+    "get_clicksend_client",
 ]

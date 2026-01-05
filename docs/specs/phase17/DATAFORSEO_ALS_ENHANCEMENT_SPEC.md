@@ -1,11 +1,14 @@
 # DataForSEO ALS Enhancement Spec
 
-**Version:** 1.0  
+**Version:** 2.0  
 **Created:** January 4, 2026  
-**Status:** Integration Complete - Awaiting API Enablement  
+**Updated:** January 4, 2026  
+**Status:** ✅ VERIFIED & ACTIVE  
 **Author:** Dave + Claude
 
-> **Note:** DataForSEO Labs API access pending. Support ticket submitted. Integration code is ready and will activate automatically once API is enabled.
+> **✅ APIs VERIFIED:** Both Labs API and Backlinks API tested and working as of January 4, 2026.
+> - Labs API: No subscription required, pay-as-you-go
+> - Backlinks API: 14-day trial active (expires Jan 18, 2026), then $100/mo minimum
 
 ---
 
@@ -41,15 +44,23 @@ Add DataForSEO enrichment to the lead scoring pipeline, contributing new signals
 
 ## DataForSEO Signals
 
+### Verified API Endpoints (Jan 4, 2026)
+
+| API | Endpoint | Cost | Data Returned |
+|-----|----------|------|---------------|
+| **Labs API** | `/dataforseo_labs/google/domain_rank_overview/live` | $0.0101 | organic_etv, organic_count, pos_1, pos_2_3, pos_4_10 |
+| **Backlinks API** | `/backlinks/summary/live` | $0.02003 | rank, backlinks, referring_domains, spam_score |
+
 ### Primary Signals (High Value)
 
-| Signal | API Endpoint | ALS Component | Scoring Logic |
-|--------|--------------|---------------|---------------|
-| **Domain Rank** | Domain Overview | Company Fit | Higher = more established |
-| **Organic Traffic** | Domain Overview | Company Fit | Monthly visitors estimate |
-| **Organic Traffic Trend** | Historical Data | Timing | Growing/declining |
-| **Backlink Count** | Backlinks Summary | Company Fit | Quality indicator |
-| **Referring Domains** | Backlinks Summary | Company Fit | Diversity indicator |
+| Signal | API | Field | ALS Component | Scoring Logic |
+|--------|-----|-------|---------------|---------------|
+| **Domain Rank** | Backlinks | `rank` | Company Fit | Higher = more established (0-1000+ scale) |
+| **Organic Traffic** | Labs | `metrics.organic.etv` | Company Fit | Monthly traffic estimate |
+| **Keyword Count** | Labs | `metrics.organic.count` | Company Fit | Keywords ranking |
+| **Top 10 Rankings** | Labs | `pos_1 + pos_2_3 + pos_4_10` | Company Fit | SEO competence indicator |
+| **Referring Domains** | Backlinks | `referring_domains` | Company Fit | Link diversity |
+| **Spam Score** | Backlinks | `backlinks_spam_score` | Risk | Quality indicator (lower=better) |
 
 ### Secondary Signals (Nice to Have)
 
@@ -94,33 +105,38 @@ risk:          15% (15 points)
 
 ---
 
-## Scoring Rubric: Domain Authority
+## Scoring Rubric: Domain Rank
 
-DataForSEO's Domain Rank is 0-100 scale.
+DataForSEO Backlinks API returns rank on 0-1000+ scale (NOT 0-100 like Moz DA).
+Higher = more authoritative.
 
 | Domain Rank | Points | Interpretation |
 |-------------|--------|----------------|
-| 0-10 | 0 | New/invisible site |
-| 11-25 | 1 | Small local presence |
-| 26-40 | 2 | Established local agency |
-| 41-55 | 3 | Strong regional agency |
-| 56-70 | 4 | Well-known agency |
-| 71+ | 5 | Industry leader |
+| 0-50 | 0 | New/invisible site |
+| 51-150 | 1 | Small local presence |
+| 151-300 | 2 | Established local agency |
+| 301-500 | 3 | Strong regional agency |
+| 501-800 | 4 | Well-known agency |
+| 801+ | 5 | Industry leader |
+
+**Example (verified):** webprofits.com.au = Rank 337 → 3 points
 
 ---
 
 ## Scoring Rubric: Organic Presence
 
-Based on estimated monthly organic traffic.
+Based on Estimated Traffic Value (ETV) from Labs API.
 
-| Monthly Traffic | Points | Interpretation |
-|-----------------|--------|----------------|
-| 0-100 | 0 | No organic presence |
-| 101-500 | 1 | Minimal presence |
-| 501-2,000 | 2 | Growing presence |
-| 2,001-10,000 | 3 | Solid presence |
-| 10,001-50,000 | 4 | Strong presence |
-| 50,001+ | 5 | Dominant presence |
+| ETV (Monthly) | Points | Interpretation |
+|---------------|--------|----------------|
+| 0-50 | 0 | No organic presence |
+| 51-200 | 1 | Minimal presence |
+| 201-1,000 | 2 | Growing presence |
+| 1,001-5,000 | 3 | Solid presence |
+| 5,001-20,000 | 4 | Strong presence |
+| 20,001+ | 5 | Dominant presence |
+
+**Example (verified):** webprofits.com.au = ETV 149.89 → 1 point
 
 ---
 
@@ -188,27 +204,35 @@ als_components = {
 
 ## API Integration
 
-### DataForSEO Endpoints Required
+### DataForSEO Endpoints (Verified)
 
-1. **Domain Overview** (`/v3/dataforseo_labs/google/domain_overview/live`)
-   - Domain rank
-   - Organic traffic
-   - Backlinks count
+1. **Labs - Domain Rank Overview** (`/v3/dataforseo_labs/google/domain_rank_overview/live`)
+   - Organic traffic (ETV)
+   - Keyword count
+   - Position distribution (pos_1, pos_2_3, pos_4_10)
+   - Estimated paid traffic cost
 
-2. **Historical Rank** (`/v3/dataforseo_labs/google/historical_rank_overview/live`) [Optional]
-   - Traffic trend over time
+2. **Backlinks - Summary** (`/v3/backlinks/summary/live`)
+   - Domain Rank (0-1000+ scale)
+   - Total backlinks
+   - Referring domains
+   - Spam score
 
-### Request Example
+### Request Example (Verified Working)
 
 ```python
 import requests
 
-def get_domain_metrics(domain: str) -> dict:
+def get_full_domain_metrics(domain: str) -> dict:
     """Get SEO metrics for a domain from DataForSEO."""
     
-    response = requests.post(
-        "https://api.dataforseo.com/v3/dataforseo_labs/google/domain_overview/live",
-        auth=(DATAFORSEO_LOGIN, DATAFORSEO_PASSWORD),
+    login = "your_email@example.com"
+    password = "your_api_key"
+    
+    # Labs API - Organic metrics
+    labs_response = requests.post(
+        "https://api.dataforseo.com/v3/dataforseo_labs/google/domain_rank_overview/live",
+        auth=(login, password),
         json=[{
             "target": domain,
             "location_code": 2036,  # Australia
@@ -216,15 +240,45 @@ def get_domain_metrics(domain: str) -> dict:
         }]
     )
     
-    data = response.json()
-    result = data["tasks"][0]["result"][0]
+    # Backlinks API - Authority metrics
+    backlinks_response = requests.post(
+        "https://api.dataforseo.com/v3/backlinks/summary/live",
+        auth=(login, password),
+        json=[{
+            "target": domain,
+            "include_subdomains": True,
+        }]
+    )
+    
+    # Parse Labs response
+    labs_data = labs_response.json()
+    labs_item = labs_data["tasks"][0]["result"][0]["items"][0]
+    organic = labs_item["metrics"]["organic"]
+    
+    # Parse Backlinks response
+    backlinks_data = backlinks_response.json()
+    backlinks_result = backlinks_data["tasks"][0]["result"][0]
     
     return {
-        "domain_rank": result.get("rank"),
-        "organic_traffic": result.get("organic_traffic"),
-        "backlinks": result.get("backlinks"),
-        "referring_domains": result.get("referring_domains"),
+        "domain_rank": backlinks_result.get("rank"),
+        "organic_etv": organic.get("etv"),
+        "organic_count": organic.get("count"),
+        "top_10_keywords": organic.get("pos_1", 0) + organic.get("pos_2_3", 0) + organic.get("pos_4_10", 0),
+        "backlinks": backlinks_result.get("backlinks"),
+        "referring_domains": backlinks_result.get("referring_domains"),
+        "spam_score": backlinks_result.get("backlinks_spam_score"),
     }
+
+# Example output for webprofits.com.au:
+# {
+#     "domain_rank": 337,
+#     "organic_etv": 149.89,
+#     "organic_count": 99,
+#     "top_10_keywords": 7,
+#     "backlinks": 19578,
+#     "referring_domains": 1429,
+#     "spam_score": 28
+# }
 ```
 
 ### Authentication
@@ -240,23 +294,29 @@ DATAFORSEO_PASSWORD=your_api_key
 
 ## Cost Analysis
 
-### Per-Request Costs
+### Per-Request Costs (Verified Jan 4, 2026)
 
 | Endpoint | Cost | Notes |
 |----------|------|-------|
-| Domain Overview | $0.01 | Primary data source |
-| Historical Rank | $0.02 | Optional, for trend |
-| Backlinks Summary | $0.02 | If needed separately |
+| Labs domain_rank_overview | $0.0101 | Organic traffic, keywords |
+| Backlinks summary | $0.02003 | Domain rank, backlinks |
+| **Combined per lead** | **$0.03** | Both APIs |
 
 ### Projected Monthly Costs
 
 | Tier | Leads/Month | DataForSEO Cost | % of COGS |
 |------|-------------|-----------------|-----------|
-| Ignition | 1,250 | $12.50 | 1.9% |
-| Velocity | 2,250 | $22.50 | 1.7% |
-| Dominance | 4,500 | $45.00 | 1.8% |
+| Ignition | 1,250 | $37.50 | 5.6% |
+| Velocity | 2,250 | $67.50 | 5.1% |
+| Dominance | 4,500 | $135.00 | 5.4% |
 
-**Impact on margins:** Negligible (<2% of COGS)
+**With 40% cache hit rate:**
+
+| Tier | Unique Domains | DataForSEO Cost | % of COGS |
+|------|----------------|-----------------|-----------|
+| Ignition | ~750 | $22.50 | 3.4% |
+| Velocity | ~1,350 | $40.50 | 3.1% |
+| Dominance | ~2,700 | $81.00 | 3.2% |
 
 ---
 
@@ -319,18 +379,24 @@ If 40% of leads share domains with other leads:
 
 ## Appendix: DataForSEO Account Details
 
-- **Balance:** $45.66
-- **Estimated days:** 258 (at current usage)
+- **Balance:** $45.59 USD
+- **Labs API:** ✅ Active (pay-as-you-go)
+- **Backlinks API:** ✅ Active (14-day trial until Jan 18, 2026)
 - **Dashboard:** https://app.dataforseo.com/api-dashboard
 - **Docs:** https://docs.dataforseo.com/
+
+### Post-Trial Action Required
+After Jan 18, 2026, Backlinks API requires $100/mo minimum top-up.
+Alternative: Use via n8n/Make (no minimum commitment).
 
 ---
 
 ## Next Steps
 
-1. [ ] Review and approve spec
-2. [ ] Add DataForSEO credentials to `.env`
-3. [ ] Implement `src/integrations/dataforseo.py`
-4. [ ] Update Lead model with new fields
-5. [ ] Enhance ScorerEngine
-6. [ ] Test with real agency domains
+- [x] Review and approve spec
+- [x] Add DataForSEO credentials to `.env`
+- [x] Implement `src/integrations/dataforseo.py`
+- [ ] Update Lead model with new fields
+- [ ] Enhance ScorerEngine with DataForSEO signals
+- [ ] Add DataForSEO to Scout enrichment pipeline
+- [ ] Test with real agency domains

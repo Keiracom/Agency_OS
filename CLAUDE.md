@@ -4,13 +4,59 @@
 
 ---
 
-## STOP. READ THE BLUEPRINT FIRST.
+## Quick Start
 
-Before doing ANYTHING:
-1. Open `PROJECT_BLUEPRINT.md`
-2. Read PART 9 (Rules for Claude Code)
-3. Read the current phase you're working on
-4. Only then proceed
+1. **Read slim blueprint:** `PROJECT_BLUEPRINT.md` (~15KB overview)
+2. **Check current tasks:** `PROGRESS.md`
+3. **Read phase spec:** `docs/phases/PHASE_XX.md` for your phase
+4. **Read relevant skill:** `skills/[category]/SKILL.md`
+5. **Start coding**
+
+---
+
+## Documentation Structure (NEW)
+
+```
+PROJECT_BLUEPRINT.md          ← Start here (slim overview)
+│
+├── docs/architecture/        ← System design
+│   ├── DECISIONS.md          ← Locked tech choices
+│   ├── IMPORT_HIERARCHY.md   ← Layer rules (ENFORCED)
+│   ├── RULES.md              ← Claude Code rules
+│   └── FILE_STRUCTURE.md     ← Complete file tree
+│
+├── docs/phases/              ← Phase-specific specs
+│   ├── PHASE_INDEX.md        ← All phases overview
+│   ├── PHASE_01_FOUNDATION.md
+│   ├── ...
+│   └── PHASE_21_UI_OVERHAUL.md
+│
+├── docs/specs/               ← Component specs
+│   ├── database/             ← Schema definitions
+│   ├── engines/              ← Engine specifications
+│   ├── integrations/         ← API wrapper specs
+│   ├── pricing/              ← Tier pricing model
+│   └── phase16/              ← Conversion Intelligence
+│
+├── skills/                   ← Implementation patterns
+│   └── SKILL_INDEX.md        ← Available skills
+│
+├── PROGRESS.md               ← Task tracking (active work)
+│
+└── PROJECT_BLUEPRINT_FULL_ARCHIVE.md  ← Original full blueprint
+```
+
+---
+
+## Before Starting Any Task
+
+```
+1. Read PROJECT_BLUEPRINT.md (quick overview)
+2. Read docs/phases/PHASE_XX.md (your phase details)
+3. Read relevant skill in skills/ (implementation patterns)
+4. Check PROGRESS.md (what's done, what's next)
+5. Ask CEO: "Ready to start [TASK_ID]?"
+```
 
 ---
 
@@ -18,194 +64,102 @@ Before doing ANYTHING:
 
 ### 🚫 DO NOT
 
-- **DO NOT** read `.env` or connect to any external services until explicitly told
-- **DO NOT** skip ahead to future phases
-- **DO NOT** install packages not listed in the blueprint
-- **DO NOT** create files not listed in the blueprint
+- **DO NOT** skip reading phase spec before coding
+- **DO NOT** proceed past checkpoints without CEO approval
 - **DO NOT** use Redis for task queues (use Prefect)
 - **DO NOT** use Clerk for auth (use Supabase Auth)
-- **DO NOT** write your own agent framework (use Pydantic AI)
 - **DO NOT** import engines from other engines
 - **DO NOT** instantiate database sessions inside engines
-- **DO NOT** use hard DELETE (use soft delete with deleted_at)
-- **DO NOT** proceed past checkpoints without CEO approval
+- **DO NOT** use hard DELETE (use soft delete)
+- **DO NOT** create files not in the blueprint/phase spec
 
 ### ✅ DO
 
-- **DO** read the blueprint before each task
-- **DO** complete ONE task fully before starting the next
-- **DO** write the test file alongside the implementation
+- **DO** read the phase spec before each task
+- **DO** read relevant skills for implementation patterns
+- **DO** complete ONE task fully before the next
 - **DO** update PROGRESS.md after each task
-- **DO** ask for clarification if something is ambiguous
-- **DO** follow the exact file structure in PART 2
-- **DO** use the exact packages listed in PART 4
+- **DO** follow import hierarchy (models → integrations → engines → orchestration)
 
 ---
 
-## EXECUTION PROTOCOL
-
-### Starting a New Session
+## Import Hierarchy (ENFORCED)
 
 ```
-1. Read CLAUDE.md (this file)
-2. Read PROGRESS.md to see what's done
-3. Read PROJECT_BLUEPRINT.md for context
-4. Identify the NEXT incomplete task
-5. Ask CEO: "Ready to start [TASK_ID]?"
-6. Wait for approval before coding
+Layer 4: src/orchestration/  → Can import ALL below
+Layer 3: src/engines/        → models, integrations ONLY
+Layer 2: src/integrations/   → models ONLY  
+Layer 1: src/models/         → exceptions ONLY
 ```
 
-### Completing a Task
+**Full details:** `docs/architecture/IMPORT_HIERARCHY.md`
 
-```
-1. Read the task row in the blueprint
-2. Read any related engine/schema specs in PART 5-8
-3. Create the file(s) listed
-4. Write the test file if specified
-5. Run the test to verify
-6. Add contract comment at top of each file
-7. Add verification checklist at bottom
-8. Update PROGRESS.md
-9. Report completion: "Completed [TASK_ID]. Ready for [NEXT_TASK_ID]?"
-```
-
-### At Checkpoints
-
-```
-1. STOP completely
-2. Report: "Checkpoint [N] reached. Awaiting CEO approval."
-3. DO NOT proceed until CEO says "APPROVED"
-```
+If you need data from another engine, pass it as argument from orchestration layer.
 
 ---
 
-## FILE TEMPLATES
+## ALS Tiers (CRITICAL)
 
-### Contract Comment (Top of Every File)
+| Tier | Score | Note |
+|------|-------|------|
+| Hot | **85-100** | NOT 80-100 |
+| Warm | 60-84 | |
+| Cool | 35-59 | |
+| Cold | 20-34 | |
+| Dead | <20 | |
 
-```python
-"""
-FILE: src/engines/scout.py
-PURPOSE: Enrich leads via Cache → Apollo+Apify → Clay waterfall
-PHASE: 4 (Engines)
-TASK: ENG-002
-DEPENDENCIES: 
-  - src/integrations/redis.py
-  - src/integrations/apollo.py
-  - src/integrations/clay.py
-  - src/models/lead.py
-RULES APPLIED:
-  - Rule 11: Session passed as argument
-  - Rule 16: Cache versioning (v1 prefix)
-  - Rule 4: Validation threshold 0.70
-"""
-```
-
-### Verification Checklist (Bottom of Every File)
-
-```python
-# === VERIFICATION CHECKLIST ===
-# [x] Contract comment at top
-# [x] No hardcoded credentials
-# [x] Session passed as argument (not instantiated)
-# [x] No imports from other engines
-# [x] Soft delete check in queries (deleted_at IS NULL)
-# [x] Test file created: tests/test_engines/test_scout.py
-# [x] All functions have type hints
-# [x] All functions have docstrings
-```
+**Full formula:** `docs/specs/engines/SCORER_ENGINE.md`
 
 ---
 
-## TECHNOLOGY STACK (LOCKED)
+## Technology Stack (LOCKED)
 
 | Component | Use This | NOT This |
 |-----------|----------|----------|
-| Orchestration | Prefect (self-hosted) | Celery, Redis queues, custom workers |
-| Agent Framework | Pydantic AI | LangChain, CrewAI, custom agents |
-| Auth | Supabase Auth | Clerk, Auth0, custom JWT |
-| Database | Supabase PostgreSQL | Firebase, MongoDB, custom |
-| Cache | Redis (Upstash) | Memcached, local cache |
-| Email | Resend | SendGrid, Mailgun |
-| API | FastAPI | Flask, Django |
+| Orchestration | Prefect | Celery, Redis queues |
+| Agent Framework | Pydantic AI | LangChain, CrewAI |
+| Auth | Supabase Auth | Clerk, Auth0 |
+| Database | Supabase PostgreSQL | Firebase, MongoDB |
+| Cache | Redis (Upstash) | Memcached |
+| Email | Resend + Smartlead | SendGrid |
+
+**Full details:** `docs/architecture/DECISIONS.md`
 
 ---
 
-## IMPORT HIERARCHY (ENFORCED)
+## Task Completion Protocol
 
 ```
-ALLOWED IMPORTS:
-
-src/models/*.py
-  ├── Can import: src/exceptions.py
-  └── Cannot import: engines, integrations, orchestration
-
-src/integrations/*.py
-  ├── Can import: src/models/*, src/exceptions.py
-  └── Cannot import: engines, orchestration
-
-src/engines/*.py
-  ├── Can import: src/models/*, src/integrations/*, src/exceptions.py
-  └── Cannot import: other engines, orchestration
-
-src/orchestration/*.py
-  ├── Can import: everything above
-  └── This is the glue layer
-```
-
-If you need data from another engine, **pass it as an argument** from the orchestration layer.
-
----
-
-## COMMON MISTAKES TO AVOID
-
-### ❌ Wrong: Instantiating session in engine
-```python
-class ScoutEngine:
-    def __init__(self):
-        self.db = AsyncSessionLocal()  # WRONG
-```
-
-### ✅ Correct: Session passed by caller
-```python
-class ScoutEngine:
-    async def enrich(self, db: AsyncSession, domain: str):  # CORRECT
-        ...
+1. Read task in phase spec
+2. Read any relevant skill
+3. Create file(s) with contract comment
+4. Write test if specified
+5. Run test to verify
+6. Update PROGRESS.md
+7. Report: "Completed [TASK_ID]. Ready for [NEXT_TASK_ID]?"
 ```
 
 ---
 
-### ❌ Wrong: Importing another engine
-```python
-# In scorer.py
-from src.engines.allocator import get_channels  # WRONG
-```
+## File Contract Comment
 
-### ✅ Correct: Data passed from orchestration
-```python
-# In enrichment_flow.py
-channels = await allocator.get_channels(db, als_result)
-score = await scorer.score(db, lead, channels)  # Pass data
-```
+Every file must start with:
 
----
-
-### ❌ Wrong: Hard delete
 ```python
-await db.delete(campaign)  # WRONG
-```
-
-### ✅ Correct: Soft delete
-```python
-campaign.deleted_at = datetime.utcnow()  # CORRECT
-await db.commit()
+"""
+Contract: src/engines/scorer.py
+Purpose: Calculate ALS (Agency Lead Score) for leads
+Layer: 3 - engines
+Imports: models, integrations
+Consumers: orchestration only
+"""
 ```
 
 ---
 
-## SESSION HANDOFF
+## Session Handoff
 
-At the end of every session, update PROGRESS.md with:
+At end of session, update PROGRESS.md:
 
 ```markdown
 ## Session: [DATE]
@@ -213,49 +167,40 @@ At the end of every session, update PROGRESS.md with:
 ### Completed
 - [TASK_ID]: [Brief description]
 
-### Current State
-- Last completed task: [TASK_ID]
-- Next task: [TASK_ID]
-- Blockers: [Any issues]
+### Next
+- [TASK_ID]: [Description]
 
-### Files Modified
-- path/to/file.py - [what changed]
+### Blockers
+- [Any issues]
 ```
 
 ---
 
-## ASKING FOR HELP
+## Getting Help
 
-If you're unsure about anything:
-
+If unsure:
 ```
-"I'm about to [action]. 
-The blueprint says [X]. 
-I interpret this as [Y]. 
-Is this correct, or should I [Z]?"
+"I'm about to [action].
+The spec says [X].
+I interpret this as [Y].
+Is this correct?"
 ```
 
-DO NOT guess. DO NOT assume. ASK.
+DO NOT guess. ASK.
 
 ---
 
-## THE GOLDEN RULE
+## Reference Quick Links
 
-**Complete one task. Verify it works. Update progress. Then move to the next.**
-
-No parallelization. No skipping ahead. No assumptions.
-
----
-
-## ACKNOWLEDGMENT
-
-Before starting ANY work, respond with:
-
-```
-"I have read CLAUDE.md and PROJECT_BLUEPRINT.md.
-Current phase: [N]
-Next task: [TASK_ID]
-Ready to proceed?"
-```
-
-Wait for CEO approval before writing any code.
+| Need | Location |
+|------|----------|
+| Architecture decisions | `docs/architecture/DECISIONS.md` |
+| Import rules | `docs/architecture/IMPORT_HIERARCHY.md` |
+| Claude Code rules | `docs/architecture/RULES.md` |
+| Phase details | `docs/phases/PHASE_INDEX.md` |
+| Database schema | `docs/specs/database/SCHEMA_OVERVIEW.md` |
+| Engine specs | `docs/specs/engines/ENGINE_INDEX.md` |
+| Integration specs | `docs/specs/integrations/INTEGRATION_INDEX.md` |
+| Skills | `skills/SKILL_INDEX.md` |
+| Task tracking | `PROGRESS.md` |
+| Full original blueprint | `PROJECT_BLUEPRINT_FULL_ARCHIVE.md` |

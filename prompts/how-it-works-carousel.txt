@@ -1,0 +1,65 @@
+Create an Instagram-style carousel component for a "How It Works" section on a SaaS landing page.
+
+DESIGN REQUIREMENTS:
+- Dark theme with text-white on dark background
+- Instagram/story-style carousel with 5 slides
+- Current slide is fully visible and in focus
+- Previous and next slides are partially visible on the sides, blurred/out of focus (opacity-50, blur-sm, scale-95)
+- Large left/right arrow buttons for navigation
+- Dot indicators at bottom showing current position
+- Auto-advances every 6 seconds (pauses on hover)
+
+HEADER:
+- Small blue text: "How It Works" (uppercase, tracking-wider)
+- Large headline: "From zero to booked meetings"
+- Subheadline: "In days, not months." (text-white/50)
+
+5 CAROUSEL SLIDES (each slide has two columns):
+
+SLIDE 1 - Discover:
+- Badge: "5 minutes" (blue)
+- Title: "Enter your website URL"
+- Description: "Our AI scans your services, case studies, and testimonials. It extracts exactly who your ideal clients are — industries, company sizes, decision-maker titles."
+- Subtext: "No forms. No questionnaires. Just your URL."
+- Right side: Mock UI showing URL input and extracted ICP data (industries, company size, titles)
+
+SLIDE 2 - Scout:
+- Badge: "Automated" (emerald)
+- Title: "AI scouts your leads"
+- Description: "Our enrichment engine finds prospects matching your ICP. Verified emails, direct dials, LinkedIn profiles."
+- Subtext: "Hundreds of leads, ready to reach."
+- Right side: List of 3 lead cards with avatars, names, titles, "Verified" badges
+
+SLIDE 3 - Score:
+- Badge: "Intelligent" (orange)
+- Title: "Agency Lead Score (ALS)"
+- Description: "Not all leads are equal. Our ALS scores every prospect across 5 dimensions."
+- Subtext: "Hot leads get priority. Cold leads get nurtured."
+- Right side: ALS score card showing score of 92 with 5 dimension progress bars
+
+SLIDE 4 - Reach:
+- Badge: "24/7" (purple)
+- Title: "Multi-channel outreach begins"
+- Description: "Email → LinkedIn → SMS → Voice AI → Direct Mail. All orchestrated automatically."
+- Subtext: "Your voice, amplified across every channel."
+- Right side: Multi-channel sequence visualization (email→wait→linkedin→wait→voice)
+
+SLIDE 5 - Convert:
+- Badge: "Results" (emerald)
+- Title: "Meetings land in your calendar"
+- Description: "When prospects reply, we capture the win, book the meeting, and update your pipeline."
+- Subtext: "You focus on closing. We handle everything else."
+- Right side: "Meeting Booked!" success card with conversion insights
+
+NAVIGATION:
+- Left arrow: large circular button with chevron, positioned on left edge
+- Right arrow: large circular button with chevron, positioned on right edge
+- Both arrows should have hover effects
+- Dot indicators below carousel (5 dots, active one is wider/gradient)
+
+STYLING:
+- Cards use bg-[#12121a] with border border-white/10, rounded-2xl
+- Demo panels use bg-[#0a0a0f]
+- Side slides have: opacity-50, blur-sm, scale-95, pointer-events-none
+- Use Tailwind CSS and lucide-react icons
+- Smooth transitions (duration-500 ease-out)

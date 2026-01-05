@@ -1,0 +1,44 @@
+Create an animated dashboard demo component for a SaaS landing page. This is a fake browser window showing a dashboard preview.
+
+DESIGN REQUIREMENTS:
+- Dark theme with bg-[#0a0a0f] background
+- Browser chrome frame with macOS traffic light buttons (red, yellow, green dots)
+- URL bar showing "app.agencyos.com.au" with a lock icon
+
+DASHBOARD CONTENT (all static, no complex animations):
+1. Stats Row (4 cards in a grid):
+   - Pipeline: $284K with "↑ 12%" green badge
+   - Meetings: 47 with "↑ 8 this week" green badge
+   - Reply Rate: 12% with "↑ 2.1%" green badge
+   - Leads: 2,847 with "Active" blue badge
+
+2. Two-column layout below stats:
+   LEFT - Live Activity Feed:
+   - Header with pulsing green dot and "Live Activity" title, "Auto-updating" label
+   - 5 activity items showing: name, company, action (e.g., "Opened email", "Clicked link", "Accepted connection"), channel icon, time ago
+   - Each item has a colored icon based on channel (email=blue, linkedin=sky, sms=green, phone=purple, calendar=emerald)
+
+   RIGHT - AI Email Composer:
+   - Header with sparkles icon and "AI Writing Email" title
+   - "Generating" badge (purple)
+   - To: Sarah Chen, Marketing Director
+   - Company: Bloom Digital
+   - Email content area with monospace font showing a personalized sales email
+   - Blinking cursor at the end
+
+3. Bottom section - Lead Quality Distribution:
+   - "Lead Quality Distribution" header with "Agency Lead Score (ALS)" label
+   - 5 horizontal progress bars: Hot (24%, red), Warm (31%, orange), Cool (28%, blue), Cold (12%, gray), Dead (5%, dark gray)
+
+STYLING:
+- Use rounded-xl for cards with bg-white/5 and border border-white/10
+- Text colors: white for primary, white/50 for secondary, white/40 for tertiary
+- All animations should be smooth CSS transitions only - NO rapid state changes
+- Use Tailwind CSS classes
+- Import icons from lucide-react
+
+IMPORTANT:
+- Keep animations simple and performant - avoid rapid re-renders
+- Use CSS animations (animate-pulse, animate-ping) sparingly
+- The typing effect should be smooth, not jittery
+- All text must be clearly visible with proper contrast

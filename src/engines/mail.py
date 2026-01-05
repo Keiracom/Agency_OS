@@ -1,11 +1,11 @@
 """
 FILE: src/engines/mail.py
-PURPOSE: Direct mail engine using Lob integration for physical mail
+PURPOSE: Direct mail engine using ClickSend integration for physical mail (Australian)
 PHASE: 4 (Engines)
 TASK: ENG-009
 DEPENDENCIES:
   - src/engines/base.py
-  - src/integrations/lob.py
+  - src/integrations/clicksend.py
   - src/integrations/redis.py
   - src/models/lead.py
   - src/models/activity.py
@@ -15,6 +15,8 @@ RULES APPLIED:
   - Rule 12: No imports from other engines
   - Rule 14: Soft deletes only
   - Rule 17: Resource-level rate limit (1000/day for mail)
+
+Updated Jan 2026: Switched from Lob (US) to ClickSend (Australian native).
 """
 
 from datetime import datetime
@@ -26,7 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import EngineResult, OutreachEngine
 from src.exceptions import ValidationError
-from src.integrations.lob import LobClient, get_lob_client
+from src.integrations.clicksend import ClickSendClient, get_clicksend_client
 from src.models.activity import Activity
 from src.models.base import ChannelType, LeadStatus
 from src.models.lead import Lead
@@ -34,10 +36,9 @@ from src.models.lead import Lead
 
 class MailEngine(OutreachEngine):
     """
-    Direct mail engine for physical mail via Lob.
+    Direct mail engine for physical mail via ClickSend (Australian).
 
     Handles:
-    - Address verification before sending
     - Letter and postcard sending
     - Tracking and delivery status
     - Activity logging
@@ -45,14 +46,14 @@ class MailEngine(OutreachEngine):
     - Higher rate limit: 1000/day (Rule 17)
     """
 
-    def __init__(self, lob_client: LobClient | None = None):
+    def __init__(self, clicksend_client: ClickSendClient | None = None):
         """
-        Initialize Mail engine with Lob client.
+        Initialize Mail engine with ClickSend client.
 
         Args:
-            lob_client: Optional Lob client (uses singleton if not provided)
+            clicksend_client: Optional ClickSend client (uses singleton if not provided)
         """
-        self._lob = lob_client
+        self._clicksend = clicksend_client
 
     @property
     def name(self) -> str:
@@ -63,67 +64,10 @@ class MailEngine(OutreachEngine):
         return ChannelType.MAIL
 
     @property
-    def lob(self) -> LobClient:
-        if self._lob is None:
-            self._lob = get_lob_client()
-        return self._lob
-
-    async def verify_address(
-        self,
-        db: AsyncSession,
-        lead_id: UUID,
-        address_data: dict[str, str],
-    ) -> EngineResult[dict[str, Any]]:
-        """
-        Verify a lead's address before sending mail.
-
-        Args:
-            db: Database session (passed by caller)
-            lead_id: Lead UUID
-            address_data: Address to verify with keys:
-                - address_line1
-                - city
-                - state
-                - zip_code
-                - country (default: AU)
-                - address_line2 (optional)
-
-        Returns:
-            EngineResult with verification result
-        """
-        try:
-            # Validate lead exists
-            lead = await self.get_lead_by_id(db, lead_id)
-
-            # Verify address via Lob
-            result = await self.lob.verify_address(
-                address_line1=address_data.get("address_line1", ""),
-                city=address_data.get("city", ""),
-                state=address_data.get("state", ""),
-                zip_code=address_data.get("zip_code", ""),
-                country=address_data.get("country", "AU"),
-                address_line2=address_data.get("address_line2"),
-            )
-
-            if not result.get("valid"):
-                return EngineResult.fail(
-                    error=f"Address not deliverable: {result.get('deliverability')}",
-                    metadata={
-                        "lead_id": str(lead_id),
-                        "deliverability": result.get("deliverability"),
-                    },
-                )
-
-            return EngineResult.ok(
-                data=result,
-                metadata={"lead_id": str(lead_id)},
-            )
-
-        except Exception as e:
-            return EngineResult.fail(
-                error=f"Address verification failed: {str(e)}",
-                metadata={"lead_id": str(lead_id)},
-            )
+    def clicksend(self) -> ClickSendClient:
+        if self._clicksend is None:
+            self._clicksend = get_clicksend_client()
+        return self._clicksend
 
     async def send(
         self,
@@ -140,17 +84,19 @@ class MailEngine(OutreachEngine):
             db: Database session (passed by caller)
             lead_id: Target lead UUID
             campaign_id: Campaign UUID
-            content: Not used (template handles content)
+            content: Not used (template/file handles content)
             **kwargs: Additional options:
                 - mail_type: "letter" or "postcard" (default: letter)
-                - template_id: Lob template ID (required)
-                - merge_variables: Template variables (required)
+                - template_id: ClickSend template ID (optional)
+                - file_url: URL to PDF file to print (alternative to template)
+                - merge_variables: Template variables
                 - to_address: Recipient address dict (required)
                 - from_address: Sender address dict (required)
-                - color: Print in color (default: True)
-                - size: Postcard size for postcards (default: 4x6)
-                - front_template_id: Front template for postcards
-                - back_template_id: Back template for postcards
+                - colour: Print in colour (default: True)
+                - duplex: Double-sided printing (default: False)
+                - priority_post: Use priority post (default: False)
+                - front_file_url: Front image URL for postcards
+                - back_file_url: Back image URL for postcards
 
         Returns:
             EngineResult with mail send result
@@ -200,44 +146,46 @@ class MailEngine(OutreachEngine):
         try:
             if mail_type == "letter":
                 template_id = kwargs.get("template_id")
-                if not template_id:
+                file_url = kwargs.get("file_url")
+
+                if not template_id and not file_url:
                     return EngineResult.fail(
-                        error="template_id is required for letters",
+                        error="Either template_id or file_url is required for letters",
                         metadata={"lead_id": str(lead_id)},
                     )
 
-                result = await self.lob.send_letter(
+                result = await self.clicksend.send_letter(
                     to_address=to_address,
                     from_address=from_address,
                     template_id=template_id,
+                    file_url=file_url,
                     merge_variables=merge_variables,
-                    color=kwargs.get("color", True),
+                    colour=kwargs.get("colour", True),
+                    duplex=kwargs.get("duplex", False),
+                    priority_post=kwargs.get("priority_post", False),
                 )
 
                 mail_id = result.get("letter_id")
-                tracking_number = result.get("tracking_number")
 
             elif mail_type == "postcard":
-                front_template_id = kwargs.get("front_template_id")
-                back_template_id = kwargs.get("back_template_id")
+                front_file_url = kwargs.get("front_file_url")
+                back_file_url = kwargs.get("back_file_url")
 
-                if not front_template_id or not back_template_id:
+                if not front_file_url or not back_file_url:
                     return EngineResult.fail(
-                        error="front_template_id and back_template_id are required for postcards",
+                        error="front_file_url and back_file_url are required for postcards",
                         metadata={"lead_id": str(lead_id)},
                     )
 
-                result = await self.lob.send_postcard(
+                result = await self.clicksend.send_postcard(
                     to_address=to_address,
                     from_address=from_address,
-                    front_template_id=front_template_id,
-                    back_template_id=back_template_id,
+                    front_file_url=front_file_url,
+                    back_file_url=back_file_url,
                     merge_variables=merge_variables,
-                    size=kwargs.get("size", "4x6"),
                 )
 
                 mail_id = result.get("postcard_id")
-                tracking_number = None
 
             else:
                 return EngineResult.fail(
@@ -252,8 +200,8 @@ class MailEngine(OutreachEngine):
                 campaign_id=campaign_id,
                 mail_id=mail_id,
                 mail_type=mail_type,
-                tracking_number=tracking_number,
                 to_address=to_address,
+                price=result.get("price"),
             )
 
             # Update lead
@@ -264,9 +212,9 @@ class MailEngine(OutreachEngine):
                 data={
                     "mail_id": mail_id,
                     "mail_type": mail_type,
-                    "tracking_number": tracking_number,
-                    "expected_delivery_date": result.get("expected_delivery_date"),
-                    "provider": "lob",
+                    "status": result.get("status"),
+                    "price": result.get("price"),
+                    "provider": "clicksend",
                     "lead_id": str(lead_id),
                 },
                 metadata={
@@ -285,33 +233,78 @@ class MailEngine(OutreachEngine):
                 },
             )
 
-    async def get_mail_status(
+    async def get_letter_history(
         self,
         db: AsyncSession,
-        letter_id: str,
+        page: int = 1,
+        limit: int = 15,
     ) -> EngineResult[dict[str, Any]]:
         """
-        Get status and tracking of a letter.
+        Get letter sending history from ClickSend.
 
         Args:
             db: Database session (passed by caller)
-            letter_id: Lob letter ID
+            page: Page number
+            limit: Results per page
 
         Returns:
-            EngineResult with mail status
+            EngineResult with letter history
         """
         try:
-            status = await self.lob.get_letter(letter_id)
+            history = await self.clicksend.get_letter_history(page=page, limit=limit)
 
             return EngineResult.ok(
-                data=status,
-                metadata={"letter_id": letter_id},
+                data=history,
+                metadata={"page": page, "limit": limit},
             )
 
         except Exception as e:
             return EngineResult.fail(
-                error=f"Failed to get mail status: {str(e)}",
-                metadata={"letter_id": letter_id},
+                error=f"Failed to get letter history: {str(e)}",
+                metadata={"page": page},
+            )
+
+    async def calculate_price(
+        self,
+        db: AsyncSession,
+        recipients_count: int = 1,
+        pages: int = 1,
+        colour: bool = True,
+        duplex: bool = False,
+        priority_post: bool = False,
+    ) -> EngineResult[dict[str, Any]]:
+        """
+        Calculate letter price before sending.
+
+        Args:
+            db: Database session (passed by caller)
+            recipients_count: Number of recipients
+            pages: Number of pages
+            colour: Colour printing
+            duplex: Double-sided
+            priority_post: Priority post
+
+        Returns:
+            EngineResult with price calculation
+        """
+        try:
+            price = await self.clicksend.calculate_price(
+                recipients_count=recipients_count,
+                pages=pages,
+                colour=colour,
+                duplex=duplex,
+                priority_post=priority_post,
+            )
+
+            return EngineResult.ok(
+                data=price,
+                metadata={"recipients_count": recipients_count},
+            )
+
+        except Exception as e:
+            return EngineResult.fail(
+                error=f"Failed to calculate price: {str(e)}",
+                metadata={},
             )
 
     async def process_tracking_webhook(
@@ -320,7 +313,7 @@ class MailEngine(OutreachEngine):
         payload: dict[str, Any],
     ) -> EngineResult[dict[str, Any]]:
         """
-        Process Lob tracking webhook.
+        Process ClickSend delivery webhook.
 
         Args:
             db: Database session (passed by caller)
@@ -331,12 +324,12 @@ class MailEngine(OutreachEngine):
         """
         try:
             # Parse webhook
-            event = self.lob.parse_webhook(payload)
+            event = self.clicksend.parse_webhook(payload)
 
-            resource_id = event.get("resource_id")
-            if not resource_id:
+            message_id = event.get("message_id")
+            if not message_id:
                 return EngineResult.fail(
-                    error="Missing resource_id in webhook",
+                    error="Missing message_id in webhook",
                     metadata={"payload": payload},
                 )
 
@@ -344,7 +337,7 @@ class MailEngine(OutreachEngine):
             stmt = select(Activity).where(
                 and_(
                     Activity.channel == ChannelType.MAIL,
-                    Activity.provider_message_id == resource_id,
+                    Activity.provider_message_id == message_id,
                 )
             )
             result = await db.execute(stmt)
@@ -352,13 +345,13 @@ class MailEngine(OutreachEngine):
 
             if not activity:
                 return EngineResult.fail(
-                    error=f"Activity not found for mail_id {resource_id}",
-                    metadata={"resource_id": resource_id},
+                    error=f"Activity not found for message_id {message_id}",
+                    metadata={"message_id": message_id},
                 )
 
-            # Check if delivered
-            tracking_events = event.get("tracking_events", [])
-            delivered = any(e.get("name") == "Delivered" for e in tracking_events)
+            # Check status
+            status = event.get("status")
+            delivered = status in ["Delivered", "delivered"]
 
             if delivered:
                 # Create delivery activity
@@ -368,12 +361,11 @@ class MailEngine(OutreachEngine):
                     lead_id=activity.lead_id,
                     channel=ChannelType.MAIL,
                     action="delivered",
-                    provider_message_id=resource_id,
-                    provider="lob",
+                    provider_message_id=message_id,
+                    provider="clicksend",
                     metadata={
-                        "tracking_number": event.get("tracking_number"),
-                        "tracking_events": tracking_events,
-                        "carrier": event.get("carrier"),
+                        "status": status,
+                        "timestamp": event.get("timestamp"),
                     },
                 )
                 db.add(delivery_activity)
@@ -381,7 +373,8 @@ class MailEngine(OutreachEngine):
 
             return EngineResult.ok(
                 data={
-                    "resource_id": resource_id,
+                    "message_id": message_id,
+                    "status": status,
                     "delivered": delivered,
                     "processed": True,
                 },
@@ -401,8 +394,8 @@ class MailEngine(OutreachEngine):
         campaign_id: UUID,
         mail_id: str | None,
         mail_type: str,
-        tracking_number: str | None,
         to_address: dict[str, str],
+        price: str | None = None,
     ) -> None:
         """
         Log mail activity to database.
@@ -411,10 +404,10 @@ class MailEngine(OutreachEngine):
             db: Database session
             lead: Lead receiving mail
             campaign_id: Campaign UUID
-            mail_id: Lob mail ID
+            mail_id: ClickSend message ID
             mail_type: Type of mail (letter or postcard)
-            tracking_number: USPS/carrier tracking number
             to_address: Recipient address
+            price: Cost of mail piece
         """
         activity = Activity(
             client_id=lead.client_id,
@@ -423,13 +416,13 @@ class MailEngine(OutreachEngine):
             channel=ChannelType.MAIL,
             action="sent",
             provider_message_id=mail_id,
-            provider="lob",
+            provider="clicksend",
             metadata={
                 "mail_type": mail_type,
-                "tracking_number": tracking_number,
                 "to_address": to_address,
                 "lead_name": lead.full_name,
                 "company": lead.company,
+                "price": price,
             },
         )
         db.add(activity)
@@ -459,15 +452,14 @@ def get_mail_engine() -> MailEngine:
 # [x] Resource-level rate limit: 1000/day for mail (Rule 17)
 # [x] ALS score validation (85+ required - hot tier)
 # [x] Extends OutreachEngine from base.py
-# [x] Uses Lob integration
-# [x] Address verification before sending
-# [x] Letter sending with templates
+# [x] Uses ClickSend integration (Australian native)
+# [x] Letter sending with templates or file URL
 # [x] Postcard sending
-# [x] Mail status retrieval
+# [x] Letter history retrieval
+# [x] Price calculation
 # [x] Tracking webhook processing
-# [x] Activity logging with tracking
+# [x] Activity logging with price
 # [x] Lead update on success
 # [x] EngineResult wrapper for responses
-# [x] Test file created: tests/test_engines/test_mail.py
 # [x] All functions have type hints
 # [x] All functions have docstrings

@@ -14,7 +14,7 @@ import { useFoundingSpots } from "@/components/marketing/founding-spots";
 import { FloatingFoundingSpots } from "@/components/marketing/floating-founding-spots";
 import HeroSection from "@/components/landing/HeroSection";
 import TypingDemo from "@/components/landing/TypingDemo";
-import HowItWorksTabs from "@/components/landing/HowItWorksTabs";
+import HowItWorksCarousel from "@/components/landing/HowItWorksCarousel";
 import DashboardDemo from "@/components/landing/DashboardDemo";
 import {
   Search,
@@ -421,13 +421,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* HOW IT WORKS - Interactive Tabs matching landing-page-v2 */}
+      {/* HOW IT WORKS - Instagram-style Carousel */}
       <section className="bg-[#0a0a0f] text-white relative overflow-hidden">
         {/* Subtle background gradient */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0f] via-[#0f0f13] to-[#0a0a0f] pointer-events-none" />
 
         <div className="relative z-10">
-          <HowItWorksTabs autoRotate={true} rotateInterval={6000} />
+          <HowItWorksCarousel />
         </div>
       </section>
 

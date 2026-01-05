@@ -264,6 +264,16 @@ class ICPDiscoveryAgent(BaseAgent):
             scraped = scrape_result.data
             result.website_scraped = True
 
+            # Log scraped content info
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Scraped {scraped.page_count} pages from {website_url}")
+            logger.info(f"Raw HTML length: {len(scraped.raw_html)} chars")
+            if scraped.raw_html:
+                logger.debug(f"Raw HTML preview: {scraped.raw_html[:500]}...")
+            else:
+                logger.warning(f"Raw HTML is empty! Pages: {[p.url for p in scraped.pages]}")
+
             # Step 2: Parse website content
             parse_result = await self.use_skill(
                 "parse_website",

@@ -240,6 +240,19 @@ class BaseSkill(ABC, Generic[InputT, OutputT]):
         Raises:
             SkillError: If JSON parsing fails
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        original_content = content
+
+        # Check for empty content first
+        if not content or not content.strip():
+            raise SkillError(
+                skill_name=self.name,
+                message="Empty response from AI",
+                details={"raw_content": repr(content)},
+            )
+
         try:
             # Handle markdown code blocks
             if "```json" in content:
@@ -247,12 +260,19 @@ class BaseSkill(ABC, Generic[InputT, OutputT]):
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0]
 
-            return json.loads(content.strip())
+            content = content.strip()
+
+            # Log what we're trying to parse
+            logger.debug(f"Parsing JSON content (len={len(content)}): {content[:200]}...")
+
+            return json.loads(content)
         except json.JSONDecodeError as e:
+            logger.error(f"JSON parse error: {e}")
+            logger.error(f"Original content (len={len(original_content)}): {original_content[:500]}")
             raise SkillError(
                 skill_name=self.name,
                 message=f"Failed to parse JSON response: {e}",
-                details={"raw_content": content[:500]},
+                details={"raw_content": original_content[:500], "processed_content": content[:500]},
             )
 
     def build_prompt(self, input_data: InputT) -> str:

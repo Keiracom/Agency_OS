@@ -201,6 +201,30 @@ class Settings(BaseSettings):
         default="", description="Resend/Svix webhook secret"
     )
 
+    # === TEST_MODE Configuration (Phase 21) ===
+    # When enabled, all outbound messages redirect to test recipients
+    TEST_MODE: bool = Field(default=False, description="Enable TEST_MODE for safe E2E testing")
+    TEST_EMAIL_RECIPIENT: str = Field(
+        default="david.stephens@keiracom.com",
+        description="Email recipient for TEST_MODE"
+    )
+    TEST_SMS_RECIPIENT: str = Field(
+        default="+61457543392",
+        description="SMS recipient for TEST_MODE"
+    )
+    TEST_VOICE_RECIPIENT: str = Field(
+        default="+61457543392",
+        description="Voice call recipient for TEST_MODE"
+    )
+    TEST_LINKEDIN_RECIPIENT: str = Field(
+        default="https://www.linkedin.com/in/david-stephens-8847a636a/",
+        description="LinkedIn profile for TEST_MODE"
+    )
+    TEST_DAILY_EMAIL_LIMIT: int = Field(
+        default=15,
+        description="Daily email limit during TEST_MODE for mailbox warmup protection"
+    )
+
     # === CRM Integration (Phase 24E) ===
     # HubSpot OAuth (required for HubSpot integration)
     hubspot_client_id: str = Field(default="", description="HubSpot OAuth client ID")

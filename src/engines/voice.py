@@ -24,6 +24,7 @@ PHASE 17 CHANGES:
   - Vapi orchestrates: STT (built-in) -> LLM (Claude) -> TTS (ElevenLabs)
 """
 
+import logging
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -31,7 +32,10 @@ from uuid import UUID
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config.settings import settings
 from src.engines.base import EngineResult, OutreachEngine
+
+logger = logging.getLogger(__name__)
 from src.engines.content_utils import build_voice_snapshot
 from src.exceptions import ValidationError
 from src.integrations.vapi import (
@@ -165,6 +169,12 @@ class VoiceEngine(OutreachEngine):
                     "als_score": lead.als_score,
                 },
             )
+
+        # TEST_MODE: Redirect voice call to test recipient
+        original_phone = lead.phone
+        if settings.TEST_MODE:
+            lead.phone = settings.TEST_VOICE_RECIPIENT
+            logger.info(f"TEST_MODE: Redirecting voice call {original_phone} → {lead.phone}")
 
         # Get campaign for context
         campaign = await self.get_campaign_by_id(db, campaign_id)

@@ -34,6 +34,9 @@ Phase 24F additions:
 - CustomerImportService: Import customers from CRM/CSV for suppression
 - SuppressionService: Check and manage suppression list
 - BuyerSignalService: Query platform buyer signals for lead scoring
+
+Phase 21 additions:
+- SendLimiter: Daily send limits during TEST_MODE
 """
 
 from src.services.ab_test_service import ABTestService
@@ -46,6 +49,7 @@ from src.services.jit_validator import JITValidator, JITValidationResult
 from src.services.lead_allocator_service import LeadAllocatorService
 from src.services.lead_pool_service import LeadPoolService
 from src.services.reply_analyzer import ReplyAnalyzer
+from src.services.send_limiter import SendLimiter, send_limiter
 from src.services.suppression_service import SuppressionService, SuppressionResult
 from src.services.thread_service import ThreadService
 from src.services.timezone_service import TimezoneService
@@ -74,4 +78,7 @@ __all__ = [
     "BuyerSignalService",
     "BuyerSignal",
     "BuyerScoreBoost",
+    # Phase 21
+    "SendLimiter",
+    "send_limiter",
 ]

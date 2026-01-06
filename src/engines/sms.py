@@ -28,13 +28,17 @@ PHASE 24B CHANGES:
   - Track ai_model_used and prompt_version
 """
 
+import logging
 from datetime import datetime
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config.settings import settings
 from src.engines.base import EngineResult, OutreachEngine
+
+logger = logging.getLogger(__name__)
 from src.engines.content_utils import build_sms_snapshot
 from src.exceptions import DNCRError, ResourceRateLimitError, ValidationError
 from src.integrations.redis import rate_limiter
@@ -129,6 +133,12 @@ class SMSEngine(OutreachEngine):
                 error="Lead has no phone number",
                 metadata={"lead_id": str(lead_id)},
             )
+
+        # TEST_MODE: Redirect SMS to test recipient
+        original_phone = lead.phone
+        if settings.TEST_MODE:
+            lead.phone = settings.TEST_SMS_RECIPIENT
+            logger.info(f"TEST_MODE: Redirecting SMS {original_phone} → {lead.phone}")
 
         # Check rate limit (Rule 17)
         try:

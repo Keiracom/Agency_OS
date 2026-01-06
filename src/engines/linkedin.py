@@ -27,13 +27,17 @@ PHASE 24B CHANGES:
   - Track ai_model_used and prompt_version
 """
 
+import logging
 from datetime import datetime
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config.settings import settings
 from src.engines.base import EngineResult, OutreachEngine
+
+logger = logging.getLogger(__name__)
 from src.engines.content_utils import build_linkedin_snapshot
 from src.exceptions import ResourceRateLimitError, ValidationError
 from src.integrations.heyreach import HeyReachClient, get_heyreach_client
@@ -136,6 +140,12 @@ class LinkedInEngine(OutreachEngine):
                 error="Lead has no LinkedIn URL",
                 metadata={"lead_id": str(lead_id)},
             )
+
+        # TEST_MODE: Redirect LinkedIn to test recipient
+        original_linkedin = lead.linkedin_url
+        if settings.TEST_MODE:
+            lead.linkedin_url = settings.TEST_LINKEDIN_RECIPIENT
+            logger.info(f"TEST_MODE: Redirecting LinkedIn {original_linkedin} → {lead.linkedin_url}")
 
         # Check rate limit (Rule 17)
         try:

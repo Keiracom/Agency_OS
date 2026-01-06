@@ -28,6 +28,7 @@ PHASE 24B CHANGES:
   - Track ai_model_used and prompt_version
 """
 
+import logging
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -35,7 +36,10 @@ from uuid import UUID
 from sqlalchemy import and_, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config.settings import settings
 from src.engines.base import EngineResult, OutreachEngine
+
+logger = logging.getLogger(__name__)
 from src.engines.content_utils import build_content_snapshot
 from src.exceptions import ResourceRateLimitError, ValidationError
 from src.integrations.redis import rate_limiter
@@ -135,6 +139,12 @@ class EmailEngine(OutreachEngine):
         # Get lead
         lead = await self.get_lead_by_id(db, lead_id)
         campaign = await self.get_campaign_by_id(db, campaign_id)
+
+        # TEST_MODE: Redirect email to test recipient
+        original_email = lead.email
+        if settings.TEST_MODE:
+            lead.email = settings.TEST_EMAIL_RECIPIENT
+            logger.info(f"TEST_MODE: Redirecting email {original_email} → {lead.email}")
 
         # Extract domain for rate limiting (Rule 17)
         domain = self._extract_domain(from_email)

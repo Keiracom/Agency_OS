@@ -1,8 +1,8 @@
 """
 FILE: src/detectors/how_detector.py
 PURPOSE: HOW Detector - Analyzes channel sequences that correlate with conversions
-PHASE: 16 (Conversion Intelligence)
-TASK: 16D
+PHASE: 16 (Conversion Intelligence), Updated Phase 24C, 24D
+TASK: 16D, ENGAGE-007, THREAD-008
 DEPENDENCIES:
   - src/detectors/base.py
   - src/models/activity.py
@@ -16,6 +16,8 @@ HOW Pattern Outputs:
   - sequence_patterns: Which channel sequences convert
   - tier_channel_effectiveness: Channel effectiveness by ALS tier
   - multi_channel_lift: Lift from using multiple channels
+  - email_engagement_correlation: Open/click patterns that predict conversion (Phase 24C)
+  - channel_conversation_quality: Conversation metrics by channel (Phase 24D)
 """
 
 from collections import defaultdict
@@ -23,7 +25,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.detectors.base import BaseDetector
@@ -42,6 +44,8 @@ class HowDetector(BaseDetector):
     - Sequence patterns (which channel orders convert?)
     - Tier-based channel effectiveness
     - Multi-channel vs single-channel lift
+    - Email engagement correlation (Phase 24C)
+    - Conversation quality by channel (Phase 24D)
     """
 
     pattern_type = "how"
@@ -77,9 +81,15 @@ class HowDetector(BaseDetector):
         tier_effectiveness = self._analyze_tier_channels(leads_data, baseline_rate)
         multi_channel = self._analyze_multi_channel(leads_data, baseline_rate)
 
+        # Phase 24C: Analyze email engagement correlation
+        engagement_correlation = await self._analyze_engagement_correlation(db, client_id)
+
+        # Phase 24D: Analyze conversation quality by channel
+        conversation_quality = await self._analyze_channel_conversations(db, client_id)
+
         patterns = {
             "type": "how",
-            "version": "1.0",
+            "version": "2.1",  # Updated for Phase 24C
             "computed_at": datetime.utcnow().isoformat(),
             "sample_size": len(leads_data),
             "baseline_conversion_rate": round(baseline_rate, 4),
@@ -87,6 +97,8 @@ class HowDetector(BaseDetector):
             "sequence_patterns": sequence_patterns,
             "tier_channel_effectiveness": tier_effectiveness,
             "multi_channel_lift": multi_channel,
+            "email_engagement_correlation": engagement_correlation,  # Phase 24C
+            "channel_conversation_quality": conversation_quality,  # Phase 24D
         }
 
         return await self.save_pattern(
@@ -303,11 +315,236 @@ class HowDetector(BaseDetector):
             "recommendation": "multi" if lift > 1.2 else "single",
         }
 
+    async def _analyze_engagement_correlation(
+        self,
+        db: AsyncSession,
+        client_id: UUID,
+    ) -> dict[str, Any]:
+        """
+        Analyze email engagement patterns that correlate with conversion (Phase 24C).
+
+        This helps CIS learn which engagement signals predict conversion.
+
+        Args:
+            db: Database session
+            client_id: Client UUID
+
+        Returns:
+            Engagement correlation metrics
+        """
+        query = text("""
+            WITH email_activities AS (
+                SELECT
+                    a.lead_id,
+                    a.email_opened,
+                    a.email_clicked,
+                    a.email_open_count,
+                    a.email_click_count,
+                    a.time_to_open_minutes,
+                    a.time_to_click_minutes,
+                    l.status,
+                    CASE WHEN l.status = 'converted' THEN TRUE ELSE FALSE END as converted
+                FROM activities a
+                JOIN leads l ON l.id = a.lead_id
+                WHERE a.client_id = :client_id
+                AND a.channel = 'email'
+                AND a.action IN ('sent', 'email_sent')
+                AND a.created_at >= NOW() - INTERVAL '90 days'
+                AND l.deleted_at IS NULL
+            )
+            SELECT
+                -- Overall engagement rates
+                COUNT(*) as total_emails,
+                COUNT(*) FILTER (WHERE email_opened) as opened,
+                COUNT(*) FILTER (WHERE email_clicked) as clicked,
+                COUNT(*) FILTER (WHERE converted) as converted,
+
+                -- Conversion by engagement type
+                COUNT(*) FILTER (WHERE email_opened AND converted) as opened_and_converted,
+                COUNT(*) FILTER (WHERE email_clicked AND converted) as clicked_and_converted,
+                COUNT(*) FILTER (WHERE NOT email_opened AND converted) as not_opened_but_converted,
+
+                -- Click-to-open correlation
+                COUNT(*) FILTER (WHERE email_clicked AND email_opened) as clicked_after_open,
+
+                -- Time patterns (for converting leads)
+                AVG(time_to_open_minutes) FILTER (WHERE converted AND time_to_open_minutes IS NOT NULL) as avg_convert_open_time,
+                AVG(time_to_click_minutes) FILTER (WHERE converted AND time_to_click_minutes IS NOT NULL) as avg_convert_click_time,
+
+                -- Repeat engagement
+                AVG(email_open_count) FILTER (WHERE converted) as avg_opens_converted,
+                AVG(email_open_count) FILTER (WHERE NOT converted) as avg_opens_not_converted
+            FROM email_activities
+        """)
+
+        try:
+            result = await db.execute(query, {"client_id": client_id})
+            row = result.fetchone()
+
+            if not row or row.total_emails == 0:
+                return {}
+
+            total = row.total_emails
+            opened = row.opened or 0
+            clicked = row.clicked or 0
+            converted = row.converted or 0
+
+            # Calculate conversion rates by engagement type
+            open_conversion_rate = (
+                row.opened_and_converted / opened * 100 if opened > 0 else 0
+            )
+            no_open_conversion_rate = (
+                row.not_opened_but_converted / (total - opened) * 100
+                if (total - opened) > 0 else 0
+            )
+            click_conversion_rate = (
+                row.clicked_and_converted / clicked * 100 if clicked > 0 else 0
+            )
+
+            # Calculate lift from engagement
+            baseline_conversion = converted / total * 100 if total > 0 else 0
+            open_lift = open_conversion_rate / baseline_conversion if baseline_conversion > 0 else 1.0
+            click_lift = click_conversion_rate / baseline_conversion if baseline_conversion > 0 else 1.0
+
+            return {
+                "sample_size": total,
+                "open_rate": round(opened / total * 100, 2),
+                "click_rate": round(clicked / total * 100, 2),
+                "click_to_open_rate": round(row.clicked_after_open / opened * 100, 2) if opened > 0 else 0,
+
+                # Conversion correlation
+                "conversion_rate_if_opened": round(open_conversion_rate, 2),
+                "conversion_rate_if_not_opened": round(no_open_conversion_rate, 2),
+                "conversion_rate_if_clicked": round(click_conversion_rate, 2),
+
+                # Lift calculations
+                "open_conversion_lift": round(open_lift, 2),
+                "click_conversion_lift": round(click_lift, 2),
+
+                # Engagement depth insights
+                "avg_opens_converted": round(float(row.avg_opens_converted or 0), 1),
+                "avg_opens_not_converted": round(float(row.avg_opens_not_converted or 0), 1),
+
+                # Timing insights
+                "avg_time_to_open_converted": round(float(row.avg_convert_open_time or 0), 0),
+                "avg_time_to_click_converted": round(float(row.avg_convert_click_time or 0), 0),
+
+                # Recommendations
+                "insights": self._generate_engagement_insights(
+                    open_lift, click_lift,
+                    float(row.avg_opens_converted or 0),
+                    float(row.avg_opens_not_converted or 0)
+                ),
+            }
+
+        except Exception:
+            return {}
+
+    def _generate_engagement_insights(
+        self,
+        open_lift: float,
+        click_lift: float,
+        avg_opens_converted: float,
+        avg_opens_not_converted: float,
+    ) -> list[str]:
+        """Generate actionable insights from engagement data."""
+        insights = []
+
+        if open_lift > 1.5:
+            insights.append("Email opens strongly predict conversion - focus on subject line optimization")
+        elif open_lift < 0.8:
+            insights.append("Opens don't correlate with conversion - consider testing different CTAs")
+
+        if click_lift > 2.0:
+            insights.append("Link clicks are a strong conversion signal - include clear CTAs in every email")
+        elif click_lift > 1.0:
+            insights.append("Clicks moderately predict conversion - A/B test different link placements")
+
+        if avg_opens_converted > avg_opens_not_converted * 1.5:
+            insights.append("Converting leads open emails multiple times - consider follow-up sequences for re-openers")
+
+        if not insights:
+            insights.append("Collect more engagement data for actionable insights")
+
+        return insights
+
+    async def _analyze_channel_conversations(
+        self,
+        db: AsyncSession,
+        client_id: UUID,
+    ) -> dict[str, Any]:
+        """
+        Analyze conversation quality metrics by channel (Phase 24D).
+
+        This helps CIS learn which channels lead to better conversations,
+        not just conversions.
+
+        Args:
+            db: Database session
+            client_id: Client UUID
+
+        Returns:
+            Conversation quality metrics by channel
+        """
+        query = text("""
+            SELECT
+                ct.channel,
+                COUNT(*) as thread_count,
+                AVG(ct.message_count) as avg_messages,
+                AVG(ct.their_message_count) as avg_lead_messages,
+                AVG(ct.avg_their_response_minutes) as avg_lead_response_time,
+                COUNT(*) FILTER (WHERE ct.outcome = 'converted' OR ct.outcome = 'meeting_booked') as converted,
+                COUNT(*) FILTER (WHERE ct.outcome = 'rejected') as rejected,
+                (
+                    SELECT json_agg(t)
+                    FROM (
+                        SELECT sentiment, COUNT(*) as cnt
+                        FROM thread_messages tm
+                        WHERE tm.thread_id = ANY(ARRAY_AGG(ct.id))
+                        AND tm.direction = 'inbound'
+                        AND tm.sentiment IS NOT NULL
+                        GROUP BY sentiment
+                    ) t
+                ) as sentiment_dist
+            FROM conversation_threads ct
+            WHERE ct.client_id = :client_id
+            AND ct.created_at >= NOW() - INTERVAL '90 days'
+            GROUP BY ct.channel
+        """)
+
+        try:
+            result = await db.execute(query, {"client_id": client_id})
+            rows = result.fetchall()
+
+            channel_quality = {}
+            for row in rows:
+                channel = row.channel
+                if not channel:
+                    continue
+
+                total = row.thread_count or 0
+                converted = row.converted or 0
+
+                channel_quality[channel] = {
+                    "thread_count": total,
+                    "avg_messages_per_thread": round(float(row.avg_messages or 0), 1),
+                    "avg_lead_messages": round(float(row.avg_lead_messages or 0), 1),
+                    "avg_lead_response_minutes": round(float(row.avg_lead_response_time or 0), 0),
+                    "conversion_rate": round(converted / total * 100, 2) if total > 0 else 0,
+                    "sentiment_distribution": row.sentiment_dist or [],
+                }
+
+            return channel_quality
+
+        except Exception:
+            # Return empty if query fails (tables might not exist yet)
+            return {}
+
     def _default_patterns(self) -> dict[str, Any]:
         """Return default patterns when insufficient data."""
         return {
             "type": "how",
-            "version": "1.0",
+            "version": "2.1",
             "computed_at": datetime.utcnow().isoformat(),
             "sample_size": 0,
             "channel_effectiveness": [],
@@ -319,6 +556,8 @@ class HowDetector(BaseDetector):
                 "multi_channel_lift": 1.0,
                 "recommendation": "multi",
             },
+            "email_engagement_correlation": {},  # Phase 24C
+            "channel_conversation_quality": {},  # Phase 24D
             "note": "Insufficient data. Default to multi-channel strategy.",
         }
 
@@ -338,3 +577,17 @@ class HowDetector(BaseDetector):
 # [x] Multi-channel lift analysis
 # [x] All functions have type hints
 # [x] All functions have docstrings
+#
+# Phase 24C Additions (ENGAGE-007):
+# [x] _analyze_engagement_correlation() for open/click patterns
+# [x] Conversion rate by engagement type (opened/clicked)
+# [x] Open/click lift calculations
+# [x] Engagement depth insights (avg opens)
+# [x] _generate_engagement_insights() for actionable recommendations
+#
+# Phase 24D Additions (THREAD-008):
+# [x] _analyze_channel_conversations() for conversation quality
+# [x] Thread count and message averages by channel
+# [x] Lead response time by channel
+# [x] Sentiment distribution by channel
+# [x] Updated version to 2.1

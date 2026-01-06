@@ -133,6 +133,40 @@ class Settings(BaseSettings):
     # === Development ===
     ngrok_authtoken: str = Field(default="", description="ngrok auth token for local webhooks")
 
+    # === Email Infrastructure (Phase 18) ===
+    # InfraForge - Domain purchase, mailbox creation, DNS automation
+    infraforge_api_key: str = Field(default="", description="InfraForge API key")
+    infraforge_api_url: str = Field(
+        default="https://api.infraforge.ai/public",
+        description="InfraForge API URL"
+    )
+
+    # Warmforge - Email warmup (free with Salesforge)
+    warmforge_api_key: str = Field(default="", description="Warmforge API key")
+    warmforge_api_url: str = Field(
+        default="https://api.warmforge.ai/public",
+        description="Warmforge API URL"
+    )
+
+    # Salesforge - Campaign sending, reply tracking, sender rotation
+    salesforge_api_key: str = Field(default="", description="Salesforge API key")
+    salesforge_api_url: str = Field(
+        default="https://api.salesforge.ai/public/v2",
+        description="Salesforge API URL"
+    )
+
+    # v0.dev - AI UI generation
+    v0_api_key: str = Field(default="", description="v0.dev API key for UI generation")
+
+    # === Residential Proxy (Tier 3 Scraper - Camoufox) ===
+    # Required for Cloudflare bypass. Recommended providers: WebShare, IPRoyal
+    residential_proxy_host: str = Field(default="", description="Residential proxy hostname")
+    residential_proxy_port: int = Field(default=0, description="Residential proxy port")
+    residential_proxy_username: str = Field(default="", description="Proxy auth username")
+    residential_proxy_password: str = Field(default="", description="Proxy auth password")
+    camoufox_enabled: bool = Field(default=False, description="Enable Camoufox Tier 3 scraper")
+    scraper_timeout_ms: int = Field(default=45000, description="Scraper timeout in milliseconds")
+
     # === Rate Limits (Resource-Level) ===
     rate_limit_linkedin_per_seat: int = Field(default=17, description="LinkedIn actions per day per seat")
     rate_limit_email_per_domain: int = Field(default=50, description="Emails per day per domain")
@@ -150,6 +184,41 @@ class Settings(BaseSettings):
 
     # === HMAC Signing ===
     webhook_hmac_secret: str = Field(default="", description="HMAC secret for outbound webhooks")
+
+    # === Email Provider Webhook Secrets (Phase 24C) ===
+    smartlead_api_key: str = Field(default="", description="Smartlead API key")
+    smartlead_api_url: str = Field(
+        default="https://api.smartlead.ai/api/v1",
+        description="Smartlead API URL"
+    )
+    smartlead_webhook_secret: str = Field(
+        default="", description="Smartlead webhook HMAC secret"
+    )
+    salesforge_webhook_secret: str = Field(
+        default="", description="Salesforge webhook HMAC secret"
+    )
+    resend_webhook_secret: str = Field(
+        default="", description="Resend/Svix webhook secret"
+    )
+
+    # === CRM Integration (Phase 24E) ===
+    # HubSpot OAuth (required for HubSpot integration)
+    hubspot_client_id: str = Field(default="", description="HubSpot OAuth client ID")
+    hubspot_client_secret: str = Field(default="", description="HubSpot OAuth client secret")
+    hubspot_redirect_uri: str = Field(
+        default="http://localhost:8000/api/v1/crm/callback/hubspot",
+        description="HubSpot OAuth redirect URI"
+    )
+    hubspot_scopes: str = Field(
+        default="crm.objects.contacts.read,crm.objects.contacts.write,crm.objects.deals.read,crm.objects.deals.write,crm.schemas.deals.read",
+        description="HubSpot OAuth scopes (comma-separated)"
+    )
+
+    # Pipedrive (API key auth - no OAuth needed)
+    # Note: Pipedrive API key is stored per-client in client_crm_configs
+
+    # Close CRM (API key auth - no OAuth needed)
+    # Note: Close API key is stored per-client in client_crm_configs
 
     @computed_field
     @property
@@ -193,3 +262,4 @@ settings = get_settings()
 # [x] AI spend limiter setting (Rule 15)
 # [x] All fields have type hints
 # [x] All fields have descriptions
+# [x] Residential proxy settings for Tier 3 scraper (SCR-008)

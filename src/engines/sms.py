@@ -1,8 +1,8 @@
 """
 FILE: src/engines/sms.py
 PURPOSE: SMS engine using Twilio integration with DNCR compliance
-PHASE: 4 (Engines), modified Phase 16 for Conversion Intelligence
-TASK: ENG-006, 16E-003
+PHASE: 4 (Engines), modified Phase 16/24B for Conversion Intelligence
+TASK: ENG-006, 16E-003, CONTENT-003
 DEPENDENCIES:
   - src/engines/base.py
   - src/engines/content_utils.py (Phase 16)
@@ -20,6 +20,12 @@ RULES APPLIED:
 PHASE 16 CHANGES:
   - Added content_snapshot capture for WHAT Detector learning
   - Tracks touch_number, sequence context, and segment count
+PHASE 24B CHANGES:
+  - Store full_message_body for complete content analysis
+  - Link to template_id for template tracking
+  - Track ab_test_id and ab_variant for A/B testing
+  - Store links_included and personalization_fields_used
+  - Track ai_model_used and prompt_version
 """
 
 from datetime import datetime
@@ -95,6 +101,12 @@ class SMSEngine(OutreachEngine):
             **kwargs: Additional options:
                 - from_number: Sender phone number (required)
                 - skip_dncr: Skip DNCR check (default: False)
+                - template_id: UUID of template used (Phase 24B)
+                - ab_test_id: UUID of A/B test (Phase 24B)
+                - ab_variant: A/B variant 'A', 'B', or 'control' (Phase 24B)
+                - ai_model_used: AI model used for generation (Phase 24B)
+                - prompt_version: Version of prompt used (Phase 24B)
+                - personalization_fields_used: List of personalization fields (Phase 24B)
 
         Returns:
             EngineResult with send result
@@ -146,7 +158,7 @@ class SMSEngine(OutreachEngine):
 
             message_sid = result.get("message_sid")
 
-            # Log activity with content snapshot (Phase 16)
+            # Log activity with content snapshot (Phase 16) and template tracking (Phase 24B)
             await self._log_activity(
                 db=db,
                 lead=lead,
@@ -159,6 +171,13 @@ class SMSEngine(OutreachEngine):
                 sequence_id=kwargs.get("sequence_id"),
                 provider_response=result,
                 from_number=from_number,
+                # Phase 24B: Content tracking fields
+                template_id=kwargs.get("template_id"),
+                ab_test_id=kwargs.get("ab_test_id"),
+                ab_variant=kwargs.get("ab_variant"),
+                ai_model_used=kwargs.get("ai_model_used"),
+                prompt_version=kwargs.get("prompt_version"),
+                personalization_fields_used=kwargs.get("personalization_fields_used"),
             )
 
             return EngineResult.ok(
@@ -335,11 +354,19 @@ class SMSEngine(OutreachEngine):
         sequence_id: str | None = None,
         provider_response: dict | None = None,
         from_number: str | None = None,
+        # Phase 24B: Content tracking fields
+        template_id: UUID | None = None,
+        ab_test_id: UUID | None = None,
+        ab_variant: str | None = None,
+        ai_model_used: str | None = None,
+        prompt_version: str | None = None,
+        personalization_fields_used: list[str] | None = None,
     ) -> None:
         """
         Log SMS activity to database.
 
         Phase 16: Now captures content_snapshot for WHAT Detector learning.
+        Phase 24B: Now stores template_id, A/B test info, and full message body.
         """
         metadata = {}
         if from_number:
@@ -354,6 +381,23 @@ class SMSEngine(OutreachEngine):
                 touch_number=sequence_step or 1,
                 sequence_id=sequence_id,
             )
+            # Phase 24B: Enhance snapshot with additional tracking data
+            if snapshot:
+                snapshot["ai_model"] = ai_model_used
+                snapshot["prompt_version"] = prompt_version
+                snapshot["personalization_available"] = personalization_fields_used or []
+                if ab_variant:
+                    snapshot["ab_variant"] = ab_variant
+                if ab_test_id:
+                    snapshot["ab_test_id"] = str(ab_test_id)
+
+        # Phase 24B: Extract links from SMS content
+        links_included = None
+        if message_content:
+            import re
+            # Extract URLs from SMS content
+            url_pattern = r'https?://[^\s]+'
+            links_included = list(set(re.findall(url_pattern, message_content)))
 
         activity = Activity(
             client_id=lead.client_id,
@@ -365,10 +409,19 @@ class SMSEngine(OutreachEngine):
             sequence_step=sequence_step,
             content_preview=content_preview,
             content_snapshot=snapshot,  # Phase 16: Store content snapshot
+            # Phase 24B: Content tracking fields
+            template_id=template_id,
+            ab_test_id=ab_test_id,
+            ab_variant=ab_variant,
+            full_message_body=message_content,  # Store complete content
+            links_included=links_included,
+            personalization_fields_used=personalization_fields_used,
+            ai_model_used=ai_model_used,
+            prompt_version=prompt_version,
             provider="twilio",
             provider_status=action,
             provider_response=provider_response,
-            metadata=metadata,
+            extra_data=metadata,
             created_at=datetime.utcnow(),
         )
 
@@ -407,3 +460,9 @@ def get_sms_engine() -> SMSEngine:
 # [x] All functions have docstrings
 # [x] Phase 16: content_snapshot captured for WHAT Detector
 # [x] Phase 16: touch_number, sequence_id, and segment_count tracked
+# [x] Phase 24B: template_id stored for template tracking
+# [x] Phase 24B: ab_test_id and ab_variant for A/B testing
+# [x] Phase 24B: full_message_body stored for complete content analysis
+# [x] Phase 24B: links_included extracted from SMS
+# [x] Phase 24B: personalization_fields_used tracked
+# [x] Phase 24B: ai_model_used and prompt_version stored

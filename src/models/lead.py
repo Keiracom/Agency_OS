@@ -1,8 +1,8 @@
 """
 FILE: src/models/lead.py
 PURPOSE: Lead model with ALS fields and suppression tables
-PHASE: 2 (Models & Schemas)
-TASK: MOD-006
+PHASE: 2 (Models & Schemas), modified Phase 24C, 24D
+TASK: MOD-006, ENGAGE-005, THREAD-006
 DEPENDENCIES:
   - src/models/base.py
   - src/exceptions.py
@@ -10,6 +10,13 @@ RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 14: Soft deletes only
   - Rule 12: No imports from engines/integrations/orchestration
+PHASE 24C CHANGES:
+  - Added timezone for lead timezone tracking
+  - Added timezone_offset for UTC offset calculation
+PHASE 24D CHANGES:
+  - Added rejection_reason for tracking why leads reject
+  - Added rejection_notes and rejection_at
+  - Added objections_raised for objection history
 """
 
 from datetime import date, datetime
@@ -26,7 +33,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import ENUM, JSONB, UUID as PGUUID
+from sqlalchemy.dialects.postgresql import ARRAY, ENUM, JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import (
@@ -40,6 +47,7 @@ from src.models.base import (
 if TYPE_CHECKING:
     from src.models.campaign import Campaign
     from src.models.client import Client
+    from src.models.lead_social_post import LeadSocialPost
 
 
 class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
@@ -115,6 +123,10 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     enrichment_version: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     enriched_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
 
+    # === Deep Research (Phase 21) ===
+    deep_research_data: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=True)
+    deep_research_run_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+
     # === Compliance ===
     dncr_checked: Mapped[bool] = mapped_column(Boolean, default=False)
     dncr_result: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
@@ -129,6 +141,16 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     reply_count: Mapped[int] = mapped_column(Integer, default=0)
     bounce_count: Mapped[int] = mapped_column(Integer, default=0)
 
+    # === Phase 24D: Rejection Tracking ===
+    rejection_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    rejection_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    rejection_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    objections_raised: Mapped[Optional[list]] = mapped_column(ARRAY(Text), nullable=True)
+
+    # === Phase 24C: Timezone Tracking (from location data) ===
+    timezone: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    timezone_offset: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # UTC offset in minutes
+
     # === Assigned Resources ===
     assigned_email_resource: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     assigned_linkedin_seat: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -137,6 +159,11 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     # Relationships
     client: Mapped["Client"] = relationship("Client", back_populates="leads")
     campaign: Mapped["Campaign"] = relationship("Campaign", back_populates="leads")
+    social_posts: Mapped[list["LeadSocialPost"]] = relationship(
+        "LeadSocialPost",
+        back_populates="lead",
+        cascade="all, delete-orphan",
+    )
 
     # Constraints - compound uniqueness per client
     __table_args__ = (
@@ -289,3 +316,6 @@ class DomainSuppression(Base, UUIDMixin):
 # [x] Helper properties (is_enriched, is_contactable, get_als_tier)
 # [x] No imports from engines/integrations/orchestration (Rule 12)
 # [x] All fields have type hints
+# [x] Phase 24D: rejection_reason for tracking (THREAD-006)
+# [x] Phase 24D: rejection_notes and rejection_at
+# [x] Phase 24D: objections_raised for history

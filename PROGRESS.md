@@ -1,10 +1,48 @@
 # PROGRESS.md — Agency OS Build Tracker
 
-**Last Updated:** January 5, 2026
-**Current Phase:** PHASE 17-19 - Launch Prerequisites + Email Infrastructure
-**Status:** Platform built (174/174), all credentials configured, Railway synced, ready for E2E testing
+**Last Updated:** January 7, 2026
+**Current Phase:** PHASE 21 (E2E Testing)
+**Status:** Platform built (174/174), email infra LIVE, 4/6 journeys ready to test
 
 > **Archive:** Completed phases 1-16 detailed in [`docs/progress/COMPLETED_PHASES.md`](docs/progress/COMPLETED_PHASES.md)
+
+---
+
+## 🚦 QUICK STATUS
+
+| Item | Status |
+|------|--------|
+| **Platform Build** | ✅ 174/174 tasks complete |
+| **Phase 24 (CIS Data)** | ✅ 66/66 tasks complete |
+| **Mailbox Warmup** | ⏳ Ready Jan 20 (14 days) |
+| **E2E Journeys Ready** | 4 of 6 (J1, J2, J5, J6) |
+| **Current Blocker** | TEST_MODE needed for J3/J4 |
+
+### What Can Be Tested NOW
+- ✅ J1: Signup & Onboarding (Umped test agency)
+- ✅ J2: Campaign & Leads (stop before activation)
+- ✅ J5: Dashboard Validation
+- ✅ J6: Admin Dashboard
+
+### What's Blocked
+- 🔴 J3: Outreach Execution — needs TEST_MODE (6 tasks, ~3h)
+- 🔴 J4: Reply & Meeting — needs J3 complete
+
+### Key URLs
+| Service | URL |
+|---------|-----|
+| Frontend | https://agency-os-liart.vercel.app |
+| Backend | https://agency-os-production.up.railway.app |
+| Admin | https://agency-os-liart.vercel.app/admin |
+| Health | https://agency-os-production.up.railway.app/api/v1/health |
+
+### Test Account
+| Field | Value |
+|-------|-------|
+| Test Agency | Umped |
+| Website | https://umped.com.au/ |
+| Test Email | david.stephens@keiracom.com |
+| Test Phone | +61457543392 |
 
 ---
 
@@ -40,28 +78,55 @@ Before we have our first paying customer, ALL of the following must be true:
 
 ---
 
+## Phase Dependency Chain (UPDATED Jan 7, 2026)
+
+```
+Phase 17 (Prerequisites)      ✅ COMPLETE
+    ↓ Health checks, credentials configured
+Phase 18 (Email Infra)        ✅ COMPLETE
+    ↓ InfraForge/Salesforge — mailboxes warming
+Phase 19 (Scraper Waterfall)  ✅ COMPLETE
+    ↓ 5-tier waterfall with Camoufox
+Phase 20 (UI Wiring)          ✅ COMPLETE
+    ↓ Automation wired (ALS > 85 → Deep Research trigger)
+Phase 21 (E2E Tests)          ← CURRENT
+    ↓ Full journey testable with real infrastructure
+Phase 22 (Marketing Automation)
+    ↓ Post-launch, HeyGen + Buffer content pipeline
+Phase 23 (Platform Intel)
+    ↓ Post-launch, needs 10+ clients with data
+Phase 24 (Lead Pool + CIS Data)
+    ↓ Lead Pool, Content Tracking, Email Engagement, Conversations, Outcomes
+```
+
+---
+
 ## Phase Status Overview
 
-| Phase | Name | Status | Tasks | Complete |
-|-------|------|--------|-------|----------|
-| 1-10 | Core Platform | ✅ | 98 | 98 |
-| 11 | ICP Discovery | ✅ | 18 | 18 |
-| 12A | Campaign Gen | ✅ | 6 | 6 |
-| 12B | Campaign Enhancement | ✅ | 2 | 2 |
-| 13 | Frontend-Backend | ✅ | 7 | 7 |
-| 14 | Missing UI | ✅ | 4 | 4 |
-| 15 | Live UX Testing | ✅ | 6 | 6 |
-| 16 | Conversion Intelligence | ✅ | 30 | 30 |
-| **17** | **Launch Prerequisites** | 🟡 | **20** | **11** |
-| **18** | **E2E Journey Test** | 🟡 | **47** | **5** |
-| **19** | **Email Infrastructure** | 🟡 | **20** | **1** |
-| **20** | **Platform Intelligence** | 📋 | **18** | **0** |
-| **21** | **Landing Page + UI Overhaul** | 🟡 | **18** | **17** |
+| Phase | Name | Status | Tasks | Complete | Blocked By |
+|-------|------|--------|-------|----------|------------|
+| 1-16 | Core Platform | ✅ | 174 | 174 | — |
+| **17** | **Launch Prerequisites** | ✅ | **13** | **13** | — |
+| **18** | **Email Infrastructure** | ✅ | **12** | **12** | — |
+| **19** | **Scraper Waterfall** | ✅ | **9** | **9** | — |
+| **20** | **Landing Page + UI Wiring** | ✅ | **22** | **22** | — |
+| **21** | **E2E Journey Test** | 🟡 | **16** | **7** | TEST_MODE |
+| **22** | **Marketing Automation** | 📋 | **5** | **0** | Post-Launch |
+| **23** | **Platform Intelligence** | 📋 | **18** | **0** | Post-Launch |
+| **24** | **Lead Pool Architecture** | ✅ | **15** | **15** | — |
+| **24B** | **Content & Template Tracking** | ✅ | **7** | **7** | — |
+| **24C** | **Email Engagement Tracking** | ✅ | **7** | **7** | — |
+| **24D** | **Conversation Threading** | ✅ | **8** | **8** | — |
+| **24E** | **Downstream Outcomes** | ✅ | **7** | **7** | — |
+| **24F** | **CRM Push** | ✅ | **12** | **12** | — |
+| **24G** | **Customer Import** | ✅ | **10** | **10** | — |
+| **24H** | **LinkedIn Connection** | 📋 | **10** | **0** | — |
+| **TEST** | **Test Mode** | 📋 | **6** | **0** | — |
 
 **Platform Tasks:** 174/174 (100% complete)
-**Launch Tasks:** 16/88 (18% complete)
-**UI/Marketing Tasks:** 17/18 (94% - Phase 21)
-**Post-Launch Tasks:** 0/18 (Phase 20 - planned)
+**Launch Tasks:** 63/103 (61% complete)
+**CIS Data Tasks:** 66/66 (Phase 24A-G) — 100% ✅
+**Post-Launch Tasks:** 0/23 (Phase 22 + 23 - planned)
 
 ---
 
@@ -79,9 +144,10 @@ Before we have our first paying customer, ALL of the following must be true:
 ## PHASE 17: Launch Prerequisites
 
 **Purpose:** Everything needed before first paying customer
-**Spec:** `docs/marketing/MARKETING_LAUNCH_PLAN.md`
+**Spec:** `docs/phases/PHASE_17_LAUNCH_PREREQ.md`
+**Status:** ✅ COMPLETE (13/13)
 
-### 17A: API Credentials (8 tasks)
+### 17A: API Credentials (11 tasks) ✅ COMPLETE
 
 | Task | Description | Status | Priority |
 |------|-------------|--------|----------|
@@ -97,7 +163,7 @@ Before we have our first paying customer, ALL of the following must be true:
 | CRED-009 | DataForSEO credentials | ✅ | P1 |
 | CRED-010 | v0.dev API key (UI generation) | ✅ | P1 |
 
-### 17B: Frontend Missing Pages (3 tasks)
+### 17B: Frontend Missing Pages (3 tasks) ✅ COMPLETE
 
 | Task | Description | Status | Files |
 |------|-------------|--------|-------|
@@ -105,24 +171,16 @@ Before we have our first paying customer, ALL of the following must be true:
 | FE-017 | Pricing page | ✅ | `frontend/app/(marketing)/pricing/page.tsx` |
 | FE-018 | Waitlist thank you page | ✅ | `frontend/app/waitlist/thank-you/page.tsx` |
 
-**FE-016-018 Notes (Jan 4, 2026):**
-- Landing page rebuilt with Expert Panel animations (floating orbs, glass morphism, scroll-reveal)
-- Added Buyer Guide ROI selling points (SDR comparison, cost-per-meeting tables)
-- Year 1 comparison: $36K savings, 2.2x meetings vs junior SDR
-- Waitlist API updated to store in Supabase + send via Resend
-- Thank you page with confetti animation and next steps
-- Migration created: `015_waitlist.sql`
+### 17C: Live Validation (2 tasks) ✅ COMPLETE
 
-### 17C: Live Validation (4 tasks)
+| Task | Description | Status | Notes |
+|------|-------------|--------|-------|
+| LIVE-001 | Integration health check script | ✅ | All integrations verified |
+| LIVE-003 | Full onboarding flow test | ✅ | Tested with ICP extraction |
 
-| Task | Description | Status | Depends On |
-|------|-------------|--------|------------|
-| LIVE-001 | Integration health check script | ✅ | CRED-001 to CRED-004 |
-| LIVE-002 | Send test email to yourself | 🔴 | CRED-001 |
-| LIVE-003 | Full onboarding flow test | 🟡 | CRED-002, CRED-003, CRED-004 |
-| LIVE-004 | Full campaign creation test | 🔴 | LIVE-003 |
+**Note:** LIVE-002 and LIVE-004 removed (redundant with Phase 21 E2E tests).
 
-### 17X: Auto-Provisioning Flow (NEW - Jan 4, 2026)
+### 17X: Auto-Provisioning Flow (5 tasks) ✅ COMPLETE
 
 | Task | Description | Status | Files |
 |------|-------------|--------|-------|
@@ -132,29 +190,424 @@ Before we have our first paying customer, ALL of the following must be true:
 | PROV-004 | Skip onboarding page (testing) | ✅ | `frontend/app/onboarding/skip/page.tsx` |
 | PROV-005 | Supabase export createClient alias | ✅ | `frontend/lib/supabase.ts` |
 
-**Auto-Provisioning Flow (Jan 4, 2026):**
-- New users automatically get: client (tenant) + owner membership
-- Auth callback checks `get_onboarding_status()` RPC
-- If `icp_confirmed_at` is NULL → redirect to `/onboarding`
-- If ICP confirmed → redirect to `/dashboard`
-- Skip page at `/onboarding/skip` for testing (sets default ICP values)
+### 17D: Marketing Automation ➜ MOVED TO PHASE 22
 
-**Health Check Results (Jan 4, 2026):**
-| Service | Status | Notes |
-|---------|--------|-------|
-| Anthropic | ✅ | Working |
-| Resend | ✅ | Working (send-only, expected) |
-| Apollo | ✅ | Working (upgraded) |
-| Apify | ✅ | Working |
+*Marketing automation tasks (INT-013, INT-014, MKT-001, MKT-002, MKT-003) moved to Phase 22 for post-launch.*
 
-### 17D: Marketing Automation Integrations (2 tasks)
+---
+
+## PHASE 18: Email Infrastructure (InfraForge + Salesforge)
+
+**Purpose:** Programmatic email domain/mailbox provisioning and warmup for cold outreach
+**Spec:** `docs/phases/PHASE_18_EMAIL_INFRA.md`
+**Status:** ✅ COMPLETE (12/12) — Warmup active, ready Jan 20, 2026
+**CRITICAL:** Mailboxes warming for 14 days. Subscribe to Salesforge by Jan 11.
+
+### Architecture Decision: APPROVED ✅
+
+**Selected Stack:**
+- **InfraForge** → Domain purchase, mailbox creation, DNS automation
+- **Warmforge** → Email warmup (free with Salesforge)
+- **Salesforge** → Campaign sending, warmup orchestration
+- **Agency OS** → Bridge orchestration, tenant provisioning
+
+**Why This Stack:**
+- ✅ Domain ownership (you own the domains)
+- ✅ 4-5x cheaper at scale vs Instantly DFY
+- ✅ Best-in-class APIs for each function
+- ✅ Exit strategy (portable infrastructure)
+
+### 18A: Domain & Brand Setup (4 tasks) ✅ COMPLETE
+
+| Task | Description | Status | Details |
+|------|-------------|--------|---------|
+| DOM-001 | Purchase brand domain | ✅ | `agencyxos.ai` (Namecheap, 2yr, $125.98) |
+| DOM-002 | Purchase cold email domains | ✅ | 3 domains via InfraForge |
+| DOM-003 | Configure DNS (SPF/DKIM/DMARC) | ✅ | Auto-configured by InfraForge |
+| DOM-004 | Set up domain forwarding | ✅ | All → `https://agencyxos.ai` |
+
+**Domains Purchased:**
+| Domain | Purpose | Registrar | Expires |
+|--------|---------|-----------|---------|
+| `agencyxos.ai` | Brand/landing page | Namecheap | Jan 2028 |
+| `agencyxos-growth.com` | Cold email | InfraForge | Jan 2027 |
+| `agencyxos-reach.com` | Cold email | InfraForge | Jan 2027 |
+| `agencyxos-leads.com` | Cold email | InfraForge | Jan 2027 |
+
+### 18B: Mailbox Setup (4 tasks) ✅ COMPLETE
+
+| Task | Description | Status | Details |
+|------|-------------|--------|---------|
+| MBX-001 | Create mailboxes | ✅ | 6 mailboxes across 3 domains |
+| MBX-002 | Configure forwarding | ✅ | All → `david.stephens@keiracom.com` |
+| MBX-003 | Set up signatures | ✅ | Standard Agency OS template |
+| MBX-004 | Export to Salesforge | ✅ | Tag: `founding-mailboxes-2026-01-06` |
+
+**Mailboxes Created:**
+| Mailbox | Domain | Persona |
+|---------|--------|---------|
+| `david@agencyxos-growth.com` | agencyxos-growth.com | David Stephens |
+| `alex@agencyxos-growth.com` | agencyxos-growth.com | Alex Carter |
+| `david@agencyxos-reach.com` | agencyxos-reach.com | David Stephens |
+| `alex@agencyxos-reach.com` | agencyxos-reach.com | Alex Carter |
+| `david@agencyxos-leads.com` | agencyxos-leads.com | David Stephens |
+| `alex@agencyxos-leads.com` | agencyxos-leads.com | Alex Carter |
+
+### 18C: Warmup Activation (2 tasks) ✅ COMPLETE
+
+| Task | Description | Status | Details |
+|------|-------------|--------|---------|
+| WRM-001 | Enable warmup for all mailboxes | ✅ | Warmforge activated |
+| WRM-002 | Verify warmup status | ✅ | 14 days remaining (ready Jan 20) |
+
+**Warmup Status (Jan 6, 2026):**
+- All 6 mailboxes: Warming ON ✅
+- Heat score: 5/100 (building daily)
+- SPF/DKIM/DMARC: All configured ✅
+- Days remaining: 14
+
+### 18D: API Credentials (2 tasks) ✅ COMPLETE
+
+| Task | Description | Status | Details |
+|------|-------------|--------|---------|
+| API-001 | Save all API keys to .env | ✅ | InfraForge, Warmforge, Salesforge |
+| API-002 | Update .env.example | ✅ | Documentation added |
+
+**API Keys Configured:**
+```
+INFRAFORGE_API_KEY=✅
+WARMFORGE_API_KEY=✅
+SALESFORGE_API_KEY=✅
+```
+
+### Cost Summary
+
+| Item | Cost (USD) |
+|------|------------|
+| `agencyxos.ai` (2 years) | $125.98 |
+| 3 .com domains (1 year) | ~$42 |
+| 10 mailbox slots (monthly) | ~$33/mo |
+| **Total upfront** | ~$168 |
+
+### ⚠️ ACTION REQUIRED
+
+| Action | Deadline | Status |
+|--------|----------|--------|
+| Subscribe to Salesforge Pro ($48/mo) | **Jan 11, 2026** | ⏳ Pending |
+| Mailboxes ready for campaigns | Jan 20, 2026 | ⏳ Warming |
+
+---
+
+## PHASE 18 LEGACY: Original Smartlead Plan (DEPRECATED)
+
+> **Note:** Original plan used Smartlead. Pivoted to Salesforge/InfraForge stack for better API access and cost structure. Tasks below archived for reference.
+
+<details>
+<summary>Click to expand deprecated Smartlead tasks</summary>
+
+Original tasks included InfraForge integration (5 tasks), Smartlead integration (6 tasks), Bridge orchestration (5 tasks), and Testing (4 tasks). These were replaced by the simpler InfraForge + Salesforge stack implemented above.
+
+</details>
+
+---
+
+## PHASE 19: Scraper Waterfall Architecture
+
+**Purpose:** Multi-tier scraping with graceful degradation for Cloudflare-protected sites
+**Spec:** `docs/specs/integrations/SCRAPER_WATERFALL.md`
+**Status:** ✅ COMPLETE (9/9)
+
+### Problem
+
+Apify scrapers fail on Cloudflare-protected websites (~30-50% of Australian agencies). Returns empty HTML, causes JSON parsing errors downstream.
+
+### Solution: 4-Tier Waterfall
+
+```
+Tier 0: URL Validation     → FREE, <2s      → Catch bad URLs early
+Tier 1: Apify Cheerio      → $0.00025/page  → Static HTML (~60% success)
+Tier 2: Apify Playwright   → $0.0005/page   → JS-rendered (~80% success)
+Tier 3: Camoufox + Proxy   → $0.02-0.05/pg  → Cloudflare bypass (~95% success)
+Tier 4: Manual Fallback    → FREE           → User intervention (100%)
+```
+
+### Tasks
+
+| Task | Description | Status | Files |
+|------|-------------|--------|-------|
+| SCR-001 | Create URL validator engine | ✅ | `src/engines/url_validator.py`, `src/models/url_validation.py` |
+| SCR-002 | Add Apify waterfall (Cheerio → Playwright) | ✅ | `src/integrations/apify.py` |
+| SCR-003 | Add content validation (detect empty/blocked) | ✅ | `src/integrations/apify.py` |
+| SCR-004 | Create Camoufox integration | ✅ | `src/integrations/camoufox_scraper.py` |
+| SCR-005 | Update icp_scraper to use waterfall | ✅ | `src/engines/icp_scraper.py` |
+| SCR-006 | Add Camoufox to Railway Dockerfile | ✅ | `Dockerfile` (optional target) |
+| SCR-007 | Manual fallback UI page | ✅ | `frontend/app/onboarding/manual-entry/page.tsx` |
+| SCR-008 | Add proxy configuration env vars | ✅ | `src/config/settings.py` |
+| SCR-009 | Scraper waterfall tests | ✅ | `tests/test_engines/test_scraper_waterfall.py` |
+
+### Implementation Order
+
+1. **Phase A:** SCR-001, SCR-002, SCR-003 — Fix URL validation + Apify waterfall
+2. **Phase B:** SCR-007 — Manual fallback UI (100% coverage)
+3. **Phase C:** SCR-004, SCR-005, SCR-006, SCR-008 — Camoufox integration
+4. **Phase D:** SCR-009 — Tests
+
+---
+
+## PHASE 20: Landing Page + UI Wiring
+
+**Purpose:** Wire frontend automation (ALS > 85 → Deep Research) and complete UI components
+**Spec:** `docs/phases/PHASE_20_UI_OVERHAUL.md`
+**Status:** ✅ COMPLETE (22/22)
+
+### 20A: Landing Page Components (5 tasks) ✅ COMPLETE
+
+| Task | Description | Status |
+|------|-------------|--------|
+| LP-001 | Replace headline with V2 version | ✅ |
+| LP-002 | Add live activity feed animation | ✅ |
+| LP-003 | Add AI email typing animation | ✅ |
+| LP-004 | Replace static How It Works with interactive tabs | ✅ |
+| LP-005 | Use hardcoded stats (55%+, 12%+, <14 days) | ✅ |
+
+### 20B: Keep/Enhance from Vercel (4 tasks) ✅ COMPLETE
+
+| Task | Description | Status |
+|------|-------------|--------|
+| LP-006 | Keep ROI Comparison section | ✅ |
+| LP-007 | Keep meeting estimates on pricing cards | ✅ |
+| LP-008 | Keep dashboard preview in hero | ✅ |
+| LP-009 | Keep Features comparison table | ✅ |
+
+### 20C: Consistency Fixes (3 tasks) ✅ COMPLETE
+
+| Task | Description | Status |
+|------|-------------|--------|
+| LP-010 | Fix ALS tier display: Hot = 85+ | ✅ |
+| LP-011 | Make spots remaining dynamic | ✅ |
+| LP-012 | Sync tier thresholds across codebase | ✅ |
+
+### 20D: v0.dev Integration (4 tasks) ✅ COMPLETE
+
+| Task | Description | Status |
+|------|-------------|--------|
+| V0-001 | Install v0-sdk and configure API key | ✅ |
+| V0-002 | Create v0-generate.ts helper script | ✅ |
+| V0-003 | Generate landing page components | ✅ |
+| V0-004 | Generate dashboard components | ✅ |
+
+### 20E: Automation & Wiring (4 tasks) ✅ COMPLETE
+
+*Goal: Auto-research Hot Leads when ALS >= 85.*
+
+| Task | Description | Status | Files |
+|------|-------------|--------|-------|
+| WIRE-001 | Create intelligence_flow.py orchestration | ✅ | `src/orchestration/flows/intelligence_flow.py` |
+| WIRE-002 | Wire leads.py to auto-trigger deep research | ✅ | `src/api/routes/leads.py` (research, score endpoints) |
+| WIRE-003 | Wire CoPilotView.tsx to real data | ✅ | `frontend/components/dashboard/CoPilotView.tsx` |
+| WIRE-004 | Create useDeepResearch hook | ✅ | `frontend/hooks/use-deep-research.ts` |
+
+**Features implemented:**
+- `GET /leads/{id}/research` — Fetch deep research data
+- `POST /leads/{id}/research` — Trigger deep research
+- `POST /leads/{id}/score` — Score lead + auto-trigger if Hot
+- Polling for in-progress research status
+- Research status UI (not_started, in_progress, complete, failed)
+
+### 20F: Optional Enhancements (2 tasks)
+
+| Task | Description | Status |
+|------|-------------|--------|
+| LP-013 | Add dark mode toggle | 🔴 |
+| LP-014 | A/B test headline variants | 🔴 |
+
+### Files Created (Phase 20)
+
+**Frontend:**
+- `frontend/components/landing/ActivityFeed.tsx`
+- `frontend/components/landing/TypingDemo.tsx`
+- `frontend/components/landing/HowItWorksTabs.tsx`
+- `frontend/components/landing/HowItWorksCarousel.tsx`
+- `frontend/components/landing/SocialProofBar.tsx`
+- `frontend/components/landing/DashboardDemo.tsx`
+- `frontend/components/dashboard/CoPilotView.tsx`
+- `frontend/components/leads/ALSScorecard.tsx`
+- `frontend/components/dashboard/ActivityTicker.tsx`
+- `frontend/components/dashboard/CapacityGauge.tsx`
+- `frontend/components/communication/TranscriptViewer.tsx`
+
+**Backend:**
+- `docs/specs/DEEP_RESEARCH_SPEC.md`
+- `docs/specs/UI_UX_SPECIFICATION.md`
+- `supabase/migrations/021_deep_research.sql`
+- `src/models/lead_social_post.py`
+- `src/agents/skills/research_skills.py`
+- `tests/test_engines/test_deep_research.py`
+
+---
+
+## PHASE 21: E2E Journey Test
+
+**Purpose:** Dogfood Agency OS by testing complete user journey before launch
+**Spec:** `docs/phases/PHASE_21_E2E_SPEC.md`
+**Status:** 🟡 IN PROGRESS (Pre-flight ✅, J1-J2/J5-J6 ready, J3-J4 blocked by TEST_MODE)
+
+### Pre-Flight Checks (7 tests) ✅ COMPLETE
+
+| # | Test | Expected | Status |
+|---|------|----------|--------|
+| 1 | Backend health check | 200 OK | ✅ |
+| 2 | Frontend loads | No console errors | ✅ |
+| 3 | Supabase connection | Can query | ✅ |
+| 4 | Resend API works | Can send | ✅ |
+| 5 | Anthropic API works | Can generate | ✅ |
+| 6 | Apollo API works | Can enrich | ✅ |
+| 7 | Apify API works | Can scrape | ✅ |
+
+### E2E Test Strategy
+
+**Philosophy:** We're not testing "does page load" checkboxes. We're testing the actual user journey that a paying customer would experience. This is dogfooding — using Agency OS to test Agency OS.
+
+**Spec:** `docs/phases/PHASE_21_E2E_SPEC.md`
+
+### Test Configuration
+
+| Field | Value |
+|-------|-------|
+| **Test Agency** | Umped |
+| **Website** | https://umped.com.au/ |
+| **Test Email** | david.stephens@keiracom.com |
+| **Test Phone** | +61457543392 |
+| **Test LinkedIn** | https://www.linkedin.com/in/david-stephens-8847a636a/ |
+| **Lead Volume** | 100 leads |
+| **Email Limit** | 10-15 max (protect warmup) |
+
+### Test Journeys
+
+| Journey | Description | Est | Status | Blocker |
+|---------|-------------|-----|--------|---------|
+| **J1** | Signup & Onboarding | 30m | 🟢 Ready | — |
+| **J2** | Campaign & Leads | 45m | 🟢 Ready | — |
+| **J3** | Outreach Execution | 60m | 🔴 Blocked | TEST_MODE |
+| **J4** | Reply & Meeting | 30m | 🔴 Blocked | Needs J3 |
+| **J5** | Dashboard Validation | 15m | 🟢 Ready | — |
+| **J6** | Admin Dashboard | 15m | 🟢 Ready | — |
+
+### TEST_MODE Prerequisite
+
+**What it does:** Redirects ALL outbound messages to test recipients during testing.
+
+```
+Without TEST_MODE: Campaign → Emails real leads
+With TEST_MODE:    Campaign → Emails you (david.stephens@keiracom.com)
+```
+
+**Why required:** Without TEST_MODE, clicking "Start Campaign" would contact 100 real people before launch.
+
+| Task | Description | Status |
+|------|-------------|--------|
+| TEST-001 | Add TEST_MODE config and env vars | 🔴 |
+| TEST-002 | Update Email Engine with redirect | 🔴 |
+| TEST-003 | Update SMS Engine with redirect | 🔴 |
+| TEST-004 | Update Voice Engine with redirect | 🔴 |
+| TEST-005 | Update LinkedIn Engine with redirect | 🔴 |
+| TEST-006 | Add daily send limit safeguard | 🔴 |
+
+### Journey Details
+
+**J1: Signup & Onboarding** (30 min) 🟢
+- Signup with email/password
+- Email confirmation
+- Onboarding: CRM connect (optional) → Sender profile → Customer import → ICP extraction → LinkedIn (optional)
+- Verify: Client record, ICP profile, redirect to dashboard
+
+**J2: Campaign & Leads** (45 min) 🟢
+- Create campaign with 100 lead target
+- Apollo enriches leads → Lead pool populated
+- ALS scoring → Hot/Warm/Cool distribution
+- Deep research triggers for Hot leads (ALS ≥ 85)
+- Content Engine generates sequences
+- **STOP before activation** (until TEST_MODE ready)
+
+**J3: Outreach Execution** (60 min) 🔴 Needs TEST_MODE
+- Activate campaign
+- JIT Validator runs pre-send checks
+- Email: 10-15 personalized emails → your inbox
+- SMS: 3-5 messages → your phone
+- Voice: 1-2 AI calls → your phone
+- LinkedIn: 10-20 messages → your profile
+- Verify all activities logged
+
+**J4: Reply & Meeting** (30 min) 🔴 Needs J3
+- Reply to test email with "Yes, interested"
+- Verify: Webhook fires, intent classified, thread created
+- Book meeting via Calendly
+- Verify: Meeting record, deal created, dashboard updates
+
+**J5: Dashboard Validation** (15 min) 🟢
+- Dashboard loads with real data
+- Metrics match database queries
+- Activity feed shows sends
+- Charts render correctly
+- Filters work
+
+**J6: Admin Dashboard** (15 min) 🟢
+- Admin auth works
+- Command Center shows KPIs
+- Client list shows Umped
+- System status shows all healthy
+- Activity log shows all sends
+
+### Execution Order
+
+```
+PHASE 1: Safe Testing (Now)
+├── J1: Signup & Onboarding
+├── J2: Campaign & Leads (stop before activation)
+├── J5: Dashboard
+└── J6: Admin
+
+PHASE 2: Implement TEST_MODE
+├── TEST-001 to TEST-006
+└── Deploy to Railway
+
+PHASE 3: Outreach Testing (After TEST_MODE)
+├── J3: All channels
+└── J4: Reply handling
+
+PHASE 4: Cleanup
+├── Reset test data
+├── Set TEST_MODE=false
+└── Document issues
+```
+
+### Admin Wiring Status ✅ COMPLETE
+
+Previously listed as ADM-001 to ADM-005 — these are DONE:
+
+| Component | Status | Evidence |
+|-----------|--------|----------|
+| Admin hooks | ✅ | `frontend/hooks/use-admin.ts` (189 lines) |
+| Admin API functions | ✅ | `frontend/lib/api/admin.ts` (171 lines) |
+| Backend endpoints | ✅ | `src/api/routes/admin.py` (1,473 lines) |
+| Admin pages | ✅ | 12+ pages in `frontend/app/admin/` |
+
+---
+
+## PHASE 22: Marketing Automation (Post-Launch)
+
+**Purpose:** Automated content pipeline for social media marketing
+**Status:** 📋 Planned (0/5)
+**Trigger:** Post-launch, after first paying customers
+
+### 22A: Marketing Integrations (2 tasks)
 
 | Task | Description | Status | Files |
 |------|-------------|--------|-------|
 | INT-013 | HeyGen integration | 🔴 | `src/integrations/heygen.py` |
 | INT-014 | Buffer integration | 🔴 | `src/integrations/buffer.py` |
 
-### 17E: Marketing Automation Setup (3 tasks)
+### 22B: Marketing Automation Setup (3 tasks)
 
 | Task | Description | Status | Files |
 |------|-------------|--------|-------|
@@ -162,274 +615,40 @@ Before we have our first paying customer, ALL of the following must be true:
 | MKT-002 | Content automation flow (Prefect) | 🔴 | `src/orchestration/flows/marketing_automation_flow.py` |
 | MKT-003 | Day 1 video script + post | 🔴 | — |
 
----
-
-## PHASE 18: E2E Journey Test
-
-**Purpose:** Validate complete user journey before launch
-**Spec:** `docs/audits/UX_AUDIT_2026-01-04.md`
-
-### Pre-Flight Checks (7 tests)
-
-| # | Test | Expected | Status | Notes |
-|---|------|----------|--------|-------|
-| 1 | Backend health check | 200 OK | ✅ | `{"status":"healthy","version":"3.0.0"}` |
-| 2 | Frontend loads | No console errors | ✅ | Returns 307 redirect (expected) |
-| 3 | Supabase connection | Can query | ✅ | Connected, queried clients table |
-| 4 | Resend API works | Can send | ✅ | Key restricted to send-only (intentional) |
-| 5 | Anthropic API works | Can generate | ✅ | Claude response generated |
-| 6 | Apollo API works | Can enrich | ✅ | Upgraded - full API access |
-| 7 | Apify API works | Can scrape | ✅ | User: brawny_epitope |
-
-**Pre-Flight Result:** ✅ 7/7 Pass
-
----
-
-### M1: Signup & Onboarding (10 tests)
-
-| # | Test | Expected | Status |
-|---|------|----------|--------|
-| 1 | Go to /login | Login page loads | 🔴 |
-| 2 | Click "Sign Up" | Signup form shows | 🔴 |
-| 3 | Enter email + password | Form validates | 🔴 |
-| 4 | Submit signup | Confirmation sent | 🔴 |
-| 5 | Confirm email | Redirected to onboarding | 🔴 |
-| 6 | Enter website URL | ICP extraction starts | 🔴 |
-| 7 | Wait for extraction | Progress shown | 🔴 |
-| 8 | Review ICP | Extracted data displayed | 🔴 |
-| 9 | Confirm ICP | Saved to database | 🔴 |
-| 10 | Redirected to dashboard | Dashboard loads | 🔴 |
-
-**M1 Result:** 🔴 Not Started
-
----
-
-### M2: Campaign & Leads (10 tests)
-
-| # | Test | Expected | Status |
-|---|------|----------|--------|
-| 11 | Go to /dashboard/campaigns | Campaigns page loads | 🔴 |
-| 12 | Click "New Campaign" | Creation form loads | 🔴 |
-| 13 | Enter campaign name | Field validates | 🔴 |
-| 14 | Select permission mode | Mode saved | 🔴 |
-| 15 | Create campaign | Campaign created | 🔴 |
-| 16 | Go to /dashboard/leads | Leads page loads | 🔴 |
-| 17 | Click "Import" | Import UI shows | 🔴 |
-| 18 | Add test lead manually | Lead created | 🔴 |
-| 19 | View lead detail | Lead data correct | 🔴 |
-| 20 | Assign lead to campaign | Lead assigned | 🔴 |
-
-**M2 Result:** 🔴 Not Started
-
----
-
-### M3: Email Send (5 tests)
-
-| # | Test | Expected | Status |
-|---|------|----------|--------|
-| 21 | Go to campaign detail | Shows 1 lead assigned | 🔴 |
-| 22 | Click "Activate Campaign" | Status → Active | 🔴 |
-| 23 | Trigger send | Email queued | 🔴 |
-| 24 | Check inbox | Email received | 🔴 |
-| 25 | Verify email content | Personalization correct | 🔴 |
-
-**Email Checks:**
-- [ ] From address is verified domain
-- [ ] Subject line rendered
-- [ ] {first_name} replaced
-- [ ] Unsubscribe link works
-
-**M3 Result:** 🔴 Not Started
-
----
-
-### M4: Reply Handling (5 tests)
-
-| # | Test | Expected | Status |
-|---|------|----------|--------|
-| 26 | Reply to email: "I'm interested" | Email sent | 🔴 |
-| 27 | Wait 1-2 min for webhook | Reply processed | 🔴 |
-| 28 | Check lead status in UI | Shows "Replied" | 🔴 |
-| 29 | Check intent classification | Classified as "interested" | 🔴 |
-| 30 | Check activity feed | Reply activity visible | 🔴 |
-
-**M4 Result:** 🔴 Not Started
-
----
-
-### M5: Dashboard Validation (5 tests)
-
-| # | Test | Expected | Status |
-|---|------|----------|--------|
-| 31 | View dashboard | Shows 1 campaign, 1 lead | 🔴 |
-| 32 | Stats cards accurate | 1 sent, 1 open, 1 reply | 🔴 |
-| 33 | Activity feed shows events | Send + reply visible | 🔴 |
-| 34 | ALS distribution shows 1 lead | Correct tier | 🔴 |
-| 35 | Refresh page | Data persists | 🔴 |
-
-**M5 Result:** 🔴 Not Started
-
----
-
-### M6: Admin Dashboard (5 tests)
-
-**Requires:** Admin frontend wired to backend APIs (ADM fixes below)
-
-| # | Test | Expected | Status |
-|---|------|----------|--------|
-| 36 | Go to /admin | Admin dashboard loads | 🔴 |
-| 37 | Platform stats correct | 1 client, 1 campaign, real numbers | 🔴 |
-| 38 | Client list shows your client | Name, tier, status visible | 🔴 |
-| 39 | Activity log shows events | Platform-wide activities | 🔴 |
-| 40 | System health all green | Integrations healthy | 🔴 |
-
-**M6 Result:** 🔴 Not Started
-
----
-
-### Admin Dashboard Fixes (Required for M6)
-
-The audit found Admin frontend uses mock data. These fixes required before M6:
-
-| Task | Description | File | Status |
-|------|-------------|------|--------|
-| ADM-001 | Create admin hooks | `frontend/hooks/use-admin.ts` | 🔴 |
-| ADM-002 | Create admin API functions | `frontend/lib/api/admin.ts` | 🔴 |
-| ADM-003 | Wire Admin Command Center | `frontend/app/admin/page.tsx` | 🔴 |
-| ADM-004 | Wire Admin Clients page | `frontend/app/admin/clients/page.tsx` | 🔴 |
-| ADM-005 | Wire Admin Activity page | `frontend/app/admin/activity/page.tsx` | 🔴 |
-
----
-
-### Phase 18 Summary
-
-| Milestone | Tests | Passed | Status |
-|-----------|-------|--------|--------|
-| Pre-Flight | 7 | 7 | ✅ |
-| M1: Signup & Onboarding | 10 | 0 | 🔴 |
-| M2: Campaign & Leads | 10 | 0 | 🔴 |
-| M3: Email Send | 5 | 0 | 🔴 |
-| M4: Reply Handling | 5 | 0 | 🔴 |
-| M5: Dashboard Validation | 5 | 0 | 🔴 |
-| M6: Admin Dashboard | 5 | 0 | 🔴 |
-| **TOTAL** | **47** | **7** | 🟡 |
-
----
-
-### Blockers Log
-
-| ID | Milestone | Description | Severity | Fix | Status |
-|----|-----------|-------------|----------|-----|--------|
-| — | — | No active blockers | — | — | — |
-
-*(Fill in as blockers discovered during testing)*
-
----
-
-### Test Session Log
-
-| Date | Tester | Milestones | Passed | Failed | Blocked | Notes |
-|------|--------|------------|--------|--------|---------|-------|
-| 2026-01-04 | Claude | Pre-Flight | 7 | 0 | 0 | All integrations working |
-
-*(Add entry for each test session)*
-
----
-
----
-
-## PHASE 19: Email Infrastructure (InfraForge + Smartlead)
-
-**Purpose:** Programmatic email domain/mailbox provisioning and warmup
-**Decision Date:** January 4, 2026
-**Spec:** `PROJECT_BLUEPRINT.md` (Phase 19 section)
-
-### Architecture Decision: APPROVED
-
-**Selected Stack:**
-- **InfraForge** → Domain purchase, mailbox creation, DNS automation, dedicated IPs
-- **Smartlead** → Email account registration, warmup management, campaign sending
-- **Agency OS** → Bridge orchestration, tenant provisioning, unified dashboard
-
-**Why This Stack (vs Instantly DFY):**
-- ✅ Domain ownership (InfraForge gives you the domains, Instantly retains ownership)
-- ✅ 4-5x cheaper at scale ($1,500-1,800/mo vs $6,600-8,100/mo for 100 tenants)
-- ✅ Dedicated IPs per tenant (reputation isolation)
-- ✅ Best-in-class APIs for each function
-- ✅ Exit strategy (portable infrastructure)
-
-### Research Completed (Jan 4, 2026)
-
-| Research Task | Status | Finding |
-|---------------|--------|--------|
-| Apollo API domain/mailbox | ✅ | NOT AVAILABLE - API limited to enrichment/CRM |
-| Instantly API full review | ✅ | Good API but DFY locks domains to platform |
-| Mailforge API search | ✅ | NO PUBLIC API - UI only or enterprise agreement |
-| InfraForge API capabilities | ✅ | Full programmatic provisioning confirmed |
-| Smartlead API capabilities | ✅ | Full SMTP/IMAP registration + warmup API |
-
-### 19A: InfraForge Integration
-
-| Task | Description | Status |
-|------|-------------|--------|
-| INF-001 | Request InfraForge API documentation/access | 🔴 |
-| INF-002 | Create InfraForge integration client | 🔴 |
-| INF-003 | Implement domain provisioning | 🔴 |
-| INF-004 | Implement mailbox creation | 🔴 |
-| INF-005 | Implement DNS status monitoring | 🔴 |
-
-### 19B: Smartlead Integration
-
-| Task | Description | Status |
-|------|-------------|--------|
-| SML-001 | Set up Smartlead Pro account | 🔴 |
-| SML-002 | Create Smartlead integration client | 🔴 |
-| SML-003 | Implement email account registration | 🔴 |
-| SML-004 | Implement warmup management | 🔴 |
-| SML-005 | Implement campaign API wrapper | 🔴 |
-| SML-006 | Implement webhook receiver | 🔴 |
-
-### 19C: Bridge Orchestration
-
-| Task | Description | Status |
-|------|-------------|--------|
-| BRG-001 | Create tenant provisioning flow | 🔴 |
-| BRG-002 | Implement infrastructure orchestration | 🔴 |
-| BRG-003 | Create warmup monitoring dashboard | 🔴 |
-| BRG-004 | Database schema for email infrastructure | 🔴 |
-| BRG-005 | Tenant onboarding email setup | 🔴 |
-
-### 19D: Testing & Validation
-
-| Task | Description | Status |
-|------|-------------|--------|
-| TST-019-1 | InfraForge integration tests | 🔴 |
-| TST-019-2 | Smartlead integration tests | 🔴 |
-| TST-019-3 | End-to-end provisioning test | 🔴 |
-| TST-019-4 | Warmup monitoring test | 🔴 |
-
-### Cost Model per Tier
-
-| Tier | Domains | Mailboxes | Est. Monthly Cost |
-|------|---------|-----------|-------------------|
-| Ignition | 2 | 3 | ~$115 |
-| Velocity | 3 | 6 | ~$140 |
-| Dominance | 5 | 11 | ~$320 |
-
-### API Documentation
-
-- **InfraForge:** Contact for API docs - https://infraforge.ai
-- **Smartlead:** https://api.smartlead.ai/reference
-
-### Key Smartlead API Endpoints
+### Dependency Chain
 
 ```
-POST /api/v1/email-accounts/save          # Create email account
-POST /api/v1/email-accounts/{id}/warmup   # Enable/configure warmup
-GET  /api/v1/email-accounts/{id}/warmup-stats  # Get warmup stats
-POST /api/v1/campaigns                    # Create campaign
-POST /api/v1/campaigns/{id}/leads         # Add leads
+INT-013 (HeyGen integration) ──┐
+                               ├──► MKT-002 (Prefect flow) ──► Automated pipeline
+INT-014 (Buffer integration) ──┘
 ```
+
+---
+
+## PHASE 23: Platform Intelligence (Post-Launch)
+
+**Purpose:** Cross-client learning system
+**Spec:** `docs/phases/PHASE_23_PLATFORM_INTEL.md`
+**Status:** 📋 Planned (0/18)
+**Trigger:** Activate when 10+ clients have 50+ conversions each (~Month 4-6)
+
+### Problem Solved
+
+**Current (Phase 16):** Each client learns in isolation. New clients start from default weights.
+**With Phase 23:** Platform aggregates learnings. New clients inherit platform-optimized weights immediately.
+
+### Tasks (Deferred)
+
+- 23A: Platform Priors (5 tasks)
+- 23B: Platform Learning Engine (6 tasks)
+- 23C: Scorer Integration (4 tasks)
+- 23D: Testing (3 tasks)
+
+### Activation Criteria
+
+- ✅ 10+ clients with `data_sharing_consent = TRUE`
+- ✅ Combined 500+ conversions
+- ✅ At least 3 clients have learned weights
 
 ---
 
@@ -456,191 +675,41 @@ POST /api/v1/campaigns/{id}/leads         # Add leads
 | Pipeline Value | — | — | — | — | — |
 | Spots Remaining | 20 | — | — | — | — |
 
-**Milestone Triggers (auto-post content):**
-- [ ] First email sent
-- [ ] First reply received
-- [ ] First meeting booked
-- [ ] First customer signed
-- [ ] 5 customers
-- [ ] 10 customers
-- [ ] 15 customers
-- [ ] 20 customers (SOLD OUT)
-
 ---
 
 ## Credential Collection Checklist
 
-### P0 - Required for MVP
+### P0 - Required for MVP ✅ COMPLETE
 
-| Service | Sign Up | Env Var | Verified |
-|---------|---------|---------|----------|
-| Resend | https://resend.com/signup | `RESEND_API_KEY` | ✅ |
-| Anthropic | https://console.anthropic.com | `ANTHROPIC_API_KEY` | ✅ |
-| Apollo | https://app.apollo.io | `APOLLO_API_KEY` | ✅ |
-| Apify | https://console.apify.com/sign-up | `APIFY_API_KEY` | ✅ |
+| Service | Env Var | Verified |
+|---------|---------|----------|
+| Resend | `RESEND_API_KEY` | ✅ |
+| Anthropic | `ANTHROPIC_API_KEY` | ✅ |
+| Apollo | `APOLLO_API_KEY` | ✅ |
+| Apify | `APIFY_API_KEY` | ✅ |
 
-### P1 - Required for Multi-Channel
+### P1 - Required for Multi-Channel ✅ COMPLETE
 
-| Service | Sign Up | Env Var | Verified |
-|---------|---------|---------|----------|
-| Twilio | https://www.twilio.com/try-twilio | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | ✅ |
-| HeyReach | https://heyreach.io | `HEYREACH_API_KEY` | ✅ |
-| Vapi | https://vapi.ai | `VAPI_API_KEY`, `VAPI_PHONE_NUMBER_ID` | ✅ |
-| ElevenLabs | https://elevenlabs.io | `ELEVENLABS_API_KEY` | ✅ |
+| Service | Env Var | Verified |
+|---------|---------|----------|
+| Twilio | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | ✅ |
+| HeyReach | `HEYREACH_API_KEY` | ✅ |
+| Vapi | `VAPI_API_KEY`, `VAPI_PHONE_NUMBER_ID` | ✅ |
+| ElevenLabs | `ELEVENLABS_API_KEY` | ✅ |
 
 ### P2 - Future Channels
 
-| Service | Sign Up | Env Var | Verified |
-|---------|---------|---------|----------|
-| ClickSend | https://clicksend.com | `CLICKSEND_USERNAME`, `CLICKSEND_API_KEY` | ⬜ |
+| Service | Env Var | Verified |
+|---------|---------|----------|
+| ClickSend | `CLICKSEND_USERNAME`, `CLICKSEND_API_KEY` | ✅ |
 
 ### Marketing Automation
 
-| Service | Sign Up | Purpose | Verified |
-|---------|---------|---------|----------|
-| HeyGen | https://heygen.com | AI video generation | ⬜ |
-| Serper | https://serper.dev | Google search API | ⬜ |
-| Buffer | https://buffer.com | Social scheduling | ⬜ |
-| v0.dev | https://v0.dev/chat/settings/keys | AI UI generation | ✅ |
-
----
-
-## PHASE 20: Platform Intelligence (Post-Launch)
-
-**Purpose:** Cross-client learning system - aggregate conversion patterns so new clients benefit from collective learnings on Day 1
-**Trigger:** Activate when 10+ clients have 50+ conversions each (~Month 4-6)
-**Spec:** `PROJECT_BLUEPRINT.md` (Phase 20 section)
-**Decision Date:** January 4, 2026
-
-### Problem Solved
-
-**Current (Phase 16):** Each client learns in isolation. New clients start from default weights.
-**With Phase 20:** Platform aggregates learnings. New clients inherit platform-optimized weights immediately.
-
-### Data Acquisition Strategy: Hybrid Approach
-
-**Why we can't buy this data:**
-- Conversion outcome data with lead attributes isn't sold anywhere
-- Companies like Apollo, 6sense, Artisan guard this as competitive moat
-- Privacy/legal prevents selling client campaign data
-- "Marketing agencies in Australia" too niche for data vendors
-
-**Our solution:**
-1. **Seed with benchmarks** - Industry research provides starting weights
-2. **Data co-op agreement** - Founding customers opt-in to share anonymized patterns
-3. **Platform learning** - Aggregate across 10+ clients after Month 4
-
-### 20A: Platform Priors (5 tasks)
-
-| Task | Description | Status | Files |
-|------|-------------|--------|-------|
-| PLT-001 | Create platform_priors module | 🔴 | `src/intelligence/platform_priors.py` |
-| PLT-002 | Add data sharing consent to client model | 🔴 | `src/models/client.py` |
-| PLT-003 | Consent capture in onboarding | 🔴 | `frontend/app/onboarding/page.tsx` |
-| PLT-004 | Database migration | 🔴 | `supabase/migrations/018_platform_intelligence.sql` |
-| PLT-005 | Platform patterns model | 🔴 | `src/models/platform_patterns.py` |
-
-### 20B: Platform Learning Engine (6 tasks)
-
-| Task | Description | Status | Files |
-|------|-------------|--------|-------|
-| PLT-006 | Platform pattern aggregator | 🔴 | `src/intelligence/platform_aggregator.py` |
-| PLT-007 | Platform weight optimizer | 🔴 | `src/intelligence/platform_weight_optimizer.py` |
-| PLT-008 | Industry clustering (optional) | 🔴 | `src/intelligence/industry_clustering.py` |
-| PLT-009 | Monthly platform learning flow | 🔴 | `src/orchestration/flows/platform_learning_flow.py` |
-| PLT-010 | Platform learning scheduler | 🔴 | `src/orchestration/schedules/scheduled_jobs.py` |
-| PLT-011 | Admin: platform insights page | 🔴 | `frontend/app/admin/platform-intelligence/page.tsx` |
-
-### 20C: Scorer Integration (4 tasks)
-
-| Task | Description | Status | Files |
-|------|-------------|--------|-------|
-| PLT-012 | Scorer weight fallback hierarchy | 🔴 | `src/engines/scorer.py` |
-| PLT-013 | Platform weights lookup | 🔴 | `src/engines/scorer.py` |
-| PLT-014 | Weight source tracking on leads | 🔴 | `src/models/lead.py` |
-| PLT-015 | Unit tests for fallback | 🔴 | `tests/test_engines/test_scorer_platform.py` |
-
-### 20D: Testing (3 tasks)
-
-| Task | Description | Status | Files |
-|------|-------------|--------|-------|
-| TST-020-1 | Aggregator tests | 🔴 | `tests/intelligence/test_platform_aggregator.py` |
-| TST-020-2 | Weight fallback tests | 🔴 | `tests/intelligence/test_weight_fallback.py` |
-| TST-020-3 | E2E platform learning test | 🔴 | `tests/e2e/test_platform_learning.py` |
-
-### Weight Fallback Hierarchy (Scorer)
-
-```
-1. Client learned weights (confidence > 0.7, sample >= 50) → "client_learned"
-2. Industry platform weights (if industry has enough data) → "platform_industry"
-3. Global platform weights (all clients aggregated) → "platform_global"
-4. Platform priors (industry benchmarks) → "platform_priors"
-5. Default weights (hardcoded) → "default"
-```
-
-### Industry Benchmark Priors (Seeded)
-
-```python
-PLATFORM_PRIORS = {
-    "als_weights": {
-        "data_quality": 0.15,   # Title matters more
-        "authority": 0.30,      # Decision-maker critical
-        "company_fit": 0.25,    # + DataForSEO signals
-        "timing": 0.20,         # Intent signals
-        "risk": 0.10,           # Reduced
-    },
-    "timing": {
-        "best_days": ["Tuesday", "Wednesday", "Thursday"],
-        "best_hours": [9, 10, 14, 15],
-    },
-    "content": {
-        "optimal_subject_words": (4, 8),
-        "optimal_body_words": (50, 125),
-        "personalization_lift": 1.26,
-    },
-    "source": "Ruler Analytics, First Page Sage, Martal 2025",
-    "confidence": 0.5,
-}
-```
-
-### Activation Criteria
-
-- ✅ 10+ clients with `data_sharing_consent = TRUE`
-- ✅ Combined 500+ conversions
-- ✅ At least 3 clients have learned weights
-
-### Success Metrics
-
-| Metric | Target |
-|--------|--------|
-| New client time-to-value | -2 months |
-| New client first-month conversion | +20% |
-| Platform weight confidence | >0.7 |
-
----
-
-## Quick Commands
-
-### Check Integration Health
-```bash
-# Once credentials are configured
-python -c "from tests.live.config import get_config; get_config().print_status()"
-```
-
-### Run Live Tests
-```bash
-# Set your test email
-export TEST_LEAD_EMAIL="your@email.com"
-export LIVE_TEST_DRY_RUN="false"
-
-# Run tests
-pytest tests/live/ -v
-```
-
-### Seed Test Data
-```bash
-python tests/live/seed_live_data.py
-```
+| Service | Purpose | Verified |
+|---------|---------|----------|
+| HeyGen | AI video generation | ⬜ |
+| Buffer | Social scheduling | ⬜ |
+| v0.dev | AI UI generation | ✅ |
 
 ---
 
@@ -670,32 +739,31 @@ python tests/live/seed_live_data.py
 
 ---
 
-## Financial Model Update (January 2026)
+## Financial Model (January 2026)
 
 **Spec:** `docs/specs/TIER_PRICING_COST_MODEL_v2.md`
 
-### Key Changes
-- Updated all provider costs to current pricing (AUD)
-- Implemented hybrid Clay waterfall enrichment (84% savings)
-- Reduced Dominance HeyReach seats from 10 → 5
-- All margins now exceed 65%
+| Tier | Price | COGS | Margin | Leads |
+|------|-------|------|--------|-------|
+| **Ignition** | $2,500 | $666 | **73.4%** | 1,250 |
+| **Velocity** | $5,000 | $1,323 | **73.5%** | 2,250 |
+| **Dominance** | $7,500 | $2,502 | **66.6%** | 4,500 |
 
-### Final Numbers (Locked)
+---
 
-| Tier | Price | COGS | Margin | Leads | HeyReach Seats |
-|------|-------|------|--------|-------|----------------|
-| **Ignition** | $2,500 | $666 | **73.4%** | 1,250 | 1 |
-| **Velocity** | $5,000 | $1,323 | **73.5%** | 2,250 | 3 |
-| **Dominance** | $7,500 | $2,502 | **66.6%** | 4,500 | 5 |
+## Quick Commands
 
-### Provider Costs Verified (AUD)
+### Check Integration Health
+```bash
+python -c "from tests.live.config import get_config; get_config().print_status()"
+```
 
-| Provider | Old | Current | Δ |
-|----------|-----|---------|---|
-| HeyReach | $76/seat | $122/seat | +61% |
-| Apollo | $0.155/lead | $0.31/lead | +100% |
-| Vapi | $0.186/min | $0.35/min | +88% |
-| **Hybrid Waterfall** | N/A | **$0.13/lead** | New |
+### Run Live Tests
+```bash
+export TEST_LEAD_EMAIL="your@email.com"
+export LIVE_TEST_DRY_RUN="false"
+pytest tests/live/ -v
+```
 
 ---
 
@@ -703,416 +771,554 @@ python tests/live/seed_live_data.py
 
 | Symbol | Meaning |
 |--------|---------|
-| 🔴 | Not Started |
+| 🔴 | Not Started / Blocked |
 | 🟡 | In Progress |
-| 🟢 | Complete |
+| ✅ | Complete |
 | 📋 | Planned (Post-Launch) |
-| ⬜ | Unchecked |
-| ✅ | Verified |
 
 ---
 
-## PHASE 21: Landing Page Optimization (PRIORITY)
+## Session Log
 
-**Purpose:** Merge best elements from Vercel live site and landing-page-v2.html
-**Decision Date:** January 5, 2026
-**Priority:** 🔴 HIGH - Next focus after current work
-**Source Files:**
-- Live: `https://agency-os-liart.vercel.app`
-- V2: `landing-page-v2.html` (local)
-- Target: `frontend/app/page.tsx`
+### January 7, 2026 — QA Audit COMPLETE
 
-### Background
+**Pre-E2E Audit Performed:**
+- Checked 8 audit categories across entire codebase
+- Created audit report: `docs/audits/QA_AUDIT_2026-01-07.md`
 
-Comparison analysis identified strengths in both versions:
-- **Vercel (live):** ROI comparison, meeting estimates, dashboard preview, structured content
-- **V2 (local):** Dark mode, punchier headline, activity animations, interactive tabs
+**Results:**
+- **Critical Issues:** 0 (no blockers)
+- **Warnings:** 3
+  - Missing env vars sync (Phase 18 infrastructure)
+  - ALS threshold inconsistency in sequence_builder.py (80 vs 85)
+  - Proxy settings missing from .env.example
+- **Info:** 4 (minor items, non-blocking)
 
-### 21A: Content Merges from V2 → Vercel (5 tasks)
+**Audit Categories:**
+1. Import hierarchy violations: PASS ✅
+2. Missing environment variables: WARNING (sync needed)
+3. Database schema consistency: PASS ✅
+4. API route completeness: PASS ✅
+5. Frontend-backend contract: PASS ✅
+6. Broken imports / missing files: PASS ✅
+7. ALS score consistency: WARNING (sequence_builder.py)
+8. Test coverage gaps: PASS ✅
 
-| Task | Description | Status | Priority |
-|------|-------------|--------|----------|
-| LP-001 | Replace headline with V2 version: "Stop chasing clients. Let them find you." | ✅ | P0 |
-| LP-002 | Add live activity feed animation (social proof) | ✅ | P0 |
-| LP-003 | Add AI email typing animation (product demo) | ✅ | P1 |
-| LP-004 | Replace static How It Works with interactive tabs (auto-rotate 6s) | ✅ | P1 |
-| LP-005 | Use hardcoded stats (55%+ open, 12%+ reply, <14 days) instead of "0" placeholders | ✅ | P0 |
+**Conclusion:** Codebase approved for E2E testing
 
-### 21B: Keep/Enhance from Vercel (4 tasks)
+### January 7, 2026 — Phase 17, 19, 20 COMPLETE
 
-| Task | Description | Status | Priority |
-|------|-------------|--------|----------|
-| LP-006 | Keep ROI Comparison section (SDR vs Agency OS table) | ✅ Already there | — |
-| LP-007 | Keep meeting estimates on pricing cards (8-9/15-16/31-32) | ✅ Already there | — |
-| LP-008 | Keep dashboard preview in hero section | ✅ Already there | — |
-| LP-009 | Keep Features comparison table (Generic AI SDRs vs Agency OS) | ✅ Already there | — |
+**Phase 17 Cleanup:**
+- Removed LIVE-002 and LIVE-004 (redundant with Phase 21 E2E tests)
+- Task count: 15 → 13
+- Status: ✅ COMPLETE
 
-### 21C: Consistency Fixes (3 tasks)
+**Phase 19 (Scraper Waterfall) COMPLETE:**
+- All 9 tasks done (SCR-001 to SCR-009)
+- 5-tier waterfall: URL Validation → Cheerio → Playwright → Camoufox → Manual
 
-| Task | Description | Status | Priority |
-|------|-------------|--------|----------|
-| LP-010 | Fix ALS tier display: Hot should be 85+ (not 80-100) per codebase | ✅ | P0 |
-| LP-011 | Make spots remaining dynamic (currently shows "...") | ✅ | P1 |
-| LP-012 | Sync tier thresholds: Hot (85+), Warm (60-84), Cool (35-59), Cold (20-34) | ✅ | P0 |
+**Phase 20E (Automation Wiring) COMPLETE:**
+- **WIRE-001:** Created `src/orchestration/flows/intelligence_flow.py`
+  - Prefect flow for auto-triggering deep research on Hot leads (ALS >= 85)
+- **WIRE-002:** Updated `src/api/routes/leads.py` with new endpoints:
+  - `GET /leads/{id}/research` — Get deep research data
+  - `POST /leads/{id}/research` — Trigger deep research
+  - `POST /leads/{id}/score` — Score lead + auto-trigger research if Hot
+- **WIRE-003:** Updated `frontend/components/dashboard/CoPilotView.tsx`
+  - Wired to real API data via useDeepResearch hook
+  - Research status UI (loading, in_progress, complete, failed)
+  - LinkedIn posts display, icebreaker suggestions
+- **WIRE-004:** Created `frontend/hooks/use-deep-research.ts`
+  - React Query hook with polling for in-progress status
+  - Trigger mutation for manual research
 
-### 21D: v0.dev Integration (4 tasks)
+**Phase 20 Status:** ✅ COMPLETE (22/22 tasks)
 
-| Task | Description | Status | Priority |
-|------|-------------|--------|----------|
-| V0-001 | Install v0-sdk and configure API key | ✅ | P0 |
-| V0-002 | Create `scripts/v0-generate.ts` helper script | ✅ | P0 |
-| V0-003 | Generate landing page components via v0 API | ✅ | P0 |
-| V0-004 | Generate dashboard components via v0 API | ✅ | P0 |
+**Next:** Phase 21 (E2E Journey Test) — M1 to M6 milestones
 
-**V0-003 Note (Jan 5, 2026):** Created components directly based on design specs:
-- `frontend/components/landing/ActivityFeed.tsx` - Live activity feed with rotation
-- `frontend/components/landing/TypingDemo.tsx` - AI email typing animation
-- `frontend/components/landing/HowItWorksTabs.tsx` - Interactive 5-step tabs with auto-rotate
-- `frontend/components/landing/SocialProofBar.tsx` - Stats bar component
+### January 7, 2026 — Phase 19 COMPLETE
+- **Phase 19 (Scraper Waterfall)** completed: All 9 tasks done
+- **SCR-004:** Created `src/integrations/camoufox_scraper.py` (Tier 3 anti-detect browser)
+- **SCR-006:** Updated `Dockerfile` with optional Camoufox stage (~300MB when enabled)
+- **SCR-008:** Added residential proxy settings to `src/config/settings.py`
+- **SCR-009:** Created `tests/test_engines/test_scraper_waterfall.py` (comprehensive tests)
+- **Architecture:** 5-tier waterfall now complete:
+  - Tier 0: URL Validation (FREE, <2s)
+  - Tier 1: Apify Cheerio ($0.00025/page)
+  - Tier 2: Apify Playwright ($0.0005/page)
+  - Tier 3: Camoufox + Proxy ($0.02-0.05/page)
+  - Tier 4: Manual Fallback (100% coverage)
+- **Next:** Phase 20 (UI Wiring) — WIRE-001 to WIRE-004
 
-**V0-004 Note (Jan 5, 2026):** Dashboard demo enhanced:
-- `frontend/components/landing/DashboardDemo.tsx` - Animated dashboard with Pipeline Growth chart (recharts)
-- `frontend/components/landing/HowItWorksCarousel.tsx` - Instagram-style carousel with prev/next arrows
+### January 7, 2026 — Phase Reorganization
+- **Phase structure updated:** Marketing automation tasks moved to dedicated Phase 22
+- **Tasks moved:** INT-013, INT-014, MKT-001, MKT-002, MKT-003 (from Phase 17D to Phase 22)
+- **Platform Intelligence:** Renumbered from Phase 22 → Phase 23
+- **Updated files:**
+  - `PROJECT_BLUEPRINT.md` → v3.2, new phase table
+  - `PROGRESS.md` → Updated phase references
+- **Rationale:** Marketing automation is post-launch work, shouldn't block launch prerequisites
 
-### 21E: Optional Enhancements (2 tasks)
+### January 6, 2026 (Evening) — Phase 18 COMPLETE ✅
+- **Brand domain purchased:** `agencyxos.ai` (Namecheap, 2yr, $125.98 USD)
+- **Cold email domains purchased:** 3 via InfraForge
+  - `agencyxos-growth.com`
+  - `agencyxos-reach.com`
+  - `agencyxos-leads.com`
+- **Mailboxes created:** 6 (2 per domain, David + Alex personas)
+- **Warmup activated:** All 6 mailboxes warming in Warmforge
+- **API keys saved:** InfraForge, Warmforge, Salesforge → `.env`
+- **Stack pivot:** Smartlead → Salesforge (better API, free warmup)
+- **Timeline:** Mailboxes ready for campaigns Jan 20, 2026
+- **Action required:** Subscribe to Salesforge by Jan 11 ($48/mo)
 
-| Task | Description | Status | Priority |
-|------|-------------|--------|----------|
-| LP-013 | Add dark mode toggle (V2 dark theme as option) | 🔴 | P2 |
-| LP-014 | A/B test headline variants | 🔴 | P2 |
+### January 6, 2026 (Morning)
+- Reordered phases based on dependency analysis
+- Phase 18 (Email Infra) → Now critical path blocker
+- Phase 19 (Scraper Waterfall) → Enables Deep Research
+- Phase 20 (UI Wiring) → Depends on scraper
+- Phase 21 (E2E Tests) → Final validation after everything wired
+- Phase 22 (Platform Intel) → Post-launch
 
-### v0.dev Setup
+### January 6, 2026 — Phase 24 Created (Lead Pool Architecture)
+- **Problem identified:** Cross-campaign and cross-client lead collision risk
+- **Problem identified:** Only saving ~20 of 50+ Apollo enrichment fields
+- **Solution designed:** Centralised Lead Pool with exclusive assignment
+- **Core rule:** One lead = One client, forever (until released/converted)
+- **New components:**
+  - `lead_pool` table — Master lead record with all enrichment data
+  - `lead_assignments` table — Client ownership tracking
+  - JIT Validation — Pre-send checks before any outreach
+  - Allocator service — Fair distribution of leads to clients
+- **Documents created:**
+  - `docs/specs/LEAD_POOL_ARCHITECTURE.md` (700 lines, full spec)
+  - `docs/phases/PHASE_24_LEAD_POOL.md` (186 lines, task breakdown)
+- **Tasks:** 15 tasks, ~43 hours estimated
+- **Priority:** High (Pre-Launch) — Prevents spam, protects lead quality
 
-**Installation:**
-```bash
-pnpm add v0-sdk
-```
+### January 6, 2026 — CIS Data Gaps Analysis Complete
+- **Audit performed:** What data is CIS missing to learn effectively?
+- **Finding:** CIS can learn but from ~60% of useful data (40% missing)
+- **Gaps identified:**
+  - **WHO Detector:** Missing 8+ lead fields (seniority, revenue, tech stack, location)
+  - **WHAT Detector:** Missing template linking, A/B tracking, full message body
+  - **WHEN Detector:** Missing email open/click times, lead timezone
+  - **HOW Detector:** Missing email engagement correlation
+  - **Conversations:** Not tracking threads, objections, sentiment
+  - **Outcomes:** Not tracking show rate, deal conversion, lost reasons
+- **Solution:** 5 sub-phases (24A-24E) with 44 tasks, ~121 hours
+- **Documents created:**
+  - `docs/specs/CIS_DATA_GAPS_IMPLEMENTATION.md` (660 lines, full gap analysis + impl plan)
+  - `CLAUDE_CODE_PROMPT_CIS_DATA_GAPS.md` (implementation prompt for Claude Code)
+- **Sub-phases:**
+  - 24A: Lead Pool (already spec'd) — 15 tasks, 43h
+  - 24B: Content & Template Tracking — 7 tasks, 16h
+  - 24C: Email Engagement Tracking — 7 tasks, 19h
+  - 24D: Conversation Threading — 8 tasks, 24h
+  - 24E: Downstream Outcomes — 7 tasks, 19h
 
-**Environment Variable (in `config/.env`):**
-```
-V0_API_KEY=REDACTED_V0_KEY
-```
+### January 6, 2026 (Evening) — Phase 24A Implementation (POOL-001 to POOL-010)
+- **POOL-001/002/003:** Created `supabase/migrations/024_lead_pool.sql`
+  - `lead_pool` table with 50+ fields for full Apollo data capture
+  - `lead_assignments` table for exclusive client assignment
+  - Pool references added to existing leads table
+  - RLS policies, indexes, helper functions, and views
+- **POOL-004:** Updated `src/integrations/apollo.py`
+  - Added `_transform_person_for_pool()` capturing all 50+ Apollo fields
+  - Added `enrich_person_for_pool()` and `search_people_for_pool()`
+  - Timezone inference from country/state for WHEN Detector
+- **POOL-005:** Created `src/services/lead_pool_service.py`
+  - CRUD operations: create_or_update, search_available, mark_bounced, bulk_create
+- **POOL-006:** Created `src/services/lead_allocator_service.py`
+  - Lead allocation with ICP matching, exclusive assignment
+  - `FOR UPDATE SKIP LOCKED` for race condition prevention
+  - Touch/reply tracking, cooling periods, conversion marking
+- **POOL-007:** Created `src/services/jit_validator.py`
+  - Pre-send validation before any outreach
+  - Checks: global blocks, assignment status, timing, rate limits, warmup
+- **POOL-008:** Updated `src/engines/scout.py`
+  - Added `enrich_to_pool()` and `search_and_populate_pool()`
+  - Pool-first enrichment workflow
+- **POOL-009:** Updated `src/engines/scorer.py`
+  - Added `score_pool_lead()` and `score_pool_batch()`
+  - Pool-specific scoring methods for data quality, authority, company fit, timing, risk
+- **POOL-010:** Updated `src/engines/content.py`
+  - Added `generate_email_for_pool()`, `generate_sms_for_pool()`
+  - Added `generate_linkedin_for_pool()`, `generate_voice_for_pool()`
+  - Icebreaker hook integration for hyper-personalization
+- **Status:** 10/15 Phase 24A tasks complete (67%)
+- **Next:** POOL-011 to POOL-015 (campaign assignment flow, admin UI, migration, analytics, tests)
 
-**Helper Script (`scripts/v0-generate.ts`):**
-```typescript
-import { v0 } from 'v0-sdk'
+### January 6, 2026 (Late Evening) — Phase 24A COMPLETE (POOL-011 to POOL-015)
+- **POOL-011:** Created `src/orchestration/flows/pool_assignment_flow.py`
+  - `pool_campaign_assignment_flow` - Assign pool leads to campaigns
+  - `pool_daily_allocation_flow` - Daily allocation to active campaigns
+  - `jit_validate_outreach_batch_flow` - Batch JIT validation
+  - Updated `src/orchestration/flows/__init__.py` with exports
+- **POOL-012:** Added pool admin endpoints to `src/api/routes/admin.py`
+  - `GET /admin/pool/stats` - Pool statistics
+  - `GET /admin/pool/leads` - Paginated pool leads list
+  - `GET /admin/pool/leads/{id}` - Pool lead detail with assignments
+  - `GET /admin/pool/assignments` - Paginated assignments list
+  - `POST /admin/pool/assign` - Manual assignment
+  - `POST /admin/pool/release` - Release leads back to pool
+  - `GET /admin/pool/utilization` - Client utilization metrics
+- **POOL-013:** Created `scripts/migrate_leads_to_pool.py`
+  - Migrates existing leads to lead_pool table
+  - Creates assignments for client relationships
+  - Updates lead_pool_id references
+  - Verification checks included
+- **POOL-014:** Added pool analytics to `src/api/routes/reports.py`
+  - `GET /reports/pool/analytics` - Pool size, utilization, distributions
+  - `GET /reports/pool/assignments/analytics` - Assignment metrics
+  - `GET /reports/pool/clients/{id}/analytics` - Client pool analytics
+- **POOL-015:** Created pool service tests in `tests/test_services/`
+  - `test_lead_pool_service.py` - Pool CRUD operations
+  - `test_lead_allocator_service.py` - Allocation operations
+  - `test_jit_validator.py` - JIT validation checks
+- **Status:** Phase 24A COMPLETE (15/15 tasks)
 
-async function generate(prompt: string, outputDir: string) {
-  const chat = await v0.chats.create({ message: prompt })
-  
-  chat.files?.forEach((file) => {
-    // Write to frontend/components/generated/
-    console.log(`Generated: ${file.name}`)
-  })
-  
-  // Allow iteration
-  return chat.id
-}
-```
+### January 6, 2026 (Night) — Phase 24B COMPLETE (CONTENT-001 to CONTENT-007)
+- **CONTENT-001:** Created `supabase/migrations/025_content_tracking.sql`
+  - Added template_id, ab_test_id, ab_variant to activities
+  - Created ab_tests table for A/B test tracking
+  - Created ab_test_variants table for multi-variant tests
+  - Added triggers for automatic stats updates
+  - Added calculate_ab_test_winner() function for statistical significance
+- **CONTENT-002:** Updated `src/engines/email.py`
+  - Store full_message_body for complete content analysis
+  - Link template_id for template tracking
+  - Track ab_test_id and ab_variant for A/B testing
+  - Store links_included and personalization_fields_used
+  - Track ai_model_used and prompt_version
+- **CONTENT-003:** Updated `src/engines/sms.py`
+  - Same Phase 24B fields as email engine
+- **CONTENT-004:** Updated `src/engines/linkedin.py`
+  - Same Phase 24B fields as email/sms engines
+- **CONTENT-005:** Created `src/services/ab_test_service.py`
+  - A/B test CRUD operations
+  - Test lifecycle management (start, pause, complete, cancel)
+  - Variant assignment with split percentage
+  - Statistical significance calculation
+  - Success recording for both variants
+- **CONTENT-006:** Updated `src/detectors/what_detector.py`
+  - Version 2.0 with Phase 24B analysis
+  - Template performance analysis (top/bottom templates)
+  - A/B test insights aggregation
+  - Link effectiveness analysis (with/without links)
+  - AI model performance analysis (best model, prompt rankings)
+- **CONTENT-007:** A/B test UI (deferred to frontend phase)
+- **Also updated:** `src/models/activity.py` with Phase 24B fields
+- **Status:** Phase 24B COMPLETE (7/7 tasks)
+- **Next:** Phase 24C (Email Engagement Tracking)
+
+### January 5, 2026 (Evening)
+- CRED-008: ClickSend credentials configured
+- Synced all missing env vars to Railway
+- Verified Railway deployment healthy
+
+### January 5, 2026 (Afternoon)
+- Dashboard Demo fixes (text visibility, chart)
+- How It Works carousel implementation
+- Pipeline Growth chart with recharts
+
+### January 5, 2026
+- V0-001 to V0-004: v0.dev integration complete
+- LP-001 to LP-012: Landing page components complete
+- Created ActivityFeed, TypingDemo, HowItWorksCarousel
+
+### January 6, 2026 (Session 3) - Phase 24C Complete
+**Email Engagement Tracking for CIS Learning**
+
+#### Completed Tasks:
+- **ENGAGE-001**: Migration `026_email_engagement.sql` (previous session)
+  - email_events table for tracking opens/clicks/bounces
+  - Engagement summary fields on activities
+  - Touch metadata fields (touch_number, days_since_last)
+  - Timezone tracking on leads and activities
+  - Database triggers for auto-calculating touch metadata
+
+- **ENGAGE-002**: Email provider webhook endpoints
+  - Smartlead webhooks for open/click/bounce events
+  - Salesforge webhooks for engagement tracking
+  - Resend webhooks with Svix signature verification
+  - Signature verification for each provider
+
+- **ENGAGE-003**: Created `src/services/email_events_service.py`
+  - Provider-agnostic event ingestion
+  - Parsers for Smartlead, Salesforge, Resend
+  - Deduplication by provider_event_id
+  - Automatic activity summary updates
+
+- **ENGAGE-004**: Updated Activity model for touch tracking
+  - Added email_opened, email_clicked, email_open_count
+  - Added time_to_open/click/reply_minutes
+  - Added touch_number, days_since_last_touch
+  - Added lead_local_time, lead_timezone
+
+- **ENGAGE-005**: Created `src/services/timezone_service.py`
+  - Country-to-timezone mapping (90+ countries)
+  - US state-level timezone precision
+  - TimezoneService for lead timezone updates
+  - Business hours check for send optimization
+
+- **ENGAGE-006**: Updated WHEN Detector (v2.0)
+  - Uses lead local time for day/hour analysis
+  - Added engagement_timing analysis
+  - Added timezone_insights patterns
+  - Optimal send time recommendations
+
+- **ENGAGE-007**: Updated HOW Detector (v2.1)
+  - Added email_engagement_correlation
+  - Conversion rate by engagement type
+  - Open/click lift calculations
+  - Actionable engagement insights
+
+#### Files Created/Modified:
+- `src/services/email_events_service.py` (new)
+- `src/services/timezone_service.py` (new)
+- `src/api/routes/webhooks.py` (modified - added 3 email providers)
+- `src/config/settings.py` (modified - webhook secrets)
+- `src/models/activity.py` (modified - engagement fields)
+- `src/models/lead.py` (modified - timezone fields)
+- `src/detectors/when_detector.py` (modified - v2.0)
+- `src/detectors/how_detector.py` (modified - v2.1)
+- `src/services/__init__.py` (modified - exports)
+
+**Status:** Phase 24C COMPLETE (7/7 tasks)
+**Next:** Phase 24E (Downstream Outcomes)
 
 ---
 
-### v0 Prompts (Ready to Use)
+### January 6, 2026 (Session 2) - Phase 24D Complete
+**Conversation Threading for CIS Learning**
 
-**PROMPT 1: Landing Page Hero + Activity Feed**
-```
-Create a dark mode SaaS landing page hero section for "Agency OS" - a client acquisition platform for Australian marketing agencies.
+#### Completed Tasks:
+- **THREAD-001**: Created `supabase/migrations/027_conversation_threads.sql`
+  - conversation_threads table for tracking thread lifecycle
+  - thread_messages table with analysis fields
+  - Rejection tracking enum and fields on leads
+  - Helper functions: get_conversation_analytics(), get_common_questions()
+  - Auto-update triggers for thread stats
 
-Requirements:
-- Dark background (#0a0a0f) with subtle blue/purple gradient orbs
-- Headline: "Stop chasing clients. Let them find you." with gradient text effect
-- Subheadline: "Five channels. Fully automated. One platform."
-- Urgency badge: "Only 17 of 20 founding spots remaining" with pulsing green dot
-- Primary CTA: "See It In Action" with gradient button (blue to purple)
-- Secondary CTA: "How it works →"
-- Live activity feed component showing rotating notifications:
-  - "Email opened by Sarah Williams" (blue)
-  - "Connection accepted: Marcus Chen" (blue) 
-  - "Voice AI: Meeting booked with Pixel Studios" (green)
-  - "SMS delivered to James Cooper" (purple)
-  - Rotate every 3 seconds, max 5 visible
-- Use Tailwind CSS, React, TypeScript
-- Glass morphism effects on cards
-- Smooth fade-up animations on load
-```
+- **THREAD-002**: Created `src/services/thread_service.py`
+  - Full CRUD for conversation threads
+  - Message management with position tracking
+  - Outcome and escalation tracking
+  - Analytics integration
 
-**PROMPT 2: AI Email Typing Demo**
-```
-Create a React component showing an AI writing a personalized email in real-time.
+- **THREAD-003**: Updated `src/engines/closer.py`
+  - Integrated ThreadService for automatic thread creation
+  - Added ReplyAnalyzer for enhanced reply analysis
+  - Thread outcome updates based on intent
+  - Rejection and objection tracking on leads
 
-Requirements:
-- Dark card with rounded corners and subtle border
-- Email compose UI with To, Subject fields
-- Body area with typewriter effect typing this email:
-  "Hi Sarah,
-  
-  I noticed Bloom Digital has been expanding into healthcare marketing — congrats on the recent wins with Medicare providers.
-  
-  We've helped similar agencies book 40+ qualified meetings per month using our multi-channel approach. Given your focus on regulated industries, I think our compliance-first platform could be a great fit.
-  
-  Would you be open to a quick 15-min call next week to explore?"
-- Variable typing speed (faster for normal text, pause at periods/commas)
-- Blinking cursor
-- "AI is writing..." indicator with pulsing dot
-- Restart animation after completion (5s pause)
-- Use Tailwind, React, TypeScript
-```
+- **THREAD-004 & THREAD-005**: Created `src/services/reply_analyzer.py`
+  - AI-powered analysis using Claude
+  - Rule-based fallback with OBJECTION_PATTERNS
+  - Sentiment, intent, objection, question detection
+  - Rejection classification
 
-**PROMPT 3: Interactive How It Works Tabs**
-```
-Create an interactive tabbed "How It Works" section with 5 steps.
+- **THREAD-006**: Updated models for thread linking
+  - Added `conversation_thread_id` to Activity model
+  - Added rejection fields to Lead model (rejection_reason, objections_raised)
 
-Tabs: Discover → Find → Score → Reach → Convert
+- **THREAD-007**: Created `src/services/conversation_analytics_service.py`
+  - Comprehensive conversation analytics
+  - Objection breakdown, response timing analysis
+  - Sentiment trends, conversion patterns
+  - Topic effectiveness analysis
 
-Each tab shows:
-1. Discover: "ICP extracted from your website in 5 minutes" - Icon: magnifying glass
-2. Find: "AI scouts Australian businesses showing buying signals" - Icon: eye
-3. Score: "ALS Score™ ranks by budget, timeline, and fit" - Icon: bar chart
-4. Reach: "5-channel outreach: Email, SMS, LinkedIn, Voice, Mail" - Icon: rocket
-5. Convert: "Meetings booked on your calendar. Automatically." - Icon: calendar
+- **THREAD-008**: Updated CIS Detectors
+  - WHO Detector: Added objection pattern analysis by segment
+  - HOW Detector: Added conversation quality by channel
+  - Both detectors updated to version 2.0
 
-Requirements:
-- Dark theme with gradient tab indicator
-- Auto-rotate tabs every 6 seconds when section is in view
-- Stop auto-rotate on user click
-- Smooth fade transitions between content
-- Step numbers (01-05) as badges
-- Use IntersectionObserver for visibility
-- Tailwind, React, TypeScript
-```
+#### Files Created/Modified:
+- `supabase/migrations/027_conversation_threads.sql` (new)
+- `src/services/thread_service.py` (new)
+- `src/services/reply_analyzer.py` (new)
+- `src/services/conversation_analytics_service.py` (new)
+- `src/services/__init__.py` (modified)
+- `src/engines/closer.py` (modified)
+- `src/models/activity.py` (modified)
+- `src/models/lead.py` (modified)
+- `src/detectors/who_detector.py` (modified)
+- `src/detectors/how_detector.py` (modified)
 
-**PROMPT 4: User Dashboard (Bloomberg Terminal Style)**
-```
-Create a high-density SaaS dashboard for "Agency OS" - a lead generation platform.
-
-Layout: Bento grid (CSS Grid) with these cards:
-
-Top row (4 equal cards):
-1. Pipeline Value: "$284K" with "+23% this month" in green
-2. Meetings Booked: "47" with "+12 this week" in green  
-3. Reply Rate: "12.4%" with "3x industry avg" in blue
-4. Active Leads: "2,847" with "Across 5 channels" in purple
-
-Main area (2 columns):
-- Left (wider): Live Activity Feed
-  - Real-time updates: "Meeting booked with Pixel Studios — Thursday 2pm"
-  - "Sarah Williams replied — interested in demo"
-  - "AI sent personalized email to Marcus Chen"
-  - Green pulsing "Live" indicator
-
-- Right: ALS Score Distribution
-  - Hot (85-100): 127 leads - orange/red gradient bar
-  - Warm (60-84): 892 leads - yellow/orange gradient bar
-  - Cool (35-59): 456 leads - blue bar
-  - Cold (20-34): 312 leads - gray bar
-
-Requirements:
-- Dark theme (#0f0f13 background)
-- Compact spacing, high information density
-- Subtle borders (white/10)
-- Glass morphism on cards
-- No rounded corners larger than 8px
-- Sidebar placeholder on left
-- Tailwind, React, TypeScript, Tremor for charts
-```
-
-**PROMPT 5: Admin Dashboard**
-```
-Create an admin "Command Center" dashboard for a multi-tenant SaaS platform.
-
-Layout: Bento grid with:
-
-Top metrics row:
-1. Total Clients: "47" with "Active" badge
-2. MRR: "$58,750" with "+$4,200 this month"
-3. Platform Emails Sent: "124,847" with "This month"
-4. System Health: "All Systems Operational" with green status dots
-
-Main area:
-- Left: Client List Table (compact mode)
-  - Columns: Client Name, Tier (Ignition/Velocity/Dominance), Status, MRR, Leads
-  - Alternating row colors
-  - Inline status badges
-  - Sort headers
-
-- Right top: Revenue by Tier (donut chart)
-  - Ignition: $15,000 (blue)
-  - Velocity: $27,500 (purple)  
-  - Dominance: $16,250 (pink)
-
-- Right bottom: Platform Activity Log
-  - Recent events across all clients
-  - Timestamps, client names, event types
-
-Requirements:
-- Dark theme, Bloomberg terminal aesthetic
-- Maximum information density
-- Compact table rows (py-2)
-- Use Tremor for charts
-- Tailwind, React, TypeScript
-```
+#### Phase 24D Status: ✅ COMPLETE (8/8 tasks)
 
 ---
 
-### Implementation Notes
+### January 7, 2026 - Phase 24E Complete
+**Downstream Outcomes for Full-Funnel CIS Learning**
 
-**Activity Feed Animation (LP-002):**
-```javascript
-// From V2 - rotate through activities every 3s
-const activities = [
-  { channel: 'email', action: 'Email opened by Sarah Williams', color: 'blue' },
-  { channel: 'linkedin', action: 'Connection accepted: Marcus Chen', color: 'blue' },
-  { channel: 'phone', action: 'Voice AI: Meeting booked with Pixel Studios', color: 'green' },
-  // etc.
-];
-```
+#### Completed Tasks:
+- **OUTCOME-001**: Created `supabase/migrations/028_downstream_outcomes.sql`
+  - meetings table for booking and show rate tracking
+  - deals table for full pipeline management (stages, value, won/lost)
+  - deal_stage_history table for stage transition tracking
+  - revenue_attribution table for channel ROI analysis
+  - Helper functions: get_funnel_analytics(), get_channel_revenue_attribution(), get_lost_deal_analysis(), get_show_rate_analysis()
+  - Triggers for automatic stage change tracking and meeting outcome handling
 
-**AI Email Typing Animation (LP-003):**
-```javascript
-// Typewriter effect showing AI personalization
-const emailText = `Hi Sarah,\n\nI noticed Bloom Digital has been expanding into healthcare marketing...`;
-// Variable typing speed for natural feel
-```
+- **OUTCOME-002**: Created `src/services/deal_service.py`
+  - Full CRUD for deals
+  - Stage management with automatic probability updates
+  - close_won() and close_lost() with proper lead status updates
+  - Pipeline summary and stage history
+  - Revenue attribution calculation
+  - External CRM sync (HubSpot, Salesforce, Pipedrive)
 
-**Interactive Tabs (LP-004):**
-- 5 tabs: Discover → Find → Score → Reach → Convert
-- Auto-rotate every 6 seconds when section in view
-- Stop rotation on user interaction
-- Use IntersectionObserver for visibility detection
+- **OUTCOME-003**: Created `src/services/meeting_service.py`
+  - Full CRUD for meetings
+  - Confirmation and reminder tracking
+  - Show/no-show recording with outcome
+  - Reschedule and cancellation handling
+  - Upcoming meetings and reminder queue
+  - Show rate analytics integration
 
-**ALS Tier Fix (LP-010, LP-012):**
-```
-Current Vercel: Hot (80-100), Warm (50-79), Nurture (0-49)
-Correct per codebase: Hot (85+), Warm (60-84), Cool (35-59), Cold (20-34), Dead (<20)
-```
+- **OUTCOME-004**: Updated `src/api/routes/webhooks.py`
+  - Added `/webhooks/crm/deal` for HubSpot/Salesforce/Pipedrive sync
+  - Added `/webhooks/crm/meeting` for Calendly/Cal.com integration
+  - CRM parsers for each provider
+  - Calendly webhook handler for new bookings and cancellations
 
-### Files to Modify
+- **OUTCOME-005**: Created `src/detectors/funnel_detector.py`
+  - Show rate pattern detection (by ALS tier, confirmation, reminders)
+  - Meeting-to-deal pattern detection
+  - Win rate pattern detection (by channel, velocity)
+  - Lost deal pattern analysis
+  - Channel revenue attribution patterns
+  - Deal velocity patterns by stage
 
-| File | Changes |
-|------|---------|
-| `frontend/app/page.tsx` | Main landing page component |
-| `frontend/components/landing/ActivityFeed.tsx` | New component for live feed |
-| `frontend/components/landing/TypingDemo.tsx` | New component for AI email demo |
-| `frontend/components/landing/HowItWorksTabs.tsx` | New tabbed component |
+- **OUTCOME-006**: Funnel analytics integrated via get_funnel_analytics()
+  - Total pipeline value, weighted value
+  - Show rate, meeting-to-deal rate, win rate
+  - Lead-to-meeting and lead-to-win rates
+  - Channel attribution by first touch
 
-### Success Criteria
+- **OUTCOME-007**: Show rate tracking via get_show_rate_analysis()
+  - Show rate, no-show rate, reschedule rate
+  - Confirmed vs unconfirmed show rates
+  - Reminded vs not reminded show rates
 
-- [ ] Headline is punchier (V2 version)
-- [ ] Activity feed shows live-looking updates
-- [ ] AI email typing demonstrates personalization
-- [ ] How It Works is interactive, not static
-- [ ] Stats show real numbers, not placeholders
-- [ ] ALS tiers match codebase (85+ = Hot)
-- [ ] Spots remaining is dynamic or shows consistent number
+#### Files Created/Modified:
+- `supabase/migrations/028_downstream_outcomes.sql` (new)
+- `src/services/deal_service.py` (new)
+- `src/services/meeting_service.py` (new)
+- `src/detectors/funnel_detector.py` (new)
+- `src/detectors/__init__.py` (modified - added FunnelDetector export)
+- `src/api/routes/webhooks.py` (modified - CRM webhooks)
+- `tests/test_services/test_deal_service.py` (new)
+- `tests/test_services/test_meeting_service.py` (new)
 
-### Phase 21 Summary
+#### Phase 24E Status: ✅ COMPLETE (7/7 tasks)
 
-| Section | Tasks | Status |
-|---------|-------|--------|
-| 21A: Content Merges | 5 | ✅ |
-| 21B: Keep from Vercel | 4 | ✅ |
-| 21C: Consistency Fixes | 3 | ✅ |
-| 21D: v0.dev Integration | 4 | ✅ |
-| 21E: Optional | 2 | 🔴 |
-| **TOTAL** | **18** | **17/18** |
+#### Phase 24 (All Sub-phases) Status: ✅ COMPLETE (44/44 tasks)
+- 24A: Lead Pool Architecture ✅
+- 24B: Content & Template Tracking ✅
+- 24C: Email Engagement Tracking ✅
+- 24D: Conversation Threading ✅
+- 24E: Downstream Outcomes ✅
 
-**21D Note:** Dashboard components created manually with recharts integration (V0-004 complete)
-
-### Session: January 5, 2026
-
-#### Completed
-- V0-001: Installed v0-sdk (0.15.3)
-- V0-002: Created helper script `scripts/v0-generate.ts`
-- V0-003: Created landing page components (ActivityFeed, TypingDemo, HowItWorksTabs, SocialProofBar)
-- LP-001: Updated headline to "Stop chasing clients. Let them find you."
-- LP-002: Added live activity feed section
-- LP-003: Added AI email typing demo
-- LP-004: Replaced static How It Works with interactive tabs
-- LP-005: Updated stats to 55%+, 12%+, <14 days
-- LP-010/012: Fixed ALS tier thresholds (Hot=85-100, Warm=60-84, Cool=35-59, Cold=20-34)
-- LP-011: Spots remaining already dynamic via useFoundingSpots hook
-
-#### Files Created
-- `scripts/v0-generate.ts` - v0 API helper script
-- `frontend/components/landing/ActivityFeed.tsx` - Animated activity notifications
-- `frontend/components/landing/TypingDemo.tsx` - AI email typing animation
-- `frontend/components/landing/HowItWorksTabs.tsx` - Interactive 5-step process tabs
-- `frontend/components/landing/SocialProofBar.tsx` - Stats bar component
-
-#### Files Modified
-- `frontend/app/page.tsx` - Integrated new components, fixed headline and stats
-- `frontend/package.json` - Added v0-sdk, dotenv
-
-#### Next Steps
-- V0-004: Generate dashboard components (optional - can use existing)
-- LP-013/014: Optional dark mode toggle and A/B testing
-- Final deployment to Vercel
-
-### Session: January 5, 2026 (Afternoon) - UI Refinements
-
-#### Completed
-- **Dashboard Demo Fixes:**
-  - Fixed text visibility issues (added explicit `text-white` to stat values)
-  - Reduced animation jitter (static stats, slower activity feed rotation 4s)
-  - Replaced AI Email card with Pipeline Growth line chart (recharts)
-  - Smoother typing animation using refs instead of state
-
-- **How It Works - Instagram-style Carousel:**
-  - Converted tabbed interface to horizontal carousel
-  - Added prev/next arrow navigation (ChevronLeft/Right)
-  - Side slides show blurred/scaled (blur-[2px], scale-90, opacity-40)
-  - Auto-advances every 6 seconds (pauses on hover)
-  - Dot indicators with gradient active state
-  - Keyboard navigation support (arrow keys)
-
-- **Carousel Step Eyebrow Labels:**
-  - Added "Step X • Title" at top center of each card
-  - Format: "Step 1 • Discover", "Step 5 • Convert", etc.
-  - Styling: `text-xs font-semibold tracking-widest text-gray-500 uppercase text-center mb-6`
-
-- **Pipeline Growth Chart:**
-  - Using recharts (ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip)
-  - 6-month data showing upward trend (Aug $142K → Jan $284K)
-  - Green stroke (#22c55e) with "+100% YoY" badge
-  - Matches styling of Live Activity card
-
-#### Files Created
-- `frontend/components/landing/HowItWorksCarousel.tsx` - Instagram-style carousel
-
-#### Files Modified
-- `frontend/components/landing/DashboardDemo.tsx` - Fixed colors, replaced email with chart
-- `frontend/app/page.tsx` - Updated to use HowItWorksCarousel
-
-#### Deployment
-- Deployed to Vercel: https://agency-os-liart.vercel.app
-- Commits: b90d2e8, 3dda270, b73fdec
+**CIS can now learn from the complete customer journey:**
+- WHO: Lead attributes, seniority, company size, tech stack, location
+- WHAT: Templates, A/B tests, full message content, personalization
+- WHEN: Email opens/clicks, lead timezone, optimal send times
+- HOW: Channel sequences, engagement correlation
+- CONVERSATION: Objections, sentiment, thread patterns
+- FUNNEL: Show rates, deal stages, revenue attribution, lost reasons
 
 ---
 
-### Session: January 5, 2026 (Evening)
+### January 7, 2026 (Session 4) - Phase 24F & 24G Complete (Claude Code)
+**CRM Push + Customer Import for Full-Funnel Data**
 
-#### Completed
-- CRED-008: ClickSend credentials configured (direct mail channel)
-- Synced all missing env vars to Railway via MCP:
-  - TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
-  - HEYREACH_API_KEY
-  - VAPI_API_KEY, ELEVENLABS_API_KEY
-  - CLICKSEND_USERNAME, CLICKSEND_API_KEY
-- Verified Railway deployment healthy: `{"status":"healthy","service":"agency-os-api","version":"3.0.0"}`
+#### Phase 24F: CRM Push (Complete)
+- **Migration:** `supabase/migrations/029_crm_push.sql` - Tables for CRM configs and push logs
+- **Service:** `src/services/crm_push_service.py` - HubSpot, Pipedrive, Close integrations
+- **API Routes:** `src/api/routes/crm.py` - CRM connection and push endpoints
+- **Tests:** `tests/test_services/test_crm_push_service.py`
 
-#### Files Modified
-- `config/.env` - Added ClickSend credentials
-- `config/RAILWAY_ENV_VARS.txt` - Full sync with all channel credentials
+#### Phase 24G: Customer Import (Complete)
+- **Migration:** `supabase/migrations/030_customer_import.sql` - Tables for customers, suppression list, buyer signals
+- **Services:**
+  - `src/services/customer_import_service.py` - CRM/CSV import with auto-suppression
+  - `src/services/suppression_service.py` - Check and manage suppression list
+  - `src/services/buyer_signal_service.py` - Platform buyer intelligence
+- **Engine Updates:**
+  - `src/services/jit_validator.py` - Added suppression checking (step 3)
+  - `src/engines/scout.py` - Added filter_suppressed_leads() and batch filtering
+  - `src/engines/scorer.py` - Added _get_buyer_boost() for scoring (max 15 points)
+- **API Routes:** `src/api/routes/customers.py` - Customer import, suppression, buyer signal endpoints
+- **Tests:** `tests/test_services/test_customer_import_service.py`
 
-#### Status
-- All 11 API credentials now configured ✅
-- Railway production environment fully synced ✅
-- Health check passing ✅
-- Ready for E2E journey testing (M1-M6)
+**Key Features Implemented:**
+1. **Customer Import:** Import from HubSpot, Pipedrive, Close CRMs or CSV
+2. **Auto-Suppression:** Imported customers automatically added to suppression list
+3. **JIT Validation:** Pre-send validation now checks suppression before outreach
+4. **Scout Filtering:** Pool population filters out suppressed leads
+5. **Buyer Signals:** Platform-wide buyer intelligence gives scoring boost (max 15 points)
 
-#### Next Steps
-- Run M1: Signup & Onboarding test
-- Run M2-M6: Full journey validation
+**Phase 24 Status:** 24A-G COMPLETE (66/66 tasks)
+
+---
+
+### January 7, 2026 (Session 4) - Phase 24H Created
+**LinkedIn Credential-Based Connection**
+
+- Created `docs/phases/PHASE_24H_LINKEDIN_CONNECTION.md` (400+ lines)
+- 10 tasks, 8 hours estimated
+- Credential-based onboarding for HeyReach LinkedIn automation
+- Encrypted credential storage, 2FA handling, admin notification flow
+
+---
+
+#### Phase 24H: LinkedIn Credential-Based Connection
+**Status:** 📋 Planned | **Estimate:** 8 hours | **Tasks:** 10
+
+Client provides LinkedIn credentials during onboarding for HeyReach automation.
+
+| ID | Task | Est | Status |
+|----|------|-----|--------|
+| LI-001 | Create migration 031_linkedin_credentials.sql | 1h | ⬜ |
+| LI-002 | Create LinkedInConnectionService | 2h | ⬜ |
+| LI-003 | Create credential encryption utilities | 1h | ⬜ |
+| LI-004 | Create LinkedIn connection API endpoints | 1h | ⬜ |
+| LI-005 | Update onboarding flow - LinkedIn step | 1h | ⬜ |
+| LI-006 | Create LinkedIn credential form component | 1h | ⬜ |
+| LI-007 | Create 2FA input component | 30min | ⬜ |
+| LI-008 | Update settings page - LinkedIn section | 30min | ⬜ |
+| LI-009 | Admin notification for manual HeyReach connection | 30min | ⬜ |
+| LI-010 | Write tests | 1h | ⬜ |
+
+**Spec:** `docs/phases/PHASE_24H_LINKEDIN_CONNECTION.md`
+
+---
+
+#### Test Mode Implementation
+**Status:** 📋 Planned | **Estimate:** 3 hours | **Tasks:** 6
+
+Redirect all outbound to test recipients for safe E2E testing.
+
+| ID | Task | Est | Status |
+|----|------|-----|--------|
+| TEST-001 | Add TEST_MODE config and env vars | 30min | ⬜ |
+| TEST-002 | Update Email Engine with redirect | 30min | ⬜ |
+| TEST-003 | Update SMS Engine with redirect | 30min | ⬜ |
+| TEST-004 | Update Voice Engine with redirect | 30min | ⬜ |
+| TEST-005 | Update LinkedIn Engine with redirect | 30min | ⬜ |
+| TEST-006 | Add daily send limit safeguard | 30min | ⬜ |
+
+**Test Recipients:**
+- Email: david.stephens@keiracom.com
+- SMS/Voice: +61457543392
+- LinkedIn: https://www.linkedin.com/in/david-stephens-8847a636a/
+
+---
+
+**Total Remaining:** Phase 24H (10 tasks, 8h) + Test Mode (6 tasks, 3h) = **16 tasks, 11 hours**
 
 ---
 
@@ -1120,5 +1326,3 @@ Correct per codebase: Hot (85+), Warm (60-84), Cool (35-59), Cold (20-34), Dead 
 - [Project Blueprint](PROJECT_BLUEPRINT.md)
 - [Completed Phases Archive](docs/progress/COMPLETED_PHASES.md)
 - [Marketing Launch Plan](docs/marketing/MARKETING_LAUNCH_PLAN.md)
-- [Conversion Skill](skills/conversion/CONVERSION_SKILL.md)
-- [Live Test Config](tests/live/config.py)

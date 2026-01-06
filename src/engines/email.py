@@ -1,8 +1,8 @@
 """
 FILE: src/engines/email.py
 PURPOSE: Email engine using Resend integration with threading support
-PHASE: 4 (Engines), modified Phase 16 for Conversion Intelligence
-TASK: ENG-005, 16E-002
+PHASE: 4 (Engines), modified Phase 16/24B for Conversion Intelligence
+TASK: ENG-005, 16E-002, CONTENT-002
 DEPENDENCIES:
   - src/engines/base.py
   - src/engines/content_utils.py (Phase 16)
@@ -20,6 +20,12 @@ RULES APPLIED:
 PHASE 16 CHANGES:
   - Added content_snapshot capture for WHAT Detector learning
   - Tracks touch_number and sequence context
+PHASE 24B CHANGES:
+  - Store full_message_body for complete content analysis
+  - Link to template_id for template tracking
+  - Track ab_test_id and ab_variant for A/B testing
+  - Store links_included and personalization_fields_used
+  - Track ai_model_used and prompt_version
 """
 
 from datetime import datetime
@@ -101,6 +107,12 @@ class EmailEngine(OutreachEngine):
                 - reply_to: Reply-to address
                 - sequence_step: Step number in sequence
                 - is_followup: Whether this is a follow-up
+                - template_id: UUID of template used (Phase 24B)
+                - ab_test_id: UUID of A/B test (Phase 24B)
+                - ab_variant: A/B variant 'A', 'B', or 'control' (Phase 24B)
+                - ai_model_used: AI model used for generation (Phase 24B)
+                - prompt_version: Version of prompt used (Phase 24B)
+                - personalization_fields_used: List of personalization fields (Phase 24B)
 
         Returns:
             EngineResult with send result
@@ -183,7 +195,7 @@ class EmailEngine(OutreachEngine):
 
             message_id = result.get("message_id")
 
-            # Log activity with content snapshot (Phase 16)
+            # Log activity with content snapshot (Phase 16) and template tracking (Phase 24B)
             await self._log_activity(
                 db=db,
                 lead=lead,
@@ -198,6 +210,13 @@ class EmailEngine(OutreachEngine):
                 html_content=content,  # Phase 16: Pass full content for snapshot
                 sequence_id=kwargs.get("sequence_id"),  # Phase 16: Sequence context
                 provider_response=result,
+                # Phase 24B: Content tracking fields
+                template_id=kwargs.get("template_id"),
+                ab_test_id=kwargs.get("ab_test_id"),
+                ab_variant=kwargs.get("ab_variant"),
+                ai_model_used=kwargs.get("ai_model_used"),
+                prompt_version=kwargs.get("prompt_version"),
+                personalization_fields_used=kwargs.get("personalization_fields_used"),
             )
 
             return EngineResult.ok(
@@ -373,11 +392,19 @@ class EmailEngine(OutreachEngine):
         html_content: str | None = None,
         sequence_id: str | None = None,
         provider_response: dict | None = None,
+        # Phase 24B: Content tracking fields
+        template_id: UUID | None = None,
+        ab_test_id: UUID | None = None,
+        ab_variant: str | None = None,
+        ai_model_used: str | None = None,
+        prompt_version: str | None = None,
+        personalization_fields_used: list[str] | None = None,
     ) -> None:
         """
         Log email activity to database.
 
         Phase 16: Now captures content_snapshot for WHAT Detector learning.
+        Phase 24B: Now stores template_id, A/B test info, and full message body.
         """
         # Build content snapshot for Conversion Intelligence (Phase 16)
         snapshot = None
@@ -393,6 +420,23 @@ class EmailEngine(OutreachEngine):
                 sequence_id=sequence_id,
                 channel="email",
             )
+            # Phase 24B: Enhance snapshot with additional tracking data
+            if snapshot:
+                snapshot["ai_model"] = ai_model_used
+                snapshot["prompt_version"] = prompt_version
+                snapshot["personalization_available"] = personalization_fields_used or []
+                if ab_variant:
+                    snapshot["ab_variant"] = ab_variant
+                if ab_test_id:
+                    snapshot["ab_test_id"] = str(ab_test_id)
+
+        # Phase 24B: Extract links from HTML content
+        links_included = None
+        if html_content:
+            import re
+            # Extract URLs from href attributes
+            href_pattern = r'href=["\']([^"\']+)["\']'
+            links_included = list(set(re.findall(href_pattern, html_content)))
 
         activity = Activity(
             client_id=lead.client_id,
@@ -407,6 +451,15 @@ class EmailEngine(OutreachEngine):
             subject=subject,
             content_preview=content_preview,
             content_snapshot=snapshot,  # Phase 16: Store content snapshot
+            # Phase 24B: Content tracking fields
+            template_id=template_id,
+            ab_test_id=ab_test_id,
+            ab_variant=ab_variant,
+            full_message_body=html_content,  # Store complete content
+            links_included=links_included,
+            personalization_fields_used=personalization_fields_used,
+            ai_model_used=ai_model_used,
+            prompt_version=prompt_version,
             provider="resend",
             provider_status="sent",
             provider_response=provider_response,
@@ -468,3 +521,9 @@ def get_email_engine() -> EmailEngine:
 # [x] All functions have docstrings
 # [x] Phase 16: content_snapshot captured for WHAT Detector
 # [x] Phase 16: touch_number and sequence_id tracked
+# [x] Phase 24B: template_id stored for template tracking
+# [x] Phase 24B: ab_test_id and ab_variant for A/B testing
+# [x] Phase 24B: full_message_body stored for complete content analysis
+# [x] Phase 24B: links_included extracted from HTML
+# [x] Phase 24B: personalization_fields_used tracked
+# [x] Phase 24B: ai_model_used and prompt_version stored

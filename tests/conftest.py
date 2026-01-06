@@ -18,7 +18,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 # Set test environment before importing app modules
-os.environ["ENVIRONMENT"] = "test"
+os.environ["ENVIRONMENT"] = "development"  # Use development for tests (Settings model requires development/staging/production)
 os.environ["DATABASE_URL"] = "postgresql+asyncpg://test:test@localhost:5432/test_db"
 os.environ["REDIS_URL"] = "redis://localhost:6379/1"
 os.environ["SUPABASE_URL"] = "https://test.supabase.co"

@@ -352,6 +352,8 @@ async def root() -> dict[str, Any]:
 from src.api.routes.admin import router as admin_router
 from src.api.routes.campaign_generation import router as campaign_generation_router
 from src.api.routes.campaigns import router as campaigns_router
+from src.api.routes.crm import router as crm_router
+from src.api.routes.customers import router as customers_router
 from src.api.routes.health import router as health_router
 from src.api.routes.leads import router as leads_router
 from src.api.routes.meetings import router as meetings_router
@@ -376,6 +378,10 @@ app.include_router(meetings_router, prefix="/api/v1")
 app.include_router(onboarding_router, prefix="/api/v1")
 # Phase 16: Conversion Intelligence
 app.include_router(patterns_router, prefix="/api/v1/patterns")
+# Phase 24E: CRM Push
+app.include_router(crm_router, prefix="/api/v1")
+# Phase 24F: Customer Import
+app.include_router(customers_router, prefix="/api/v1")
 
 
 # ============================================

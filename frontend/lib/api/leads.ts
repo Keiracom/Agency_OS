@@ -106,3 +106,83 @@ export async function enrichLeadsBulk(
 ): Promise<{ queued: number }> {
   return api.post(`/api/v1/clients/${clientId}/leads/bulk-enrich`, { lead_ids: leadIds });
 }
+
+// ============================================
+// Deep Research API
+// ============================================
+
+export interface DeepResearchData {
+  lead_id: string;
+  status: "not_started" | "in_progress" | "complete" | "failed";
+  icebreaker_hook: string | null;
+  profile_summary: string | null;
+  recent_activity: string | null;
+  posts_found: number;
+  confidence: number | null;
+  run_at: string | null;
+  social_posts: {
+    id: string;
+    source: string;
+    content: string;
+    date: string | null;
+    hook: string | null;
+  }[];
+  error: string | null;
+}
+
+export interface TriggerResearchResponse {
+  lead_id: string;
+  status: "queued" | "already_complete" | "not_eligible" | "complete" | "failed";
+  message: string;
+  als_score: number | null;
+  als_tier: string | null;
+}
+
+export interface ScoreLeadResponse {
+  lead_id: string;
+  als_score: number;
+  als_tier: string;
+  als_breakdown: Record<string, number>;
+  deep_research_triggered: boolean;
+  message: string;
+}
+
+/**
+ * Get deep research data for a lead
+ */
+export async function getLeadResearch(
+  clientId: string,
+  leadId: string
+): Promise<DeepResearchData> {
+  return api.get<DeepResearchData>(
+    `/api/v1/clients/${clientId}/leads/${leadId}/research`
+  );
+}
+
+/**
+ * Trigger deep research for a lead
+ */
+export async function triggerLeadResearch(
+  clientId: string,
+  leadId: string,
+  force: boolean = false
+): Promise<TriggerResearchResponse> {
+  const query = force ? "?force=true" : "";
+  return api.post<TriggerResearchResponse>(
+    `/api/v1/clients/${clientId}/leads/${leadId}/research${query}`
+  );
+}
+
+/**
+ * Score a lead and optionally auto-trigger deep research
+ */
+export async function scoreLead(
+  clientId: string,
+  leadId: string,
+  autoResearch: boolean = true
+): Promise<ScoreLeadResponse> {
+  const query = autoResearch ? "" : "?auto_research=false";
+  return api.post<ScoreLeadResponse>(
+    `/api/v1/clients/${clientId}/leads/${leadId}/score${query}`
+  );
+}

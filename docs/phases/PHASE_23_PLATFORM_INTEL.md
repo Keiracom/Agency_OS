@@ -1,4 +1,4 @@
-# Phase 20: Platform Intelligence
+# Phase 23: Platform Intelligence
 
 **Status:** 📋 Planned (Post-Launch)  
 **Tasks:** 18  
@@ -55,23 +55,23 @@ Monthly aggregation once sufficient conversions exist.
 
 ## Tasks Overview
 
-### 20A: Platform Priors (5 tasks)
+### 23A: Platform Priors (5 tasks)
 - PLT-001 to PLT-005
 
-### 20B: Platform Learning Engine (6 tasks)
+### 23B: Platform Learning Engine (6 tasks)
 - PLT-006 to PLT-011
 
-### 20C: Scorer Integration (4 tasks)
+### 23C: Scorer Integration (4 tasks)
 - PLT-012 to PLT-015
 
-### 20D: Testing (3 tasks)
-- TST-020-1 to TST-020-3
+### 23D: Testing (3 tasks)
+- TST-023-1 to TST-023-3
 
 ---
 
 ## Database Schema
 
-**Migration:** `018_platform_intelligence.sql`
+**Migration:** `023_platform_intelligence.sql`
 
 Tables:
 - `platform_patterns` — Cross-client patterns
@@ -89,4 +89,4 @@ Tables:
 
 ## Full Spec
 
-See `PROJECT_BLUEPRINT_FULL_ARCHIVE.md` Phase 20 section for complete details.
+See `PROJECT_BLUEPRINT_FULL_ARCHIVE.md` Phase 23 (Platform Intelligence) section for complete details.

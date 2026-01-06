@@ -1,8 +1,8 @@
 """
 FILE: src/engines/linkedin.py
 PURPOSE: LinkedIn engine using HeyReach integration
-PHASE: 4 (Engines), modified Phase 16 for Conversion Intelligence
-TASK: ENG-007, 16E-003
+PHASE: 4 (Engines), modified Phase 16/24B for Conversion Intelligence
+TASK: ENG-007, 16E-003, CONTENT-004
 DEPENDENCIES:
   - src/engines/base.py
   - src/engines/content_utils.py (Phase 16)
@@ -19,6 +19,12 @@ RULES APPLIED:
 PHASE 16 CHANGES:
   - Added content_snapshot capture for WHAT Detector learning
   - Tracks touch_number, sequence context, and message_type
+PHASE 24B CHANGES:
+  - Store full_message_body for complete content analysis
+  - Link to template_id for template tracking
+  - Track ab_test_id and ab_variant for A/B testing
+  - Store links_included and personalization_fields_used
+  - Track ai_model_used and prompt_version
 """
 
 from datetime import datetime
@@ -95,6 +101,12 @@ class LinkedInEngine(OutreachEngine):
             **kwargs: Additional options:
                 - seat_id: HeyReach seat ID (required)
                 - action: 'connection' or 'message' (default: 'message')
+                - template_id: UUID of template used (Phase 24B)
+                - ab_test_id: UUID of A/B test (Phase 24B)
+                - ab_variant: A/B variant 'A', 'B', or 'control' (Phase 24B)
+                - ai_model_used: AI model used for generation (Phase 24B)
+                - prompt_version: Version of prompt used (Phase 24B)
+                - personalization_fields_used: List of personalization fields (Phase 24B)
 
         Returns:
             EngineResult with send result
@@ -161,7 +173,7 @@ class LinkedInEngine(OutreachEngine):
             # Get message/request ID
             provider_id = result.get("message_id") or result.get("request_id")
 
-            # Log activity with content snapshot (Phase 16)
+            # Log activity with content snapshot (Phase 16) and template tracking (Phase 24B)
             await self._log_activity(
                 db=db,
                 lead=lead,
@@ -176,6 +188,13 @@ class LinkedInEngine(OutreachEngine):
                 sequence_id=kwargs.get("sequence_id"),
                 provider_response=result,
                 seat_id=seat_id,
+                # Phase 24B: Content tracking fields
+                template_id=kwargs.get("template_id"),
+                ab_test_id=kwargs.get("ab_test_id"),
+                ab_variant=kwargs.get("ab_variant"),
+                ai_model_used=kwargs.get("ai_model_used"),
+                prompt_version=kwargs.get("prompt_version"),
+                personalization_fields_used=kwargs.get("personalization_fields_used"),
             )
 
             return EngineResult.ok(
@@ -424,11 +443,19 @@ class LinkedInEngine(OutreachEngine):
         sequence_id: str | None = None,
         provider_response: dict | None = None,
         seat_id: str | None = None,
+        # Phase 24B: Content tracking fields
+        template_id: UUID | None = None,
+        ab_test_id: UUID | None = None,
+        ab_variant: str | None = None,
+        ai_model_used: str | None = None,
+        prompt_version: str | None = None,
+        personalization_fields_used: list[str] | None = None,
     ) -> None:
         """
         Log LinkedIn activity to database.
 
         Phase 16: Now captures content_snapshot for WHAT Detector learning.
+        Phase 24B: Now stores template_id, A/B test info, and full message body.
         """
         metadata = {}
         if seat_id:
@@ -436,7 +463,8 @@ class LinkedInEngine(OutreachEngine):
 
         # Build content snapshot for Conversion Intelligence (Phase 16)
         snapshot = None
-        if message_content or connection_note:
+        full_body = message_content or connection_note
+        if full_body:
             snapshot = build_linkedin_snapshot(
                 message=message_content or "",
                 lead=lead,
@@ -445,6 +473,23 @@ class LinkedInEngine(OutreachEngine):
                 touch_number=sequence_step or 1,
                 sequence_id=sequence_id,
             )
+            # Phase 24B: Enhance snapshot with additional tracking data
+            if snapshot:
+                snapshot["ai_model"] = ai_model_used
+                snapshot["prompt_version"] = prompt_version
+                snapshot["personalization_available"] = personalization_fields_used or []
+                if ab_variant:
+                    snapshot["ab_variant"] = ab_variant
+                if ab_test_id:
+                    snapshot["ab_test_id"] = str(ab_test_id)
+
+        # Phase 24B: Extract links from LinkedIn content
+        links_included = None
+        if full_body:
+            import re
+            # Extract URLs from LinkedIn message content
+            url_pattern = r'https?://[^\s]+'
+            links_included = list(set(re.findall(url_pattern, full_body)))
 
         activity = Activity(
             client_id=lead.client_id,
@@ -456,10 +501,19 @@ class LinkedInEngine(OutreachEngine):
             sequence_step=sequence_step,
             content_preview=content_preview,
             content_snapshot=snapshot,  # Phase 16: Store content snapshot
+            # Phase 24B: Content tracking fields
+            template_id=template_id,
+            ab_test_id=ab_test_id,
+            ab_variant=ab_variant,
+            full_message_body=full_body,  # Store complete content
+            links_included=links_included,
+            personalization_fields_used=personalization_fields_used,
+            ai_model_used=ai_model_used,
+            prompt_version=prompt_version,
             provider="heyreach",
             provider_status=action,
             provider_response=provider_response,
-            metadata=metadata,
+            extra_data=metadata,
             created_at=datetime.utcnow(),
         )
 
@@ -500,3 +554,9 @@ def get_linkedin_engine() -> LinkedInEngine:
 # [x] All functions have docstrings
 # [x] Phase 16: content_snapshot captured for WHAT Detector
 # [x] Phase 16: touch_number, sequence_id, and message_type tracked
+# [x] Phase 24B: template_id stored for template tracking
+# [x] Phase 24B: ab_test_id and ab_variant for A/B testing
+# [x] Phase 24B: full_message_body stored for complete content analysis
+# [x] Phase 24B: links_included extracted from LinkedIn
+# [x] Phase 24B: personalization_fields_used tracked
+# [x] Phase 24B: ai_model_used and prompt_version stored

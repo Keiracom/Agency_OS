@@ -24,6 +24,8 @@ This package contains all API routes for Agency OS:
 
 from src.api.routes.admin import router as admin_router
 from src.api.routes.campaigns import router as campaigns_router
+from src.api.routes.crm import router as crm_router
+from src.api.routes.customers import router as customers_router
 from src.api.routes.health import router as health_router
 from src.api.routes.leads import router as leads_router
 from src.api.routes.meetings import router as meetings_router
@@ -45,4 +47,8 @@ __all__ = [
     "meetings_router",
     # Phase 16: Conversion Intelligence
     "patterns_router",
+    # Phase 24E: CRM Push
+    "crm_router",
+    # Phase 24F: Customer Import
+    "customers_router",
 ]

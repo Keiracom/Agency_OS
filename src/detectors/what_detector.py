@@ -1,8 +1,8 @@
 """
 FILE: src/detectors/what_detector.py
 PURPOSE: WHAT Detector - Analyzes content patterns that correlate with conversions
-PHASE: 16 (Conversion Intelligence)
-TASK: 16B
+PHASE: 16 (Conversion Intelligence), modified Phase 24B
+TASK: 16B, CONTENT-006
 DEPENDENCIES:
   - src/detectors/base.py
   - src/models/activity.py
@@ -18,6 +18,12 @@ WHAT Pattern Outputs:
   - angles: Which message angles work
   - optimal_length: Optimal message length by channel
   - personalization_lift: Lift from personalization elements
+
+Phase 24B Additions:
+  - template_performance: Which templates convert best
+  - ab_test_insights: Insights from A/B test results
+  - link_effectiveness: Whether including links helps/hurts
+  - ai_model_performance: Which AI models generate better content
 """
 
 import re
@@ -104,9 +110,15 @@ class WhatDetector(BaseDetector):
         optimal_length = self._analyze_length(activities, baseline_rate)
         personalization_lift = self._analyze_personalization(activities, baseline_rate)
 
+        # Phase 24B: New analyses
+        template_performance = self._analyze_templates(activities, baseline_rate)
+        ab_test_insights = self._analyze_ab_tests(activities, baseline_rate)
+        link_effectiveness = self._analyze_links(activities, baseline_rate)
+        ai_model_performance = self._analyze_ai_models(activities, baseline_rate)
+
         patterns = {
             "type": "what",
-            "version": "1.0",
+            "version": "2.0",  # Updated for Phase 24B
             "computed_at": datetime.utcnow().isoformat(),
             "sample_size": len(activities),
             "baseline_conversion_rate": round(baseline_rate, 4),
@@ -116,6 +128,11 @@ class WhatDetector(BaseDetector):
             "angles": angles,
             "optimal_length": optimal_length,
             "personalization_lift": personalization_lift,
+            # Phase 24B additions
+            "template_performance": template_performance,
+            "ab_test_insights": ab_test_insights,
+            "link_effectiveness": link_effectiveness,
+            "ai_model_performance": ai_model_performance,
         }
 
         return await self.save_pattern(
@@ -365,11 +382,232 @@ class WhatDetector(BaseDetector):
 
         return result
 
+    # ========================================
+    # Phase 24B: New Analysis Methods
+    # ========================================
+
+    def _analyze_templates(
+        self,
+        activities: list[Activity],
+        baseline_rate: float,
+    ) -> dict[str, Any]:
+        """
+        Analyze template performance.
+
+        Phase 24B: Uses template_id field to track which templates convert best.
+        """
+        template_stats: dict[str, dict[str, int]] = defaultdict(
+            lambda: {"total": 0, "converted": 0}
+        )
+
+        for activity in activities:
+            template_id = getattr(activity, "template_id", None)
+            if not template_id:
+                continue
+
+            template_key = str(template_id)
+            template_stats[template_key]["total"] += 1
+            if activity.led_to_booking:
+                template_stats[template_key]["converted"] += 1
+
+        rankings = []
+        for template_id, stats in template_stats.items():
+            if stats["total"] < 5:
+                continue
+            rate = stats["converted"] / stats["total"]
+            rankings.append({
+                "template_id": template_id,
+                "conversion_rate": round(rate, 4),
+                "sample": stats["total"],
+                "lift": round(self.calculate_lift(rate, baseline_rate), 2),
+            })
+
+        rankings.sort(key=lambda x: x["conversion_rate"], reverse=True)
+        return {
+            "top_templates": rankings[:5],
+            "bottom_templates": rankings[-3:] if len(rankings) > 3 else [],
+            "total_templates_analyzed": len(template_stats),
+        }
+
+    def _analyze_ab_tests(
+        self,
+        activities: list[Activity],
+        baseline_rate: float,
+    ) -> dict[str, Any]:
+        """
+        Analyze A/B test results.
+
+        Phase 24B: Uses ab_test_id and ab_variant to aggregate test insights.
+        """
+        test_results: dict[str, dict[str, dict[str, int]]] = defaultdict(
+            lambda: defaultdict(lambda: {"total": 0, "converted": 0})
+        )
+
+        for activity in activities:
+            ab_test_id = getattr(activity, "ab_test_id", None)
+            ab_variant = getattr(activity, "ab_variant", None)
+            if not ab_test_id or not ab_variant:
+                continue
+
+            test_key = str(ab_test_id)
+            test_results[test_key][ab_variant]["total"] += 1
+            if activity.led_to_booking:
+                test_results[test_key][ab_variant]["converted"] += 1
+
+        insights = []
+        for test_id, variants in test_results.items():
+            if len(variants) < 2:
+                continue
+
+            variant_rates = {}
+            for variant, stats in variants.items():
+                if stats["total"] >= 5:
+                    variant_rates[variant] = stats["converted"] / stats["total"]
+
+            if len(variant_rates) >= 2:
+                best_variant = max(variant_rates, key=variant_rates.get)
+                worst_variant = min(variant_rates, key=variant_rates.get)
+                insights.append({
+                    "test_id": test_id,
+                    "best_variant": best_variant,
+                    "best_rate": round(variant_rates[best_variant], 4),
+                    "worst_variant": worst_variant,
+                    "worst_rate": round(variant_rates[worst_variant], 4),
+                    "lift_difference": round(
+                        variant_rates[best_variant] - variant_rates[worst_variant], 4
+                    ),
+                })
+
+        return {
+            "test_insights": insights,
+            "total_tests_analyzed": len(test_results),
+        }
+
+    def _analyze_links(
+        self,
+        activities: list[Activity],
+        baseline_rate: float,
+    ) -> dict[str, Any]:
+        """
+        Analyze whether including links helps or hurts conversion.
+
+        Phase 24B: Uses links_included field.
+        """
+        with_links = {"total": 0, "converted": 0}
+        without_links = {"total": 0, "converted": 0}
+        link_count_stats: dict[int, dict[str, int]] = defaultdict(
+            lambda: {"total": 0, "converted": 0}
+        )
+
+        for activity in activities:
+            links = getattr(activity, "links_included", None) or []
+
+            if links:
+                with_links["total"] += 1
+                if activity.led_to_booking:
+                    with_links["converted"] += 1
+
+                # Track by link count
+                count = min(len(links), 5)  # Cap at 5 for stats
+                link_count_stats[count]["total"] += 1
+                if activity.led_to_booking:
+                    link_count_stats[count]["converted"] += 1
+            else:
+                without_links["total"] += 1
+                if activity.led_to_booking:
+                    without_links["converted"] += 1
+
+        # Calculate rates
+        with_rate = with_links["converted"] / with_links["total"] if with_links["total"] >= 5 else None
+        without_rate = without_links["converted"] / without_links["total"] if without_links["total"] >= 5 else None
+
+        # Find optimal link count
+        optimal_count = None
+        best_rate = 0
+        for count, stats in link_count_stats.items():
+            if stats["total"] >= 5:
+                rate = stats["converted"] / stats["total"]
+                if rate > best_rate:
+                    best_rate = rate
+                    optimal_count = count
+
+        return {
+            "with_links_rate": round(with_rate, 4) if with_rate else None,
+            "without_links_rate": round(without_rate, 4) if without_rate else None,
+            "links_lift": round(self.calculate_lift(with_rate, without_rate), 2) if with_rate and without_rate else None,
+            "optimal_link_count": optimal_count,
+            "recommendation": "include_links" if (with_rate and without_rate and with_rate > without_rate) else "no_links",
+        }
+
+    def _analyze_ai_models(
+        self,
+        activities: list[Activity],
+        baseline_rate: float,
+    ) -> dict[str, Any]:
+        """
+        Analyze which AI models generate better-converting content.
+
+        Phase 24B: Uses ai_model_used and prompt_version fields.
+        """
+        model_stats: dict[str, dict[str, int]] = defaultdict(
+            lambda: {"total": 0, "converted": 0}
+        )
+        prompt_stats: dict[str, dict[str, int]] = defaultdict(
+            lambda: {"total": 0, "converted": 0}
+        )
+
+        for activity in activities:
+            ai_model = getattr(activity, "ai_model_used", None)
+            prompt_version = getattr(activity, "prompt_version", None)
+
+            if ai_model:
+                model_stats[ai_model]["total"] += 1
+                if activity.led_to_booking:
+                    model_stats[ai_model]["converted"] += 1
+
+            if prompt_version:
+                prompt_stats[prompt_version]["total"] += 1
+                if activity.led_to_booking:
+                    prompt_stats[prompt_version]["converted"] += 1
+
+        # Rank models
+        model_rankings = []
+        for model, stats in model_stats.items():
+            if stats["total"] >= 5:
+                rate = stats["converted"] / stats["total"]
+                model_rankings.append({
+                    "model": model,
+                    "conversion_rate": round(rate, 4),
+                    "sample": stats["total"],
+                    "lift": round(self.calculate_lift(rate, baseline_rate), 2),
+                })
+        model_rankings.sort(key=lambda x: x["conversion_rate"], reverse=True)
+
+        # Rank prompts
+        prompt_rankings = []
+        for prompt, stats in prompt_stats.items():
+            if stats["total"] >= 5:
+                rate = stats["converted"] / stats["total"]
+                prompt_rankings.append({
+                    "prompt_version": prompt,
+                    "conversion_rate": round(rate, 4),
+                    "sample": stats["total"],
+                    "lift": round(self.calculate_lift(rate, baseline_rate), 2),
+                })
+        prompt_rankings.sort(key=lambda x: x["conversion_rate"], reverse=True)
+
+        return {
+            "best_model": model_rankings[0] if model_rankings else None,
+            "model_rankings": model_rankings[:3],
+            "best_prompt": prompt_rankings[0] if prompt_rankings else None,
+            "prompt_rankings": prompt_rankings[:3],
+        }
+
     def _default_patterns(self) -> dict[str, Any]:
         """Return default patterns when insufficient data."""
         return {
             "type": "what",
-            "version": "1.0",
+            "version": "2.0",
             "computed_at": datetime.utcnow().isoformat(),
             "sample_size": 0,
             "subject_patterns": {"winning": []},
@@ -378,6 +616,11 @@ class WhatDetector(BaseDetector):
             "angles": {"rankings": []},
             "optimal_length": {},
             "personalization_lift": {},
+            # Phase 24B additions
+            "template_performance": {"top_templates": [], "bottom_templates": [], "total_templates_analyzed": 0},
+            "ab_test_insights": {"test_insights": [], "total_tests_analyzed": 0},
+            "link_effectiveness": {"with_links_rate": None, "without_links_rate": None, "recommendation": "unknown"},
+            "ai_model_performance": {"best_model": None, "model_rankings": [], "best_prompt": None, "prompt_rankings": []},
             "note": "Insufficient data for pattern detection.",
         }
 
@@ -399,3 +642,7 @@ class WhatDetector(BaseDetector):
 # [x] Personalization lift calculation
 # [x] All functions have type hints
 # [x] All functions have docstrings
+# [x] Phase 24B: Template performance analysis
+# [x] Phase 24B: A/B test insights aggregation
+# [x] Phase 24B: Link effectiveness analysis
+# [x] Phase 24B: AI model performance analysis

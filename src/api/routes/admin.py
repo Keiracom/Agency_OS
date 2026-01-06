@@ -962,6 +962,492 @@ async def get_all_leads(
 
 
 # ============================================================================
+# Lead Pool Management Endpoints (Phase 24A)
+# ============================================================================
+
+
+class PoolStats(BaseModel):
+    """Lead pool statistics."""
+
+    total_leads: int
+    available: int
+    assigned: int
+    converted: int
+    bounced: int
+    unsubscribed: int
+    utilization_rate: float
+    avg_als_score: Optional[float] = None
+
+
+class PoolLeadItem(BaseModel):
+    """Pool lead list item."""
+
+    id: UUID
+    email: str
+    first_name: Optional[str]
+    last_name: Optional[str]
+    company_name: Optional[str]
+    title: Optional[str]
+    pool_status: str
+    email_status: Optional[str]
+    als_score: Optional[int]
+    als_tier: Optional[str]
+    created_at: datetime
+
+
+class PoolLeadListResponse(BaseModel):
+    """Paginated pool lead list."""
+
+    leads: list[PoolLeadItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class PoolLeadDetail(BaseModel):
+    """Detailed pool lead information."""
+
+    id: UUID
+    email: str
+    email_status: Optional[str]
+    first_name: Optional[str]
+    last_name: Optional[str]
+    title: Optional[str]
+    seniority: Optional[str]
+    company_name: Optional[str]
+    company_domain: Optional[str]
+    company_industry: Optional[str]
+    company_employee_count: Optional[int]
+    company_country: Optional[str]
+    linkedin_url: Optional[str]
+    phone: Optional[str]
+    pool_status: str
+    als_score: Optional[int]
+    als_tier: Optional[str]
+    is_bounced: bool
+    is_unsubscribed: bool
+    created_at: datetime
+    assignments: list[dict]
+
+
+class AssignmentItem(BaseModel):
+    """Assignment list item."""
+
+    id: UUID
+    lead_pool_id: UUID
+    client_id: UUID
+    client_name: str
+    status: str
+    total_touches: int
+    has_replied: bool
+    assigned_at: datetime
+
+
+class AssignmentListResponse(BaseModel):
+    """Paginated assignment list."""
+
+    assignments: list[AssignmentItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class ManualAssignRequest(BaseModel):
+    """Request to manually assign pool leads."""
+
+    lead_pool_ids: list[UUID] = Field(..., description="Pool lead IDs to assign")
+    client_id: UUID = Field(..., description="Client to assign to")
+    campaign_id: Optional[UUID] = None
+
+
+class ReleaseLeadRequest(BaseModel):
+    """Request to release leads back to pool."""
+
+    assignment_ids: list[UUID] = Field(..., description="Assignment IDs to release")
+    reason: str = Field(default="admin_manual", description="Release reason")
+
+
+@router.get("/admin/pool/stats", response_model=PoolStats)
+async def get_pool_stats(
+    admin: AdminContext = Depends(get_admin_context),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Get lead pool statistics."""
+    from src.services.lead_pool_service import LeadPoolService
+
+    pool_service = LeadPoolService(db)
+    stats = await pool_service.get_pool_stats()
+
+    # Calculate utilization rate
+    total = stats.get("total_leads", 0)
+    assigned = stats.get("assigned", 0)
+    utilization_rate = (assigned / total * 100) if total > 0 else 0.0
+
+    # Get average ALS score
+    stmt = text("""
+        SELECT AVG(als_score) as avg_score
+        FROM lead_pool
+        WHERE als_score IS NOT NULL
+    """)
+    result = await db.execute(stmt)
+    row = result.fetchone()
+    avg_score = float(row.avg_score) if row and row.avg_score else None
+
+    return PoolStats(
+        total_leads=stats.get("total_leads", 0),
+        available=stats.get("available", 0),
+        assigned=stats.get("assigned", 0),
+        converted=stats.get("converted", 0),
+        bounced=stats.get("bounced", 0),
+        unsubscribed=stats.get("unsubscribed", 0),
+        utilization_rate=round(utilization_rate, 2),
+        avg_als_score=round(avg_score, 1) if avg_score else None,
+    )
+
+
+@router.get("/admin/pool/leads", response_model=PoolLeadListResponse)
+async def get_pool_leads(
+    admin: AdminContext = Depends(get_admin_context),
+    db: AsyncSession = Depends(get_db_session),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    status_filter: Optional[str] = Query(None, alias="status"),
+    tier_filter: Optional[str] = Query(None, alias="tier"),
+    search: Optional[str] = None,
+):
+    """Get paginated list of pool leads."""
+    conditions = []
+    params: dict = {"limit": page_size, "offset": (page - 1) * page_size}
+
+    if status_filter:
+        conditions.append("pool_status = :status")
+        params["status"] = status_filter
+    if tier_filter:
+        conditions.append("als_tier = :tier")
+        params["tier"] = tier_filter
+    if search:
+        conditions.append("(email ILIKE :search OR company_name ILIKE :search)")
+        params["search"] = f"%{search}%"
+
+    where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+
+    # Count total
+    count_stmt = text(f"SELECT COUNT(*) FROM lead_pool {where_clause}")
+    result = await db.execute(count_stmt, params)
+    total = result.scalar() or 0
+
+    # Get leads
+    stmt = text(f"""
+        SELECT id, email, first_name, last_name, company_name, title,
+               pool_status, email_status, als_score, als_tier, created_at
+        FROM lead_pool
+        {where_clause}
+        ORDER BY created_at DESC
+        LIMIT :limit OFFSET :offset
+    """)
+    result = await db.execute(stmt, params)
+    rows = result.fetchall()
+
+    leads = [
+        PoolLeadItem(
+            id=row.id,
+            email=row.email,
+            first_name=row.first_name,
+            last_name=row.last_name,
+            company_name=row.company_name,
+            title=row.title,
+            pool_status=row.pool_status,
+            email_status=row.email_status,
+            als_score=row.als_score,
+            als_tier=row.als_tier,
+            created_at=row.created_at,
+        )
+        for row in rows
+    ]
+
+    return PoolLeadListResponse(
+        leads=leads,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/admin/pool/leads/{lead_pool_id}", response_model=PoolLeadDetail)
+async def get_pool_lead_detail(
+    lead_pool_id: UUID,
+    admin: AdminContext = Depends(get_admin_context),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Get detailed pool lead information with assignments."""
+    # Get pool lead
+    stmt = text("""
+        SELECT id, email, email_status, first_name, last_name, title, seniority,
+               company_name, company_domain, company_industry, company_employee_count,
+               company_country, linkedin_url, phone, pool_status, als_score, als_tier,
+               is_bounced, is_unsubscribed, created_at
+        FROM lead_pool
+        WHERE id = :id
+    """)
+    result = await db.execute(stmt, {"id": str(lead_pool_id)})
+    row = result.fetchone()
+
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Pool lead {lead_pool_id} not found",
+        )
+
+    # Get assignments
+    stmt = text("""
+        SELECT la.id, la.lead_pool_id, la.client_id, c.name as client_name,
+               la.status, la.total_touches, la.has_replied, la.assigned_at
+        FROM lead_assignments la
+        JOIN clients c ON c.id = la.client_id
+        WHERE la.lead_pool_id = :lead_pool_id
+        ORDER BY la.assigned_at DESC
+    """)
+    result = await db.execute(stmt, {"lead_pool_id": str(lead_pool_id)})
+    assignment_rows = result.fetchall()
+
+    assignments = [
+        {
+            "id": str(a.id),
+            "client_id": str(a.client_id),
+            "client_name": a.client_name,
+            "status": a.status,
+            "total_touches": a.total_touches,
+            "has_replied": a.has_replied,
+            "assigned_at": a.assigned_at.isoformat() if a.assigned_at else None,
+        }
+        for a in assignment_rows
+    ]
+
+    return PoolLeadDetail(
+        id=row.id,
+        email=row.email,
+        email_status=row.email_status,
+        first_name=row.first_name,
+        last_name=row.last_name,
+        title=row.title,
+        seniority=row.seniority,
+        company_name=row.company_name,
+        company_domain=row.company_domain,
+        company_industry=row.company_industry,
+        company_employee_count=row.company_employee_count,
+        company_country=row.company_country,
+        linkedin_url=row.linkedin_url,
+        phone=row.phone,
+        pool_status=row.pool_status,
+        als_score=row.als_score,
+        als_tier=row.als_tier,
+        is_bounced=row.is_bounced or False,
+        is_unsubscribed=row.is_unsubscribed or False,
+        created_at=row.created_at,
+        assignments=assignments,
+    )
+
+
+@router.get("/admin/pool/assignments", response_model=AssignmentListResponse)
+async def get_pool_assignments(
+    admin: AdminContext = Depends(get_admin_context),
+    db: AsyncSession = Depends(get_db_session),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    client_id: Optional[UUID] = None,
+    status_filter: Optional[str] = Query(None, alias="status"),
+):
+    """Get paginated list of pool assignments."""
+    conditions = []
+    params: dict = {"limit": page_size, "offset": (page - 1) * page_size}
+
+    if client_id:
+        conditions.append("la.client_id = :client_id")
+        params["client_id"] = str(client_id)
+    if status_filter:
+        conditions.append("la.status = :status")
+        params["status"] = status_filter
+
+    where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+
+    # Count total
+    count_stmt = text(f"""
+        SELECT COUNT(*)
+        FROM lead_assignments la
+        {where_clause}
+    """)
+    result = await db.execute(count_stmt, params)
+    total = result.scalar() or 0
+
+    # Get assignments
+    stmt = text(f"""
+        SELECT la.id, la.lead_pool_id, la.client_id, c.name as client_name,
+               la.status, la.total_touches, la.has_replied, la.assigned_at
+        FROM lead_assignments la
+        JOIN clients c ON c.id = la.client_id
+        {where_clause}
+        ORDER BY la.assigned_at DESC
+        LIMIT :limit OFFSET :offset
+    """)
+    result = await db.execute(stmt, params)
+    rows = result.fetchall()
+
+    assignments = [
+        AssignmentItem(
+            id=row.id,
+            lead_pool_id=row.lead_pool_id,
+            client_id=row.client_id,
+            client_name=row.client_name,
+            status=row.status,
+            total_touches=row.total_touches or 0,
+            has_replied=row.has_replied or False,
+            assigned_at=row.assigned_at,
+        )
+        for row in rows
+    ]
+
+    return AssignmentListResponse(
+        assignments=assignments,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.post("/admin/pool/assign", status_code=status.HTTP_201_CREATED)
+async def manual_assign_leads(
+    request: ManualAssignRequest,
+    admin: AdminContext = Depends(get_admin_context),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Manually assign pool leads to a client."""
+    from src.services.lead_allocator_service import LeadAllocatorService
+
+    allocator = LeadAllocatorService(db)
+    assigned_count = 0
+    errors = []
+
+    for lead_pool_id in request.lead_pool_ids:
+        try:
+            # Insert assignment directly
+            stmt = text("""
+                INSERT INTO lead_assignments (
+                    lead_pool_id, client_id, campaign_id, assigned_by, assignment_reason
+                ) VALUES (
+                    :lead_pool_id, :client_id, :campaign_id, 'admin_manual', 'Manual assignment by admin'
+                )
+                ON CONFLICT (lead_pool_id) DO NOTHING
+                RETURNING id
+            """)
+            result = await db.execute(
+                stmt,
+                {
+                    "lead_pool_id": str(lead_pool_id),
+                    "client_id": str(request.client_id),
+                    "campaign_id": str(request.campaign_id) if request.campaign_id else None,
+                }
+            )
+            row = result.fetchone()
+            if row:
+                # Update pool status
+                await db.execute(
+                    text("UPDATE lead_pool SET pool_status = 'assigned' WHERE id = :id"),
+                    {"id": str(lead_pool_id)}
+                )
+                assigned_count += 1
+            else:
+                errors.append({"lead_pool_id": str(lead_pool_id), "error": "Already assigned"})
+        except Exception as e:
+            errors.append({"lead_pool_id": str(lead_pool_id), "error": str(e)})
+
+    await db.commit()
+
+    return {
+        "success": True,
+        "assigned_count": assigned_count,
+        "errors": errors,
+        "client_id": str(request.client_id),
+    }
+
+
+@router.post("/admin/pool/release")
+async def release_pool_leads(
+    request: ReleaseLeadRequest,
+    admin: AdminContext = Depends(get_admin_context),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Release leads back to the pool."""
+    from src.services.lead_allocator_service import LeadAllocatorService
+
+    allocator = LeadAllocatorService(db)
+    released_count = 0
+    errors = []
+
+    for assignment_id in request.assignment_ids:
+        try:
+            success = await allocator.release_lead(
+                assignment_id=assignment_id,
+                reason=request.reason,
+            )
+            if success:
+                released_count += 1
+            else:
+                errors.append({"assignment_id": str(assignment_id), "error": "Not found or already released"})
+        except Exception as e:
+            errors.append({"assignment_id": str(assignment_id), "error": str(e)})
+
+    return {
+        "success": True,
+        "released_count": released_count,
+        "errors": errors,
+    }
+
+
+@router.get("/admin/pool/utilization")
+async def get_pool_utilization(
+    admin: AdminContext = Depends(get_admin_context),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Get pool utilization metrics by client."""
+    stmt = text("""
+        SELECT
+            c.id as client_id,
+            c.name as client_name,
+            COUNT(la.id) as total_assigned,
+            COUNT(CASE WHEN la.status = 'active' THEN 1 END) as active,
+            COUNT(CASE WHEN la.status = 'converted' THEN 1 END) as converted,
+            COUNT(CASE WHEN la.status = 'released' THEN 1 END) as released,
+            COALESCE(SUM(la.total_touches), 0) as total_touches,
+            COUNT(CASE WHEN la.has_replied THEN 1 END) as replied
+        FROM clients c
+        LEFT JOIN lead_assignments la ON la.client_id = c.id
+        WHERE c.deleted_at IS NULL
+        GROUP BY c.id, c.name
+        HAVING COUNT(la.id) > 0
+        ORDER BY COUNT(la.id) DESC
+    """)
+    result = await db.execute(stmt)
+    rows = result.fetchall()
+
+    return {
+        "clients": [
+            {
+                "client_id": str(row.client_id),
+                "client_name": row.client_name,
+                "total_assigned": row.total_assigned,
+                "active": row.active,
+                "converted": row.converted,
+                "released": row.released,
+                "total_touches": row.total_touches,
+                "replied": row.replied,
+                "conversion_rate": round(row.converted / row.total_assigned * 100, 2) if row.total_assigned else 0,
+            }
+            for row in rows
+        ]
+    }
+
+
+# ============================================================================
 # Verification Checklist
 # ============================================================================
 # [x] Contract comment at top
@@ -977,3 +1463,10 @@ async def get_all_leads(
 # [x] Global campaigns/leads endpoints
 # [x] Activity feed endpoint
 # [x] Alerts endpoint
+# [x] Pool stats endpoint (Phase 24A)
+# [x] Pool leads list endpoint (Phase 24A)
+# [x] Pool lead detail endpoint (Phase 24A)
+# [x] Pool assignments list endpoint (Phase 24A)
+# [x] Manual assignment endpoint (Phase 24A)
+# [x] Release leads endpoint (Phase 24A)
+# [x] Pool utilization endpoint (Phase 24A)

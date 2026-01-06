@@ -1,8 +1,8 @@
 """
 FILE: src/engines/scorer.py
 PURPOSE: Calculate ALS (Agency Lead Score) using 5-component formula
-PHASE: 4 (Engines), modified Phase 16 for Conversion Intelligence
-TASK: ENG-003, 16A-006, 16E-004
+PHASE: 4 (Engines), modified Phase 16, 24A (Lead Pool), 24F (Buyer Signals)
+TASK: ENG-003, 16A-006, 16E-004, POOL-009, CUST-012
 DEPENDENCIES:
   - src/engines/base.py
   - src/models/lead.py
@@ -18,16 +18,28 @@ PHASE 16 CHANGES:
   - Stores raw component scores in als_components
   - Stores weights used in als_weights_used
   - Stores scored_at timestamp for learning analysis
+PHASE 24A CHANGES:
+  - Added score_pool_lead method for pool-first scoring
+  - Added score_pool_batch for bulk pool scoring
+  - Pool leads scored directly without needing Lead model
+  - Scores stored in lead_pool table
+PHASE 24F CHANGES:
+  - Added buyer signal boost via get_buyer_score_boost database function
+  - Leads from known buyer companies get score boost (max 15 points)
+  - Uses platform_buyer_signals table for cross-client intelligence
 """
 
+import logging
 from datetime import date, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, select, update
+from sqlalchemy import and_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import BaseEngine, EngineResult
+
+logger = logging.getLogger(__name__)
 from src.models.base import ChannelType, LeadStatus
 from src.models.client import Client
 from src.models.conversion_patterns import ConversionPattern
@@ -83,6 +95,9 @@ TIER_HOT = 85
 TIER_WARM = 60
 TIER_COOL = 35
 TIER_COLD = 20
+
+# Phase 24F: Buyer signal boost (max points)
+MAX_BUYER_BOOST = 15
 
 # Default component weights (Phase 16)
 # These are used when no learned weights are available
@@ -195,6 +210,11 @@ class ScorerEngine(BaseEngine):
             for comp in normalized
         )
 
+        # Phase 24F: Apply buyer signal boost
+        buyer_boost = await self._get_buyer_boost(db, lead.domain)
+        boost_points = buyer_boost.get("boost_points", 0)
+        weighted_score += boost_points
+
         # Cap at 0-100
         total_score = int(max(0, min(100, weighted_score)))
 
@@ -227,6 +247,9 @@ class ScorerEngine(BaseEngine):
             "weights_source": weights_source,
             "available_channels": [c.value for c in channels],
             "lead_id": str(lead_id),
+            # Phase 24F: Buyer signal boost
+            "buyer_boost": boost_points,
+            "buyer_boost_reason": buyer_boost.get("reason"),
         }
 
         # Update lead in database (now includes Phase 16 fields)
@@ -587,6 +610,65 @@ class ScorerEngine(BaseEngine):
 
         return None
 
+    async def _get_buyer_boost(
+        self,
+        db: AsyncSession,
+        domain: str | None,
+    ) -> dict[str, Any]:
+        """
+        Get buyer signal boost for a domain.
+
+        Phase 24F: Uses get_buyer_score_boost database function to check
+        if the company is a known buyer on the platform.
+
+        Args:
+            db: Database session
+            domain: Company domain to check
+
+        Returns:
+            Dict with boost_points (int) and reason (str or None)
+        """
+        if not domain:
+            return {"boost_points": 0, "reason": None}
+
+        try:
+            result = await db.execute(
+                text("SELECT get_buyer_score_boost(:domain) as boost"),
+                {"domain": domain.lower()},
+            )
+            row = result.fetchone()
+            boost = row.boost if row else 0
+
+            if boost > 0:
+                # Get more details about the signal
+                signal_result = await db.execute(
+                    text("""
+                        SELECT times_bought, buyer_score
+                        FROM platform_buyer_signals
+                        WHERE domain = :domain
+                    """),
+                    {"domain": domain.lower()},
+                )
+                signal_row = signal_result.fetchone()
+
+                if signal_row:
+                    times_bought = signal_row.times_bought or 1
+                    if times_bought >= 3:
+                        reason = f"Repeat agency buyer ({times_bought}x)"
+                    elif times_bought >= 2:
+                        reason = "Has bought agency services before (2x)"
+                    else:
+                        reason = "Known agency services buyer"
+
+                    logger.info(f"Buyer boost for {domain}: +{boost} points ({reason})")
+                    return {"boost_points": boost, "reason": reason}
+
+            return {"boost_points": 0, "reason": None}
+
+        except Exception as e:
+            logger.warning(f"Error getting buyer boost for {domain}: {e}")
+            return {"boost_points": 0, "reason": None}
+
     async def _update_lead_score(
         self,
         db: AsyncSession,
@@ -657,6 +739,483 @@ class ScorerEngine(BaseEngine):
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
+    # ============================================
+    # PHASE 24A: Pool Scoring Methods
+    # ============================================
+
+    async def score_pool_lead(
+        self,
+        db: AsyncSession,
+        lead_pool_id: UUID,
+        target_industries: list[str] | None = None,
+        competitor_domains: list[str] | None = None,
+    ) -> EngineResult[dict[str, Any]]:
+        """
+        Calculate ALS score for a lead in the pool.
+
+        Phase 24A: Scores leads directly from lead_pool table
+        without requiring a Lead model instance.
+
+        Args:
+            db: Database session (passed by caller)
+            lead_pool_id: Lead pool UUID to score
+            target_industries: Optional list of target industries
+            competitor_domains: Optional list of competitor domains
+
+        Returns:
+            EngineResult with scoring breakdown
+        """
+        # Get pool lead data
+        pool_lead = await self._get_pool_lead(db, lead_pool_id)
+        if not pool_lead:
+            return EngineResult.fail(
+                error="Lead not found in pool",
+                metadata={"lead_pool_id": str(lead_pool_id)},
+            )
+
+        # Calculate raw component scores
+        raw_data_quality = self._score_pool_data_quality(pool_lead)
+        raw_authority = self._score_pool_authority(pool_lead)
+        raw_company_fit = self._score_pool_company_fit(pool_lead, target_industries)
+        raw_timing = self._score_pool_timing(pool_lead)
+        raw_risk = self._score_pool_risk(pool_lead, competitor_domains)
+
+        # Normalize to 0-100 scale
+        normalized = {
+            "data_quality": raw_data_quality * 5,      # 0-20 -> 0-100
+            "authority": raw_authority * 4,            # 0-25 -> 0-100
+            "company_fit": raw_company_fit * 4,        # 0-25 -> 0-100
+            "timing": raw_timing * 6.67,               # 0-15 -> 0-100
+            "risk": raw_risk * 6.67,                   # 0-15 -> 0-100
+        }
+
+        # Calculate weighted score (using default weights for pool)
+        weighted_score = sum(
+            normalized[comp] * DEFAULT_WEIGHTS.get(comp, 0.2)
+            for comp in normalized
+        )
+
+        # Phase 24F: Apply buyer signal boost
+        company_domain = pool_lead.get("company_domain")
+        buyer_boost = await self._get_buyer_boost(db, company_domain)
+        boost_points = buyer_boost.get("boost_points", 0)
+        weighted_score += boost_points
+
+        total_score = int(max(0, min(100, weighted_score)))
+        tier = self._get_tier(total_score)
+        channels = self._get_channels_for_tier(tier)
+
+        # Build result
+        score_breakdown = {
+            "als_score": total_score,
+            "als_tier": tier,
+            "als_data_quality": raw_data_quality,
+            "als_authority": raw_authority,
+            "als_company_fit": raw_company_fit,
+            "als_timing": raw_timing,
+            "als_risk": raw_risk,
+            "als_components": {
+                "data_quality": raw_data_quality,
+                "authority": raw_authority,
+                "company_fit": raw_company_fit,
+                "timing": raw_timing,
+                "risk": raw_risk,
+            },
+            "available_channels": [c.value for c in channels],
+            "lead_pool_id": str(lead_pool_id),
+            # Phase 24F: Buyer signal boost
+            "buyer_boost": boost_points,
+            "buyer_boost_reason": buyer_boost.get("reason"),
+        }
+
+        # Update pool lead in database
+        await self._update_pool_lead_score(db, lead_pool_id, score_breakdown)
+
+        return EngineResult.ok(
+            data=score_breakdown,
+            metadata={
+                "engine": self.name,
+                "tier": tier,
+                "channels_available": len(channels),
+                "source": "lead_pool",
+            },
+        )
+
+    async def score_pool_batch(
+        self,
+        db: AsyncSession,
+        lead_pool_ids: list[UUID],
+        target_industries: list[str] | None = None,
+        competitor_domains: list[str] | None = None,
+    ) -> EngineResult[dict[str, Any]]:
+        """
+        Score a batch of pool leads.
+
+        Phase 24A: Efficient batch scoring for lead pool.
+
+        Args:
+            db: Database session (passed by caller)
+            lead_pool_ids: List of lead pool UUIDs to score
+            target_industries: Optional target industries
+            competitor_domains: Optional competitor domains
+
+        Returns:
+            EngineResult with batch scoring summary
+        """
+        results = {
+            "total": len(lead_pool_ids),
+            "scored": 0,
+            "failures": 0,
+            "tier_distribution": {"hot": 0, "warm": 0, "cool": 0, "cold": 0, "dead": 0},
+            "average_score": 0.0,
+            "scored_leads": [],
+            "failed_leads": [],
+        }
+
+        total_score = 0
+
+        for pool_id in lead_pool_ids:
+            try:
+                result = await self.score_pool_lead(
+                    db=db,
+                    lead_pool_id=pool_id,
+                    target_industries=target_industries,
+                    competitor_domains=competitor_domains,
+                )
+
+                if result.success:
+                    results["scored"] += 1
+                    tier = result.data["als_tier"]
+                    score = result.data["als_score"]
+                    total_score += score
+                    results["tier_distribution"][tier] += 1
+                    results["scored_leads"].append({
+                        "lead_pool_id": str(pool_id),
+                        "score": score,
+                        "tier": tier,
+                    })
+                else:
+                    results["failures"] += 1
+                    results["failed_leads"].append({
+                        "lead_pool_id": str(pool_id),
+                        "error": result.error,
+                    })
+
+            except Exception as e:
+                results["failures"] += 1
+                results["failed_leads"].append({
+                    "lead_pool_id": str(pool_id),
+                    "error": str(e),
+                })
+
+        if results["scored"] > 0:
+            results["average_score"] = total_score / results["scored"]
+
+        return EngineResult.ok(
+            data=results,
+            metadata={
+                "batch_size": len(lead_pool_ids),
+                "success_rate": results["scored"] / results["total"]
+                if results["total"] > 0 else 0,
+                "source": "lead_pool",
+            },
+        )
+
+    async def _get_pool_lead(
+        self,
+        db: AsyncSession,
+        lead_pool_id: UUID,
+    ) -> dict[str, Any] | None:
+        """
+        Get lead data from pool.
+
+        Args:
+            db: Database session
+            lead_pool_id: Pool lead UUID
+
+        Returns:
+            Pool lead data dict or None
+        """
+        from sqlalchemy import text
+
+        query = text("""
+            SELECT id, email, email_status, phone, linkedin_url,
+                   title, seniority, company_name, company_domain,
+                   company_industry, company_employee_count, company_country,
+                   company_founded_year, company_is_hiring,
+                   company_latest_funding_date, is_bounced, is_unsubscribed,
+                   pool_status, enrichment_confidence
+            FROM lead_pool
+            WHERE id = :id
+        """)
+
+        result = await db.execute(query, {"id": str(lead_pool_id)})
+        row = result.fetchone()
+
+        return dict(row._mapping) if row else None
+
+    def _score_pool_data_quality(self, pool_lead: dict[str, Any]) -> int:
+        """
+        Calculate Data Quality score for pool lead (max 20 points).
+
+        Uses pool-specific fields:
+        - email_status instead of email_verified
+        - phone presence
+        - linkedin_url presence
+        """
+        score = 0
+
+        # Email status scoring
+        email_status = pool_lead.get("email_status", "")
+        if email_status == "verified":
+            score += SCORE_EMAIL_VERIFIED  # 8 points
+        elif email_status == "catch_all":
+            score += 5  # Partial credit
+        elif email_status == "guessed":
+            score += 3  # Lower credit
+        elif email_status:
+            score += 2  # Has email at least
+
+        # Phone
+        if pool_lead.get("phone"):
+            score += SCORE_PHONE  # 6 points
+
+        # LinkedIn
+        if pool_lead.get("linkedin_url"):
+            score += SCORE_LINKEDIN  # 4 points
+
+        return min(20, score)
+
+    def _score_pool_authority(self, pool_lead: dict[str, Any]) -> int:
+        """
+        Calculate Authority score for pool lead (max 25 points).
+
+        Uses pool-specific seniority field when available.
+        """
+        # First check seniority field
+        seniority = pool_lead.get("seniority", "")
+        if seniority:
+            seniority_scores = {
+                "owner": 25,
+                "founder": 25,
+                "c_suite": 22,
+                "vp": 18,
+                "director": 15,
+                "manager": 10,
+                "senior": 7,
+                "entry": 3,
+            }
+            for level, points in seniority_scores.items():
+                if level in seniority.lower():
+                    return points
+
+        # Fall back to title parsing
+        title = pool_lead.get("title", "")
+        if not title:
+            return 0
+
+        title_lower = title.lower()
+        for title_keyword, points in AUTHORITY_SCORES.items():
+            if title_keyword in title_lower:
+                return points
+
+        return 5  # Default for unknown titles
+
+    def _score_pool_company_fit(
+        self,
+        pool_lead: dict[str, Any],
+        target_industries: list[str] | None = None,
+    ) -> int:
+        """
+        Calculate Company Fit score for pool lead (max 25 points).
+
+        Uses pool-specific company fields.
+        """
+        score = 0
+        industries = target_industries or TARGET_INDUSTRIES
+
+        # Industry match
+        industry = pool_lead.get("company_industry", "")
+        if industry:
+            industry_lower = industry.lower()
+            for target in industries:
+                if target.lower() in industry_lower:
+                    score += SCORE_INDUSTRY_MATCH
+                    break
+
+        # Employee count (ideal: 5-50)
+        employee_count = pool_lead.get("company_employee_count")
+        if employee_count:
+            if 5 <= employee_count <= 50:
+                score += SCORE_EMPLOYEE_COUNT_IDEAL
+            elif 51 <= employee_count <= 200:
+                score += 5
+            elif 1 <= employee_count <= 4:
+                score += 3
+
+        # Country (Australia preferred)
+        country = pool_lead.get("company_country", "")
+        if country:
+            country_lower = country.lower()
+            if country_lower in ["australia", "au", "aus"]:
+                score += SCORE_COUNTRY_AUSTRALIA
+            elif country_lower in ["new zealand", "nz", "united states", "us", "usa", "uk", "gb"]:
+                score += 4
+
+        return min(25, score)
+
+    def _score_pool_timing(self, pool_lead: dict[str, Any]) -> int:
+        """
+        Calculate Timing score for pool lead (max 15 points).
+
+        Uses pool-specific company fields.
+        """
+        score = 0
+        today = date.today()
+
+        # Company is hiring
+        if pool_lead.get("company_is_hiring"):
+            score += SCORE_HIRING  # 5 points
+
+        # Recent funding
+        funding_date = pool_lead.get("company_latest_funding_date")
+        if funding_date:
+            if isinstance(funding_date, str):
+                try:
+                    funding_date = date.fromisoformat(funding_date[:10])
+                except ValueError:
+                    funding_date = None
+
+            if funding_date:
+                months_since = (today - funding_date).days / 30
+                if months_since < 12:
+                    score += SCORE_RECENT_FUNDING  # 4 points
+                elif months_since < 24:
+                    score += 2
+
+        # Note: Pool doesn't track employment_start_date
+        # New role scoring would require assignment-level data
+
+        return min(15, score)
+
+    def _score_pool_risk(
+        self,
+        pool_lead: dict[str, Any],
+        competitor_domains: list[str] | None = None,
+    ) -> int:
+        """
+        Calculate Risk score for pool lead (15 base with deductions).
+
+        Uses pool-specific bounce and unsubscribe flags.
+        """
+        score = 15  # Start with full points
+
+        # Bounced
+        if pool_lead.get("is_bounced"):
+            score += DEDUCTION_BOUNCED  # -10
+
+        # Unsubscribed
+        if pool_lead.get("is_unsubscribed"):
+            score += DEDUCTION_UNSUBSCRIBED  # -15
+
+        # Pool status check
+        pool_status = pool_lead.get("pool_status", "")
+        if pool_status in ("bounced", "invalid"):
+            score += DEDUCTION_BOUNCED
+
+        # Competitor domain check
+        if competitor_domains:
+            domain = pool_lead.get("company_domain", "")
+            if domain and domain.lower() in [d.lower() for d in competitor_domains]:
+                score += DEDUCTION_COMPETITOR  # -15
+
+        # Bad title check
+        title = pool_lead.get("title", "")
+        if title:
+            title_lower = title.lower()
+            for bad_title in BAD_TITLES:
+                if bad_title in title_lower:
+                    score += DEDUCTION_BAD_TITLE  # -5
+                    break
+
+        return max(0, score)
+
+    async def _update_pool_lead_score(
+        self,
+        db: AsyncSession,
+        lead_pool_id: UUID,
+        score_data: dict[str, Any],
+    ) -> None:
+        """
+        Update pool lead with scoring data.
+
+        Stores ALS score and tier in lead_pool table.
+        """
+        from sqlalchemy import text
+
+        query = text("""
+            UPDATE lead_pool
+            SET als_score = :als_score,
+                als_tier = :als_tier,
+                als_components = :als_components,
+                scored_at = NOW(),
+                updated_at = NOW()
+            WHERE id = :id
+        """)
+
+        import json
+        await db.execute(
+            query,
+            {
+                "id": str(lead_pool_id),
+                "als_score": score_data["als_score"],
+                "als_tier": score_data["als_tier"],
+                "als_components": json.dumps(score_data.get("als_components", {})),
+            }
+        )
+        await db.commit()
+
+    async def get_pool_leads_by_tier(
+        self,
+        db: AsyncSession,
+        tier: str,
+        limit: int = 100,
+        pool_status: str = "available",
+    ) -> list[dict[str, Any]]:
+        """
+        Get pool leads by tier.
+
+        Phase 24A: Query leads directly from pool by tier.
+
+        Args:
+            db: Database session
+            tier: Tier to filter by
+            limit: Maximum leads to return
+            pool_status: Filter by pool status (default: available)
+
+        Returns:
+            List of pool lead dicts in the specified tier
+        """
+        from sqlalchemy import text
+
+        query = text("""
+            SELECT id, email, first_name, last_name, title,
+                   company_name, als_score, als_tier, als_components
+            FROM lead_pool
+            WHERE als_tier = :tier
+            AND pool_status = :pool_status
+            ORDER BY als_score DESC NULLS LAST
+            LIMIT :limit
+        """)
+
+        result = await db.execute(
+            query,
+            {"tier": tier, "pool_status": pool_status, "limit": limit}
+        )
+        rows = result.fetchall()
+
+        return [dict(row._mapping) for row in rows]
+
 
 # Singleton instance
 _scorer_engine: ScorerEngine | None = None
@@ -692,3 +1251,24 @@ def get_scorer_engine() -> ScorerEngine:
 # [x] Test file created: tests/test_engines/test_scorer.py
 # [x] All functions have type hints
 # [x] All functions have docstrings
+# ============================================
+# PHASE 24A POOL ADDITIONS
+# ============================================
+# [x] score_pool_lead for individual pool scoring
+# [x] score_pool_batch for bulk pool scoring
+# [x] _get_pool_lead helper for pool data fetch
+# [x] _score_pool_data_quality with email_status
+# [x] _score_pool_authority with seniority field
+# [x] _score_pool_company_fit with pool fields
+# [x] _score_pool_timing with pool fields
+# [x] _score_pool_risk with bounce/unsubscribe
+# [x] _update_pool_lead_score for pool updates
+# [x] get_pool_leads_by_tier for tier queries
+# ============================================
+# PHASE 24F BUYER SIGNAL BOOST
+# ============================================
+# [x] _get_buyer_boost method using database function
+# [x] MAX_BUYER_BOOST constant (15 points)
+# [x] Buyer boost integrated into score_lead
+# [x] Buyer boost integrated into score_pool_lead
+# [x] buyer_boost and buyer_boost_reason in score breakdown

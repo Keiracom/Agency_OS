@@ -77,7 +77,9 @@ These skills define how the 3-agent pipeline operates:
 | **Campaign Generation** | `skills/campaign/CAMPAIGN_SKILL.md` | Phase 12A campaign skills | ✅ Ready |
 | Onboarding | `skills/onboarding/ONBOARDING_SKILL.md` | Client onboarding flow | 🔴 Not Started |
 | **Live UX Testing** | `skills/testing/LIVE_UX_TEST_SKILL.md` | Phase 15 end-to-end testing | ✅ Ready |
+| **E2E Testing & Fixing** | `skills/testing/E2E_TESTING_SKILL.md` | Phase 21 autonomous test-fix cycle | ✅ Ready |
 | **Conversion Intelligence** | `skills/conversion/CONVERSION_SKILL.md` | Phase 16 learning system | ✅ Ready |
+| **CRM Integration** | `skills/crm/CRM_INTEGRATION_SKILL.md` | Phase 24E + 24F CRM push & customer import | ✅ Ready |
 
 ---
 

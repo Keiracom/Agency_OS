@@ -1,8 +1,8 @@
 """
 FILE: src/models/activity.py
 PURPOSE: Activity model with message ID for email threading
-PHASE: 2 (Models & Schemas)
-TASK: MOD-007
+PHASE: 2 (Models & Schemas), modified Phase 24B, 24C, 24D
+TASK: MOD-007, CONTENT-002, ENGAGE-004, THREAD-006
 DEPENDENCIES:
   - src/models/base.py
   - src/exceptions.py
@@ -10,14 +10,27 @@ RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 18: Email threading via In-Reply-To headers
   - Rule 12: No imports from engines/integrations/orchestration
+PHASE 24B CHANGES:
+  - Added template_id for template tracking
+  - Added ab_test_id and ab_variant for A/B testing
+  - Added full_message_body for complete content analysis
+  - Added links_included and personalization_fields_used
+  - Added ai_model_used and prompt_version
+  - Added content_snapshot for WHAT Detector
+PHASE 24C CHANGES:
+  - Added email engagement tracking fields (opens, clicks)
+  - Added touch_number and days_since_last_touch
+  - Added lead timezone tracking fields
+PHASE 24D CHANGES:
+  - Added conversation_thread_id for conversation threading
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import Date, Float, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import ENUM, INET, JSONB, UUID as PGUUID
+from sqlalchemy import Boolean, Date, Float, ForeignKey, Integer, String, Text, Time
+from sqlalchemy.dialects.postgresql import ARRAY, ENUM, INET, JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import (
@@ -94,6 +107,69 @@ class Activity(Base, UUIDMixin):
     sequence_step: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     subject: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     content_preview: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # === Phase 24B: Content & Template Tracking ===
+    # Template reference
+    template_id: Mapped[Optional[UUID]] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("email_templates.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # A/B testing
+    ab_test_id: Mapped[Optional[UUID]] = mapped_column(
+        PGUUID(as_uuid=True),
+        nullable=True,
+        index=True,
+    )
+    ab_variant: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # 'A', 'B', 'control'
+
+    # Full content for analysis
+    full_message_body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    links_included: Mapped[Optional[list]] = mapped_column(ARRAY(Text), nullable=True)
+    personalization_fields_used: Mapped[Optional[list]] = mapped_column(ARRAY(Text), nullable=True)
+
+    # AI generation metadata
+    ai_model_used: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    prompt_version: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+
+    # Content snapshot for WHAT Detector (Phase 16/24B)
+    content_snapshot: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+
+    # === Phase 24D: Conversation Threading ===
+    conversation_thread_id: Mapped[Optional[UUID]] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("conversation_threads.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # === Phase 24C: Email Engagement Tracking ===
+    # Open tracking summary
+    email_opened: Mapped[bool] = mapped_column(Boolean, default=False)
+    email_opened_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    email_open_count: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Click tracking summary
+    email_clicked: Mapped[bool] = mapped_column(Boolean, default=False)
+    email_clicked_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    email_click_count: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Timing calculations (in minutes)
+    time_to_open_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    time_to_click_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    time_to_reply_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    # === Phase 24C: Touch Metadata (set by DB trigger) ===
+    touch_number: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    days_since_last_touch: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    sequence_position: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    # === Phase 24C: Lead Timezone Tracking ===
+    lead_local_time: Mapped[Optional[time]] = mapped_column(Time, nullable=True)
+    lead_timezone: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    lead_local_day_of_week: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     # === Provider Details ===
     provider: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
@@ -253,3 +329,14 @@ class ActivityStats(Base, UUIDMixin):
 # [x] Rate calculation properties
 # [x] No imports from engines/integrations/orchestration (Rule 12)
 # [x] All fields have type hints
+# [x] Phase 24B: template_id for template tracking
+# [x] Phase 24B: ab_test_id and ab_variant for A/B testing
+# [x] Phase 24B: full_message_body for complete content analysis
+# [x] Phase 24B: links_included and personalization_fields_used
+# [x] Phase 24B: ai_model_used and prompt_version
+# [x] Phase 24B: content_snapshot for WHAT Detector
+# [x] Phase 24C: email_opened, email_clicked tracking (ENGAGE-004)
+# [x] Phase 24C: time_to_open/click/reply_minutes timing fields
+# [x] Phase 24C: touch_number, days_since_last_touch, sequence_position
+# [x] Phase 24C: lead_local_time, lead_timezone, lead_local_day_of_week
+# [x] Phase 24D: conversation_thread_id for thread linking (THREAD-006)

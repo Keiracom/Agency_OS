@@ -1,8 +1,8 @@
 """
 FILE: src/detectors/who_detector.py
 PURPOSE: WHO Detector - Analyzes lead attributes that correlate with conversions
-PHASE: 16 (Conversion Intelligence)
-TASK: 16A-003
+PHASE: 16 (Conversion Intelligence), Updated Phase 24D
+TASK: 16A-003, THREAD-008
 DEPENDENCIES:
   - src/detectors/base.py
   - src/models/conversion_patterns.py
@@ -18,6 +18,7 @@ WHO Pattern Outputs:
   - size_analysis: Employee count sweet spot
   - timing_signals: Lift from timing signals (new role, hiring, funded)
   - recommended_weights: Optimized ALS component weights
+  - objection_patterns: Which segments raise which objections (Phase 24D)
 """
 
 from collections import defaultdict
@@ -25,7 +26,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.detectors.base import BaseDetector
@@ -43,11 +44,13 @@ class WhoDetector(BaseDetector):
     - Industry performance (which industries convert?)
     - Company size sweet spot (what employee range converts?)
     - Timing signals (new role, hiring, funding lifts)
+    - Objection patterns by segment (Phase 24D)
 
     Output is used to:
     - Optimize ALS component weights
     - Prioritize leads with high-converting attributes
     - Focus outreach on proven ICP segments
+    - Anticipate objections based on lead profile
     """
 
     pattern_type = "who"
@@ -85,10 +88,13 @@ class WhoDetector(BaseDetector):
         size_analysis = self._analyze_company_size(leads, baseline_rate)
         timing_signals = self._analyze_timing_signals(leads, baseline_rate)
 
+        # Phase 24D: Analyze objection patterns by segment
+        objection_patterns = await self._analyze_objection_patterns(db, client_id)
+
         # Build pattern output
         patterns = {
             "type": "who",
-            "version": "1.0",
+            "version": "2.0",  # Updated for Phase 24D
             "computed_at": datetime.utcnow().isoformat(),
             "sample_size": len(leads),
             "baseline_conversion_rate": round(baseline_rate, 4),
@@ -96,6 +102,7 @@ class WhoDetector(BaseDetector):
             "industry_rankings": industry_rankings,
             "size_analysis": size_analysis,
             "timing_signals": timing_signals,
+            "objection_patterns": objection_patterns,  # Phase 24D
         }
 
         confidence = self.calculate_confidence(len(leads))
@@ -348,11 +355,120 @@ class WhoDetector(BaseDetector):
         # Keep original if no mapping found
         return title.title()
 
+    async def _analyze_objection_patterns(
+        self,
+        db: AsyncSession,
+        client_id: UUID,
+    ) -> dict[str, Any]:
+        """
+        Analyze objection patterns by lead segments (Phase 24D).
+
+        This helps CIS learn which lead profiles tend to raise which objections,
+        enabling proactive objection handling.
+
+        Args:
+            db: Database session
+            client_id: Client UUID
+
+        Returns:
+            Objection patterns by industry, size, and title
+        """
+        # Analyze objections by industry
+        industry_query = text("""
+            SELECT
+                l.organization_industry as segment,
+                UNNEST(l.objections_raised) as objection_type,
+                COUNT(*) as count
+            FROM leads l
+            WHERE l.client_id = :client_id
+            AND l.objections_raised IS NOT NULL
+            AND array_length(l.objections_raised, 1) > 0
+            AND l.deleted_at IS NULL
+            GROUP BY l.organization_industry, UNNEST(l.objections_raised)
+            ORDER BY count DESC
+            LIMIT 20
+        """)
+
+        industry_result = await db.execute(industry_query, {"client_id": client_id})
+        industry_rows = industry_result.fetchall()
+
+        # Organize by industry
+        by_industry = defaultdict(list)
+        for row in industry_rows:
+            if row.segment:
+                by_industry[row.segment].append({
+                    "objection": row.objection_type,
+                    "count": row.count,
+                })
+
+        # Analyze objections by company size
+        size_query = text("""
+            SELECT
+                CASE
+                    WHEN l.organization_employee_count <= 50 THEN 'small'
+                    WHEN l.organization_employee_count <= 250 THEN 'medium'
+                    ELSE 'large'
+                END as segment,
+                UNNEST(l.objections_raised) as objection_type,
+                COUNT(*) as count
+            FROM leads l
+            WHERE l.client_id = :client_id
+            AND l.objections_raised IS NOT NULL
+            AND array_length(l.objections_raised, 1) > 0
+            AND l.organization_employee_count IS NOT NULL
+            AND l.deleted_at IS NULL
+            GROUP BY 1, UNNEST(l.objections_raised)
+            ORDER BY count DESC
+        """)
+
+        size_result = await db.execute(size_query, {"client_id": client_id})
+        size_rows = size_result.fetchall()
+
+        by_size = defaultdict(list)
+        for row in size_rows:
+            by_size[row.segment].append({
+                "objection": row.objection_type,
+                "count": row.count,
+            })
+
+        # Get overall objection distribution
+        overall_query = text("""
+            SELECT
+                UNNEST(l.objections_raised) as objection_type,
+                COUNT(*) as count,
+                COUNT(DISTINCT l.id) as unique_leads
+            FROM leads l
+            WHERE l.client_id = :client_id
+            AND l.objections_raised IS NOT NULL
+            AND array_length(l.objections_raised, 1) > 0
+            AND l.deleted_at IS NULL
+            GROUP BY UNNEST(l.objections_raised)
+            ORDER BY count DESC
+        """)
+
+        overall_result = await db.execute(overall_query, {"client_id": client_id})
+        overall_rows = overall_result.fetchall()
+
+        overall = [
+            {
+                "objection": row.objection_type,
+                "count": row.count,
+                "unique_leads": row.unique_leads,
+            }
+            for row in overall_rows
+        ]
+
+        return {
+            "by_industry": dict(by_industry),
+            "by_company_size": dict(by_size),
+            "overall_distribution": overall,
+        }
+
     def _default_patterns(self) -> dict[str, Any]:
         """Return default patterns when insufficient data."""
         return {
             "type": "who",
-            "version": "1.0",
+            "version": "2.0",
             "computed_at": datetime.utcnow().isoformat(),
             "sample_size": 0,
             "baseline_conversion_rate": 0.0,
@@ -367,6 +483,11 @@ class WhoDetector(BaseDetector):
                 "new_role_lift": 1.0,
                 "hiring_lift": 1.0,
                 "funded_lift": 1.0,
+            },
+            "objection_patterns": {  # Phase 24D
+                "by_industry": {},
+                "by_company_size": {},
+                "overall_distribution": [],
             },
             "note": "Insufficient data for pattern detection. Need at least 30 leads with outcomes.",
         }
@@ -392,3 +513,10 @@ class WhoDetector(BaseDetector):
 # [x] 90-day lookback window
 # [x] All functions have type hints
 # [x] All functions have docstrings
+#
+# Phase 24D Additions (THREAD-008):
+# [x] _analyze_objection_patterns() for segment objection analysis
+# [x] Objection patterns by industry
+# [x] Objection patterns by company size
+# [x] Overall objection distribution
+# [x] Updated version to 2.0

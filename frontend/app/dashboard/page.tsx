@@ -7,6 +7,7 @@
 
 "use client";
 
+import { useState, Suspense } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,18 +15,18 @@ import {
   Users,
   MessageSquare,
   TrendingUp,
-  ArrowUpRight,
-  ArrowDownRight,
   Mail,
   Phone,
   Linkedin,
-  CreditCard,
 } from "lucide-react";
 import { useDashboardStats, useActivityFeed, useALSDistribution } from "@/hooks/use-reports";
-import { StatsGridSkeleton, ActivityFeedSkeleton, CardListSkeleton } from "@/components/ui/loading-skeleton";
+import { useICPJob } from "@/hooks/use-icp-job";
+import { StatsGridSkeleton, ActivityFeedSkeleton } from "@/components/ui/loading-skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MeetingsWidget } from "@/components/dashboard/meetings-widget";
+import { ICPProgressBanner } from "@/components/icp-progress-banner";
+import { ICPReviewModal } from "@/components/icp-review-modal";
 import type { Activity, ALSTier } from "@/lib/api/types";
 
 const channelIcon: Record<string, typeof Mail> = {
@@ -56,13 +57,53 @@ function formatTimeAgo(dateString: string): string {
   return `${diffDays}d ago`;
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   const { data: stats, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useDashboardStats();
   const { data: activities, isLoading: activitiesLoading, error: activitiesError } = useActivityFeed(10);
   const { data: alsDistribution, isLoading: alsLoading, error: alsError } = useALSDistribution();
 
+  // ICP extraction job state
+  const {
+    status: icpStatus,
+    profile: icpProfile,
+    showBanner,
+    confirmICP,
+    dismissBanner,
+    retryExtraction,
+  } = useICPJob();
+
+  const [showReviewModal, setShowReviewModal] = useState(false);
+
+  const handleReview = () => {
+    setShowReviewModal(true);
+  };
+
+  const handleConfirmICP = async () => {
+    await confirmICP();
+    setShowReviewModal(false);
+  };
+
   return (
     <div className="space-y-6">
+      {/* ICP Progress Banner */}
+      {showBanner && icpStatus && (
+        <ICPProgressBanner
+          status={icpStatus}
+          onReview={handleReview}
+          onRetry={retryExtraction}
+          onDismiss={dismissBanner}
+        />
+      )}
+
+      {/* ICP Review Modal */}
+      <ICPReviewModal
+        open={showReviewModal}
+        onOpenChange={setShowReviewModal}
+        profile={icpProfile}
+        onConfirm={handleConfirmICP}
+        onStartOver={retryExtraction}
+      />
+
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
@@ -245,6 +286,27 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+// Wrap with Suspense for useSearchParams
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardContent />
+    </Suspense>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="h-9 w-48 bg-muted rounded animate-pulse" />
+        <div className="h-5 w-96 bg-muted rounded animate-pulse mt-2" />
+      </div>
+      <StatsGridSkeleton />
     </div>
   );
 }

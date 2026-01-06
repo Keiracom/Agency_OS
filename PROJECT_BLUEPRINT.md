@@ -1,8 +1,8 @@
 # PROJECT_BLUEPRINT.md — Agency OS v3.0
 
-**Status:** APPROVED  
-**Version:** 3.0 (Modular)  
-**Last Updated:** January 5, 2026  
+**Status:** APPROVED
+**Version:** 3.2 (Phase Reorganization)
+**Last Updated:** January 7, 2026  
 **Owner:** CEO  
 **Purpose:** Quick reference for Claude Code. Detailed specs in `/docs/`.
 
@@ -53,16 +53,44 @@ Layer 1: src/models/         ─► exceptions only
 
 ## Phase Overview
 
+### Completed Phases
+
 | Phase | Name | Status | Spec |
 |-------|------|--------|------|
 | 1-10 | Core Platform | ✅ | `docs/phases/` |
 | 11 | ICP Discovery | ✅ | `docs/phases/PHASE_11_ICP.md` |
 | 16 | Conversion Intelligence | ✅ | `docs/specs/phase16/` |
-| 17 | Launch Prerequisites | 🟡 | `docs/phases/PHASE_17_LAUNCH_PREREQ.md` |
-| 18 | E2E Journey Test | 🟡 | `docs/phases/PHASE_18_E2E_JOURNEY.md` |
-| 19 | Email Infrastructure | 🟡 | `docs/phases/PHASE_19_EMAIL_INFRA.md` |
-| 20 | Platform Intelligence | 📋 | `docs/phases/PHASE_20_PLATFORM_INTEL.md` |
-| 21 | Landing Page + UI | 🔴 | `docs/phases/PHASE_21_UI_OVERHAUL.md` |
+
+### Active Phases (Corrected Order)
+
+| Order | Phase | Name | Status | Blocked By | Spec |
+|-------|-------|------|--------|------------|------|
+| 1 | 17 | Launch Prerequisites | 🟡 | — | `docs/phases/PHASE_17_LAUNCH_PREREQ.md` |
+| 2 | 18 | Email Infrastructure | 🟡 | Phase 17 | `docs/phases/PHASE_18_EMAIL_INFRA.md` |
+| 3 | 19 | Scraper Waterfall | 🔴 | Phase 18 | `docs/specs/integrations/SCRAPER_WATERFALL.md` |
+| 4 | 20 | Landing Page + UI Wiring | 🟡 | Phase 19 | `docs/phases/PHASE_20_UI_OVERHAUL.md` |
+| 5 | 21 | E2E Journey Test | 🔴 | Phase 20 | `docs/phases/PHASE_21_E2E_JOURNEY.md` |
+| 6 | 22 | Marketing Automation | 🔴 | Phase 21 | `docs/phases/PHASE_22_MARKETING_AUTO.md` |
+| 7 | 23 | Platform Intelligence | 📋 | Post-Launch | `docs/phases/PHASE_23_PLATFORM_INTEL.md` |
+
+### Phase Dependency Chain
+
+```
+Phase 17 (Prerequisites)
+    ↓ Health checks, Sentry, seed prod DB
+Phase 18 (Email Infra)
+    ↓ InfraForge/Smartlead — CRITICAL for cold outreach
+Phase 19 (Scraper Waterfall)
+    ↓ Cost-efficient enrichment + Deep Research capability
+Phase 20 (UI Wiring)
+    ↓ Wire automation (ALS > 85 → Deep Research trigger)
+Phase 21 (E2E Tests)
+    ↓ Full journey testable with real infrastructure
+Phase 22 (Marketing Automation)
+    ↓ Smartlead, Infraforge, content generation
+Phase 23 (Platform Intel)
+    ↓ Post-launch, needs 10+ clients with data
+```
 
 **Full index:** `docs/phases/PHASE_INDEX.md`
 
@@ -109,9 +137,54 @@ Layer 1: src/models/         ─► exceptions only
 | Database Schema | `docs/specs/database/SCHEMA_OVERVIEW.md` |
 | Engine Specs | `docs/specs/engines/ENGINE_INDEX.md` |
 | Integration Specs | `docs/specs/integrations/INTEGRATION_INDEX.md` |
+| **Scraper Waterfall** | `docs/specs/integrations/SCRAPER_WATERFALL.md` |
 | Phase Details | `docs/phases/PHASE_INDEX.md` |
 | Task Tracking | `PROGRESS.md` |
 | Skills | `skills/SKILL_INDEX.md` |
+
+---
+
+## Claude Code Prompt Protocol
+
+Use this structured prompt template when assigning tasks to Claude Code:
+
+```markdown
+<role>
+You are a Senior Principal Engineer and Architect.
+Your Goal: Execute the following task with 100% precision, adhering to the project's existing patterns.
+</role>
+
+<context>
+1. READ `PROJECT_BLUEPRINT.md` to understand the architecture.
+2. READ `PROGRESS.md` to understand the current build status.
+3. READ `[Specific_Spec_File.md]` to understand the task requirements.
+</context>
+
+<task_objective>
+[INSERT HIGH-LEVEL GOAL HERE - e.g., "Implement the backend automation for Phase 20."]
+</task_objective>
+
+<constraints>
+- DO NOT remove existing code unless explicitly instructed.
+- DO NOT use placeholders (e.g., "TODO", "pass")—write complete, working code.
+- MAINTAIN the "Import Hierarchy": `orchestration` -> `engines` -> `integrations` -> `models`.
+- IF a file is missing, create it. IF a file exists, update it non-destructively.
+</constraints>
+
+<execution_plan>
+Perform these steps sequentially. Do not skip verification.
+1. **Analysis:** Check file structure to ensure paths in the spec match reality.
+2. **Scaffolding:** Create any new files or database migrations required.
+3. **Logic:** Implement the core functions/classes.
+4. **Wiring:** Connect the new logic to the existing API or Orchestration layer.
+5. **Verification:** Run a quick check (or test) to ensure no syntax errors.
+6. **Documentation:** Update `PROGRESS.md` with a log of what was built.
+</execution_plan>
+
+<user_command>
+[INSERT SPECIFIC INSTRUCTIONS HERE]
+</user_command>
+```
 
 ---
 
@@ -155,9 +228,8 @@ Layer 1: src/models/         ─► exceptions only
 
 ## Current Focus
 
-**Phase 17:** Collecting API credentials  
-**Phase 18:** E2E journey testing  
-**Phase 21:** UI overhaul with v0.dev  
+**Phase 17:** Finish launch prerequisites (health checks, Sentry, seed prod DB)  
+**Phase 18:** Email infrastructure (InfraForge/Smartlead) — CRITICAL BLOCKER  
 
 Check `PROGRESS.md` for detailed task status.
 

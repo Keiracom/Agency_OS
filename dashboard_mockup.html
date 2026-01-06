@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agency OS - Co-Pilot Cockpit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        zinc: {
+                            850: '#1f2025',
+                            900: '#18181b',
+                            950: '#09090b',
+                        },
+                        brand: {
+                            500: '#3b82f6', // Blue-500
+                            600: '#2563eb', // Blue-600
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar for "Glass Box" feel */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #18181b; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+        
+        .glass-panel {
+            background: rgba(24, 24, 27, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .animate-pulse-slow {
+            animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 font-sans h-screen flex flex-col overflow-hidden">
+
+    <div class="h-10 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 text-xs font-mono">
+        <div class="text-brand-500 font-bold mr-4">LIVE FEED_</div>
+        <div class="flex-1 overflow-hidden relative">
+            <div class="whitespace-nowrap animate-marquee flex gap-8 text-zinc-400">
+                <span>🤖 Scout Engine: Scraped 31 new leads from Apollo [ALS > 85]</span>
+                <span class="text-emerald-500">⚡ Deep Research: Analyzed "Acme Corp" (Hook Generated)</span>
+                <span>📧 Outreach: Sent 124 emails (45% Open Rate)</span>
+                <span class="text-amber-500">📞 Voice AI: Connection established with J.Smith (00:45)</span>
+            </div>
+        </div>
+        <div class="ml-4 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-zinc-500">SYSTEM ONLINE</span>
+        </div>
+    </div>
+
+    <div class="flex flex-1 overflow-hidden">
+        
+        <div class="w-64 bg-zinc-900 border-r border-zinc-800 flex flex-col">
+            <div class="p-4 border-b border-zinc-800">
+                <h1 class="font-bold text-lg tracking-tight">AGENCY <span class="text-brand-500">OS</span></h1>
+                <p class="text-xs text-zinc-500">v3.0 (Co-Pilot Mode)</p>
+            </div>
+            
+            <nav class="flex-1 p-2 space-y-1">
+                <a href="#" class="flex items-center gap-3 px-3 py-2 text-sm bg-zinc-800 text-white rounded-md border border-zinc-700">
+                    <span>✈️</span> Co-Pilot Cockpit
+                </a>
+                <a href="#" class="flex items-center gap-3 px-3 py-2 text-sm text-zinc-400 hover:bg-zinc-800/50 rounded-md">
+                    <span>👥</span> Leads Database
+                </a>
+                <a href="#" class="flex items-center gap-3 px-3 py-2 text-sm text-zinc-400 hover:bg-zinc-800/50 rounded-md">
+                    <span>📊</span> Campaigns
+                </a>
+            </nav>
+
+            <div class="p-4 border-t border-zinc-800">
+                <div class="flex justify-between text-xs mb-1">
+                    <span class="text-zinc-400">Monthly Capacity</span>
+                    <span class="text-white">850 / 1,250</span>
+                </div>
+                <div class="w-full bg-zinc-800 rounded-full h-2 mb-2">
+                    <div class="bg-brand-600 h-2 rounded-full" style="width: 68%"></div>
+                </div>
+                <p class="text-[10px] text-zinc-500 text-right">Resets in 14 days</p>
+            </div>
+        </div>
+
+        <main class="flex-1 flex gap-0">
+            
+            <div class="flex-1 flex flex-col border-r border-zinc-800 bg-zinc-950">
+                <div class="p-4 border-b border-zinc-800 flex justify-between items-center">
+                    <h2 class="text-sm font-semibold text-zinc-200">Draft 1 of 31 (Hot Leads)</h2>
+                    <span class="px-2 py-0.5 rounded text-xs bg-brand-500/10 text-brand-500 border border-brand-500/20">Auto-Generated</span>
+                </div>
+                
+                <div class="p-6 max-w-2xl mx-auto w-full font-serif text-zinc-300 leading-relaxed space-y-6">
+                    <div class="border-b border-zinc-800 pb-2">
+                        <span class="text-zinc-500 text-sm block mb-1">Subject:</span>
+                        <input type="text" value="Question about your React migration" 
+                               class="bg-transparent text-xl text-white w-full focus:outline-none">
+                    </div>
+
+                    <div class="space-y-4">
+                        <p>Hi John,</p>
+                        
+                        <p>
+                            I saw your post yesterday about 
+                            <span class="bg-emerald-500/10 text-emerald-400 px-1 rounded border-b border-dashed border-emerald-500 cursor-help group relative">
+                                the nightmare of migrating to React 18
+                                <span class="absolute -right-4 top-1/2 w-4 h-px bg-emerald-500/50 hidden group-hover:block"></span>
+                            </span>
+                            —it really resonated with me.
+                        </p>
+
+                        <p>We actually helped a similar agency solve that exact hydration bottleneck by implementing a custom caching layer.</p>
+                        
+                        <p>Would you be open to seeing how we handled it?</p>
+                        
+                        <p>Best,<br>Alex</p>
+                    </div>
+                </div>
+
+                <div class="mt-auto p-4 border-t border-zinc-800 flex justify-between items-center bg-zinc-900/50">
+                    <button class="px-4 py-2 text-sm text-zinc-400 hover:text-white">Edit Manually</button>
+                    <div class="flex gap-2">
+                        <button class="px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-md">Reject</button>
+                        <button class="px-6 py-2 text-sm bg-brand-600 hover:bg-brand-500 text-white rounded-md font-medium shadow-lg shadow-brand-500/20">
+                            Approve & Queue 
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="w-[400px] bg-zinc-900 border-l border-zinc-800 flex flex-col overflow-y-auto">
+                <div class="p-4 border-b border-zinc-800">
+                    <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Context & Logic</h2>
+                </div>
+
+                <div class="p-4 space-y-6">
+                    
+                    <div class="glass-panel p-4 rounded-lg border border-emerald-500/30 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-2 opacity-10">
+                            <svg class="w-16 h-16" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"></path></svg>
+                        </div>
+                        <div class="flex justify-between items-end mb-3">
+                            <div>
+                                <div class="text-xs text-emerald-400 font-mono mb-1">AGENCY LEAD SCORE</div>
+                                <div class="text-3xl font-bold text-white">92<span class="text-lg text-zinc-500">/100</span></div>
+                            </div>
+                            <span class="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded uppercase">HOT LEAD</span>
+                        </div>
+                        
+                        <div class="space-y-2 text-[10px] font-mono text-zinc-400">
+                            <div class="flex justify-between"><span>Authority (CEO)</span> <span>25/25</span></div>
+                            <div class="w-full bg-zinc-800 h-1 rounded"><div class="bg-emerald-500 h-1 rounded w-full"></div></div>
+                            
+                            <div class="flex justify-between"><span>Timing (Hiring)</span> <span>15/15</span></div>
+                            <div class="w-full bg-zinc-800 h-1 rounded"><div class="bg-emerald-500 h-1 rounded w-full"></div></div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2 text-xs text-zinc-400">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <span>Deep Research Output (Scraped 2h ago)</span>
+                        </div>
+                        
+                        <div class="glass-panel p-4 rounded-lg border-l-2 border-brand-500">
+                            <div class="text-[10px] text-zinc-500 mb-2 uppercase tracking-wide">Source: LinkedIn Activity</div>
+                            <p class="text-sm text-zinc-300 italic">"Finally finished the migration to <strong class="text-white">React 18</strong>. What a nightmare with the hydration errors, but the performance boost is worth it."</p>
+                            <div class="mt-3 flex gap-2">
+                                <span class="px-2 py-1 bg-zinc-800 rounded text-[10px] text-zinc-400">Pos: Neutral</span>
+                                <span class="px-2 py-1 bg-zinc-800 rounded text-[10px] text-zinc-400">Topic: Tech Debt</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                         <div class="flex items-center gap-2 text-xs text-zinc-400">
+                            <span>📞 Voice AI History</span>
+                        </div>
+                        <div class="bg-zinc-800/50 p-3 rounded-lg text-xs font-mono space-y-2 border border-zinc-800">
+                            <div class="flex gap-2">
+                                <span class="text-brand-500 font-bold">AI:</span>
+                                <span class="text-zinc-300">"Hi John, calling about the React role?"</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <span class="text-zinc-500 font-bold">JD:</span>
+                                <span class="text-zinc-400">"Yeah, send me an email."</span>
+                            </div>
+                            <div class="text-[10px] text-zinc-600 pt-1 border-t border-zinc-700/50 mt-1">
+                                LOG: Interested -> Email Sequence Triggered
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </main>
+    </div>
+</body>
+</html>

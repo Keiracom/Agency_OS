@@ -241,6 +241,7 @@ class BaseSkill(ABC, Generic[InputT, OutputT]):
             SkillError: If JSON parsing fails
         """
         import logging
+        import re
         logger = logging.getLogger(__name__)
 
         original_content = content
@@ -254,21 +255,63 @@ class BaseSkill(ABC, Generic[InputT, OutputT]):
             )
 
         try:
-            # Handle markdown code blocks
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0]
-            elif "```" in content:
-                content = content.split("```")[1].split("```")[0]
+            content = content.strip()
+            
+            # Log raw response for debugging
+            logger.info(f"Raw AI response (len={len(content)}): {content[:300]}...")
+
+            # Method 1: Try regex to extract JSON from markdown code blocks
+            # Matches ```json ... ``` or ``` ... ```
+            code_block_pattern = r'```(?:json)?\s*\n?([\s\S]*?)\n?```'
+            match = re.search(code_block_pattern, content)
+            if match:
+                content = match.group(1).strip()
+                logger.info(f"Extracted from code block (len={len(content)}): {content[:200]}...")
+
+            # Method 2: If no code block found, try to find JSON object/array directly
+            if not content.startswith('{') and not content.startswith('['):
+                # Look for first { or [ in the content
+                json_start = -1
+                for i, char in enumerate(content):
+                    if char in '{[':
+                        json_start = i
+                        break
+                if json_start > 0:
+                    content = content[json_start:]
+                    logger.info(f"Trimmed to JSON start: {content[:100]}...")
+
+            # Method 3: Clean up any trailing text after JSON
+            if content.startswith('{'):
+                # Find matching closing brace
+                brace_count = 0
+                json_end = -1
+                for i, char in enumerate(content):
+                    if char == '{':
+                        brace_count += 1
+                    elif char == '}':
+                        brace_count -= 1
+                        if brace_count == 0:
+                            json_end = i + 1
+                            break
+                if json_end > 0:
+                    content = content[:json_end]
 
             content = content.strip()
+            
+            if not content:
+                raise SkillError(
+                    skill_name=self.name,
+                    message="No JSON content found after processing",
+                    details={"raw_content": original_content[:500]},
+                )
 
-            # Log what we're trying to parse
-            logger.debug(f"Parsing JSON content (len={len(content)}): {content[:200]}...")
+            logger.info(f"Final JSON to parse (len={len(content)}): {content[:200]}...")
 
             return json.loads(content)
         except json.JSONDecodeError as e:
             logger.error(f"JSON parse error: {e}")
             logger.error(f"Original content (len={len(original_content)}): {original_content[:500]}")
+            logger.error(f"Processed content (len={len(content)}): {content[:500]}")
             raise SkillError(
                 skill_name=self.name,
                 message=f"Failed to parse JSON response: {e}",

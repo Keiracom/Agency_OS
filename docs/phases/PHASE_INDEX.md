@@ -1,6 +1,6 @@
 # Phase Index — Agency OS
 
-**Last Updated:** January 5, 2026
+**Last Updated:** January 6, 2026
 
 ---
 
@@ -29,6 +29,12 @@
 | 19 | Email Infrastructure | 🟡 | 20 | `PHASE_19_EMAIL_INFRA.md` |
 | 20 | Platform Intelligence | 📋 | 18 | `PHASE_20_PLATFORM_INTEL.md` |
 | 21 | Landing Page + UI | 🔴 | 18 | `PHASE_21_UI_OVERHAUL.md` |
+| 24 | Lead Pool Architecture | 🔴 | 15 | `PHASE_24_LEAD_POOL.md` |
+| 24B | Content & Template Tracking | 🔴 | 7 | `CIS_DATA_GAPS_IMPLEMENTATION.md` |
+| 24C | Email Engagement Tracking | 🔴 | 7 | `CIS_DATA_GAPS_IMPLEMENTATION.md` |
+| 24D | Conversation Threading | 🔴 | 8 | `CIS_DATA_GAPS_IMPLEMENTATION.md` |
+| 24E | CRM Push (Meeting Booked) | 📋 | 10 | `PHASE_24E_CRM_PUSH.md` |
+| 24F | Customer Import & Platform Intel | 📋 | 16 | `PHASE_24F_CUSTOMER_IMPORT.md` |
 
 ---
 

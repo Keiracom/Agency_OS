@@ -20,6 +20,7 @@ from src.models.campaign import Campaign, CampaignResource, CampaignSequence
 from src.models.lead import Lead, GlobalSuppression, ClientSuppression, DomainSuppression
 from src.models.activity import Activity, ActivityStats
 from src.models.conversion_patterns import ConversionPattern, ConversionPatternHistory
+from src.models.url_validation import URLValidationResult
 
 __all__ = [
     # Base
@@ -43,4 +44,6 @@ __all__ = [
     # Conversion Intelligence
     "ConversionPattern",
     "ConversionPatternHistory",
+    # URL Validation
+    "URLValidationResult",
 ]

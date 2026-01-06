@@ -1,11 +1,12 @@
 """
 FILE: src/engines/icp_scraper.py
-TASK: ICP-011
-PHASE: 11 (ICP Discovery System)
-PURPOSE: Multi-source data scraping for ICP extraction (no AI, just data fetching)
+TASK: ICP-011, SCR-005
+PHASE: 11 (ICP Discovery System), 19 (Scraper Waterfall)
+PURPOSE: Multi-source data scraping for ICP extraction with waterfall architecture
 
 DEPENDENCIES:
 - src/engines/base.py
+- src/engines/url_validator.py
 - src/integrations/apify.py
 - src/integrations/apollo.py
 - src/exceptions.py
@@ -17,16 +18,24 @@ EXPORTS:
 
 RULES APPLIED:
 - Rule 11: Session passed as argument (DI pattern)
-- Rule 12: No imports from other engines
+- Rule 12: No imports from other engines (url_validator is same layer)
 - Rule 14: Soft deletes in queries
+
+WATERFALL ARCHITECTURE (Phase 19):
+  Tier 0: URL Validation (url_validator.py)
+  Tier 1: Cheerio (apify.py)
+  Tier 2: Playwright (apify.py)
+  Tier 3: Camoufox (future)
+  Tier 4: Manual fallback UI
 """
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 from urllib.parse import urlparse
 from uuid import UUID
 
@@ -35,13 +44,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import BaseEngine, EngineResult
+from src.engines.url_validator import URLValidator, get_url_validator
 from src.exceptions import EngineError, ValidationError
-from src.integrations.apify import get_apify_client
+from src.integrations.apify import get_apify_client, ScrapeResult
 from src.integrations.apollo import get_apollo_client
 
 if TYPE_CHECKING:
     from src.integrations.apify import ApifyClient
     from src.integrations.apollo import ApolloClient
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -58,7 +70,7 @@ class ScrapedPage:
 
 @dataclass
 class ScrapedWebsite:
-    """Complete scraped website data."""
+    """Complete scraped website data with waterfall tracking."""
 
     url: str
     domain: str
@@ -66,6 +78,12 @@ class ScrapedWebsite:
     raw_html: str = ""
     page_count: int = 0
     scraped_at: datetime = field(default_factory=datetime.utcnow)
+    # Waterfall tracking (Phase 19)
+    tier_used: int = 0  # 0=validation, 1=cheerio, 2=playwright, 3=camoufox, 4=manual
+    needs_fallback: bool = False
+    failure_reason: Optional[str] = None
+    manual_fallback_url: Optional[str] = None
+    canonical_url: Optional[str] = None  # URL after redirects
 
 
 @dataclass
@@ -118,6 +136,7 @@ class ICPScraperEngine(BaseEngine):
         self,
         apify_client: "ApifyClient | None" = None,
         apollo_client: "ApolloClient | None" = None,
+        url_validator: "URLValidator | None" = None,
     ):
         """
         Initialize with optional client overrides for testing.
@@ -125,9 +144,11 @@ class ICPScraperEngine(BaseEngine):
         Args:
             apify_client: Optional Apify client override
             apollo_client: Optional Apollo client override
+            url_validator: Optional URL validator override
         """
         self._apify = apify_client
         self._apollo = apollo_client
+        self._url_validator = url_validator
 
     @property
     def name(self) -> str:
@@ -148,6 +169,13 @@ class ICPScraperEngine(BaseEngine):
             self._apollo = get_apollo_client()
         return self._apollo
 
+    @property
+    def url_validator(self) -> URLValidator:
+        """Get URL validator."""
+        if self._url_validator is None:
+            self._url_validator = get_url_validator()
+        return self._url_validator
+
     def _extract_domain(self, url: str) -> str:
         """Extract domain from URL."""
         if not url.startswith(("http://", "https://")):
@@ -167,28 +195,71 @@ class ICPScraperEngine(BaseEngine):
         max_pages: int = 15,
     ) -> EngineResult[ScrapedWebsite]:
         """
-        Scrape a website using Apify.
+        Scrape a website using the Scraper Waterfall architecture.
+
+        Waterfall tiers:
+        - Tier 0: URL validation (check format, DNS, parked domains)
+        - Tier 1: Apify Cheerio (fast, static HTML)
+        - Tier 2: Apify Playwright (JS rendering)
+        - Tier 3: Camoufox (future - for Cloudflare bypass)
+        - Tier 4: Manual fallback UI
 
         Args:
             url: Website URL to scrape
             max_pages: Maximum pages to crawl (default 15)
 
         Returns:
-            EngineResult containing ScrapedWebsite
+            EngineResult containing ScrapedWebsite with tier tracking
         """
         url = self._normalize_url(url)
         domain = self._extract_domain(url)
 
+        logger.info(f"Starting waterfall scrape for {url}")
+
+        # ===== TIER 0: URL Validation =====
+        logger.debug(f"Tier 0: Validating URL {url}")
+        validation = await self.url_validator.validate_and_normalize(url)
+
+        if not validation.valid:
+            logger.warning(f"Tier 0 failed for {url}: {validation.error}")
+            return EngineResult.ok(
+                data=ScrapedWebsite(
+                    url=url,
+                    domain=domain,
+                    pages=[],
+                    raw_html="",
+                    page_count=0,
+                    tier_used=0,
+                    needs_fallback=True,
+                    failure_reason=validation.error,
+                    manual_fallback_url=f"/onboarding/manual-entry?url={url}",
+                ),
+                metadata={
+                    "domain": domain,
+                    "tier_used": 0,
+                    "needs_fallback": True,
+                    "error": validation.error,
+                    "error_type": validation.error_type,
+                },
+            )
+
+        # Use canonical URL after redirects
+        canonical_url = validation.canonical_url or url
+        if validation.redirected:
+            logger.info(f"URL redirected: {url} -> {canonical_url}")
+            domain = self._extract_domain(canonical_url)
+
+        # ===== TIER 1 & 2: Apify Waterfall =====
         try:
-            # Use Apify to scrape website
-            result = await self.apify.scrape_website(url, max_pages=max_pages)
+            scrape_result: ScrapeResult = await self.apify.scrape_website_with_waterfall(
+                canonical_url, max_pages=max_pages
+            )
 
             # Transform Apify result to our format
             pages = []
             all_html = []
 
-            for page_data in result.get("pages", []):
-                # Apify returns 'html' if saveHtml=true, otherwise use 'text' as fallback
+            for page_data in scrape_result.pages:
                 html_content = page_data.get("html", "") or page_data.get("text", "")
                 page = ScrapedPage(
                     url=page_data.get("url", ""),
@@ -202,12 +273,41 @@ class ICPScraperEngine(BaseEngine):
                 if html_content:
                     all_html.append(html_content)
 
+            # Check if waterfall succeeded
+            if scrape_result.needs_fallback:
+                logger.warning(f"Waterfall failed for {url}, needs manual fallback")
+                return EngineResult.ok(
+                    data=ScrapedWebsite(
+                        url=url,
+                        domain=domain,
+                        pages=pages,
+                        raw_html=scrape_result.raw_html,
+                        page_count=scrape_result.page_count,
+                        tier_used=scrape_result.tier_used,
+                        needs_fallback=True,
+                        failure_reason=scrape_result.failure_reason,
+                        manual_fallback_url=f"/onboarding/manual-entry?url={url}",
+                        canonical_url=canonical_url,
+                    ),
+                    metadata={
+                        "domain": domain,
+                        "tier_used": scrape_result.tier_used,
+                        "needs_fallback": True,
+                        "failure_reason": scrape_result.failure_reason,
+                    },
+                )
+
+            # Success!
+            logger.info(f"Waterfall success for {url}: tier={scrape_result.tier_used}, pages={len(pages)}")
             scraped = ScrapedWebsite(
                 url=url,
                 domain=domain,
                 pages=pages,
-                raw_html="\n\n---PAGE BREAK---\n\n".join(all_html),
+                raw_html="\n\n---PAGE BREAK---\n\n".join(all_html) if all_html else scrape_result.raw_html,
                 page_count=len(pages),
+                tier_used=scrape_result.tier_used,
+                needs_fallback=False,
+                canonical_url=canonical_url,
             )
 
             return EngineResult.ok(
@@ -215,13 +315,33 @@ class ICPScraperEngine(BaseEngine):
                 metadata={
                     "domain": domain,
                     "pages_scraped": len(pages),
+                    "tier_used": scrape_result.tier_used,
+                    "redirected": validation.redirected,
+                    "canonical_url": canonical_url,
                 },
             )
 
         except Exception as e:
-            return EngineResult.fail(
-                error=f"Website scraping failed: {str(e)}",
-                metadata={"url": url},
+            logger.error(f"Scraper waterfall exception for {url}: {e}")
+            return EngineResult.ok(
+                data=ScrapedWebsite(
+                    url=url,
+                    domain=domain,
+                    pages=[],
+                    raw_html="",
+                    page_count=0,
+                    tier_used=2,
+                    needs_fallback=True,
+                    failure_reason=f"Scraper error: {str(e)}",
+                    manual_fallback_url=f"/onboarding/manual-entry?url={url}",
+                    canonical_url=canonical_url,
+                ),
+                metadata={
+                    "domain": domain,
+                    "tier_used": 2,
+                    "needs_fallback": True,
+                    "error": str(e),
+                },
             )
 
     async def get_linkedin_company_data(
@@ -485,7 +605,7 @@ def get_icp_scraper_engine() -> ICPScraperEngine:
 """
 VERIFICATION CHECKLIST:
 - [x] Contract comment at top with FILE, TASK, PHASE, PURPOSE
-- [x] Follows import hierarchy (Rule 12) - no other engine imports
+- [x] Follows import hierarchy (Rule 12) - url_validator is same layer
 - [x] Uses dependency injection (Rule 11) - db passed to methods
 - [x] Type hints on all functions
 - [x] No TODO/FIXME/pass statements
@@ -499,4 +619,10 @@ VERIFICATION CHECKLIST:
 - [x] Batch enrichment support
 - [x] Progress tracking methods
 - [x] Singleton pattern for engine instance
+WATERFALL ARCHITECTURE (SCR-005):
+- [x] URLValidator integration (Tier 0)
+- [x] scrape_website_with_waterfall (Tier 1 & 2)
+- [x] ScrapedWebsite includes tier tracking fields
+- [x] Manual fallback URL generation
+- [x] Canonical URL tracking after redirects
 """

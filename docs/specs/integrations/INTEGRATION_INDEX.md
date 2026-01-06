@@ -12,7 +12,8 @@
 | Supabase | `supabase.py` | Database client | `SUPABASE.md` |
 | Redis | `redis.py` | Cache + rate limits | `REDIS.md` |
 | Apollo | `apollo.py` | B2B enrichment | `APOLLO.md` |
-| Apify | `apify.py` | Web scraping | `APIFY.md` |
+| Apify | `apify.py` | Web scraping (Tier 1-2) | `APIFY.md` |
+| Camoufox | `camoufox_scraper.py` | Anti-detect scraping (Tier 3) | `SCRAPER_WATERFALL.md` |
 | Clay | `clay.py` | Premium enrichment | `CLAY.md` |
 | DataForSEO | `dataforseo.py` | SEO metrics | `DATAFORSEO.md` |
 | Resend | `resend.py` | Email sending | `RESEND.md` |
@@ -33,9 +34,12 @@
 
 ### Data & Enrichment
 - **Apollo** — Primary B2B contact data
-- **Apify** — Web scraping for bulk data
-- **Clay** — Premium waterfall fallback
+- **Apify** — Web scraping Tier 1-2 (static + JS-rendered)
+- **Camoufox** — Web scraping Tier 3 (Cloudflare bypass)
+- **Clay** — Premium enrichment waterfall fallback
 - **DataForSEO** — SEO metrics for scoring
+
+**See also:** `SCRAPER_WATERFALL.md` for full scraping architecture
 
 ### Outreach Channels
 - **Resend** — Transactional email sending

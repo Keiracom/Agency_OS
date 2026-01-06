@@ -35,6 +35,7 @@ from src.api.routes.reports import router as reports_router
 from src.api.routes.webhooks import router as webhooks_router
 from src.api.routes.webhooks_outbound import router as webhooks_outbound_router
 from src.api.routes.linkedin import router as linkedin_router
+from src.api.routes.pool import router as pool_router
 
 __all__ = [
     "health_router",
@@ -54,4 +55,6 @@ __all__ = [
     "customers_router",
     # Phase 24H: LinkedIn Connection
     "linkedin_router",
+    # Phase 24A: Lead Pool
+    "pool_router",
 ]

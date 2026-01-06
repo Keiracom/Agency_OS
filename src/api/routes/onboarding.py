@@ -497,6 +497,7 @@ async def get_extraction_result(
 )
 async def confirm_icp(
     request: ConfirmICPRequest,
+    background_tasks: BackgroundTasks,
     client: Annotated[ClientContext, Depends(get_current_client)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> dict[str, Any]:
@@ -587,10 +588,26 @@ async def confirm_icp(
     )
     await db.commit()
 
+    # Trigger pool population with the confirmed ICP
+    # This sources leads from Apollo matching the client's ICP criteria
+    async def run_pool_population(cid: UUID, limit: int = 25):
+        from src.orchestration.flows.pool_population_flow import pool_population_flow
+        import logging
+        logger = logging.getLogger(__name__)
+        try:
+            logger.info(f"Starting pool population for client {cid} after ICP confirmation")
+            result = await pool_population_flow(client_id=cid, limit=limit)
+            logger.info(f"Pool population completed: {result.get('leads_added', 0)} leads added")
+        except Exception as e:
+            logger.error(f"Pool population failed for client {cid}: {e}")
+
+    background_tasks.add_task(run_pool_population, client.client_id, 25)
+
     return {
         "success": True,
-        "message": "ICP profile confirmed and saved",
+        "message": "ICP profile confirmed and saved. Pool population started.",
         "client_id": str(client.client_id),
+        "pool_population": "started",
     }
 
 

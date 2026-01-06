@@ -365,6 +365,7 @@ from src.api.routes.reports import router as reports_router
 from src.api.routes.webhooks import router as webhooks_router
 from src.api.routes.webhooks_outbound import router as webhooks_outbound_router
 from src.api.routes.linkedin import router as linkedin_router
+from src.api.routes.pool import router as pool_router
 
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(campaigns_router, prefix="/api/v1")
@@ -386,6 +387,8 @@ app.include_router(crm_router, prefix="/api/v1")
 app.include_router(customers_router, prefix="/api/v1")
 # Phase 24H: LinkedIn Connection
 app.include_router(linkedin_router, prefix="/api/v1")
+# Phase 24A: Lead Pool
+app.include_router(pool_router, prefix="/api/v1")
 
 
 # ============================================

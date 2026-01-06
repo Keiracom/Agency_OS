@@ -543,18 +543,19 @@ async def confirm_icp(
             icp_data[key] = value
 
     # Update client with ICP data
+    # Note: JSONB fields need to be serialized for asyncpg
     update_fields = {
         "website_url": icp_data.get("website_url"),
         "company_description": icp_data.get("company_description") or icp_data.get("value_proposition"),
-        "services_offered": icp_data.get("services_offered", []),
+        "services_offered": json.dumps(icp_data.get("services_offered", [])),
         "value_proposition": icp_data.get("value_proposition"),
         "team_size": icp_data.get("team_size"),
-        "icp_industries": icp_data.get("icp_industries", []),
-        "icp_company_sizes": icp_data.get("icp_company_sizes", []),
-        "icp_locations": icp_data.get("icp_locations", []),
-        "icp_titles": icp_data.get("icp_titles", []),
-        "icp_pain_points": icp_data.get("icp_pain_points", []),
-        "als_weights": icp_data.get("als_weights", {}),
+        "icp_industries": json.dumps(icp_data.get("icp_industries", [])),
+        "icp_company_sizes": json.dumps(icp_data.get("icp_company_sizes", [])),
+        "icp_locations": json.dumps(icp_data.get("icp_locations", [])),
+        "icp_titles": json.dumps(icp_data.get("icp_titles", [])),
+        "icp_pain_points": json.dumps(icp_data.get("icp_pain_points", [])),
+        "als_weights": json.dumps(icp_data.get("als_weights", {})),
         "icp_extracted_at": datetime.utcnow(),
         "icp_extraction_source": "ai_extraction",
         "icp_confirmed_at": datetime.utcnow(),
@@ -659,6 +660,8 @@ async def update_client_icp(
             detail="Access denied to this client",
         )
 
+    import json as json_module
+
     # Build update dict from non-None values
     updates = request.model_dump(exclude_none=True)
     if not updates:
@@ -666,6 +669,13 @@ async def update_client_icp(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No updates provided",
         )
+
+    # JSONB fields need to be serialized for asyncpg
+    jsonb_fields = {"services_offered", "icp_industries", "icp_company_sizes",
+                    "icp_locations", "icp_titles", "icp_pain_points", "als_weights"}
+    for field in jsonb_fields:
+        if field in updates and isinstance(updates[field], (list, dict)):
+            updates[field] = json_module.dumps(updates[field])
 
     updates["updated_at"] = datetime.utcnow()
 

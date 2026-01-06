@@ -19,7 +19,7 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from src.api.dependencies import get_current_user_id
+from src.api.dependencies import CurrentUser, get_current_user_from_token
 from src.integrations.supabase import get_db_session
 from src.services.lead_pool_service import LeadPoolService
 
@@ -98,7 +98,7 @@ async def run_pool_population(client_id: UUID, limit: int):
 async def populate_pool(
     request: PoolPopulateRequest,
     background_tasks: BackgroundTasks,
-    user_id: UUID = Depends(get_current_user_id),
+    user: CurrentUser = Depends(get_current_user_from_token),
 ) -> PoolPopulateResponse:
     """
     Trigger pool population from Apollo for the current user's client.
@@ -108,7 +108,7 @@ async def populate_pool(
 
     - **limit**: Maximum number of leads to add (1-100, default 25)
     """
-    from sqlalchemy import select, text
+    from sqlalchemy import text
 
     # Get client_id for the user
     async with get_db_session() as db:
@@ -118,7 +118,7 @@ async def populate_pool(
             WHERE user_id = :user_id AND deleted_at IS NULL
             LIMIT 1
         """)
-        result = await db.execute(stmt, {"user_id": user_id})
+        result = await db.execute(stmt, {"user_id": user.id})
         row = result.fetchone()
 
         if not row:
@@ -152,7 +152,7 @@ async def populate_pool_for_client(
     client_id: UUID,
     request: PoolPopulateRequest,
     background_tasks: BackgroundTasks,
-    user_id: UUID = Depends(get_current_user_id),
+    user: CurrentUser = Depends(get_current_user_from_token),
 ) -> PoolPopulateResponse:
     """
     Trigger pool population for a specific client (admin/agency use).
@@ -174,7 +174,7 @@ async def populate_pool_for_client(
             AND deleted_at IS NULL
             LIMIT 1
         """)
-        result = await db.execute(stmt, {"user_id": user_id, "client_id": client_id})
+        result = await db.execute(stmt, {"user_id": user.id, "client_id": client_id})
         row = result.fetchone()
 
         if not row:
@@ -199,7 +199,7 @@ async def populate_pool_for_client(
 
 @router.get("/stats", response_model=PoolStatsResponse)
 async def get_pool_stats(
-    user_id: UUID = Depends(get_current_user_id),
+    user: CurrentUser = Depends(get_current_user_from_token),
 ) -> PoolStatsResponse:
     """
     Get lead pool statistics.

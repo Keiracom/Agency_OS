@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Q
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies import get_current_user, get_db
+from src.api.dependencies import get_current_user_from_token, get_db_session
 from src.services import (
     CustomerImportService,
     SuppressionService,
@@ -111,8 +111,8 @@ class SuppressionCheckResponse(BaseModel):
 @router.post("/import/crm", response_model=ImportResultResponse)
 async def import_from_crm(
     request: CRMImportRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user_from_token),
 ):
     """
     Import customers from CRM (closed-won deals).
@@ -156,8 +156,8 @@ async def import_from_csv(
     email_column: Optional[str] = Form(None),
     company_name_column: Optional[str] = Form(None),
     source: str = Form("csv_import"),
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user_from_token),
 ):
     """
     Import customers from CSV file.
@@ -212,8 +212,8 @@ async def list_customers(
     source: Optional[str] = Query(None, description="Filter by import source"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user_from_token),
 ):
     """List imported customers for the client."""
     client_id = UUID(current_user["client_id"])
@@ -243,8 +243,8 @@ async def list_customers(
 
 @router.get("/count")
 async def get_customer_count(
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user_from_token),
 ):
     """Get count of imported customers."""
     client_id = UUID(current_user["client_id"])
@@ -258,8 +258,8 @@ async def get_customer_count(
 @router.get("/{customer_id}", response_model=CustomerResponse)
 async def get_customer(
     customer_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user_from_token),
 ):
     """Get a specific customer by ID."""
     client_id = UUID(current_user["client_id"])
@@ -286,8 +286,8 @@ async def get_customer(
 async def delete_customer(
     customer_id: UUID,
     remove_suppression: bool = Query(False, description="Also remove from suppression list"),
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user_from_token),
 ):
     """
     Delete a customer record.
@@ -317,8 +317,8 @@ async def delete_customer(
 @router.post("/suppression", response_model=SuppressionResponse)
 async def add_suppression(
     request: SuppressionAddRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user_from_token),
 ):
     """
     Add entry to suppression list.
@@ -375,8 +375,8 @@ async def list_suppressions(
     reason: Optional[str] = Query(None, description="Filter by reason"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user_from_token),
 ):
     """List suppression entries for the client."""
     client_id = UUID(current_user["client_id"])
@@ -407,8 +407,8 @@ async def list_suppressions(
 
 @router.get("/suppression/count")
 async def get_suppression_count(
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user_from_token),
 ):
     """Get count of suppression entries."""
     client_id = UUID(current_user["client_id"])
@@ -422,8 +422,8 @@ async def get_suppression_count(
 @router.post("/suppression/check", response_model=SuppressionCheckResponse)
 async def check_suppression(
     request: SuppressionCheckRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user_from_token),
 ):
     """
     Check if an email or domain is suppressed.
@@ -459,8 +459,8 @@ async def check_suppression(
 @router.delete("/suppression/{suppression_id}")
 async def remove_suppression(
     suppression_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user_from_token),
 ):
     """Remove entry from suppression list."""
     client_id = UUID(current_user["client_id"])
@@ -485,8 +485,8 @@ async def remove_suppression(
 @router.get("/buyer-signals/check")
 async def check_buyer_signal(
     domain: str = Query(..., description="Domain to check"),
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user_from_token),
 ):
     """
     Check if a domain is a known buyer on the platform.
@@ -514,8 +514,8 @@ async def check_buyer_signal(
 @router.get("/buyer-signals/boost")
 async def get_buyer_boost(
     domain: str = Query(..., description="Domain to check"),
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user_from_token),
 ):
     """
     Get the score boost for a domain if it's a known buyer.
@@ -535,8 +535,8 @@ async def get_buyer_boost(
 
 @router.get("/buyer-signals/stats")
 async def get_buyer_signal_stats(
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user_from_token),
 ):
     """Get aggregate statistics about platform buyer signals."""
     service = BuyerSignalService(db)
@@ -548,8 +548,8 @@ async def get_buyer_signal_stats(
 @router.get("/buyer-signals/top-industries")
 async def get_top_buyer_industries(
     limit: int = Query(10, ge=1, le=50),
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user_from_token),
 ):
     """Get industries with highest buyer signal concentration."""
     service = BuyerSignalService(db)
@@ -574,6 +574,6 @@ async def get_top_buyer_industries(
 # [x] Buyer signal check endpoint (GET /buyer-signals/check)
 # [x] Buyer boost endpoint (GET /buyer-signals/boost)
 # [x] Buyer stats endpoint (GET /buyer-signals/stats)
-# [x] All endpoints use Depends(get_current_user)
-# [x] All endpoints use Depends(get_db)
+# [x] All endpoints use Depends(get_current_user_from_token)
+# [x] All endpoints use Depends(get_db_session)
 # [x] Pydantic models for request/response

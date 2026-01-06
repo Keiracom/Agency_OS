@@ -15,6 +15,7 @@ RULES APPLIED:
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -226,7 +227,7 @@ async def check_database_health() -> dict:
     """
     try:
         async with get_db_session() as session:
-            result = await session.execute("SELECT 1")
+            result = await session.execute(text("SELECT 1"))
             result.scalar()
             return {
                 "status": "healthy",

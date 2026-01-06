@@ -20,6 +20,7 @@ import sys
 from typing import Any
 
 from prefect import get_client
+from sqlalchemy import text
 from prefect.agent import PrefectAgent
 from prefect.settings import PREFECT_API_URL
 
@@ -62,7 +63,7 @@ class AgencyOSWorker:
         # Verify database connection
         try:
             async with get_async_session() as session:
-                await session.execute("SELECT 1")
+                await session.execute(text("SELECT 1"))
             logger.info("✓ Database connection verified")
         except Exception as e:
             logger.error(f"✗ Database connection failed: {e}")

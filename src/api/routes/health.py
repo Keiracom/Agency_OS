@@ -15,6 +15,7 @@ RULES APPLIED:
 
 import httpx
 from fastapi import APIRouter, status
+from sqlalchemy import text
 from pydantic import BaseModel
 from typing import Literal
 
@@ -90,7 +91,7 @@ async def check_database() -> ComponentStatus:
         start = time.perf_counter()
 
         async with get_async_session() as session:
-            await session.execute("SELECT 1")
+            await session.execute(text("SELECT 1"))
 
         latency = (time.perf_counter() - start) * 1000  # Convert to ms
 

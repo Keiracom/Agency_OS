@@ -21,6 +21,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import FastAPI, Request, status
+from sqlalchemy import text
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -68,7 +69,7 @@ async def lifespan(app: FastAPI):
     # Verify database connection
     try:
         async with get_async_session() as session:
-            await session.execute("SELECT 1")
+            await session.execute(text("SELECT 1"))
         logger.info("Database connection verified")
     except Exception as e:
         logger.error(f"Database connection failed: {e}")
@@ -315,7 +316,7 @@ async def health_check() -> dict[str, Any]:
     # Check database health
     try:
         async with get_async_session() as session:
-            await session.execute("SELECT 1")
+            await session.execute(text("SELECT 1"))
         health_status["database"] = "healthy"
     except Exception:
         health_status["database"] = "unhealthy"

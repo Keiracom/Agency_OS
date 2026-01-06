@@ -78,6 +78,8 @@ These skills define how the 3-agent pipeline operates:
 | Onboarding | `skills/onboarding/ONBOARDING_SKILL.md` | Client onboarding flow | 🔴 Not Started |
 | **Live UX Testing** | `skills/testing/LIVE_UX_TEST_SKILL.md` | Phase 15 end-to-end testing | ✅ Ready |
 | **E2E Testing & Fixing** | `skills/testing/E2E_TESTING_SKILL.md` | Phase 21 autonomous test-fix cycle | ✅ Ready |
+| **Automated E2E Testing** | `skills/testing/AUTOMATED_E2E_SKILL.md` | Full journey API testing before manual testing | ✅ Ready |
+| **LinkedIn Connection** | `skills/linkedin/LINKEDIN_CONNECTION_SKILL.md` | Phase 24H credential-based HeyReach connection | ✅ Ready |
 | **Conversion Intelligence** | `skills/conversion/CONVERSION_SKILL.md` | Phase 16 learning system | ✅ Ready |
 | **CRM Integration** | `skills/crm/CRM_INTEGRATION_SKILL.md` | Phase 24E + 24F CRM push & customer import | ✅ Ready |
 

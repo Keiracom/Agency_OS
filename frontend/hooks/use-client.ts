@@ -14,6 +14,7 @@ import type { Client, MembershipRole } from "@/lib/api/types";
 interface ClientWithMembership {
   client: Client;
   role: MembershipRole;
+  token: string | null;
 }
 
 /**
@@ -21,7 +22,8 @@ interface ClientWithMembership {
  */
 async function fetchCurrentClient(): Promise<ClientWithMembership | null> {
   const supabase = createBrowserClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user;
 
   if (!user) return null;
 
@@ -52,6 +54,7 @@ async function fetchCurrentClient(): Promise<ClientWithMembership | null> {
   return {
     client: clientData,
     role: membership.role as MembershipRole,
+    token: session?.access_token || null,
   };
 }
 
@@ -78,6 +81,7 @@ export function useClient() {
     client: data?.client || null,
     clientId: data?.client?.id || null,
     role: data?.role || null,
+    token: data?.token || null,
     isLoading,
     error,
     refetch,

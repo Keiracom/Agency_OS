@@ -21,6 +21,7 @@ from src.models.lead import Lead, GlobalSuppression, ClientSuppression, DomainSu
 from src.models.activity import Activity, ActivityStats
 from src.models.conversion_patterns import ConversionPattern, ConversionPatternHistory
 from src.models.url_validation import URLValidationResult
+from src.models.linkedin_credential import LinkedInCredential
 
 __all__ = [
     # Base
@@ -46,4 +47,6 @@ __all__ = [
     "ConversionPatternHistory",
     # URL Validation
     "URLValidationResult",
+    # LinkedIn
+    "LinkedInCredential",
 ]

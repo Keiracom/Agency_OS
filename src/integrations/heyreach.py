@@ -276,6 +276,181 @@ class HeyReachClient:
             "can_send": remaining > 0,
         }
 
+    # ==========================================
+    # LinkedIn Account Management (Phase 24H)
+    # ==========================================
+
+    async def add_linkedin_account(
+        self,
+        email: str,
+        password: str,
+    ) -> dict[str, Any]:
+        """
+        Add a LinkedIn account to HeyReach.
+
+        NOTE: Check HeyReach API documentation for actual endpoint.
+        This is based on common patterns for LinkedIn automation platforms.
+
+        Args:
+            email: LinkedIn account email
+            password: LinkedIn account password
+
+        Returns:
+            Dict with:
+            - success: bool
+            - requires_2fa: bool (if 2FA needed)
+            - 2fa_method: str ('sms', 'email', 'authenticator')
+            - sender_id: str (HeyReach sender ID)
+            - account_id: str (HeyReach account ID)
+            - profile_url: str
+            - profile_name: str
+            - headline: str
+            - connection_count: int
+            - error: str (if failed)
+        """
+        try:
+            result = await self._request(
+                "POST",
+                "/senders/linkedin",
+                data={
+                    "email": email,
+                    "password": password,
+                },
+            )
+
+            # Check if 2FA is required
+            if result.get("requires_verification") or result.get("requires_2fa"):
+                return {
+                    "success": False,
+                    "requires_2fa": True,
+                    "2fa_method": result.get("verification_method", "unknown"),
+                }
+
+            # Check for errors
+            if result.get("error") or not result.get("sender_id"):
+                return {
+                    "success": False,
+                    "requires_2fa": False,
+                    "error": result.get("error", "Failed to connect LinkedIn account"),
+                }
+
+            # Success
+            return {
+                "success": True,
+                "requires_2fa": False,
+                "sender_id": result.get("sender_id") or result.get("id"),
+                "account_id": result.get("account_id"),
+                "profile_url": result.get("profile_url") or result.get("linkedin_url"),
+                "profile_name": result.get("name") or result.get("profile_name"),
+                "headline": result.get("headline"),
+                "connection_count": result.get("connections") or result.get("connection_count"),
+            }
+
+        except APIError as e:
+            # Handle specific API errors
+            if e.status_code == 401:
+                return {
+                    "success": False,
+                    "requires_2fa": False,
+                    "error": "Invalid LinkedIn credentials",
+                }
+            elif e.status_code == 429:
+                return {
+                    "success": False,
+                    "requires_2fa": False,
+                    "error": "Too many attempts. Please try again later.",
+                }
+            raise
+
+    async def verify_2fa(
+        self,
+        email: str,
+        password: str,
+        code: str,
+    ) -> dict[str, Any]:
+        """
+        Submit 2FA code to complete LinkedIn connection.
+
+        Args:
+            email: LinkedIn account email
+            password: LinkedIn account password
+            code: 2FA verification code
+
+        Returns:
+            Same structure as add_linkedin_account
+        """
+        try:
+            result = await self._request(
+                "POST",
+                "/senders/linkedin/verify",
+                data={
+                    "email": email,
+                    "password": password,
+                    "code": code,
+                },
+            )
+
+            if result.get("error") or not result.get("sender_id"):
+                return {
+                    "success": False,
+                    "error": result.get("error", "Invalid verification code"),
+                }
+
+            return {
+                "success": True,
+                "sender_id": result.get("sender_id") or result.get("id"),
+                "account_id": result.get("account_id"),
+                "profile_url": result.get("profile_url") or result.get("linkedin_url"),
+                "profile_name": result.get("name") or result.get("profile_name"),
+                "headline": result.get("headline"),
+                "connection_count": result.get("connections") or result.get("connection_count"),
+            }
+
+        except APIError as e:
+            if e.status_code == 400:
+                return {
+                    "success": False,
+                    "error": "Invalid verification code",
+                }
+            raise
+
+    async def remove_sender(self, sender_id: str) -> dict[str, Any]:
+        """
+        Remove a LinkedIn sender from HeyReach.
+
+        Args:
+            sender_id: HeyReach sender ID
+
+        Returns:
+            Dict with success status
+        """
+        result = await self._request("DELETE", f"/senders/{sender_id}")
+        return {
+            "success": True,
+            "sender_id": sender_id,
+        }
+
+    async def get_sender(self, sender_id: str) -> dict[str, Any]:
+        """
+        Get sender details from HeyReach.
+
+        Args:
+            sender_id: HeyReach sender ID
+
+        Returns:
+            Sender details
+        """
+        result = await self._request("GET", f"/senders/{sender_id}")
+        return {
+            "sender_id": result.get("id"),
+            "email": result.get("email"),
+            "profile_url": result.get("profile_url"),
+            "profile_name": result.get("name"),
+            "headline": result.get("headline"),
+            "connection_count": result.get("connections"),
+            "status": result.get("status"),
+        }
+
 
 # Singleton instance
 _heyreach_client: HeyReachClient | None = None

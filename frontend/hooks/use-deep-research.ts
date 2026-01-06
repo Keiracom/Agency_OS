@@ -107,9 +107,9 @@ export function useDeepResearch(leadId: string | undefined) {
     queryFn: () => getLeadResearch(clientId!, leadId!, token!),
     enabled: !!clientId && !!leadId && !!token,
     staleTime: 10 * 1000, // 10 seconds
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
       // Poll every 5 seconds while in_progress
-      if (data?.status === "in_progress") {
+      if (query.state.data?.status === "in_progress") {
         return 5000;
       }
       return false;

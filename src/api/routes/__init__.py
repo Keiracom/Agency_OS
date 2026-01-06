@@ -34,6 +34,7 @@ from src.api.routes.replies import router as replies_router
 from src.api.routes.reports import router as reports_router
 from src.api.routes.webhooks import router as webhooks_router
 from src.api.routes.webhooks_outbound import router as webhooks_outbound_router
+from src.api.routes.linkedin import router as linkedin_router
 
 __all__ = [
     "health_router",
@@ -51,4 +52,6 @@ __all__ = [
     "crm_router",
     # Phase 24F: Customer Import
     "customers_router",
+    # Phase 24H: LinkedIn Connection
+    "linkedin_router",
 ]

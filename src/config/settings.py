@@ -225,6 +225,12 @@ class Settings(BaseSettings):
         description="Daily email limit during TEST_MODE for mailbox warmup protection"
     )
 
+    # === Credential Encryption (Phase 24H) ===
+    credential_encryption_key: str = Field(
+        default="",
+        description="Fernet encryption key for LinkedIn credentials (generate with cryptography.fernet.Fernet.generate_key())"
+    )
+
     # === CRM Integration (Phase 24E) ===
     # HubSpot OAuth (required for HubSpot integration)
     hubspot_client_id: str = Field(default="", description="HubSpot OAuth client ID")

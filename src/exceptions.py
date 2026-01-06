@@ -420,6 +420,14 @@ class DNCRError(SuppressionError):
 
 
 # ============================================
+# BACKWARD COMPATIBILITY ALIASES
+# ============================================
+
+# Alias for services that import NotFoundError instead of ResourceNotFoundError
+NotFoundError = ResourceNotFoundError
+
+
+# ============================================
 # VERIFICATION CHECKLIST
 # ============================================
 # [x] Contract comment at top
@@ -434,3 +442,4 @@ class DNCRError(SuppressionError):
 # [x] Suppression errors (including DNCR)
 # [x] All exceptions have type hints
 # [x] All exceptions have docstrings
+# [x] NotFoundError alias for backward compatibility

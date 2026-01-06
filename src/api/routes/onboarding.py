@@ -543,20 +543,21 @@ async def confirm_icp(
             icp_data[key] = value
 
     # Update client with ICP data
-    # Note: For asyncpg with raw text() queries, JSONB fields must be passed as JSON strings
-    # and explicitly cast in the SQL to jsonb type
+    # Note: For asyncpg with raw text() queries:
+    # - TEXT[] fields need native Python lists (asyncpg handles conversion)
+    # - JSONB fields need JSON strings with explicit CAST
     update_fields = {
         "website_url": icp_data.get("website_url"),
         "company_description": icp_data.get("company_description") or icp_data.get("value_proposition"),
-        "services_offered": json.dumps(icp_data.get("services_offered", [])),
+        "services_offered": icp_data.get("services_offered", []),  # TEXT[]
         "value_proposition": icp_data.get("value_proposition"),
         "team_size": icp_data.get("team_size"),
-        "icp_industries": json.dumps(icp_data.get("icp_industries", [])),
-        "icp_company_sizes": json.dumps(icp_data.get("icp_company_sizes", [])),
-        "icp_locations": json.dumps(icp_data.get("icp_locations", [])),
-        "icp_titles": json.dumps(icp_data.get("icp_titles", [])),
-        "icp_pain_points": json.dumps(icp_data.get("icp_pain_points", [])),
-        "als_weights": json.dumps(icp_data.get("als_weights", {})),
+        "icp_industries": icp_data.get("icp_industries", []),  # TEXT[]
+        "icp_company_sizes": icp_data.get("icp_company_sizes", []),  # TEXT[]
+        "icp_locations": icp_data.get("icp_locations", []),  # TEXT[]
+        "icp_titles": icp_data.get("icp_titles", []),  # TEXT[]
+        "icp_pain_points": icp_data.get("icp_pain_points", []),  # TEXT[]
+        "als_weights": json.dumps(icp_data.get("als_weights", {})),  # JSONB - needs JSON string
         "icp_extracted_at": datetime.utcnow(),
         "icp_extraction_source": "ai_extraction",
         "icp_confirmed_at": datetime.utcnow(),
@@ -564,9 +565,8 @@ async def confirm_icp(
         "updated_at": datetime.utcnow(),
     }
 
-    # JSONB fields require explicit type casting for asyncpg
-    jsonb_fields = ["services_offered", "icp_industries", "icp_company_sizes",
-                    "icp_locations", "icp_titles", "icp_pain_points", "als_weights"]
+    # Only als_weights is JSONB, needs explicit cast
+    jsonb_fields = ["als_weights"]
 
     # Build SQL update with explicit JSONB casts for asyncpg compatibility
     set_parts = []

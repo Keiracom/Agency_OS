@@ -543,7 +543,8 @@ async def confirm_icp(
             icp_data[key] = value
 
     # Update client with ICP data
-    # Note: JSONB fields need to be serialized for asyncpg
+    # Note: For asyncpg with raw text() queries, JSONB fields must be passed as JSON strings
+    # and explicitly cast in the SQL to jsonb type
     update_fields = {
         "website_url": icp_data.get("website_url"),
         "company_description": icp_data.get("company_description") or icp_data.get("value_proposition"),
@@ -563,8 +564,19 @@ async def confirm_icp(
         "updated_at": datetime.utcnow(),
     }
 
-    # Build SQL update
-    set_clauses = ", ".join([f"{k} = :{k}" for k in update_fields.keys()])
+    # JSONB fields require explicit type casting for asyncpg
+    jsonb_fields = ["services_offered", "icp_industries", "icp_company_sizes",
+                    "icp_locations", "icp_titles", "icp_pain_points", "als_weights"]
+
+    # Build SQL update with explicit JSONB casts for asyncpg compatibility
+    set_parts = []
+    for k in update_fields.keys():
+        if k in jsonb_fields:
+            set_parts.append(f"{k} = CAST(:{k} AS jsonb)")
+        else:
+            set_parts.append(f"{k} = :{k}")
+    set_clauses = ", ".join(set_parts)
+
     await db.execute(
         text(f"""
         UPDATE clients

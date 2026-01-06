@@ -142,7 +142,18 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     bounce_count: Mapped[int] = mapped_column(Integer, default=0)
 
     # === Phase 24D: Rejection Tracking ===
-    rejection_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Note: rejection_reason is a PostgreSQL ENUM type created in migration 027
+    rejection_reason: Mapped[Optional[str]] = mapped_column(
+        ENUM(
+            'timing_not_now', 'budget_constraints', 'using_competitor',
+            'not_decision_maker', 'no_need', 'bad_experience', 'too_busy',
+            'not_interested_generic', 'do_not_contact', 'wrong_contact',
+            'company_policy', 'other',
+            name='rejection_reason_type',
+            create_constraint=False,  # Type already exists in DB
+        ),
+        nullable=True
+    )
     rejection_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     rejection_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     objections_raised: Mapped[Optional[list]] = mapped_column(ARRAY(Text), nullable=True)

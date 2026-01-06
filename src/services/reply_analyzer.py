@@ -173,12 +173,15 @@ class ReplyAnalyzer:
                 if context.get("previous_message"):
                     context_str += f"Our previous message: {context['previous_message'][:200]}\n"
 
+            # Build context section separately to avoid f-string backslash issues
+            context_section = f"Context:\n{context_str}" if context_str else ""
+
             prompt = f"""Analyze this email/message reply and extract the following in JSON format:
 
 Reply to analyze:
 "{content}"
 
-{"Context:\n" + context_str if context_str else ""}
+{context_section}
 
 Return a JSON object with these fields:
 - sentiment: "positive", "neutral", "negative", or "mixed"

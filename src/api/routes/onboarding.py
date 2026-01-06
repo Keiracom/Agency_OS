@@ -509,11 +509,11 @@ async def confirm_icp(
 
     # Get the extraction result
     result = await db.execute(
-        """
+        text("""
         SELECT extracted_icp
         FROM icp_extraction_jobs
         WHERE id = :job_id AND client_id = :client_id AND status = 'completed'
-        """,
+        """),
         {"job_id": str(request.job_id), "client_id": str(client.client_id)},
     )
     row = result.fetchone()
@@ -565,11 +565,11 @@ async def confirm_icp(
     # Build SQL update
     set_clauses = ", ".join([f"{k} = :{k}" for k in update_fields.keys()])
     await db.execute(
-        f"""
+        text(f"""
         UPDATE clients
         SET {set_clauses}
         WHERE id = :client_id AND deleted_at IS NULL
-        """,
+        """),
         {"client_id": str(client.client_id), **update_fields},
     )
     await db.commit()
@@ -601,14 +601,14 @@ async def get_client_icp(
         )
 
     result = await db.execute(
-        """
+        text("""
         SELECT name, website_url, company_description, services_offered,
                value_proposition, team_size, icp_industries, icp_company_sizes,
                icp_locations, icp_titles, icp_pain_points, als_weights,
                icp_extracted_at, icp_confirmed_at
         FROM clients
         WHERE id = :client_id AND deleted_at IS NULL
-        """,
+        """),
         {"client_id": str(client_id)},
     )
     row = result.fetchone()
@@ -672,11 +672,11 @@ async def update_client_icp(
     # Build SQL update
     set_clauses = ", ".join([f"{k} = :{k}" for k in updates.keys()])
     await db.execute(
-        f"""
+        text(f"""
         UPDATE clients
         SET {set_clauses}
         WHERE id = :client_id AND deleted_at IS NULL
-        """,
+        """),
         {"client_id": str(client_id), **updates},
     )
     await db.commit()

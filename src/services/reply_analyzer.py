@@ -178,7 +178,7 @@ class ReplyAnalyzer:
 Reply to analyze:
 "{content}"
 
-{f"Context:\n{context_str}" if context_str else ""}
+{"Context:\n" + context_str if context_str else ""}
 
 Return a JSON object with these fields:
 - sentiment: "positive", "neutral", "negative", or "mixed"

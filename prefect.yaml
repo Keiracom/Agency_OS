@@ -43,7 +43,7 @@ deployments:
       - activation
       - webhook-triggered
     description: "Campaign activation and validation flow (webhook-triggered)"
-    entrypoint: src/orchestration/flows/campaign_flow.py:campaign_flow
+    entrypoint: src/orchestration/flows/campaign_flow.py:campaign_activation_flow
     work_pool:
       name: agency-os-pool
       work_queue_name: agency-os-queue
@@ -60,7 +60,7 @@ deployments:
       - daily
       - safety-net
     description: "Daily enrichment safety net at 2 AM AEST"
-    entrypoint: src/orchestration/flows/enrichment_flow.py:enrichment_flow
+    entrypoint: src/orchestration/flows/enrichment_flow.py:daily_enrichment_flow
     work_pool:
       name: agency-os-pool
       work_queue_name: agency-os-queue
@@ -82,7 +82,7 @@ deployments:
       - business-hours
       - safety-net
     description: "Hourly outreach during business hours (8 AM-6 PM AEST, Mon-Fri)"
-    entrypoint: src/orchestration/flows/outreach_flow.py:outreach_flow
+    entrypoint: src/orchestration/flows/outreach_flow.py:hourly_outreach_flow
     work_pool:
       name: agency-os-pool
       work_queue_name: agency-os-queue

@@ -1,0 +1,53 @@
+# FILE: Dockerfile.worker
+# PURPOSE: Prefect worker container for executing flows
+# PHASE: 5 (Orchestration)
+# TASK: ORC-012
+# DEPENDENCIES:
+#   - requirements.txt
+#   - src/orchestration/flows/*.py
+# RULES APPLIED:
+#   - Rule 1: Follow blueprint exactly
+#   - Prefect for orchestration (not Redis workers)
+
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code (needed for flow execution)
+COPY src/ ./src/
+COPY config/ ./config/
+COPY prefect.yaml .
+
+# Environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+# Start script
+COPY scripts/start-prefect-worker.sh /start.sh
+RUN chmod +x /start.sh
+
+# Health check - worker doesn't expose HTTP, check process
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD pgrep -f "prefect worker" || exit 1
+
+CMD ["/start.sh"]
+
+# === VERIFICATION CHECKLIST ===
+# [x] Uses Python 3.11
+# [x] Installs all requirements
+# [x] Copies application code for flow execution
+# [x] Sets PYTHONPATH correctly
+# [x] Health check for worker process
+# [x] Start script for configuration

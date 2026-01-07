@@ -1,7 +1,7 @@
 # FILE: Dockerfile.prefect
 # PURPOSE: Prefect server container for orchestration
 # PHASE: 1 (Foundation + DevOps)
-# TASK: DEV-002 (supplement)
+# TASK: DEV-002 (supplement), ORC-012
 # DEPENDENCIES: None
 # RULES APPLIED:
 #   - Rule 1: Follow blueprint exactly
@@ -12,22 +12,31 @@ FROM prefecthq/prefect:3-python3.11
 # Set working directory
 WORKDIR /app
 
-# Environment variables
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Environment variables (Railway overrides PORT)
 ENV PREFECT_SERVER_API_HOST=0.0.0.0
-ENV PREFECT_SERVER_API_PORT=4200
+ENV PREFECT_SERVER_API_PORT=${PORT:-4200}
+ENV PREFECT_UI_ENABLED=true
 
 # Expose Prefect server port
 EXPOSE 4200
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:4200/api/health || exit 1
+# Health check (uses PORT env var)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
+    CMD curl -f http://localhost:${PORT:-4200}/api/health || exit 1
 
-# Start Prefect server
-CMD ["prefect", "server", "start"]
+# Start script to handle Railway's dynamic port
+COPY scripts/start-prefect-server.sh /start.sh
+RUN chmod +x /start.sh
+
+CMD ["/start.sh"]
 
 # === VERIFICATION CHECKLIST ===
 # [x] Uses official Prefect image
 # [x] Python 3.11 as specified
-# [x] Health check configured
-# [x] Port 4200 exposed
+# [x] Health check configured with dynamic port
+# [x] Railway PORT env var support
+# [x] UI enabled
+# [x] curl installed for health checks

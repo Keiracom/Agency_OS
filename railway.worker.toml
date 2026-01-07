@@ -1,0 +1,38 @@
+# FILE: railway.worker.toml
+# PURPOSE: Railway configuration for Prefect worker service
+# PHASE: 5 (Orchestration)
+# TASK: ORC-012
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile.worker"
+
+[deploy]
+restartPolicyType = "always"
+restartPolicyMaxRetries = 10
+numReplicas = 1
+
+# No health check path - worker doesn't expose HTTP
+
+# ============================================================================
+# Environment Variables (set via Railway dashboard)
+# ============================================================================
+# Required:
+#   PREFECT_API_URL=https://prefect-server-production-xxxx.up.railway.app/api
+#   DATABASE_URL=postgresql://... (same as API service)
+#   REDIS_URL=redis://... (same as API service)
+#
+# Plus all API keys needed for flow execution:
+#   ANTHROPIC_API_KEY
+#   APOLLO_API_KEY
+#   APIFY_API_KEY
+#   CLAY_API_KEY
+#   RESEND_API_KEY
+#   etc.
+
+# ============================================================================
+# Notes
+# ============================================================================
+# 1. Worker needs ALL environment variables that flows use
+# 2. Copy all env vars from api service to worker service
+# 3. Add PREFECT_API_URL pointing to prefect-server service

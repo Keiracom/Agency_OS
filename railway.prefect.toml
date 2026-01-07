@@ -1,0 +1,36 @@
+# FILE: railway.prefect.toml
+# PURPOSE: Railway configuration for Prefect server service
+# PHASE: 5 (Orchestration)
+# TASK: ORC-012
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile.prefect"
+
+[deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 60
+restartPolicyType = "always"
+restartPolicyMaxRetries = 10
+numReplicas = 1
+
+# Start command handled by Dockerfile CMD
+
+# ============================================================================
+# Environment Variables (set via Railway dashboard)
+# ============================================================================
+# Required:
+#   PREFECT_SERVER_API_HOST=0.0.0.0
+#   PREFECT_SERVER_API_PORT=4200 (Railway will override with $PORT)
+#   PREFECT_API_DATABASE_CONNECTION_URL=postgresql://... (Supabase)
+#
+# Optional:
+#   PREFECT_SERVER_CSRF_PROTECTION_ENABLED=false (for internal service)
+#   PREFECT_UI_ENABLED=true
+
+# ============================================================================
+# Notes
+# ============================================================================
+# 1. This service exposes the Prefect UI and API
+# 2. Workers connect to this server via PREFECT_API_URL
+# 3. Use Railway's internal networking: prefect-server.railway.internal:4200

@@ -226,6 +226,10 @@ class ApolloClient:
         This method is designed for populating the lead_pool with
         maximum data capture. Returns all 50+ fields.
 
+        NOTE: Apollo API changed in 2025 - search now returns preview data only.
+        We use /mixed_people/api_search to find candidates, then /people/match
+        to get full contact details for each person.
+
         Args:
             domain: Company domain filter
             titles: Filter by job titles (e.g., ["CEO", "Founder"])
@@ -239,6 +243,8 @@ class ApolloClient:
         Returns:
             List of people with full pool-compatible data
         """
+        import asyncio
+
         data: dict[str, Any] = {
             "per_page": min(limit, 100),
         }
@@ -258,10 +264,48 @@ class ApolloClient:
         if countries:
             data["person_locations"] = countries
 
-        result = await self._request("POST", "/mixed_people/api_search", data)
+        # Step 1: Search for people (returns preview data only)
+        search_result = await self._request("POST", "/mixed_people/api_search", data)
+        preview_people = search_result.get("people", [])
 
-        people = result.get("people", [])
-        return [self._transform_person_for_pool(p) for p in people]
+        if not preview_people:
+            return []
+
+        # Step 2: Enrich each person to get full data
+        # Apollo /people/match requires name + org or email or linkedin
+        enriched_people = []
+        for preview in preview_people:
+            try:
+                # Extract what we can from preview
+                first_name = preview.get("first_name")
+                # Handle obfuscated last name
+                last_name = preview.get("last_name") or preview.get("last_name_obfuscated", "").replace("*", "")
+                org_name = (preview.get("organization") or {}).get("name")
+
+                if first_name and org_name:
+                    # Use /people/match to get full data
+                    match_result = await self._request(
+                        "POST",
+                        "/people/match",
+                        {
+                            "first_name": first_name,
+                            "organization_name": org_name,
+                        },
+                    )
+
+                    if match_result.get("person"):
+                        enriched = self._transform_person_for_pool(match_result["person"])
+                        if enriched.get("email"):  # Only include if we got an email
+                            enriched_people.append(enriched)
+
+                # Rate limit: avoid hitting Apollo too fast
+                await asyncio.sleep(0.2)
+
+            except Exception as e:
+                # Log but continue with other people
+                continue
+
+        return enriched_people
 
     async def enrich_person_for_pool(
         self,

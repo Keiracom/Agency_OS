@@ -25,14 +25,15 @@ pull:
 # Deployment definitions
 # NOTE: All flows deployed PAUSED until production ready
 deployments:
-  # Campaign activation flow
+  # ============================================
+  # CAMPAIGN FLOWS
+  # ============================================
+
+  # Campaign activation flow (webhook-triggered)
   - name: campaign-flow
     version: 1.0.0
-    paused: true  # PAUSED until production ready
-    tags:
-      - campaign
-      - activation
-      - webhook-triggered
+    paused: true
+    tags: [campaign, activation, webhook-triggered]
     description: "Campaign activation and validation flow (webhook-triggered)"
     entrypoint: src/orchestration/flows/campaign_flow.py:campaign_activation_flow
     work_pool:
@@ -41,16 +42,17 @@ deployments:
     parameters:
       validate_billing: true
       check_credits: true
-    schedules: []  # Webhook-triggered only, no cron schedule
+    schedules: []
+
+  # ============================================
+  # ENRICHMENT FLOWS
+  # ============================================
 
   # Daily enrichment flow (safety net)
   - name: enrichment-flow
     version: 1.0.0
-    paused: true  # PAUSED until production ready
-    tags:
-      - enrichment
-      - daily
-      - safety-net
+    paused: true
+    tags: [enrichment, daily, safety-net]
     description: "Daily enrichment safety net at 2 AM AEST"
     entrypoint: src/orchestration/flows/enrichment_flow.py:daily_enrichment_flow
     work_pool:
@@ -58,22 +60,20 @@ deployments:
       work_queue_name: agency-os-queue
     parameters:
       batch_size: 100
-      max_clay_percentage: 0.15
-      check_billing: true
     schedules:
       - cron: "0 2 * * *"
         timezone: Australia/Sydney
-        active: false  # INACTIVE until production ready
+        active: false
 
-  # Hourly outreach flow (safety net during business hours)
+  # ============================================
+  # OUTREACH FLOWS
+  # ============================================
+
+  # Hourly outreach flow (business hours safety net)
   - name: outreach-flow
     version: 1.0.0
-    paused: true  # PAUSED until production ready
-    tags:
-      - outreach
-      - hourly
-      - business-hours
-      - safety-net
+    paused: true
+    tags: [outreach, hourly, business-hours, safety-net]
     description: "Hourly outreach during business hours (8 AM-6 PM AEST, Mon-Fri)"
     entrypoint: src/orchestration/flows/outreach_flow.py:hourly_outreach_flow
     work_pool:
@@ -81,21 +81,16 @@ deployments:
       work_queue_name: agency-os-queue
     parameters:
       batch_size: 50
-      respect_rate_limits: true
-      jit_validation: true
     schedules:
       - cron: "0 8-18 * * 1-5"
         timezone: Australia/Sydney
-        active: false  # INACTIVE until production ready
+        active: false
 
   # Reply recovery flow (6-hourly safety net)
   - name: reply-recovery-flow
     version: 1.0.0
-    paused: true  # PAUSED until production ready
-    tags:
-      - replies
-      - recovery
-      - safety-net
+    paused: true
+    tags: [replies, recovery, safety-net]
     description: "Reply recovery safety net every 6 hours"
     entrypoint: src/orchestration/flows/reply_recovery_flow.py:reply_recovery_flow
     work_pool:
@@ -103,11 +98,164 @@ deployments:
       work_queue_name: agency-os-queue
     parameters:
       lookback_hours: 6
-      check_all_channels: true
     schedules:
-      - interval: 21600  # 6 hours in seconds
+      - interval: 21600
         timezone: Australia/Sydney
-        active: false  # INACTIVE until production ready
+        active: false
+
+  # ============================================
+  # ONBOARDING FLOWS
+  # ============================================
+
+  # ICP onboarding flow (webhook-triggered for new clients)
+  - name: onboarding-flow
+    version: 1.0.0
+    paused: true
+    tags: [onboarding, icp, webhook-triggered]
+    description: "ICP extraction and onboarding for new clients"
+    entrypoint: src/orchestration/flows/onboarding_flow.py:icp_onboarding_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    schedules: []
+
+  # ICP re-extract flow (webhook-triggered)
+  - name: icp-reextract-flow
+    version: 1.0.0
+    paused: true
+    tags: [onboarding, icp, reextract, webhook-triggered]
+    description: "Re-extract ICP for existing client"
+    entrypoint: src/orchestration/flows/onboarding_flow.py:icp_reextract_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    schedules: []
+
+  # ============================================
+  # LEAD POOL FLOWS
+  # ============================================
+
+  # Pool population flow (webhook-triggered)
+  - name: pool-population-flow
+    version: 1.0.0
+    paused: true
+    tags: [pool, population, webhook-triggered]
+    description: "Populate lead pool with enriched leads"
+    entrypoint: src/orchestration/flows/pool_population_flow.py:pool_population_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    schedules: []
+
+  # Pool campaign assignment flow (webhook-triggered)
+  - name: pool-assignment-flow
+    version: 1.0.0
+    paused: true
+    tags: [pool, assignment, webhook-triggered]
+    description: "Assign leads from pool to campaign"
+    entrypoint: src/orchestration/flows/pool_assignment_flow.py:pool_campaign_assignment_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    schedules: []
+
+  # Pool daily allocation flow (scheduled)
+  - name: pool-daily-allocation-flow
+    version: 1.0.0
+    paused: true
+    tags: [pool, allocation, daily, safety-net]
+    description: "Daily lead allocation from pools to campaigns at 6 AM AEST"
+    entrypoint: src/orchestration/flows/pool_assignment_flow.py:pool_daily_allocation_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    schedules:
+      - cron: "0 6 * * *"
+        timezone: Australia/Sydney
+        active: false
+
+  # ============================================
+  # INTELLIGENCE FLOWS
+  # ============================================
+
+  # Intelligence research flow (webhook-triggered)
+  - name: intelligence-flow
+    version: 1.0.0
+    paused: true
+    tags: [intelligence, research, webhook-triggered]
+    description: "Deep research on lead for conversion intelligence"
+    entrypoint: src/orchestration/flows/intelligence_flow.py:intelligence_research_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    schedules: []
+
+  # Lead research trigger flow (webhook-triggered)
+  - name: lead-research-flow
+    version: 1.0.0
+    paused: true
+    tags: [intelligence, lead-research, webhook-triggered]
+    description: "Trigger research for individual lead"
+    entrypoint: src/orchestration/flows/intelligence_flow.py:trigger_lead_research_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    schedules: []
+
+  # ============================================
+  # PATTERN LEARNING FLOWS
+  # ============================================
+
+  # Weekly pattern learning flow (scheduled)
+  - name: pattern-learning-flow
+    version: 1.0.0
+    paused: true
+    tags: [patterns, learning, weekly]
+    description: "Weekly pattern learning at 3 AM Sunday AEST"
+    entrypoint: src/orchestration/flows/pattern_learning_flow.py:weekly_pattern_learning_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    schedules:
+      - cron: "0 3 * * 0"
+        timezone: Australia/Sydney
+        active: false
+
+  # Single client pattern learning (webhook-triggered)
+  - name: client-pattern-learning-flow
+    version: 1.0.0
+    paused: true
+    tags: [patterns, learning, webhook-triggered]
+    description: "Pattern learning for single client"
+    entrypoint: src/orchestration/flows/pattern_learning_flow.py:single_client_pattern_learning_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    schedules: []
+
+  # Pattern backfill flow (manual/one-time)
+  - name: pattern-backfill-flow
+    version: 1.0.0
+    paused: true
+    tags: [patterns, backfill, manual]
+    description: "Backfill historical patterns (manual trigger)"
+    entrypoint: src/orchestration/flows/pattern_backfill_flow.py:pattern_backfill_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    schedules: []
+
+  # Single client backfill flow (webhook-triggered)
+  - name: client-backfill-flow
+    version: 1.0.0
+    paused: true
+    tags: [patterns, backfill, webhook-triggered]
+    description: "Backfill patterns for single client"
+    entrypoint: src/orchestration/flows/pattern_backfill_flow.py:single_client_backfill_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    schedules: []
 
 # Environment variables reference
 # These should be set in Railway/environment, not hardcoded here
@@ -115,14 +263,14 @@ deployments:
 # - DATABASE_URL
 # - REDIS_URL
 # - ANTHROPIC_API_KEY
+# - APOLLO_API_KEY
+# - APIFY_API_KEY
+# - PROSPEO_API_KEY
+# - CLAY_API_KEY
 # - RESEND_API_KEY
 # - TWILIO_ACCOUNT_SID
 # - TWILIO_AUTH_TOKEN
 # - HEYREACH_API_KEY
-# - APOLLO_API_KEY
-# - CLAY_API_KEY
-# - LOB_API_KEY
-# - SYNTHFLOW_API_KEY
 # - PREFECT_API_URL
 
 # Worker configuration
@@ -131,12 +279,11 @@ deployments:
 
 # === VERIFICATION CHECKLIST ===
 # [x] Prefect 3.x syntax
-# [x] 4 flows defined (campaign, enrichment, outreach, reply_recovery)
+# [x] 16 flows defined (all operational flows)
 # [x] Work pool: agency-os-pool
 # [x] Work queue: agency-os-queue
 # [x] Schedules configured with Australia/Sydney timezone
-# [x] Environment variables referenced (not hardcoded)
-# [x] Build/push steps removed (Railway handles containers)
-# [x] Webhook-first architecture noted (schedules are safety nets)
-# [x] Business hours schedule for outreach (8 AM-6 PM AEST, Mon-Fri)
+# [x] All flows PAUSED until production ready
+# [x] All schedules INACTIVE until production ready
+# [x] Webhook-first architecture (schedules are safety nets)
 # [x] No hardcoded credentials

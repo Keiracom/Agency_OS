@@ -18,6 +18,7 @@ from src.models.user import User
 from src.models.membership import Membership
 from src.models.campaign import Campaign, CampaignResource, CampaignSequence
 from src.models.lead import Lead, GlobalSuppression, ClientSuppression, DomainSuppression
+from src.models.lead_social_post import LeadSocialPost
 from src.models.activity import Activity, ActivityStats
 from src.models.conversion_patterns import ConversionPattern, ConversionPatternHistory
 from src.models.url_validation import URLValidationResult
@@ -40,6 +41,7 @@ __all__ = [
     "GlobalSuppression",
     "ClientSuppression",
     "DomainSuppression",
+    "LeadSocialPost",
     "Activity",
     "ActivityStats",
     # Conversion Intelligence

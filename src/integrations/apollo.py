@@ -283,6 +283,11 @@ class ApolloClient:
 
         for preview in preview_people:
             try:
+                # Skip people without emails in Apollo's database
+                if not preview.get("has_email"):
+                    logger.debug(f"[Apollo] Skipping {preview.get('first_name')} - no email in Apollo")
+                    continue
+
                 # Extract what we can from preview
                 first_name = preview.get("first_name")
                 # Handle obfuscated last name

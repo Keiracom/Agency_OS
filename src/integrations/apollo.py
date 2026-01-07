@@ -256,10 +256,12 @@ class ApolloClient:
         if seniorities:
             data["person_seniorities"] = seniorities
         if industries:
-            data["organization_industry_tag_ids"] = industries
-        if employee_min:
+            # Use q_organization_keyword_tags for text-based industry filtering
+            # (organization_industry_tag_ids requires numeric Apollo IDs)
+            data["q_organization_keyword_tags"] = industries
+        if employee_min and employee_max:
             data["organization_num_employees_ranges"] = [
-                f"{employee_min},{employee_max or ''}"
+                f"{employee_min},{employee_max}"
             ]
         if countries:
             data["person_locations"] = countries

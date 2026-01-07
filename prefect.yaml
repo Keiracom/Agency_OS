@@ -39,9 +39,6 @@ deployments:
     work_pool:
       name: agency-os-pool
       work_queue_name: agency-os-queue
-    parameters:
-      validate_billing: true
-      check_credits: true
     schedules: []
 
   # ============================================

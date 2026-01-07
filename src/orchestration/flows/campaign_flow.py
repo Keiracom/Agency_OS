@@ -159,6 +159,7 @@ async def activate_campaign_task(campaign_id: UUID) -> dict[str, Any]:
     """
     async with get_db_session() as db:
         # Update campaign status to active
+        activation_time = datetime.utcnow()
         stmt = (
             update(Campaign)
             .where(
@@ -169,8 +170,7 @@ async def activate_campaign_task(campaign_id: UUID) -> dict[str, Any]:
             )
             .values(
                 status=CampaignStatus.ACTIVE,
-                activated_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                updated_at=activation_time,
             )
             .returning(Campaign.id)
         )
@@ -187,7 +187,7 @@ async def activate_campaign_task(campaign_id: UUID) -> dict[str, Any]:
         return {
             "campaign_id": str(campaign_id),
             "status": "active",
-            "activated_at": datetime.utcnow().isoformat(),
+            "activated_at": activation_time.isoformat(),
         }
 
 

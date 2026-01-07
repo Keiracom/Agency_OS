@@ -23,7 +23,7 @@ pull:
       directory: /app
 
 # Deployment definitions
-# NOTE: All flows deployed PAUSED until production ready
+# NOTE: Scheduled flows PAUSED, webhook flows ACTIVE for on-demand/testing
 deployments:
   # ============================================
   # CAMPAIGN FLOWS
@@ -32,7 +32,7 @@ deployments:
   # Campaign activation flow (webhook-triggered)
   - name: campaign-flow
     version: 1.0.0
-    paused: true
+    paused: false  # Webhook - active for on-demand triggers
     tags: [campaign, activation, webhook-triggered]
     description: "Campaign activation and validation flow (webhook-triggered)"
     entrypoint: src/orchestration/flows/campaign_flow.py:campaign_activation_flow
@@ -110,7 +110,7 @@ deployments:
   # ICP onboarding flow (webhook-triggered for new clients)
   - name: onboarding-flow
     version: 1.0.0
-    paused: true
+    paused: false  # Webhook - active for on-demand triggers
     tags: [onboarding, icp, webhook-triggered]
     description: "ICP extraction and onboarding for new clients"
     entrypoint: src/orchestration/flows/onboarding_flow.py:icp_onboarding_flow
@@ -122,7 +122,7 @@ deployments:
   # ICP re-extract flow (webhook-triggered)
   - name: icp-reextract-flow
     version: 1.0.0
-    paused: true
+    paused: false  # Webhook - active for on-demand triggers
     tags: [onboarding, icp, reextract, webhook-triggered]
     description: "Re-extract ICP for existing client"
     entrypoint: src/orchestration/flows/onboarding_flow.py:icp_reextract_flow
@@ -138,7 +138,7 @@ deployments:
   # Pool population flow (webhook-triggered)
   - name: pool-population-flow
     version: 1.0.0
-    paused: true
+    paused: false  # Webhook - active for on-demand triggers
     tags: [pool, population, webhook-triggered]
     description: "Populate lead pool with enriched leads"
     entrypoint: src/orchestration/flows/pool_population_flow.py:pool_population_flow
@@ -150,7 +150,7 @@ deployments:
   # Pool campaign assignment flow (webhook-triggered)
   - name: pool-assignment-flow
     version: 1.0.0
-    paused: true
+    paused: false  # Webhook - active for on-demand triggers
     tags: [pool, assignment, webhook-triggered]
     description: "Assign leads from pool to campaign"
     entrypoint: src/orchestration/flows/pool_assignment_flow.py:pool_campaign_assignment_flow
@@ -181,7 +181,7 @@ deployments:
   # Intelligence research flow (webhook-triggered)
   - name: intelligence-flow
     version: 1.0.0
-    paused: true
+    paused: false  # Webhook - active for on-demand triggers
     tags: [intelligence, research, webhook-triggered]
     description: "Deep research on lead for conversion intelligence"
     entrypoint: src/orchestration/flows/intelligence_flow.py:intelligence_research_flow
@@ -193,7 +193,7 @@ deployments:
   # Lead research trigger flow (webhook-triggered)
   - name: lead-research-flow
     version: 1.0.0
-    paused: true
+    paused: false  # Webhook - active for on-demand triggers
     tags: [intelligence, lead-research, webhook-triggered]
     description: "Trigger research for individual lead"
     entrypoint: src/orchestration/flows/intelligence_flow.py:trigger_lead_research_flow
@@ -224,7 +224,7 @@ deployments:
   # Single client pattern learning (webhook-triggered)
   - name: client-pattern-learning-flow
     version: 1.0.0
-    paused: true
+    paused: false  # Webhook - active for on-demand triggers
     tags: [patterns, learning, webhook-triggered]
     description: "Pattern learning for single client"
     entrypoint: src/orchestration/flows/pattern_learning_flow.py:single_client_pattern_learning_flow
@@ -236,7 +236,7 @@ deployments:
   # Pattern backfill flow (manual/one-time)
   - name: pattern-backfill-flow
     version: 1.0.0
-    paused: true
+    paused: false  # Manual - active for on-demand triggers
     tags: [patterns, backfill, manual]
     description: "Backfill historical patterns (manual trigger)"
     entrypoint: src/orchestration/flows/pattern_backfill_flow.py:pattern_backfill_flow
@@ -248,7 +248,7 @@ deployments:
   # Single client backfill flow (webhook-triggered)
   - name: client-backfill-flow
     version: 1.0.0
-    paused: true
+    paused: false  # Webhook - active for on-demand triggers
     tags: [patterns, backfill, webhook-triggered]
     description: "Backfill patterns for single client"
     entrypoint: src/orchestration/flows/pattern_backfill_flow.py:single_client_backfill_flow

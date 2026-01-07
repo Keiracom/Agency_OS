@@ -17,7 +17,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, func, or_, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -134,7 +134,7 @@ class LeadPoolService:
         params = self._prepare_insert_params(lead_data)
 
         result = await self.session.execute(
-            query,
+            text(query),
             params
         )
         row = result.fetchone()
@@ -205,7 +205,7 @@ class LeadPoolService:
             RETURNING *
         """
 
-        result = await self.session.execute(query, params)
+        result = await self.session.execute(text(query), params)
         row = result.fetchone()
         await self.session.commit()
 
@@ -229,7 +229,7 @@ class LeadPoolService:
             WHERE id = :id
         """
         result = await self.session.execute(
-            query,
+            text(query),
             {"id": str(lead_pool_id)}
         )
         row = result.fetchone()
@@ -250,7 +250,7 @@ class LeadPoolService:
             WHERE email = :email
         """
         result = await self.session.execute(
-            query,
+            text(query),
             {"email": email.lower().strip()}
         )
         row = result.fetchone()
@@ -271,7 +271,7 @@ class LeadPoolService:
             WHERE apollo_id = :apollo_id
         """
         result = await self.session.execute(
-            query,
+            text(query),
             {"apollo_id": apollo_id}
         )
         row = result.fetchone()
@@ -345,7 +345,7 @@ class LeadPoolService:
             LIMIT :limit OFFSET :offset
         """
 
-        result = await self.session.execute(query, params)
+        result = await self.session.execute(text(query), params)
         rows = result.fetchall()
 
         return [self._row_to_dict(row) for row in rows]
@@ -379,7 +379,7 @@ class LeadPoolService:
         """
 
         result = await self.session.execute(
-            query,
+            text(query),
             {"id": str(lead_pool_id), "reason": reason}
         )
         row = result.fetchone()
@@ -416,7 +416,7 @@ class LeadPoolService:
         """
 
         result = await self.session.execute(
-            query,
+            text(query),
             {"id": str(lead_pool_id), "reason": reason}
         )
         row = result.fetchone()
@@ -434,7 +434,7 @@ class LeadPoolService:
         query = """
             SELECT * FROM v_lead_pool_stats
         """
-        result = await self.session.execute(query)
+        result = await self.session.execute(text(query))
         row = result.fetchone()
 
         if not row:

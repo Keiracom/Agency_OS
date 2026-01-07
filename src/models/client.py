@@ -16,8 +16,8 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import Integer, String, Text
-from sqlalchemy.dialects.postgresql import ENUM
+from sqlalchemy import Integer, String, Text, JSON
+from sqlalchemy.dialects.postgresql import ARRAY, ENUM
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import (
@@ -88,6 +88,34 @@ class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         String(255),
         nullable=True,
     )
+
+    # Company info (from onboarding)
+    website_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    company_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    services_offered: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
+    years_in_business: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    team_size: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    value_proposition: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    default_offer: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # ICP fields (from onboarding)
+    icp_industries: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
+    icp_company_sizes: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
+    icp_revenue_range: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    icp_locations: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
+    icp_titles: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
+    icp_pain_points: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
+    icp_keywords: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
+    icp_exclusions: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
+
+    # ALS weights (customized scoring)
+    als_weights: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    # ICP extraction tracking
+    icp_extracted_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    icp_extraction_source: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    icp_confirmed_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    icp_extraction_job_id: Mapped[Optional[UUID]] = mapped_column(nullable=True)
 
     # Relationships
     memberships: Mapped[list["Membership"]] = relationship(

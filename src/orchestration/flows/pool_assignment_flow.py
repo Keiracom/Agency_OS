@@ -241,9 +241,9 @@ async def get_pool_stats_task() -> dict[str, Any]:
         stats = await pool_service.get_pool_stats()
 
         logger.info(
-            f"Pool stats: {stats['total_leads']} total, "
-            f"{stats['available']} available, "
-            f"{stats['assigned']} assigned"
+            f"Pool stats: {stats.get('total_leads', 0)} total, "
+            f"{stats.get('available_leads', 0)} available, "
+            f"{stats.get('assigned_leads', 0)} assigned"
         )
 
         return stats
@@ -525,7 +525,7 @@ async def pool_daily_allocation_flow(
     summary = {
         "campaigns_processed": len(campaigns),
         "total_leads_allocated": total_allocated,
-        "pool_available": pool_stats.get("available", 0),
+        "pool_available": pool_stats.get("available_leads", 0),
         "allocation_results": allocation_results,
         "completed_at": datetime.utcnow().isoformat(),
     }

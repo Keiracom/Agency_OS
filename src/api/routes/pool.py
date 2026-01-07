@@ -72,17 +72,24 @@ async def run_pool_population(client_id: UUID, limit: int):
         client_id: Client UUID
         limit: Max leads to add
     """
+    import traceback
     from src.orchestration.flows.pool_population_flow import pool_population_flow
 
     try:
-        logger.info(f"Starting pool population for client {client_id}")
+        logger.info(f"[BACKGROUND] Starting pool population for client {client_id}, limit={limit}")
         result = await pool_population_flow(client_id=client_id, limit=limit)
         logger.info(
-            f"Pool population completed for client {client_id}: "
-            f"{result.get('leads_added', 0)} leads added"
+            f"[BACKGROUND] Pool population completed for client {client_id}: "
+            f"{result.get('leads_added', 0)} leads added, "
+            f"{result.get('leads_skipped', 0)} skipped"
         )
+        return result
     except Exception as e:
-        logger.error(f"Pool population failed for client {client_id}: {e}")
+        logger.error(
+            f"[BACKGROUND] Pool population failed for client {client_id}: {e}\n"
+            f"Traceback: {traceback.format_exc()}"
+        )
+        raise
 
 
 # ============================================

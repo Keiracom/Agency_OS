@@ -19,7 +19,7 @@ from datetime import date, datetime, time
 from typing import Annotated, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -1061,6 +1061,149 @@ async def delete_resource(
     # FIXED by fixer-agent: converted to soft delete (Rule 14)
     resource.deleted_at = datetime.utcnow()
     await db.flush()
+
+
+# ============================================
+# Lead Enrichment Routes
+# ============================================
+
+
+class EnrichLeadsRequest(BaseModel):
+    """Schema for enriching leads for a campaign."""
+
+    count: int = Field(default=50, ge=1, le=200, description="Number of leads to enrich")
+
+
+class EnrichLeadsResponse(BaseModel):
+    """Response from lead enrichment trigger."""
+
+    status: str
+    message: str
+    campaign_id: str
+    client_id: str
+    count: int
+
+
+@router.post(
+    "/clients/{client_id}/campaigns/{campaign_id}/enrich-leads",
+    response_model=EnrichLeadsResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def enrich_campaign_leads(
+    client_id: UUID,
+    campaign_id: UUID,
+    request: EnrichLeadsRequest,
+    background_tasks: BackgroundTasks,
+    ctx: Annotated[ClientContext, Depends(require_member)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> EnrichLeadsResponse:
+    """
+    Trigger lead enrichment for a campaign.
+
+    This runs asynchronously and:
+    1. Populates the lead pool from Apollo based on client ICP
+    2. Assigns leads from the pool to the campaign
+    3. Scores assigned leads with ALS
+    4. Triggers deep research for hot leads (ALS >= 85)
+
+    Args:
+        client_id: Client UUID
+        campaign_id: Campaign UUID
+        request: Enrichment parameters
+        background_tasks: FastAPI background tasks
+        ctx: Client context (requires member role)
+        db: Database session
+
+    Returns:
+        Accepted response with processing status
+    """
+    # Verify campaign exists
+    campaign = await get_campaign_or_404(campaign_id, client_id, db)
+
+    # Queue background task
+    background_tasks.add_task(
+        _run_campaign_enrichment,
+        client_id=client_id,
+        campaign_id=campaign_id,
+        count=request.count,
+    )
+
+    return EnrichLeadsResponse(
+        status="processing",
+        message=f"Lead enrichment started for {request.count} leads",
+        campaign_id=str(campaign_id),
+        client_id=str(client_id),
+        count=request.count,
+    )
+
+
+async def _run_campaign_enrichment(client_id: UUID, campaign_id: UUID, count: int):
+    """
+    Execute full campaign enrichment pipeline.
+
+    Runs in background:
+    1. Populate pool from Apollo
+    2. Assign leads to campaign
+    3. Score assigned leads
+    """
+    import logging
+    import traceback
+    logger = logging.getLogger(__name__)
+
+    try:
+        # 1. Populate pool from Apollo
+        logger.info(f"[BACKGROUND] Starting pool population for client {client_id}, count={count}")
+        from src.orchestration.flows.pool_population_flow import pool_population_flow
+        population_result = await pool_population_flow(
+            client_id=client_id,
+            limit=count,
+        )
+        leads_added = population_result.get('leads_added', 0)
+        logger.info(
+            f"[BACKGROUND] Pool population complete: {leads_added} leads added, "
+            f"{population_result.get('leads_skipped', 0)} skipped"
+        )
+
+        # 2. Assign leads to campaign
+        logger.info(f"[BACKGROUND] Assigning leads to campaign {campaign_id}")
+        from src.orchestration.flows.pool_assignment_flow import pool_campaign_assignment_flow
+        assignment_result = await pool_campaign_assignment_flow(
+            campaign_id=campaign_id,
+            lead_count=count,
+        )
+        leads_allocated = assignment_result.get('leads_allocated', 0)
+        logger.info(
+            f"[BACKGROUND] Lead assignment complete: {leads_allocated} leads assigned"
+        )
+
+        # Update campaign total_leads counter
+        from src.integrations.supabase import get_db_session
+        from sqlalchemy import text
+        async with get_db_session() as db:
+            await db.execute(
+                text("""
+                    UPDATE campaigns
+                    SET total_leads = total_leads + :count,
+                        updated_at = NOW()
+                    WHERE id = :campaign_id
+                """),
+                {"count": leads_allocated, "campaign_id": str(campaign_id)},
+            )
+            await db.commit()
+
+        logger.info(f"[BACKGROUND] Campaign enrichment complete for {campaign_id}: {leads_allocated} leads")
+        return {
+            "success": True,
+            "leads_added_to_pool": leads_added,
+            "leads_assigned": leads_allocated,
+        }
+
+    except Exception as e:
+        logger.error(
+            f"[BACKGROUND] Campaign enrichment failed for {campaign_id}: {e}\n"
+            f"Traceback: {traceback.format_exc()}"
+        )
+        raise
 
 
 # ============================================

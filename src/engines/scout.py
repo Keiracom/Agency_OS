@@ -909,10 +909,10 @@ class ScoutEngine(BaseEngine):
         email: str
     ) -> dict[str, Any] | None:
         """Get a lead from the pool by email."""
-        query = """
+        query = text("""
             SELECT * FROM lead_pool
             WHERE email = :email
-        """
+        """)
         result = await db.execute(query, {"email": email.lower().strip()})
         row = result.fetchone()
         return dict(row._mapping) if row else None
@@ -930,7 +930,7 @@ class ScoutEngine(BaseEngine):
         if email_status not in ("verified", "guessed", "invalid", "catch_all", "unknown"):
             email_status = "unknown"
 
-        query = """
+        query = text("""
             INSERT INTO lead_pool (
                 apollo_id, email, linkedin_url,
                 first_name, last_name, title, seniority,
@@ -974,7 +974,7 @@ class ScoutEngine(BaseEngine):
                 last_enriched_at = NOW(),
                 updated_at = NOW()
             RETURNING *
-        """
+        """)
 
         params = {
             "apollo_id": lead_data.get("apollo_id"),

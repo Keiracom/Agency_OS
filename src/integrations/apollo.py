@@ -53,6 +53,7 @@ class ApolloClient:
                 headers={
                     "Content-Type": "application/json",
                     "Cache-Control": "no-cache",
+                    "X-Api-Key": self.api_key,  # Apollo now requires API key in header
                 },
                 timeout=30.0,
             )

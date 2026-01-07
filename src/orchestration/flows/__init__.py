@@ -18,7 +18,7 @@ RULES APPLIED:
 
 from src.orchestration.flows.campaign_flow import campaign_activation_flow
 from src.orchestration.flows.enrichment_flow import daily_enrichment_flow
-from src.orchestration.flows.outreach_flow import outreach_flow
+from src.orchestration.flows.outreach_flow import hourly_outreach_flow as outreach_flow
 from src.orchestration.flows.pattern_backfill_flow import (
     pattern_backfill_flow,
     single_client_backfill_flow,

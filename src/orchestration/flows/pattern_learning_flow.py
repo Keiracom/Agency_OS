@@ -78,7 +78,7 @@ async def get_eligible_clients_task(min_conversions: int = MIN_CONVERSIONS) -> l
         stmt = (
             select(
                 Client.id,
-                Client.company_name,
+                Client.name,
                 func.count(Lead.id).label("conversion_count"),
             )
             .join(Lead, Lead.client_id == Client.id)
@@ -94,7 +94,7 @@ async def get_eligible_clients_task(min_conversions: int = MIN_CONVERSIONS) -> l
                     Lead.updated_at >= cutoff,
                 )
             )
-            .group_by(Client.id, Client.company_name)
+            .group_by(Client.id, Client.name)
             .having(func.count(Lead.id) >= min_conversions)
         )
 
@@ -104,7 +104,7 @@ async def get_eligible_clients_task(min_conversions: int = MIN_CONVERSIONS) -> l
         eligible_clients = [
             {
                 "client_id": str(row.id),
-                "company_name": row.company_name,
+                "client_name": row.name,
                 "conversion_count": row.conversion_count,
             }
             for row in rows

@@ -108,7 +108,7 @@ async def get_clients_needing_backfill_task(
         stmt = (
             select(
                 Client.id,
-                Client.company_name,
+                Client.name,
                 activity_counts.c.activity_count,
             )
             .join(activity_counts, Client.id == activity_counts.c.client_id)
@@ -132,7 +132,7 @@ async def get_clients_needing_backfill_task(
         clients = [
             {
                 "client_id": str(row.id),
-                "company_name": row.company_name,
+                "client_name": row.name,
                 "activity_count": row.activity_count,
             }
             for row in rows

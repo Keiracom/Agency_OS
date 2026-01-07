@@ -27,6 +27,7 @@ from enum import Enum
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -197,10 +198,10 @@ class JITValidator:
             JITValidationResult
         """
         # Look up pool lead by email
-        query = """
+        query = text("""
             SELECT id FROM lead_pool
             WHERE email = :email
-        """
+        """)
         result = await self.session.execute(query, {"email": email.lower()})
         row = result.fetchone()
 
@@ -249,12 +250,12 @@ class JITValidator:
 
     async def _get_pool_lead(self, lead_pool_id: UUID) -> dict[str, Any] | None:
         """Get lead from pool."""
-        query = """
+        query = text("""
             SELECT id, email, email_status, pool_status,
                    is_bounced, is_unsubscribed
             FROM lead_pool
             WHERE id = :id
-        """
+        """)
         result = await self.session.execute(
             query,
             {"id": str(lead_pool_id)}
@@ -268,14 +269,14 @@ class JITValidator:
         client_id: UUID
     ) -> dict[str, Any] | None:
         """Get assignment for lead and client."""
-        query = """
+        query = text("""
             SELECT id, status, total_touches, max_touches,
                    cooling_until, has_replied, reply_intent,
                    last_contacted_at, channels_used
             FROM lead_assignments
             WHERE lead_pool_id = :lead_pool_id
             AND client_id = :client_id
-        """
+        """)
         result = await self.session.execute(
             query,
             {
@@ -350,7 +351,6 @@ class JITValidator:
             return JITValidationResult(is_valid=True)
 
         # Use database function for efficient suppression check
-        from sqlalchemy import text
         result = await self.session.execute(
             text("SELECT * FROM is_suppressed(:client_id, :email, NULL)"),
             {"client_id": str(client_id), "email": email.lower()},
@@ -442,14 +442,14 @@ class JITValidator:
     ) -> JITValidationResult:
         """Check rate limits for the client/channel."""
         # Get today's count for this channel
-        query = """
+        query = text("""
             SELECT COUNT(*) as count
             FROM activities a
             JOIN leads l ON l.id = a.lead_id
             WHERE l.client_id = :client_id
             AND a.channel = :channel
             AND a.created_at >= CURRENT_DATE
-        """
+        """)
 
         result = await self.session.execute(
             query,
@@ -487,10 +487,10 @@ class JITValidator:
         # For now, we assume warmup is complete if client has been
         # active for 14+ days
 
-        query = """
+        query = text("""
             SELECT created_at FROM clients
             WHERE id = :client_id
-        """
+        """)
 
         result = await self.session.execute(
             query,

@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.exceptions import NotFoundError, ValidationError
@@ -140,7 +141,7 @@ class LeadAllocatorService:
         where_clause = " AND ".join(conditions)
 
         # First, find matching leads
-        find_query = f"""
+        find_query = text(f"""
             SELECT lp.id, lp.email, lp.first_name, lp.last_name,
                    lp.title, lp.company_name, lp.enrichment_confidence
             FROM lead_pool lp
@@ -149,7 +150,7 @@ class LeadAllocatorService:
                      lp.created_at ASC
             LIMIT :limit
             FOR UPDATE SKIP LOCKED
-        """
+        """)
 
         result = await self.session.execute(find_query, params)
         leads_to_assign = result.fetchall()
@@ -163,7 +164,7 @@ class LeadAllocatorService:
             lead_pool_id = lead.id
 
             # Create assignment
-            assign_query = """
+            assign_query = text("""
                 INSERT INTO lead_assignments (
                     lead_pool_id, client_id, campaign_id,
                     assigned_by, assignment_reason
@@ -173,7 +174,7 @@ class LeadAllocatorService:
                 )
                 ON CONFLICT (lead_pool_id) DO NOTHING
                 RETURNING *
-            """
+            """)
 
             assign_result = await self.session.execute(
                 assign_query,
@@ -189,11 +190,11 @@ class LeadAllocatorService:
             if assignment:
                 # Update pool status
                 await self.session.execute(
-                    """
+                    text("""
                     UPDATE lead_pool
                     SET pool_status = 'assigned', updated_at = NOW()
                     WHERE id = :id
-                    """,
+                    """),
                     {"id": str(lead_pool_id)}
                 )
 
@@ -232,10 +233,10 @@ class LeadAllocatorService:
             conditions.append("client_id = :client_id")
             params["client_id"] = str(client_id)
 
-        query = f"""
+        query = text(f"""
             SELECT * FROM lead_assignments
             WHERE {" AND ".join(conditions)}
-        """
+        """)
 
         result = await self.session.execute(query, params)
         row = result.fetchone()
@@ -261,7 +262,7 @@ class LeadAllocatorService:
         Returns:
             List of assignments with lead data
         """
-        query = """
+        query = text("""
             SELECT la.*, lp.email, lp.first_name, lp.last_name,
                    lp.title, lp.company_name, lp.company_industry,
                    lp.seniority, lp.linkedin_url
@@ -271,7 +272,7 @@ class LeadAllocatorService:
             AND la.status = :status
             ORDER BY la.assigned_at DESC
             LIMIT :limit OFFSET :offset
-        """
+        """)
 
         result = await self.session.execute(
             query,
@@ -302,10 +303,10 @@ class LeadAllocatorService:
             True if released
         """
         # Get assignment first
-        query = """
+        query = text("""
             SELECT lead_pool_id FROM lead_assignments
             WHERE id = :id AND status = 'active'
-        """
+        """)
         result = await self.session.execute(
             query,
             {"id": str(assignment_id)}
@@ -319,24 +320,24 @@ class LeadAllocatorService:
 
         # Update assignment
         await self.session.execute(
-            """
+            text("""
             UPDATE lead_assignments
             SET status = 'released',
                 released_at = NOW(),
                 release_reason = :reason,
                 updated_at = NOW()
             WHERE id = :id
-            """,
+            """),
             {"id": str(assignment_id), "reason": reason}
         )
 
         # Update pool status
         await self.session.execute(
-            """
+            text("""
             UPDATE lead_pool
             SET pool_status = 'available', updated_at = NOW()
             WHERE id = :id
-            """,
+            """),
             {"id": str(lead_pool_id)}
         )
 
@@ -361,10 +362,10 @@ class LeadAllocatorService:
             True if marked
         """
         # Get assignment first
-        query = """
+        query = text("""
             SELECT lead_pool_id FROM lead_assignments
             WHERE id = :id AND status = 'active'
-        """
+        """)
         result = await self.session.execute(
             query,
             {"id": str(assignment_id)}
@@ -378,24 +379,24 @@ class LeadAllocatorService:
 
         # Update assignment
         await self.session.execute(
-            """
+            text("""
             UPDATE lead_assignments
             SET status = 'converted',
                 converted_at = NOW(),
                 conversion_type = :conversion_type,
                 updated_at = NOW()
             WHERE id = :id
-            """,
+            """),
             {"id": str(assignment_id), "conversion_type": conversion_type}
         )
 
         # Update pool status
         await self.session.execute(
-            """
+            text("""
             UPDATE lead_pool
             SET pool_status = 'converted', updated_at = NOW()
             WHERE id = :id
-            """,
+            """),
             {"id": str(lead_pool_id)}
         )
 
@@ -417,7 +418,7 @@ class LeadAllocatorService:
         Returns:
             True if recorded
         """
-        query = """
+        query = text("""
             UPDATE lead_assignments
             SET total_touches = total_touches + 1,
                 channels_used = array_append(
@@ -435,7 +436,7 @@ class LeadAllocatorService:
                 updated_at = NOW()
             WHERE id = :id AND status = 'active'
             RETURNING id
-        """
+        """)
 
         result = await self.session.execute(
             query,
@@ -461,7 +462,7 @@ class LeadAllocatorService:
         Returns:
             True if recorded
         """
-        query = """
+        query = text("""
             UPDATE lead_assignments
             SET has_replied = TRUE,
                 replied_at = NOW(),
@@ -469,7 +470,7 @@ class LeadAllocatorService:
                 updated_at = NOW()
             WHERE id = :id AND status = 'active'
             RETURNING id
-        """
+        """)
 
         result = await self.session.execute(
             query,
@@ -499,13 +500,13 @@ class LeadAllocatorService:
         """
         cooling_until = datetime.now() + timedelta(days=days)
 
-        query = """
+        query = text("""
             UPDATE lead_assignments
             SET cooling_until = :cooling_until,
                 updated_at = NOW()
             WHERE id = :id AND status = 'active'
             RETURNING id
-        """
+        """)
 
         result = await self.session.execute(
             query,
@@ -526,10 +527,10 @@ class LeadAllocatorService:
         Returns:
             Assignment statistics
         """
-        query = """
+        query = text("""
             SELECT * FROM v_client_assignment_stats
             WHERE client_id = :client_id
-        """
+        """)
 
         result = await self.session.execute(
             query,
@@ -567,7 +568,7 @@ class LeadAllocatorService:
             Number of leads released
         """
         # Get all active assignments
-        query = """
+        query = text("""
             UPDATE lead_assignments
             SET status = 'released',
                 released_at = NOW(),
@@ -576,7 +577,7 @@ class LeadAllocatorService:
             WHERE client_id = :client_id
             AND status = 'active'
             RETURNING lead_pool_id
-        """
+        """)
 
         result = await self.session.execute(
             query,
@@ -588,11 +589,11 @@ class LeadAllocatorService:
             # Update pool status for all released leads
             lead_ids = [str(r.lead_pool_id) for r in released]
             await self.session.execute(
-                """
+                text("""
                 UPDATE lead_pool
                 SET pool_status = 'available', updated_at = NOW()
                 WHERE id = ANY(:ids)
-                """,
+                """),
                 {"ids": lead_ids}
             )
 

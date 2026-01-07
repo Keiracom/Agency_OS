@@ -23,10 +23,12 @@ pull:
       directory: /app
 
 # Deployment definitions
+# NOTE: All flows deployed PAUSED until production ready
 deployments:
   # Campaign activation flow
   - name: campaign-flow
     version: 1.0.0
+    paused: true  # PAUSED until production ready
     tags:
       - campaign
       - activation
@@ -44,6 +46,7 @@ deployments:
   # Daily enrichment flow (safety net)
   - name: enrichment-flow
     version: 1.0.0
+    paused: true  # PAUSED until production ready
     tags:
       - enrichment
       - daily
@@ -60,11 +63,12 @@ deployments:
     schedules:
       - cron: "0 2 * * *"
         timezone: Australia/Sydney
-        active: true
+        active: false  # INACTIVE until production ready
 
   # Hourly outreach flow (safety net during business hours)
   - name: outreach-flow
     version: 1.0.0
+    paused: true  # PAUSED until production ready
     tags:
       - outreach
       - hourly
@@ -82,11 +86,12 @@ deployments:
     schedules:
       - cron: "0 8-18 * * 1-5"
         timezone: Australia/Sydney
-        active: true
+        active: false  # INACTIVE until production ready
 
   # Reply recovery flow (6-hourly safety net)
   - name: reply-recovery-flow
     version: 1.0.0
+    paused: true  # PAUSED until production ready
     tags:
       - replies
       - recovery
@@ -102,7 +107,7 @@ deployments:
     schedules:
       - interval: 21600  # 6 hours in seconds
         timezone: Australia/Sydney
-        active: true
+        active: false  # INACTIVE until production ready
 
 # Environment variables reference
 # These should be set in Railway/environment, not hardcoded here

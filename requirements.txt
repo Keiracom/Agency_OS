@@ -24,6 +24,9 @@ httpx>=0.26.0
 anthropic>=0.39.0
 pydantic-ai>=0.1.0
 
+# === Math/Optimization (Phase 16 Conversion Intelligence) ===
+scipy>=1.11.0
+
 # === Orchestration ===
 prefect>=3.0.0
 

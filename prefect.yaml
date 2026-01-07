@@ -14,21 +14,10 @@
 name: agency-os
 prefect-version: 3.0.0
 
-# Build configuration for worker image
-build:
-  - prefect.deployments.steps.run_shell_script:
-      id: build-worker-image
-      script: docker build -f Dockerfile -t agency-os-worker:latest .
-      stream_output: true
+# Build/push steps removed - Railway handles container building
+# Worker container is built via Dockerfile.worker
 
-# Push configuration (optional, for container registry)
-push:
-  - prefect_docker.deployments.steps.push_docker_image:
-      requires: prefect-docker>=0.3.0
-      image_name: "{{ build-image.image_name }}"
-      tag: "{{ build-image.tag }}"
-
-# Pull configuration for workers
+# Pull configuration for workers (set working directory)
 pull:
   - prefect.deployments.steps.set_working_directory:
       directory: /app
@@ -142,7 +131,7 @@ deployments:
 # [x] Work queue: agency-os-queue
 # [x] Schedules configured with Australia/Sydney timezone
 # [x] Environment variables referenced (not hardcoded)
-# [x] Build configuration for Docker
+# [x] Build/push steps removed (Railway handles containers)
 # [x] Webhook-first architecture noted (schedules are safety nets)
 # [x] Business hours schedule for outreach (8 AM-6 PM AEST, Mon-Fri)
 # [x] No hardcoded credentials

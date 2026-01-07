@@ -349,7 +349,7 @@ async def deduct_client_credits_task(
     task_runner=ConcurrentTaskRunner(max_workers=10),
 )
 async def daily_enrichment_flow(
-    batch_size: int = 100, client_id: UUID | None = None
+    batch_size: int = 100, client_id: str | UUID | None = None
 ) -> dict[str, Any]:
     """
     Daily enrichment flow.
@@ -363,11 +363,15 @@ async def daily_enrichment_flow(
 
     Args:
         batch_size: Maximum leads to process in one run
-        client_id: Optional client ID to process (for testing/manual runs)
+        client_id: Optional client ID to process (string or UUID)
 
     Returns:
         Dict with enrichment summary
     """
+    # Convert string to UUID if needed (Prefect API passes strings)
+    if isinstance(client_id, str):
+        client_id = UUID(client_id)
+
     logger.info(
         f"Starting daily enrichment flow (batch_size={batch_size}, "
         f"client_id={client_id})"

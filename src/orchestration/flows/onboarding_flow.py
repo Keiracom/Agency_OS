@@ -23,7 +23,7 @@ from uuid import UUID
 
 from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
-from sqlalchemy import update
+from sqlalchemy import text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.icp_discovery_agent import ICPExtractionResult, get_icp_discovery_agent
@@ -74,11 +74,11 @@ async def update_job_status_task(
 
         set_clauses = ", ".join([f"{k} = :{k}" for k in updates.keys()])
         await db.execute(
-            f"""
+            text(f"""
             UPDATE icp_extraction_jobs
             SET {set_clauses}
             WHERE id = :job_id
-            """,
+            """),
             {"job_id": str(job_id), **updates},
         )
         await db.commit()
@@ -202,7 +202,7 @@ async def save_extraction_result_task(
         if result.get("success"):
             # Save to extraction job
             await db.execute(
-                """
+                text("""
                 UPDATE icp_extraction_jobs
                 SET status = 'completed',
                     completed_at = :now,
@@ -210,7 +210,7 @@ async def save_extraction_result_task(
                     current_step = 'Complete',
                     extracted_icp = :icp
                 WHERE id = :job_id
-                """,
+                """),
                 {
                     "job_id": str(job_id),
                     "now": datetime.utcnow(),
@@ -223,13 +223,13 @@ async def save_extraction_result_task(
         else:
             # Save error
             await db.execute(
-                """
+                text("""
                 UPDATE icp_extraction_jobs
                 SET status = 'failed',
                     completed_at = :now,
                     error_message = :error
                 WHERE id = :job_id
-                """,
+                """),
                 {
                     "job_id": str(job_id),
                     "now": datetime.utcnow(),
@@ -263,7 +263,7 @@ async def apply_icp_to_client_task(
     """
     async with get_db_session() as db:
         await db.execute(
-            """
+            text("""
             UPDATE clients
             SET website_url = :website_url,
                 company_description = :description,
@@ -281,7 +281,7 @@ async def apply_icp_to_client_task(
                 icp_extraction_job_id = :job_id,
                 updated_at = :now
             WHERE id = :client_id AND deleted_at IS NULL
-            """,
+            """),
             {
                 "client_id": str(client_id),
                 "website_url": profile.get("website_url"),
@@ -318,8 +318,8 @@ async def apply_icp_to_client_task(
     timeout_seconds=900,  # 15 minute timeout
 )
 async def icp_onboarding_flow(
-    job_id: UUID,
-    client_id: UUID,
+    job_id: str | UUID,
+    client_id: str | UUID,
     website_url: str,
     auto_apply: bool = True,
 ) -> dict[str, Any]:
@@ -333,14 +333,20 @@ async def icp_onboarding_flow(
     4. Optionally apply to client
 
     Args:
-        job_id: Extraction job UUID
-        client_id: Client UUID
+        job_id: Extraction job UUID (string or UUID)
+        client_id: Client UUID (string or UUID)
         website_url: Website URL to analyze
         auto_apply: Whether to auto-apply ICP to client (default True)
 
     Returns:
         Dict with flow result
     """
+    # Convert strings to UUIDs if needed (Prefect API passes strings)
+    if isinstance(job_id, str):
+        job_id = UUID(job_id)
+    if isinstance(client_id, str):
+        client_id = UUID(client_id)
+
     logger.info(f"Starting ICP onboarding flow for job {job_id}, URL: {website_url}")
 
     try:
@@ -408,7 +414,7 @@ async def icp_onboarding_flow(
     description="Re-extract ICP for existing client",
 )
 async def icp_reextract_flow(
-    client_id: UUID,
+    client_id: str | UUID,
     website_url: str,
 ) -> dict[str, Any]:
     """
@@ -417,7 +423,7 @@ async def icp_reextract_flow(
     Used when client wants to refresh their ICP or update website.
 
     Args:
-        client_id: Client UUID
+        client_id: Client UUID (string or UUID)
         website_url: New or updated website URL
 
     Returns:
@@ -425,16 +431,20 @@ async def icp_reextract_flow(
     """
     from uuid import uuid4
 
+    # Convert strings to UUIDs if needed (Prefect API passes strings)
+    if isinstance(client_id, str):
+        client_id = UUID(client_id)
+
     job_id = uuid4()
 
     # Create new extraction job
     async with get_db_session() as db:
         await db.execute(
-            """
+            text("""
             INSERT INTO icp_extraction_jobs
             (id, client_id, status, website_url, created_at)
             VALUES (:id, :client_id, 'pending', :url, :now)
-            """,
+            """),
             {
                 "id": str(job_id),
                 "client_id": str(client_id),

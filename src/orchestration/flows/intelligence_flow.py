@@ -229,7 +229,7 @@ async def update_lead_research_status_task(
 )
 async def intelligence_research_flow(
     batch_size: int = 50,
-    client_id: UUID | None = None,
+    client_id: str | UUID | None = None,
 ) -> dict[str, Any]:
     """
     Intelligence research flow for hot leads.
@@ -251,6 +251,10 @@ async def intelligence_research_flow(
     Returns:
         Dict with research summary
     """
+    # Convert string to UUID if needed (Prefect API passes strings)
+    if isinstance(client_id, str):
+        client_id = UUID(client_id)
+
     logger.info(
         f"Starting intelligence research flow (batch_size={batch_size}, "
         f"client_id={client_id})"
@@ -333,8 +337,8 @@ async def intelligence_research_flow(
     log_prints=True,
 )
 async def trigger_lead_research_flow(
-    lead_id: UUID,
-    client_id: UUID,
+    lead_id: str | UUID,
+    client_id: str | UUID,
 ) -> dict[str, Any]:
     """
     Trigger deep research for a single lead.
@@ -344,12 +348,18 @@ async def trigger_lead_research_flow(
     - Manual trigger from dashboard
 
     Args:
-        lead_id: Lead UUID
-        client_id: Client UUID
+        lead_id: Lead UUID (string or UUID)
+        client_id: Client UUID (string or UUID)
 
     Returns:
         Dict with research result
     """
+    # Convert strings to UUIDs if needed (Prefect API passes strings)
+    if isinstance(lead_id, str):
+        lead_id = UUID(lead_id)
+    if isinstance(client_id, str):
+        client_id = UUID(client_id)
+
     logger.info(f"Triggering deep research for lead {lead_id}")
 
     result = await perform_deep_research_task(

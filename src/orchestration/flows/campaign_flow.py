@@ -287,7 +287,7 @@ async def trigger_enrichment_task(lead_ids: list[str], campaign_id: str) -> dict
     description="Activate campaign with validation and enrichment trigger",
     log_prints=True,
 )
-async def campaign_activation_flow(campaign_id: UUID) -> dict[str, Any]:
+async def campaign_activation_flow(campaign_id: str | UUID) -> dict[str, Any]:
     """
     Campaign activation flow.
 
@@ -299,7 +299,7 @@ async def campaign_activation_flow(campaign_id: UUID) -> dict[str, Any]:
     5. Trigger enrichment for new leads
 
     Args:
-        campaign_id: Campaign UUID to activate
+        campaign_id: Campaign UUID to activate (string or UUID)
 
     Returns:
         Dict with activation summary
@@ -307,6 +307,10 @@ async def campaign_activation_flow(campaign_id: UUID) -> dict[str, Any]:
     Raises:
         ValueError: If validation fails
     """
+    # Convert string to UUID if needed (Prefect API passes strings)
+    if isinstance(campaign_id, str):
+        campaign_id = UUID(campaign_id)
+
     logger.info(f"Starting campaign activation flow for campaign {campaign_id}")
 
     # Step 1: Validate campaign

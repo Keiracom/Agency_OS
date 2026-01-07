@@ -473,7 +473,7 @@ async def run_all_detectors_task(client_id: str) -> dict[str, Any]:
 )
 async def weekly_pattern_learning_flow(
     min_conversions: int = MIN_CONVERSIONS,
-    client_id: UUID | None = None,
+    client_id: str | UUID | None = None,
 ) -> dict[str, Any]:
     """
     Weekly pattern learning flow.
@@ -487,11 +487,15 @@ async def weekly_pattern_learning_flow(
 
     Args:
         min_conversions: Minimum conversions required for a client
-        client_id: Optional specific client to process
+        client_id: Optional specific client to process (string or UUID)
 
     Returns:
         Dict with learning summary
     """
+    # Convert string to UUID if needed (Prefect API passes strings)
+    if isinstance(client_id, str):
+        client_id = UUID(client_id)
+
     logger.info(
         f"Starting weekly pattern learning flow "
         f"(min_conversions={min_conversions}, client_id={client_id})"
@@ -570,7 +574,7 @@ async def weekly_pattern_learning_flow(
     log_prints=True,
 )
 async def single_client_pattern_learning_flow(
-    client_id: UUID,
+    client_id: str | UUID,
 ) -> dict[str, Any]:
     """
     Run pattern learning for a single client.
@@ -578,11 +582,15 @@ async def single_client_pattern_learning_flow(
     Useful for testing or manually triggering pattern updates.
 
     Args:
-        client_id: Client UUID to process
+        client_id: Client UUID to process (string or UUID)
 
     Returns:
         Dict with learning results
     """
+    # Convert string to UUID if needed (Prefect API passes strings)
+    if isinstance(client_id, str):
+        client_id = UUID(client_id)
+
     logger.info(f"Starting single client pattern learning for {client_id}")
 
     client_id_str = str(client_id)

@@ -361,7 +361,7 @@ async def record_pool_touch_task(
     log_prints=True,
 )
 async def pool_campaign_assignment_flow(
-    campaign_id: UUID,
+    campaign_id: str | UUID,
     lead_count: int = 50,
 ) -> dict[str, Any]:
     """
@@ -375,12 +375,16 @@ async def pool_campaign_assignment_flow(
     5. Return summary
 
     Args:
-        campaign_id: Campaign UUID
+        campaign_id: Campaign UUID (string or UUID)
         lead_count: Number of leads to allocate
 
     Returns:
         Dict with assignment summary
     """
+    # Convert string to UUID if needed (Prefect API passes strings)
+    if isinstance(campaign_id, str):
+        campaign_id = UUID(campaign_id)
+
     logger.info(
         f"Starting pool assignment flow for campaign {campaign_id}, "
         f"requesting {lead_count} leads"

@@ -331,7 +331,7 @@ async def optimize_weights_backfill_task(client_id: str) -> dict[str, Any]:
     log_prints=True,
 )
 async def pattern_backfill_flow(
-    client_id: UUID | None = None,
+    client_id: str | UUID | None = None,
     force: bool = False,
 ) -> dict[str, Any]:
     """
@@ -350,6 +350,10 @@ async def pattern_backfill_flow(
     Returns:
         Dict with backfill summary
     """
+    # Convert string to UUID if needed (Prefect API passes strings)
+    if isinstance(client_id, str):
+        client_id = UUID(client_id)
+
     logger.info(f"Starting pattern backfill flow (client_id={client_id}, force={force})")
 
     # Step 1: Get clients needing backfill
@@ -413,14 +417,14 @@ async def pattern_backfill_flow(
     description="Backfill patterns for a single client",
     log_prints=True,
 )
-async def single_client_backfill_flow(client_id: UUID) -> dict[str, Any]:
+async def single_client_backfill_flow(client_id: str | UUID) -> dict[str, Any]:
     """
     Backfill patterns for a single client.
 
     Useful for onboarding new clients or manual refresh.
 
     Args:
-        client_id: Client UUID to backfill
+        client_id: Client UUID to backfill (string or UUID)
 
     Returns:
         Dict with backfill results

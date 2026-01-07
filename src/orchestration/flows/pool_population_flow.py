@@ -243,7 +243,7 @@ async def populate_pool_from_apollo_task(
     log_prints=True,
 )
 async def pool_population_flow(
-    client_id: UUID,
+    client_id: str | UUID,
     limit: int = 25,
 ) -> dict[str, Any]:
     """
@@ -256,12 +256,16 @@ async def pool_population_flow(
     4. Return summary
 
     Args:
-        client_id: Client UUID
+        client_id: Client UUID (string or UUID)
         limit: Maximum leads to add to pool
 
     Returns:
         Dict with population summary
     """
+    # Convert string to UUID if needed (Prefect API passes strings)
+    if isinstance(client_id, str):
+        client_id = UUID(client_id)
+
     logger.info(f"Starting pool population flow for client {client_id}")
 
     # Step 1: Validate client and get ICP

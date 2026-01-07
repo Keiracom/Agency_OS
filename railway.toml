@@ -3,9 +3,12 @@
 # PHASE: 10 (Deployment)
 # TASK: DEP-001
 
+# NOTE: dockerfilePath removed to allow per-service configuration in Railway dashboard
+# - agency-os: uses Dockerfile (default)
+# - prefect-server: uses Dockerfile.prefect (set in dashboard)
+# - prefect-worker: uses Dockerfile.worker (set in dashboard)
 [build]
 builder = "dockerfile"
-dockerfilePath = "Dockerfile"
 
 [deploy]
 healthcheckPath = "/api/v1/health"

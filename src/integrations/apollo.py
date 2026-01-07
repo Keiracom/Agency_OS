@@ -204,7 +204,7 @@ class ApolloClient:
         if seniorities:
             data["person_seniorities"] = seniorities
 
-        result = await self._request("POST", "/mixed_people/search", data)
+        result = await self._request("POST", "/mixed_people/api_search", data)
 
         people = result.get("people", [])
         return [self._transform_person(p) for p in people]
@@ -258,7 +258,7 @@ class ApolloClient:
         if countries:
             data["person_locations"] = countries
 
-        result = await self._request("POST", "/mixed_people/search", data)
+        result = await self._request("POST", "/mixed_people/api_search", data)
 
         people = result.get("people", [])
         return [self._transform_person_for_pool(p) for p in people]

@@ -275,7 +275,12 @@ class ApolloClient:
 
         # Step 2: Enrich each person to get full data
         # Apollo /people/match requires name + org or email or linkedin
+        import logging
+        logger = logging.getLogger(__name__)
+
         enriched_people = []
+        logger.info(f"[Apollo] Found {len(preview_people)} preview people, enriching...")
+
         for preview in preview_people:
             try:
                 # Extract what we can from preview
@@ -295,18 +300,28 @@ class ApolloClient:
                         },
                     )
 
-                    if match_result.get("person"):
-                        enriched = self._transform_person_for_pool(match_result["person"])
-                        if enriched.get("email"):  # Only include if we got an email
+                    person = match_result.get("person")
+                    if person:
+                        enriched = self._transform_person_for_pool(person)
+                        email = enriched.get("email")
+                        if email:  # Only include if we got an email
                             enriched_people.append(enriched)
+                            logger.info(f"[Apollo] Enriched: {first_name} at {org_name} -> {email}")
+                        else:
+                            logger.debug(f"[Apollo] No email for: {first_name} at {org_name}")
+                    else:
+                        logger.debug(f"[Apollo] No match for: {first_name} at {org_name}")
+                else:
+                    logger.debug(f"[Apollo] Missing name/org: {first_name}, {org_name}")
 
                 # Rate limit: avoid hitting Apollo too fast
                 await asyncio.sleep(0.2)
 
             except Exception as e:
-                # Log but continue with other people
+                logger.warning(f"[Apollo] Error enriching person: {e}")
                 continue
 
+        logger.info(f"[Apollo] Enrichment complete: {len(enriched_people)} with emails")
         return enriched_people
 
     async def enrich_person_for_pool(

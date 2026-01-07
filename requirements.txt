@@ -23,6 +23,7 @@ httpx>=0.26.0
 # === AI ===
 anthropic>=0.39.0
 pydantic-ai>=0.1.0
+docstring-parser>=0.17.0  # Required for Python 3.14 compatibility
 
 # === Math/Optimization (Phase 16 Conversion Intelligence) ===
 scipy>=1.11.0

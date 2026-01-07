@@ -40,17 +40,23 @@ prefect work-pool create agency-os-pool --type process 2>/dev/null || echo "Work
 # Deploy flows from prefect.yaml
 echo "Deploying flows..."
 echo "Current directory: $(pwd)"
-echo "Files in directory:"
-ls -la
-echo ""
-echo "Checking prefect.yaml:"
-cat prefect.yaml | head -30
-echo ""
+echo "Checking prefect.yaml exists..."
+if [ ! -f prefect.yaml ]; then
+    echo "ERROR: prefect.yaml not found!"
+    exit 1
+fi
+
 echo "Running prefect deploy --all..."
-prefect deploy --all || {
-    echo "WARNING: Flow deployment failed. Error details above."
-    echo "Worker will start anyway - flows can be deployed manually later."
-}
+if ! prefect deploy --all; then
+    echo "ERROR: Flow deployment failed!"
+    echo "Check the error details above."
+    echo "Common issues:"
+    echo "  - Missing dependencies in requirements.txt"
+    echo "  - Syntax errors in flow files"
+    echo "  - Invalid prefect.yaml configuration"
+    exit 1
+fi
+echo "All flows deployed successfully!"
 
 # Start the worker
 echo "Starting worker for pool: agency-os-pool"

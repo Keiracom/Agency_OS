@@ -105,7 +105,7 @@ class AnthropicClient:
         system: str | None = None,
         max_tokens: int = 1024,
         temperature: float = 0.7,
-        model: str = "claude-3-sonnet-20240229",
+        model: str = "claude-3-5-haiku-20241022",
     ) -> dict[str, Any]:
         """
         Generate a completion.

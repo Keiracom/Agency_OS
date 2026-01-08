@@ -586,6 +586,35 @@ class ICPScraperEngine(BaseEngine):
         )
         enrichment_source = None
 
+        # Tier 0: Domain Discovery (if no domain provided)
+        # Search for company website to enable Apollo enrichment
+        if not domain and self.apify:
+            try:
+                logger.info(f"Tier 0: Domain discovery for {company_name}")
+                search_results = await self.apify.search_google(
+                    [f'"{company_name}" Australia official website'],
+                    results_per_query=3
+                )
+
+                if search_results and search_results[0].get("organicResults"):
+                    organic = search_results[0]["organicResults"]
+                    for result in organic[:3]:  # Check top 3 results
+                        url = result.get("url", "")
+                        if url and not any(x in url for x in ["linkedin.com", "facebook.com", "twitter.com", "instagram.com", "yellowpages", "yelp.com", "glassdoor"]):
+                            # Extract domain from URL
+                            from urllib.parse import urlparse
+                            parsed = urlparse(url)
+                            potential_domain = parsed.netloc.lower()
+                            if potential_domain.startswith("www."):
+                                potential_domain = potential_domain[4:]
+                            if potential_domain and "." in potential_domain:
+                                domain = potential_domain
+                                enriched.domain = domain
+                                logger.info(f"Discovered domain for {company_name}: {domain}")
+                                break
+            except Exception as e:
+                logger.warning(f"Domain discovery failed for {company_name}: {e}")
+
         # Tier 1: Apollo domain-based lookup (best for established companies)
         if domain:
             try:

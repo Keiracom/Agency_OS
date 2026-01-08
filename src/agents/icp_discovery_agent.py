@@ -96,6 +96,10 @@ class ICPProfile(BaseModel):
     portfolio_companies: list[str] = Field(
         default_factory=list, description="Portfolio company names"
     )
+    enriched_portfolio: list[dict] = Field(
+        default_factory=list,
+        description="Enriched portfolio companies with industry, size, revenue (for finding similar leads)"
+    )
     notable_brands: list[str] = Field(default_factory=list, description="Notable brands")
 
     # ICP targeting
@@ -523,7 +527,7 @@ class ICPDiscoveryAgent(BaseAgent):
                         "domain": c.company_domain,
                         "source": c.source,
                     }
-                    for c in portfolio_data.companies[:15]  # Limit to 15
+                    for c in portfolio_data.companies[:30]  # Limit to 30 (increased from 15)
                 ]
 
                 enrich_result = await self.scraper.enrich_portfolio_batch(
@@ -671,6 +675,7 @@ class ICPDiscoveryAgent(BaseAgent):
                     if portfolio_data
                     else []
                 ),
+                enriched_portfolio=[ec.model_dump() for ec in enriched_companies],
                 notable_brands=(
                     portfolio_data.notable_brands if portfolio_data else []
                 ),

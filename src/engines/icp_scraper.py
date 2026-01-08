@@ -80,6 +80,18 @@ class ScrapedPage:
 
 
 @dataclass
+class SocialLinks:
+    """Social media URLs extracted from website (ICP-SOC-001)."""
+
+    linkedin: Optional[str] = None
+    instagram: Optional[str] = None
+    facebook: Optional[str] = None
+    twitter: Optional[str] = None
+    youtube: Optional[str] = None
+    tiktok: Optional[str] = None
+
+
+@dataclass
 class ScrapedWebsite:
     """Complete scraped website data with waterfall tracking."""
 
@@ -95,6 +107,8 @@ class ScrapedWebsite:
     failure_reason: Optional[str] = None
     manual_fallback_url: Optional[str] = None
     canonical_url: Optional[str] = None  # URL after redirects
+    # Social media links (ICP-SOC-001)
+    social_links: Optional[SocialLinks] = None
 
 
 @dataclass
@@ -199,6 +213,45 @@ class ICPScraperEngine(BaseEngine):
         if not url.startswith(("http://", "https://")):
             url = f"https://{url}"
         return url
+
+    def _extract_social_links(self, raw_html: str) -> SocialLinks:
+        """
+        Extract social media URLs from raw HTML (ICP-SOC-001).
+
+        Finds LinkedIn, Instagram, Facebook, Twitter, YouTube, TikTok URLs.
+
+        Args:
+            raw_html: Combined raw HTML from all scraped pages
+
+        Returns:
+            SocialLinks dataclass with found URLs
+        """
+        social = SocialLinks()
+
+        # Social media URL patterns
+        patterns = {
+            "linkedin": r'href=["\']?(https?://(?:www\.)?linkedin\.com/company/[a-zA-Z0-9_-]+)["\'\s>]',
+            "instagram": r'href=["\']?(https?://(?:www\.)?instagram\.com/[a-zA-Z0-9_.]+)["\'\s>]',
+            "facebook": r'href=["\']?(https?://(?:www\.)?facebook\.com/[a-zA-Z0-9_.]+)["\'\s>]',
+            "twitter": r'href=["\']?(https?://(?:www\.)?(?:twitter\.com|x\.com)/[a-zA-Z0-9_]+)["\'\s>]',
+            "youtube": r'href=["\']?(https?://(?:www\.)?youtube\.com/(?:channel|c|user)/[a-zA-Z0-9_-]+)["\'\s>]',
+            "tiktok": r'href=["\']?(https?://(?:www\.)?tiktok\.com/@[a-zA-Z0-9_.]+)["\'\s>]',
+        }
+
+        for platform, pattern in patterns.items():
+            matches = re.findall(pattern, raw_html, re.IGNORECASE)
+            if matches:
+                # Take the first match and clean it
+                url = matches[0].rstrip('/"')
+                setattr(social, platform, url)
+                logger.debug(f"Found {platform}: {url}")
+
+        found_count = sum(1 for v in [social.linkedin, social.instagram, social.facebook,
+                                       social.twitter, social.youtube, social.tiktok] if v)
+        if found_count:
+            logger.info(f"Extracted {found_count} social media links")
+
+        return social
 
     async def _fetch_portfolio_pages(self, base_url: str) -> str:
         """
@@ -370,6 +423,9 @@ class ICPScraperEngine(BaseEngine):
                 combined_html = combined_html + "\n\n---DIRECT FETCH---\n\n" + portfolio_html
                 logger.info(f"Combined raw_html size: {len(combined_html):,} chars (includes direct fetch)")
 
+            # ICP-SOC-001: Extract social media links from raw HTML
+            social_links = self._extract_social_links(combined_html)
+
             scraped = ScrapedWebsite(
                 url=url,
                 domain=domain,
@@ -379,6 +435,7 @@ class ICPScraperEngine(BaseEngine):
                 tier_used=scrape_result.tier_used,
                 needs_fallback=False,
                 canonical_url=canonical_url,
+                social_links=social_links,
             )
 
             return EngineResult.ok(

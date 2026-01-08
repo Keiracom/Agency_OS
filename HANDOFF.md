@@ -113,6 +113,8 @@ Every prompt to Claude Code should follow this format:
 | Backend (Prod) | https://agency-os-production.up.railway.app |
 | Health Check | https://agency-os-production.up.railway.app/api/v1/health |
 | Supabase | https://jatzvazlbusedwsnqxzr.supabase.co |
+| **Prefect Dashboard** | https://prefect-server-production-f9b1.up.railway.app/dashboard |
+| **Prefect API** | https://prefect-server-production-f9b1.up.railway.app/api |
 
 ## Quick Reference: Common Issues
 

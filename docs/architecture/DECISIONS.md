@@ -71,6 +71,31 @@ Three separate services (not one monolith):
 
 ---
 
+## Prefect Server Configuration
+
+**Self-Hosted on Railway (NOT Prefect Cloud)**
+
+| Component | URL |
+|-----------|-----|
+| Dashboard | https://prefect-server-production-f9b1.up.railway.app/dashboard |
+| API | https://prefect-server-production-f9b1.up.railway.app/api |
+| Work Pool | `agency-os-pool` |
+| Work Queue | `agency-os-queue` |
+
+**Required Environment Variable (Railway API Service):**
+```
+PREFECT_API_URL=https://prefect-server-production-f9b1.up.railway.app/api
+```
+
+**API Routes Triggering Prefect Flows:**
+- `POST /onboarding/analyze` → `icp_onboarding_flow/onboarding-flow`
+- `POST /onboarding/confirm` → `pool_population/pool-population-flow`
+- `POST /pool/populate` → `pool_population/pool-population-flow`
+- `POST /patterns/trigger` → `single_client_pattern_learning/client-pattern-learning-flow`
+- `POST /campaigns/{id}/enrich` → `daily_enrichment/enrichment-flow`
+
+---
+
 ## Python Dependencies
 
 | Package | Version | Purpose |

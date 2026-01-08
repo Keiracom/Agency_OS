@@ -108,21 +108,40 @@ TEST_DAILY_EMAIL_LIMIT=15
 
 ---
 
+## PREFECT CONFIGURATION
+
+**Prefect Server (Self-Hosted on Railway):**
+- **Dashboard:** https://prefect-server-production-f9b1.up.railway.app/dashboard
+- **API:** https://prefect-server-production-f9b1.up.railway.app/api
+- **Work Pool:** `agency-os-pool` (type: process, status: READY)
+- **Work Queue:** `agency-os-queue`
+
+**Required Railway Environment Variable:**
+```
+PREFECT_API_URL=https://prefect-server-production-f9b1.up.railway.app/api
+```
+
 ## PREFECT FLOWS STATUS
 
-| Flow | Status | Type |
-|------|--------|------|
-| campaign_activation | ✅ | Active |
-| daily_enrichment | ✅ | Active |
-| hourly_outreach | ✅ | Active |
-| icp_onboarding | ✅ | Active |
-| intelligence_research | ✅ | Active |
-| pool_population | ✅ | Active |
-| pool_campaign_assignment | ✅ | Active |
-| reply_recovery | ✅ | Paused |
-| weekly_pattern_learning | ✅ | Paused |
+| Flow | Deployment Name | Status |
+|------|-----------------|--------|
+| icp_onboarding_flow | onboarding-flow | ✅ Active |
+| pool_population | pool-population-flow | ✅ Active |
+| daily_enrichment | enrichment-flow | ⏸️ Paused |
+| campaign_activation | campaign-flow | ✅ Active |
+| hourly_outreach | outreach-flow | ⏸️ Paused |
+| intelligence_research | intelligence-flow | ✅ Active |
+| trigger_lead_research | lead-research-flow | ✅ Active |
+| single_client_pattern_learning | client-pattern-learning-flow | ✅ Active |
+| weekly_pattern_learning | pattern-learning-flow | ⏸️ Paused |
+| pool_campaign_assignment | pool-assignment-flow | ✅ Active |
+| reply_recovery | reply-recovery-flow | ⏸️ Paused |
+| pattern_backfill | pattern-backfill-flow | ✅ Active |
+| single_client_backfill | client-backfill-flow | ✅ Active |
+| pool_daily_allocation | pool-daily-allocation-flow | ⏸️ Paused |
+| icp_reextract_flow | icp-reextract-flow | ✅ Active |
 
-**Total:** 15/15 operational (10 active, 5 paused)
+**Total:** 15 deployments (10 active, 5 paused)
 
 ---
 

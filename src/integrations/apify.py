@@ -265,66 +265,47 @@ class ApifyClient:
         self,
         url: str,
         max_pages: int = 10,
-        run_both_scrapers: bool = False,
     ) -> ScrapeResult:
         """
         Scrape website with tiered fallback (Tier 1 → Tier 2).
 
         Implements the Scraper Waterfall architecture:
-        - Tier 1: Cheerio (fast, static HTML, ~60% success)
-        - Tier 2: Playwright (JS rendering, ~80% success)
+        - Tier 1: Cheerio (fast, static HTML, ~60% success) with seed URLs
+        - Tier 2: Playwright (JS rendering, ~80% success) with seed URLs
+
+        Both scrapers use seed URLs to crawl common agency pages like
+        /case-studies, /testimonials, /portfolio.
 
         If both fail, returns needs_fallback=True for Tier 3/4 handling.
 
         Args:
             url: Website URL to scrape
             max_pages: Maximum pages to crawl
-            run_both_scrapers: Run both Cheerio AND Playwright, return the one
-                with more content. Use for ICP extraction where JS-rendered
-                pages may contain portfolio data Cheerio would miss.
 
         Returns:
             ScrapeResult with tier tracking and fallback status
         """
-        logger.info(f"Starting waterfall scrape for {url} (run_both={run_both_scrapers})")
+        logger.info(f"Starting waterfall scrape for {url}")
 
         # Tier 1: Try Cheerio first (fast, cheap)
         logger.debug(f"Tier 1: Attempting Cheerio scrape for {url}")
-        cheerio_result = await self._scrape_cheerio(url, max_pages)
+        result = await self._scrape_cheerio(url, max_pages)
 
-        if cheerio_result.has_valid_content():
-            logger.info(f"Tier 1 success for {url}: {cheerio_result.page_count} pages, {len(cheerio_result.raw_html)} chars")
+        if result.has_valid_content():
+            logger.info(f"Tier 1 success for {url}: {result.page_count} pages, {len(result.raw_html)} chars")
+            return result
 
-            # If run_both_scrapers, also run Playwright and compare
-            if run_both_scrapers:
-                logger.info(f"Running Playwright as well (run_both=True) for {url}")
-                playwright_result = await self._scrape_playwright(url, max_pages)
-
-                if playwright_result.has_valid_content():
-                    # Return the result with more content
-                    if len(playwright_result.raw_html) > len(cheerio_result.raw_html):
-                        logger.info(f"Playwright returned more content ({len(playwright_result.raw_html)} > {len(cheerio_result.raw_html)}), using Playwright result")
-                        return playwright_result
-                    else:
-                        logger.info(f"Cheerio returned more content, using Cheerio result")
-                        return cheerio_result
-                else:
-                    logger.info(f"Playwright failed, using Cheerio result")
-                    return cheerio_result
-            else:
-                return cheerio_result
-
-        logger.debug(f"Tier 1 failed for {url}: {cheerio_result.failure_reason or 'empty/blocked content'}")
+        logger.debug(f"Tier 1 failed for {url}: {result.failure_reason or 'empty/blocked content'}")
 
         # Tier 2: Fall back to Playwright (JS rendering)
         logger.debug(f"Tier 2: Attempting Playwright scrape for {url}")
-        playwright_result = await self._scrape_playwright(url, max_pages)
+        result = await self._scrape_playwright(url, max_pages)
 
-        if playwright_result.has_valid_content():
-            logger.info(f"Tier 2 success for {url}: {playwright_result.page_count} pages, {len(playwright_result.raw_html)} chars")
-            return playwright_result
+        if result.has_valid_content():
+            logger.info(f"Tier 2 success for {url}: {result.page_count} pages, {len(result.raw_html)} chars")
+            return result
 
-        logger.warning(f"Tier 2 failed for {url}: {playwright_result.failure_reason or 'empty/blocked content'}")
+        logger.warning(f"Tier 2 failed for {url}: {result.failure_reason or 'empty/blocked content'}")
 
         # Both tiers failed - needs fallback to Tier 3 (Camoufox) or Tier 4 (Manual)
         return ScrapeResult(

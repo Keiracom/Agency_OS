@@ -43,11 +43,22 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import httpx
+
 from src.engines.base import BaseEngine, EngineResult
 from src.engines.url_validator import URLValidator, get_url_validator
 from src.exceptions import EngineError, ValidationError
 from src.integrations.apify import get_apify_client, ScrapeResult
 from src.integrations.apollo import get_apollo_client
+
+# Portfolio page paths to fetch directly (ICP-FIX-008)
+PORTFOLIO_PATHS = [
+    "/our-work/",
+    "/case-studies/",
+    "/portfolio/",
+    "/work/",
+    "/clients/",
+]
 
 if TYPE_CHECKING:
     from src.integrations.apify import ApifyClient
@@ -189,6 +200,52 @@ class ICPScraperEngine(BaseEngine):
             url = f"https://{url}"
         return url
 
+    async def _fetch_portfolio_pages(self, base_url: str) -> str:
+        """
+        Directly fetch portfolio pages using httpx (ICP-FIX-008).
+
+        This supplements the Apify scrape by directly fetching known
+        portfolio page paths. httpx follows redirects automatically,
+        so www/non-www issues are handled.
+
+        This is the same approach used by WebFetch - direct HTTP request
+        that follows redirects and gets the final HTML.
+
+        Args:
+            base_url: Base website URL (e.g., https://dilate.com.au/)
+
+        Returns:
+            Combined HTML from all successfully fetched portfolio pages
+        """
+        from urllib.parse import urljoin
+
+        fetched_html = []
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        }
+
+        async with httpx.AsyncClient(follow_redirects=True, timeout=15.0) as client:
+            for path in PORTFOLIO_PATHS:
+                try:
+                    url = urljoin(base_url.rstrip("/") + "/", path.lstrip("/"))
+                    response = await client.get(url, headers=headers)
+
+                    if response.status_code == 200 and len(response.text) > 1000:
+                        logger.info(f"Direct fetch success: {url} ({len(response.text):,} chars)")
+                        fetched_html.append(f"\n<!-- DIRECT_FETCH: {url} -->\n{response.text}")
+                    else:
+                        logger.debug(f"Direct fetch skipped: {url} (status={response.status_code})")
+
+                except Exception as e:
+                    logger.debug(f"Direct fetch failed for {path}: {e}")
+                    continue
+
+        if fetched_html:
+            logger.info(f"Direct fetch added {len(fetched_html)} portfolio pages to raw_html")
+
+        return "\n".join(fetched_html)
+
     async def scrape_website(
         self,
         url: str,
@@ -302,11 +359,22 @@ class ICPScraperEngine(BaseEngine):
 
             # Success!
             logger.info(f"Waterfall success for {url}: tier={scrape_result.tier_used}, pages={len(pages)}")
+
+            # ICP-FIX-008: Direct fetch portfolio pages to supplement Apify scrape
+            # This ensures we get case study/portfolio URLs even if Apify missed them
+            portfolio_html = await self._fetch_portfolio_pages(canonical_url)
+
+            # Combine all HTML sources
+            combined_html = "\n\n---PAGE BREAK---\n\n".join(all_html) if all_html else scrape_result.raw_html
+            if portfolio_html:
+                combined_html = combined_html + "\n\n---DIRECT FETCH---\n\n" + portfolio_html
+                logger.info(f"Combined raw_html size: {len(combined_html):,} chars (includes direct fetch)")
+
             scraped = ScrapedWebsite(
                 url=url,
                 domain=domain,
                 pages=pages,
-                raw_html="\n\n---PAGE BREAK---\n\n".join(all_html) if all_html else scrape_result.raw_html,
+                raw_html=combined_html,
                 page_count=len(pages),
                 tier_used=scrape_result.tier_used,
                 needs_fallback=False,

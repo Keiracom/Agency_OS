@@ -48,6 +48,7 @@ import httpx
 from src.engines.base import BaseEngine, EngineResult
 from src.engines.url_validator import URLValidator, get_url_validator
 from src.exceptions import EngineError, ValidationError
+from src.integrations.anthropic import get_anthropic_client
 from src.integrations.apify import get_apify_client, ScrapeResult
 from src.integrations.apollo import get_apollo_client
 from src.integrations.clay import get_clay_client
@@ -62,6 +63,7 @@ PORTFOLIO_PATHS = [
 ]
 
 if TYPE_CHECKING:
+    from src.integrations.anthropic import AnthropicClient
     from src.integrations.apify import ApifyClient
     from src.integrations.apollo import ApolloClient
     from src.integrations.clay import ClayClient
@@ -164,6 +166,7 @@ class ICPScraperEngine(BaseEngine):
         apify_client: "ApifyClient | None" = None,
         apollo_client: "ApolloClient | None" = None,
         clay_client: "ClayClient | None" = None,
+        anthropic_client: "AnthropicClient | None" = None,
         url_validator: "URLValidator | None" = None,
     ):
         """
@@ -173,11 +176,13 @@ class ICPScraperEngine(BaseEngine):
             apify_client: Optional Apify client override
             apollo_client: Optional Apollo client override
             clay_client: Optional Clay client override
+            anthropic_client: Optional Anthropic client override
             url_validator: Optional URL validator override
         """
         self._apify = apify_client
         self._apollo = apollo_client
         self._clay = clay_client
+        self._anthropic = anthropic_client
         self._url_validator = url_validator
 
     @property
@@ -205,6 +210,13 @@ class ICPScraperEngine(BaseEngine):
         if self._clay is None:
             self._clay = get_clay_client()
         return self._clay
+
+    @property
+    def anthropic(self) -> "AnthropicClient":
+        """Get Anthropic client."""
+        if self._anthropic is None:
+            self._anthropic = get_anthropic_client()
+        return self._anthropic
 
     @property
     def url_validator(self) -> URLValidator:
@@ -569,6 +581,65 @@ class ICPScraperEngine(BaseEngine):
                 metadata={"company_name": company_name},
             )
 
+    async def _infer_industry_with_claude(
+        self,
+        company_name: str,
+        domain: str | None = None,
+        context: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Use Claude to intelligently infer industry and company details from name.
+
+        This is called FIRST in the waterfall - Claude's inference provides
+        a baseline that API sources can then confirm or enrich.
+
+        Args:
+            company_name: Company name to analyze
+            domain: Optional domain for additional context
+            context: Optional additional context (e.g., case study text)
+
+        Returns:
+            Dict with inferred industry, employee_range, and confidence
+        """
+        prompt = f"""Analyze this company name and infer its likely industry and size.
+
+Company Name: {company_name}
+{f"Domain: {domain}" if domain else ""}
+{f"Context: {context}" if context else ""}
+
+Based on the company name (and domain/context if provided), infer:
+1. The most likely industry (use standard categories like: automotive, retail, construction, manufacturing, healthcare, hospitality, technology, professional_services, food_beverage, real_estate, education, fitness, trades, environmental, recruitment)
+2. Likely company size (small: 1-50, medium: 51-200, large: 201+)
+3. Your confidence (low, medium, high)
+
+Respond in JSON format only:
+{{"industry": "string", "employee_range": "string", "confidence": "string", "reasoning": "brief explanation"}}"""
+
+        try:
+            response = await self.anthropic.complete(
+                prompt=prompt,
+                max_tokens=200,
+                temperature=0.3,
+            )
+
+            # Parse JSON response
+            import json
+            # Clean response - remove markdown if present
+            text = response.get("text", "").strip()
+            if text.startswith("```"):
+                text = text.split("```")[1]
+                if text.startswith("json"):
+                    text = text[4:]
+            text = text.strip()
+
+            result = json.loads(text)
+            logger.info(f"Claude inferred for {company_name}: {result.get('industry')} ({result.get('confidence')})")
+            return result
+
+        except Exception as e:
+            logger.warning(f"Claude inference failed for {company_name}: {e}")
+            return {}
+
     async def enrich_portfolio_company(
         self,
         company_name: str,
@@ -576,12 +647,16 @@ class ICPScraperEngine(BaseEngine):
         source: str = "portfolio",
     ) -> EngineResult[EnrichedPortfolioCompany]:
         """
-        Enrich a single portfolio company via multi-source fallback chain.
+        Enrich a single portfolio company via Claude-first waterfall.
 
-        Tier 1: Apollo (if domain available) - best for established companies
-        Tier 2: LinkedIn Company Scraper (via Apify) - works for companies with LinkedIn
-        Tier 3: Google Business (via Apify) - excellent for local Australian businesses
-        Tier 4: Return basic data if all else fails
+        NEW WATERFALL (Claude-first):
+        Tier 0: Claude inference (always runs first to establish baseline)
+        Tier 1: Apollo name/domain search (confirm/enrich)
+        Tier 1.5: LinkedIn scrape (fill gaps)
+        Tier 1.6: Clay enrichment (fill gaps)
+        Tier 2: LinkedIn via Google search
+        Tier 3: Google Business (great for local AU)
+        Tier 4: General Google search
 
         Args:
             company_name: Company name
@@ -598,11 +673,30 @@ class ICPScraperEngine(BaseEngine):
         )
         enrichment_source = None
 
-        # Tier 0: Apollo organization search by name (when no domain)
+        # ============================================
+        # TIER 0 (NEW): Claude Inference - ALWAYS RUNS FIRST
+        # ============================================
+        # Claude analyzes the company name to establish a baseline industry.
+        # This ensures every company gets SOME industry data even if all APIs fail.
+        logger.info(f"Tier 0 (Claude): Inferring industry for {company_name}")
+        claude_inference = await self._infer_industry_with_claude(company_name, domain)
+
+        if claude_inference.get("industry"):
+            enriched.industry = claude_inference["industry"]
+            enriched.employee_range = claude_inference.get("employee_range")
+            logger.info(
+                f"Claude baseline for {company_name}: "
+                f"industry={enriched.industry}, size={enriched.employee_range}"
+            )
+
+        # ============================================
+        # TIER 1: Apollo - Confirm/Enrich Claude's baseline
+        # ============================================
+        # Apollo organization search by name (when no domain)
         # Searches Apollo's database directly by company name
         if not domain:
             try:
-                logger.info(f"Tier 0: Apollo name search for {company_name}")
+                logger.info(f"Tier 1a: Apollo name search for {company_name}")
                 orgs = await self.apollo.search_organizations(
                     company_name=company_name,
                     locations=["Australia"],  # Focus on Australian companies
@@ -812,16 +906,16 @@ class ICPScraperEngine(BaseEngine):
             except Exception as e:
                 logger.warning(f"General Google search failed for {company_name}: {e}")
 
-        # Final fallback: Infer industry from company name AND domain if still missing
+        # Final fallback: Keyword matching (only if Claude AND all APIs failed)
+        # This should rarely be needed since Claude inference runs first
         if not enriched.industry:
-            # Try company name first
+            logger.warning(f"All enrichment sources failed for {company_name}, trying keyword fallback")
             inferred = self._infer_industry_from_name(company_name)
             if not inferred and enriched.domain:
-                # Try domain-based inference (e.g., soulwaytherapy.com.au -> therapy -> healthcare)
                 inferred = self._infer_industry_from_name(enriched.domain)
             if inferred:
                 enriched.industry = inferred
-                logger.info(f"Inferred industry for {company_name}: {inferred}")
+                logger.info(f"Keyword fallback for {company_name}: {inferred}")
 
         # Return result with metadata about enrichment source
         if enrichment_source:

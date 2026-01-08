@@ -445,6 +445,42 @@ class ApifyClient:
                 failure_reason=f"Cheerio scrape error: {str(e)}",
             )
 
+    def _canonicalize_url(self, url: str) -> str:
+        """
+        Canonicalize a URL by following redirects (ICP-FIX-006).
+
+        Many sites redirect non-www to www (or vice versa). This causes
+        issues when building seed URLs because the Apify scraper may not
+        properly combine content from different domains.
+
+        Example: dilate.com.au → www.dilate.com.au
+
+        Args:
+            url: Original URL
+
+        Returns:
+            Canonical URL after following redirects
+        """
+        import httpx
+        from urllib.parse import urlparse
+
+        try:
+            # Use HEAD request with redirect following to find canonical URL
+            with httpx.Client(follow_redirects=True, timeout=10.0) as client:
+                response = client.head(url, headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                })
+                canonical_url = str(response.url)
+
+                if canonical_url != url:
+                    logger.info(f"URL canonicalized: {url} → {canonical_url}")
+
+                return canonical_url
+
+        except Exception as e:
+            logger.warning(f"URL canonicalization failed for {url}: {e}, using original")
+            return url
+
     def _build_seed_urls(self, base_url: str) -> list[dict[str, str]]:
         """
         Build seed URLs for common agency pages (ICP-FIX-002).
@@ -453,23 +489,33 @@ class ApifyClient:
         links to important pages like /case-studies, /testimonials.
         Adding these as seed URLs ensures they get crawled.
 
+        NOTE: Canonicalizes the base URL first to handle www/non-www redirects (ICP-FIX-006).
+
         Args:
             base_url: Base URL (e.g., https://dilate.com.au/)
 
         Returns:
             List of seed URL objects for Apify
         """
-        from urllib.parse import urljoin
+        from urllib.parse import urljoin, urlparse
+
+        # Canonicalize base URL first (ICP-FIX-006)
+        # This handles www/non-www redirects (e.g., dilate.com.au → www.dilate.com.au)
+        canonical_base = self._canonicalize_url(base_url)
+
+        # Ensure trailing slash for proper joining
+        if not canonical_base.endswith("/"):
+            canonical_base = canonical_base + "/"
 
         # Start with the main URL
-        seed_urls = [{"url": base_url}]
+        seed_urls = [{"url": canonical_base}]
 
         # Add common agency paths
         for path in AGENCY_SEED_PATHS:
-            full_url = urljoin(base_url.rstrip("/") + "/", path.lstrip("/"))
+            full_url = urljoin(canonical_base, path.lstrip("/"))
             seed_urls.append({"url": full_url})
 
-        logger.debug(f"Built {len(seed_urls)} seed URLs for {base_url}")
+        logger.debug(f"Built {len(seed_urls)} seed URLs for {canonical_base} (original: {base_url})")
         return seed_urls
 
     async def _scrape_playwright(

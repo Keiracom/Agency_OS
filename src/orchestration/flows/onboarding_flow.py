@@ -16,6 +16,7 @@ RULES APPLIED:
 - Rule 15: AI spend limiter via Anthropic integration
 """
 
+import json
 import logging
 from datetime import datetime
 from typing import Any
@@ -30,6 +31,15 @@ from src.agents.icp_discovery_agent import ICPExtractionResult, get_icp_discover
 from src.integrations.supabase import get_db_session
 
 logger = logging.getLogger(__name__)
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    """Custom JSON encoder that handles datetime objects."""
+
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
 
 
 # ============================================
@@ -214,7 +224,7 @@ async def save_extraction_result_task(
                 {
                     "job_id": str(job_id),
                     "now": datetime.utcnow(),
-                    "icp": json.dumps(result.get("profile", {})),
+                    "icp": json.dumps(result.get("profile", {}), cls=DateTimeEncoder),
                 },
             )
             await db.commit()

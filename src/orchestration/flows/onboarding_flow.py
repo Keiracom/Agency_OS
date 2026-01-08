@@ -273,20 +273,21 @@ async def apply_icp_to_client_task(
     """
     async with get_db_session() as db:
         # JSON serialize arrays and dicts for asyncpg compatibility
+        # Use CAST() instead of :: to avoid SQLAlchemy parameter conflicts
         await db.execute(
             text("""
             UPDATE clients
             SET website_url = :website_url,
                 company_description = :description,
-                services_offered = :services::jsonb,
+                services_offered = CAST(:services AS jsonb),
                 value_proposition = :value_prop,
                 team_size = :team_size,
-                icp_industries = :industries::jsonb,
-                icp_company_sizes = :sizes::jsonb,
-                icp_locations = :locations::jsonb,
-                icp_titles = :titles::jsonb,
-                icp_pain_points = :pain_points::jsonb,
-                als_weights = :als_weights::jsonb,
+                icp_industries = CAST(:industries AS jsonb),
+                icp_company_sizes = CAST(:sizes AS jsonb),
+                icp_locations = CAST(:locations AS jsonb),
+                icp_titles = CAST(:titles AS jsonb),
+                icp_pain_points = CAST(:pain_points AS jsonb),
+                als_weights = CAST(:als_weights AS jsonb),
                 icp_extracted_at = :now,
                 icp_extraction_source = 'ai_extraction',
                 icp_extraction_job_id = :job_id,

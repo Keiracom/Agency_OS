@@ -843,21 +843,22 @@ class ICPScraperEngine(BaseEngine):
         name_lower = company_name.lower()
 
         industry_patterns = {
-            "automotive": ["mazda", "toyota", "ford", "honda", "subaru", "car", "auto", "motor", "vehicle", "dealer", "mechanic"],
+            "automotive": ["mazda", "toyota", "ford", "honda", "subaru", "car", "auto", "motor", "vehicle", "dealer", "mechanic", "vermeer"],
             "healthcare": ["physio", "dental", "medical", "clinic", "health", "hospital", "doctor", "therapy", "care"],
             "hospitality": ["hotel", "resort", "motel", "accommodation", "bay suite", "suites", "lodge", "inn"],
-            "tourism": ["tours", "travel", "adventure", "charter", "dive", "snorkel", "whale", "cruise", "tourism"],
-            "retail": ["shop", "store", "retail", "boutique", "fashion", "clothing", "golf", "sports", "running"],
-            "construction": ["construction", "builder", "building", "trades", "ceiling", "floor", "roofing", "plumbing"],
-            "manufacturing": ["timber", "steel", "manufacturing", "factory", "industrial", "cable", "wire"],
+            "tourism": ["tours", "travel", "adventure", "charter", "dive", "snorkel", "whale", "cruise", "tourism", "encounters", "safari", "wildlife"],
+            "retail": ["shop", "store", "retail", "boutique", "fashion", "clothing", "golf", "sports", "running", "warehouse"],
+            "construction": ["construction", "builder", "building", "trades", "ceiling", "floor", "roofing", "plumbing", "tiler"],
+            "manufacturing": ["timber", "steel", "manufacturing", "factory", "industrial", "cable", "wire", "equipment"],
             "technology": ["software", "tech", "digital", "it", "app", "data", "intelligence", "develop"],
             "professional_services": ["consulting", "legal", "accounting", "advisory", "services", "agency"],
             "food_beverage": ["jerky", "food", "cafe", "restaurant", "catering", "bakery", "coffee", "beer", "wine"],
-            "real_estate": ["property", "real estate", "realty", "homes", "land", "development"],
+            "real_estate": ["property", "real estate", "realty", "homes", "land", "development", "keller"],
             "education": ["academy", "school", "training", "education", "learn", "kids", "child"],
             "fitness": ["gym", "fitness", "crossfit", "yoga", "pilates", "martial"],
             "landscaping": ["landscape", "garden", "lawn", "arcadia", "outdoor"],
-            "recruitment": ["hire", "recruit", "staffing", "talent", "hr"],
+            "recruitment": ["hire", "recruit", "staffing", "talent", "hr", "employment", "apm"],
+            "environmental": ["enviro", "environment", "eco", "green", "sustainability", "water treatment"],
         }
 
         for industry, keywords in industry_patterns.items():

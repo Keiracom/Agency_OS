@@ -261,6 +261,51 @@ class ApifyClient:
                 message=f"Website scraping failed: {str(e)}",
             )
 
+    def _has_portfolio_indicators(self, html: str) -> bool:
+        """
+        Check if HTML contains portfolio/testimonial indicators.
+
+        Used to determine if Cheerio successfully scraped portfolio content
+        or if we need to fall through to Playwright for JS rendering.
+
+        Args:
+            html: Raw HTML content
+
+        Returns:
+            True if portfolio indicators found
+        """
+        import re
+        if not html or len(html) < 1000:
+            return False
+
+        html_lower = html.lower()
+
+        # Check for portfolio indicators
+        portfolio_patterns = [
+            r'case.?study',
+            r'client.?logo',
+            r'testimonial',
+            r'our.?work',
+            r'portfolio',
+            r'success.?stor',
+            r'"company_name"',  # JSON data
+            r'client.?name',
+        ]
+
+        match_count = 0
+        for pattern in portfolio_patterns:
+            if re.search(pattern, html_lower):
+                match_count += 1
+
+        # Also check for company name patterns (capital letters followed by company-like words)
+        company_pattern = r'[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*(?:\s+(?:Pty|Ltd|Inc|Corp|Co\.|Group))?'
+        company_matches = re.findall(company_pattern, html)
+
+        has_indicators = match_count >= 2 or len(company_matches) >= 5
+
+        logger.debug(f"Portfolio indicators: {match_count} patterns, {len(company_matches)} company names, has_indicators={has_indicators}")
+        return has_indicators
+
     async def scrape_website_with_waterfall(
         self,
         url: str,
@@ -276,6 +321,10 @@ class ApifyClient:
         Both scrapers use seed URLs to crawl common agency pages like
         /case-studies, /testimonials, /portfolio.
 
+        IMPORTANT: Even if Cheerio succeeds, we check for portfolio indicators.
+        If the content lacks portfolio data, we try Playwright (JS rendering)
+        since the /case-studies page is often JS-rendered.
+
         If both fail, returns needs_fallback=True for Tier 3/4 handling.
 
         Args:
@@ -289,13 +338,18 @@ class ApifyClient:
 
         # Tier 1: Try Cheerio first (fast, cheap)
         logger.debug(f"Tier 1: Attempting Cheerio scrape for {url}")
-        result = await self._scrape_cheerio(url, max_pages)
+        cheerio_result = await self._scrape_cheerio(url, max_pages)
 
-        if result.has_valid_content():
-            logger.info(f"Tier 1 success for {url}: {result.page_count} pages, {len(result.raw_html)} chars")
-            return result
-
-        logger.debug(f"Tier 1 failed for {url}: {result.failure_reason or 'empty/blocked content'}")
+        if cheerio_result.has_valid_content():
+            # Check if Cheerio got portfolio content or just basic pages
+            if self._has_portfolio_indicators(cheerio_result.raw_html):
+                logger.info(f"Tier 1 success with portfolio data for {url}: {cheerio_result.page_count} pages, {len(cheerio_result.raw_html)} chars")
+                return cheerio_result
+            else:
+                logger.info(f"Tier 1 got content but NO portfolio indicators for {url} - trying Playwright for JS rendering")
+                # Fall through to Playwright for JS-rendered portfolio pages
+        else:
+            logger.debug(f"Tier 1 failed for {url}: {cheerio_result.failure_reason or 'empty/blocked content'}")
 
         # Tier 2: Fall back to Playwright (JS rendering)
         logger.debug(f"Tier 2: Attempting Playwright scrape for {url}")

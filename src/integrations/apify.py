@@ -338,8 +338,13 @@ class ApifyClient:
         """
         actor = self._get_actor(self.WEBSITE_CONTENT)
 
+        # Use seed URLs for common agency pages (ICP-FIX-002)
+        # This ensures we crawl /case-studies, /testimonials, etc.
+        seed_urls = self._build_seed_urls(url)
+        logger.info(f"Cheerio scrape with {len(seed_urls)} seed URLs for {url}")
+
         run_input = {
-            "startUrls": [{"url": url}],
+            "startUrls": seed_urls,
             "maxCrawlPages": max_pages,
             "crawlerType": "cheerio",
             "requestTimeoutSecs": timeout_secs,

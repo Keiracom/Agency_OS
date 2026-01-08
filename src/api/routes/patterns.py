@@ -452,15 +452,24 @@ async def trigger_pattern_learning(
                 message="Valid patterns already exist. Use force=true to recompute.",
             )
 
-    # Queue the flow as a background task
-    async def run_flow():
-        await single_client_pattern_learning_flow(client_id=client.client_id)
+    # Trigger Prefect flow for pattern learning
+    import logging
+    from prefect.deployments import run_deployment
 
-    background_tasks.add_task(run_flow)
+    logger = logging.getLogger(__name__)
+
+    await run_deployment(
+        name="single_client_pattern_learning/client-pattern-learning-flow",
+        parameters={
+            "client_id": str(client.client_id),
+        },
+        timeout=0,  # Don't wait for completion
+    )
+    logger.info(f"Triggered Prefect pattern learning flow for client {client.client_id}")
 
     return PatternTriggerResponse(
         status="queued",
-        message="Pattern learning has been queued and will run in the background.",
+        message="Pattern learning has been queued via Prefect.",
     )
 
 

@@ -244,44 +244,27 @@ async def analyze_website(
 
     # Trigger Prefect flow for ICP extraction
     import logging
-    try:
-        from prefect.deployments import run_deployment
+    from prefect.deployments import run_deployment
 
-        await run_deployment(
-            name="icp_onboarding_flow/onboarding-flow",
-            parameters={
-                "job_id": str(job_id),
-                "client_id": str(client_id),
-                "website_url": url,
-                "auto_apply": True,
-            },
-            timeout=0,  # Don't wait for completion
-        )
+    await run_deployment(
+        name="icp_onboarding_flow/onboarding-flow",
+        parameters={
+            "job_id": str(job_id),
+            "client_id": str(client_id),
+            "website_url": url,
+            "auto_apply": True,
+        },
+        timeout=0,  # Don't wait for completion
+    )
 
-        logging.info(f"Triggered Prefect flow for ICP extraction job {job_id}")
+    logging.info(f"Triggered Prefect flow for ICP extraction job {job_id}")
 
-        return AnalyzeWebsiteResponse(
-            job_id=job_id,
-            status="pending",
-            website_url=url,
-            message="ICP extraction started via Prefect. Check status with job_id.",
-        )
-    except Exception as e:
-        # Fallback to background task if Prefect unavailable
-        logging.warning(f"Prefect flow trigger failed, falling back to background task: {e}")
-        background_tasks.add_task(
-            run_extraction_background,
-            job_id=job_id,
-            client_id=client_id,
-            website_url=url,
-        )
-
-        return AnalyzeWebsiteResponse(
-            job_id=job_id,
-            status="pending",
-            website_url=url,
-            message="ICP extraction started. Check status with job_id.",
-        )
+    return AnalyzeWebsiteResponse(
+        job_id=job_id,
+        status="pending",
+        website_url=url,
+        message="ICP extraction started via Prefect. Check status with job_id.",
+    )
 
 
 async def run_extraction_background(
@@ -637,13 +620,27 @@ async def confirm_icp(
         except Exception as e:
             logger.error(f"Pool population failed for client {cid}: {e}")
 
-    background_tasks.add_task(run_pool_population, client.client_id, 25)
+    # Trigger Prefect flow for pool population after ICP confirmation
+    import logging
+    from prefect.deployments import run_deployment
+
+    logger = logging.getLogger(__name__)
+
+    await run_deployment(
+        name="pool_population/pool-population-flow",
+        parameters={
+            "client_id": str(client.client_id),
+            "limit": 25,
+        },
+        timeout=0,  # Don't wait for completion
+    )
+    logger.info(f"Triggered Prefect pool population flow for client {client.client_id}")
 
     return {
         "success": True,
-        "message": "ICP profile confirmed and saved. Pool population started.",
+        "message": "ICP profile confirmed and saved. Pool population started via Prefect.",
         "client_id": str(client.client_id),
-        "pool_population": "started",
+        "pool_population": "queued",
     }
 
 

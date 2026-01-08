@@ -136,14 +136,22 @@ async def populate_pool(
 
         client_id = row.client_id
 
-    # Queue background task
-    background_tasks.add_task(run_pool_population, client_id, request.limit)
+    # Trigger Prefect flow for pool population
+    from prefect.deployments import run_deployment
 
-    logger.info(f"Pool population queued for client {client_id}, limit={request.limit}")
+    await run_deployment(
+        name="pool_population/pool-population-flow",
+        parameters={
+            "client_id": str(client_id),
+            "limit": request.limit,
+        },
+        timeout=0,  # Don't wait for completion
+    )
+    logger.info(f"Triggered Prefect pool population flow for client {client_id}")
 
     return PoolPopulateResponse(
         success=True,
-        message=f"Pool population started with limit {request.limit}",
+        message=f"Pool population started via Prefect with limit {request.limit}",
         job_status="queued",
         client_id=str(client_id),
         limit=request.limit,
@@ -190,14 +198,22 @@ async def populate_pool_for_client(
                 detail="Not authorized for this client",
             )
 
-    # Queue background task
-    background_tasks.add_task(run_pool_population, client_id, request.limit)
+    # Trigger Prefect flow for pool population
+    from prefect.deployments import run_deployment
 
-    logger.info(f"Pool population queued for client {client_id}, limit={request.limit}")
+    await run_deployment(
+        name="pool_population/pool-population-flow",
+        parameters={
+            "client_id": str(client_id),
+            "limit": request.limit,
+        },
+        timeout=0,  # Don't wait for completion
+    )
+    logger.info(f"Triggered Prefect pool population flow for client {client_id}")
 
     return PoolPopulateResponse(
         success=True,
-        message=f"Pool population started with limit {request.limit}",
+        message=f"Pool population started via Prefect with limit {request.limit}",
         job_status="queued",
         client_id=str(client_id),
         limit=request.limit,

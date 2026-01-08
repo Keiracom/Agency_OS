@@ -1120,17 +1120,26 @@ async def enrich_campaign_leads(
     # Verify campaign exists
     campaign = await get_campaign_or_404(campaign_id, client_id, db)
 
-    # Queue background task
-    background_tasks.add_task(
-        _run_campaign_enrichment,
-        client_id=client_id,
-        campaign_id=campaign_id,
-        count=request.count,
+    # Trigger Prefect flow for enrichment
+    import logging
+    from prefect.deployments import run_deployment
+
+    logger = logging.getLogger(__name__)
+
+    await run_deployment(
+        name="daily_enrichment/enrichment-flow",
+        parameters={
+            "client_id": str(client_id),
+            "campaign_id": str(campaign_id),
+            "batch_size": request.count,
+        },
+        timeout=0,  # Don't wait for completion
     )
+    logger.info(f"Triggered Prefect enrichment flow for campaign {campaign_id}")
 
     return EnrichLeadsResponse(
-        status="processing",
-        message=f"Lead enrichment started for {request.count} leads",
+        status="queued",
+        message=f"Lead enrichment started via Prefect for {request.count} leads",
         campaign_id=str(campaign_id),
         client_id=str(client_id),
         count=request.count,

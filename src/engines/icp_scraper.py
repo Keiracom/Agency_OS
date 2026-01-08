@@ -616,19 +616,26 @@ class ICPScraperEngine(BaseEngine):
                     results_per_query=1
                 )
 
-                if search_results:
-                    linkedin_url = search_results[0].get("link", "")
-                    if "linkedin.com/company" in linkedin_url:
-                        linkedin_data = await self.apify.scrape_linkedin_company(linkedin_url)
-                        if linkedin_data.get("found"):
-                            enriched.employee_count = linkedin_data.get("employee_count") or enriched.employee_count
-                            enriched.employee_range = linkedin_data.get("employee_range") or enriched.employee_range
-                            enriched.industry = linkedin_data.get("industry") or enriched.industry
-                            enriched.founded_year = linkedin_data.get("founded_year") or enriched.founded_year
-                            enriched.linkedin_url = linkedin_url
-                            enriched.location = linkedin_data.get("headquarters") or enriched.location
-                            enrichment_source = "linkedin"
-                            logger.info(f"LinkedIn found: {company_name} - {enriched.industry}, {enriched.employee_range}")
+                # Google Search actor returns nested structure:
+                # [{"searchQuery": ..., "organicResults": [{"url": "...", ...}]}]
+                linkedin_url = ""
+                if search_results and search_results[0].get("organicResults"):
+                    organic = search_results[0]["organicResults"]
+                    if organic:
+                        linkedin_url = organic[0].get("url", "")
+                        logger.info(f"Found LinkedIn URL for {company_name}: {linkedin_url}")
+
+                if linkedin_url and "linkedin.com/company" in linkedin_url:
+                    linkedin_data = await self.apify.scrape_linkedin_company(linkedin_url)
+                    if linkedin_data.get("found"):
+                        enriched.employee_count = linkedin_data.get("employee_count") or enriched.employee_count
+                        enriched.employee_range = linkedin_data.get("employee_range") or enriched.employee_range
+                        enriched.industry = linkedin_data.get("industry") or enriched.industry
+                        enriched.founded_year = linkedin_data.get("founded_year") or enriched.founded_year
+                        enriched.linkedin_url = linkedin_url
+                        enriched.location = linkedin_data.get("headquarters") or enriched.location
+                        enrichment_source = "linkedin"
+                        logger.info(f"LinkedIn found: {company_name} - {enriched.industry}, {enriched.employee_range}")
             except Exception as e:
                 logger.warning(f"LinkedIn enrichment failed for {company_name}: {e}")
 

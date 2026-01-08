@@ -812,9 +812,13 @@ class ICPScraperEngine(BaseEngine):
             except Exception as e:
                 logger.warning(f"General Google search failed for {company_name}: {e}")
 
-        # Final fallback: Infer industry from company name if still missing
+        # Final fallback: Infer industry from company name AND domain if still missing
         if not enriched.industry:
+            # Try company name first
             inferred = self._infer_industry_from_name(company_name)
+            if not inferred and enriched.domain:
+                # Try domain-based inference (e.g., soulwaytherapy.com.au -> therapy -> healthcare)
+                inferred = self._infer_industry_from_name(enriched.domain)
             if inferred:
                 enriched.industry = inferred
                 logger.info(f"Inferred industry for {company_name}: {inferred}")
@@ -858,7 +862,7 @@ class ICPScraperEngine(BaseEngine):
             "fitness": ["gym", "fitness", "crossfit", "yoga", "pilates", "martial"],
             "landscaping": ["landscape", "garden", "lawn", "arcadia", "outdoor"],
             "recruitment": ["hire", "recruit", "staffing", "talent", "hr", "employment", "apm"],
-            "environmental": ["enviro", "environment", "eco", "green", "sustainability", "water treatment"],
+            "environmental": ["enviro", "environment", "eco", "green", "sustainability", "water treatment", "planet", "earth", "solar", "renewable"],
         }
 
         for industry, keywords in industry_patterns.items():

@@ -242,20 +242,46 @@ async def analyze_website(
         import logging
         logging.error(f"Failed to insert ICP extraction job: {e}")
 
-    # Queue background extraction
-    background_tasks.add_task(
-        run_extraction_background,
-        job_id=job_id,
-        client_id=client_id,
-        website_url=url,
-    )
+    # Trigger Prefect flow for ICP extraction
+    import logging
+    try:
+        from prefect.deployments import run_deployment
 
-    return AnalyzeWebsiteResponse(
-        job_id=job_id,
-        status="pending",
-        website_url=url,
-        message="ICP extraction started. Check status with job_id.",
-    )
+        await run_deployment(
+            name="icp_onboarding_flow/onboarding-flow",
+            parameters={
+                "job_id": str(job_id),
+                "client_id": str(client_id),
+                "website_url": url,
+                "auto_apply": True,
+            },
+            timeout=0,  # Don't wait for completion
+        )
+
+        logging.info(f"Triggered Prefect flow for ICP extraction job {job_id}")
+
+        return AnalyzeWebsiteResponse(
+            job_id=job_id,
+            status="pending",
+            website_url=url,
+            message="ICP extraction started via Prefect. Check status with job_id.",
+        )
+    except Exception as e:
+        # Fallback to background task if Prefect unavailable
+        logging.warning(f"Prefect flow trigger failed, falling back to background task: {e}")
+        background_tasks.add_task(
+            run_extraction_background,
+            job_id=job_id,
+            client_id=client_id,
+            website_url=url,
+        )
+
+        return AnalyzeWebsiteResponse(
+            job_id=job_id,
+            status="pending",
+            website_url=url,
+            message="ICP extraction started. Check status with job_id.",
+        )
 
 
 async def run_extraction_background(

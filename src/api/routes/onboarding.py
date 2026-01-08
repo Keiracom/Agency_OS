@@ -105,7 +105,17 @@ class ICPProfileResponse(BaseModel):
 
     # Portfolio
     portfolio_companies: list[str] = Field(default_factory=list)
+    enriched_portfolio: list[dict] = Field(
+        default_factory=list,
+        description="Enriched portfolio with industry, size, revenue per company"
+    )
     notable_brands: list[str] = Field(default_factory=list)
+
+    # Social links (extracted from website)
+    social_links: dict[str, str] = Field(
+        default_factory=dict,
+        description="Social media URLs: linkedin, instagram, facebook, etc."
+    )
 
     # ICP targeting
     icp_industries: list[str] = Field(default_factory=list)

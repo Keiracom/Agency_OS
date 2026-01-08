@@ -219,6 +219,7 @@ class ICPScraperEngine(BaseEngine):
         Extract social media URLs from raw HTML (ICP-SOC-001).
 
         Finds LinkedIn, Instagram, Facebook, Twitter, YouTube, TikTok URLs.
+        Handles both href= attributes and JSON-LD sameAs arrays.
 
         Args:
             raw_html: Combined raw HTML from all scraped pages
@@ -228,21 +229,28 @@ class ICPScraperEngine(BaseEngine):
         """
         social = SocialLinks()
 
-        # Social media URL patterns
+        # Social media URL patterns - flexible to match href and JSON-LD contexts
+        # Patterns match: href="URL", "URL" in sameAs arrays, etc.
         patterns = {
-            "linkedin": r'href=["\']?(https?://(?:www\.)?linkedin\.com/company/[a-zA-Z0-9_-]+)["\'\s>]',
-            "instagram": r'href=["\']?(https?://(?:www\.)?instagram\.com/[a-zA-Z0-9_.]+)["\'\s>]',
-            "facebook": r'href=["\']?(https?://(?:www\.)?facebook\.com/[a-zA-Z0-9_.]+)["\'\s>]',
-            "twitter": r'href=["\']?(https?://(?:www\.)?(?:twitter\.com|x\.com)/[a-zA-Z0-9_]+)["\'\s>]',
-            "youtube": r'href=["\']?(https?://(?:www\.)?youtube\.com/(?:channel|c|user)/[a-zA-Z0-9_-]+)["\'\s>]',
-            "tiktok": r'href=["\']?(https?://(?:www\.)?tiktok\.com/@[a-zA-Z0-9_.]+)["\'\s>]',
+            # LinkedIn - handle www, au, uk, etc country subdomains
+            "linkedin": r'["\']?(https?://(?:[a-z]{2}\.)?linkedin\.com/company/[a-zA-Z0-9_-]+/?)["\'\s>,]',
+            # Instagram
+            "instagram": r'["\']?(https?://(?:www\.)?instagram\.com/[a-zA-Z0-9_.]+/?)["\'\s>,]',
+            # Facebook - with or without www
+            "facebook": r'["\']?(https?://(?:www\.)?facebook\.com/[a-zA-Z0-9_.]+/?)["\'\s>,]',
+            # Twitter/X
+            "twitter": r'["\']?(https?://(?:www\.)?(?:twitter\.com|x\.com)/[a-zA-Z0-9_]+/?)["\'\s>,]',
+            # YouTube - channel, c, or user paths
+            "youtube": r'["\']?(https?://(?:www\.)?youtube\.com/(?:channel|c|user)/[a-zA-Z0-9_-]+/?)["\'\s>,]',
+            # TikTok
+            "tiktok": r'["\']?(https?://(?:www\.)?tiktok\.com/@[a-zA-Z0-9_.]+/?)["\'\s>,]',
         }
 
         for platform, pattern in patterns.items():
             matches = re.findall(pattern, raw_html, re.IGNORECASE)
             if matches:
                 # Take the first match and clean it
-                url = matches[0].rstrip('/"')
+                url = matches[0].rstrip('/"\',')
                 setattr(social, platform, url)
                 logger.debug(f"Found {platform}: {url}")
 

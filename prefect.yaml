@@ -188,7 +188,7 @@ deployments:
     schedules: []
 
   # Lead research trigger flow (webhook-triggered)
-  - name: lead-research-flow
+  - name: trigger-lead-research
     version: 1.0.0
     paused: false  # Webhook - active for on-demand triggers
     tags: [intelligence, lead-research, webhook-triggered]

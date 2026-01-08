@@ -139,6 +139,17 @@ class SocialProfiles(BaseModel):
 
     @computed_field
     @property
+    def has_profiles(self) -> bool:
+        """
+        Check if any social profiles were found.
+
+        Returns:
+            True if at least one profile exists
+        """
+        return len(self.platforms_found) > 0
+
+    @computed_field
+    @property
     def average_rating(self) -> float | None:
         """
         Calculate average rating across platforms with ratings.

@@ -40,8 +40,13 @@ from src.agents.skills.portfolio_extractor import (
     PortfolioCompany,
     PortfolioExtractorSkill,
 )
+from src.agents.skills.portfolio_fallback import (
+    FallbackPortfolioCompany,
+    PortfolioFallbackSkill,
+)
 from src.agents.skills.service_extractor import ServiceExtractorSkill, ServiceInfo
 from src.agents.skills.social_enricher import SocialClientExtractorSkill
+from src.agents.skills.social_profile_discovery import SocialProfileDiscoverySkill
 from src.agents.skills.value_prop_extractor import ValuePropExtractorSkill
 from src.agents.skills.website_parser import PageContent, WebsiteParserSkill
 from src.engines.icp_scraper import (
@@ -203,6 +208,8 @@ class ICPDiscoveryAgent(BaseAgent):
             "extract_value_prop": ValuePropExtractorSkill(),
             "extract_portfolio": PortfolioExtractorSkill(),
             "extract_social_clients": SocialClientExtractorSkill(),
+            "discover_social_profiles": SocialProfileDiscoverySkill(),
+            "portfolio_fallback": PortfolioFallbackSkill(),
             "classify_industries": IndustryClassifierSkill(),
             "estimate_company_size": CompanySizeEstimatorSkill(),
             "derive_icp": ICPDeriverSkill(),
@@ -358,6 +365,160 @@ class ICPDiscoveryAgent(BaseAgent):
             facebook=facebook_profile,
             google_business=google_profile,
         )
+
+    def _extract_domain(self, url: str) -> str:
+        """Extract domain from URL."""
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        domain = parsed.netloc
+        if domain.startswith("www."):
+            domain = domain[4:]
+        return domain
+
+    async def _portfolio_fallback_discovery(
+        self,
+        company_name: str,
+        website_domain: str,
+        collected_social_links: dict[str, str],
+        social_profiles: SocialProfiles | None,
+    ) -> tuple[list[PortfolioCompany], SocialProfiles | None, int, float]:
+        """
+        Fallback discovery when website has no portfolio data.
+
+        Triggered when portfolio_companies is empty after website + social extraction.
+
+        Tier F1: Apollo agency lookup → extract clients from description
+        Tier F2: Social profile discovery → find & scrape LinkedIn/Instagram/Facebook
+        Tier F3: Google client search → search "[agency] clients case study"
+
+        Args:
+            company_name: Agency name
+            website_domain: Website domain
+            collected_social_links: Already collected social links
+            social_profiles: Already scraped social profiles
+
+        Returns:
+            Tuple of (portfolio_companies, updated_social_profiles, tokens_used, cost_aud)
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        logger.info(f"Starting portfolio fallback discovery for: {company_name}")
+
+        fallback_companies: list[PortfolioCompany] = []
+        updated_social_profiles = social_profiles
+        total_tokens = 0
+        total_cost = 0.0
+
+        # Gather data for fallback extraction
+        apollo_description: str | None = None
+        apollo_keywords: list[str] = []
+        linkedin_description: str | None = None
+        linkedin_specialties: list[str] = []
+        google_results: list[dict] = []
+
+        # Tier F1: Apollo agency lookup
+        logger.info(f"Tier F1: Looking up agency in Apollo...")
+        apollo_result = await self.scraper.get_agency_apollo_data(
+            company_name=company_name,
+            domain=website_domain,
+        )
+        if apollo_result.success and apollo_result.data:
+            data = apollo_result.data
+            if data.get("found"):
+                apollo_description = data.get("description")
+                apollo_keywords = data.get("keywords", [])
+                logger.info(f"Tier F1: Found Apollo data - description length: {len(apollo_description or '')}")
+            else:
+                logger.info("Tier F1: Agency not found in Apollo")
+
+        # Tier F2: Social profile discovery (only if we don't have social links)
+        if not collected_social_links or not social_profiles or not social_profiles.has_profiles:
+            logger.info(f"Tier F2: Discovering social profiles via Google...")
+            social_discovery_result = await self.use_skill(
+                "discover_social_profiles",
+                company_name=company_name,
+                website_domain=website_domain,
+            )
+
+            if social_discovery_result.success and social_discovery_result.data:
+                discovered = social_discovery_result.data
+                total_cost += social_discovery_result.cost_aud
+
+                # Merge discovered social links
+                new_links = {}
+                if discovered.linkedin_url and "linkedin" not in collected_social_links:
+                    new_links["linkedin"] = discovered.linkedin_url
+                if discovered.instagram_url and "instagram" not in collected_social_links:
+                    new_links["instagram"] = discovered.instagram_url
+                if discovered.facebook_url and "facebook" not in collected_social_links:
+                    new_links["facebook"] = discovered.facebook_url
+
+                if new_links:
+                    logger.info(f"Tier F2: Discovered {len(new_links)} new social profiles: {list(new_links.keys())}")
+                    # Scrape the newly discovered profiles
+                    merged_links = {**collected_social_links, **new_links}
+                    updated_social_profiles = await self._scrape_social_profiles(
+                        merged_links,
+                        company_name,
+                    )
+                    logger.info(f"Tier F2: Scraped profiles - platforms found: {updated_social_profiles.platforms_found}")
+
+        # Get LinkedIn description from updated profiles
+        if updated_social_profiles and updated_social_profiles.linkedin:
+            linkedin_description = updated_social_profiles.linkedin.description
+            linkedin_specialties = updated_social_profiles.linkedin.specialties or []
+
+        # Tier F3: Google client search
+        logger.info(f"Tier F3: Searching Google for client mentions...")
+        try:
+            search_queries = [
+                f'"{company_name}" clients case study',
+                f'"{company_name}" portfolio customers',
+            ]
+            google_results = await self.apify.search_google(search_queries, results_per_query=5)
+            logger.info(f"Tier F3: Found {len(google_results)} Google results")
+            total_cost += 0.01  # Apify Google search cost
+        except Exception as e:
+            logger.warning(f"Tier F3: Google search failed: {e}")
+
+        # Now use PortfolioFallbackSkill to extract clients from all sources
+        if apollo_description or linkedin_description or google_results:
+            logger.info("Extracting clients from fallback sources using Claude...")
+            fallback_result = await self.use_skill(
+                "portfolio_fallback",
+                company_name=company_name,
+                apollo_description=apollo_description,
+                apollo_keywords=apollo_keywords,
+                linkedin_description=linkedin_description,
+                linkedin_specialties=linkedin_specialties,
+                google_search_results=google_results,
+                existing_portfolio=[],  # No existing portfolio (that's why we're here)
+            )
+
+            if fallback_result.success and fallback_result.data:
+                total_tokens += fallback_result.tokens_used
+                total_cost += fallback_result.cost_aud
+
+                for client in fallback_result.data.companies:
+                    fallback_companies.append(
+                        PortfolioCompany(
+                            company_name=client.company_name,
+                            company_domain=None,
+                            source=f"fallback:{client.source}",
+                            description=client.context,
+                        )
+                    )
+
+                logger.info(
+                    f"Portfolio fallback discovery completed: "
+                    f"found {len(fallback_companies)} companies from sources: "
+                    f"{fallback_result.data.sources_used}"
+                )
+        else:
+            logger.warning("No fallback sources available for extraction")
+
+        return fallback_companies, updated_social_profiles, total_tokens, total_cost
 
     async def use_skill(
         self,
@@ -571,6 +732,37 @@ class ICPDiscoveryAgent(BaseAgent):
             if portfolio_data:
                 all_portfolio_companies.extend(portfolio_data.companies)
             all_portfolio_companies.extend(additional_portfolio_companies)
+
+            # Step 3c: Portfolio Fallback Discovery (only if empty)
+            if len(all_portfolio_companies) == 0:
+                logger.info(
+                    f"Portfolio empty for {parsed.company_name} - triggering fallback discovery"
+                )
+
+                fallback_companies, fallback_social, fallback_tokens, fallback_cost = (
+                    await self._portfolio_fallback_discovery(
+                        company_name=parsed.company_name,
+                        website_domain=self._extract_domain(website_url),
+                        collected_social_links=collected_social_links,
+                        social_profiles=social_profiles,
+                    )
+                )
+
+                all_portfolio_companies.extend(fallback_companies)
+                total_tokens += fallback_tokens
+                total_cost += fallback_cost
+
+                # Update social profiles if we discovered new ones
+                if fallback_social and fallback_social.has_profiles:
+                    if not social_profiles or not social_profiles.has_profiles:
+                        social_profiles = fallback_social
+                        logger.info(
+                            f"Updated social profiles from fallback: {social_profiles.platforms_found}"
+                        )
+
+                logger.info(
+                    f"Fallback discovery found {len(fallback_companies)} companies"
+                )
 
             # Step 4: Enrich portfolio companies
             enriched_companies: list[EnrichedCompany] = []

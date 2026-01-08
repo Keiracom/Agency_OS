@@ -871,6 +871,84 @@ class ICPScraperEngine(BaseEngine):
 
         return None
 
+    async def get_agency_apollo_data(
+        self,
+        company_name: str,
+        domain: str | None = None,
+    ) -> EngineResult[dict[str, Any]]:
+        """
+        Look up the agency itself in Apollo to get description data.
+
+        Used in Portfolio Fallback Discovery (Tier F1) - the agency's Apollo
+        description may mention clients they've worked with.
+
+        Args:
+            company_name: Agency name to search for
+            domain: Optional agency domain (more accurate if available)
+
+        Returns:
+            EngineResult containing Apollo data with description, keywords, etc.
+        """
+        logger.info(f"Looking up agency in Apollo: {company_name} (domain={domain})")
+
+        # Try domain-based lookup first (more accurate)
+        if domain:
+            try:
+                result = await self.apollo.enrich_company(domain)
+                if result.get("found"):
+                    logger.info(f"Apollo found agency by domain: {domain}")
+                    return EngineResult.ok(
+                        data={
+                            "found": True,
+                            "source": "apollo_domain",
+                            "name": result.get("name"),
+                            "domain": result.get("domain"),
+                            "description": result.get("short_description") or result.get("description"),
+                            "industry": result.get("industry"),
+                            "employee_count": result.get("estimated_num_employees"),
+                            "keywords": result.get("keywords", []),
+                            "linkedin_url": result.get("linkedin_url"),
+                        },
+                        metadata={"source": "apollo_domain"},
+                    )
+            except Exception as e:
+                logger.warning(f"Apollo domain lookup failed for {domain}: {e}")
+
+        # Fallback to name search
+        try:
+            orgs = await self.apollo.search_organizations(
+                company_name=company_name,
+                locations=["Australia"],
+                limit=1,
+            )
+
+            if orgs and orgs[0].get("found"):
+                org = orgs[0]
+                logger.info(f"Apollo found agency by name search: {company_name}")
+                return EngineResult.ok(
+                    data={
+                        "found": True,
+                        "source": "apollo_search",
+                        "name": org.get("name"),
+                        "domain": org.get("domain"),
+                        "description": org.get("short_description") or org.get("description"),
+                        "industry": org.get("industry"),
+                        "employee_count": org.get("employee_count"),
+                        "keywords": org.get("keywords", []),
+                        "linkedin_url": org.get("linkedin_url"),
+                    },
+                    metadata={"source": "apollo_search"},
+                )
+        except Exception as e:
+            logger.warning(f"Apollo name search failed for {company_name}: {e}")
+
+        # Not found
+        logger.info(f"Agency not found in Apollo: {company_name}")
+        return EngineResult.ok(
+            data={"found": False},
+            metadata={"source": "none"},
+        )
+
     async def enrich_portfolio_batch(
         self,
         companies: list[dict[str, Any]],

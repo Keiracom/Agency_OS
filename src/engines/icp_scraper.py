@@ -625,7 +625,7 @@ Respond in JSON format only:
             # Parse JSON response
             import json
             # Clean response - remove markdown if present
-            text = response.get("text", "").strip()
+            text = response.get("content", "").strip()
             if text.startswith("```"):
                 text = text.split("```")[1]
                 if text.startswith("json"):

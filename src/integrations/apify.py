@@ -30,6 +30,23 @@ logger = logging.getLogger(__name__)
 # Minimum content length to consider a scrape successful
 MIN_CONTENT_LENGTH = 500
 
+# Common agency page paths for seed URLs (ICP-FIX-002)
+# These pages often contain portfolio/testimonial data that the homepage may not link to
+AGENCY_SEED_PATHS = [
+    "/about",
+    "/about-us",
+    "/case-studies",
+    "/case-study",
+    "/testimonials",
+    "/reviews",
+    "/our-work",
+    "/work",
+    "/portfolio",
+    "/clients",
+    "/our-clients",
+    "/services",
+]
+
 # Indicators that content is blocked/empty
 BLOCKED_CONTENT_INDICATORS = [
     "access denied",
@@ -366,6 +383,33 @@ class ApifyClient:
                 failure_reason=f"Cheerio scrape error: {str(e)}",
             )
 
+    def _build_seed_urls(self, base_url: str) -> list[dict[str, str]]:
+        """
+        Build seed URLs for common agency pages (ICP-FIX-002).
+
+        Many agency sites are JS-rendered and the homepage may not contain
+        links to important pages like /case-studies, /testimonials.
+        Adding these as seed URLs ensures they get crawled.
+
+        Args:
+            base_url: Base URL (e.g., https://dilate.com.au/)
+
+        Returns:
+            List of seed URL objects for Apify
+        """
+        from urllib.parse import urljoin
+
+        # Start with the main URL
+        seed_urls = [{"url": base_url}]
+
+        # Add common agency paths
+        for path in AGENCY_SEED_PATHS:
+            full_url = urljoin(base_url.rstrip("/") + "/", path.lstrip("/"))
+            seed_urls.append({"url": full_url})
+
+        logger.debug(f"Built {len(seed_urls)} seed URLs for {base_url}")
+        return seed_urls
+
     async def _scrape_playwright(
         self,
         url: str,
@@ -388,8 +432,13 @@ class ApifyClient:
         """
         actor = self._get_actor(self.WEBSITE_CONTENT)
 
+        # Use seed URLs for common agency pages (ICP-FIX-002)
+        # This ensures we crawl /case-studies, /testimonials, etc. even if
+        # the JS-rendered homepage doesn't link to them directly
+        seed_urls = self._build_seed_urls(url)
+
         run_input = {
-            "startUrls": [{"url": url}],
+            "startUrls": seed_urls,
             "maxCrawlPages": max_pages,
             "crawlerType": "playwright",
             "requestTimeoutSecs": timeout_secs,
@@ -399,6 +448,7 @@ class ApifyClient:
             "pageLoadTimeoutSecs": 45,
             "maxRequestRetries": 2,
         }
+        logger.info(f"Playwright scrape with {len(seed_urls)} seed URLs for {url}")
 
         try:
             run = actor.call(run_input=run_input)

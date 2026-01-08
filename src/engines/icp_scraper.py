@@ -616,16 +616,19 @@ Respond in JSON format only:
 {{"industry": "string", "employee_range": "string", "confidence": "string", "reasoning": "brief explanation"}}"""
 
         try:
+            logger.info(f"Calling Claude for industry inference: {company_name}")
             response = await self.anthropic.complete(
                 prompt=prompt,
                 max_tokens=200,
                 temperature=0.3,
             )
+            logger.info(f"Claude response received for {company_name}: {response.keys()}")
 
             # Parse JSON response
             import json
             # Clean response - remove markdown if present
             text = response.get("content", "").strip()
+            logger.info(f"Claude raw content for {company_name}: {text[:200] if text else 'EMPTY'}")
             if text.startswith("```"):
                 text = text.split("```")[1]
                 if text.startswith("json"):
@@ -637,7 +640,9 @@ Respond in JSON format only:
             return result
 
         except Exception as e:
-            logger.warning(f"Claude inference failed for {company_name}: {e}")
+            import traceback
+            logger.error(f"Claude inference failed for {company_name}: {e}")
+            logger.error(f"Claude inference traceback: {traceback.format_exc()}")
             return {}
 
     async def enrich_portfolio_company(

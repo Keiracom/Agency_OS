@@ -712,7 +712,9 @@ Respond in JSON format only:
                     org = orgs[0]
                     enriched.company_name = org.get("name") or company_name
                     enriched.domain = org.get("domain")
-                    enriched.industry = org.get("industry")
+                    # Only overwrite Claude's industry if Apollo has one
+                    if org.get("industry"):
+                        enriched.industry = org.get("industry")
                     enriched.employee_count = org.get("employee_count")
                     enriched.country = org.get("country")
                     enriched.founded_year = org.get("founded_year")
@@ -733,7 +735,9 @@ Respond in JSON format only:
                 if apollo_result.get("found"):
                     enriched.company_name = apollo_result.get("name") or company_name
                     enriched.domain = apollo_result.get("domain") or domain
-                    enriched.industry = apollo_result.get("industry")
+                    # Only overwrite Claude's industry if Apollo has one
+                    if apollo_result.get("industry"):
+                        enriched.industry = apollo_result.get("industry")
                     enriched.employee_count = apollo_result.get("employee_count")
                     enriched.country = apollo_result.get("country")
                     enriched.founded_year = apollo_result.get("founded_year")

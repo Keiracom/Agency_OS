@@ -812,6 +812,13 @@ class ICPScraperEngine(BaseEngine):
             except Exception as e:
                 logger.warning(f"General Google search failed for {company_name}: {e}")
 
+        # Final fallback: Infer industry from company name if still missing
+        if not enriched.industry:
+            inferred = self._infer_industry_from_name(company_name)
+            if inferred:
+                enriched.industry = inferred
+                logger.info(f"Inferred industry for {company_name}: {inferred}")
+
         # Return result with metadata about enrichment source
         if enrichment_source:
             return EngineResult.ok(
@@ -819,11 +826,45 @@ class ICPScraperEngine(BaseEngine):
                 metadata={"enriched": True, "source": enrichment_source},
             )
         else:
-            logger.info(f"No enrichment found for {company_name} - returning basic data")
+            # Even without external enrichment, we may have inferred industry
+            has_inferred = bool(enriched.industry)
+            logger.info(f"No enrichment found for {company_name} - returning {'inferred' if has_inferred else 'basic'} data")
             return EngineResult.ok(
                 data=enriched,
-                metadata={"enriched": False, "source": "none"},
+                metadata={"enriched": has_inferred, "source": "inferred" if has_inferred else "none"},
             )
+
+    def _infer_industry_from_name(self, company_name: str) -> str | None:
+        """
+        Infer industry from company name using keyword matching.
+
+        This is a fallback when external data sources don't provide industry.
+        """
+        name_lower = company_name.lower()
+
+        industry_patterns = {
+            "automotive": ["mazda", "toyota", "ford", "honda", "subaru", "car", "auto", "motor", "vehicle", "dealer", "mechanic"],
+            "healthcare": ["physio", "dental", "medical", "clinic", "health", "hospital", "doctor", "therapy", "care"],
+            "hospitality": ["hotel", "resort", "motel", "accommodation", "bay suite", "suites", "lodge", "inn"],
+            "tourism": ["tours", "travel", "adventure", "charter", "dive", "snorkel", "whale", "cruise", "tourism"],
+            "retail": ["shop", "store", "retail", "boutique", "fashion", "clothing", "golf", "sports", "running"],
+            "construction": ["construction", "builder", "building", "trades", "ceiling", "floor", "roofing", "plumbing"],
+            "manufacturing": ["timber", "steel", "manufacturing", "factory", "industrial", "cable", "wire"],
+            "technology": ["software", "tech", "digital", "it", "app", "data", "intelligence", "develop"],
+            "professional_services": ["consulting", "legal", "accounting", "advisory", "services", "agency"],
+            "food_beverage": ["jerky", "food", "cafe", "restaurant", "catering", "bakery", "coffee", "beer", "wine"],
+            "real_estate": ["property", "real estate", "realty", "homes", "land", "development"],
+            "education": ["academy", "school", "training", "education", "learn", "kids", "child"],
+            "fitness": ["gym", "fitness", "crossfit", "yoga", "pilates", "martial"],
+            "landscaping": ["landscape", "garden", "lawn", "arcadia", "outdoor"],
+            "recruitment": ["hire", "recruit", "staffing", "talent", "hr"],
+        }
+
+        for industry, keywords in industry_patterns.items():
+            if any(kw in name_lower for kw in keywords):
+                return industry
+
+        return None
 
     async def enrich_portfolio_batch(
         self,

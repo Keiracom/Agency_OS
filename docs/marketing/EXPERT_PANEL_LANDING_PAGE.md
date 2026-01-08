@@ -225,7 +225,7 @@ Your outreach gets smarter every week. Automatically.
 
 **✓ 98/98 core features built and tested**  
 **✓ Full platform operational at agencyos.ai**  
-**✓ Integrations ready: Apollo, Resend, Twilio, LinkedIn, Synthflow**  
+**✓ Integrations ready: Apollo, Resend, Twilio, LinkedIn, Vapi**  
 **✓ 20 founding spots offered — 17 remaining**
 
 **Early Testimonial Framework:**

@@ -51,7 +51,7 @@ Real-time status of all integrated services:
 - Resend (Email)
 - Twilio (SMS)
 - HeyReach (LinkedIn)
-- Synthflow (Voice)
+- Vapi (Voice)
 
 ### Live Activity Feed
 Real-time stream of platform events across all clients.
@@ -102,8 +102,8 @@ Per-channel delivery costs:
 - Email (Resend) - Cost per send
 - SMS (Twilio) - Cost per message
 - LinkedIn (HeyReach) - Cost per action
-- Voice (Synthflow) - Cost per minute
-- Direct Mail (Lob) - Cost per piece
+- Voice (Vapi) - Cost per minute
+- Direct Mail (ClickSend) - Cost per piece
 
 ### Margin Calculator
 Real-time gross margin calculation:

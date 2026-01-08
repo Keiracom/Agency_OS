@@ -121,7 +121,7 @@ If you need data from another engine, pass it as argument from orchestration lay
 | Auth | Supabase Auth | Clerk, Auth0 |
 | Database | Supabase PostgreSQL | Firebase, MongoDB |
 | Cache | Redis (Upstash) | Memcached |
-| Email | Resend + Smartlead | SendGrid |
+| Email | Resend + Salesforge | SendGrid, Smartlead |
 
 **Full details:** `docs/architecture/DECISIONS.md`
 
@@ -159,20 +159,34 @@ Consumers: orchestration only
 
 ## Session Handoff
 
-At end of session, update PROGRESS.md:
+At end of session, append to `docs/progress/SESSION_LOG.md`:
 
 ```markdown
-## Session: [DATE]
-
-### Completed
-- [TASK_ID]: [Brief description]
-
-### Next
-- [TASK_ID]: [Description]
-
-### Blockers
-- [Any issues]
+### [Date] — [Brief Title]
+**Completed:** [task IDs]
+**Summary:** [1-2 sentences]
+**Files Changed:** [count or key files]
+**Blockers:** [issues or "None"]
+**Next:** [next task]
 ```
+
+---
+
+## Logging Protocol
+
+**Where to log what:**
+
+| Content Type | Location | Max Size |
+|--------------|----------|----------|
+| Status updates | `PROGRESS.md` | 300 lines |
+| Session summaries | `docs/progress/SESSION_LOG.md` | 5 lines per session |
+| Issues found | `docs/progress/ISSUES.md` | Log and continue |
+| Implementation detail | Git commit messages | Unlimited |
+
+**Rules:**
+- PROGRESS.md = roadmap + status only (no narratives)
+- Don't fix unrelated issues mid-task — log to ISSUES.md
+- Full protocol: `docs/architecture/RULES.md` rules 21-26
 
 ---
 

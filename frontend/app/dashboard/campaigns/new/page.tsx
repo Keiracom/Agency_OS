@@ -3,6 +3,7 @@
  * PURPOSE: New campaign creation page (simplified - ICP-008)
  * PHASE: 8 (Frontend)
  * TASK: ICP-008
+ * UPDATED: E2E Fix - Use proper useClient hook and authenticated API calls
  *
  * CHANGES:
  * - Removed channel allocation fields (system handles based on ALS)
@@ -10,65 +11,34 @@
  * - Removed scheduling fields
  * - Added inherited ICP display
  * - Added link to ICP settings
+ * - Fixed: Use useClient hook instead of hardcoded mock ID
+ * - Fixed: Use proper API client with authentication
  */
 
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Loader2, Target, Settings, Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2, Target, Settings, Sparkles, AlertCircle } from "lucide-react";
 import { PermissionModeSelector } from "@/components/campaigns/permission-mode-selector";
 import { useToast } from "@/hooks/use-toast";
-
-// Mock client ID - would come from auth context
-const CLIENT_ID = "mock-client-id";
+import { useClient } from "@/hooks/use-client";
+import { useCreateCampaign } from "@/hooks/use-campaigns";
+import { api } from "@/lib/api";
 
 // Types
 interface ICPProfile {
-  target_industries: string[];
-  target_company_sizes: string[];
-  target_job_titles: string[];
-  target_locations: string[];
-}
-
-interface CreateCampaignData {
-  name: string;
-  description: string;
-  permission_mode: string;
-}
-
-// API functions
-async function fetchICP(): Promise<ICPProfile> {
-  const response = await fetch(`/api/v1/clients/${CLIENT_ID}/icp`);
-  if (!response.ok) {
-    // Return empty ICP if not found
-    return {
-      target_industries: [],
-      target_company_sizes: [],
-      target_job_titles: [],
-      target_locations: [],
-    };
-  }
-  return response.json();
-}
-
-async function createCampaign(data: CreateCampaignData): Promise<{ id: string }> {
-  const response = await fetch(`/api/v1/campaigns`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    throw new Error("Failed to create campaign");
-  }
-  return response.json();
+  icp_industries: string[];
+  icp_company_sizes: string[];
+  icp_titles: string[];
+  icp_locations: string[];
 }
 
 export default function NewCampaignPage() {
@@ -78,31 +48,28 @@ export default function NewCampaignPage() {
 
   const router = useRouter();
   const { toast } = useToast();
+  const { clientId, isLoading: clientLoading } = useClient();
 
   // Fetch ICP to display inherited targeting
   const { data: icp, isLoading: icpLoading } = useQuery({
-    queryKey: ["icp", CLIENT_ID],
-    queryFn: fetchICP,
+    queryKey: ["icp", clientId],
+    queryFn: async (): Promise<ICPProfile> => {
+      if (!clientId) {
+        return { icp_industries: [], icp_company_sizes: [], icp_titles: [], icp_locations: [] };
+      }
+      try {
+        const response = await api.get<ICPProfile>(`/api/v1/clients/${clientId}/icp`);
+        return response;
+      } catch {
+        // Return empty ICP if not found
+        return { icp_industries: [], icp_company_sizes: [], icp_titles: [], icp_locations: [] };
+      }
+    },
+    enabled: !!clientId,
   });
 
-  // Create campaign mutation
-  const createMutation = useMutation({
-    mutationFn: createCampaign,
-    onSuccess: () => {
-      toast({
-        title: "Campaign created",
-        description: "Your campaign has been created successfully",
-      });
-      router.push("/dashboard/campaigns");
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create campaign",
-        variant: "destructive",
-      });
-    },
-  });
+  // Create campaign mutation using the proper hook
+  const createMutation = useCreateCampaign();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,19 +83,63 @@ export default function NewCampaignPage() {
       return;
     }
 
+    if (!clientId) {
+      toast({
+        title: "Error",
+        description: "Client context not loaded. Please refresh the page.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     createMutation.mutate({
       name: name.trim(),
       description: description.trim(),
       permission_mode: permissionMode,
+    }, {
+      onSuccess: () => {
+        toast({
+          title: "Campaign created",
+          description: "Your campaign has been created successfully",
+        });
+        router.push("/dashboard/campaigns");
+      },
+      onError: (error: Error) => {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to create campaign",
+          variant: "destructive",
+        });
+      },
     });
   };
 
   // Check if ICP has any targeting configured
   const hasICP = icp && (
-    icp.target_industries.length > 0 ||
-    icp.target_locations.length > 0 ||
-    icp.target_job_titles.length > 0
+    (icp.icp_industries?.length ?? 0) > 0 ||
+    (icp.icp_locations?.length ?? 0) > 0 ||
+    (icp.icp_titles?.length ?? 0) > 0
   );
+
+  // Show loading state while client context is loading
+  if (clientLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Show error if no client context
+  if (!clientId) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <AlertCircle className="h-12 w-12 text-destructive" />
+        <p className="text-muted-foreground">Unable to load client context</p>
+        <Button onClick={() => router.push("/login")}>Return to Login</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -198,24 +209,24 @@ export default function NewCampaignPage() {
             ) : hasICP ? (
               <div className="space-y-4">
                 <div className="flex flex-wrap gap-2">
-                  {icp.target_industries.slice(0, 5).map((industry) => (
+                  {(icp?.icp_industries ?? []).slice(0, 5).map((industry) => (
                     <Badge key={industry} variant="secondary">
                       {industry}
                     </Badge>
                   ))}
-                  {icp.target_industries.length > 5 && (
-                    <Badge variant="outline">+{icp.target_industries.length - 5} more</Badge>
+                  {(icp?.icp_industries?.length ?? 0) > 5 && (
+                    <Badge variant="outline">+{(icp?.icp_industries?.length ?? 0) - 5} more</Badge>
                   )}
                 </div>
-                {icp.target_locations.length > 0 && (
+                {(icp?.icp_locations?.length ?? 0) > 0 && (
                   <p className="text-sm text-muted-foreground">
-                    Locations: {icp.target_locations.join(", ")}
+                    Locations: {(icp?.icp_locations ?? []).join(", ")}
                   </p>
                 )}
-                {icp.target_job_titles.length > 0 && (
+                {(icp?.icp_titles?.length ?? 0) > 0 && (
                   <p className="text-sm text-muted-foreground">
-                    Titles: {icp.target_job_titles.slice(0, 5).join(", ")}
-                    {icp.target_job_titles.length > 5 && ` +${icp.target_job_titles.length - 5} more`}
+                    Titles: {(icp?.icp_titles ?? []).slice(0, 5).join(", ")}
+                    {(icp?.icp_titles?.length ?? 0) > 5 && ` +${(icp?.icp_titles?.length ?? 0) - 5} more`}
                   </p>
                 )}
                 <Link

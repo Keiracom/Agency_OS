@@ -113,6 +113,7 @@ src/
 │   ├── redis.py
 │   ├── apollo.py
 │   ├── apify.py
+│   ├── camoufox_scraper.py
 │   ├── clay.py
 │   ├── resend.py
 │   ├── postmark.py
@@ -122,8 +123,7 @@ src/
 │   ├── elevenlabs.py
 │   ├── clicksend.py
 │   ├── dataforseo.py
-│   ├── infraforge.py
-│   ├── smartlead.py
+│   ├── serper.py
 │   └── anthropic.py
 ├── engines/                      # LAYER 3
 │   ├── __init__.py
@@ -140,7 +140,7 @@ src/
 │   ├── content.py
 │   ├── reporter.py
 │   ├── icp_scraper.py
-│   ├── email_infrastructure.py
+│   ├── url_validator.py
 │   └── content_utils.py
 ├── algorithms/                   # Statistical learning
 │   ├── __init__.py
@@ -258,12 +258,22 @@ supabase/migrations/
 ├── 008_audit_logs.sql
 ├── 009_rls_policies.sql
 ├── 010_platform_admin.sql
-├── 011_email_template.sql
+├── 011_fix_user_insert_policy.sql
 ├── 012_client_icp_profile.sql
-├── 013_replies_meetings.sql
+├── 013_campaign_templates.sql
 ├── 014_conversion_intelligence.sql
-├── 015_dataforseo_cache.sql
-├── 016_credits_usage.sql
-├── 017_email_infrastructure.sql
-└── 018_platform_intelligence.sql
+├── 015_founding_spots.sql
+├── 016_auto_provision_client.sql
+├── 017_fix_trigger_schema.sql
+├── 021_deep_research.sql
+├── 024_lead_pool.sql
+├── 025_content_tracking.sql
+├── 026_email_engagement.sql
+├── 027_conversation_threads.sql
+├── 028_downstream_outcomes.sql
+├── 029_crm_push.sql
+├── 030_customer_import.sql
+└── 031_linkedin_credentials.sql
 ```
+
+**Note:** Migrations 018-020 and 022-023 were skipped during phase renumbering.

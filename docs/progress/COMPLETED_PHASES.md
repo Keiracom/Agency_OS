@@ -82,8 +82,8 @@
 | INT-007 | Postmark | `src/integrations/postmark.py` | Inbound webhooks |
 | INT-008 | Twilio | `src/integrations/twilio.py` | SMS + DNCR |
 | INT-009 | HeyReach | `src/integrations/heyreach.py` | LinkedIn 17/day |
-| INT-010 | Synthflow | `src/integrations/synthflow.py` | Voice AI |
-| INT-011 | Lob | `src/integrations/lob.py` | Direct mail |
+| INT-010 | Vapi | `src/integrations/vapi.py` | Voice AI |
+| INT-011 | ClickSend | `src/integrations/clicksend.py` | Direct mail (AU) |
 | INT-012 | Anthropic | `src/integrations/anthropic.py` | AI + spend limiter |
 
 ---

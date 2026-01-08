@@ -63,8 +63,9 @@ src/
 │   ├── postmark.py        # Inbound email
 │   ├── twilio.py          # SMS
 │   ├── heyreach.py        # LinkedIn
-│   ├── synthflow.py       # Voice AI
-│   ├── lob.py             # Direct mail
+│   ├── vapi.py            # Voice AI
+│   ├── elevenlabs.py      # TTS
+│   ├── clicksend.py       # Direct mail (AU)
 │   └── serper.py          # Web search
 │
 ├── engines/               # LAYER 3 - Business logic

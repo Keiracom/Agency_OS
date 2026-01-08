@@ -94,7 +94,7 @@ Agency OS is a unified client acquisition platform—a "Bloomberg Terminal for C
 │  ┌─────────────┐          ┌─────────────┐          ┌─────────────────┐    │
 │  │   EMAIL     │          │   SMS/VOICE │          │   LINKEDIN      │    │
 │  │   Resend    │          │   Twilio    │          │   HeyReach      │    │
-│  │   Postmark  │          │   Synthflow │          │                 │    │
+│  │   Postmark  │          │   Vapi      │          │                 │    │
 │  └─────────────┘          └─────────────┘          └─────────────────┘    │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -134,9 +134,9 @@ Agency OS is a unified client acquisition platform—a "Bloomberg Terminal for C
 | Email Outbound | Resend | Email sending |
 | Email Inbound | Postmark | Webhook processing |
 | SMS | Twilio | SMS + DNCR check |
-| Voice | Synthflow | Voice AI |
+| Voice | Vapi + ElevenLabs | Voice AI |
 | LinkedIn | HeyReach | Automation (17/day/seat) |
-| Direct Mail | Lob | Physical mail API |
+| Direct Mail | ClickSend | Physical mail (AU) |
 | Enrichment | Apollo, Apify, Clay | Lead data |
 | Scraping | Apify | Website content |
 | Error Tracking | Sentry | Production monitoring |
@@ -598,8 +598,8 @@ async def send_email_task(lead_id: str, campaign_id: str):
 | **Email** | Email outreach | Resend |
 | **SMS** | SMS outreach | Twilio |
 | **LinkedIn** | LinkedIn outreach | HeyReach |
-| **Voice** | Voice calls | Synthflow |
-| **Mail** | Direct mail | Lob |
+| **Voice** | Voice calls | Vapi + ElevenLabs |
+| **Mail** | Direct mail | ClickSend |
 | **Closer** | Reply handling | Internal + AI |
 | **Content** | Copy generation | Anthropic |
 | **Reporter** | Metrics aggregation | Internal |
@@ -892,7 +892,7 @@ C:\AI\Agency_OS\
 │   │   ├── apollo.py, apify.py, clay.py
 │   │   ├── resend.py, postmark.py
 │   │   ├── twilio.py, heyreach.py
-│   │   ├── synthflow.py, lob.py
+│   │   ├── vapi.py, elevenlabs.py, clicksend.py
 │   │   └── anthropic.py
 │   ├── engines/
 │   │   ├── base.py, scout.py, scorer.py

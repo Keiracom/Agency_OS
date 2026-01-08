@@ -1,7 +1,8 @@
 # Integration Index — Agency OS
 
-**Location:** `src/integrations/`  
+**Location:** `src/integrations/`
 **Layer:** 2 (can import models only)
+**Last Updated:** January 8, 2026
 
 ---
 
@@ -22,11 +23,30 @@
 | HeyReach | `heyreach.py` | LinkedIn automation | `HEYREACH.md` |
 | Vapi | `vapi.py` | Voice AI orchestration | `VAPI.md` |
 | ElevenLabs | `elevenlabs.py` | Text-to-speech | `ELEVENLABS.md` |
-| Deepgram | `deepgram.py` | Speech-to-text | `DEEPGRAM.md` |
-| ClickSend | `clicksend.py` | Direct mail | `CLICKSEND.md` |
+| ClickSend | `clicksend.py` | Direct mail (AU) | `CLICKSEND.md` |
 | Anthropic | `anthropic.py` | AI + spend limiter | `ANTHROPIC.md` |
-| InfraForge | `infraforge.py` | Email provisioning | `INFRAFORGE.md` |
-| Smartlead | `smartlead.py` | Email warmup + sending | `SMARTLEAD.md` |
+| Serper | `serper.py` | Search API | *(needs spec)* |
+
+---
+
+## External APIs (No Code Wrapper)
+
+| Service | Purpose | Notes |
+|---------|---------|-------|
+| InfraForge | Domain/mailbox provisioning | Used via dashboard, spec: `INFRAFORGE.md` |
+| Salesforge | Cold email sending | API keys configured, no wrapper needed |
+| Warmforge | Email warmup | Free with Salesforge, no wrapper needed |
+
+---
+
+## Archived Integrations
+
+These integrations were planned but superseded. Specs archived for historical reference.
+
+| Integration | Replaced By | Archive Location |
+|-------------|-------------|------------------|
+| Smartlead | Salesforge ecosystem | `archive/SMARTLEAD.md` |
+| Deepgram | Vapi internal STT | `archive/DEEPGRAM.md` |
 
 ---
 
@@ -38,6 +58,7 @@
 - **Camoufox** — Web scraping Tier 3 (Cloudflare bypass)
 - **Clay** — Premium enrichment waterfall fallback
 - **DataForSEO** — SEO metrics for scoring
+- **Serper** — Search API for research
 
 **See also:** `SCRAPER_WATERFALL.md` for full scraping architecture
 
@@ -51,14 +72,15 @@
 ### Voice AI Stack
 - **Vapi** — Voice conversation orchestration
 - **ElevenLabs** — Natural voice synthesis
-- **Deepgram** — Speech-to-text (STT) → `DEEPGRAM.md`
+- *(Deepgram STT handled internally by Vapi)*
 
 ### AI
 - **Anthropic** — Claude API with spend limiter
 
-### Email Infrastructure (Phase 19)
-- **InfraForge** — Domain/mailbox provisioning
-- **Smartlead** — Email warmup and high-volume sending
+### Email Infrastructure (External)
+- **InfraForge** — Domain/mailbox provisioning (via dashboard)
+- **Salesforge** — Cold email campaigns and sending
+- **Warmforge** — Email warmup (free with Salesforge)
 
 ### Infrastructure
 - **Supabase** — PostgreSQL database
@@ -87,7 +109,7 @@ class IntegrationClient:
             headers={"Authorization": f"Bearer {api_key}"},
             timeout=30.0
         )
-    
+
     async def close(self):
         await self.client.aclose()
 ```
@@ -135,5 +157,5 @@ async def fetch_with_retry(self, url: str) -> dict:
 | Twilio SMS | $0.08/message | Australian |
 | ClickSend | $0.59/letter | Direct mail |
 | Resend | $0.0009/email | Transactional |
-| InfraForge | ~$99/IP/month | Dedicated IP |
-| Smartlead | ~$39/month | Warmup + sending |
+| Salesforge | $48/month | Cold email sending |
+| Warmforge | Free | Included with Salesforge |

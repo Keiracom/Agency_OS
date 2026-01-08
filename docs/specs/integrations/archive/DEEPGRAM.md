@@ -1,7 +1,14 @@
-# Deepgram Integration
+> **ARCHIVED:** This integration was replaced/superseded. Kept for historical reference.
+> **Replaced by:** Vapi internal STT (Deepgram is used internally by Vapi, no direct integration needed)
+> **Archived:** January 8, 2026
+> **Reason:** Voice AI uses Vapi which handles STT internally. No separate Deepgram wrapper needed.
 
-**File:** `src/integrations/deepgram.py`  
-**Purpose:** Speech-to-text (STT) for Voice AI  
+---
+
+# Deepgram Integration (ARCHIVED)
+
+**File:** `src/integrations/deepgram.py` (never implemented)
+**Purpose:** Speech-to-text (STT) for Voice AI
 **API Docs:** https://developers.deepgram.com/
 
 ---
@@ -23,7 +30,7 @@ from deepgram import Deepgram
 class DeepgramClient:
     def __init__(self, api_key: str):
         self.client = Deepgram(api_key)
-    
+
     async def transcribe_stream(
         self,
         audio_stream: AsyncIterator[bytes]
@@ -34,7 +41,7 @@ class DeepgramClient:
             "interim_results": True,
             "language": "en-AU"
         })
-        
+
         async for audio_chunk in audio_stream:
             socket.send(audio_chunk)
             result = await socket.receive()
@@ -44,7 +51,7 @@ class DeepgramClient:
                     confidence=result["channel"]["alternatives"][0]["confidence"],
                     is_final=True
                 )
-    
+
     async def transcribe_audio(
         self,
         audio_url: str

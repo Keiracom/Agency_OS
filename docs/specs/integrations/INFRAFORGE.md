@@ -1,8 +1,12 @@
 # InfraForge Integration
 
-**File:** `src/integrations/infraforge.py`  
-**Purpose:** Email domain and mailbox provisioning  
-**Phase:** 19 (Email Infrastructure)
+> **Note:** InfraForge is used via external API calls (dashboard/manual). No code wrapper exists in this repo.
+> Domain/mailbox provisioning is done through InfraForge dashboard, then exported to Salesforge/Warmforge for warmup.
+
+**File:** External API (no wrapper in repo)
+**Purpose:** Email domain and mailbox provisioning
+**Phase:** 18 (Email Infrastructure)
+**Ecosystem:** InfraForge (domains) → Warmforge (warmup) → Salesforge (sending)
 
 ---
 
@@ -139,8 +143,8 @@ Client signs up
       │
       ▼
 ┌─────────────────┐
-│ Connect to      │
-│ Smartlead       │ ──► Start warmup
+│ Export to       │
+│ Warmforge       │ ──► Start warmup (free with Salesforge)
 └─────────────────┘
 ```
 

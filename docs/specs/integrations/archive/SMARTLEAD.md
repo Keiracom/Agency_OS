@@ -1,8 +1,15 @@
-# Smartlead Integration
+> **ARCHIVED:** This integration was replaced/superseded. Kept for historical reference.
+> **Replaced by:** Salesforge ecosystem (Salesforge + Warmforge + InfraForge)
+> **Archived:** January 8, 2026
+> **Reason:** Project pivoted from Smartlead to Salesforge on January 6, 2026 for better API access and cost structure.
 
-**File:** `src/integrations/smartlead.py`  
-**Purpose:** Email warmup and high-volume sending  
-**Phase:** 19 (Email Infrastructure)  
+---
+
+# Smartlead Integration (ARCHIVED)
+
+**File:** `src/integrations/smartlead.py` (never implemented)
+**Purpose:** Email warmup and high-volume sending
+**Phase:** 19 (Email Infrastructure)
 **API Docs:** https://api.smartlead.ai/docs
 
 ---
@@ -36,7 +43,7 @@ class SmartleadClient:
             base_url="https://server.smartlead.ai/api/v1",
             headers={"Authorization": f"Bearer {api_key}"}
         )
-    
+
     async def add_email_account(
         self,
         email: str,
@@ -62,7 +69,7 @@ class SmartleadClient:
             }
         )
         return AccountResult(**response.json())
-    
+
     async def get_warmup_stats(
         self,
         account_id: str
@@ -72,7 +79,7 @@ class SmartleadClient:
             f"/email-accounts/{account_id}/warmup-stats"
         )
         return WarmupStats(**response.json())
-    
+
     async def send_email(
         self,
         account_id: str,
@@ -90,7 +97,7 @@ class SmartleadClient:
         }
         if reply_to_message_id:
             payload["in_reply_to"] = reply_to_message_id
-        
+
         response = await self.client.post("/emails/send", json=payload)
         return SendResult(**response.json())
 ```

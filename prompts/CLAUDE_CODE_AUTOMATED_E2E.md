@@ -10,6 +10,38 @@ Run comprehensive automated E2E tests BEFORE human does manual browser testing. 
 
 ---
 
+## ⛔ CRITICAL RULES — NO SHORTCUTS
+
+**You MUST follow these rules. Violations will invalidate the entire test.**
+
+### DO NOT:
+- ❌ **Manually insert data** into the database to fake test results
+- ❌ **Skip API calls** and pretend they succeeded
+- ❌ **Create mock leads** or fake enrichment data
+- ❌ **Hardcode IDs** instead of using values returned from APIs
+- ❌ **Skip polling** and assume async operations completed
+- ❌ **Do code review only** — you must make REAL API calls
+- ❌ **Summarize what you would do** — actually DO IT
+- ❌ **Say "the endpoint should work"** — CALL IT and verify
+- ❌ **Bypass the enrichment process** by inserting leads directly
+- ❌ **Skip waiting** for ICP extraction, lead enrichment, or content generation
+- ❌ **Assume TEST_MODE is working** — verify outreach actually redirects
+
+### YOU MUST:
+- ✅ **Make real curl/API calls** to production endpoints
+- ✅ **Wait for async operations** (ICP extraction, lead enrichment) with polling
+- ✅ **Use actual response data** (IDs, tokens) for subsequent calls
+- ✅ **Verify database state** matches API responses using Supabase MCP
+- ✅ **Actually trigger outreach** so emails/SMS arrive at test recipients
+- ✅ **Report actual HTTP status codes** and response bodies
+- ✅ **Fail tests honestly** if something doesn't work
+- ✅ **Fix real issues** in code when tests fail, then re-run
+
+### The Point of This Test:
+The human will receive REAL emails, SMS, and a phone call. If you skip steps or fake data, the human won't receive anything and the test is worthless. The goal is to verify the ENTIRE system works end-to-end, not to produce a green report.
+
+---
+
 ## Read the Skill First
 
 ```bash
@@ -112,12 +144,29 @@ All 6 journeys pass:
 
 ---
 
+## Verification Checklist (Human Will Confirm)
+
+After you complete the test, the human will verify:
+
+| Check | How Human Verifies |
+|-------|-------------------|
+| Emails sent | Check david.stephens@keiracom.com inbox |
+| SMS sent | Check +61457543392 for text messages |
+| Voice call | Phone rang from Vapi AI agent |
+| Account works | Login with TEST_EMAIL / TEST_PASSWORD in browser |
+| Leads real | View campaign leads in dashboard — not empty |
+| ICP extracted | View ICP profile — populated from umped.com.au |
+
+**If ANY of these fail, you took shortcuts.**
+
+---
+
 ## Begin
 
 1. Read the skill file
 2. Set up configuration
-3. Run Journey 1
-4. Continue through all journeys
-5. Generate report
+3. Run Journey 1 — make REAL API calls
+4. Continue through all journeys — no skipping
+5. Generate report with ACTUAL results
 
-**Start now.**
+**Start now. No shortcuts.**

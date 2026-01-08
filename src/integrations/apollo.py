@@ -175,6 +175,51 @@ class ApolloClient:
         org = result["organization"]
         return self._transform_company(org)
 
+    async def search_organizations(
+        self,
+        company_name: str,
+        locations: list[str] | None = None,
+        limit: int = 3,
+    ) -> list[dict[str, Any]]:
+        """
+        Search for organizations by name.
+
+        Args:
+            company_name: Company name to search for
+            locations: Optional location filters (e.g., ["Australia"])
+            limit: Maximum results to return
+
+        Returns:
+            List of matching organizations
+        """
+        data: dict[str, Any] = {
+            "q_organization_name": company_name,
+            "per_page": min(limit, 10),
+            "page": 1,
+        }
+
+        # Add location filters if provided
+        if locations:
+            data["organization_locations"] = locations
+
+        try:
+            result = await self._request(
+                "POST",
+                "/mixed_companies/search",
+                data,
+            )
+
+            organizations = result.get("organizations", [])
+            if not organizations:
+                return []
+
+            return [self._transform_company(org) for org in organizations[:limit]]
+        except Exception as e:
+            # Log but don't fail - search may not be available on all plans
+            import logging
+            logging.warning(f"Apollo organization search failed for {company_name}: {e}")
+            return []
+
     async def search_people(
         self,
         domain: str,

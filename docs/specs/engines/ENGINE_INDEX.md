@@ -29,7 +29,7 @@
 | Engine | File | Purpose | Phase |
 |--------|------|---------|-------|
 | ICP Scraper | `icp_scraper.py` | Website/portfolio scraping | 11 |
-| Email Infra | `email_infrastructure.py` | Domain/mailbox provisioning | 19 |
+| URL Validator | `url_validator.py` | URL validation and checking | 19 |
 
 ---
 
@@ -40,7 +40,7 @@
 | Scout | Apollo, Apify, Clay |
 | Scorer | DataForSEO |
 | Allocator | Redis (rate limits) |
-| Email | Resend, Smartlead |
+| Email | Resend, Salesforge |
 | SMS | Twilio |
 | LinkedIn | HeyReach |
 | Voice | Vapi, Twilio, ElevenLabs |

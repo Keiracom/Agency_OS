@@ -586,37 +586,35 @@ class ICPScraperEngine(BaseEngine):
         )
         enrichment_source = None
 
-        # Tier 0: Domain Discovery (if no domain provided)
-        # Search for company website to enable Apollo enrichment
-        if not domain and self.apify:
+        # Tier 0: Apollo organization search by name (when no domain)
+        # Searches Apollo's database directly by company name
+        if not domain:
             try:
-                logger.info(f"Tier 0: Domain discovery for {company_name}")
-                search_results = await self.apify.search_google(
-                    [f'"{company_name}" Australia official website'],
-                    results_per_query=3
+                logger.info(f"Tier 0: Apollo name search for {company_name}")
+                orgs = await self.apollo.search_organizations(
+                    company_name=company_name,
+                    locations=["Australia"],  # Focus on Australian companies
+                    limit=1
                 )
 
-                if search_results and search_results[0].get("organicResults"):
-                    organic = search_results[0]["organicResults"]
-                    for result in organic[:3]:  # Check top 3 results
-                        url = result.get("url", "")
-                        if url and not any(x in url for x in ["linkedin.com", "facebook.com", "twitter.com", "instagram.com", "yellowpages", "yelp.com", "glassdoor"]):
-                            # Extract domain from URL
-                            from urllib.parse import urlparse
-                            parsed = urlparse(url)
-                            potential_domain = parsed.netloc.lower()
-                            if potential_domain.startswith("www."):
-                                potential_domain = potential_domain[4:]
-                            if potential_domain and "." in potential_domain:
-                                domain = potential_domain
-                                enriched.domain = domain
-                                logger.info(f"Discovered domain for {company_name}: {domain}")
-                                break
+                if orgs and orgs[0].get("found"):
+                    org = orgs[0]
+                    enriched.company_name = org.get("name") or company_name
+                    enriched.domain = org.get("domain")
+                    enriched.industry = org.get("industry")
+                    enriched.employee_count = org.get("employee_count")
+                    enriched.country = org.get("country")
+                    enriched.founded_year = org.get("founded_year")
+                    enriched.is_hiring = org.get("is_hiring")
+                    enriched.linkedin_url = org.get("linkedin_url")
+                    enrichment_source = "apollo_search"
+                    domain = org.get("domain")  # Use for potential follow-up
+                    logger.info(f"Apollo search found: {company_name} - {enriched.industry}, {enriched.employee_count} employees")
             except Exception as e:
-                logger.warning(f"Domain discovery failed for {company_name}: {e}")
+                logger.warning(f"Apollo name search failed for {company_name}: {e}")
 
-        # Tier 1: Apollo domain-based lookup (best for established companies)
-        if domain:
+        # Tier 1: Apollo domain-based lookup (if we have/discovered a domain)
+        if domain and not enrichment_source:
             try:
                 logger.info(f"Tier 1: Apollo enrichment for {company_name} ({domain})")
                 apollo_result = await self.apollo.enrich_company(domain)

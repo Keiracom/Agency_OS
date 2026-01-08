@@ -35,6 +35,42 @@
 
 ---
 
+## Logging Protocol (21-26)
+
+21. **PROGRESS.md updates:** Update status tables only. Max 3 words in Notes column. Keep file under 300 lines total.
+
+22. **Session log:** After each session, append a 5-line entry to `docs/progress/SESSION_LOG.md`:
+```
+### [Date] — [Brief Title]
+**Completed:** [task IDs]
+**Summary:** [1-2 sentences]
+**Files Changed:** [count or key files]
+**Blockers:** [issues or "None"]
+**Next:** [next task]
+```
+
+23. **Git commits:** Full implementation detail belongs in commit messages, not documentation. Use format:
+```
+type(scope): description
+
+- Detail 1
+- Detail 2
+
+Refs: TASK-001, TASK-002
+```
+
+24. **Issues found:** Log to `docs/progress/ISSUES.md` with severity (CRITICAL/WARNING/INFO). Do NOT fix unrelated issues mid-task.
+
+25. **Don't duplicate content:**
+    - Task details → Phase spec files
+    - Session narrative → SESSION_LOG.md
+    - Implementation detail → Git commits
+    - PROGRESS.md gets summaries only
+
+26. **Archive monthly:** On the 1st of each month, move previous month's SESSION_LOG entries to `docs/progress/archive/YYYY-MM.md`.
+
+---
+
 ## File Contract Comment
 
 Every file must start with:

@@ -272,21 +272,21 @@ async def apply_icp_to_client_task(
         True if applied successfully
     """
     async with get_db_session() as db:
-        # JSON serialize arrays and dicts for asyncpg compatibility
-        # Use CAST() instead of :: to avoid SQLAlchemy parameter conflicts
+        # TEXT[] columns need Python lists - asyncpg handles list -> PostgreSQL array
+        # JSONB columns (als_weights only) need JSON string with CAST
         await db.execute(
             text("""
             UPDATE clients
             SET website_url = :website_url,
                 company_description = :description,
-                services_offered = CAST(:services AS jsonb),
+                services_offered = :services,
                 value_proposition = :value_prop,
                 team_size = :team_size,
-                icp_industries = CAST(:industries AS jsonb),
-                icp_company_sizes = CAST(:sizes AS jsonb),
-                icp_locations = CAST(:locations AS jsonb),
-                icp_titles = CAST(:titles AS jsonb),
-                icp_pain_points = CAST(:pain_points AS jsonb),
+                icp_industries = :industries,
+                icp_company_sizes = :sizes,
+                icp_locations = :locations,
+                icp_titles = :titles,
+                icp_pain_points = :pain_points,
                 als_weights = CAST(:als_weights AS jsonb),
                 icp_extracted_at = :now,
                 icp_extraction_source = 'ai_extraction',
@@ -298,14 +298,14 @@ async def apply_icp_to_client_task(
                 "client_id": str(client_id),
                 "website_url": profile.get("website_url"),
                 "description": profile.get("company_description", ""),
-                "services": json.dumps(profile.get("services_offered", [])),
+                "services": profile.get("services_offered", []),
                 "value_prop": profile.get("value_proposition", ""),
                 "team_size": profile.get("team_size"),
-                "industries": json.dumps(profile.get("icp_industries", [])),
-                "sizes": json.dumps(profile.get("icp_company_sizes", [])),
-                "locations": json.dumps(profile.get("icp_locations", [])),
-                "titles": json.dumps(profile.get("icp_titles", [])),
-                "pain_points": json.dumps(profile.get("icp_pain_points", [])),
+                "industries": profile.get("icp_industries", []),
+                "sizes": profile.get("icp_company_sizes", []),
+                "locations": profile.get("icp_locations", []),
+                "titles": profile.get("icp_titles", []),
+                "pain_points": profile.get("icp_pain_points", []),
                 "als_weights": json.dumps(profile.get("als_weights", {})),
                 "now": datetime.utcnow(),
                 "job_id": str(job_id),

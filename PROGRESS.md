@@ -1,6 +1,6 @@
 # PROGRESS.md — Agency OS Roadmap & Status
 
-**Last Updated:** January 8, 2026
+**Last Updated:** January 9, 2026
 **Current Phase:** 21 (E2E Testing)
 **Next Milestone:** Complete E2E journeys J1-J6 live
 
@@ -211,6 +211,10 @@ Before first paying customer:
 ## RECENT SESSIONS
 
 > Full history: `docs/progress/SESSION_LOG.md`
+
+### Jan 9, 2026
+- Portfolio Fallback Discovery implemented (ICP-FALLBACK-001, ICP-FALLBACK-002)
+- Fixed Apify Google Search flattening
 
 ### Jan 8, 2026
 - Documentation audit & cleanup

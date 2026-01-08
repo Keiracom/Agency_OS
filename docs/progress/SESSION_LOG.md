@@ -20,6 +20,13 @@ After each session, append an entry:
 
 ## January 2026
 
+### Jan 9, 2026 — Portfolio Fallback Discovery
+**Completed:** ICP-FALLBACK-001, ICP-FALLBACK-002, Apify Google Search fix
+**Summary:** Implemented 3-tier fallback for agencies without portfolio pages (Apollo lookup, Google social discovery, Google client search). Sparro test: found 8 clients (Sydney.com, Webjet, Estee Lauder, etc.) and derived ICP (finance, retail, travel industries).
+**Files Changed:** 6 (2 new skills, icp_discovery_agent, icp_scraper, apify integration, social_profile model)
+**Blockers:** None
+**Next:** E2E testing (Phase 21)
+
 ### Jan 8, 2026 — Documentation Cleanup & Logging Protocol
 **Completed:** Doc audit remediation, PROGRESS.md restructure, logging protocol
 **Summary:** Archived stale integration docs (Smartlead, Deepgram), created SESSION_LOG and ISSUES files, restructured PROGRESS.md to roadmap format, added logging rules 21-26.

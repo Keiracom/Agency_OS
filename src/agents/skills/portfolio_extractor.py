@@ -1,7 +1,7 @@
 """
 FILE: src/agents/skills/portfolio_extractor.py
-TASK: ICP-006
-PHASE: 11 (ICP Discovery System)
+TASK: ICP-006, ICP-FIX-001
+PHASE: 11 (ICP Discovery System), 18-B (ICP Enrichment Fix)
 PURPOSE: Extract client logos, case studies, and testimonials from agency website
 
 DEPENDENCIES:
@@ -12,12 +12,19 @@ DEPENDENCIES:
 EXPORTS:
 - PortfolioExtractorSkill
 - PortfolioCompany (output model)
+
+FIXES (Phase 18-B):
+- ICP-FIX-001: Increased max_chars from 30KB to 100KB to prevent data loss
+- ICP-FIX-004: Added DEBUG logging for extraction pipeline visibility
 """
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import TYPE_CHECKING
+
+logger = logging.getLogger(__name__)
 
 from pydantic import BaseModel, Field
 
@@ -28,7 +35,7 @@ if TYPE_CHECKING:
     from src.integrations.anthropic import AnthropicClient
 
 
-def _extract_portfolio_sections(raw_html: str, max_chars: int = 30000) -> str:
+def _extract_portfolio_sections(raw_html: str, max_chars: int = 100000) -> str:
     """
     Extract relevant sections from raw HTML for portfolio extraction.
 
@@ -37,13 +44,16 @@ def _extract_portfolio_sections(raw_html: str, max_chars: int = 30000) -> str:
 
     Args:
         raw_html: Full raw HTML from website scrape
-        max_chars: Maximum characters to return
+        max_chars: Maximum characters to return (increased from 30KB to 100KB in ICP-FIX-001)
 
     Returns:
         Extracted sections with context markers
     """
     if not raw_html:
+        logger.debug("_extract_portfolio_sections: No raw HTML provided")
         return ""
+
+    logger.debug(f"_extract_portfolio_sections: Processing {len(raw_html):,} chars of raw HTML (limit: {max_chars:,})")
 
     sections = []
 
@@ -104,8 +114,14 @@ def _extract_portfolio_sections(raw_html: str, max_chars: int = 30000) -> str:
 
     # Truncate if too long
     if len(result) > max_chars:
+        logger.warning(
+            f"_extract_portfolio_sections: Result truncated from {len(result):,} to {max_chars:,} chars"
+        )
         result = result[:max_chars] + "\n\n[CONTENT TRUNCATED]"
 
+    logger.debug(
+        f"_extract_portfolio_sections: Extracted {len(sections)} sections, {len(result):,} chars total"
+    )
     return result
 
 

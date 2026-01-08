@@ -72,6 +72,13 @@ class User(Base, TimestampMixin):
         default=False,
     )
 
+    # Platform admin flag (added for Admin Dashboard)
+    is_platform_admin: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
+
     # Relationships
     memberships: Mapped[list["Membership"]] = relationship(
         "Membership",

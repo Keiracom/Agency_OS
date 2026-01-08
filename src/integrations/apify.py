@@ -265,6 +265,7 @@ class ApifyClient:
         self,
         url: str,
         max_pages: int = 10,
+        prefer_playwright: bool = False,
     ) -> ScrapeResult:
         """
         Scrape website with tiered fallback (Tier 1 → Tier 2).
@@ -278,21 +279,28 @@ class ApifyClient:
         Args:
             url: Website URL to scrape
             max_pages: Maximum pages to crawl
+            prefer_playwright: Skip Cheerio and go directly to Playwright.
+                Use for JS-heavy sites like agency portfolios where Cheerio
+                would miss dynamic content (case studies, testimonials).
 
         Returns:
             ScrapeResult with tier tracking and fallback status
         """
-        logger.info(f"Starting waterfall scrape for {url}")
+        logger.info(f"Starting waterfall scrape for {url} (prefer_playwright={prefer_playwright})")
 
-        # Tier 1: Try Cheerio first (fast, cheap)
-        logger.debug(f"Tier 1: Attempting Cheerio scrape for {url}")
-        result = await self._scrape_cheerio(url, max_pages)
+        # Skip Cheerio if prefer_playwright is set (for JS-heavy agency sites)
+        if not prefer_playwright:
+            # Tier 1: Try Cheerio first (fast, cheap)
+            logger.debug(f"Tier 1: Attempting Cheerio scrape for {url}")
+            result = await self._scrape_cheerio(url, max_pages)
 
-        if result.has_valid_content():
-            logger.info(f"Tier 1 success for {url}: {result.page_count} pages, {len(result.raw_html)} chars")
-            return result
+            if result.has_valid_content():
+                logger.info(f"Tier 1 success for {url}: {result.page_count} pages, {len(result.raw_html)} chars")
+                return result
 
-        logger.debug(f"Tier 1 failed for {url}: {result.failure_reason or 'empty/blocked content'}")
+            logger.debug(f"Tier 1 failed for {url}: {result.failure_reason or 'empty/blocked content'}")
+        else:
+            logger.info(f"Skipping Tier 1 (Cheerio) - prefer_playwright=True for {url}")
 
         # Tier 2: Fall back to Playwright (JS rendering)
         logger.debug(f"Tier 2: Attempting Playwright scrape for {url}")

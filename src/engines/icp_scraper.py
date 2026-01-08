@@ -250,9 +250,13 @@ class ICPScraperEngine(BaseEngine):
             domain = self._extract_domain(canonical_url)
 
         # ===== TIER 1 & 2: Apify Waterfall =====
+        # Use prefer_playwright=True for ICP extraction because:
+        # - Agency sites are typically JS-rendered (React, Vue, etc.)
+        # - Portfolio/testimonial data is often in dynamic sections
+        # - Cheerio would miss case studies, client logos, testimonials
         try:
             scrape_result: ScrapeResult = await self.apify.scrape_website_with_waterfall(
-                canonical_url, max_pages=max_pages
+                canonical_url, max_pages=max_pages, prefer_playwright=True
             )
 
             # Transform Apify result to our format

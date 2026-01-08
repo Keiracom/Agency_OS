@@ -176,7 +176,7 @@ class ApifyClient:
         Perform Google searches.
 
         Args:
-            queries: Search queries
+            queries: Search queries (will be joined with newlines)
             results_per_query: Number of results per query
 
         Returns:
@@ -184,8 +184,11 @@ class ApifyClient:
         """
         actor = self._get_actor(self.GOOGLE_SEARCH)
 
+        # Apify Google Search actor expects queries as newline-separated string
+        queries_str = "\n".join(queries)
+
         run_input = {
-            "queries": queries,
+            "queries": queries_str,
             "maxResultsPerPage": results_per_query,
             "languageCode": "en",
             "countryCode": "au",  # Australia focus
@@ -194,7 +197,18 @@ class ApifyClient:
         try:
             run = actor.call(run_input=run_input)
             dataset = self._client.dataset(run["defaultDatasetId"])
-            return list(dataset.iterate_items())
+            raw_items = list(dataset.iterate_items())
+
+            # Flatten organic results from all query items
+            all_results = []
+            for item in raw_items:
+                organic = item.get("organicResults", [])
+                for result in organic:
+                    # Add search query context
+                    result["searchQuery"] = item.get("searchQuery", "")
+                    all_results.append(result)
+
+            return all_results
         except Exception as e:
             raise APIError(
                 service="apify",

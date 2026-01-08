@@ -41,6 +41,7 @@ from src.agents.skills.portfolio_extractor import (
     PortfolioExtractorSkill,
 )
 from src.agents.skills.service_extractor import ServiceExtractorSkill, ServiceInfo
+from src.agents.skills.social_enricher import SocialClientExtractorSkill
 from src.agents.skills.value_prop_extractor import ValuePropExtractorSkill
 from src.agents.skills.website_parser import PageContent, WebsiteParserSkill
 from src.engines.icp_scraper import (
@@ -201,6 +202,7 @@ class ICPDiscoveryAgent(BaseAgent):
             "extract_services": ServiceExtractorSkill(),
             "extract_value_prop": ValuePropExtractorSkill(),
             "extract_portfolio": PortfolioExtractorSkill(),
+            "extract_social_clients": SocialClientExtractorSkill(),
             "classify_industries": IndustryClassifierSkill(),
             "estimate_company_size": CompanySizeEstimatorSkill(),
             "derive_icp": ICPDeriverSkill(),
@@ -517,9 +519,62 @@ class ICPDiscoveryAgent(BaseAgent):
             if portfolio_data:
                 result.portfolio_companies_found = len(portfolio_data.companies)
 
+            # Step 3b: Extract additional clients from social media profiles
+            # Uses pre-scraped social content (no extra API calls)
+            additional_portfolio_companies: list[PortfolioCompany] = []
+            if social_profiles:
+                existing_names = []
+                if portfolio_data:
+                    existing_names = [c.company_name for c in portfolio_data.companies]
+
+                social_clients_result = await self.use_skill(
+                    "extract_social_clients",
+                    company_name=parsed.company_name,
+                    linkedin_description=(
+                        social_profiles.linkedin.description
+                        if social_profiles.linkedin else None
+                    ),
+                    linkedin_specialties=(
+                        social_profiles.linkedin.specialties
+                        if social_profiles.linkedin else []
+                    ),
+                    instagram_bio=(
+                        social_profiles.instagram.bio
+                        if social_profiles.instagram else None
+                    ),
+                    facebook_about=(
+                        social_profiles.facebook.about
+                        if social_profiles.facebook else None
+                    ),
+                    existing_portfolio=existing_names,
+                )
+
+                if social_clients_result.success and social_clients_result.data:
+                    for client in social_clients_result.data.extracted_clients:
+                        additional_portfolio_companies.append(
+                            PortfolioCompany(
+                                company_name=client.company_name,
+                                company_domain=None,
+                                source=f"social:{client.source}",
+                                description=client.context,
+                            )
+                        )
+                    total_tokens += social_clients_result.tokens_used
+                    total_cost += social_clients_result.cost_aud
+                    logger.info(
+                        f"Extracted {len(additional_portfolio_companies)} additional "
+                        f"portfolio companies from social profiles"
+                    )
+
+            # Merge additional companies into portfolio
+            all_portfolio_companies: list[PortfolioCompany] = []
+            if portfolio_data:
+                all_portfolio_companies.extend(portfolio_data.companies)
+            all_portfolio_companies.extend(additional_portfolio_companies)
+
             # Step 4: Enrich portfolio companies
             enriched_companies: list[EnrichedCompany] = []
-            if portfolio_data and portfolio_data.companies:
+            if all_portfolio_companies:
                 # Convert to format for enrichment
                 companies_to_enrich = [
                     {
@@ -527,7 +582,7 @@ class ICPDiscoveryAgent(BaseAgent):
                         "domain": c.company_domain,
                         "source": c.source,
                     }
-                    for c in portfolio_data.companies[:30]  # Limit to 30 (increased from 15)
+                    for c in all_portfolio_companies[:30]  # Limit to 30 (increased from 15)
                 ]
 
                 enrich_result = await self.scraper.enrich_portfolio_batch(
@@ -561,11 +616,8 @@ class ICPDiscoveryAgent(BaseAgent):
                     ServiceInfo(**s.model_dump()) for s in services_data.services
                 ]
 
-            portfolio_list = []
-            if portfolio_data:
-                portfolio_list = [
-                    PortfolioCompany(**c.model_dump()) for c in portfolio_data.companies
-                ]
+            # Use all_portfolio_companies which includes social-extracted clients
+            portfolio_list = all_portfolio_companies
 
             industry_task = self.use_skill(
                 "classify_industries",
@@ -670,11 +722,7 @@ class ICPDiscoveryAgent(BaseAgent):
                 years_in_business=(
                     size_data.years_in_business if size_data else None
                 ),
-                portfolio_companies=(
-                    [c.company_name for c in portfolio_data.companies]
-                    if portfolio_data
-                    else []
-                ),
+                portfolio_companies=[c.company_name for c in all_portfolio_companies],
                 enriched_portfolio=[ec.model_dump() for ec in enriched_companies],
                 notable_brands=(
                     portfolio_data.notable_brands if portfolio_data else []

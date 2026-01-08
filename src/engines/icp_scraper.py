@@ -633,7 +633,30 @@ class ICPScraperEngine(BaseEngine):
             except Exception as e:
                 logger.warning(f"Apollo enrichment failed for {domain}: {e}")
 
-        # Tier 2: LinkedIn Company Scraper (if Apollo didn't find it or no domain)
+        # Tier 1.5: LinkedIn scrape to fill gaps (if Apollo found company but missing key data)
+        # Apollo often has linkedin_url but not industry/employee_count for small businesses
+        if enrichment_source and enriched.linkedin_url and self.apify:
+            missing_data = not enriched.industry or not enriched.employee_count
+            if missing_data:
+                try:
+                    logger.info(f"Tier 1.5: LinkedIn scrape for {company_name} to fill gaps")
+                    linkedin_data = await self.apify.scrape_linkedin_company(enriched.linkedin_url)
+                    if linkedin_data.get("found"):
+                        if not enriched.employee_count:
+                            enriched.employee_count = linkedin_data.get("employee_count")
+                        if not enriched.employee_range:
+                            enriched.employee_range = linkedin_data.get("employee_range")
+                        if not enriched.industry:
+                            enriched.industry = linkedin_data.get("industry")
+                        if not enriched.founded_year:
+                            enriched.founded_year = linkedin_data.get("founded_year")
+                        if not enriched.location:
+                            enriched.location = linkedin_data.get("headquarters")
+                        logger.info(f"LinkedIn filled gaps for {company_name}: industry={enriched.industry}, employees={enriched.employee_range}")
+                except Exception as e:
+                    logger.warning(f"LinkedIn gap-fill failed for {company_name}: {e}")
+
+        # Tier 2: LinkedIn Company Scraper (if Apollo didn't find it at all)
         if not enrichment_source and self.apify:
             try:
                 # Search for company on LinkedIn

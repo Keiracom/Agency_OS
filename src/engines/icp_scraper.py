@@ -496,37 +496,59 @@ class ICPScraperEngine(BaseEngine):
             EngineResult containing LinkedInCompanyData
         """
         try:
-            # Use Apollo to search for company
-            search_query = domain if domain else company_name
+            # Try Apollo domain-based lookup first
+            if domain:
+                logger.info(f"Looking up LinkedIn data for {company_name} via Apollo (domain: {domain})")
+                apollo_result = await self.apollo.enrich_company(domain)
 
-            # Apollo organization search
-            org_data = await self.apollo.search_organizations(
-                query=search_query,
-                limit=1,
-            )
+                if apollo_result.get("found"):
+                    linkedin_data = LinkedInCompanyData(
+                        company_name=apollo_result.get("name", company_name),
+                        employee_count=apollo_result.get("employee_count"),
+                        headquarters=None,  # Apollo doesn't return this directly
+                        founded_year=apollo_result.get("founded_year"),
+                        industry=apollo_result.get("industry"),
+                        specialties=[],  # Apollo doesn't return this
+                        linkedin_url=apollo_result.get("linkedin_url"),
+                    )
+                    return EngineResult.ok(
+                        data=linkedin_data,
+                        metadata={"found": True, "source": "apollo"},
+                    )
 
-            if not org_data or len(org_data) == 0:
-                return EngineResult.ok(
-                    data=LinkedInCompanyData(company_name=company_name),
-                    metadata={"found": False},
+            # Fallback: Try Apify LinkedIn Company Scraper
+            if self.apify:
+                logger.info(f"Falling back to LinkedIn scraper for {company_name}")
+                # Search for company LinkedIn page
+                search_results = await self.apify.search_google(
+                    [f'"{company_name}" site:linkedin.com/company'],
+                    results_per_query=1
                 )
 
-            org = org_data[0]
+                if search_results:
+                    linkedin_url = search_results[0].get("link", "")
+                    if "linkedin.com/company" in linkedin_url:
+                        scraped = await self.apify.scrape_linkedin_company(linkedin_url)
+                        if scraped.get("found"):
+                            linkedin_data = LinkedInCompanyData(
+                                company_name=scraped.get("name", company_name),
+                                employee_count=scraped.get("employee_count"),
+                                employee_range=scraped.get("employee_range"),
+                                headquarters=scraped.get("headquarters"),
+                                founded_year=scraped.get("founded_year"),
+                                industry=scraped.get("industry"),
+                                specialties=scraped.get("specialties", []),
+                                linkedin_url=linkedin_url,
+                            )
+                            return EngineResult.ok(
+                                data=linkedin_data,
+                                metadata={"found": True, "source": "linkedin_scraper"},
+                            )
 
-            linkedin_data = LinkedInCompanyData(
-                company_name=org.get("name", company_name),
-                employee_count=org.get("employee_count"),
-                employee_range=org.get("employee_count_range"),
-                headquarters=org.get("headquarters_address"),
-                founded_year=org.get("founded_year"),
-                industry=org.get("industry"),
-                specialties=org.get("specialties", []),
-                linkedin_url=org.get("linkedin_url"),
-            )
-
+            # Not found
             return EngineResult.ok(
-                data=linkedin_data,
-                metadata={"found": True, "source": "apollo"},
+                data=LinkedInCompanyData(company_name=company_name),
+                metadata={"found": False},
             )
 
         except Exception as e:
@@ -542,7 +564,12 @@ class ICPScraperEngine(BaseEngine):
         source: str = "portfolio",
     ) -> EngineResult[EnrichedPortfolioCompany]:
         """
-        Enrich a single portfolio company via Apollo.
+        Enrich a single portfolio company via multi-source fallback chain.
+
+        Tier 1: Apollo (if domain available) - best for established companies
+        Tier 2: LinkedIn Company Scraper (via Apify) - works for companies with LinkedIn
+        Tier 3: Google Business (via Apify) - excellent for local Australian businesses
+        Tier 4: Return basic data if all else fails
 
         Args:
             company_name: Company name
@@ -552,53 +579,90 @@ class ICPScraperEngine(BaseEngine):
         Returns:
             EngineResult containing enriched company data
         """
-        try:
-            # Try domain-based lookup first
-            search_query = domain if domain else company_name
+        enriched = EnrichedPortfolioCompany(
+            company_name=company_name,
+            domain=domain,
+            source=source,
+        )
+        enrichment_source = None
 
-            org_data = await self.apollo.search_organizations(
-                query=search_query,
-                limit=1,
-            )
+        # Tier 1: Apollo domain-based lookup (best for established companies)
+        if domain:
+            try:
+                logger.info(f"Tier 1: Apollo enrichment for {company_name} ({domain})")
+                apollo_result = await self.apollo.enrich_company(domain)
 
-            if not org_data or len(org_data) == 0:
-                # Return basic data if not found
-                return EngineResult.ok(
-                    data=EnrichedPortfolioCompany(
-                        company_name=company_name,
-                        domain=domain,
-                        source=source,
-                    ),
-                    metadata={"enriched": False},
+                if apollo_result.get("found"):
+                    enriched.company_name = apollo_result.get("name") or company_name
+                    enriched.domain = apollo_result.get("domain") or domain
+                    enriched.industry = apollo_result.get("industry")
+                    enriched.employee_count = apollo_result.get("employee_count")
+                    enriched.country = apollo_result.get("country")
+                    enriched.founded_year = apollo_result.get("founded_year")
+                    enriched.is_hiring = apollo_result.get("is_hiring")
+                    enriched.linkedin_url = apollo_result.get("linkedin_url")
+                    enrichment_source = "apollo"
+                    logger.info(f"Apollo found: {company_name} - {enriched.industry}, {enriched.employee_count} employees")
+            except Exception as e:
+                logger.warning(f"Apollo enrichment failed for {domain}: {e}")
+
+        # Tier 2: LinkedIn Company Scraper (if Apollo didn't find it or no domain)
+        if not enrichment_source and self.apify:
+            try:
+                # Search for company on LinkedIn
+                logger.info(f"Tier 2: LinkedIn search for {company_name}")
+                search_results = await self.apify.search_google(
+                    [f'"{company_name}" site:linkedin.com/company'],
+                    results_per_query=1
                 )
 
-            org = org_data[0]
+                if search_results:
+                    linkedin_url = search_results[0].get("link", "")
+                    if "linkedin.com/company" in linkedin_url:
+                        linkedin_data = await self.apify.scrape_linkedin_company(linkedin_url)
+                        if linkedin_data.get("found"):
+                            enriched.employee_count = linkedin_data.get("employee_count") or enriched.employee_count
+                            enriched.employee_range = linkedin_data.get("employee_range") or enriched.employee_range
+                            enriched.industry = linkedin_data.get("industry") or enriched.industry
+                            enriched.founded_year = linkedin_data.get("founded_year") or enriched.founded_year
+                            enriched.linkedin_url = linkedin_url
+                            enriched.location = linkedin_data.get("headquarters") or enriched.location
+                            enrichment_source = "linkedin"
+                            logger.info(f"LinkedIn found: {company_name} - {enriched.industry}, {enriched.employee_range}")
+            except Exception as e:
+                logger.warning(f"LinkedIn enrichment failed for {company_name}: {e}")
 
-            enriched = EnrichedPortfolioCompany(
-                company_name=org.get("name", company_name),
-                domain=org.get("domain", domain),
-                industry=org.get("industry"),
-                employee_count=org.get("employee_count"),
-                employee_range=org.get("employee_count_range"),
-                annual_revenue=org.get("annual_revenue_range"),
-                location=org.get("headquarters_address"),
-                country=org.get("country"),
-                founded_year=org.get("founded_year"),
-                technologies=org.get("technologies", [])[:10],  # Limit to 10
-                is_hiring=org.get("is_hiring"),
-                linkedin_url=org.get("linkedin_url"),
-                source=source,
-            )
+        # Tier 3: Google Business (excellent for local Australian businesses)
+        if not enrichment_source and self.apify:
+            try:
+                logger.info(f"Tier 3: Google Business search for {company_name}")
+                google_data = await self.apify.scrape_google_business(company_name, "Australia")
 
+                if google_data.get("found"):
+                    enriched.location = google_data.get("address") or enriched.location
+                    enriched.country = "Australia"  # Inferred from search
+                    # Use category for industry if we don't have one
+                    if not enriched.industry and google_data.get("category"):
+                        enriched.industry = google_data.get("category")
+                    enrichment_source = "google_business"
+                    logger.info(
+                        f"Google Business found: {company_name} - {google_data.get('category')}, "
+                        f"rating: {google_data.get('rating')}, reviews: {google_data.get('review_count')}"
+                    )
+            except Exception as e:
+                logger.warning(f"Google Business enrichment failed for {company_name}: {e}")
+
+        # Return result with metadata about enrichment source
+        if enrichment_source:
             return EngineResult.ok(
                 data=enriched,
-                metadata={"enriched": True, "source": "apollo"},
+                metadata={"enriched": True, "source": enrichment_source},
             )
-
-        except Exception as e:
-            return EngineResult.fail(
-                error=f"Company enrichment failed: {str(e)}",
-                metadata={"company_name": company_name},
+        else:
+            logger.info(f"No enrichment found for {company_name} - returning basic data")
+            return EngineResult.ok(
+                data=enriched,
+                metadata={"enriched": False, "source": "none"},
             )
 
     async def enrich_portfolio_batch(

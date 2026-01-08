@@ -50,6 +50,7 @@ from src.engines.url_validator import URLValidator, get_url_validator
 from src.exceptions import EngineError, ValidationError
 from src.integrations.apify import get_apify_client, ScrapeResult
 from src.integrations.apollo import get_apollo_client
+from src.integrations.clay import get_clay_client
 
 # Portfolio page paths to fetch directly (ICP-FIX-008)
 PORTFOLIO_PATHS = [
@@ -63,6 +64,7 @@ PORTFOLIO_PATHS = [
 if TYPE_CHECKING:
     from src.integrations.apify import ApifyClient
     from src.integrations.apollo import ApolloClient
+    from src.integrations.clay import ClayClient
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +163,7 @@ class ICPScraperEngine(BaseEngine):
         self,
         apify_client: "ApifyClient | None" = None,
         apollo_client: "ApolloClient | None" = None,
+        clay_client: "ClayClient | None" = None,
         url_validator: "URLValidator | None" = None,
     ):
         """
@@ -169,10 +172,12 @@ class ICPScraperEngine(BaseEngine):
         Args:
             apify_client: Optional Apify client override
             apollo_client: Optional Apollo client override
+            clay_client: Optional Clay client override
             url_validator: Optional URL validator override
         """
         self._apify = apify_client
         self._apollo = apollo_client
+        self._clay = clay_client
         self._url_validator = url_validator
 
     @property
@@ -193,6 +198,13 @@ class ICPScraperEngine(BaseEngine):
         if self._apollo is None:
             self._apollo = get_apollo_client()
         return self._apollo
+
+    @property
+    def clay(self) -> "ClayClient":
+        """Get Clay client."""
+        if self._clay is None:
+            self._clay = get_clay_client()
+        return self._clay
 
     @property
     def url_validator(self) -> URLValidator:
@@ -655,6 +667,31 @@ class ICPScraperEngine(BaseEngine):
                         logger.info(f"LinkedIn filled gaps for {company_name}: industry={enriched.industry}, employees={enriched.employee_range}")
                 except Exception as e:
                     logger.warning(f"LinkedIn gap-fill failed for {company_name}: {e}")
+
+        # Tier 1.6: Clay company enrichment (if we have domain but still missing data)
+        # Clay aggregates from multiple data providers (Clearbit, ZoomInfo, etc.)
+        if enriched.domain and (not enriched.industry or not enriched.employee_count):
+            try:
+                logger.info(f"Tier 1.6: Clay enrichment for {company_name} ({enriched.domain})")
+                clay_result = await self.clay.enrich_company(enriched.domain)
+
+                if clay_result.get("found"):
+                    if not enriched.industry:
+                        enriched.industry = clay_result.get("industry")
+                    if not enriched.employee_count:
+                        enriched.employee_count = clay_result.get("employee_count")
+                    if not enriched.employee_range:
+                        enriched.employee_range = clay_result.get("employee_range")
+                    if not enriched.location:
+                        enriched.location = clay_result.get("location")
+                    if not enriched.country:
+                        enriched.country = clay_result.get("country")
+                    if not enriched.founded_year:
+                        enriched.founded_year = clay_result.get("founded_year")
+                    if clay_result.get("industry") or clay_result.get("employee_count"):
+                        logger.info(f"Clay filled gaps for {company_name}: industry={enriched.industry}, employees={enriched.employee_count}")
+            except Exception as e:
+                logger.warning(f"Clay enrichment failed for {company_name}: {e}")
 
         # Tier 2: LinkedIn Company Scraper (if Apollo didn't find it at all)
         if not enrichment_source and self.apify:

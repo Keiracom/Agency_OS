@@ -701,6 +701,15 @@ class ICPScraperEngine(BaseEngine):
                     # Use category for industry if we don't have one
                     if not enriched.industry and google_data.get("category"):
                         enriched.industry = google_data.get("category")
+                    # Extract domain from website if available
+                    if not enriched.domain and google_data.get("website"):
+                        from urllib.parse import urlparse
+                        parsed = urlparse(google_data.get("website", ""))
+                        potential_domain = parsed.netloc.lower()
+                        if potential_domain.startswith("www."):
+                            potential_domain = potential_domain[4:]
+                        if potential_domain:
+                            enriched.domain = potential_domain
                     enrichment_source = "google_business"
                     logger.info(
                         f"Google Business found: {company_name} - {google_data.get('category')}, "
@@ -708,6 +717,63 @@ class ICPScraperEngine(BaseEngine):
                     )
             except Exception as e:
                 logger.warning(f"Google Business enrichment failed for {company_name}: {e}")
+
+        # Tier 4: General Google search to find company website (last resort)
+        if not enrichment_source and self.apify:
+            try:
+                logger.info(f"Tier 4: General Google search for {company_name}")
+                search_results = await self.apify.search_google(
+                    [f'"{company_name}" Australia company'],
+                    results_per_query=5
+                )
+
+                if search_results and search_results[0].get("organicResults"):
+                    organic = search_results[0]["organicResults"]
+                    for result in organic[:5]:
+                        url = result.get("url", "")
+                        title = result.get("title", "")
+                        description = result.get("description", "")
+
+                        # Skip social media and directory sites
+                        if any(x in url for x in ["linkedin.com", "facebook.com", "twitter.com", "instagram.com",
+                                                   "yellowpages", "yelp.com", "truelocal", "hotfrog"]):
+                            continue
+
+                        # Found a company website
+                        from urllib.parse import urlparse
+                        parsed = urlparse(url)
+                        potential_domain = parsed.netloc.lower()
+                        if potential_domain.startswith("www."):
+                            potential_domain = potential_domain[4:]
+
+                        if potential_domain and "." in potential_domain:
+                            enriched.domain = potential_domain
+                            enriched.country = "Australia"
+
+                            # Try to infer industry from title/description
+                            desc_lower = (title + " " + description).lower()
+                            industry_keywords = {
+                                "automotive": ["car", "auto", "motor", "vehicle", "dealer"],
+                                "hospitality": ["hotel", "resort", "accommodation", "tourism", "travel"],
+                                "retail": ["shop", "store", "retail", "fashion", "clothing"],
+                                "construction": ["construction", "builder", "building", "trades"],
+                                "manufacturing": ["manufacturer", "manufacturing", "timber", "steel"],
+                                "healthcare": ["health", "medical", "clinic", "physio", "dental"],
+                                "technology": ["software", "tech", "digital", "it services"],
+                                "professional_services": ["consulting", "legal", "accounting", "services"],
+                                "food_beverage": ["food", "restaurant", "cafe", "catering"],
+                                "recreation": ["dive", "tours", "adventure", "sports", "fitness"],
+                            }
+                            for industry, keywords in industry_keywords.items():
+                                if any(kw in desc_lower for kw in keywords):
+                                    enriched.industry = industry
+                                    break
+
+                            enrichment_source = "google_search"
+                            logger.info(f"Google Search found: {company_name} -> {potential_domain}, industry={enriched.industry}")
+                            break
+            except Exception as e:
+                logger.warning(f"General Google search failed for {company_name}: {e}")
 
         # Return result with metadata about enrichment source
         if enrichment_source:

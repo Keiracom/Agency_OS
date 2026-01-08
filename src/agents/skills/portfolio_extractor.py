@@ -93,6 +93,30 @@ def _extract_portfolio_sections(raw_html: str, max_chars: int = 100000) -> str:
         unique_alts = list(set(alt_texts))[:50]
         sections.append(f"[IMAGE_ALTS]\n{', '.join(unique_alts)}\n")
 
+    # ICP-FIX-007: Extract company names from case study/portfolio URLs
+    # Many sites have URLs like /case-study/company-name/ or /work/client-name/
+    url_patterns = [
+        r'href="[^"]*(?:case-study|case-studies|portfolio|our-work|work|clients?)/([a-zA-Z0-9-]+)/?["\']',
+        r'href=\'[^\']*(?:case-study|case-studies|portfolio|our-work|work|clients?)/([a-zA-Z0-9-]+)/?["\']',
+    ]
+
+    url_companies = []
+    for pattern in url_patterns:
+        try:
+            matches = re.findall(pattern, raw_html, re.IGNORECASE)
+            for slug in matches:
+                # Convert slug to company name: "kustom-timber" → "Kustom Timber"
+                if slug and len(slug) > 2 and slug not in ["index", "page", "all", "view"]:
+                    company_name = " ".join(word.capitalize() for word in slug.split("-"))
+                    url_companies.append(company_name)
+        except re.error:
+            continue
+
+    if url_companies:
+        unique_url_companies = list(set(url_companies))[:50]
+        logger.debug(f"Extracted {len(unique_url_companies)} companies from URLs: {unique_url_companies[:10]}")
+        sections.append(f"[CASE_STUDY_URLS]\n{', '.join(unique_url_companies)}\n")
+
     # Extract any names that look like company names from the full text
     # This catches mentions in prose that might not be in specific sections
     company_patterns = [
@@ -251,15 +275,22 @@ EXTRACTION GUIDELINES:
    - Extract testimonial_person, testimonial_title, and company_name
    - CRITICAL: The company name is the CLIENT, extract it even if only partially visible
 
-4. MENTIONED_COMPANIES:
+4. CASE_STUDY_URLS (ICP-FIX-007):
+   - The RAW HTML SECTIONS may contain a [CASE_STUDY_URLS] section
+   - These are company names extracted from case study/portfolio URLs
+   - URLs like /case-study/kustom-timber/ become "Kustom Timber"
+   - CRITICAL: Add ALL companies from this section - they are confirmed clients
+   - Set source="case_study" for these companies
+
+5. MENTIONED_COMPANIES:
    - The RAW HTML SECTIONS may contain a [MENTIONED_COMPANIES] section
    - These are companies explicitly mentioned in the text - add them all
 
-5. INDUSTRIES:
+6. INDUSTRIES:
    - Infer industry from company names and context
    - Common: mining, construction, healthcare, retail, manufacturing, professional_services, real_estate, education, automotive
 
-6. NOTABLE BRANDS:
+7. NOTABLE BRANDS:
    - Flag well-known companies (Fortune 500, household names, major Australian companies)
    - Include large Australian companies (BHP, Telstra, Woolworths, etc.)
 

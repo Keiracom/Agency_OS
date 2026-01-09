@@ -11,8 +11,8 @@
 | Journey | Status | Notes |
 |---------|--------|-------|
 | J1: Signup & Onboarding | ✅ Pass | ICP extraction working |
-| J2: Campaign & Leads | 🔄 Re-test | Critical bug fixed - Tier 1 now finds lookalikes |
-| J3: Outreach Execution | ⏸️ Pending | Waiting for J2 re-test |
+| J2: Campaign & Leads | ✅ Pass | 10 lookalike leads added via Tier 1 |
+| J3: Outreach Execution | ⏸️ Pending | Ready for testing with pool leads |
 | J4: Reply & Meeting | ⏸️ Pending | Requires outreach |
 | J5: Dashboard Validation | ⏸️ Pending | Requires leads/activity |
 | J6: Admin Dashboard | ⏸️ Pending | Requires client data |
@@ -53,13 +53,13 @@
 
 ---
 
-## Journey 2: Campaign & Leads 🔄 Re-testing
+## Journey 2: Campaign & Leads ✅
 
 ### Pool Population
 
-**Status:** CRITICAL BUG FIXED - Re-testing required
+**Status:** Working correctly after critical bug fixes
 
-**Bug Discovered:**
+**Original Bug (Fixed):**
 The original Wayne Gant lead was INCORRECTLY added. Tier 1 was searching for people AT portfolio company domains (Gant & Sons), which means we were finding the agency's EXISTING CLIENT contacts, not lookalikes.
 
 **Root Cause:**
@@ -71,22 +71,32 @@ leads = await apollo.search_people_for_pool(domain=domain, ...)
 leads = await apollo.search_people_for_pool(industries=portfolio_industries, ...)
 ```
 
-**Fix Applied (commit `2924825`):**
-1. Tier 1 now extracts INDUSTRIES from portfolio companies
-2. Searches Apollo by INDUSTRY (not domain)
-3. EXCLUDES any leads from portfolio company domains
-4. Now finds LOOKALIKES in same industries, not existing client contacts
+**Fixes Applied:**
+1. **Tier 1 Lookalike Logic (commit `2924825`):**
+   - Extracts INDUSTRIES from portfolio companies
+   - Searches Apollo by INDUSTRY (not domain)
+   - EXCLUDES any leads from portfolio company domains
+   - Now finds LOOKALIKES in same industries, not existing client contacts
+
+2. **Date Conversion Fix (commit `c431141`):**
+   - Apollo returns dates as strings (`'2015-11-01'`)
+   - Added `parse_date_string()` helper for asyncpg compatibility
+   - Converts `current_role_start_date` and `company_latest_funding_date`
+
+**Successful Test Results:**
+```
+Leads added: 10
+Tier 1 (Portfolio Lookalikes):
+  - Industries searched: 6
+  - Portfolio domains excluded: 7 (toughdog.com.au, rescueswag.com.au, etc.)
+  - Leads added: 10
+  - Excluded (portfolio companies): 0
+```
 
 **Corrected Pool Population Waterfall:**
-- Tier 1: Portfolio LOOKALIKES (search by industry, exclude portfolio domains)
+- Tier 1: Portfolio LOOKALIKES (search by industry, exclude portfolio domains) ✅
 - Tier 2: Broader portfolio industries search with employee size filters
 - Tier 3: Generic ICP fallback
-
-**Previous Fixes (still valid):**
-1. Fixed Apollo email retrieval - use person ID for `/people/match` instead of name
-2. Fixed SQL syntax error - changed `::jsonb` to `CAST(... AS jsonb)` for asyncpg
-
-**Next:** Re-run pool population after Railway deployment completes to get correct lookalike leads.
 
 ---
 
@@ -101,6 +111,7 @@ leads = await apollo.search_people_for_pool(industries=portfolio_industries, ...
 | `42eeffa` | Fix Apollo email retrieval - use person ID for matching |
 | `0ad9667` | Fix SQL CAST() syntax for asyncpg compatibility |
 | `2924825` | **CRITICAL:** Tier 1 now searches for lookalikes, not existing clients |
+| `c431141` | Fix date string conversion for asyncpg compatibility |
 
 ---
 

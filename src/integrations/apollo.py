@@ -333,20 +333,19 @@ class ApolloClient:
                     logger.debug(f"[Apollo] Skipping {preview.get('first_name')} - no email in Apollo")
                     continue
 
-                # Extract what we can from preview
+                # Extract person ID from preview - this is the key for email retrieval
+                person_id = preview.get("id")
                 first_name = preview.get("first_name")
-                # Handle obfuscated last name
-                last_name = preview.get("last_name") or preview.get("last_name_obfuscated", "").replace("*", "")
                 org_name = (preview.get("organization") or {}).get("name")
 
-                if first_name and org_name:
-                    # Use /people/match to get full data
+                if person_id:
+                    # Use /people/match with ID to get full data including email
+                    # IMPORTANT: Matching by ID returns email, matching by name doesn't
                     match_result = await self._request(
                         "POST",
                         "/people/match",
                         {
-                            "first_name": first_name,
-                            "organization_name": org_name,
+                            "id": person_id,
                         },
                     )
 
@@ -360,9 +359,9 @@ class ApolloClient:
                         else:
                             logger.debug(f"[Apollo] No email for: {first_name} at {org_name}")
                     else:
-                        logger.debug(f"[Apollo] No match for: {first_name} at {org_name}")
+                        logger.debug(f"[Apollo] No match for ID: {person_id}")
                 else:
-                    logger.debug(f"[Apollo] Missing name/org: {first_name}, {org_name}")
+                    logger.debug(f"[Apollo] No ID for: {first_name} at {org_name}")
 
                 # Rate limit: avoid hitting Apollo too fast
                 await asyncio.sleep(0.2)

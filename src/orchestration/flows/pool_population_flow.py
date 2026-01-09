@@ -13,8 +13,8 @@ RULES APPLIED:
   - Rule 14: Soft deletes only
 
 WATERFALL STRATEGY:
-  Tier 1: Search Apollo by portfolio company names (lookalike targeting)
-  Tier 2: Search Apollo by portfolio industries (broader match)
+  Tier 1: Search Apollo by INDUSTRY from portfolio, EXCLUDE portfolio domains (lookalikes)
+  Tier 2: Search Apollo by portfolio industries with employee size filters (broader)
   Tier 3: Search Apollo by generic ICP criteria (fallback)
 """
 
@@ -240,18 +240,30 @@ async def populate_pool_from_portfolio_task(
     enriched_portfolio: list[dict[str, Any]],
     icp_titles: list[str],
     icp_locations: list[str],
+    employee_min: int | None = None,
+    employee_max: int | None = None,
     limit: int = 25,
 ) -> dict[str, Any]:
     """
-    Search Apollo for people at portfolio-like companies (Tier 1).
+    Search Apollo for LOOKALIKE companies (Tier 1).
 
-    Uses company names from the enriched portfolio to find lookalike leads.
+    IMPORTANT: Portfolio companies are the agency's EXISTING clients.
+    We don't want to contact them - we want to find SIMILAR companies
+    in the same industries.
+
+    Strategy:
+    1. Extract unique industries from portfolio companies
+    2. Collect portfolio domains for EXCLUSION
+    3. Search Apollo by INDUSTRY (not domain)
+    4. Exclude any leads from portfolio company domains
 
     Args:
         client_id: Client UUID for suppression filtering
         enriched_portfolio: List of enriched portfolio companies
         icp_titles: Target job titles
         icp_locations: Target locations
+        employee_min: Minimum employee count
+        employee_max: Maximum employee count
         limit: Maximum leads to add
 
     Returns:
@@ -262,82 +274,111 @@ async def populate_pool_from_portfolio_task(
     apollo = get_apollo_client()
     total_added = 0
     total_skipped = 0
-    total_suppressed = 0
-    companies_searched = 0
+    total_excluded_portfolio = 0
+    industries_searched = 0
+
+    # Extract unique industries from portfolio companies
+    portfolio_industries = set()
+    portfolio_domains = set()
+
+    for company in enriched_portfolio:
+        industry = company.get("industry")
+        domain = company.get("domain")
+
+        if industry:
+            portfolio_industries.add(industry.lower().strip())
+        if domain:
+            # Normalize domain (remove www prefix if present)
+            domain = domain.lower().strip()
+            if domain.startswith("www."):
+                domain = domain[4:]
+            portfolio_domains.add(domain)
+
+    if not portfolio_industries:
+        logger.warning(
+            f"Tier 1: No industries found in {len(enriched_portfolio)} portfolio companies"
+        )
+        return {
+            "success": True,
+            "tier": 1,
+            "added": 0,
+            "skipped": 0,
+            "excluded_portfolio": 0,
+            "industries_searched": 0,
+            "message": "No industries found in portfolio companies",
+        }
+
+    logger.info(
+        f"Tier 1: Searching for LOOKALIKES in industries {list(portfolio_industries)}, "
+        f"EXCLUDING {len(portfolio_domains)} portfolio domains: {list(portfolio_domains)[:5]}..."
+    )
 
     async with get_db_session() as db:
         scout = get_scout_engine()
 
-        for company in enriched_portfolio:
-            if total_added >= limit:
-                break
+        # Search Apollo by industries (not by domain)
+        try:
+            leads = await apollo.search_people_for_pool(
+                industries=list(portfolio_industries),
+                titles=icp_titles,
+                seniorities=["director", "vp", "c_suite", "owner", "founder", "manager"],
+                countries=icp_locations or ["Australia"],
+                employee_min=employee_min,
+                employee_max=employee_max,
+                limit=min(limit * 2, 100),  # Fetch more to account for exclusions
+            )
+            industries_searched = len(portfolio_industries)
 
-            company_name = company.get("company_name")
-            domain = company.get("domain")
+            if leads:
+                logger.info(
+                    f"Tier 1: Found {len(leads)} leads in {list(portfolio_industries)} industries"
+                )
 
-            if not company_name:
-                continue
+                # Add to pool, EXCLUDING portfolio company domains
+                for lead_data in leads:
+                    if total_added >= limit:
+                        break
 
-            companies_searched += 1
-            remaining = limit - total_added
+                    email = lead_data.get("email")
+                    if not email:
+                        total_skipped += 1
+                        continue
 
-            logger.info(f"Tier 1: Searching Apollo for people at '{company_name}'")
+                    # CRITICAL: Exclude leads from portfolio company domains
+                    lead_domain = lead_data.get("company_domain", "")
+                    if lead_domain:
+                        lead_domain = lead_domain.lower().strip()
+                        if lead_domain.startswith("www."):
+                            lead_domain = lead_domain[4:]
+                        if lead_domain in portfolio_domains:
+                            logger.debug(
+                                f"Tier 1: Excluding {email} - domain {lead_domain} is a portfolio company"
+                            )
+                            total_excluded_portfolio += 1
+                            continue
 
-            try:
-                # Search Apollo by company name for people
-                # First, try to get the company's domain if we don't have it
-                if not domain:
-                    orgs = await apollo.search_organizations(
-                        company_name=company_name,
-                        locations=icp_locations or ["Australia"],
-                        limit=1
-                    )
-                    if orgs and orgs[0].get("domain"):
-                        domain = orgs[0]["domain"]
+                    # Check if already exists or suppressed
+                    existing = await scout._get_pool_lead_by_email(db, email)
+                    if existing:
+                        total_skipped += 1
+                        continue
 
-                if domain:
-                    # Search for people at this domain
-                    leads = await apollo.search_people_for_pool(
-                        domain=domain,
-                        titles=icp_titles,
-                        seniorities=["director", "vp", "c_suite", "owner", "founder", "manager"],
-                        countries=icp_locations or ["Australia"],
-                        limit=min(remaining, 10),  # Limit per company
-                    )
+                    # Insert into pool
+                    await scout._insert_into_pool(db, lead_data)
+                    total_added += 1
 
-                    if leads:
-                        logger.info(f"Found {len(leads)} leads at {company_name} ({domain})")
+            else:
+                logger.info(
+                    f"Tier 1: No leads found for industries {list(portfolio_industries)}"
+                )
 
-                        # Add to pool
-                        for lead_data in leads:
-                            if total_added >= limit:
-                                break
-
-                            email = lead_data.get("email")
-                            if not email:
-                                total_skipped += 1
-                                continue
-
-                            # Check if already exists or suppressed
-                            existing = await scout._get_pool_lead_by_email(db, email)
-                            if existing:
-                                total_skipped += 1
-                                continue
-
-                            # Insert into pool
-                            await scout._insert_into_pool(db, lead_data)
-                            total_added += 1
-                    else:
-                        logger.info(f"No leads found at {company_name}")
-                else:
-                    logger.info(f"Could not find domain for {company_name}")
-
-            except Exception as e:
-                logger.warning(f"Error searching for {company_name}: {e}")
-                continue
+        except Exception as e:
+            logger.warning(f"Tier 1: Error searching industries {portfolio_industries}: {e}")
 
     logger.info(
-        f"Tier 1 (Portfolio) complete: {total_added} added from {companies_searched} companies"
+        f"Tier 1 (Portfolio Lookalikes) complete: {total_added} added, "
+        f"{total_excluded_portfolio} excluded (portfolio domains), "
+        f"{industries_searched} industries searched"
     )
 
     return {
@@ -345,8 +386,9 @@ async def populate_pool_from_portfolio_task(
         "tier": 1,
         "added": total_added,
         "skipped": total_skipped,
-        "suppressed": total_suppressed,
-        "companies_searched": companies_searched,
+        "excluded_portfolio": total_excluded_portfolio,
+        "industries_searched": industries_searched,
+        "portfolio_domains_excluded": list(portfolio_domains),
     }
 
 
@@ -523,9 +565,13 @@ async def pool_population_flow(
     Populate the lead pool for a client using waterfall strategy.
 
     Waterfall Tiers:
-    1. Portfolio Companies: Search Apollo for people at portfolio company domains
-    2. Portfolio Industries: Search Apollo by industries from enriched portfolio
+    1. Portfolio Lookalikes: Search Apollo by INDUSTRY extracted from portfolio
+       companies, EXCLUDING portfolio company domains (finds similar companies)
+    2. Portfolio Industries: Broader industry search with employee size filters
     3. Generic ICP: Fall back to broad ICP criteria search
+
+    IMPORTANT: Portfolio companies are the agency's EXISTING clients.
+    We don't contact them - we find LOOKALIKES in the same industries.
 
     Args:
         client_id: Client UUID (string or UUID)
@@ -557,15 +603,18 @@ async def pool_population_flow(
     remaining = limit
 
     # ============================================
-    # TIER 1: Portfolio Company Search
+    # TIER 1: Portfolio Lookalike Search
+    # (Search by industry, EXCLUDE portfolio domains)
     # ============================================
     if portfolio_data["has_portfolio"] and remaining > 0:
-        logger.info(f"=== TIER 1: Portfolio Company Search ===")
+        logger.info(f"=== TIER 1: Portfolio Lookalike Search ===")
         tier1_result = await populate_pool_from_portfolio_task(
             client_id=client_id,
             enriched_portfolio=portfolio_data["enriched_portfolio"],
             icp_titles=client_data["icp_titles"],
             icp_locations=client_data["icp_locations"],
+            employee_min=client_data["employee_min"],
+            employee_max=client_data["employee_max"],
             limit=remaining,
         )
         tier_results.append(tier1_result)
@@ -716,8 +765,9 @@ async def pool_population_batch_flow(
 # [x] Maps client ICP fields to Apollo search criteria
 # [x] Filters suppressed leads via client_id parameter
 # [x] WATERFALL STRATEGY IMPLEMENTED:
-#     - Tier 1: Portfolio company name search
-#     - Tier 2: Portfolio industries search
+#     - Tier 1: Portfolio LOOKALIKE search (by industry, excluding portfolio domains)
+#     - Tier 2: Portfolio industries search with employee size filters
 #     - Tier 3: Generic ICP fallback
 # [x] Gets enriched_portfolio from ICP extraction job
 # [x] Tracks results per tier in summary
+# [x] CRITICAL FIX: Tier 1 now searches for LOOKALIKES, not existing client contacts

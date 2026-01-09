@@ -28,8 +28,9 @@ PHASE 24F CHANGES:
   - Uses is_suppressed database function (no service import needed)
 """
 
+import json
 import logging
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
@@ -59,6 +60,28 @@ CONFIDENCE_THRESHOLD = 0.70
 
 # Max percentage for Clay fallback
 CLAY_MAX_PERCENTAGE = 0.15
+
+
+def parse_date_string(date_str: str | date | None) -> date | None:
+    """
+    Convert a date string (YYYY-MM-DD) to a Python date object.
+
+    Args:
+        date_str: Date string, date object, or None
+
+    Returns:
+        date object or None if invalid/empty
+    """
+    if date_str is None:
+        return None
+    if isinstance(date_str, date):
+        return date_str
+    if isinstance(date_str, str):
+        try:
+            return datetime.strptime(date_str, "%Y-%m-%d").date()
+        except (ValueError, TypeError):
+            return None
+    return None
 
 
 class ScoutEngine(BaseEngine):
@@ -995,7 +1018,7 @@ class ScoutEngine(BaseEngine):
             "timezone": lead_data.get("timezone"),
             "departments": lead_data.get("departments", []),
             "employment_history": json.dumps(lead_data.get("employment_history")) if lead_data.get("employment_history") else None,
-            "current_role_start_date": lead_data.get("current_role_start_date"),
+            "current_role_start_date": parse_date_string(lead_data.get("current_role_start_date")),
             "company_name": lead_data.get("company_name"),
             "company_domain": lead_data.get("company_domain"),
             "company_website": lead_data.get("company_website"),
@@ -1014,7 +1037,7 @@ class ScoutEngine(BaseEngine):
             "company_postal_code": lead_data.get("company_postal_code"),
             "company_is_hiring": lead_data.get("company_is_hiring"),
             "company_latest_funding_stage": lead_data.get("company_latest_funding_stage"),
-            "company_latest_funding_date": lead_data.get("company_latest_funding_date"),
+            "company_latest_funding_date": parse_date_string(lead_data.get("company_latest_funding_date")),
             "company_total_funding": lead_data.get("company_total_funding"),
             "company_technologies": lead_data.get("company_technologies", []),
             "company_keywords": lead_data.get("company_keywords", []),

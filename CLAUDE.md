@@ -72,6 +72,7 @@ PROJECT_BLUEPRINT.md          ← Start here (slim overview)
 - **DO NOT** instantiate database sessions inside engines
 - **DO NOT** use hard DELETE (use soft delete)
 - **DO NOT** create files not in the blueprint/phase spec
+- **DO NOT** call paid APIs without CEO approval and cost estimate
 
 ### ✅ DO
 
@@ -124,6 +125,47 @@ If you need data from another engine, pass it as argument from orchestration lay
 | Email | Resend + Salesforge | SendGrid, Smartlead |
 
 **Full details:** `docs/architecture/DECISIONS.md`
+
+---
+
+## Paid API Usage (REQUIRES APPROVAL)
+
+**Before calling ANY paid API, you MUST:**
+1. Ask CEO for permission
+2. Provide estimated cost
+3. Wait for approval
+
+### API Cost Reference
+
+| API | Operation | Cost | Unit |
+|-----|-----------|------|------|
+| **Apollo** | People Search | 1 credit | per person |
+| **Apollo** | Email Reveal | 1 credit | per email |
+| **Apollo** | Org Enrichment | 1 credit | per company |
+| **Apify** | LinkedIn Profile Scrape | ~$0.01-0.05 | per profile |
+| **Apify** | LinkedIn Company Scrape | ~$0.01-0.05 | per company |
+| **Apify** | Google Search | ~$0.001 | per search |
+| **Clay** | Person Enrichment | 1-5 credits | per person |
+| **Anthropic** | Claude API | varies | per token |
+| **Resend** | Email Send | $0.001 | per email |
+| **Twilio** | SMS Send | ~$0.01 | per SMS |
+| **Twilio** | Voice Call | ~$0.02/min | per minute |
+
+### Example Approval Request
+
+```
+"I need to run Apollo search for 25 leads.
+Estimated cost: 25 credits (~$25 at $1/credit).
+Approve?"
+```
+
+**DO NOT proceed without explicit "yes" from CEO.**
+
+### Testing Requirements
+
+- **Prefect Flows:** All E2E testing must go through Prefect flows (not manual Python)
+- **Real Data:** Use real APIs - just ask for permission first with cost estimate
+- **TEST_MODE:** Ensure TEST_MODE=true on Railway before outreach testing
 
 ---
 

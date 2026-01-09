@@ -956,7 +956,7 @@ class ScoutEngine(BaseEngine):
                 :linkedin_headline, :photo_url, :twitter_url,
                 :phone, :personal_email,
                 :city, :state, :country, :timezone,
-                :departments, :employment_history::jsonb, :current_role_start_date,
+                :departments, CAST(:employment_history AS jsonb), :current_role_start_date,
                 :company_name, :company_domain, :company_website,
                 :company_linkedin_url, :company_description, :company_logo_url,
                 :company_industry, :company_sub_industry,
@@ -966,8 +966,8 @@ class ScoutEngine(BaseEngine):
                 :company_is_hiring, :company_latest_funding_stage,
                 :company_latest_funding_date, :company_total_funding,
                 :company_technologies, :company_keywords,
-                :email_status::email_status_type, :enrichment_source, :enrichment_confidence,
-                NOW(), :enrichment_data::jsonb,
+                CAST(:email_status AS email_status_type), :enrichment_source, :enrichment_confidence,
+                NOW(), CAST(:enrichment_data AS jsonb),
                 'available'
             )
             ON CONFLICT (email) DO UPDATE SET

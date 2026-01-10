@@ -1053,6 +1053,182 @@ class ScoutEngine(BaseEngine):
 
         return dict(row._mapping) if row else {}
 
+    # ============================================
+    # PHASE 24A+: LinkedIn Enrichment for Assignments
+    # ============================================
+
+    async def enrich_linkedin_for_assignment(
+        self,
+        db: AsyncSession,
+        assignment_id: UUID,
+        linkedin_person_url: str | None = None,
+        linkedin_company_url: str | None = None,
+    ) -> EngineResult[dict[str, Any]]:
+        """
+        Enrich a lead assignment with full LinkedIn data.
+
+        Scrapes both person and company LinkedIn profiles for
+        hyper-personalization across all 5 channels.
+
+        Args:
+            db: Database session
+            assignment_id: Lead assignment UUID
+            linkedin_person_url: Person's LinkedIn URL
+            linkedin_company_url: Company's LinkedIn URL
+
+        Returns:
+            EngineResult with LinkedIn data for person and company
+        """
+        import asyncio
+
+        person_data = None
+        company_data = None
+        errors = []
+
+        # Scrape person and company in parallel
+        tasks = []
+
+        if linkedin_person_url:
+            tasks.append(self._scrape_person_linkedin(linkedin_person_url))
+        else:
+            tasks.append(asyncio.coroutine(lambda: None)())
+
+        if linkedin_company_url:
+            tasks.append(self._scrape_company_linkedin(linkedin_company_url))
+        else:
+            tasks.append(asyncio.coroutine(lambda: None)())
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Process person result
+        if linkedin_person_url:
+            if isinstance(results[0], Exception):
+                errors.append(f"Person scrape failed: {results[0]}")
+            else:
+                person_data = results[0]
+
+        # Process company result
+        if linkedin_company_url:
+            idx = 1 if linkedin_person_url else 0
+            if isinstance(results[idx], Exception):
+                errors.append(f"Company scrape failed: {results[idx]}")
+            else:
+                company_data = results[idx]
+
+        # Update assignment with LinkedIn data
+        update_query = text("""
+            UPDATE lead_assignments
+            SET
+                linkedin_person_data = :person_data,
+                linkedin_person_scraped_at = CASE WHEN :person_data IS NOT NULL THEN NOW() ELSE linkedin_person_scraped_at END,
+                linkedin_company_data = :company_data,
+                linkedin_company_scraped_at = CASE WHEN :company_data IS NOT NULL THEN NOW() ELSE linkedin_company_scraped_at END,
+                enrichment_status = 'linkedin_complete',
+                updated_at = NOW()
+            WHERE id = :assignment_id
+            RETURNING id
+        """)
+
+        await db.execute(update_query, {
+            "assignment_id": str(assignment_id),
+            "person_data": json.dumps(person_data) if person_data else None,
+            "company_data": json.dumps(company_data) if company_data else None,
+        })
+        await db.commit()
+
+        return EngineResult.ok(
+            data={
+                "assignment_id": str(assignment_id),
+                "person_data": person_data,
+                "company_data": company_data,
+                "person_posts_found": len(person_data.get("posts", [])) if person_data else 0,
+                "company_posts_found": len(company_data.get("posts", [])) if company_data else 0,
+            },
+            metadata={
+                "errors": errors if errors else None,
+            },
+        )
+
+    async def _scrape_person_linkedin(self, linkedin_url: str) -> dict[str, Any]:
+        """
+        Scrape full LinkedIn person profile with posts.
+
+        Returns:
+            Dict with profile data, about, experience, and last 5 posts
+        """
+        try:
+            profiles = await self.apify.scrape_linkedin_profiles([linkedin_url])
+            if not profiles:
+                return {"found": False, "url": linkedin_url}
+
+            profile = profiles[0]
+
+            # Extract posts if available
+            posts = []
+            raw_posts = profile.get("posts", []) or profile.get("activity", [])
+            for post in raw_posts[:5]:  # Last 5 posts
+                posts.append({
+                    "content": post.get("text") or post.get("content", ""),
+                    "date": post.get("date") or post.get("posted_date"),
+                    "likes": post.get("likes", 0),
+                    "comments": post.get("comments", 0),
+                    "shares": post.get("shares", 0),
+                })
+
+            return {
+                "found": True,
+                "url": linkedin_url,
+                "headline": profile.get("title") or profile.get("headline"),
+                "about": profile.get("about") or profile.get("summary"),
+                "location": profile.get("location"),
+                "connections": profile.get("connections") or profile.get("connectionsCount"),
+                "followers": profile.get("followers") or profile.get("followersCount"),
+                "experience": profile.get("experience", [])[:5],  # Last 5 roles
+                "education": profile.get("education", []),
+                "skills": profile.get("skills", [])[:10],  # Top 10 skills
+                "posts": posts,
+                "posts_count": len(posts),
+            }
+        except Exception as e:
+            logger.warning(f"LinkedIn person scrape failed for {linkedin_url}: {e}")
+            return {"found": False, "url": linkedin_url, "error": str(e)}
+
+    async def _scrape_company_linkedin(self, linkedin_url: str) -> dict[str, Any]:
+        """
+        Scrape full LinkedIn company profile with posts.
+
+        Returns:
+            Dict with company data, description, and last 5 posts
+        """
+        try:
+            company_data = await self.apify.scrape_linkedin_company(linkedin_url)
+            if not company_data.get("found"):
+                return {"found": False, "url": linkedin_url}
+
+            # Note: Company posts may need a separate actor or may be included
+            # depending on the Apify actor used
+            posts = company_data.get("posts", [])[:5]
+
+            return {
+                "found": True,
+                "url": linkedin_url,
+                "name": company_data.get("name"),
+                "description": company_data.get("description"),
+                "industry": company_data.get("industry"),
+                "specialties": company_data.get("specialties", []),
+                "headquarters": company_data.get("headquarters"),
+                "website": company_data.get("website"),
+                "employee_count": company_data.get("employee_count"),
+                "employee_range": company_data.get("employee_range"),
+                "followers": company_data.get("followers"),
+                "founded_year": company_data.get("founded_year"),
+                "posts": posts,
+                "posts_count": len(posts),
+            }
+        except Exception as e:
+            logger.warning(f"LinkedIn company scrape failed for {linkedin_url}: {e}")
+            return {"found": False, "url": linkedin_url, "error": str(e)}
+
 
 # Singleton instance
 _scout_engine: ScoutEngine | None = None
@@ -1090,3 +1266,6 @@ def get_scout_engine() -> ScoutEngine:
 # [x] filter_suppressed_leads method (Phase 24F)
 # [x] _get_suppressed_emails batch helper (Phase 24F)
 # [x] search_and_populate_pool supports client_id for suppression (Phase 24F)
+# [x] enrich_linkedin_for_assignment method (Phase 24A+)
+# [x] _scrape_person_linkedin helper (Phase 24A+)
+# [x] _scrape_company_linkedin helper (Phase 24A+)

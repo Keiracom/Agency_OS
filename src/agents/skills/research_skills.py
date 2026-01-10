@@ -269,6 +269,261 @@ Return JSON with this structure:
 SkillRegistry.register(DeepResearchSkill())
 
 
+class PersonalizationAnalysisSkill(BaseSkill):
+    """
+    Personalization Analysis skill for hyper-personalized outreach.
+
+    Analyzes LinkedIn data (person + company) to identify:
+    - Pain points
+    - Personalization angles
+    - Icebreaker hooks for all 5 channels
+    - Topics to avoid
+    - Best channel recommendation
+    """
+
+    name: ClassVar[str] = "personalization_analysis"
+    description: ClassVar[str] = (
+        "Analyze LinkedIn data to generate pain points, personalization angles, "
+        "and icebreaker hooks for Email, SMS, LinkedIn, Voice, and Direct Mail."
+    )
+
+    class Input(BaseModel):
+        """Input for personalization analysis."""
+
+        # Lead info
+        first_name: str = Field(..., description="Lead's first name")
+        last_name: str = Field(default="", description="Lead's last name")
+        title: str = Field(default="", description="Lead's job title")
+        company_name: str = Field(default="", description="Lead's company")
+        industry: str = Field(default="", description="Company industry")
+
+        # LinkedIn person data
+        person_headline: str = Field(default="", description="LinkedIn headline")
+        person_about: str = Field(default="", description="LinkedIn about/summary")
+        person_posts: list[dict[str, Any]] = Field(
+            default_factory=list,
+            description="Person's recent LinkedIn posts",
+        )
+
+        # LinkedIn company data
+        company_description: str = Field(default="", description="Company description")
+        company_specialties: list[str] = Field(default_factory=list, description="Company specialties")
+        company_posts: list[dict[str, Any]] = Field(
+            default_factory=list,
+            description="Company's recent LinkedIn posts",
+        )
+
+        # Agency context (for relevance)
+        agency_services: str = Field(default="", description="What the agency offers")
+
+    class Output(BaseModel):
+        """Output from personalization analysis."""
+
+        pain_points: list[str] = Field(
+            default_factory=list,
+            description="Identified pain points based on role, posts, company stage",
+        )
+        personalization_angles: list[str] = Field(
+            default_factory=list,
+            description="Specific things to reference from their content",
+        )
+        icebreaker_hooks: dict[str, str] = Field(
+            default_factory=dict,
+            description="Per-channel hooks: email, linkedin, sms, voice, direct_mail",
+        )
+        topics_to_avoid: list[str] = Field(
+            default_factory=list,
+            description="Topics that could backfire",
+        )
+        common_ground: list[str] = Field(
+            default_factory=list,
+            description="Shared interests or experiences",
+        )
+        best_channel: str = Field(
+            default="email",
+            description="Recommended best channel for outreach",
+        )
+        best_timing: str = Field(
+            default="",
+            description="Recommended timing for outreach",
+        )
+        confidence: float = Field(
+            default=0.5,
+            description="Confidence in the analysis (0-1)",
+        )
+
+    system_prompt: ClassVar[str] = """You are a sales research analyst specializing in personalized B2B outreach.
+
+Your task is to analyze LinkedIn data to create hyper-personalized outreach for 5 channels.
+
+## Guidelines
+
+### Pain Points
+- Infer challenges from their role, company stage, and post topics
+- Look for complaints, questions, or frustrations in posts
+- Consider industry-specific challenges
+
+### Personalization Angles
+- Reference specific posts or achievements
+- Note career milestones or transitions
+- Identify shared interests or connections
+
+### Icebreaker Hooks (per channel)
+- **Email**: 1-2 sentences, can include specific reference
+- **LinkedIn**: Short (300 char limit for connection requests)
+- **SMS**: Very brief, casual tone, <100 chars
+- **Voice**: Conversational opener for phone call
+- **Direct Mail**: Headline that would grab attention
+
+### Topics to Avoid
+- Competitors mentioned positively
+- Controversial opinions
+- Personal/sensitive topics
+
+### Best Channel
+- LinkedIn: If they're active on LinkedIn (regular posts)
+- Email: If they're executives or less active on social
+- SMS: If in sales/customer-facing role
+- Voice: If senior decision-maker
+
+Return ONLY valid JSON matching the output schema."""
+
+    default_model: ClassVar[str] = "claude-sonnet-4-20250514"
+    default_max_tokens: ClassVar[int] = 1500
+    default_temperature: ClassVar[float] = 0.7
+
+    async def execute(
+        self,
+        input_data: Input,
+        anthropic: AnthropicClient,
+    ) -> SkillResult[Output]:
+        """
+        Execute personalization analysis on LinkedIn data.
+
+        Args:
+            input_data: Validated input with LinkedIn data
+            anthropic: Anthropic client for AI analysis
+
+        Returns:
+            SkillResult with pain points, angles, and hooks
+        """
+        # Build the analysis prompt
+        prompt = self._build_analysis_prompt(input_data)
+
+        try:
+            parsed, tokens, cost = await self._call_ai(anthropic, prompt)
+
+            # Calculate confidence based on data availability
+            confidence = self._calculate_confidence(input_data, parsed)
+
+            return SkillResult.ok(
+                data=self.Output(
+                    pain_points=parsed.get("pain_points", []),
+                    personalization_angles=parsed.get("personalization_angles", []),
+                    icebreaker_hooks=parsed.get("icebreaker_hooks", {}),
+                    topics_to_avoid=parsed.get("topics_to_avoid", []),
+                    common_ground=parsed.get("common_ground", []),
+                    best_channel=parsed.get("best_channel", "email"),
+                    best_timing=parsed.get("best_timing", ""),
+                    confidence=confidence,
+                ),
+                confidence=confidence,
+                tokens_used=tokens,
+                cost_aud=cost,
+                metadata={
+                    "person_posts_analyzed": len(input_data.person_posts),
+                    "company_posts_analyzed": len(input_data.company_posts),
+                },
+            )
+        except Exception as e:
+            return SkillResult.fail(
+                error=f"Personalization analysis failed: {str(e)}",
+                metadata={"input_name": f"{input_data.first_name} {input_data.last_name}"},
+            )
+
+    def _build_analysis_prompt(self, input_data: Input) -> str:
+        """Build prompt for Claude analysis."""
+        parts = [
+            "Analyze this lead for personalized outreach.\n",
+            f"\n## Lead Profile",
+            f"- Name: {input_data.first_name} {input_data.last_name}",
+            f"- Title: {input_data.title}" if input_data.title else "",
+            f"- Company: {input_data.company_name}" if input_data.company_name else "",
+            f"- Industry: {input_data.industry}" if input_data.industry else "",
+        ]
+
+        # Person LinkedIn data
+        if input_data.person_headline or input_data.person_about:
+            parts.append("\n## Their LinkedIn Profile")
+            if input_data.person_headline:
+                parts.append(f"Headline: {input_data.person_headline}")
+            if input_data.person_about:
+                parts.append(f"About: {input_data.person_about[:800]}")
+
+        # Person posts
+        if input_data.person_posts:
+            parts.append("\n## Their Recent Posts")
+            for i, post in enumerate(input_data.person_posts[:5], 1):
+                content = post.get("content", "")[:400]
+                date_str = post.get("date", "")
+                likes = post.get("likes", 0)
+                parts.append(f"\n**Post {i}** ({date_str}, {likes} likes):\n{content}")
+
+        # Company data
+        if input_data.company_description or input_data.company_specialties:
+            parts.append("\n## Their Company")
+            if input_data.company_description:
+                parts.append(f"Description: {input_data.company_description[:500]}")
+            if input_data.company_specialties:
+                parts.append(f"Specialties: {', '.join(input_data.company_specialties[:5])}")
+
+        # Company posts
+        if input_data.company_posts:
+            parts.append("\n## Company's Recent Posts")
+            for i, post in enumerate(input_data.company_posts[:3], 1):
+                content = post.get("content", "")[:300]
+                parts.append(f"\n**Company Post {i}**:\n{content}")
+
+        # Agency context
+        if input_data.agency_services:
+            parts.append(f"\n## What We Offer\n{input_data.agency_services}")
+
+        parts.append(
+            "\n\nAnalyze this lead and generate personalized outreach data. "
+            "Return ONLY valid JSON."
+        )
+
+        return "\n".join(filter(None, parts))
+
+    def _calculate_confidence(self, input_data: Input, parsed: dict) -> float:
+        """Calculate confidence based on data availability and output quality."""
+        score = 0.3  # Base confidence
+
+        # Data availability
+        if input_data.person_headline:
+            score += 0.1
+        if input_data.person_about:
+            score += 0.1
+        if input_data.person_posts:
+            score += 0.15
+        if input_data.company_description:
+            score += 0.05
+        if input_data.company_posts:
+            score += 0.1
+
+        # Output quality
+        if len(parsed.get("pain_points", [])) >= 2:
+            score += 0.1
+        if len(parsed.get("personalization_angles", [])) >= 2:
+            score += 0.1
+
+        return min(0.95, score)
+
+
+# Register the skill
+SkillRegistry.register(PersonalizationAnalysisSkill())
+
+
 # ============================================
 # VERIFICATION CHECKLIST
 # ============================================
@@ -283,3 +538,6 @@ SkillRegistry.register(DeepResearchSkill())
 # [x] No imports from engines (Rule 12)
 # [x] All functions have type hints
 # [x] All functions have docstrings
+# [x] PersonalizationAnalysisSkill for hyper-personalization (Phase 24A+)
+# [x] Generates pain points, angles, hooks for all 5 channels
+# [x] Analyzes person + company LinkedIn data

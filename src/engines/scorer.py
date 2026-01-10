@@ -27,6 +27,12 @@ PHASE 24F CHANGES:
   - Added buyer signal boost via get_buyer_score_boost database function
   - Leads from known buyer companies get score boost (max 15 points)
   - Uses platform_buyer_signals table for cross-client intelligence
+PHASE 24A+ CHANGES (LinkedIn Enrichment):
+  - Added _get_linkedin_boost method for LinkedIn engagement signals
+  - Boosts score when person has posts, high connections, recent activity
+  - Boosts score when company has posts, high followers
+  - Max LinkedIn boost: 10 points
+  - Uses linkedin_person_data and linkedin_company_data from lead_assignments
 """
 
 import logging
@@ -98,6 +104,14 @@ TIER_COLD = 20
 
 # Phase 24F: Buyer signal boost (max points)
 MAX_BUYER_BOOST = 15
+
+# Phase 24A+: LinkedIn enrichment signals (max 10 points boost)
+MAX_LINKEDIN_BOOST = 10
+LINKEDIN_PERSON_POSTS_BOOST = 3      # Has recent posts (engaged)
+LINKEDIN_COMPANY_POSTS_BOOST = 2     # Company is active
+LINKEDIN_HIGH_CONNECTIONS_BOOST = 2  # 500+ connections (influential)
+LINKEDIN_HIGH_FOLLOWERS_BOOST = 2    # Company 1000+ followers
+LINKEDIN_RECENT_ACTIVITY_BOOST = 1   # Posted in last 30 days
 
 # Default component weights (Phase 16)
 # These are used when no learned weights are available
@@ -669,6 +683,119 @@ class ScorerEngine(BaseEngine):
             logger.warning(f"Error getting buyer boost for {domain}: {e}")
             return {"boost_points": 0, "reason": None}
 
+    async def _get_linkedin_boost(
+        self,
+        db: AsyncSession,
+        assignment_id: UUID | None,
+    ) -> dict[str, Any]:
+        """
+        Calculate LinkedIn engagement boost from enrichment data.
+
+        Phase 24A+: Boosts score based on LinkedIn activity signals:
+        - Person has recent posts (engaged on LinkedIn)
+        - Person has 500+ connections (influential)
+        - Person posted in last 30 days (active)
+        - Company has posts (active company)
+        - Company has 1000+ followers (established)
+
+        Args:
+            db: Database session
+            assignment_id: Lead assignment UUID to check
+
+        Returns:
+            Dict with boost_points (int, max 10) and signals (list of reasons)
+        """
+        if not assignment_id:
+            return {"boost_points": 0, "signals": []}
+
+        try:
+            # Get LinkedIn data from assignment
+            result = await db.execute(
+                text("""
+                    SELECT linkedin_person_data, linkedin_company_data,
+                           linkedin_person_scraped_at, linkedin_company_scraped_at
+                    FROM lead_assignments
+                    WHERE id = :assignment_id
+                """),
+                {"assignment_id": str(assignment_id)},
+            )
+            row = result.fetchone()
+
+            if not row:
+                return {"boost_points": 0, "signals": []}
+
+            boost_points = 0
+            signals = []
+
+            # Parse person LinkedIn data
+            person_data = row.linkedin_person_data
+            if person_data:
+                if isinstance(person_data, str):
+                    import json
+                    person_data = json.loads(person_data)
+
+                # Check for posts (engaged on LinkedIn)
+                posts = person_data.get("posts", [])
+                if posts and len(posts) > 0:
+                    boost_points += LINKEDIN_PERSON_POSTS_BOOST
+                    signals.append(f"Active on LinkedIn ({len(posts)} recent posts)")
+
+                    # Check for recent activity (posted in last 30 days)
+                    recent_post = posts[0] if posts else {}
+                    post_date = recent_post.get("posted_date")
+                    if post_date:
+                        try:
+                            if isinstance(post_date, str):
+                                post_dt = datetime.fromisoformat(post_date[:10])
+                            else:
+                                post_dt = post_date
+                            days_ago = (datetime.utcnow() - post_dt).days
+                            if days_ago <= 30:
+                                boost_points += LINKEDIN_RECENT_ACTIVITY_BOOST
+                                signals.append("Posted in last 30 days")
+                        except (ValueError, TypeError):
+                            pass
+
+                # Check connections (influential)
+                connections = person_data.get("connections", 0)
+                if connections and connections >= 500:
+                    boost_points += LINKEDIN_HIGH_CONNECTIONS_BOOST
+                    signals.append(f"High influence ({connections}+ connections)")
+
+            # Parse company LinkedIn data
+            company_data = row.linkedin_company_data
+            if company_data:
+                if isinstance(company_data, str):
+                    import json
+                    company_data = json.loads(company_data)
+
+                # Check for company posts (active company)
+                company_posts = company_data.get("posts", [])
+                if company_posts and len(company_posts) > 0:
+                    boost_points += LINKEDIN_COMPANY_POSTS_BOOST
+                    signals.append(f"Active company ({len(company_posts)} recent posts)")
+
+                # Check company followers (established)
+                followers = company_data.get("followers", 0)
+                if followers and followers >= 1000:
+                    boost_points += LINKEDIN_HIGH_FOLLOWERS_BOOST
+                    signals.append(f"Established company ({followers}+ followers)")
+
+            # Cap at max
+            boost_points = min(boost_points, MAX_LINKEDIN_BOOST)
+
+            if boost_points > 0:
+                logger.info(
+                    f"LinkedIn boost for assignment {assignment_id}: "
+                    f"+{boost_points} points ({', '.join(signals)})"
+                )
+
+            return {"boost_points": boost_points, "signals": signals}
+
+        except Exception as e:
+            logger.warning(f"Error getting LinkedIn boost for {assignment_id}: {e}")
+            return {"boost_points": 0, "signals": []}
+
     async def _update_lead_score(
         self,
         db: AsyncSession,
@@ -749,6 +876,7 @@ class ScorerEngine(BaseEngine):
         lead_pool_id: UUID,
         target_industries: list[str] | None = None,
         competitor_domains: list[str] | None = None,
+        assignment_id: UUID | None = None,
     ) -> EngineResult[dict[str, Any]]:
         """
         Calculate ALS score for a lead in the pool.
@@ -756,11 +884,15 @@ class ScorerEngine(BaseEngine):
         Phase 24A: Scores leads directly from lead_pool table
         without requiring a Lead model instance.
 
+        Phase 24A+: When assignment_id is provided, includes LinkedIn
+        engagement boost from enrichment data.
+
         Args:
             db: Database session (passed by caller)
             lead_pool_id: Lead pool UUID to score
             target_industries: Optional list of target industries
             competitor_domains: Optional list of competitor domains
+            assignment_id: Optional assignment UUID for LinkedIn boost
 
         Returns:
             EngineResult with scoring breakdown
@@ -798,8 +930,13 @@ class ScorerEngine(BaseEngine):
         # Phase 24F: Apply buyer signal boost
         company_domain = pool_lead.get("company_domain")
         buyer_boost = await self._get_buyer_boost(db, company_domain)
-        boost_points = buyer_boost.get("boost_points", 0)
-        weighted_score += boost_points
+        buyer_boost_points = buyer_boost.get("boost_points", 0)
+        weighted_score += buyer_boost_points
+
+        # Phase 24A+: Apply LinkedIn engagement boost (when assignment has enrichment)
+        linkedin_boost = await self._get_linkedin_boost(db, assignment_id)
+        linkedin_boost_points = linkedin_boost.get("boost_points", 0)
+        weighted_score += linkedin_boost_points
 
         total_score = int(max(0, min(100, weighted_score)))
         tier = self._get_tier(total_score)
@@ -824,8 +961,11 @@ class ScorerEngine(BaseEngine):
             "available_channels": [c.value for c in channels],
             "lead_pool_id": str(lead_pool_id),
             # Phase 24F: Buyer signal boost
-            "buyer_boost": boost_points,
+            "buyer_boost": buyer_boost_points,
             "buyer_boost_reason": buyer_boost.get("reason"),
+            # Phase 24A+: LinkedIn engagement boost
+            "linkedin_boost": linkedin_boost_points,
+            "linkedin_signals": linkedin_boost.get("signals", []),
         }
 
         # Update pool lead in database
@@ -1272,3 +1412,16 @@ def get_scorer_engine() -> ScorerEngine:
 # [x] Buyer boost integrated into score_lead
 # [x] Buyer boost integrated into score_pool_lead
 # [x] buyer_boost and buyer_boost_reason in score breakdown
+# ============================================
+# PHASE 24A+ LINKEDIN ENRICHMENT BOOST
+# ============================================
+# [x] _get_linkedin_boost method for LinkedIn engagement signals
+# [x] MAX_LINKEDIN_BOOST constant (10 points)
+# [x] LINKEDIN_PERSON_POSTS_BOOST (3 points)
+# [x] LINKEDIN_COMPANY_POSTS_BOOST (2 points)
+# [x] LINKEDIN_HIGH_CONNECTIONS_BOOST (2 points)
+# [x] LINKEDIN_HIGH_FOLLOWERS_BOOST (2 points)
+# [x] LINKEDIN_RECENT_ACTIVITY_BOOST (1 point)
+# [x] LinkedIn boost integrated into score_pool_lead
+# [x] assignment_id parameter added to score_pool_lead
+# [x] linkedin_boost and linkedin_signals in score breakdown

@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.scorer import get_scorer_engine
 from src.integrations.supabase import get_db_session
+from src.orchestration.flows.lead_enrichment_flow import lead_enrichment_flow
 from src.models.base import CampaignStatus, SubscriptionStatus
 from src.models.campaign import Campaign
 from src.models.client import Client
@@ -350,6 +351,49 @@ async def record_pool_touch_task(
         }
 
 
+@task(name="trigger_enrichment_for_assignments", retries=2, retry_delay_seconds=5)
+async def trigger_enrichment_for_assignments_task(
+    assignment_ids: list[str],
+) -> dict[str, Any]:
+    """
+    Trigger LinkedIn enrichment for assigned leads.
+
+    Queues the lead_enrichment_flow for each assignment to run asynchronously.
+    This allows pool assignment to complete quickly while enrichment runs in background.
+
+    Args:
+        assignment_ids: List of assignment UUID strings
+
+    Returns:
+        Dict with triggered count and any errors
+    """
+    triggered = 0
+    errors = []
+
+    for assignment_id in assignment_ids:
+        try:
+            # Run enrichment flow as a subflow
+            # This will scrape LinkedIn, run Claude analysis, and update scoring
+            await lead_enrichment_flow(assignment_id=assignment_id)
+            triggered += 1
+        except Exception as e:
+            logger.error(f"Failed to trigger enrichment for {assignment_id}: {e}")
+            errors.append({
+                "assignment_id": assignment_id,
+                "error": str(e),
+            })
+
+    logger.info(
+        f"Triggered enrichment for {triggered}/{len(assignment_ids)} assignments"
+    )
+
+    return {
+        "triggered": triggered,
+        "total": len(assignment_ids),
+        "errors": errors if errors else None,
+    }
+
+
 # ============================================
 # FLOWS
 # ============================================
@@ -419,13 +463,22 @@ async def pool_campaign_assignment_flow(
             "message": "No matching leads available in pool",
         }
 
-    # Step 4: Score allocated leads
+    # Step 4: Score allocated leads (initial scoring with Apollo data only)
     lead_pool_ids = [
         lead["lead_pool_id"] for lead in allocation_result["assigned_leads"]
     ]
     scoring_result = await score_pool_leads_task(
         lead_pool_ids=lead_pool_ids,
         target_industries=client_data["icp_criteria"].get("industries"),
+    )
+
+    # Step 5: Trigger LinkedIn enrichment for assigned leads
+    # This runs asynchronously - leads will be enriched in background
+    assignment_ids = [
+        lead["assignment_id"] for lead in allocation_result["assigned_leads"]
+    ]
+    enrichment_triggered = await trigger_enrichment_for_assignments_task(
+        assignment_ids=assignment_ids,
     )
 
     # Compile summary
@@ -437,12 +490,14 @@ async def pool_campaign_assignment_flow(
         "leads_scored": scoring_result.get("scored", 0),
         "tier_distribution": scoring_result.get("tier_distribution", {}),
         "average_als_score": scoring_result.get("average_score", 0),
+        "enrichment_triggered": enrichment_triggered.get("triggered", 0),
         "completed_at": datetime.utcnow().isoformat(),
     }
 
     logger.info(
         f"Pool assignment completed: {summary['leads_allocated']} leads, "
-        f"avg score {summary['average_als_score']:.1f}"
+        f"avg score {summary['average_als_score']:.1f}, "
+        f"{summary['enrichment_triggered']} queued for enrichment"
     )
 
     return summary

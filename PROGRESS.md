@@ -1,6 +1,6 @@
 # PROGRESS.md — Agency OS Roadmap & Status
 
-**Last Updated:** January 9, 2026
+**Last Updated:** January 10, 2026
 **Current Phase:** 21 (E2E Testing)
 **Next Milestone:** Complete E2E journeys J1-J6 live
 
@@ -140,8 +140,10 @@ PREFECT_API_URL=https://prefect-server-production-f9b1.up.railway.app/api
 | single_client_backfill | client-backfill-flow | ✅ Active |
 | pool_daily_allocation | pool-daily-allocation-flow | ⏸️ Paused |
 | icp_reextract_flow | icp-reextract-flow | ✅ Active |
+| lead_enrichment | enrichment-waterfall-flow | ✅ Active |
+| batch_lead_enrichment | batch-enrichment-flow | ✅ Active |
 
-**Total:** 15 deployments (10 active, 5 paused)
+**Total:** 17 deployments (12 active, 5 paused)
 
 ---
 
@@ -150,6 +152,7 @@ PREFECT_API_URL=https://prefect-server-production-f9b1.up.railway.app/api
 | Sub-Phase | Tasks | Status |
 |-----------|-------|--------|
 | 24A: Lead Pool | 15 | ✅ |
+| 24A+: LinkedIn Enrichment | 8 | ✅ |
 | 24B: Content Tracking | 7 | ✅ |
 | 24C: Email Engagement | 7 | ✅ |
 | 24D: Conversation Threading | 8 | ✅ |
@@ -157,7 +160,7 @@ PREFECT_API_URL=https://prefect-server-production-f9b1.up.railway.app/api
 | 24F: CRM Push | 12 | ✅ |
 | 24G: Customer Import | 10 | ✅ |
 | 24H: LinkedIn Connection | 10 | 📋 |
-| **Total** | **76** | **66/76** |
+| **Total** | **84** | **74/84** |
 
 ---
 
@@ -211,6 +214,11 @@ Before first paying customer:
 ## RECENT SESSIONS
 
 > Full history: `docs/progress/SESSION_LOG.md`
+
+### Jan 10, 2026
+- Phase 24A+ LinkedIn Enrichment Waterfall implemented (8 tasks)
+- PersonalizationAnalysisSkill for Claude pain point analysis
+- LinkedIn scoring boost integrated into scorer engine (max +10 points)
 
 ### Jan 9, 2026
 - Portfolio Fallback Discovery implemented (ICP-FALLBACK-001, ICP-FALLBACK-002)

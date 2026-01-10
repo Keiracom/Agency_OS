@@ -20,6 +20,13 @@ After each session, append an entry:
 
 ## January 2026
 
+### Jan 10, 2026 — LinkedIn Enrichment Waterfall (Phase 24A+)
+**Completed:** ENRICH-001 to ENRICH-008 (Lead Enrichment Waterfall)
+**Summary:** Implemented full LinkedIn enrichment waterfall for hyper-personalization. After pool assignment, leads are enriched via Apify (person + company LinkedIn), analyzed by Claude for pain points/hooks, then rescored with LinkedIn signals boost (max +10 points).
+**Files Changed:** 6 (lead_enrichment_flow.py, research_skills.py, scout.py, scorer.py, pool_assignment_flow.py, migration 032)
+**Blockers:** None
+**Next:** E2E testing (Phase 21) with enrichment flow
+
 ### Jan 9, 2026 — Portfolio Fallback Discovery
 **Completed:** ICP-FALLBACK-001, ICP-FALLBACK-002, Apify Google Search fix
 **Summary:** Implemented 3-tier fallback for agencies without portfolio pages (Apollo lookup, Google social discovery, Google client search). Sparro test: found 8 clients (Sydney.com, Webjet, Estee Lauder, etc.) and derived ICP (finance, retail, travel industries).

@@ -10,10 +10,9 @@ WORKDIR /app
 # Install curl for health checks
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Install psycopg3 (async-native) for PostgreSQL support with Supabase pooler
-# psycopg3 works with SQLAlchemy async engine and Supabase Supavisor pooler
-# NOTE: asyncpg has tenant routing issues with Supavisor, psycopg2 is sync-only
-RUN pip install --no-cache-dir "psycopg[binary]"
+# Install asyncpg for PostgreSQL support
+# Prefect's async SQLAlchemy requires asyncpg (passes command_timeout which psycopg doesn't support)
+RUN pip install --no-cache-dir asyncpg
 
 # Static environment variables
 ENV PREFECT_SERVER_API_HOST=0.0.0.0

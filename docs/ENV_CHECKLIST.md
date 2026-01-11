@@ -17,8 +17,7 @@ Run `python scripts/check_env.py` to verify current status.
 | `SUPABASE_SERVICE_KEY` | Infrastructure | ✅ |
 | `DATABASE_URL` | Infrastructure | ✅ |
 | `REDIS_URL` | Infrastructure | ✅ |
-| `PREFECT_API_URL` | Infrastructure | ✅ |
-| `PREFECT_API_KEY` | Infrastructure | ✅ |
+| `PREFECT_API_URL` | Infrastructure | ✅ (self-hosted on Railway) |
 | `ANTHROPIC_API_KEY` | AI | ✅ |
 | `RESEND_API_KEY` | Email | ✅ |
 | `VERCEL_TOKEN` | Deployment | ✅ |

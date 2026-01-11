@@ -24,8 +24,7 @@ You already have these in `config/.env`:
 - ✅ SUPABASE_SERVICE_KEY
 - ✅ ANTHROPIC_API_KEY
 - ✅ REDIS_URL
-- ✅ PREFECT_API_URL
-- ✅ PREFECT_API_KEY
+- ✅ PREFECT_API_URL (self-hosted on Railway)
 - ✅ VERCEL_TOKEN
 - ✅ GITHUB_TOKEN
 
@@ -65,8 +64,7 @@ SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_KEY=eyJ...
 ANTHROPIC_API_KEY=sk-ant-...
 REDIS_URL=rediss://...
-PREFECT_API_URL=https://api.prefect.cloud/...
-PREFECT_API_KEY=pnu_...
+PREFECT_API_URL=https://prefect-server-production-f9b1.up.railway.app/api
 ```
 
 5. Deploy and get your Railway URL (e.g., `https://agency-os-api.up.railway.app`)

@@ -20,10 +20,12 @@ PHASE 24A CHANGES:
 from typing import Any, Optional
 
 import httpx
+import sentry_sdk
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from src.config.settings import settings
 from src.exceptions import APIError, IntegrationError, ValidationError
+from src.integrations.sentry_utils import track_integration_call, add_breadcrumb
 
 
 class ApolloClient:
@@ -91,6 +93,12 @@ class ApolloClient:
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
+            sentry_sdk.set_context("apollo_request", {
+                "endpoint": endpoint,
+                "method": method,
+                "status_code": e.response.status_code,
+            })
+            sentry_sdk.capture_exception(e)
             raise APIError(
                 service="apollo",
                 status_code=e.response.status_code,
@@ -98,6 +106,11 @@ class ApolloClient:
                 message=f"Apollo API error: {e.response.status_code}",
             )
         except httpx.RequestError as e:
+            sentry_sdk.set_context("apollo_request", {
+                "endpoint": endpoint,
+                "method": method,
+            })
+            sentry_sdk.capture_exception(e)
             raise IntegrationError(
                 service="apollo",
                 message=f"Apollo request failed: {str(e)}",

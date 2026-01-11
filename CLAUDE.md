@@ -260,3 +260,186 @@ DO NOT guess. ASK.
 | Skills | `skills/SKILL_INDEX.md` |
 | Task tracking | `PROGRESS.md` |
 | Full original blueprint | `PROJECT_BLUEPRINT_FULL_ARCHIVE.md` |
+
+---
+
+## Production Infrastructure Access
+
+### Railway CLI (Backend/Prefect)
+
+**First-time setup or when session expires:**
+```bash
+railway login
+```
+This opens a browser for authentication. User must run this manually in their terminal.
+
+**Common commands (after login):**
+```bash
+# Check auth status
+railway whoami
+
+# View project status
+railway status
+
+# List variables for a service
+railway variables --service prefect-server --kv
+
+# Set a variable
+railway variables --service prefect-server --set "VAR_NAME=value"
+
+# Redeploy a service
+railway redeploy --service prefect-server --yes
+
+# View logs
+railway logs --service prefect-server
+```
+
+**Available services:**
+- `agency-os` - Main FastAPI backend
+- `prefect-server` - Prefect UI/API server
+- `prefect-worker` - Prefect flow executor
+
+**Project ID:** `fef5af27-a022-4fb2-996b-cad099549af9`
+
+### Supabase (Database)
+
+**Direct API access (no CLI auth needed):**
+```bash
+# Query with service role key
+curl -X GET "https://jatzvazlbusedwsnqxzr.supabase.co/rest/v1/TABLE_NAME" \
+  -H "apikey: SERVICE_ROLE_KEY" \
+  -H "Authorization: Bearer SERVICE_ROLE_KEY"
+```
+
+**Connection strings (from `config/RAILWAY_ENV_VARS.txt`):**
+- REST API: `https://jatzvazlbusedwsnqxzr.supabase.co`
+- Database (pooler): `postgresql://postgres.jatzvazlbusedwsnqxzr:PASSWORD@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres`
+
+### Vercel (Frontend)
+
+**Commands:**
+```bash
+cd frontend
+vercel whoami
+vercel env ls
+vercel --prod  # Deploy
+```
+
+### Production URLs
+
+| Service | URL |
+|---------|-----|
+| Backend API | https://agency-os-production.up.railway.app |
+| Health Check | https://agency-os-production.up.railway.app/api/v1/health/ready |
+| Prefect UI | https://prefect-server-production-f9b1.up.railway.app |
+| Frontend | https://agency-os-liart.vercel.app |
+| Supabase | https://jatzvazlbusedwsnqxzr.supabase.co |
+
+### Troubleshooting
+
+**Railway "Unauthorized" error:**
+1. User runs `railway login` in their terminal (not Claude)
+2. Browser opens for OAuth
+3. Claude can then use Railway CLI
+
+**Prefect flow runs disappearing:**
+- Cause: SQLite default loses data on container restart
+- Fix: Set `PREFECT_API_DATABASE_CONNECTION_URL` to PostgreSQL on prefect-server service
+
+---
+
+## Sentry Error Tracking
+
+### Checking for Errors (Claude Workflow)
+
+When asked to check for errors or debug production issues:
+
+```bash
+# Query recent errors via Sentry API
+curl -s "https://sentry.io/api/0/projects/david-stephens-1q/agency-os-backend/issues/?query=is:unresolved" \
+  -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" | jq '.[] | {title, culprit, count, lastSeen}'
+```
+
+Or use WebFetch:
+```
+URL: https://sentry.io/api/0/projects/david-stephens-1q/agency-os-backend/issues/
+Header: Authorization: Bearer <SENTRY_AUTH_TOKEN from config/RAILWAY_ENV_VARS.txt>
+```
+
+### What Sentry Captures
+
+| Component | What's tracked |
+|-----------|---------------|
+| **API (FastAPI)** | All exceptions, 500 errors, request context |
+| **Prefect Worker** | Flow failures, task errors |
+| **Integrations** | Apollo/Resend/etc API failures with context |
+| **Frontend** | JavaScript errors, user actions before crash |
+
+### Sentry Dashboard
+
+- **Issues:** https://david-stephens-1q.sentry.io/issues/
+- **Project Settings:** https://david-stephens-1q.sentry.io/settings/projects/agency-os-backend/
+
+### Adding Custom Error Tracking
+
+For business logic errors that don't throw exceptions:
+
+```python
+from src.integrations.sentry_utils import capture_business_error
+
+# Example: Lead score anomaly
+if lead.score > 100:
+    capture_business_error(
+        "scoring_anomaly",
+        f"Lead score exceeded maximum: {lead.score}",
+        context={"lead_id": str(lead.id), "score": lead.score}
+    )
+```
+
+---
+
+## CI/CD Pipeline
+
+### What Runs on Every PR/Push
+
+| Job | Tool | What it checks |
+|-----|------|----------------|
+| `backend-lint` | Ruff | Code style, imports, common bugs |
+| `backend-typecheck` | MyPy | Type annotations |
+| `backend-test` | Pytest | Unit/integration tests |
+| `frontend-check` | ESLint + TSC | Lint + types + build |
+
+### Auto-Deploy on Main
+
+When code is merged to `main`:
+1. All checks must pass
+2. Railway automatically deploys `agency-os` service
+3. Vercel automatically deploys frontend (configured separately)
+
+### GitHub Secrets Required
+
+Add these in GitHub repo → Settings → Secrets → Actions:
+
+| Secret | Where to get it |
+|--------|-----------------|
+| `RAILWAY_TOKEN` | https://railway.app/account/tokens → Create token |
+
+### Running Checks Locally
+
+```bash
+# Lint
+ruff check src/
+
+# Format
+ruff format src/
+
+# Type check
+mypy src/ --ignore-missing-imports
+
+# Tests
+pytest tests/ -v
+```
+
+### Workflow File
+
+`.github/workflows/ci.yml` - edit to add/remove checks

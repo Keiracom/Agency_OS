@@ -14,6 +14,7 @@ RULES APPLIED:
 from typing import Any
 
 import resend
+import sentry_sdk
 
 from src.config.settings import settings
 from src.exceptions import APIError, IntegrationError
@@ -100,6 +101,12 @@ class ResendClient:
             }
 
         except Exception as e:
+            sentry_sdk.set_context("resend_email", {
+                "to": to_email,
+                "subject": subject[:50],
+                "from": from_email,
+            })
+            sentry_sdk.capture_exception(e)
             raise APIError(
                 service="resend",
                 status_code=500,

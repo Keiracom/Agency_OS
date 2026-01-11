@@ -129,6 +129,7 @@ class Settings(BaseSettings):
 
     # === Sentry (Error Tracking) ===
     sentry_dsn: str = Field(default="", description="Sentry DSN for error tracking")
+    sentry_auth_token: str = Field(default="", description="Sentry auth token for API access")
 
     # === Development ===
     ngrok_authtoken: str = Field(default="", description="ngrok auth token for local webhooks")

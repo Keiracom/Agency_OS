@@ -748,7 +748,7 @@ async def check_budget(client_id: str) -> bool:
 - SUPABASE_URL, SUPABASE_KEY, SUPABASE_JWT_SECRET
 - REDIS_URL
 - ANTHROPIC_API_KEY
-- PREFECT_API_URL, PREFECT_API_KEY
+- PREFECT_API_URL (self-hosted on Railway, no API key needed)
 - Integration keys (Apollo, Resend, Twilio, etc.)
 
 **Vercel (Frontend):**

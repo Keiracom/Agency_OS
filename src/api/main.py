@@ -20,6 +20,11 @@ from contextlib import asynccontextmanager
 from typing import Any
 from uuid import UUID
 
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
 from fastapi import FastAPI, Request, status
 from sqlalchemy import text
 from fastapi.encoders import jsonable_encoder
@@ -40,6 +45,29 @@ from src.exceptions import (
 )
 from src.integrations.redis import close_redis, get_redis
 from src.integrations.supabase import cleanup as close_db, get_db_session as get_async_session
+
+# ============================================
+# Sentry Error Tracking
+# ============================================
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.ENV,
+        traces_sample_rate=0.1,  # 10% of requests for performance monitoring
+        profiles_sample_rate=0.1,  # 10% for profiling
+        integrations=[
+            FastApiIntegration(transaction_style="endpoint"),
+            StarletteIntegration(transaction_style="endpoint"),
+            SqlalchemyIntegration(),
+        ],
+        # Don't send PII by default
+        send_default_pii=False,
+        # Attach request data for debugging
+        attach_stacktrace=True,
+        # Filter out health checks from performance monitoring
+        traces_sampler=lambda ctx: 0 if ctx.get("transaction_context", {}).get("name", "").endswith("/health") else 0.1,
+    )
 
 # Configure logging
 logging.basicConfig(
@@ -273,6 +301,8 @@ async def ai_spend_limit_error_handler(request: Request, exc: AISpendLimitError)
 async def agency_os_error_handler(request: Request, exc: AgencyOSError):
     """Handle all other AgencyOS errors."""
     logger.error(f"AgencyOSError: {exc}")
+    # Capture in Sentry with context
+    sentry_sdk.capture_exception(exc)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
@@ -286,6 +316,8 @@ async def agency_os_error_handler(request: Request, exc: AgencyOSError):
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle unexpected exceptions."""
     logger.exception(f"Unhandled exception: {exc}")
+    # Capture in Sentry with full context
+    sentry_sdk.capture_exception(exc)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={

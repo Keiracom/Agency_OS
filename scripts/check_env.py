@@ -50,8 +50,7 @@ ENV_VARS = [
     EnvVar("SUPABASE_SERVICE_KEY", "Admin API access", "critical", "Infrastructure", ""),
     EnvVar("DATABASE_URL", "PostgreSQL connection (port 6543)", "critical", "Infrastructure", ""),
     EnvVar("REDIS_URL", "Caching layer", "critical", "Infrastructure", "https://upstash.com"),
-    EnvVar("PREFECT_API_URL", "Workflow orchestration", "critical", "Infrastructure", "https://app.prefect.cloud"),
-    EnvVar("PREFECT_API_KEY", "Prefect auth", "critical", "Infrastructure", ""),
+    EnvVar("PREFECT_API_URL", "Workflow orchestration (self-hosted)", "critical", "Infrastructure", "https://prefect-server-production-f9b1.up.railway.app"),
     
     # AI
     EnvVar("ANTHROPIC_API_KEY", "Claude AI for ICP/messaging", "critical", "AI", "https://console.anthropic.com"),

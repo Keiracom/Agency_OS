@@ -19,12 +19,30 @@ import signal
 import sys
 from typing import Any
 
+import sentry_sdk
+from sentry_sdk.integrations.asyncio import AsyncioIntegration
+
 from prefect import get_client
 from sqlalchemy import text
 from prefect.agent import PrefectAgent
 from prefect.settings import PREFECT_API_URL
 
 from src.config.settings import settings
+
+# ============================================
+# Sentry Error Tracking (Worker)
+# ============================================
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.ENV,
+        traces_sample_rate=0.1,
+        integrations=[
+            AsyncioIntegration(),
+        ],
+        attach_stacktrace=True,
+    )
 from src.integrations.redis import close_redis, get_redis
 from src.integrations.supabase import cleanup as close_db, get_db_session as get_async_session
 
@@ -137,10 +155,12 @@ class AgencyOSWorker:
                         break
                     except Exception as e:
                         logger.error(f"Error polling for work: {e}")
+                        sentry_sdk.capture_exception(e)
                         await asyncio.sleep(10)
 
         except Exception as e:
             logger.error(f"Worker error: {e}")
+            sentry_sdk.capture_exception(e)
             raise
         finally:
             await self.shutdown()

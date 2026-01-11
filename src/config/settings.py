@@ -14,7 +14,7 @@ RULES APPLIED:
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, computed_field
+from pydantic import AliasChoices, Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -61,7 +61,11 @@ class Settings(BaseSettings):
 
     # === Supabase ===
     supabase_url: str = Field(default="", description="Supabase project URL")
-    supabase_key: str = Field(default="", description="Supabase anon/public key")
+    supabase_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("SUPABASE_KEY", "SUPABASE_ANON_KEY"),
+        description="Supabase anon/public key (accepts SUPABASE_KEY or SUPABASE_ANON_KEY)"
+    )
     supabase_service_key: str = Field(default="", description="Supabase service role key")
     supabase_jwt_secret: str = Field(default="", description="Supabase JWT secret for token verification")
 
@@ -123,6 +127,15 @@ class Settings(BaseSettings):
     # === Calendar/Meetings ===
     calcom_api_key: str = Field(default="", description="Cal.com API key")
     calendly_api_key: str = Field(default="", description="Calendly API key")
+
+    # === Australian DNCR (Do Not Call Register) ===
+    dncr_api_key: str = Field(default="", description="ACMA DNCR API key")
+    dncr_api_url: str = Field(
+        default="https://api.dncr.gov.au/v1",
+        description="DNCR API URL"
+    )
+    dncr_account_id: str = Field(default="", description="DNCR Account ID")
+    dncr_cache_ttl_hours: int = Field(default=24, description="Hours to cache DNCR results")
 
     # === Web Search (Phase 12B) ===
     serper_api_key: str = Field(default="", description="Serper.dev Google Search API key")

@@ -1,14 +1,16 @@
 """
 FILE: src/orchestration/flows/outreach_flow.py
 PURPOSE: Hourly outreach flow with JIT validation and multi-channel execution
-PHASE: 5 (Orchestration)
+PHASE: 5 (Orchestration), Unipile Migration
 TASK: ORC-004
 DEPENDENCIES:
   - src/integrations/supabase.py
+  - src/integrations/unipile.py (LinkedIn - migrated from heyreach.py)
   - src/engines/content.py
   - src/engines/email.py
   - src/engines/sms.py
-  - src/engines/linkedin.py
+  - src/engines/linkedin.py (uses Unipile, not HeyReach)
+  - src/engines/timing.py (humanized delays for LinkedIn)
   - src/engines/voice.py
   - src/engines/mail.py
   - src/engines/allocator.py
@@ -22,6 +24,11 @@ RULES APPLIED:
   - Rule 13: JIT validation before every outreach (client, campaign, lead status)
   - Rule 14: Soft deletes only
   - Rule 17: Resource-level rate limits via Allocator
+UNIPILE MIGRATION:
+  - LinkedIn now uses Unipile API (70-85% cost reduction vs HeyReach)
+  - Uses account_id instead of seat_id for LinkedIn resources
+  - TimingEngine provides humanized delays (8-45 min between actions)
+  - Higher rate limits supported (80-100/day configurable in settings)
 """
 
 import logging
@@ -360,16 +367,20 @@ async def send_linkedin_outreach_task(
     lead_id: str, campaign_id: str, resource: str, permission_mode: str
 ) -> dict[str, Any]:
     """
-    Send LinkedIn outreach to a lead.
+    Send LinkedIn outreach to a lead via Unipile.
 
     Args:
         lead_id: Lead UUID string
         campaign_id: Campaign UUID string
-        resource: LinkedIn seat ID
+        resource: Unipile account ID (migrated from HeyReach seat ID)
         permission_mode: Permission mode
 
     Returns:
         Dict with send result
+
+    Note: Uses Unipile API (migrated from HeyReach) with timing-aware sending.
+    The TimingEngine provides humanized delays, but those are applied at the
+    queue/scheduling level, not during immediate sends.
     """
     async with get_db_session() as db:
         content_engine = get_content_engine()
@@ -379,7 +390,7 @@ async def send_linkedin_outreach_task(
         lead_uuid = UUID(lead_id)
         campaign_uuid = UUID(campaign_id)
 
-        # Check rate limit
+        # Check rate limit (now uses configurable limits from settings)
         quota_result = await allocator_engine.check_and_consume_quota(
             channel=ChannelType.LINKEDIN,
             resource_id=resource,
@@ -409,21 +420,24 @@ async def send_linkedin_outreach_task(
                 "error": f"Content generation failed: {content_result.error}",
             }
 
-        # Send connection request
+        # Send connection request via Unipile (migrated from HeyReach)
+        # Note: account_id is the Unipile account ID (replaced seat_id)
         send_result = await linkedin_engine.send_connection_request(
             db=db,
             lead_id=lead_uuid,
+            campaign_id=campaign_uuid,
             message=content_result.data["message"],
-            seat_id=resource,
+            account_id=resource,
         )
 
         if send_result.success:
-            logger.info(f"LinkedIn connection request sent to lead {lead_id}")
+            logger.info(f"LinkedIn connection request sent to lead {lead_id} via Unipile")
 
         return {
             "lead_id": lead_id,
             "channel": "linkedin",
             "success": send_result.success,
+            "provider_id": send_result.data.get("provider_id") if send_result.success else None,
             "error": send_result.error if not send_result.success else None,
         }
 
@@ -683,3 +697,9 @@ async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
 # [x] All functions have type hints
 # [x] All functions have docstrings
 # [x] Returns structured dict results
+#
+# UNIPILE MIGRATION:
+# [x] LinkedIn uses account_id instead of seat_id
+# [x] LinkedInEngine now uses Unipile client (not HeyReach)
+# [x] TimingEngine available for humanized delays (queue-based scheduling)
+# [x] Higher rate limits supported (80-100/day configurable)

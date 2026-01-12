@@ -1,16 +1,17 @@
 """
 FILE: src/api/routes/webhooks.py
-PURPOSE: Inbound webhook routes for Postmark, Twilio, HeyReach, Vapi, and Email Providers
-PHASE: 7 (API Routes), Phase 17 (Vapi Voice), Phase 24C (Email Engagement)
+PURPOSE: Inbound webhook routes for Postmark, Twilio, Unipile, Vapi, and Email Providers
+PHASE: 7 (API Routes), Phase 17 (Vapi Voice), Phase 24C (Email Engagement), Unipile Migration
 TASK: API-006, CRED-007, ENGAGE-002
 DEPENDENCIES:
   - src/engines/closer.py
   - src/engines/voice.py
   - src/integrations/postmark.py
   - src/integrations/twilio.py
-  - src/integrations/heyreach.py
+  - src/integrations/unipile.py (migrated from heyreach.py)
   - src/integrations/vapi.py
   - src/services/email_events_service.py
+  - src/services/linkedin_connection_service.py (for account webhooks)
   - src/models/lead.py
   - src/models/activity.py
 RULES APPLIED:
@@ -35,7 +36,7 @@ from src.exceptions import ResourceNotFoundError, WebhookError
 from src.integrations.postmark import get_postmark_client
 from src.api.dependencies import get_db_session
 from src.integrations.twilio import get_twilio_client
-from src.integrations.heyreach import get_heyreach_client
+from src.integrations.unipile import get_unipile_client
 from src.engines.voice import get_voice_engine
 from src.models.base import ChannelType
 from src.models.lead import Lead
@@ -46,6 +47,7 @@ from src.services.email_events_service import (
     parse_salesforge_webhook,
     parse_resend_webhook,
 )
+from src.services.linkedin_connection_service import linkedin_connection_service
 
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -649,23 +651,24 @@ async def twilio_status_webhook(
 
 
 # ============================================
-# HeyReach Webhooks
+# Unipile Webhooks (LinkedIn - replaces HeyReach)
 # ============================================
 
 
-@router.post("/heyreach/inbound")
-async def heyreach_inbound_webhook(
+@router.post("/unipile/account")
+async def unipile_account_webhook(
     request: Request,
     db: AsyncSession = Depends(get_db_session),
 ):
     """
-    Handle inbound LinkedIn replies from HeyReach.
+    Handle Unipile account connection webhooks.
 
-    Webhook-first architecture (Rule 20). This is the primary method
-    for processing LinkedIn replies.
+    Called when:
+    - User completes LinkedIn auth via hosted flow (CREATION_SUCCESS)
+    - Account is disconnected (DISCONNECTED)
+    - Connection fails (CREATION_FAILED)
 
-    NOTE: HeyReach webhook format is vendor-specific. Adjust parsing
-    based on actual webhook payload structure.
+    Webhook-first architecture (Rule 20).
 
     Args:
         request: FastAPI request
@@ -674,21 +677,75 @@ async def heyreach_inbound_webhook(
     Returns:
         Success response
     """
-    payload = await request.json()
-
-    # NOTE: HeyReach doesn't provide signature verification
-    # Consider IP allowlisting in production
-
     try:
-        # Parse webhook payload
-        # NOTE: Adjust field names based on actual HeyReach webhook format
-        event_type = payload.get("event_type")
-        if event_type != "message_received":
-            return {"status": "ignored", "reason": "not_a_reply"}
+        payload = await request.json()
 
-        linkedin_url = payload.get("profile_url")
-        message = payload.get("message")
-        message_id = payload.get("message_id")
+        # Parse and validate webhook
+        unipile = get_unipile_client()
+        parsed = unipile.parse_webhook(payload)
+
+        # Handle account connection events
+        result = await linkedin_connection_service.handle_connection_webhook(
+            db=db,
+            payload=parsed,
+        )
+
+        return result
+
+    except Exception as e:
+        # Return 200 to prevent Unipile retries
+        return {
+            "status": "error",
+            "error": str(e),
+        }
+
+
+@router.post("/unipile/message")
+async def unipile_message_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Handle inbound LinkedIn messages/replies from Unipile.
+
+    Webhook-first architecture (Rule 20). This is the primary method
+    for processing LinkedIn replies.
+
+    Args:
+        request: FastAPI request
+        db: Database session
+
+    Returns:
+        Success response
+    """
+    try:
+        payload = await request.json()
+
+        # Parse webhook
+        unipile = get_unipile_client()
+        parsed = unipile.parse_webhook(payload)
+
+        # Check event type
+        event_type = parsed.get("event") or parsed.get("type")
+        if event_type not in ("NEW_MESSAGE", "message.new", "message_received"):
+            return {"status": "ignored", "reason": "not_a_message_event"}
+
+        # Extract message data
+        message_data = parsed.get("data", {})
+        linkedin_url = (
+            message_data.get("sender_id")
+            or message_data.get("sender", {}).get("identifier")
+            or parsed.get("profile_url")
+        )
+        message = (
+            message_data.get("text")
+            or message_data.get("body")
+            or parsed.get("message")
+        )
+        message_id = (
+            message_data.get("id")
+            or parsed.get("message_id")
+        )
 
         if not linkedin_url:
             return {"status": "ignored", "reason": "no_linkedin_url"}
@@ -715,15 +772,16 @@ async def heyreach_inbound_webhook(
             provider_message_id=message_id,
             metadata={
                 "linkedin_url": linkedin_url,
-                "sender_name": payload.get("sender_name"),
-                "seat_id": payload.get("seat_id"),
-                "conversation_id": payload.get("conversation_id"),
+                "sender_name": message_data.get("sender", {}).get("name"),
+                "account_id": parsed.get("account_id"),
+                "conversation_id": message_data.get("conversation_id"),
+                "provider": "unipile",
             },
         )
 
         if not result.success:
             raise WebhookError(
-                url="/webhooks/heyreach/inbound",
+                url="/webhooks/unipile/message",
                 message=f"Reply processing failed: {result.error}",
             )
 
@@ -736,11 +794,26 @@ async def heyreach_inbound_webhook(
         }
 
     except Exception as e:
-        # Return 200 to prevent HeyReach retries
+        # Return 200 to prevent Unipile retries
         return {
             "status": "error",
             "error": str(e),
         }
+
+
+# Legacy HeyReach webhook (redirects to Unipile handler for transition period)
+@router.post("/heyreach/inbound")
+async def heyreach_inbound_webhook_legacy(
+    request: Request,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Legacy HeyReach webhook endpoint.
+
+    Redirects to Unipile message handler for backwards compatibility.
+    Will be removed after full migration.
+    """
+    return await unipile_message_webhook(request, db)
 
 
 # ============================================
@@ -883,74 +956,80 @@ async def smartlead_events_webhook(
         if not parsed["event_type"]:
             return {"status": "ignored", "reason": "unknown_event_type"}
 
-        # Get email events service
-        email_service = EmailEventsService()
+        # Initialize service with database session
+        email_service = EmailEventsService(db)
 
         # Find activity by provider message ID
         provider_id = parsed["provider_message_id"]
         if not provider_id:
             return {"status": "ignored", "reason": "no_message_id"}
 
-        activity = await email_service.find_activity_by_provider_id(db, provider_id)
+        activity = await email_service.find_activity_by_provider_id(provider_id)
         if not activity:
             return {"status": "ignored", "reason": "activity_not_found"}
 
         # Process based on event type
         event_type = parsed["event_type"]
 
-        if event_type == "open":
+        if event_type == "opened":
             await email_service.record_open(
-                db=db,
                 activity_id=activity.id,
-                user_agent=parsed.get("user_agent"),
-                ip_address=parsed.get("ip_address"),
-                metadata=parsed.get("metadata"),
+                event_at=parsed.get("event_at"),
+                device_info=parsed.get("device_info"),
+                geo_info=parsed.get("geo_info"),
+                provider="smartlead",
+                provider_event_id=parsed.get("provider_event_id"),
             )
 
-        elif event_type == "click":
+        elif event_type == "clicked":
             await email_service.record_click(
-                db=db,
                 activity_id=activity.id,
-                clicked_url=parsed.get("link_url", ""),
-                user_agent=parsed.get("user_agent"),
-                ip_address=parsed.get("ip_address"),
-                metadata=parsed.get("metadata"),
+                clicked_url=parsed.get("clicked_url", ""),
+                event_at=parsed.get("event_at"),
+                device_info=parsed.get("device_info"),
+                geo_info=parsed.get("geo_info"),
+                provider="smartlead",
+                provider_event_id=parsed.get("provider_event_id"),
             )
 
-        elif event_type == "bounce":
+        elif event_type == "bounced":
             await email_service.record_bounce(
-                db=db,
                 activity_id=activity.id,
-                bounce_type=parsed.get("bounce_type", "unknown"),
-                bounce_reason=parsed.get("bounce_reason"),
+                bounce_type=parsed.get("bounce_type", "hard"),
+                event_at=parsed.get("event_at"),
+                provider="smartlead",
+                provider_event_id=parsed.get("provider_event_id"),
+                raw_payload=parsed.get("raw"),
             )
 
-        elif event_type == "unsubscribe":
+        elif event_type == "unsubscribed":
             await email_service.record_unsubscribe(
-                db=db,
                 activity_id=activity.id,
-                unsubscribe_reason=parsed.get("reason"),
+                event_at=parsed.get("event_at"),
+                provider="smartlead",
+                provider_event_id=parsed.get("provider_event_id"),
             )
 
-        elif event_type == "complaint":
+        elif event_type == "complained":
             await email_service.record_complaint(
-                db=db,
                 activity_id=activity.id,
-                complaint_type=parsed.get("complaint_type"),
+                event_at=parsed.get("event_at"),
+                provider="smartlead",
+                provider_event_id=parsed.get("provider_event_id"),
             )
 
-        elif event_type == "reply":
+        elif event_type == "replied":
             # Forward to closer engine for intent classification
-            lead = await find_lead_by_email(db, parsed.get("from_email", ""))
+            lead = await find_lead_by_email(db, parsed.get("lead_email", ""))
             if lead:
                 closer = get_closer_engine()
                 await closer.process_reply(
                     db=db,
                     lead_id=lead.id,
-                    message=parsed.get("reply_text", ""),
+                    message=parsed.get("raw", {}).get("reply_text", ""),
                     channel=ChannelType.EMAIL,
                     provider_message_id=provider_id,
-                    metadata=parsed.get("metadata"),
+                    metadata=parsed.get("raw"),
                 )
 
         return {
@@ -1041,66 +1120,80 @@ async def salesforge_events_webhook(
         if not parsed["event_type"]:
             return {"status": "ignored", "reason": "unknown_event_type"}
 
-        email_service = EmailEventsService()
+        # Initialize service with database session
+        email_service = EmailEventsService(db)
 
         # Find activity by provider message ID
         provider_id = parsed["provider_message_id"]
         if not provider_id:
             return {"status": "ignored", "reason": "no_message_id"}
 
-        activity = await email_service.find_activity_by_provider_id(db, provider_id)
+        activity = await email_service.find_activity_by_provider_id(provider_id)
         if not activity:
             return {"status": "ignored", "reason": "activity_not_found"}
 
         # Process based on event type
         event_type = parsed["event_type"]
 
-        if event_type == "open":
+        if event_type == "opened":
             await email_service.record_open(
-                db=db,
                 activity_id=activity.id,
-                user_agent=parsed.get("user_agent"),
-                ip_address=parsed.get("ip_address"),
-                metadata=parsed.get("metadata"),
+                event_at=parsed.get("event_at"),
+                device_info=parsed.get("device_info"),
+                geo_info=parsed.get("geo_info"),
+                provider="salesforge",
+                provider_event_id=parsed.get("provider_event_id"),
             )
 
-        elif event_type == "click":
+        elif event_type == "clicked":
             await email_service.record_click(
-                db=db,
                 activity_id=activity.id,
-                clicked_url=parsed.get("link_url", ""),
-                user_agent=parsed.get("user_agent"),
-                ip_address=parsed.get("ip_address"),
-                metadata=parsed.get("metadata"),
+                clicked_url=parsed.get("clicked_url", ""),
+                event_at=parsed.get("event_at"),
+                device_info=parsed.get("device_info"),
+                geo_info=parsed.get("geo_info"),
+                provider="salesforge",
+                provider_event_id=parsed.get("provider_event_id"),
             )
 
-        elif event_type == "bounce":
+        elif event_type == "bounced":
             await email_service.record_bounce(
-                db=db,
                 activity_id=activity.id,
-                bounce_type=parsed.get("bounce_type", "unknown"),
-                bounce_reason=parsed.get("bounce_reason"),
+                bounce_type=parsed.get("bounce_type", "hard"),
+                event_at=parsed.get("event_at"),
+                provider="salesforge",
+                provider_event_id=parsed.get("provider_event_id"),
+                raw_payload=parsed.get("raw"),
             )
 
-        elif event_type == "unsubscribe":
+        elif event_type == "unsubscribed":
             await email_service.record_unsubscribe(
-                db=db,
                 activity_id=activity.id,
-                unsubscribe_reason=parsed.get("reason"),
+                event_at=parsed.get("event_at"),
+                provider="salesforge",
+                provider_event_id=parsed.get("provider_event_id"),
             )
 
-        elif event_type == "reply":
+        elif event_type == "complained":
+            await email_service.record_complaint(
+                activity_id=activity.id,
+                event_at=parsed.get("event_at"),
+                provider="salesforge",
+                provider_event_id=parsed.get("provider_event_id"),
+            )
+
+        elif event_type == "replied":
             # Forward to closer engine
-            lead = await find_lead_by_email(db, parsed.get("from_email", ""))
+            lead = await find_lead_by_email(db, parsed.get("lead_email", ""))
             if lead:
                 closer = get_closer_engine()
                 await closer.process_reply(
                     db=db,
                     lead_id=lead.id,
-                    message=parsed.get("reply_text", ""),
+                    message=parsed.get("raw", {}).get("reply_text", ""),
                     channel=ChannelType.EMAIL,
                     provider_message_id=provider_id,
-                    metadata=parsed.get("metadata"),
+                    metadata=parsed.get("raw"),
                 )
 
         return {
@@ -1207,61 +1300,68 @@ async def resend_events_webhook(
         if not parsed["event_type"]:
             return {"status": "ignored", "reason": "unknown_event_type"}
 
-        email_service = EmailEventsService()
+        # Initialize service with database session
+        email_service = EmailEventsService(db)
 
         # Find activity by provider message ID
         provider_id = parsed["provider_message_id"]
         if not provider_id:
             return {"status": "ignored", "reason": "no_message_id"}
 
-        activity = await email_service.find_activity_by_provider_id(db, provider_id)
+        activity = await email_service.find_activity_by_provider_id(provider_id)
         if not activity:
             return {"status": "ignored", "reason": "activity_not_found"}
 
         # Process based on event type
         event_type = parsed["event_type"]
 
-        if event_type == "open":
+        if event_type == "opened":
             await email_service.record_open(
-                db=db,
                 activity_id=activity.id,
-                user_agent=parsed.get("user_agent"),
-                ip_address=parsed.get("ip_address"),
-                metadata=parsed.get("metadata"),
+                event_at=parsed.get("event_at"),
+                device_info=parsed.get("device_info"),
+                geo_info=parsed.get("geo_info"),
+                provider="resend",
+                provider_event_id=parsed.get("provider_event_id"),
             )
 
-        elif event_type == "click":
+        elif event_type == "clicked":
             await email_service.record_click(
-                db=db,
                 activity_id=activity.id,
-                clicked_url=parsed.get("link_url", ""),
-                user_agent=parsed.get("user_agent"),
-                ip_address=parsed.get("ip_address"),
-                metadata=parsed.get("metadata"),
+                clicked_url=parsed.get("clicked_url", ""),
+                event_at=parsed.get("event_at"),
+                device_info=parsed.get("device_info"),
+                geo_info=parsed.get("geo_info"),
+                provider="resend",
+                provider_event_id=parsed.get("provider_event_id"),
             )
 
-        elif event_type == "bounce":
+        elif event_type == "bounced":
             await email_service.record_bounce(
-                db=db,
                 activity_id=activity.id,
-                bounce_type=parsed.get("bounce_type", "unknown"),
-                bounce_reason=parsed.get("bounce_reason"),
+                bounce_type=parsed.get("bounce_type", "hard"),
+                event_at=parsed.get("event_at"),
+                provider="resend",
+                provider_event_id=parsed.get("provider_event_id"),
+                raw_payload=parsed.get("raw"),
             )
 
-        elif event_type == "complaint":
+        elif event_type == "complained":
             await email_service.record_complaint(
-                db=db,
                 activity_id=activity.id,
-                complaint_type="spam",
+                event_at=parsed.get("event_at"),
+                provider="resend",
+                provider_event_id=parsed.get("provider_event_id"),
             )
 
         elif event_type == "delivered":
             # Just record the event, don't need special handling
             await email_service.record_event(
-                db=db,
                 activity_id=activity.id,
                 event_type="delivered",
-                metadata=parsed.get("metadata"),
+                event_at=parsed.get("event_at"),
+                provider="resend",
+                provider_event_id=parsed.get("provider_event_id"),
             )
 
         return {
@@ -1560,10 +1660,139 @@ async def _handle_calendly_webhook(db, payload: dict, meeting_service) -> dict:
 
 
 async def _handle_calcom_webhook(db, payload: dict, meeting_service) -> dict:
-    """Handle Cal.com webhook events."""
-    # Cal.com has similar structure to Calendly
-    # Implementation would be similar
-    return {"status": "ignored", "reason": "calcom_not_fully_implemented"}
+    """
+    Handle Cal.com webhook events.
+
+    Cal.com webhook structure:
+    - triggerEvent: BOOKING_CREATED, BOOKING_CANCELLED, BOOKING_RESCHEDULED
+    - payload: Contains booking data with uid, startTime, endTime, attendees, metadata
+    """
+    from datetime import datetime
+    from uuid import UUID
+
+    # Cal.com uses triggerEvent instead of event
+    trigger_event = payload.get("triggerEvent", "")
+    booking_payload = payload.get("payload", {})
+
+    # Get calendar event ID (Cal.com uses 'uid')
+    calendar_event_id = booking_payload.get("uid") or booking_payload.get("id")
+    if not calendar_event_id:
+        return {"status": "ignored", "reason": "no_calendar_id"}
+
+    # Try to find existing meeting
+    meeting = await meeting_service.get_by_calendar_id(calendar_event_id)
+
+    if trigger_event == "BOOKING_CREATED" and not meeting:
+        # New booking - extract client_id and lead_id
+        # Cal.com stores custom data in metadata or responses
+        metadata = booking_payload.get("metadata", {}) or {}
+        responses = booking_payload.get("responses", {}) or {}
+
+        client_id_str = (
+            metadata.get("client_id")
+            or responses.get("client_id")
+            or booking_payload.get("client_id")
+        )
+        lead_id_str = (
+            metadata.get("lead_id")
+            or responses.get("lead_id")
+            or booking_payload.get("lead_id")
+        )
+
+        if not client_id_str or not lead_id_str:
+            # Try to find lead by attendee email
+            attendees = booking_payload.get("attendees", [])
+            if attendees and len(attendees) > 0:
+                attendee_email = attendees[0].get("email")
+                if attendee_email:
+                    from sqlalchemy import text
+                    lead_query = await db.execute(
+                        text("SELECT id, client_id FROM leads WHERE email = :email AND deleted_at IS NULL LIMIT 1"),
+                        {"email": attendee_email}
+                    )
+                    lead_row = lead_query.fetchone()
+                    if lead_row:
+                        lead_id_str = str(lead_row.id)
+                        client_id_str = str(lead_row.client_id)
+
+        if client_id_str and lead_id_str:
+            # Parse start/end times
+            start_time_str = booking_payload.get("startTime")
+            end_time_str = booking_payload.get("endTime")
+
+            if not start_time_str:
+                return {"status": "ignored", "reason": "no_start_time"}
+
+            # Parse ISO datetime (handle both Z and +00:00 formats)
+            start_time = datetime.fromisoformat(start_time_str.replace("Z", "+00:00"))
+
+            # Calculate duration from start/end if available
+            duration_minutes = 30  # Default
+            if end_time_str:
+                end_time = datetime.fromisoformat(end_time_str.replace("Z", "+00:00"))
+                duration_minutes = int((end_time - start_time).total_seconds() / 60)
+
+            # Get meeting link (Cal.com may provide it in different fields)
+            meeting_link = (
+                booking_payload.get("meetingUrl")
+                or booking_payload.get("videoCallUrl")
+                or booking_payload.get("location")
+            )
+            if isinstance(meeting_link, dict):
+                meeting_link = meeting_link.get("link") or meeting_link.get("url")
+
+            # Determine meeting type from event type name if available
+            event_type = booking_payload.get("eventType", {})
+            event_type_name = event_type.get("slug", "") if isinstance(event_type, dict) else ""
+            meeting_type = "discovery"  # Default
+            if "demo" in event_type_name.lower():
+                meeting_type = "demo"
+            elif "follow" in event_type_name.lower():
+                meeting_type = "follow_up"
+            elif "close" in event_type_name.lower():
+                meeting_type = "close"
+
+            meeting = await meeting_service.create(
+                client_id=UUID(client_id_str),
+                lead_id=UUID(lead_id_str),
+                scheduled_at=start_time,
+                duration_minutes=duration_minutes,
+                meeting_type=meeting_type,
+                booked_by="lead",
+                booking_method="calcom",
+                calendar_event_id=calendar_event_id,
+                meeting_link=meeting_link,
+            )
+
+            return {
+                "status": "created",
+                "meeting_id": str(meeting["id"]),
+                "booking_method": "calcom",
+            }
+
+        return {"status": "ignored", "reason": "missing_client_or_lead_id"}
+
+    elif trigger_event == "BOOKING_CANCELLED" and meeting:
+        cancellation_reason = booking_payload.get("cancellationReason", "Cancelled via Cal.com")
+        await meeting_service.cancel(
+            meeting_id=meeting["id"],
+            reason=cancellation_reason,
+        )
+        return {"status": "cancelled", "meeting_id": str(meeting["id"])}
+
+    elif trigger_event == "BOOKING_RESCHEDULED" and meeting:
+        # Get new scheduled time
+        start_time_str = booking_payload.get("startTime")
+        if start_time_str:
+            new_time = datetime.fromisoformat(start_time_str.replace("Z", "+00:00"))
+            await meeting_service.reschedule(
+                meeting_id=meeting["id"],
+                new_scheduled_at=new_time,
+                reason="Rescheduled via Cal.com",
+            )
+            return {"status": "rescheduled", "meeting_id": str(meeting["id"])}
+
+    return {"status": "ignored", "reason": "unhandled_event_or_missing_data"}
 
 
 # ============================================
@@ -1576,7 +1805,9 @@ async def _handle_calcom_webhook(db, payload: dict, meeting_service) -> dict:
 # [x] Postmark spam webhook with unsubscribe handling
 # [x] Twilio inbound webhook with SMS reply handling
 # [x] Twilio status webhook with delivery tracking
-# [x] HeyReach inbound webhook with LinkedIn reply handling
+# [x] Unipile account webhook for connection status (CREATION_SUCCESS/FAILED)
+# [x] Unipile message webhook with LinkedIn reply handling
+# [x] Legacy HeyReach webhook (redirects to Unipile for transition)
 # [x] Vapi webhook with voice call completion handling (Phase 17)
 # [x] Webhook signature verification for Postmark (placeholder)
 # [x] Webhook signature verification for Twilio (HMAC-SHA1)
@@ -1590,6 +1821,7 @@ async def _handle_calcom_webhook(db, payload: dict, meeting_service) -> dict:
 # [x] CRM meeting webhook (Phase 24E)
 # [x] HubSpot/Salesforce/Pipedrive deal parsers
 # [x] Calendly meeting webhook handling
+# [x] Cal.com meeting webhook handling (BOOKING_CREATED/CANCELLED/RESCHEDULED)
 # [x] Soft delete checks in lead queries (Rule 14)
 # [x] Session passed as dependency (Rule 11)
 # [x] Webhook-first architecture (Rule 20)
@@ -1605,3 +1837,8 @@ async def _handle_calcom_webhook(db, payload: dict, meeting_service) -> dict:
 # [x] Signature verification for each provider
 # [x] Open/click/bounce/unsubscribe handling
 # [x] Reply forwarding to Closer engine
+#
+# Unipile Migration:
+# [x] POST /webhooks/unipile/account - Account connection webhooks
+# [x] POST /webhooks/unipile/message - LinkedIn message/reply webhooks
+# [x] POST /webhooks/heyreach/inbound - Legacy redirect (backwards compat)

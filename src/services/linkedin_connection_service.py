@@ -1,11 +1,16 @@
 """
 Contract: src/services/linkedin_connection_service.py
-Purpose: Manage LinkedIn credential storage and HeyReach connection
+Purpose: Manage LinkedIn connection via Unipile hosted auth
 Layer: 3 - services
-Imports: models, integrations, utils
+Imports: models, integrations
 Consumers: API routes
 
-Phase: 24H - LinkedIn Credential Connection
+Phase: Unipile Migration - Hosted Auth (replaces HeyReach)
+
+Key Changes from HeyReach:
+- No credential storage (Unipile handles auth)
+- No 2FA handling (Unipile hosted flow manages this)
+- OAuth-style redirect flow instead of email/password
 """
 
 import logging
@@ -16,197 +21,206 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config.settings import settings
 from src.models.linkedin_credential import LinkedInCredential
-from src.utils.encryption import decrypt_credential, encrypt_credential
-from src.integrations.heyreach import get_heyreach_client
+from src.integrations.unipile import get_unipile_client
 
 logger = logging.getLogger(__name__)
 
 
 class LinkedInConnectionService:
     """
-    Manages LinkedIn credential storage and HeyReach connection.
+    Manages LinkedIn connection via Unipile hosted auth.
 
-    Handles:
-    - Encrypting and storing LinkedIn credentials
-    - Initiating connection to HeyReach
-    - 2FA flow handling
-    - Connection status management
-    - Disconnection
+    Key Benefits over HeyReach:
+    - No credential storage (improved security)
+    - No 2FA handling (Unipile manages this)
+    - Higher rate limits (80-100 vs 17/day)
+    - 70-85% cost reduction
+
+    Flow:
+    1. User clicks "Connect LinkedIn"
+    2. Generate Unipile hosted auth URL
+    3. Redirect user to Unipile
+    4. Unipile sends webhook with account_id
+    5. Store account_id (no credentials!)
     """
 
-    async def start_connection(
+    def __init__(self):
+        """Initialize with Unipile client."""
+        self._unipile = None
+
+    @property
+    def unipile(self):
+        """Get Unipile client lazily."""
+        if self._unipile is None:
+            self._unipile = get_unipile_client()
+        return self._unipile
+
+    async def get_connect_url(
         self,
         db: AsyncSession,
         client_id: UUID,
-        linkedin_email: str,
-        linkedin_password: str,
     ) -> dict:
         """
-        Start LinkedIn connection process.
+        Generate Unipile hosted auth URL for LinkedIn connection.
 
-        1. Encrypt and store credentials
-        2. Call HeyReach API to add sender
-        3. Return status (connected, awaiting_2fa, or error)
+        This replaces the email/password flow. User is redirected to
+        Unipile's hosted login page, which handles all auth including 2FA.
 
         Args:
             db: Database session
             client_id: Client UUID
-            linkedin_email: LinkedIn account email
-            linkedin_password: LinkedIn account password
 
         Returns:
-            Dict with status and relevant data
+            Dict with auth_url for redirect
         """
-        # Encrypt credentials
-        email_encrypted = encrypt_credential(linkedin_email)
-        password_encrypted = encrypt_credential(linkedin_password)
+        # Create or update credential record with pending status
+        credential = await self.get_credential(db, client_id)
 
-        # Check if record exists
-        existing = await self.get_credential(db, client_id)
-
-        if existing:
-            # Update existing record
-            existing.linkedin_email_encrypted = email_encrypted
-            existing.linkedin_password_encrypted = password_encrypted
-            existing.connection_status = "connecting"
-            existing.last_error = None
-            existing.error_count = 0
-            credential = existing
-        else:
-            # Create new record
+        if not credential:
             credential = LinkedInCredential(
                 client_id=client_id,
-                linkedin_email_encrypted=email_encrypted,
-                linkedin_password_encrypted=password_encrypted,
-                connection_status="connecting",
+                connection_status="pending",
+                auth_method="hosted",
             )
             db.add(credential)
+        else:
+            credential.connection_status = "pending"
+            credential.auth_method = "hosted"
+            credential.last_error = None
 
         await db.commit()
         await db.refresh(credential)
 
-        # Attempt HeyReach connection
+        # Determine redirect URLs based on environment
+        frontend_url = settings.ALLOWED_ORIGINS[0] if settings.ALLOWED_ORIGINS else "http://localhost:3000"
+        api_url = "https://agency-os-production.up.railway.app" if settings.is_production else "http://localhost:8000"
+
         try:
-            heyreach = get_heyreach_client()
-            result = await heyreach.add_linkedin_account(
-                email=linkedin_email,
-                password=linkedin_password,
+            # Generate hosted auth URL from Unipile
+            result = await self.unipile.create_hosted_auth_link(
+                providers=["LINKEDIN"],
+                success_redirect_url=f"{frontend_url}/onboarding/linkedin/success",
+                failure_redirect_url=f"{frontend_url}/onboarding/linkedin/failed",
+                notify_url=f"{api_url}/api/v1/webhooks/unipile/account",
+                name=str(client_id),  # Used to match webhook callback
+                expiresOn=24 * 60,  # 24 hours in minutes
             )
 
-            if result.get("requires_2fa"):
-                credential.connection_status = "awaiting_2fa"
-                credential.two_fa_method = result.get("2fa_method", "unknown")
-                credential.two_fa_requested_at = datetime.utcnow()
-                await db.commit()
+            auth_url = result.get("url")
+            if not auth_url:
+                raise ValueError("Failed to generate auth URL from Unipile")
 
-                logger.info(f"LinkedIn 2FA required for client {client_id}")
-                return {
-                    "status": "awaiting_2fa",
-                    "method": result.get("2fa_method"),
-                    "message": "Please enter the verification code sent to you",
-                }
-
-            elif result.get("success"):
-                await self._mark_connected(db, credential, result)
-
-                logger.info(f"LinkedIn connected for client {client_id}")
-                return {
-                    "status": "connected",
-                    "profile_url": result.get("profile_url"),
-                    "profile_name": result.get("profile_name"),
-                }
-
-            else:
-                credential.connection_status = "failed"
-                credential.last_error = result.get("error", "Unknown error")
-                credential.error_count += 1
-                credential.last_error_at = datetime.utcnow()
-                await db.commit()
-
-                logger.warning(
-                    f"LinkedIn connection failed for client {client_id}: {credential.last_error}"
-                )
-                return {
-                    "status": "failed",
-                    "error": result.get("error"),
-                }
+            logger.info(f"Generated Unipile auth URL for client {client_id}")
+            return {
+                "auth_url": auth_url,
+                "status": "pending",
+                "message": "Redirect user to auth_url to connect LinkedIn",
+            }
 
         except Exception as e:
             credential.connection_status = "failed"
             credential.last_error = str(e)
-            credential.error_count += 1
+            credential.error_count = (credential.error_count or 0) + 1
             credential.last_error_at = datetime.utcnow()
             await db.commit()
 
-            logger.exception(f"LinkedIn connection error for client {client_id}")
+            logger.exception(f"Failed to generate Unipile auth URL for client {client_id}")
             raise
 
-    async def submit_2fa_code(
+    async def handle_connection_webhook(
         self,
         db: AsyncSession,
-        client_id: UUID,
-        code: str,
+        payload: dict,
     ) -> dict:
         """
-        Submit 2FA verification code.
+        Handle Unipile account connection webhook.
+
+        Called when user completes LinkedIn auth via Unipile hosted flow.
 
         Args:
             db: Database session
-            client_id: Client UUID
-            code: 2FA verification code
+            payload: Unipile webhook payload
 
         Returns:
-            Dict with status
-
-        Raises:
-            ValueError: If no pending 2FA verification
+            Dict with processing result
         """
-        credential = await self.get_credential(db, client_id)
+        # Extract data from webhook
+        status = payload.get("status")
+        account_id = payload.get("account_id")
+        client_id_str = payload.get("name")  # We passed client_id as name
 
-        if not credential or credential.connection_status != "awaiting_2fa":
-            raise ValueError("No pending 2FA verification")
-
-        # Decrypt credentials to resubmit with 2FA
-        email = decrypt_credential(credential.linkedin_email_encrypted)
-        password = decrypt_credential(credential.linkedin_password_encrypted)
+        if not client_id_str:
+            logger.warning("Unipile webhook missing client_id (name field)")
+            return {"status": "ignored", "reason": "missing_client_id"}
 
         try:
-            heyreach = get_heyreach_client()
-            result = await heyreach.verify_2fa(
-                email=email,
-                password=password,
-                code=code,
-            )
+            client_id = UUID(client_id_str)
+        except ValueError:
+            logger.warning(f"Invalid client_id in Unipile webhook: {client_id_str}")
+            return {"status": "ignored", "reason": "invalid_client_id"}
 
-            if result.get("success"):
-                await self._mark_connected(db, credential, result)
+        # Get credential record
+        credential = await self.get_credential(db, client_id)
+        if not credential:
+            logger.warning(f"No credential record for client {client_id}")
+            return {"status": "ignored", "reason": "credential_not_found"}
 
-                logger.info(f"LinkedIn 2FA verified for client {client_id}")
-                return {"status": "connected"}
+        if status == "CREATION_SUCCESS":
+            # Get account details from Unipile
+            try:
+                account_info = await self.unipile.get_account(account_id)
 
-            else:
-                credential.last_error = result.get("error", "Invalid code")
-                credential.error_count += 1
-                credential.last_error_at = datetime.utcnow()
+                credential.connection_status = "connected"
+                credential.unipile_account_id = account_id
+                credential.auth_method = "hosted"
+                credential.linkedin_profile_url = account_info.get("identifier")
+                credential.linkedin_profile_name = account_info.get("name")
+                credential.connected_at = datetime.utcnow()
+                credential.last_error = None
+                credential.error_count = 0
+
                 await db.commit()
 
-                logger.warning(
-                    f"LinkedIn 2FA verification failed for client {client_id}"
-                )
+                logger.info(f"LinkedIn connected via Unipile for client {client_id}")
                 return {
-                    "status": "failed",
-                    "error": result.get("error", "Invalid verification code"),
+                    "status": "connected",
+                    "account_id": account_id,
+                    "client_id": str(client_id),
                 }
 
-        except Exception as e:
-            credential.last_error = str(e)
-            credential.error_count += 1
+            except Exception as e:
+                logger.exception(f"Failed to get Unipile account details: {e}")
+                # Still mark as connected since webhook said success
+                credential.connection_status = "connected"
+                credential.unipile_account_id = account_id
+                credential.auth_method = "hosted"
+                credential.connected_at = datetime.utcnow()
+                await db.commit()
+
+                return {
+                    "status": "connected",
+                    "account_id": account_id,
+                    "warning": "Could not fetch account details",
+                }
+
+        elif status in ("CREATION_FAILED", "DISCONNECTED"):
+            credential.connection_status = "failed" if status == "CREATION_FAILED" else "disconnected"
+            credential.last_error = payload.get("error") or payload.get("reason") or status
             credential.last_error_at = datetime.utcnow()
             await db.commit()
 
-            logger.exception(f"LinkedIn 2FA error for client {client_id}")
-            raise
+            logger.warning(f"LinkedIn connection {status.lower()} for client {client_id}")
+            return {
+                "status": status.lower(),
+                "client_id": str(client_id),
+                "error": credential.last_error,
+            }
+
+        else:
+            logger.info(f"Unipile webhook with status {status} for client {client_id}")
+            return {"status": "acknowledged", "webhook_status": status}
 
     async def _mark_connected(
         self,
@@ -215,24 +229,22 @@ class LinkedInConnectionService:
         result: dict,
     ) -> None:
         """
-        Mark credential as connected with HeyReach data.
+        Mark credential as connected with Unipile data.
 
         Args:
             db: Database session
             credential: LinkedInCredential instance
-            result: HeyReach API response with connection data
+            result: Unipile API response with connection data
         """
         credential.connection_status = "connected"
-        credential.heyreach_sender_id = result.get("sender_id")
-        credential.heyreach_account_id = result.get("account_id")
-        credential.linkedin_profile_url = result.get("profile_url")
-        credential.linkedin_profile_name = result.get("profile_name")
+        credential.unipile_account_id = result.get("account_id")
+        credential.auth_method = "hosted"
+        credential.linkedin_profile_url = result.get("profile_url") or result.get("identifier")
+        credential.linkedin_profile_name = result.get("profile_name") or result.get("name")
         credential.linkedin_headline = result.get("headline")
         credential.linkedin_connection_count = result.get("connection_count")
         credential.connected_at = datetime.utcnow()
         credential.last_error = None
-        credential.two_fa_method = None
-        credential.two_fa_requested_at = None
         await db.commit()
 
     async def get_credential(
@@ -278,6 +290,7 @@ class LinkedInConnectionService:
 
         return {
             "status": credential.connection_status,
+            "auth_method": credential.auth_method or "hosted",
             "profile_url": credential.linkedin_profile_url,
             "profile_name": credential.linkedin_profile_name,
             "headline": credential.linkedin_headline,
@@ -290,11 +303,6 @@ class LinkedInConnectionService:
             "error": (
                 credential.last_error
                 if credential.connection_status == "failed"
-                else None
-            ),
-            "two_fa_method": (
-                credential.two_fa_method
-                if credential.connection_status == "awaiting_2fa"
                 else None
             ),
         }
@@ -322,48 +330,100 @@ class LinkedInConnectionService:
         if not credential:
             raise ValueError("No LinkedIn connection found")
 
-        # Remove from HeyReach if connected
-        if credential.heyreach_sender_id:
+        # Remove from Unipile if connected
+        if credential.unipile_account_id:
             try:
-                heyreach = get_heyreach_client()
-                await heyreach.remove_sender(credential.heyreach_sender_id)
+                await self.unipile.disconnect_account(credential.unipile_account_id)
                 logger.info(
-                    f"Removed LinkedIn sender {credential.heyreach_sender_id} from HeyReach"
+                    f"Disconnected LinkedIn account {credential.unipile_account_id} from Unipile"
                 )
             except Exception as e:
                 # Log but don't fail - still disconnect locally
-                logger.warning(f"Failed to remove from HeyReach: {e}")
+                logger.warning(f"Failed to disconnect from Unipile: {e}")
 
         credential.connection_status = "disconnected"
-        credential.heyreach_sender_id = None
-        credential.heyreach_account_id = None
+        credential.unipile_account_id = None
         credential.disconnected_at = datetime.utcnow()
         await db.commit()
 
         logger.info(f"LinkedIn disconnected for client {client_id}")
         return {"status": "disconnected"}
 
-    async def get_sender_id(
+    async def get_account_id(
         self,
         db: AsyncSession,
         client_id: UUID,
     ) -> Optional[str]:
         """
-        Get HeyReach sender ID for a connected client.
+        Get Unipile account ID for a connected client.
 
         Args:
             db: Database session
             client_id: Client UUID
 
         Returns:
-            HeyReach sender ID or None if not connected
+            Unipile account ID or None if not connected
         """
         credential = await self.get_credential(db, client_id)
 
         if credential and credential.is_connected:
-            return credential.heyreach_sender_id
+            return credential.unipile_account_id
 
         return None
+
+    async def refresh_account_status(
+        self,
+        db: AsyncSession,
+        client_id: UUID,
+    ) -> dict:
+        """
+        Refresh LinkedIn account status from Unipile.
+
+        Useful to check if account needs re-authentication.
+
+        Args:
+            db: Database session
+            client_id: Client UUID
+
+        Returns:
+            Updated status dict
+        """
+        credential = await self.get_credential(db, client_id)
+
+        if not credential or not credential.unipile_account_id:
+            return {"status": "not_connected"}
+
+        try:
+            account_info = await self.unipile.get_account(credential.unipile_account_id)
+            account_status = account_info.get("status", "").upper()
+
+            # Map Unipile status to our status
+            if account_status == "OK":
+                credential.connection_status = "connected"
+            elif account_status == "CREDENTIALS_REQUIRED":
+                credential.connection_status = "credentials_required"
+            elif account_status == "DISCONNECTED":
+                credential.connection_status = "disconnected"
+            else:
+                # Unknown status, keep current
+                pass
+
+            # Update profile info if available
+            if account_info.get("name"):
+                credential.linkedin_profile_name = account_info["name"]
+            if account_info.get("identifier"):
+                credential.linkedin_profile_url = account_info["identifier"]
+
+            await db.commit()
+
+            return await self.get_status(db, client_id)
+
+        except Exception as e:
+            logger.exception(f"Failed to refresh account status: {e}")
+            return {
+                "status": credential.connection_status,
+                "error": f"Failed to refresh: {str(e)}",
+            }
 
 
 # Singleton instance
@@ -374,13 +434,14 @@ linkedin_connection_service = LinkedInConnectionService()
 # VERIFICATION CHECKLIST
 # ============================================
 # [x] Contract comment at top
-# [x] Credential encryption on save
-# [x] Credential decryption for HeyReach
-# [x] HeyReach connection flow
-# [x] 2FA handling
+# [x] Unipile hosted auth flow (no credentials stored)
+# [x] No 2FA handling (Unipile manages this)
+# [x] Webhook handler for connection callbacks
 # [x] Mark connected helper
 # [x] Get status method
-# [x] Disconnect method
+# [x] Disconnect method (removes from Unipile)
+# [x] Get account ID method
+# [x] Refresh account status method
 # [x] Error tracking
 # [x] Logging throughout
 # [x] Type hints on all methods

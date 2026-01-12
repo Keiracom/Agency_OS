@@ -97,13 +97,30 @@ class Settings(BaseSettings):
     resend_api_key: str = Field(default="", description="Resend API key")
     postmark_server_token: str = Field(default="", description="Postmark server token")
 
-    twilio_account_sid: str = Field(default="", description="Twilio account SID")
-    twilio_auth_token: str = Field(default="", description="Twilio auth token")
-    twilio_phone_number: str = Field(default="", description="Twilio phone number")
+    # === Twilio (Voice Calls ONLY via Vapi) ===
+    # NOT used for SMS. ClickSend is the SMS provider for Australia.
+    twilio_account_sid: str = Field(default="", description="Twilio account SID (voice only)")
+    twilio_auth_token: str = Field(default="", description="Twilio auth token (voice only)")
+    twilio_phone_number: str = Field(default="", description="Twilio phone number (voice only)")
 
-    heyreach_api_key: str = Field(default="", description="HeyReach API key")
-    
-    # === ClickSend (Australian Direct Mail) ===
+    heyreach_api_key: str = Field(default="", description="HeyReach API key (deprecated, use Unipile)")
+
+    # === Unipile (LinkedIn Automation - replacing HeyReach) ===
+    unipile_api_url: str = Field(default="", description="Unipile API base URL")
+    unipile_api_key: str = Field(default="", description="Unipile API key")
+
+    # === LinkedIn Timing (Humanization) ===
+    linkedin_min_delay_minutes: int = Field(default=8, description="Minimum delay between LinkedIn actions")
+    linkedin_max_delay_minutes: int = Field(default=45, description="Maximum delay between LinkedIn actions")
+    linkedin_min_daily: int = Field(default=15, description="Minimum daily connections")
+    linkedin_max_daily: int = Field(default=20, description="Maximum daily connections (can increase to 80-100)")
+    linkedin_max_per_hour: int = Field(default=8, description="Max actions per hour (burst prevention)")
+    linkedin_business_hours_start: int = Field(default=8, description="Business hours start (24h)")
+    linkedin_business_hours_end: int = Field(default=18, description="Business hours end (24h)")
+    linkedin_weekend_reduction: float = Field(default=0.5, description="Weekend volume multiplier")
+
+    # === ClickSend (Australian SMS + Direct Mail) ===
+    # Primary SMS provider for Australian market. Twilio is used for voice calls ONLY.
     clicksend_username: str = Field(default="", description="ClickSend username/email")
     clicksend_api_key: str = Field(default="", description="ClickSend API key")
 

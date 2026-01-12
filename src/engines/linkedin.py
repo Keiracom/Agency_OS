@@ -1,12 +1,12 @@
 """
 FILE: src/engines/linkedin.py
-PURPOSE: LinkedIn engine using HeyReach integration
+PURPOSE: LinkedIn engine using Unipile integration (migrated from HeyReach)
 PHASE: 4 (Engines), modified Phase 16/24B for Conversion Intelligence
 TASK: ENG-007, 16E-003, CONTENT-004
 DEPENDENCIES:
   - src/engines/base.py
   - src/engines/content_utils.py (Phase 16)
-  - src/integrations/heyreach.py
+  - src/integrations/unipile.py (migrated from heyreach.py)
   - src/integrations/redis.py
   - src/models/lead.py
   - src/models/activity.py
@@ -15,7 +15,7 @@ RULES APPLIED:
   - Rule 11: Session passed as argument
   - Rule 12: No imports from other engines (content_utils is utilities, not engine)
   - Rule 14: Soft deletes only
-  - Rule 17: Resource-level rate limits (17/day/seat)
+  - Rule 17: Resource-level rate limits (now configurable, default 17/day/seat)
 PHASE 16 CHANGES:
   - Added content_snapshot capture for WHAT Detector learning
   - Tracks touch_number, sequence context, and message_type
@@ -25,6 +25,11 @@ PHASE 24B CHANGES:
   - Track ab_test_id and ab_variant for A/B testing
   - Store links_included and personalization_fields_used
   - Track ai_model_used and prompt_version
+UNIPILE MIGRATION:
+  - Replaced HeyReach client with Unipile client
+  - account_id instead of seat_id
+  - Higher rate limits possible (80-100/day vs 17/day)
+  - Provider changed from 'heyreach' to 'unipile'
 """
 
 import logging
@@ -40,37 +45,43 @@ from src.engines.base import EngineResult, OutreachEngine
 logger = logging.getLogger(__name__)
 from src.engines.content_utils import build_linkedin_snapshot
 from src.exceptions import ResourceRateLimitError, ValidationError
-from src.integrations.heyreach import HeyReachClient, get_heyreach_client
+from src.integrations.unipile import UnipileClient, get_unipile_client
 from src.integrations.redis import rate_limiter
 from src.models.activity import Activity
 from src.models.base import ChannelType
 from src.models.lead import Lead
 
 
-# Rate limit (Rule 17)
-LINKEDIN_DAILY_LIMIT_PER_SEAT = 17
+# Rate limit (Rule 17) - Now configurable via settings
+# Unipile allows higher limits (80-100/day) but we default to conservative
+LINKEDIN_DAILY_LIMIT_PER_ACCOUNT = settings.linkedin_max_daily
 
 
 class LinkedInEngine(OutreachEngine):
     """
-    LinkedIn engine for sending connection requests and messages via HeyReach.
+    LinkedIn engine for sending connection requests and messages via Unipile.
 
     Features:
-    - Connection request sending
+    - Connection request sending (invitations)
     - Direct message sending
-    - Resource-level rate limiting (17/day/seat - Rule 17)
-    - Activity logging
+    - Resource-level rate limiting (configurable, default 17/day/account)
+    - Activity logging with content snapshot
     - Conversation tracking
+
+    Migration Note:
+    - Migrated from HeyReach to Unipile for 70-85% cost reduction
+    - Uses account_id instead of seat_id
+    - Provider is 'unipile' instead of 'heyreach'
     """
 
-    def __init__(self, heyreach_client: HeyReachClient | None = None):
+    def __init__(self, unipile_client: UnipileClient | None = None):
         """
         Initialize LinkedIn engine.
 
         Args:
-            heyreach_client: Optional HeyReach client (uses singleton if not provided)
+            unipile_client: Optional Unipile client (uses singleton if not provided)
         """
-        self._heyreach = heyreach_client
+        self._unipile = unipile_client
 
     @property
     def name(self) -> str:
@@ -81,10 +92,10 @@ class LinkedInEngine(OutreachEngine):
         return ChannelType.LINKEDIN
 
     @property
-    def heyreach(self) -> HeyReachClient:
-        if self._heyreach is None:
-            self._heyreach = get_heyreach_client()
-        return self._heyreach
+    def unipile(self) -> UnipileClient:
+        if self._unipile is None:
+            self._unipile = get_unipile_client()
+        return self._unipile
 
     async def send(
         self,
@@ -95,7 +106,7 @@ class LinkedInEngine(OutreachEngine):
         **kwargs: Any,
     ) -> EngineResult[dict[str, Any]]:
         """
-        Send a LinkedIn message or connection request.
+        Send a LinkedIn message or connection request via Unipile.
 
         Args:
             db: Database session (passed by caller)
@@ -103,7 +114,7 @@ class LinkedInEngine(OutreachEngine):
             campaign_id: Campaign UUID
             content: Message content
             **kwargs: Additional options:
-                - seat_id: HeyReach seat ID (required)
+                - account_id: Unipile account ID (required)
                 - action: 'connection' or 'message' (default: 'message')
                 - template_id: UUID of template used (Phase 24B)
                 - ab_test_id: UUID of A/B test (Phase 24B)
@@ -116,10 +127,10 @@ class LinkedInEngine(OutreachEngine):
             EngineResult with send result
         """
         # Validate required fields
-        seat_id = kwargs.get("seat_id")
-        if not seat_id:
+        account_id = kwargs.get("account_id")
+        if not account_id:
             return EngineResult.fail(
-                error="HeyReach seat_id is required",
+                error="Unipile account_id is required",
                 metadata={"lead_id": str(lead_id)},
             )
 
@@ -151,37 +162,37 @@ class LinkedInEngine(OutreachEngine):
         try:
             allowed, current_count = await rate_limiter.check_and_increment(
                 resource_type="linkedin",
-                resource_id=seat_id,
-                limit=LINKEDIN_DAILY_LIMIT_PER_SEAT,
+                resource_id=account_id,
+                limit=LINKEDIN_DAILY_LIMIT_PER_ACCOUNT,
             )
         except ResourceRateLimitError as e:
             return EngineResult.fail(
                 error=str(e),
                 metadata={
-                    "seat_id": seat_id,
-                    "limit": LINKEDIN_DAILY_LIMIT_PER_SEAT,
+                    "account_id": account_id,
+                    "limit": LINKEDIN_DAILY_LIMIT_PER_ACCOUNT,
                 },
             )
 
         try:
-            # Send connection request or message
+            # Send connection request (invitation) or message via Unipile
             if action == "connection":
-                result = await self.heyreach.send_connection_request(
-                    seat_id=seat_id,
-                    linkedin_url=lead.linkedin_url,
+                result = await self.unipile.send_invitation(
+                    account_id=account_id,
+                    recipient_id=lead.linkedin_url,
                     message=content if content else None,
                 )
                 activity_action = "connection_sent"
             else:
-                result = await self.heyreach.send_message(
-                    seat_id=seat_id,
-                    linkedin_url=lead.linkedin_url,
-                    message=content,
+                result = await self.unipile.send_message(
+                    account_id=account_id,
+                    recipient_id=lead.linkedin_url,
+                    text=content,
                 )
                 activity_action = "message_sent"
 
-            # Get message/request ID
-            provider_id = result.get("message_id") or result.get("request_id")
+            # Get message/request ID from Unipile response
+            provider_id = result.get("id") or result.get("message_id") or result.get("invitation_id")
 
             # Log activity with content snapshot (Phase 16) and template tracking (Phase 24B)
             await self._log_activity(
@@ -197,7 +208,7 @@ class LinkedInEngine(OutreachEngine):
                 sequence_step=kwargs.get("sequence_step"),
                 sequence_id=kwargs.get("sequence_id"),
                 provider_response=result,
-                seat_id=seat_id,
+                account_id=account_id,
                 # Phase 24B: Content tracking fields
                 template_id=kwargs.get("template_id"),
                 ab_test_id=kwargs.get("ab_test_id"),
@@ -211,10 +222,10 @@ class LinkedInEngine(OutreachEngine):
                 data={
                     "provider_id": provider_id,
                     "linkedin_url": lead.linkedin_url,
-                    "seat_id": seat_id,
+                    "account_id": account_id,
                     "action": action,
-                    "status": result.get("status"),
-                    "remaining_quota": LINKEDIN_DAILY_LIMIT_PER_SEAT - current_count,
+                    "status": result.get("status", "sent"),
+                    "remaining_quota": LINKEDIN_DAILY_LIMIT_PER_ACCOUNT - current_count,
                 },
                 metadata={
                     "engine": self.name,
@@ -230,7 +241,7 @@ class LinkedInEngine(OutreachEngine):
                 metadata={
                     "lead_id": str(lead_id),
                     "campaign_id": str(campaign_id),
-                    "seat_id": seat_id,
+                    "account_id": account_id,
                     "action": action,
                 },
             )
@@ -241,17 +252,17 @@ class LinkedInEngine(OutreachEngine):
         lead_id: UUID,
         campaign_id: UUID,
         message: str | None = None,
-        seat_id: str | None = None,
+        account_id: str | None = None,
     ) -> EngineResult[dict[str, Any]]:
         """
-        Send a LinkedIn connection request.
+        Send a LinkedIn connection request (invitation).
 
         Args:
             db: Database session (passed by caller)
             lead_id: Target lead UUID
             campaign_id: Campaign UUID
             message: Optional connection message
-            seat_id: HeyReach seat ID
+            account_id: Unipile account ID
 
         Returns:
             EngineResult with send result
@@ -261,7 +272,7 @@ class LinkedInEngine(OutreachEngine):
             lead_id=lead_id,
             campaign_id=campaign_id,
             content=message or "",
-            seat_id=seat_id,
+            account_id=account_id,
             action="connection",
         )
 
@@ -271,7 +282,7 @@ class LinkedInEngine(OutreachEngine):
         lead_id: UUID,
         campaign_id: UUID,
         message: str,
-        seat_id: str | None = None,
+        account_id: str | None = None,
     ) -> EngineResult[dict[str, Any]]:
         """
         Send a LinkedIn direct message.
@@ -281,7 +292,7 @@ class LinkedInEngine(OutreachEngine):
             lead_id: Target lead UUID
             campaign_id: Campaign UUID
             message: Message content
-            seat_id: HeyReach seat ID
+            account_id: Unipile account ID
 
         Returns:
             EngineResult with send result
@@ -291,7 +302,7 @@ class LinkedInEngine(OutreachEngine):
             lead_id=lead_id,
             campaign_id=campaign_id,
             content=message,
-            seat_id=seat_id,
+            account_id=account_id,
             action="message",
         )
 
@@ -368,74 +379,83 @@ class LinkedInEngine(OutreachEngine):
             },
         )
 
-    async def get_seat_status(
+    async def get_account_status(
         self,
-        seat_id: str,
+        account_id: str,
     ) -> EngineResult[dict[str, Any]]:
         """
-        Get status of a LinkedIn seat (quota, availability).
+        Get status of a LinkedIn account (quota, availability, Unipile status).
 
         Args:
-            seat_id: HeyReach seat ID
+            account_id: Unipile account ID
 
         Returns:
-            EngineResult with seat status
+            EngineResult with account status
         """
         try:
             # Get current usage from rate limiter
             usage = await rate_limiter.get_usage(
                 resource_type="linkedin",
-                resource_id=seat_id,
+                resource_id=account_id,
             )
 
-            remaining = max(0, LINKEDIN_DAILY_LIMIT_PER_SEAT - usage)
+            remaining = max(0, LINKEDIN_DAILY_LIMIT_PER_ACCOUNT - usage)
+
+            # Optionally get Unipile account status
+            unipile_status = None
+            try:
+                account_info = await self.unipile.get_account(account_id)
+                unipile_status = account_info.get("status")
+            except Exception:
+                pass  # Non-critical, continue without Unipile status
 
             return EngineResult.ok(
                 data={
-                    "seat_id": seat_id,
-                    "daily_limit": LINKEDIN_DAILY_LIMIT_PER_SEAT,
+                    "account_id": account_id,
+                    "daily_limit": LINKEDIN_DAILY_LIMIT_PER_ACCOUNT,
                     "daily_used": usage,
                     "remaining": remaining,
                     "can_send": remaining > 0,
+                    "unipile_status": unipile_status,
                 },
             )
 
         except Exception as e:
             return EngineResult.fail(
-                error=f"Failed to get seat status: {str(e)}",
-                metadata={"seat_id": seat_id},
+                error=f"Failed to get account status: {str(e)}",
+                metadata={"account_id": account_id},
             )
 
     async def get_new_replies(
         self,
         db: AsyncSession,
-        seat_id: str,
+        account_id: str,
     ) -> EngineResult[dict[str, Any]]:
         """
-        Get new LinkedIn replies for a seat.
+        Get new LinkedIn messages for an account.
 
         Args:
             db: Database session (passed by caller)
-            seat_id: HeyReach seat ID
+            account_id: Unipile account ID
 
         Returns:
-            EngineResult with new replies
+            EngineResult with new messages
         """
         try:
-            replies = await self.heyreach.get_new_replies(seat_id)
+            messages = await self.unipile.get_messages(account_id, limit=50)
 
             return EngineResult.ok(
                 data={
-                    "seat_id": seat_id,
-                    "reply_count": len(replies),
-                    "replies": replies,
+                    "account_id": account_id,
+                    "message_count": len(messages),
+                    "messages": messages,
                 },
             )
 
         except Exception as e:
             return EngineResult.fail(
-                error=f"Failed to get replies: {str(e)}",
-                metadata={"seat_id": seat_id},
+                error=f"Failed to get messages: {str(e)}",
+                metadata={"account_id": account_id},
             )
 
     async def _log_activity(
@@ -452,7 +472,7 @@ class LinkedInEngine(OutreachEngine):
         sequence_step: int | None = None,
         sequence_id: str | None = None,
         provider_response: dict | None = None,
-        seat_id: str | None = None,
+        account_id: str | None = None,
         # Phase 24B: Content tracking fields
         template_id: UUID | None = None,
         ab_test_id: UUID | None = None,
@@ -468,8 +488,8 @@ class LinkedInEngine(OutreachEngine):
         Phase 24B: Now stores template_id, A/B test info, and full message body.
         """
         metadata = {}
-        if seat_id:
-            metadata["seat_id"] = seat_id
+        if account_id:
+            metadata["account_id"] = account_id
 
         # Build content snapshot for Conversion Intelligence (Phase 16)
         snapshot = None
@@ -520,7 +540,7 @@ class LinkedInEngine(OutreachEngine):
             personalization_fields_used=personalization_fields_used,
             ai_model_used=ai_model_used,
             prompt_version=prompt_version,
-            provider="heyreach",
+            provider="unipile",  # Changed from 'heyreach' to 'unipile'
             provider_status=action,
             provider_response=provider_response,
             extra_data=metadata,
@@ -551,13 +571,13 @@ def get_linkedin_engine() -> LinkedInEngine:
 # [x] Session passed as argument (Rule 11)
 # [x] No imports from other engines (Rule 12)
 # [x] Soft delete check inherited from BaseEngine
-# [x] Resource-level rate limits (17/day/seat - Rule 17)
-# [x] Connection request support
-# [x] Direct message support
-# [x] Activity logging after send
+# [x] Resource-level rate limits (configurable via settings - Rule 17)
+# [x] Connection request support (via Unipile send_invitation)
+# [x] Direct message support (via Unipile send_message)
+# [x] Activity logging after send (provider='unipile')
 # [x] Batch sending support
-# [x] Seat status checking
-# [x] New replies retrieval
+# [x] Account status checking (replaced seat_status)
+# [x] New messages retrieval (replaced get_new_replies)
 # [x] Extends OutreachEngine from base.py
 # [x] EngineResult wrapper for responses
 # [x] All functions have type hints
@@ -570,3 +590,6 @@ def get_linkedin_engine() -> LinkedInEngine:
 # [x] Phase 24B: links_included extracted from LinkedIn
 # [x] Phase 24B: personalization_fields_used tracked
 # [x] Phase 24B: ai_model_used and prompt_version stored
+# [x] UNIPILE MIGRATION: Replaced HeyReach with Unipile client
+# [x] UNIPILE MIGRATION: account_id instead of seat_id
+# [x] UNIPILE MIGRATION: provider='unipile' in activity logs

@@ -1,0 +1,271 @@
+{
+  "version": "2.0",
+  "description": "Machine-readable E2E test configuration. Source of truth for all test parameters.",
+
+  "test_agency": {
+    "name": "Sparro Digital",
+    "website": "https://sparro.com.au",
+    "industry": "Digital Marketing / Performance Marketing",
+    "location": "Melbourne, VIC, Australia",
+    "team_size": "30-50",
+    "estimated_mrr": 100000,
+    "tier": "velocity",
+    "tier_price_aud": 5000
+  },
+
+  "test_user": {
+    "email": "e2e-sparro@test.agencyos.com",
+    "full_name": "E2E Test User",
+    "company_name": "Sparro Digital",
+    "password_env": "E2E_TEST_PASSWORD",
+    "user_id": "a60bcdbd-4a31-43e7-bcc8-3ab998c44ac2",
+    "client_id": "81dbaee6-4e71-48ad-be40-fa915fae66e0",
+    "created": true,
+    "notes": "Created via Supabase Admin API with email_confirm=true to bypass verification"
+  },
+
+  "test_recipients": {
+    "email": "david.stephens@keiracom.com",
+    "sms": "+61457543392",
+    "voice": "+61457543392",
+    "linkedin": "https://www.linkedin.com/in/david-stephens-8847a636a/",
+    "notes": "All outreach redirects here in TEST_MODE"
+  },
+
+  "expected_icp": {
+    "titles": ["Marketing Manager", "Head of Digital", "E-commerce Manager", "CMO", "Founder"],
+    "industries": ["E-commerce", "Retail", "DTC", "Fashion", "Beauty", "Consumer Goods"],
+    "company_size": "10-200 employees",
+    "locations": ["Australia", "New Zealand"],
+    "pain_points": ["ROAS pressure", "scaling paid media", "attribution", "incrementality"]
+  },
+
+  "api_endpoints": {
+    "backend": "https://agency-os-production.up.railway.app",
+    "backend_api": "https://agency-os-production.up.railway.app/api/v1",
+    "frontend": "https://agency-os-liart.vercel.app",
+    "supabase_url": "https://jatzvazlbusedwsnqxzr.supabase.co",
+    "supabase_rest": "https://jatzvazlbusedwsnqxzr.supabase.co/rest/v1",
+    "supabase_auth": "https://jatzvazlbusedwsnqxzr.supabase.co/auth/v1",
+    "prefect_server": "https://prefect-server-production-f9b1.up.railway.app",
+    "prefect_api": "https://prefect-server-production-f9b1.up.railway.app/api"
+  },
+
+  "credentials_env": {
+    "supabase_service_key": "SUPABASE_SERVICE_KEY",
+    "supabase_anon_key": "SUPABASE_ANON_KEY",
+    "anthropic_api_key": "ANTHROPIC_API_KEY",
+    "apollo_api_key": "APOLLO_API_KEY",
+    "apify_api_key": "APIFY_API_KEY",
+    "twilio_account_sid": "TWILIO_ACCOUNT_SID",
+    "twilio_auth_token": "TWILIO_AUTH_TOKEN",
+    "salesforge_api_key": "SALESFORGE_API_KEY",
+    "heyreach_api_key": "HEYREACH_API_KEY",
+    "vapi_api_key": "VAPI_API_KEY",
+    "elevenlabs_api_key": "ELEVENLABS_API_KEY",
+    "notes": "All credentials stored in Railway env vars, not in this file"
+  },
+
+  "transactional_email": {
+    "provider": "resend",
+    "smtp_host": "smtp.resend.com",
+    "smtp_port": 2587,
+    "smtp_user": "resend",
+    "sender_email": "noreply@agencyxos.ai",
+    "sender_name": "Agency OS",
+    "domain": "agencyxos.ai",
+    "rate_limit_per_hour": 30,
+    "uses": ["auth_verification", "password_reset", "magic_link", "invites", "notifications"]
+  },
+
+  "outreach_email_infrastructure": {
+    "provider": "salesforge",
+    "warmup_provider": "warmforge",
+    "domains": [
+      "agencyxos-growth.com",
+      "agencyxos-reach.com",
+      "agencyxos-leads.com"
+    ],
+    "mailboxes_per_domain": 2,
+    "total_mailboxes": 6,
+    "daily_limit_per_mailbox": 15,
+    "daily_limit_warmup_phase": 15,
+    "daily_limit_post_warmup": 90,
+    "warmup_ready_date": "2026-01-20",
+    "threading_headers": ["In-Reply-To", "References", "Message-ID"],
+    "webhook_endpoint": "/api/v1/webhooks/salesforge/events"
+  },
+
+  "sms_infrastructure": {
+    "provider": "clicksend",
+    "notes": "ClickSend for Australian SMS market (not Twilio)",
+    "compliance": {
+      "dncr_required": true,
+      "dncr_api_url": "https://api.dncr.gov.au/v1",
+      "dncr_cache_ttl_hours": 24,
+      "country_code": "+61"
+    },
+    "webhook_endpoint": "/api/v1/webhooks/clicksend/sms"
+  },
+
+  "voice_infrastructure": {
+    "provider": "vapi",
+    "voice_provider": "elevenlabs",
+    "features": ["amd", "voicemail_drop", "call_recording", "warm_transfer"],
+    "webhook_endpoint": "/api/v1/webhooks/twilio/voice"
+  },
+
+  "linkedin_infrastructure": {
+    "provider": "heyreach",
+    "rate_limits": {
+      "daily_connections": 20,
+      "weekly_connections": 100,
+      "monthly_connections": 300
+    },
+    "warmup_period_days": 14,
+    "webhook_endpoint": "/api/v1/webhooks/heyreach"
+  },
+
+  "calendar_infrastructure": {
+    "provider": "cal_com",
+    "events": ["BOOKING_CREATED", "BOOKING_CANCELLED", "BOOKING_RESCHEDULED"],
+    "webhook_endpoint": "/api/v1/webhooks/calendar"
+  },
+
+  "als_scoring": {
+    "max_base_score": 100,
+    "components": {
+      "data_quality": {"max": 20, "weight": 0.20},
+      "authority": {"max": 25, "weight": 0.25},
+      "company_fit": {"max": 25, "weight": 0.25},
+      "timing": {"max": 15, "weight": 0.15},
+      "risk": {"max": 15, "weight": 0.15}
+    },
+    "boosts": {
+      "linkedin_max": 10,
+      "buyer_max": 15
+    },
+    "linkedin_boost_breakdown": {
+      "person_has_posts": 3,
+      "company_has_posts": 2,
+      "connections_500_plus": 2,
+      "followers_1000_plus": 2,
+      "posted_in_30_days": 1
+    },
+    "tiers": {
+      "hot": {"min": 85, "max": 100, "channels": ["email", "sms", "linkedin", "voice", "mail"]},
+      "warm": {"min": 60, "max": 84, "channels": ["email", "linkedin", "voice"]},
+      "cool": {"min": 35, "max": 59, "channels": ["email", "linkedin"]},
+      "cold": {"min": 20, "max": 34, "channels": ["email"]},
+      "dead": {"min": 0, "max": 19, "channels": []}
+    },
+    "critical_note": "Hot starts at 85, NOT 80"
+  },
+
+  "velocity_tier_capacity": {
+    "email": {"monthly": 2250, "daily": 75},
+    "linkedin": {"seats": 3, "daily_per_seat": 20, "daily_total": 60},
+    "voice": {"monthly_minutes": 844, "daily_calls": 28},
+    "sms": {"monthly": 225, "daily": 8},
+    "mail": {"monthly": 225, "daily": 8}
+  },
+
+  "limits": {
+    "leads_to_source": 50,
+    "leads_to_enrich": 20,
+    "emails_per_day": 15,
+    "sms_per_day": 5,
+    "voice_calls": 3,
+    "linkedin_requests": 3
+  },
+
+  "expected_tier_distribution": {
+    "hot": {"percent": 10, "count": 5},
+    "warm": {"percent": 25, "count": 12},
+    "cool": {"percent": 40, "count": 20},
+    "cold": {"percent": 20, "count": 10},
+    "dead": {"percent": 5, "count": 3},
+    "notes": "After J2B enrichment, Hot may increase to 15-20%"
+  },
+
+  "budget": {
+    "total_aud": 65,
+    "breakdown": {
+      "apollo": {"credits": 50, "cost_aud": 50},
+      "apify_linkedin_person": {"profiles": 20, "cost_aud": 1},
+      "apify_linkedin_company": {"companies": 20, "cost_aud": 1},
+      "anthropic": {"tokens": 200000, "cost_aud": 9},
+      "twilio_sms": {"messages": 5, "cost_aud": 0.40},
+      "twilio_voice": {"calls": 3, "cost_aud": 0.20},
+      "salesforge": {"cost_aud": 0, "notes": "Included in plan"},
+      "heyreach": {"cost_aud": 0, "notes": "Included in plan"}
+    }
+  },
+
+  "approval_gates": {
+    "GATE-1": {"trigger": "Start J0", "cost_aud": 0, "approved": true, "journey": "J0"},
+    "GATE-2": {"trigger": "ICP extraction", "cost_aud": 3, "approved": false, "journey": "J1.10"},
+    "GATE-3": {"trigger": "Lead sourcing", "cost_aud": 50, "approved": false, "journey": "J2.5"},
+    "GATE-4": {"trigger": "Any outreach", "cost_aud": 1, "approved": false, "journey": "J3+"}
+  },
+
+  "flags": {
+    "test_mode_required": true,
+    "protect_warmup": true,
+    "skip_real_outreach": false
+  },
+
+  "execution_methods": {
+    "http_check": {
+      "command": "curl -s -o /dev/null -w '%{http_code}' {url}",
+      "success": "200"
+    },
+    "api_get": {
+      "command": "curl -s -H 'Authorization: Bearer {token}' '{url}'",
+      "notes": "Token from test_user session"
+    },
+    "api_post": {
+      "command": "curl -s -X POST -H 'Authorization: Bearer {token}' -H 'Content-Type: application/json' -d '{body}' '{url}'",
+      "notes": "Token from test_user session"
+    },
+    "supabase_query": {
+      "command": "curl -s -H 'apikey: {service_key}' -H 'Authorization: Bearer {service_key}' '{supabase_rest}/{table}?{query}'",
+      "notes": "Use service_key for admin queries"
+    },
+    "supabase_create_user": {
+      "endpoint": "{supabase_auth}/admin/users",
+      "method": "POST",
+      "headers": {"Authorization": "Bearer {service_key}", "Content-Type": "application/json"},
+      "body": {"email": "{email}", "password": "{password}", "email_confirm": true, "user_metadata": {"full_name": "{name}", "company_name": "{company}"}},
+      "notes": "Creates pre-verified user, triggers auto-provision"
+    },
+    "supabase_get_token": {
+      "endpoint": "{supabase_auth}/token?grant_type=password",
+      "method": "POST",
+      "body": {"email": "{email}", "password": "{password}"},
+      "returns": "access_token for API calls"
+    },
+    "prefect_check_flow": {
+      "endpoint": "{prefect_api}/flow_runs?flow_name={flow_name}&limit=1",
+      "notes": "Check if flow was triggered"
+    }
+  },
+
+  "prefect_flows": {
+    "onboarding": "icp_onboarding_flow/onboarding-flow",
+    "pool_population": "pool_population/pool-population-flow",
+    "enrichment": "lead_enrichment/enrichment-flow",
+    "outreach": "outreach/outreach-flow",
+    "reply_recovery": "reply_recovery/reply-recovery-flow"
+  },
+
+  "database_tables": {
+    "users": {"verify_columns": ["id", "email", "full_name"]},
+    "clients": {"verify_columns": ["id", "name", "tier", "subscription_status", "credits_remaining", "icp_confirmed_at"]},
+    "memberships": {"verify_columns": ["id", "user_id", "client_id", "role", "accepted_at"]},
+    "leads": {"verify_columns": ["id", "client_id", "email", "als_score", "als_tier", "status"]},
+    "campaigns": {"verify_columns": ["id", "client_id", "name", "status"]},
+    "activities": {"verify_columns": ["id", "lead_id", "channel", "action"]},
+    "icp_extraction_jobs": {"verify_columns": ["id", "client_id", "status", "extracted_icp"]}
+  }
+}

@@ -16,6 +16,10 @@ LIVE_CONFIG = {
     "supabase_url": "https://jatzvazlbusedwsnqxzr.supabase.co",
     "prefect_url": "https://prefect-server-production-f9b1.up.railway.app",
     "test_voice_recipient": "+61457543392",  # CEO test phone
+    "client_id": "81dbaee6-4e71-48ad-be40-fa915fae66e0",
+    "user_id": "a60bcdbd-4a31-43e7-bcc8-3ab998c44ac2",
+    "test_email": "david.stephens@keiracom.com",
+    "test_phone": "+61457543392",
     "warning": "Voice calls cost money - ensure TEST_MODE=true before testing"
 }
 
@@ -72,8 +76,8 @@ CHECKS = [
             "url": "{api_url}/api/v1/voice/test-call",
             "auth": True,
             "body": {
-                "lead_id": "{{test_lead_id}}",
-                "campaign_id": "{{test_campaign_id}}"
+                "lead_id": "{test_lead_id}",
+                "campaign_id": "{test_campaign_id}"
             },
             "expect": {
                 "status": 200,

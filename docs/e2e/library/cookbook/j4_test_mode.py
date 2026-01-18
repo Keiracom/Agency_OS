@@ -14,7 +14,11 @@ LIVE_CONFIG = {
     "api_url": "https://agency-os-production.up.railway.app",
     "frontend_url": "https://agency-os-liart.vercel.app",
     "supabase_url": "https://jatzvazlbusedwsnqxzr.supabase.co",
-    "prefect_url": "https://prefect-server-production-f9b1.up.railway.app"
+    "prefect_url": "https://prefect-server-production-f9b1.up.railway.app",
+    "client_id": "81dbaee6-4e71-48ad-be40-fa915fae66e0",
+    "user_id": "a60bcdbd-4a31-43e7-bcc8-3ab998c44ac2",
+    "test_email": "david.stephens@keiracom.com",
+    "test_phone": "+61457543392"
 }
 
 # =============================================================================
@@ -73,7 +77,7 @@ railway variables --service agency-os --kv | grep -E "(TEST_MODE|TEST_SMS_RECIPI
             "url": "{api_url}/api/v1/sms/send",
             "auth": True,
             "body": {
-                "lead_id": "{{test_lead_id}}",
+                "lead_id": "{test_lead_id}",
                 "message": "Test SMS redirect verification"
             },
             "expect": {
@@ -85,7 +89,7 @@ railway variables --service agency-os --kv | grep -E "(TEST_MODE|TEST_SMS_RECIPI
             "curl_command": """curl -X POST '{api_url}/api/v1/sms/send' \\
   -H 'Authorization: Bearer {token}' \\
   -H 'Content-Type: application/json' \\
-  -d '{"lead_id": "{{test_lead_id}}", "message": "Test redirect"}'"""
+  -d '{"lead_id": "{test_lead_id}", "message": "Test redirect"}'"""
         }
     },
     {

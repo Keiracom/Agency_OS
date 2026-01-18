@@ -16,6 +16,10 @@ LIVE_CONFIG = {
     "supabase_url": "https://jatzvazlbusedwsnqxzr.supabase.co",
     "prefect_url": "https://prefect-server-production-f9b1.up.railway.app",
     "elevenlabs_dashboard": "https://elevenlabs.io/app",
+    "client_id": "81dbaee6-4e71-48ad-be40-fa915fae66e0",
+    "user_id": "a60bcdbd-4a31-43e7-bcc8-3ab998c44ac2",
+    "test_email": "david.stephens@keiracom.com",
+    "test_phone": "+61457543392",
     "warning": "ElevenLabs usage through Vapi may incur costs"
 }
 

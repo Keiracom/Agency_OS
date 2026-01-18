@@ -15,6 +15,10 @@ LIVE_CONFIG = {
     "frontend_url": "https://agency-os-liart.vercel.app",
     "supabase_url": "https://jatzvazlbusedwsnqxzr.supabase.co",
     "prefect_url": "https://prefect-server-production-f9b1.up.railway.app",
+    "client_id": "81dbaee6-4e71-48ad-be40-fa915fae66e0",
+    "user_id": "a60bcdbd-4a31-43e7-bcc8-3ab998c44ac2",
+    "test_email": "david.stephens@keiracom.com",
+    "test_phone": "+61457543392",
     "warning": "Error handling tests should use invalid inputs, not crash production"
 }
 
@@ -85,8 +89,8 @@ CHECKS = [
             "url": "{api_url}/api/v1/voice/calls",
             "auth": True,
             "body": {
-                "lead_id": "{{test_lead_id}}",
-                "campaign_id": "{{test_campaign_id}}"
+                "lead_id": "{test_lead_id}",
+                "campaign_id": "{test_campaign_id}"
                 # Missing assistant_id intentionally
             },
             "expect": {
@@ -110,8 +114,8 @@ CHECKS = [
             "url": "{api_url}/api/v1/voice/calls",
             "auth": True,
             "body": {
-                "lead_id": "{{lead_without_phone}}",
-                "assistant_id": "{{test_assistant_id}}"
+                "lead_id": "{lead_without_phone}",
+                "assistant_id": "{test_assistant_id}"
             },
             "test_setup": "Use lead ID with no phone number",
             "expect": {

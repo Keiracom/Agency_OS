@@ -16,6 +16,10 @@ LIVE_CONFIG = {
     "supabase_url": "https://jatzvazlbusedwsnqxzr.supabase.co",
     "prefect_url": "https://prefect-server-production-f9b1.up.railway.app",
     "vapi_dashboard": "https://dashboard.vapi.ai",
+    "client_id": "81dbaee6-4e71-48ad-be40-fa915fae66e0",
+    "user_id": "a60bcdbd-4a31-43e7-bcc8-3ab998c44ac2",
+    "test_email": "david.stephens@keiracom.com",
+    "test_phone": "+61457543392",
     "warning": "Vapi calls cost money - ensure TEST_MODE=true before testing"
 }
 
@@ -100,7 +104,7 @@ CHECKS = [
             "auth": True,
             "body": {
                 "name": "E2E Test Assistant",
-                "campaign_id": "{{test_campaign_id}}",
+                "campaign_id": "{test_campaign_id}",
                 "voice_settings": {
                     "voice_id": "pNInz6obpgDQGcFmaJgB",
                     "provider": "11labs"
@@ -128,8 +132,8 @@ CHECKS = [
             "url": "{api_url}/api/v1/voice/calls",
             "auth": True,
             "body": {
-                "lead_id": "{{test_lead_id}}",
-                "assistant_id": "{{test_assistant_id}}"
+                "lead_id": "{test_lead_id}",
+                "assistant_id": "{test_assistant_id}"
             },
             "expect": {
                 "status": [200, 201, 202],

@@ -1216,6 +1216,188 @@ async def _run_campaign_enrichment(client_id: UUID, campaign_id: UUID, count: in
 
 
 # ============================================
+# Campaign Suggestion Routes (Phase 37)
+# ============================================
+
+
+class CampaignSuggestionItem(BaseModel):
+    """Schema for a single campaign suggestion."""
+
+    name: str = Field(..., description="Suggested campaign name")
+    description: str = Field(..., description="Campaign description")
+    target_industries: List[str] = Field(..., description="Target industries")
+    target_titles: List[str] = Field(..., description="Target job titles")
+    target_company_sizes: List[str] = Field(..., description="Target company sizes")
+    target_locations: List[str] = Field(..., description="Target locations")
+    lead_allocation_pct: int = Field(..., ge=0, le=100, description="Lead allocation percentage")
+    ai_reasoning: str = Field(..., description="AI reasoning for this suggestion")
+    priority: int = Field(..., ge=1, description="Priority (1 = highest)")
+
+
+class CampaignSuggestionsResponse(BaseModel):
+    """Schema for campaign suggestions response."""
+
+    client_id: str = Field(..., description="Client UUID")
+    tier: str = Field(..., description="Client tier name")
+    ai_campaign_slots: int = Field(..., description="Max AI campaign slots for tier")
+    custom_campaign_slots: int = Field(..., description="Max custom campaign slots for tier")
+    suggestions: List[CampaignSuggestionItem] = Field(..., description="AI-suggested campaigns")
+    generated_at: str = Field(..., description="ISO timestamp of generation")
+
+
+class CreateCampaignsFromSuggestionsRequest(BaseModel):
+    """Schema for creating campaigns from suggestions."""
+
+    suggestion_indices: Optional[List[int]] = Field(
+        None,
+        description="Indices of suggestions to create (0-based). If None, creates all."
+    )
+    auto_activate: bool = Field(
+        False,
+        description="Activate campaigns immediately (otherwise created as draft)"
+    )
+
+
+class CreateCampaignsFromSuggestionsResponse(BaseModel):
+    """Schema for create campaigns response."""
+
+    client_id: str = Field(..., description="Client UUID")
+    campaigns_created: int = Field(..., description="Number of campaigns created")
+    total_allocation: int = Field(..., description="Total lead allocation percentage")
+    campaigns: List[dict] = Field(..., description="Created campaign details")
+
+
+@router.get(
+    "/clients/{client_id}/campaigns/suggestions",
+    response_model=CampaignSuggestionsResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_campaign_suggestions(
+    client_id: UUID,
+    ctx: Annotated[ClientContext, Depends(require_member)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> CampaignSuggestionsResponse:
+    """
+    Get AI-suggested campaigns based on client ICP.
+
+    Analyzes the client's ICP (Ideal Customer Profile) and suggests
+    optimal campaign segments using Claude AI. Each suggestion includes:
+    - Campaign name and target segment
+    - Recommended lead allocation percentage
+    - AI reasoning for the segment
+
+    Args:
+        client_id: Client UUID
+        ctx: Client context (requires member role)
+        db: Database session
+
+    Returns:
+        AI-generated campaign suggestions
+    """
+    from src.engines.campaign_suggester import get_campaign_suggester
+
+    engine = get_campaign_suggester()
+    result = await engine.suggest_campaigns(db, client_id)
+
+    if not result.success:
+        raise AgencyValidationError(
+            message=result.error or "Failed to generate campaign suggestions",
+            field="client_id",
+        )
+
+    data = result.data
+    return CampaignSuggestionsResponse(
+        client_id=data["client_id"],
+        tier=data["tier"],
+        ai_campaign_slots=data["ai_campaign_slots"],
+        custom_campaign_slots=data["custom_campaign_slots"],
+        suggestions=[
+            CampaignSuggestionItem(**s) for s in data["suggestions"]
+        ],
+        generated_at=data["generated_at"],
+    )
+
+
+@router.post(
+    "/clients/{client_id}/campaigns/suggestions/create",
+    response_model=CreateCampaignsFromSuggestionsResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_campaigns_from_suggestions(
+    client_id: UUID,
+    request: CreateCampaignsFromSuggestionsRequest,
+    ctx: Annotated[ClientContext, Depends(require_member)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> CreateCampaignsFromSuggestionsResponse:
+    """
+    Create campaigns from AI suggestions.
+
+    First call GET /suggestions to get AI suggestions, then call this
+    endpoint with the indices of suggestions you want to create.
+
+    Args:
+        client_id: Client UUID
+        request: Request with suggestion indices and options
+        ctx: Client context (requires member role)
+        db: Database session
+
+    Returns:
+        Created campaign details
+    """
+    from src.engines.campaign_suggester import get_campaign_suggester
+
+    engine = get_campaign_suggester()
+
+    # First get suggestions
+    suggestions_result = await engine.suggest_campaigns(db, client_id)
+    if not suggestions_result.success:
+        raise AgencyValidationError(
+            message=suggestions_result.error or "Failed to generate suggestions",
+            field="client_id",
+        )
+
+    all_suggestions = suggestions_result.data["suggestions"]
+
+    # Filter to selected indices if provided
+    if request.suggestion_indices is not None:
+        selected_suggestions = []
+        for idx in request.suggestion_indices:
+            if 0 <= idx < len(all_suggestions):
+                selected_suggestions.append(all_suggestions[idx])
+        suggestions_to_create = selected_suggestions
+    else:
+        suggestions_to_create = all_suggestions
+
+    if not suggestions_to_create:
+        raise AgencyValidationError(
+            message="No valid suggestions selected",
+            field="suggestion_indices",
+        )
+
+    # Create campaigns from suggestions
+    create_result = await engine.create_suggested_campaigns(
+        db=db,
+        client_id=client_id,
+        suggestions=suggestions_to_create,
+        auto_activate=request.auto_activate,
+    )
+
+    if not create_result.success:
+        raise AgencyValidationError(
+            message=create_result.error or "Failed to create campaigns",
+            field="suggestions",
+        )
+
+    data = create_result.data
+    return CreateCampaignsFromSuggestionsResponse(
+        client_id=data["client_id"],
+        campaigns_created=data["campaigns_created"],
+        total_allocation=data["total_allocation"],
+        campaigns=data["campaigns"],
+    )
+
+
+# ============================================
 # VERIFICATION CHECKLIST
 # ============================================
 # [x] Contract comment at top
@@ -1237,3 +1419,4 @@ async def _run_campaign_enrichment(client_id: UUID, campaign_id: UUID, count: in
 # [x] All functions have docstrings
 # [x] No hardcoded credentials
 # [x] Session passed as argument (Rule 11)
+# [x] Campaign suggestion endpoints (Phase 37)

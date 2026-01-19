@@ -1,7 +1,7 @@
 """
 FILE: src/orchestration/flows/pool_assignment_flow.py
 PURPOSE: Assign leads from pool to campaigns with exclusive ownership
-PHASE: 24A (Lead Pool Architecture)
+PHASE: 24A (Lead Pool Architecture), updated Phase 37
 TASK: POOL-011
 DEPENDENCIES:
   - src/services/lead_allocator_service.py
@@ -14,6 +14,11 @@ RULES APPLIED:
   - Rule 11: Session passed as argument
   - Rule 13: JIT validation before each step
   - Rule 14: Soft deletes only
+
+Phase 37 Changes:
+- Uses lead_pool.client_id for ownership (not lead_assignments)
+- Scores stored directly in lead_pool
+- Returns lead_pool_ids instead of assignment_ids
 """
 
 import logging
@@ -188,14 +193,20 @@ async def allocate_pool_leads_task(
 @task(name="score_pool_leads", retries=3, retry_delay_seconds=10)
 async def score_pool_leads_task(
     lead_pool_ids: list[str],
+    client_id: str,
     target_industries: list[str] | None = None,
+    competitor_domains: list[str] | None = None,
 ) -> dict[str, Any]:
     """
-    Score allocated pool leads.
+    Score allocated pool leads by lead_pool_id.
+
+    Phase 37: Scores directly on lead_pool records.
 
     Args:
-        lead_pool_ids: List of pool lead UUID strings
+        lead_pool_ids: List of lead_pool UUID strings
+        client_id: Client UUID for learned weights
         target_industries: Optional target industries for scoring
+        competitor_domains: Optional competitor domains
 
     Returns:
         Dict with scoring results
@@ -208,11 +219,12 @@ async def score_pool_leads_task(
             db=db,
             lead_pool_ids=pool_uuids,
             target_industries=target_industries,
+            competitor_domains=competitor_domains,
         )
 
         if result.success:
             logger.info(
-                f"Scored {result.data['scored']} of {result.data['total']} pool leads"
+                f"Scored {result.data['scored']} of {result.data['total']} leads for client {client_id}"
             )
             return {
                 "success": True,
@@ -222,7 +234,7 @@ async def score_pool_leads_task(
                 "average_score": result.data["average_score"],
             }
         else:
-            logger.warning(f"Pool scoring failed: {result.error}")
+            logger.warning(f"Lead scoring failed: {result.error}")
             return {
                 "success": False,
                 "error": result.error,
@@ -319,14 +331,16 @@ async def jit_validate_for_outreach_task(
 
 @task(name="record_pool_touch", retries=3, retry_delay_seconds=5)
 async def record_pool_touch_task(
-    assignment_id: UUID,
+    lead_pool_id: UUID,
     channel: str,
 ) -> dict[str, Any]:
     """
-    Record a touch (outreach attempt) for a pool assignment.
+    Record a touch (outreach attempt) for a pool lead.
+
+    Phase 37: Uses lead_pool_id directly.
 
     Args:
-        assignment_id: Assignment UUID
+        lead_pool_id: Lead pool UUID
         channel: Channel used
 
     Returns:
@@ -335,34 +349,35 @@ async def record_pool_touch_task(
     async with get_db_session() as db:
         allocator = LeadAllocatorService(db)
         success = await allocator.record_touch(
-            assignment_id=assignment_id,
+            lead_pool_id=lead_pool_id,
             channel=channel,
         )
 
         if success:
-            logger.info(f"Recorded {channel} touch for assignment {assignment_id}")
+            logger.info(f"Recorded {channel} touch for lead {lead_pool_id}")
         else:
-            logger.warning(f"Failed to record touch for assignment {assignment_id}")
+            logger.warning(f"Failed to record touch for lead {lead_pool_id}")
 
         return {
-            "assignment_id": str(assignment_id),
+            "lead_pool_id": str(lead_pool_id),
             "channel": channel,
             "success": success,
         }
 
 
-@task(name="trigger_enrichment_for_assignments", retries=2, retry_delay_seconds=5)
-async def trigger_enrichment_for_assignments_task(
-    assignment_ids: list[str],
+@task(name="trigger_enrichment_for_leads", retries=2, retry_delay_seconds=5)
+async def trigger_enrichment_for_leads_task(
+    lead_pool_ids: list[str],
 ) -> dict[str, Any]:
     """
     Trigger LinkedIn enrichment for assigned leads.
 
-    Queues the lead_enrichment_flow for each assignment to run asynchronously.
+    Phase 37: Uses lead_pool_ids directly instead of assignment_ids.
+    Queues the lead_enrichment_flow for each lead to run asynchronously.
     This allows pool assignment to complete quickly while enrichment runs in background.
 
     Args:
-        assignment_ids: List of assignment UUID strings
+        lead_pool_ids: List of lead_pool UUID strings
 
     Returns:
         Dict with triggered count and any errors
@@ -370,26 +385,26 @@ async def trigger_enrichment_for_assignments_task(
     triggered = 0
     errors = []
 
-    for assignment_id in assignment_ids:
+    for lead_pool_id in lead_pool_ids:
         try:
             # Run enrichment flow as a subflow
-            # This will scrape LinkedIn, run Claude analysis, and update scoring
-            await lead_enrichment_flow(assignment_id=assignment_id)
+            # This will scrape LinkedIn, run Claude analysis, and update lead_pool
+            await lead_enrichment_flow(lead_pool_id=lead_pool_id)
             triggered += 1
         except Exception as e:
-            logger.error(f"Failed to trigger enrichment for {assignment_id}: {e}")
+            logger.error(f"Failed to trigger enrichment for {lead_pool_id}: {e}")
             errors.append({
-                "assignment_id": assignment_id,
+                "lead_pool_id": lead_pool_id,
                 "error": str(e),
             })
 
     logger.info(
-        f"Triggered enrichment for {triggered}/{len(assignment_ids)} assignments"
+        f"Triggered enrichment for {triggered}/{len(lead_pool_ids)} leads"
     )
 
     return {
         "triggered": triggered,
-        "total": len(assignment_ids),
+        "total": len(lead_pool_ids),
         "errors": errors if errors else None,
     }
 
@@ -464,21 +479,21 @@ async def pool_campaign_assignment_flow(
         }
 
     # Step 4: Score allocated leads (initial scoring with Apollo data only)
+    # Phase 37: Use lead_pool_ids directly (no separate assignments)
     lead_pool_ids = [
         lead["lead_pool_id"] for lead in allocation_result["assigned_leads"]
     ]
     scoring_result = await score_pool_leads_task(
         lead_pool_ids=lead_pool_ids,
+        client_id=str(client_id),
         target_industries=client_data["icp_criteria"].get("industries"),
+        competitor_domains=client_data.get("competitor_domains"),
     )
 
     # Step 5: Trigger LinkedIn enrichment for assigned leads
     # This runs asynchronously - leads will be enriched in background
-    assignment_ids = [
-        lead["assignment_id"] for lead in allocation_result["assigned_leads"]
-    ]
-    enrichment_triggered = await trigger_enrichment_for_assignments_task(
-        assignment_ids=assignment_ids,
+    enrichment_triggered = await trigger_enrichment_for_leads_task(
+        lead_pool_ids=lead_pool_ids,
     )
 
     # Compile summary

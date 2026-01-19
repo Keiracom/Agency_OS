@@ -42,7 +42,14 @@ from src.models.base import (
 if TYPE_CHECKING:
     from src.models.client import Client
     from src.models.lead import Lead
+    from src.models.lead_pool import LeadPool
     from src.models.user import User
+
+
+class CampaignType:
+    """Campaign type values."""
+    AI_SUGGESTED = "ai_suggested"
+    CUSTOM = "custom"
 
 
 class Campaign(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
@@ -75,6 +82,27 @@ class Campaign(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         ENUM(CampaignStatus, name="campaign_status", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         default=CampaignStatus.DRAFT,
+    )
+
+    # Campaign type and lead allocation (Phase 37)
+    campaign_type: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=CampaignType.CUSTOM,
+    )
+    lead_allocation_pct: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=100,  # Default to 100% if single campaign
+    )
+    lead_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,  # Calculated from pct × client's total leads
+    )
+    ai_suggestion_reason: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,  # Why AI suggested this campaign (if ai_suggested)
     )
 
     # Permission mode (overrides client default)
@@ -190,6 +218,12 @@ class Campaign(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         back_populates="campaign",
         lazy="selectin",
         order_by="CampaignSequence.step_number",
+    )
+    pool_leads: Mapped[list["LeadPool"]] = relationship(
+        "LeadPool",
+        back_populates="campaign",
+        foreign_keys="LeadPool.campaign_id",
+        lazy="selectin",
     )
 
     # Constraints

@@ -33,6 +33,7 @@ from src.models.base import (
 if TYPE_CHECKING:
     from src.models.campaign import Campaign
     from src.models.lead import Lead
+    from src.models.lead_pool import LeadPool
     from src.models.linkedin_credential import LinkedInCredential
     from src.models.membership import Membership
 
@@ -137,6 +138,12 @@ class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         "LinkedInCredential",
         back_populates="client",
         uselist=False,
+        lazy="selectin",
+    )
+    pool_leads: Mapped[list["LeadPool"]] = relationship(
+        "LeadPool",
+        back_populates="client",
+        foreign_keys="LeadPool.client_id",
         lazy="selectin",
     )
 

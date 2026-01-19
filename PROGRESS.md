@@ -1,6 +1,6 @@
 # PROGRESS.md — Agency OS Roadmap & Status
 
-**Last Updated:** January 10, 2026
+**Last Updated:** January 20, 2026
 **Current Phase:** 21 (E2E Testing)
 **Next Milestone:** Complete E2E journeys J1-J6 live
 
@@ -13,7 +13,7 @@
 | Platform Build | ✅ 174/174 | — |
 | CIS Data (Phase 24) | ✅ 66/66 | — |
 | Email Infra | ✅ Warmup ends Jan 20 | — |
-| E2E Testing | 🟡 14/16 | — |
+| E2E Testing | 🟡 Restructuring | Defining sub-tasks |
 | First Customer | 🔴 | E2E + warmup |
 
 ---
@@ -38,23 +38,46 @@
 
 ## CURRENT FOCUS: Phase 21 (E2E Testing)
 
-**Goal:** Validate full user journey before launch
+**Goal:** Comprehensive system validation before launch
+**Master Tracker:** `docs/e2e/E2E_MASTER.md`
+**Instructions:** `docs/e2e/E2E_INSTRUCTIONS.md`
 
-| Journey | Code Review | Live Test |
-|---------|-------------|-----------|
-| J1: Signup & Onboarding | ✅ | 🔴 |
-| J2: Campaign & Leads | ✅ | 🔴 |
-| J3: Outreach Execution | ✅ | 🔴 |
-| J4: Reply & Meeting | ✅ | 🔴 |
-| J5: Dashboard | ✅ | 🔴 |
-| J6: Admin | ✅ | 🔴 |
+### Journey Status
 
-**Blocker:** None — TEST_MODE deployed, ready for live testing
+| Journey | Name | Status | Sub-Tasks |
+|---------|------|--------|-----------|
+| J0 | Infrastructure & Wiring Audit | 🔴 Defining | Pending |
+| J1 | Signup & Onboarding | 🔴 Defining | 15 draft |
+| J2 | Campaign & Leads | 🔴 Not Started | — |
+| J3 | Outreach Execution | 🔴 Not Started | — |
+| J4 | Reply & Meeting | 🔴 Not Started | — |
+| J5 | Dashboard Validation | 🔴 Not Started | — |
+| J6 | Admin Dashboard | 🔴 Not Started | — |
+
+### What Changed
+
+Previous E2E approach only tested "does it work?" — now we test:
+- **Part A:** Code & wiring verification (is it implemented correctly?)
+- **Part B:** Live execution test (does it actually work?)
+
+This catches issues like Prefect pointing to Cloud instead of self-hosted.
 
 **Next Actions:**
-1. Set TEST_MODE=true in Railway
-2. Run J1-J6 live with test agency (Umped)
-3. Document issues in `docs/progress/ISSUES.md`
+1. Define J0 sub-tasks (Infrastructure Audit) — runs FIRST
+2. Define J1-J6 sub-tasks with CEO review
+3. Execute J0 → J1 → J2 → J3 → J4 → J5 → J6 in order
+
+### E2E Documentation
+
+| File | Purpose |
+|------|---------|
+| `docs/e2e/E2E_MASTER.md` | Status dashboard |
+| `docs/e2e/E2E_INSTRUCTIONS.md` | Execution protocol |
+| `docs/e2e/E2E_TASK_BREAKDOWN.md` | What we're really testing |
+| `docs/e2e/J0_INFRASTRUCTURE.md` | Infrastructure audit |
+| `docs/e2e/J1_ONBOARDING.md` - `J6_ADMIN.md` | Journey specs |
+| `docs/e2e/ISSUES_FOUND.md` | Problems discovered |
+| `docs/e2e/FIXES_APPLIED.md` | Changes made |
 
 ---
 
@@ -90,11 +113,17 @@
 
 | Field | Value |
 |-------|-------|
-| Test Agency | Umped |
-| Website | https://umped.com.au/ |
+| Test Agency | Sparro Digital |
+| Website | https://sparro.com.au |
+| Industry | Digital Marketing / Performance Marketing |
+| Location | Melbourne, Australia |
+| Tier | Velocity ($5,000/mo) |
 | Test Email | david.stephens@keiracom.com |
 | Test Phone | +61457543392 |
 | Test LinkedIn | https://www.linkedin.com/in/david-stephens-8847a636a/ |
+| E2E Budget | $60 AUD |
+
+> Full E2E plan: `docs/e2e/E2E_TEST_PLAN.md`
 
 **TEST_MODE Environment Variables (set in Railway):**
 ```
@@ -164,6 +193,81 @@ PREFECT_API_URL=https://prefect-server-production-f9b1.up.railway.app/api
 
 ---
 
+## PHASE 37 STATUS (Lead/Campaign Architecture) ✅
+
+**Goal:** Simplify lead ownership model - leads owned directly via lead_pool.client_id
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Create TIER_CONFIG constant | ✅ | `src/config/tiers.py` |
+| Fix tier numbers in tests | ✅ | Velocity=2250, Dominance=4500 |
+| Add client_id/campaign_id to lead_pool | ✅ | Migration 037 |
+| Add campaign_type/lead_allocation to Campaign | ✅ | Migration 038 |
+| Update scorer.py to write to lead_pool | ✅ | Direct ownership model |
+| Update lead_allocator_service.py | ✅ | Sets client_id on lead_pool |
+| Update pool_assignment_flow.py | ✅ | Uses lead_pool_ids |
+| Create campaign suggestion engine | ✅ | `src/engines/campaign_suggester.py` |
+| Add post-onboarding lead sourcing | ✅ | `src/orchestration/flows/post_onboarding_flow.py` |
+
+**Architecture Decision:**
+- One lead = one client = ONE campaign (at a time)
+- `lead_pool.client_id = NULL` → available for sourcing
+- `lead_pool.client_id = UUID` → owned by that client
+- ALS scores stored directly in `lead_pool` table
+
+**New Files Created:**
+- `src/engines/campaign_suggester.py` - AI campaign suggestions from ICP
+- `src/orchestration/flows/post_onboarding_flow.py` - Post-onboarding setup flow
+
+**API Endpoints Added:**
+- `GET /clients/{client_id}/campaigns/suggestions` - Get AI campaign suggestions
+- `POST /clients/{client_id}/campaigns/suggestions/create` - Create campaigns from suggestions
+
+---
+
+## SDK INTEGRATION FOR HOT LEADS ✅
+
+**Goal:** Use Claude Agent SDK for hyper-personalized outreach to Hot leads (ALS 85+)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Create sdk_eligibility.py | ✅ | Gate functions for SDK eligibility |
+| Create enrichment_agent.py | ✅ | SDK deep research with web_search/web_fetch |
+| Create email_agent.py | ✅ | SDK personalized email generation |
+| Create voice_kb_agent.py | ✅ | SDK voice knowledge base generation |
+| Add agent type configs to sdk_brain.py | ✅ | enrichment, email, voice_kb configs |
+| Integrate SDK in scout.py | ✅ | SDK enrichment for Hot leads with signals |
+| Integrate SDK in content.py | ✅ | SDK email for ALL Hot leads |
+| Integrate SDK in voice.py | ✅ | SDK voice KB for ALL Hot leads |
+
+**Architecture:**
+- SDK Enrichment: Hot leads (ALS >= 85) WITH at least one priority signal (~20% of Hot)
+- SDK Email: ALL Hot leads (100% of Hot = ~10% of total)
+- SDK Voice KB: ALL Hot leads (100% of Hot = ~10% of total)
+
+**Priority Signals (for SDK Enrichment):**
+1. Recent funding (< 90 days)
+2. Actively hiring (3+ roles)
+3. Tech stack match > 80%
+4. LinkedIn engagement > 70
+5. Referral source
+6. Employee count sweet spot (50-500)
+
+**Cost Per Hot Lead:**
+| Agent | Max Cost | Typical Cost |
+|-------|----------|--------------|
+| Enrichment | $1.50 | ~$1.00-1.21 |
+| Email | $0.50 | ~$0.20-0.25 |
+| Voice KB | $2.00 | ~$1.50-1.79 |
+
+**Files Created:**
+- `src/agents/sdk_agents/sdk_eligibility.py`
+- `src/agents/sdk_agents/enrichment_agent.py`
+- `src/agents/sdk_agents/email_agent.py`
+- `src/agents/sdk_agents/voice_kb_agent.py`
+
+---
+
 ## EMAIL INFRASTRUCTURE
 
 **Stack:** InfraForge (domains) → Warmforge (warmup) → Salesforge (sending)
@@ -215,6 +319,13 @@ Before first paying customer:
 
 > Full history: `docs/progress/SESSION_LOG.md`
 
+### Jan 11, 2026
+- Replaced Resend with Salesforge as primary email provider
+- Created `src/integrations/salesforge.py` with SalesforgeClient
+- Updated `src/engines/email.py` to use SalesforgeClient
+- Fixed webhook endpoints for correct EmailEventsService usage
+- Preserves Warmforge mailbox warmup progress
+
 ### Jan 10, 2026
 - Phase 24A+ LinkedIn Enrichment Waterfall implemented (8 tasks)
 - PersonalizationAnalysisSkill for Claude pain point analysis
@@ -243,6 +354,8 @@ Before first paying customer:
 
 | Need | Location |
 |------|----------|
+| **E2E Testing** | `docs/e2e/E2E_MASTER.md` |
+| E2E Instructions | `docs/e2e/E2E_INSTRUCTIONS.md` |
 | Completed phases | `docs/progress/COMPLETED_PHASES.md` |
 | Session history | `docs/progress/SESSION_LOG.md` |
 | Known issues | `docs/progress/ISSUES.md` |

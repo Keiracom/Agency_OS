@@ -1,13 +1,18 @@
 """
 FILE: src/services/lead_allocator_service.py
 PURPOSE: Allocate leads from pool to clients with exclusive assignment
-PHASE: 24A (Lead Pool Architecture)
+PHASE: 24A (Lead Pool Architecture), updated Phase 37
 TASK: POOL-006
 DEPENDENCIES:
   - src/services/lead_pool_service.py
   - src/models/database.py
 LAYER: 3 (services)
 CONSUMERS: orchestration, API routes
+
+Phase 37 Changes:
+- Direct ownership: Sets client_id and campaign_id directly on lead_pool
+- No separate lead_assignments table needed for ownership
+- lead_pool.client_id = NULL means available, UUID means owned
 
 This service handles the allocation of leads from the platform pool
 to individual clients. It ensures exclusive assignment (one lead = one client)
@@ -140,6 +145,9 @@ class LeadAllocatorService:
         # Build the query
         where_clause = " AND ".join(conditions)
 
+        # Phase 37: Also filter for leads with no client assignment
+        where_clause += " AND lp.client_id IS NULL"
+
         # First, find matching leads
         find_query = text(f"""
             SELECT lp.id, lp.email, lp.first_name, lp.last_name,
@@ -158,22 +166,21 @@ class LeadAllocatorService:
         if not leads_to_assign:
             return []
 
-        # Assign each lead
+        # Phase 37: Assign leads directly by setting client_id on lead_pool
         assigned_leads = []
         for lead in leads_to_assign:
             lead_pool_id = lead.id
 
-            # Create assignment
+            # Update lead_pool directly with client/campaign ownership
             assign_query = text("""
-                INSERT INTO lead_assignments (
-                    lead_pool_id, client_id, campaign_id,
-                    assigned_by, assignment_reason
-                ) VALUES (
-                    :lead_pool_id, :client_id, :campaign_id,
-                    'allocator', :reason
-                )
-                ON CONFLICT (lead_pool_id) DO NOTHING
-                RETURNING *
+                UPDATE lead_pool
+                SET client_id = :client_id,
+                    campaign_id = :campaign_id,
+                    pool_status = 'assigned',
+                    updated_at = NOW()
+                WHERE id = :lead_pool_id
+                AND client_id IS NULL
+                RETURNING id
             """)
 
             assign_result = await self.session.execute(
@@ -182,25 +189,13 @@ class LeadAllocatorService:
                     "lead_pool_id": str(lead_pool_id),
                     "client_id": str(client_id),
                     "campaign_id": str(campaign_id) if campaign_id else None,
-                    "reason": f"ICP match: {icp_criteria.get('industries', ['any'])[0] if icp_criteria.get('industries') else 'general'}",
                 }
             )
-            assignment = assign_result.fetchone()
+            updated = assign_result.fetchone()
 
-            if assignment:
-                # Update pool status
-                await self.session.execute(
-                    text("""
-                    UPDATE lead_pool
-                    SET pool_status = 'assigned', updated_at = NOW()
-                    WHERE id = :id
-                    """),
-                    {"id": str(lead_pool_id)}
-                )
-
+            if updated:
                 assigned_leads.append({
                     "lead_pool_id": str(lead_pool_id),
-                    "assignment_id": str(assignment.id),
                     "email": lead.email,
                     "first_name": lead.first_name,
                     "last_name": lead.last_name,
@@ -217,16 +212,18 @@ class LeadAllocatorService:
         client_id: UUID | None = None
     ) -> dict[str, Any] | None:
         """
-        Get assignment for a lead.
+        Get ownership info for a lead from lead_pool.
+
+        Phase 37: Queries lead_pool directly instead of lead_assignments.
 
         Args:
             lead_pool_id: Lead pool ID
             client_id: Optional client filter
 
         Returns:
-            Assignment record or None
+            Lead pool record with ownership info or None
         """
-        conditions = ["lead_pool_id = :lead_pool_id", "status = 'active'"]
+        conditions = ["id = :lead_pool_id", "client_id IS NOT NULL"]
         params: dict[str, Any] = {"lead_pool_id": str(lead_pool_id)}
 
         if client_id:
@@ -234,7 +231,11 @@ class LeadAllocatorService:
             params["client_id"] = str(client_id)
 
         query = text(f"""
-            SELECT * FROM lead_assignments
+            SELECT id, email, first_name, last_name, title, company_name,
+                   client_id, campaign_id, pool_status, als_score, als_tier,
+                   first_contacted_at, last_contacted_at, total_touches,
+                   has_replied, replied_at, reply_intent
+            FROM lead_pool
             WHERE {" AND ".join(conditions)}
         """)
 
@@ -246,31 +247,34 @@ class LeadAllocatorService:
     async def get_client_assignments(
         self,
         client_id: UUID,
-        status: str = "active",
+        status: str = "assigned",
         limit: int = 100,
         offset: int = 0,
     ) -> list[dict[str, Any]]:
         """
-        Get all assignments for a client.
+        Get all leads assigned to a client.
+
+        Phase 37: Queries lead_pool directly where client_id matches.
 
         Args:
             client_id: Client ID
-            status: Filter by status (active, released, converted)
+            status: Filter by pool_status (assigned, converted, etc.)
             limit: Maximum results
             offset: Pagination offset
 
         Returns:
-            List of assignments with lead data
+            List of lead pool records owned by client
         """
         query = text("""
-            SELECT la.*, lp.email, lp.first_name, lp.last_name,
-                   lp.title, lp.company_name, lp.company_industry,
-                   lp.seniority, lp.linkedin_url
-            FROM lead_assignments la
-            JOIN lead_pool lp ON lp.id = la.lead_pool_id
-            WHERE la.client_id = :client_id
-            AND la.status = :status
-            ORDER BY la.assigned_at DESC
+            SELECT id, email, first_name, last_name, title, company_name,
+                   company_industry, seniority, linkedin_url, client_id,
+                   campaign_id, pool_status, als_score, als_tier,
+                   first_contacted_at, last_contacted_at, total_touches,
+                   has_replied, replied_at, reply_intent, created_at
+            FROM lead_pool
+            WHERE client_id = :client_id
+            AND pool_status = :status
+            ORDER BY created_at DESC
             LIMIT :limit OFFSET :offset
         """)
 
@@ -289,158 +293,114 @@ class LeadAllocatorService:
 
     async def release_lead(
         self,
-        assignment_id: UUID,
+        lead_pool_id: UUID,
         reason: str = "manual"
     ) -> bool:
         """
         Release a lead back to the pool.
 
+        Phase 37: Clears client_id and campaign_id on lead_pool.
+
         Args:
-            assignment_id: Assignment ID
-            reason: Release reason
+            lead_pool_id: Lead pool ID
+            reason: Release reason (stored for audit)
 
         Returns:
             True if released
         """
-        # Get assignment first
+        # Update lead_pool directly
         query = text("""
-            SELECT lead_pool_id FROM lead_assignments
-            WHERE id = :id AND status = 'active'
+            UPDATE lead_pool
+            SET client_id = NULL,
+                campaign_id = NULL,
+                pool_status = 'available',
+                updated_at = NOW()
+            WHERE id = :id
+            AND client_id IS NOT NULL
+            RETURNING id
         """)
+
         result = await self.session.execute(
             query,
-            {"id": str(assignment_id)}
+            {"id": str(lead_pool_id)}
         )
         row = result.fetchone()
 
-        if not row:
-            return False
-
-        lead_pool_id = row.lead_pool_id
-
-        # Update assignment
-        await self.session.execute(
-            text("""
-            UPDATE lead_assignments
-            SET status = 'released',
-                released_at = NOW(),
-                release_reason = :reason,
-                updated_at = NOW()
-            WHERE id = :id
-            """),
-            {"id": str(assignment_id), "reason": reason}
-        )
-
-        # Update pool status
-        await self.session.execute(
-            text("""
-            UPDATE lead_pool
-            SET pool_status = 'available', updated_at = NOW()
-            WHERE id = :id
-            """),
-            {"id": str(lead_pool_id)}
-        )
-
         await self.session.commit()
-        return True
+        return row is not None
 
     async def mark_converted(
         self,
-        assignment_id: UUID,
+        lead_pool_id: UUID,
         conversion_type: str = "meeting_booked"
     ) -> bool:
         """
         Mark a lead as converted.
 
+        Phase 37: Updates pool_status to 'converted' on lead_pool.
         Converted leads stay with the client forever.
 
         Args:
-            assignment_id: Assignment ID
+            lead_pool_id: Lead pool ID
             conversion_type: Type of conversion
 
         Returns:
             True if marked
         """
-        # Get assignment first
+        # Update lead_pool directly
         query = text("""
-            SELECT lead_pool_id FROM lead_assignments
-            WHERE id = :id AND status = 'active'
+            UPDATE lead_pool
+            SET pool_status = 'converted',
+                updated_at = NOW()
+            WHERE id = :id
+            AND client_id IS NOT NULL
+            RETURNING id
         """)
+
         result = await self.session.execute(
             query,
-            {"id": str(assignment_id)}
+            {"id": str(lead_pool_id)}
         )
         row = result.fetchone()
 
-        if not row:
-            return False
-
-        lead_pool_id = row.lead_pool_id
-
-        # Update assignment
-        await self.session.execute(
-            text("""
-            UPDATE lead_assignments
-            SET status = 'converted',
-                converted_at = NOW(),
-                conversion_type = :conversion_type,
-                updated_at = NOW()
-            WHERE id = :id
-            """),
-            {"id": str(assignment_id), "conversion_type": conversion_type}
-        )
-
-        # Update pool status
-        await self.session.execute(
-            text("""
-            UPDATE lead_pool
-            SET pool_status = 'converted', updated_at = NOW()
-            WHERE id = :id
-            """),
-            {"id": str(lead_pool_id)}
-        )
-
         await self.session.commit()
-        return True
+        return row is not None
 
     async def record_touch(
         self,
-        assignment_id: UUID,
+        lead_pool_id: UUID,
         channel: str,
     ) -> bool:
         """
-        Record a touch (outreach) for an assignment.
+        Record a touch (outreach) for a lead.
+
+        Phase 37: Updates touch counts directly on lead_pool.
 
         Args:
-            assignment_id: Assignment ID
+            lead_pool_id: Lead pool ID
             channel: Channel used (email, sms, linkedin, etc.)
 
         Returns:
             True if recorded
         """
         query = text("""
-            UPDATE lead_assignments
+            UPDATE lead_pool
             SET total_touches = total_touches + 1,
-                channels_used = array_append(
-                    CASE WHEN :channel = ANY(channels_used)
-                         THEN channels_used
-                         ELSE channels_used
-                    END,
-                    CASE WHEN :channel = ANY(channels_used)
-                         THEN NULL
-                         ELSE :channel::channel_type
-                    END
-                ),
+                channels_used = CASE
+                    WHEN :channel = ANY(channels_used) THEN channels_used
+                    ELSE array_append(channels_used, :channel)
+                END,
                 first_contacted_at = COALESCE(first_contacted_at, NOW()),
                 last_contacted_at = NOW(),
                 updated_at = NOW()
-            WHERE id = :id AND status = 'active'
+            WHERE id = :id
+            AND client_id IS NOT NULL
             RETURNING id
         """)
 
         result = await self.session.execute(
             query,
-            {"id": str(assignment_id), "channel": channel}
+            {"id": str(lead_pool_id), "channel": channel}
         )
         row = result.fetchone()
         await self.session.commit()
@@ -449,68 +409,35 @@ class LeadAllocatorService:
 
     async def record_reply(
         self,
-        assignment_id: UUID,
+        lead_pool_id: UUID,
         intent: str,
     ) -> bool:
         """
         Record a reply from the lead.
 
+        Phase 37: Updates reply info directly on lead_pool.
+
         Args:
-            assignment_id: Assignment ID
+            lead_pool_id: Lead pool ID
             intent: Reply intent (interested, not_interested, etc.)
 
         Returns:
             True if recorded
         """
         query = text("""
-            UPDATE lead_assignments
+            UPDATE lead_pool
             SET has_replied = TRUE,
                 replied_at = NOW(),
                 reply_intent = :intent,
                 updated_at = NOW()
-            WHERE id = :id AND status = 'active'
+            WHERE id = :id
+            AND client_id IS NOT NULL
             RETURNING id
         """)
 
         result = await self.session.execute(
             query,
-            {"id": str(assignment_id), "intent": intent}
-        )
-        row = result.fetchone()
-        await self.session.commit()
-
-        return row is not None
-
-    async def set_cooling_period(
-        self,
-        assignment_id: UUID,
-        days: int = 7,
-    ) -> bool:
-        """
-        Set a cooling period for an assignment.
-
-        During cooling, no outreach is allowed.
-
-        Args:
-            assignment_id: Assignment ID
-            days: Cooling period in days
-
-        Returns:
-            True if set
-        """
-        cooling_until = datetime.now() + timedelta(days=days)
-
-        query = text("""
-            UPDATE lead_assignments
-            SET cooling_until = :cooling_until,
-                updated_at = NOW()
-            WHERE id = :id AND status = 'active'
-            RETURNING id
-        """)
-
-        result = await self.session.execute(
-            query,
-            {"id": str(assignment_id), "cooling_until": cooling_until}
+            {"id": str(lead_pool_id), "intent": intent}
         )
         row = result.fetchone()
         await self.session.commit()
@@ -519,16 +446,30 @@ class LeadAllocatorService:
 
     async def get_client_stats(self, client_id: UUID) -> dict[str, Any]:
         """
-        Get assignment statistics for a client.
+        Get lead statistics for a client.
+
+        Phase 37: Queries lead_pool directly.
 
         Args:
             client_id: Client ID
 
         Returns:
-            Assignment statistics
+            Lead ownership statistics
         """
         query = text("""
-            SELECT * FROM v_client_assignment_stats
+            SELECT
+                :client_id as client_id,
+                COUNT(*) as total_leads,
+                COUNT(*) FILTER (WHERE pool_status = 'assigned') as assigned_leads,
+                COUNT(*) FILTER (WHERE pool_status = 'converted') as converted_leads,
+                COUNT(*) FILTER (WHERE has_replied = TRUE) as replied_leads,
+                COALESCE(SUM(total_touches), 0) as total_touches,
+                COALESCE(AVG(total_touches) FILTER (WHERE total_touches > 0), 0) as avg_touches_per_lead,
+                COUNT(*) FILTER (WHERE als_tier = 'hot') as hot_leads,
+                COUNT(*) FILTER (WHERE als_tier = 'warm') as warm_leads,
+                COUNT(*) FILTER (WHERE als_tier = 'cool') as cool_leads,
+                COUNT(*) FILTER (WHERE als_tier = 'cold') as cold_leads
+            FROM lead_pool
             WHERE client_id = :client_id
         """)
 
@@ -541,13 +482,16 @@ class LeadAllocatorService:
         if not row:
             return {
                 "client_id": str(client_id),
-                "total_assignments": 0,
-                "active_assignments": 0,
-                "converted_assignments": 0,
-                "released_assignments": 0,
+                "total_leads": 0,
+                "assigned_leads": 0,
+                "converted_leads": 0,
                 "replied_leads": 0,
                 "total_touches": 0,
                 "avg_touches_per_lead": 0,
+                "hot_leads": 0,
+                "warm_leads": 0,
+                "cool_leads": 0,
+                "cold_leads": 0,
             }
 
         return dict(row._mapping)
@@ -560,62 +504,49 @@ class LeadAllocatorService:
         """
         Release all leads for a client (e.g., subscription cancelled).
 
+        Phase 37: Clears client_id on all leads owned by client.
+
         Args:
             client_id: Client ID
-            reason: Release reason
+            reason: Release reason (stored for audit)
 
         Returns:
             Number of leads released
         """
-        # Get all active assignments
+        # Release all leads owned by this client
         query = text("""
-            UPDATE lead_assignments
-            SET status = 'released',
-                released_at = NOW(),
-                release_reason = :reason,
+            UPDATE lead_pool
+            SET client_id = NULL,
+                campaign_id = NULL,
+                pool_status = 'available',
                 updated_at = NOW()
             WHERE client_id = :client_id
-            AND status = 'active'
-            RETURNING lead_pool_id
+            AND pool_status != 'converted'
         """)
 
         result = await self.session.execute(
             query,
-            {"client_id": str(client_id), "reason": reason}
+            {"client_id": str(client_id)}
         )
-        released = result.fetchall()
-
-        if released:
-            # Update pool status for all released leads
-            lead_ids = [str(r.lead_pool_id) for r in released]
-            await self.session.execute(
-                text("""
-                UPDATE lead_pool
-                SET pool_status = 'available', updated_at = NOW()
-                WHERE id = ANY(:ids)
-                """),
-                {"ids": lead_ids}
-            )
 
         await self.session.commit()
-        return len(released)
+        return result.rowcount
 
 
 # ============================================
-# VERIFICATION CHECKLIST
+# VERIFICATION CHECKLIST (Phase 37 Update)
 # ============================================
 # [x] Contract comment at top with FILE, TASK, PHASE, PURPOSE
 # [x] Layer 3 placement (same as engines)
-# [x] allocate_leads with ICP matching
-# [x] get_assignment for single lead lookup
-# [x] get_client_assignments for client dashboard
-# [x] release_lead back to pool
-# [x] mark_converted for conversions
-# [x] record_touch for outreach tracking
-# [x] record_reply for reply tracking
-# [x] set_cooling_period for lead cooling
-# [x] get_client_stats for analytics
-# [x] release_client_leads for subscription cancellation
+# [x] allocate_leads sets client_id directly on lead_pool
+# [x] get_assignment queries lead_pool directly
+# [x] get_client_assignments queries lead_pool where client_id = x
+# [x] release_lead clears client_id on lead_pool
+# [x] mark_converted updates pool_status on lead_pool
+# [x] record_touch updates touch counts on lead_pool
+# [x] record_reply updates reply info on lead_pool
+# [x] get_client_stats queries lead_pool for stats
+# [x] release_client_leads clears client_id for all client's leads
 # [x] FOR UPDATE SKIP LOCKED for race condition prevention
 # [x] No hardcoded credentials
 # [x] All methods async

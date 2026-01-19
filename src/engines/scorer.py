@@ -686,12 +686,15 @@ class ScorerEngine(BaseEngine):
     async def _get_linkedin_boost(
         self,
         db: AsyncSession,
-        assignment_id: UUID | None,
+        lead_pool_id: UUID | None,
     ) -> dict[str, Any]:
         """
         Calculate LinkedIn engagement boost from enrichment data.
 
-        Phase 24A+: Boosts score based on LinkedIn activity signals:
+        Phase 37: Reads LinkedIn data from lead_pool.enrichment_data
+        instead of lead_assignments. Data is stored during enrichment.
+
+        Boosts score based on LinkedIn activity signals:
         - Person has recent posts (engaged on LinkedIn)
         - Person has 500+ connections (influential)
         - Person posted in last 30 days (active)
@@ -700,40 +703,40 @@ class ScorerEngine(BaseEngine):
 
         Args:
             db: Database session
-            assignment_id: Lead assignment UUID to check
+            lead_pool_id: Lead pool UUID to check
 
         Returns:
             Dict with boost_points (int, max 10) and signals (list of reasons)
         """
-        if not assignment_id:
+        if not lead_pool_id:
             return {"boost_points": 0, "signals": []}
 
         try:
-            # Get LinkedIn data from assignment
+            # Get LinkedIn data from lead_pool enrichment_data
             result = await db.execute(
                 text("""
-                    SELECT linkedin_person_data, linkedin_company_data,
-                           linkedin_person_scraped_at, linkedin_company_scraped_at
-                    FROM lead_assignments
-                    WHERE id = :assignment_id
+                    SELECT enrichment_data
+                    FROM lead_pool
+                    WHERE id = :lead_pool_id
                 """),
-                {"assignment_id": str(assignment_id)},
+                {"lead_pool_id": str(lead_pool_id)},
             )
             row = result.fetchone()
 
-            if not row:
+            if not row or not row.enrichment_data:
                 return {"boost_points": 0, "signals": []}
 
             boost_points = 0
             signals = []
 
-            # Parse person LinkedIn data
-            person_data = row.linkedin_person_data
-            if person_data:
-                if isinstance(person_data, str):
-                    import json
-                    person_data = json.loads(person_data)
+            enrichment_data = row.enrichment_data
+            if isinstance(enrichment_data, str):
+                import json
+                enrichment_data = json.loads(enrichment_data)
 
+            # Parse person LinkedIn data from enrichment_data
+            person_data = enrichment_data.get("linkedin_person", {})
+            if person_data:
                 # Check for posts (engaged on LinkedIn)
                 posts = person_data.get("posts", [])
                 if posts and len(posts) > 0:
@@ -762,13 +765,9 @@ class ScorerEngine(BaseEngine):
                     boost_points += LINKEDIN_HIGH_CONNECTIONS_BOOST
                     signals.append(f"High influence ({connections}+ connections)")
 
-            # Parse company LinkedIn data
-            company_data = row.linkedin_company_data
+            # Parse company LinkedIn data from enrichment_data
+            company_data = enrichment_data.get("linkedin_company", {})
             if company_data:
-                if isinstance(company_data, str):
-                    import json
-                    company_data = json.loads(company_data)
-
                 # Check for company posts (active company)
                 company_posts = company_data.get("posts", [])
                 if company_posts and len(company_posts) > 0:
@@ -786,14 +785,14 @@ class ScorerEngine(BaseEngine):
 
             if boost_points > 0:
                 logger.info(
-                    f"LinkedIn boost for assignment {assignment_id}: "
+                    f"LinkedIn boost for lead_pool {lead_pool_id}: "
                     f"+{boost_points} points ({', '.join(signals)})"
                 )
 
             return {"boost_points": boost_points, "signals": signals}
 
         except Exception as e:
-            logger.warning(f"Error getting LinkedIn boost for {assignment_id}: {e}")
+            logger.warning(f"Error getting LinkedIn boost for {lead_pool_id}: {e}")
             return {"boost_points": 0, "signals": []}
 
     async def _update_lead_score(
@@ -933,8 +932,8 @@ class ScorerEngine(BaseEngine):
         buyer_boost_points = buyer_boost.get("boost_points", 0)
         weighted_score += buyer_boost_points
 
-        # Phase 24A+: Apply LinkedIn engagement boost (when assignment has enrichment)
-        linkedin_boost = await self._get_linkedin_boost(db, assignment_id)
+        # Phase 37: Apply LinkedIn engagement boost from lead_pool enrichment_data
+        linkedin_boost = await self._get_linkedin_boost(db, lead_pool_id)
         linkedin_boost_points = linkedin_boost.get("boost_points", 0)
         weighted_score += linkedin_boost_points
 
@@ -963,12 +962,12 @@ class ScorerEngine(BaseEngine):
             # Phase 24F: Buyer signal boost
             "buyer_boost": buyer_boost_points,
             "buyer_boost_reason": buyer_boost.get("reason"),
-            # Phase 24A+: LinkedIn engagement boost
+            # Phase 37: LinkedIn engagement boost from lead_pool
             "linkedin_boost": linkedin_boost_points,
             "linkedin_signals": linkedin_boost.get("signals", []),
         }
 
-        # Update pool lead in database
+        # Phase 37: Update lead_pool directly (not lead_assignments)
         await self._update_pool_lead_score(db, lead_pool_id, score_breakdown)
 
         return EngineResult.ok(
@@ -1060,6 +1059,317 @@ class ScorerEngine(BaseEngine):
                 "source": "lead_pool",
             },
         )
+
+    # ============================================
+    # CLIENT-SPECIFIC ASSIGNMENT SCORING
+    # ============================================
+
+    async def score_assignments_batch(
+        self,
+        db: AsyncSession,
+        assignment_ids: list[UUID],
+        client_id: UUID,
+        target_industries: list[str] | None = None,
+        competitor_domains: list[str] | None = None,
+    ) -> EngineResult[dict[str, Any]]:
+        """
+        Score a batch of lead assignments with client-specific weights.
+
+        This is the preferred method for scoring as it:
+        1. Uses assignment_id for precise targeting
+        2. Uses client's learned ALS weights
+        3. Respects client-specific target industries and competitors
+
+        Args:
+            db: Database session
+            assignment_ids: List of lead_assignment UUIDs
+            client_id: Client UUID for learned weights
+            target_industries: Client's target industries
+            competitor_domains: Client's competitor domains
+
+        Returns:
+            EngineResult with batch scoring summary
+        """
+        results = {
+            "total": len(assignment_ids),
+            "scored": 0,
+            "failures": 0,
+            "tier_distribution": {"hot": 0, "warm": 0, "cool": 0, "cold": 0, "dead": 0},
+            "average_score": 0.0,
+            "scored_leads": [],
+            "failed_leads": [],
+        }
+
+        # Get client's learned weights (once for all assignments)
+        weights = DEFAULT_WEIGHTS.copy()
+        weights_source = "default"
+        learned = await self._get_learned_weights(db, client_id)
+        if learned:
+            weights = learned
+            weights_source = "learned"
+
+        total_score = 0
+
+        for assignment_id in assignment_ids:
+            try:
+                result = await self.score_assignment(
+                    db=db,
+                    assignment_id=assignment_id,
+                    client_id=client_id,
+                    weights=weights,
+                    weights_source=weights_source,
+                    target_industries=target_industries,
+                    competitor_domains=competitor_domains,
+                )
+
+                if result.success:
+                    results["scored"] += 1
+                    tier = result.data["als_tier"]
+                    score = result.data["als_score"]
+                    total_score += score
+                    results["tier_distribution"][tier] += 1
+                    results["scored_leads"].append({
+                        "assignment_id": str(assignment_id),
+                        "score": score,
+                        "tier": tier,
+                    })
+                else:
+                    results["failures"] += 1
+                    results["failed_leads"].append({
+                        "assignment_id": str(assignment_id),
+                        "error": result.error,
+                    })
+
+            except Exception as e:
+                results["failures"] += 1
+                results["failed_leads"].append({
+                    "assignment_id": str(assignment_id),
+                    "error": str(e),
+                })
+
+        if results["scored"] > 0:
+            results["average_score"] = total_score / results["scored"]
+
+        return EngineResult.ok(
+            data=results,
+            metadata={
+                "batch_size": len(assignment_ids),
+                "success_rate": results["scored"] / results["total"]
+                if results["total"] > 0 else 0,
+                "client_id": str(client_id),
+                "weights_source": weights_source,
+            },
+        )
+
+    async def score_assignment(
+        self,
+        db: AsyncSession,
+        assignment_id: UUID,
+        client_id: UUID,
+        weights: dict[str, float] | None = None,
+        weights_source: str = "default",
+        target_industries: list[str] | None = None,
+        competitor_domains: list[str] | None = None,
+    ) -> EngineResult[dict[str, Any]]:
+        """
+        Score a single lead assignment with client-specific weights.
+
+        Args:
+            db: Database session
+            assignment_id: Lead assignment UUID
+            client_id: Client UUID
+            weights: Pre-fetched weights (optional, will fetch if not provided)
+            weights_source: Source of weights ("default" or "learned")
+            target_industries: Client's target industries
+            competitor_domains: Client's competitor domains
+
+        Returns:
+            EngineResult with scoring breakdown
+        """
+        # Get assignment with pool lead data
+        assignment_data = await self._get_assignment_with_pool_data(db, assignment_id)
+        if not assignment_data:
+            return EngineResult.fail(
+                error="Assignment not found",
+                metadata={"assignment_id": str(assignment_id)},
+            )
+
+        # Get weights if not provided
+        if weights is None:
+            weights = DEFAULT_WEIGHTS.copy()
+            learned = await self._get_learned_weights(db, client_id)
+            if learned:
+                weights = learned
+                weights_source = "learned"
+
+        # Calculate raw component scores using pool data
+        raw_data_quality = self._score_pool_data_quality(assignment_data)
+        raw_authority = self._score_pool_authority(assignment_data)
+        raw_company_fit = self._score_pool_company_fit(assignment_data, target_industries)
+        raw_timing = self._score_pool_timing(assignment_data)
+        raw_risk = self._score_pool_risk(assignment_data, competitor_domains)
+
+        # Normalize to 0-100 scale
+        normalized = {
+            "data_quality": raw_data_quality * 5,
+            "authority": raw_authority * 4,
+            "company_fit": raw_company_fit * 4,
+            "timing": raw_timing * 6.67,
+            "risk": raw_risk * 6.67,
+        }
+
+        # Calculate weighted score using client's weights
+        weighted_score = sum(
+            normalized[comp] * weights.get(comp, 0.2)
+            for comp in normalized
+        )
+
+        # Apply buyer signal boost
+        company_domain = assignment_data.get("company_domain")
+        buyer_boost = await self._get_buyer_boost(db, company_domain)
+        buyer_boost_points = buyer_boost.get("boost_points", 0)
+        weighted_score += buyer_boost_points
+
+        # Phase 37: Apply LinkedIn engagement boost using lead_pool_id
+        lead_pool_id = assignment_data.get("lead_pool_id")
+        if lead_pool_id:
+            linkedin_boost = await self._get_linkedin_boost(db, UUID(str(lead_pool_id)))
+        else:
+            linkedin_boost = {"boost_points": 0, "signals": []}
+        linkedin_boost_points = linkedin_boost.get("boost_points", 0)
+        weighted_score += linkedin_boost_points
+
+        total_score = int(max(0, min(100, weighted_score)))
+        tier = self._get_tier(total_score)
+        channels = self._get_channels_for_tier(tier)
+
+        # Build result
+        lead_pool_uuid = UUID(str(lead_pool_id)) if lead_pool_id else None
+        score_breakdown = {
+            "als_score": total_score,
+            "als_tier": tier,
+            "als_data_quality": raw_data_quality,
+            "als_authority": raw_authority,
+            "als_company_fit": raw_company_fit,
+            "als_timing": raw_timing,
+            "als_risk": raw_risk,
+            "als_components": {
+                "data_quality": raw_data_quality,
+                "authority": raw_authority,
+                "company_fit": raw_company_fit,
+                "timing": raw_timing,
+                "risk": raw_risk,
+            },
+            "als_weights_used": weights,
+            "weights_source": weights_source,
+            "available_channels": [c.value for c in channels],
+            "lead_pool_id": str(lead_pool_id) if lead_pool_id else None,
+            "buyer_boost": buyer_boost_points,
+            "buyer_boost_reason": buyer_boost.get("reason"),
+            "linkedin_boost": linkedin_boost_points,
+            "linkedin_signals": linkedin_boost.get("signals", []),
+        }
+
+        # Phase 37: Update lead_pool directly
+        if lead_pool_uuid:
+            await self._update_pool_lead_score(db, lead_pool_uuid, score_breakdown)
+
+        return EngineResult.ok(
+            data=score_breakdown,
+            metadata={
+                "engine": self.name,
+                "tier": tier,
+                "channels_available": len(channels),
+                "weights_source": weights_source,
+                "client_id": str(client_id),
+            },
+        )
+
+    async def _get_assignment_with_pool_data(
+        self,
+        db: AsyncSession,
+        assignment_id: UUID,
+    ) -> dict[str, Any] | None:
+        """
+        Get assignment with joined pool lead data for scoring.
+
+        Args:
+            db: Database session
+            assignment_id: Assignment UUID
+
+        Returns:
+            Combined assignment + pool data dict or None
+        """
+        query = text("""
+            SELECT
+                la.id as assignment_id,
+                la.client_id,
+                la.campaign_id,
+                la.lead_pool_id,
+                lp.email,
+                lp.email_status,
+                lp.phone,
+                lp.linkedin_url,
+                lp.title,
+                lp.seniority,
+                lp.company_name,
+                lp.company_domain,
+                lp.company_industry,
+                lp.company_employee_count,
+                lp.company_country,
+                lp.company_is_hiring,
+                lp.company_latest_funding_date,
+                lp.is_bounced,
+                lp.is_unsubscribed,
+                lp.pool_status
+            FROM lead_assignments la
+            JOIN lead_pool lp ON la.lead_pool_id = lp.id
+            WHERE la.id = :assignment_id
+        """)
+
+        result = await db.execute(query, {"assignment_id": str(assignment_id)})
+        row = result.fetchone()
+
+        return dict(row._mapping) if row else None
+
+    async def _update_assignment_score(
+        self,
+        db: AsyncSession,
+        assignment_id: UUID,
+        score_data: dict[str, Any],
+    ) -> None:
+        """
+        Update a specific assignment with scoring data.
+
+        Args:
+            db: Database session
+            assignment_id: Assignment UUID to update
+            score_data: Scoring results
+        """
+        import json
+
+        query = text("""
+            UPDATE lead_assignments
+            SET als_score = :als_score,
+                als_tier = :als_tier,
+                als_components = :als_components,
+                als_weights_used = :als_weights_used,
+                scored_at = NOW(),
+                updated_at = NOW()
+            WHERE id = :assignment_id
+        """)
+
+        await db.execute(
+            query,
+            {
+                "assignment_id": str(assignment_id),
+                "als_score": score_data["als_score"],
+                "als_tier": score_data["als_tier"],
+                "als_components": json.dumps(score_data.get("als_components", {})),
+                "als_weights_used": json.dumps(score_data.get("als_weights_used", {})),
+            }
+        )
+        await db.commit()
 
     async def _get_pool_lead(
         self,
@@ -1285,14 +1595,24 @@ class ScorerEngine(BaseEngine):
         db: AsyncSession,
         lead_pool_id: UUID,
         score_data: dict[str, Any],
+        assignment_id: UUID | None = None,
     ) -> None:
         """
-        Update pool lead with scoring data.
+        Update lead_pool with scoring data.
 
-        Stores ALS score and tier in lead_pool table.
+        Phase 37: ALS scores are now stored directly in lead_pool table
+        with the client_id ownership model. No separate lead_assignments needed.
+
+        Args:
+            db: Database session
+            lead_pool_id: Pool lead UUID to update
+            score_data: Scoring results
+            assignment_id: Deprecated, kept for backward compatibility
         """
         from sqlalchemy import text
+        import json
 
+        # Update the lead_pool record directly
         query = text("""
             UPDATE lead_pool
             SET als_score = :als_score,
@@ -1302,8 +1622,6 @@ class ScorerEngine(BaseEngine):
                 updated_at = NOW()
             WHERE id = :id
         """)
-
-        import json
         await db.execute(
             query,
             {
@@ -1313,6 +1631,7 @@ class ScorerEngine(BaseEngine):
                 "als_components": json.dumps(score_data.get("als_components", {})),
             }
         )
+
         await db.commit()
 
     async def get_pool_leads_by_tier(
@@ -1320,38 +1639,47 @@ class ScorerEngine(BaseEngine):
         db: AsyncSession,
         tier: str,
         limit: int = 100,
-        pool_status: str = "available",
+        pool_status: str = "assigned",
+        client_id: UUID | None = None,
     ) -> list[dict[str, Any]]:
         """
-        Get pool leads by tier.
+        Get leads by tier from lead_pool.
 
-        Phase 24A: Query leads directly from pool by tier.
+        Phase 37: Queries lead_pool directly using the new schema
+        where ALS scores and client ownership are stored in lead_pool.
 
         Args:
             db: Database session
             tier: Tier to filter by
             limit: Maximum leads to return
-            pool_status: Filter by pool status (default: available)
+            pool_status: Filter by pool status (default: assigned)
+            client_id: Optional client filter
 
         Returns:
-            List of pool lead dicts in the specified tier
+            List of lead pool dicts in the specified tier
         """
         from sqlalchemy import text
 
-        query = text("""
+        conditions = ["als_tier = :tier", "pool_status = :pool_status"]
+        params: dict[str, Any] = {"tier": tier, "pool_status": pool_status, "limit": limit}
+
+        if client_id:
+            conditions.append("client_id = :client_id")
+            params["client_id"] = str(client_id)
+
+        where_clause = " AND ".join(conditions)
+
+        query = text(f"""
             SELECT id, email, first_name, last_name, title,
-                   company_name, als_score, als_tier, als_components
+                   company_name, als_score, als_tier, als_components,
+                   client_id, campaign_id
             FROM lead_pool
-            WHERE als_tier = :tier
-            AND pool_status = :pool_status
+            WHERE {where_clause}
             ORDER BY als_score DESC NULLS LAST
             LIMIT :limit
         """)
 
-        result = await db.execute(
-            query,
-            {"tier": tier, "pool_status": pool_status, "limit": limit}
-        )
+        result = await db.execute(query, params)
         rows = result.fetchall()
 
         return [dict(row._mapping) for row in rows]

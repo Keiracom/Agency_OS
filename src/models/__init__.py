@@ -16,13 +16,16 @@ from src.models.base import Base, SoftDeleteMixin, TimestampMixin, PatternType
 from src.models.client import Client
 from src.models.user import User
 from src.models.membership import Membership
-from src.models.campaign import Campaign, CampaignResource, CampaignSequence
+from src.models.campaign import Campaign, CampaignResource, CampaignSequence, CampaignType
 from src.models.lead import Lead, GlobalSuppression, ClientSuppression, DomainSuppression
+from src.models.lead_pool import LeadPool, PoolStatus, EmailStatus
 from src.models.lead_social_post import LeadSocialPost
 from src.models.activity import Activity, ActivityStats
 from src.models.conversion_patterns import ConversionPattern, ConversionPatternHistory
 from src.models.url_validation import URLValidationResult
 from src.models.linkedin_credential import LinkedInCredential
+from src.models.sdk_usage_log import SDKUsageLog
+from src.models.client_intelligence import ClientIntelligence
 
 __all__ = [
     # Base
@@ -37,10 +40,14 @@ __all__ = [
     "Campaign",
     "CampaignResource",
     "CampaignSequence",
+    "CampaignType",
     "Lead",
     "GlobalSuppression",
     "ClientSuppression",
     "DomainSuppression",
+    "LeadPool",
+    "PoolStatus",
+    "EmailStatus",
     "LeadSocialPost",
     "Activity",
     "ActivityStats",
@@ -51,4 +58,8 @@ __all__ = [
     "URLValidationResult",
     # LinkedIn
     "LinkedInCredential",
+    # SDK Brain
+    "SDKUsageLog",
+    # Client Intelligence
+    "ClientIntelligence",
 ]

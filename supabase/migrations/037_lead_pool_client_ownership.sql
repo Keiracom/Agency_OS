@@ -234,7 +234,7 @@ $$ LANGUAGE plpgsql STABLE;
 CREATE OR REPLACE VIEW v_client_lead_stats AS
 SELECT
     lp.client_id,
-    c.company_name AS client_name,
+    c.name AS client_name,
     COUNT(*) AS total_leads,
     COUNT(*) FILTER (WHERE lp.als_tier = 'hot') AS hot_leads,
     COUNT(*) FILTER (WHERE lp.als_tier = 'warm') AS warm_leads,

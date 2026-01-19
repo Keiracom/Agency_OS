@@ -30,6 +30,14 @@ from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
 from sqlalchemy import text
 
+from src.agents.sdk_agents import (
+    should_use_sdk_enrichment,
+    should_use_sdk_email,
+    should_use_sdk_voice_kb,
+)
+from src.agents.sdk_agents.enrichment_agent import run_sdk_enrichment
+from src.agents.sdk_agents.email_agent import run_sdk_email
+from src.agents.sdk_agents.voice_kb_agent import run_sdk_voice_kb
 from src.agents.skills.research_skills import PersonalizationAnalysisSkill
 from src.engines.scorer import get_scorer_engine
 from src.engines.scout import get_scout_engine
@@ -256,6 +264,211 @@ async def analyze_for_personalization_task(
         }
 
 
+@task(name="sdk_enrich_hot_assignment", retries=2, retry_delay_seconds=10)
+async def sdk_enrich_hot_assignment_task(
+    assignment_id: str,
+    lead_data: dict[str, Any],
+    signals: list[str],
+) -> dict[str, Any]:
+    """
+    Run SDK enrichment for a Hot lead assignment.
+
+    This task performs deep web research using Claude SDK to find
+    funding, hiring, news, and personalization opportunities.
+
+    Args:
+        assignment_id: Lead assignment UUID string
+        lead_data: Lead info for SDK agent
+        signals: Priority signals that triggered SDK
+
+    Returns:
+        Dict with SDK enrichment data
+    """
+    try:
+        result = await run_sdk_enrichment(lead_data)
+
+        if result.success and result.parsed_data:
+            # Store SDK enrichment in assignment
+            async with get_db_session() as db:
+                import json
+                update_query = text("""
+                    UPDATE lead_assignments
+                    SET
+                        sdk_enrichment = :sdk_enrichment,
+                        sdk_signals = :sdk_signals,
+                        sdk_cost_aud = :sdk_cost,
+                        sdk_enriched_at = NOW(),
+                        updated_at = NOW()
+                    WHERE id = :assignment_id
+                """)
+
+                await db.execute(update_query, {
+                    "assignment_id": assignment_id,
+                    "sdk_enrichment": json.dumps(result.parsed_data),
+                    "sdk_signals": signals,
+                    "sdk_cost": result.cost_aud or 0,
+                })
+                await db.commit()
+
+            logger.info(
+                f"SDK enrichment complete for {assignment_id}: "
+                f"signals={signals}, cost=${result.cost_aud:.2f}"
+            )
+
+            return {
+                "success": True,
+                "assignment_id": assignment_id,
+                "sdk_enrichment": result.parsed_data,
+                "sdk_cost_aud": result.cost_aud,
+                "signals": signals,
+            }
+        else:
+            logger.warning(f"SDK enrichment failed for {assignment_id}: {result.error}")
+            return {
+                "success": False,
+                "assignment_id": assignment_id,
+                "error": result.error,
+            }
+    except Exception as e:
+        logger.exception(f"SDK enrichment error for {assignment_id}: {e}")
+        return {
+            "success": False,
+            "assignment_id": assignment_id,
+            "error": str(e),
+        }
+
+
+@task(name="sdk_generate_email_for_assignment", retries=2, retry_delay_seconds=10)
+async def sdk_generate_email_for_assignment_task(
+    assignment_id: str,
+    lead_data: dict[str, Any],
+    sdk_enrichment: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Generate SDK-powered email for a Hot lead assignment.
+
+    Args:
+        assignment_id: Lead assignment UUID string
+        lead_data: Lead info
+        sdk_enrichment: Optional SDK enrichment data
+
+    Returns:
+        Dict with generated email
+    """
+    try:
+        result = await run_sdk_email(
+            lead_data=lead_data,
+            enrichment_data=sdk_enrichment,
+        )
+
+        if result.success and result.parsed_data:
+            # Store SDK email in assignment
+            async with get_db_session() as db:
+                import json
+                update_query = text("""
+                    UPDATE lead_assignments
+                    SET
+                        sdk_email_content = :sdk_email,
+                        updated_at = NOW()
+                    WHERE id = :assignment_id
+                """)
+
+                await db.execute(update_query, {
+                    "assignment_id": assignment_id,
+                    "sdk_email": json.dumps(result.parsed_data),
+                })
+                await db.commit()
+
+            logger.info(f"SDK email generated for {assignment_id}")
+
+            return {
+                "success": True,
+                "assignment_id": assignment_id,
+                "subject": result.parsed_data.get("subject"),
+                "body": result.parsed_data.get("body"),
+                "sdk_cost_aud": result.cost_aud,
+            }
+        else:
+            logger.warning(f"SDK email generation failed for {assignment_id}: {result.error}")
+            return {
+                "success": False,
+                "assignment_id": assignment_id,
+                "error": result.error,
+            }
+    except Exception as e:
+        logger.exception(f"SDK email error for {assignment_id}: {e}")
+        return {
+            "success": False,
+            "assignment_id": assignment_id,
+            "error": str(e),
+        }
+
+
+@task(name="sdk_generate_voice_kb_for_assignment", retries=2, retry_delay_seconds=10)
+async def sdk_generate_voice_kb_for_assignment_task(
+    assignment_id: str,
+    lead_data: dict[str, Any],
+    sdk_enrichment: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Generate SDK-powered voice knowledge base for a Hot lead assignment.
+
+    Args:
+        assignment_id: Lead assignment UUID string
+        lead_data: Lead info
+        sdk_enrichment: Optional SDK enrichment data
+
+    Returns:
+        Dict with voice KB
+    """
+    try:
+        result = await run_sdk_voice_kb(
+            lead_data=lead_data,
+            enrichment_data=sdk_enrichment,
+        )
+
+        if result.success and result.parsed_data:
+            # Store SDK voice KB in assignment
+            async with get_db_session() as db:
+                import json
+                update_query = text("""
+                    UPDATE lead_assignments
+                    SET
+                        sdk_voice_kb = :sdk_voice_kb,
+                        updated_at = NOW()
+                    WHERE id = :assignment_id
+                """)
+
+                await db.execute(update_query, {
+                    "assignment_id": assignment_id,
+                    "sdk_voice_kb": json.dumps(result.parsed_data),
+                })
+                await db.commit()
+
+            logger.info(f"SDK voice KB generated for {assignment_id}")
+
+            return {
+                "success": True,
+                "assignment_id": assignment_id,
+                "voice_kb": result.parsed_data,
+                "sdk_cost_aud": result.cost_aud,
+            }
+        else:
+            logger.warning(f"SDK voice KB failed for {assignment_id}: {result.error}")
+            return {
+                "success": False,
+                "assignment_id": assignment_id,
+                "error": result.error,
+            }
+    except Exception as e:
+        logger.exception(f"SDK voice KB error for {assignment_id}: {e}")
+        return {
+            "success": False,
+            "assignment_id": assignment_id,
+            "error": str(e),
+        }
+
+
 @task(name="score_enriched_lead", retries=2, retry_delay_seconds=5)
 async def score_enriched_lead_task(
     assignment_id: str,
@@ -404,6 +617,71 @@ async def lead_enrichment_flow(
         target_industries=[assignment_data.get("company_industry")] if assignment_data.get("company_industry") else None,
     )
 
+    # Stage 5: SDK processing for Hot leads (ALS 85+)
+    sdk_enrichment_result = None
+    sdk_email_result = None
+    sdk_voice_kb_result = None
+    total_sdk_cost = 0.0
+
+    if scoring_result.get("success") and scoring_result.get("als_score", 0) >= 85:
+        als_score = scoring_result["als_score"]
+        logger.info(f"Hot lead detected (ALS {als_score}), starting SDK processing")
+
+        # Build lead_data for SDK agents
+        lead_data = {
+            "first_name": assignment_data.get("first_name", ""),
+            "last_name": assignment_data.get("last_name", ""),
+            "title": assignment_data.get("title", ""),
+            "company_name": assignment_data.get("company_name", ""),
+            "company_domain": assignment_data.get("company_domain", ""),
+            "company_industry": assignment_data.get("company_industry", ""),
+            "linkedin_url": assignment_data.get("linkedin_url", ""),
+            "als_score": als_score,
+        }
+
+        # Check if SDK enrichment should run (Hot + signals)
+        sdk_eligible, sdk_signals = should_use_sdk_enrichment({
+            "als_score": als_score,
+            "company_employee_count": assignment_data.get("company_employee_count"),
+        })
+
+        if sdk_eligible and sdk_signals:
+            # Stage 5a: SDK deep enrichment (for Hot leads with signals)
+            sdk_enrichment_result = await sdk_enrich_hot_assignment_task(
+                assignment_id=assignment_id,
+                lead_data=lead_data,
+                signals=sdk_signals,
+            )
+            if sdk_enrichment_result.get("success"):
+                total_sdk_cost += sdk_enrichment_result.get("sdk_cost_aud", 0)
+
+        # Stage 5b: SDK email generation (for ALL Hot leads)
+        sdk_enrichment_data = sdk_enrichment_result.get("sdk_enrichment") if sdk_enrichment_result and sdk_enrichment_result.get("success") else None
+        sdk_email_result = await sdk_generate_email_for_assignment_task(
+            assignment_id=assignment_id,
+            lead_data=lead_data,
+            sdk_enrichment=sdk_enrichment_data,
+        )
+        if sdk_email_result.get("success"):
+            total_sdk_cost += sdk_email_result.get("sdk_cost_aud", 0)
+
+        # Stage 5c: SDK voice KB generation (for ALL Hot leads)
+        sdk_voice_kb_result = await sdk_generate_voice_kb_for_assignment_task(
+            assignment_id=assignment_id,
+            lead_data=lead_data,
+            sdk_enrichment=sdk_enrichment_data,
+        )
+        if sdk_voice_kb_result.get("success"):
+            total_sdk_cost += sdk_voice_kb_result.get("sdk_cost_aud", 0)
+
+        logger.info(
+            f"SDK processing complete for Hot lead {assignment_id}: "
+            f"enrichment={sdk_enrichment_result.get('success') if sdk_enrichment_result else 'skipped'}, "
+            f"email={sdk_email_result.get('success')}, "
+            f"voice_kb={sdk_voice_kb_result.get('success')}, "
+            f"total_cost=${total_sdk_cost:.2f}"
+        )
+
     # Compile summary
     summary = {
         "assignment_id": assignment_id,
@@ -417,6 +695,11 @@ async def lead_enrichment_flow(
         "best_channel": analysis_result.get("best_channel") if analysis_result.get("success") else None,
         "als_score": scoring_result.get("als_score") if scoring_result.get("success") else None,
         "als_tier": scoring_result.get("als_tier") if scoring_result.get("success") else None,
+        # SDK results
+        "sdk_enriched": sdk_enrichment_result.get("success") if sdk_enrichment_result else False,
+        "sdk_email_generated": sdk_email_result.get("success") if sdk_email_result else False,
+        "sdk_voice_kb_generated": sdk_voice_kb_result.get("success") if sdk_voice_kb_result else False,
+        "sdk_total_cost_aud": total_sdk_cost,
         "completed_at": datetime.utcnow().isoformat(),
     }
 
@@ -424,6 +707,7 @@ async def lead_enrichment_flow(
         f"Enrichment complete for {summary['lead_name']}: "
         f"ALS {summary['als_score']} ({summary['als_tier']}), "
         f"best channel: {summary['best_channel']}"
+        f"{f', SDK cost: ${total_sdk_cost:.2f}' if total_sdk_cost > 0 else ''}"
     )
 
     return summary

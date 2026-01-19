@@ -41,6 +41,7 @@ from prefect.task_runners import ConcurrentTaskRunner
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.agents.sdk_agents import should_use_sdk_email, should_use_sdk_voice_kb
 from src.engines.allocator import get_allocator_engine
 from src.engines.content import get_content_engine
 from src.engines.email import get_email_engine
@@ -294,6 +295,9 @@ async def send_email_outreach_task(
     """
     Send email outreach to a lead.
 
+    Hot leads (ALS 85+) use SDK-powered hyper-personalized email generation.
+    Other leads use standard Haiku-based generation.
+
     Args:
         lead_id: Lead UUID string
         campaign_id: Campaign UUID string
@@ -325,13 +329,48 @@ async def send_email_outreach_task(
                 "error": f"Rate limit exceeded: {quota_result.error}",
             }
 
-        # Generate content
-        content_result = await content_engine.generate_email(
-            db=db,
-            lead_id=lead_uuid,
-            campaign_id=campaign_uuid,
-            tone="professional",
-        )
+        # Fetch lead to check ALS score for SDK routing
+        lead_stmt = select(Lead).where(Lead.id == lead_uuid)
+        lead_result = await db.execute(lead_stmt)
+        lead = lead_result.scalar_one_or_none()
+
+        if not lead:
+            return {
+                "lead_id": lead_id,
+                "channel": "email",
+                "success": False,
+                "error": f"Lead {lead_id} not found",
+            }
+
+        # Build lead_data for SDK eligibility check
+        lead_data = {
+            "als_score": lead.als_score,
+            "first_name": lead.first_name,
+            "last_name": lead.last_name,
+            "title": lead.title,
+            "company_name": lead.company,
+            "organization_industry": lead.organization_industry,
+            "organization_employee_count": lead.organization_employee_count,
+        }
+
+        # SDK email for Hot leads (ALS 85+), standard for others
+        if should_use_sdk_email(lead_data):
+            # Use SDK-powered email generation for Hot leads
+            content_result = await content_engine.generate_email_with_sdk(
+                db=db,
+                lead_id=lead_uuid,
+                campaign_id=campaign_uuid,
+                tone="professional",
+            )
+            logger.info(f"SDK email generated for Hot lead {lead_id} (ALS: {lead.als_score})")
+        else:
+            # Standard Haiku-based generation
+            content_result = await content_engine.generate_email(
+                db=db,
+                lead_id=lead_uuid,
+                campaign_id=campaign_uuid,
+                tone="professional",
+            )
 
         if not content_result.success:
             return {
@@ -351,7 +390,8 @@ async def send_email_outreach_task(
         )
 
         if send_result.success:
-            logger.info(f"Email sent to lead {lead_id}")
+            sdk_used = should_use_sdk_email(lead_data)
+            logger.info(f"Email sent to lead {lead_id} (SDK: {sdk_used})")
 
         return {
             "lead_id": lead_id,
@@ -359,6 +399,7 @@ async def send_email_outreach_task(
             "success": send_result.success,
             "message_id": send_result.data.get("message_id") if send_result.success else None,
             "error": send_result.error if not send_result.success else None,
+            "sdk_used": should_use_sdk_email(lead_data),
         }
 
 

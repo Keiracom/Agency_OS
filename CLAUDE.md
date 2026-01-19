@@ -194,25 +194,27 @@ Lead model has SDK fields (migration 035):
 - `sdk_voice_kb` (JSONB) - Voice knowledge base
 - `sdk_email_content` (JSONB) - Generated email
 
-### ⚠️ KNOWN INTEGRATION GAPS (Fix Required)
+### ✅ Integration Status (All Fixed)
 
-**CRITICAL - Orchestration flows not using SDK:**
+All orchestration flows now properly route Hot leads to SDK:
 
-| Flow | File | Line | Current | Should Be |
-|------|------|------|---------|-----------|
-| Email Outreach | `outreach_flow.py` | 329 | `generate_email()` | `generate_email_with_sdk()` for Hot |
-| Voice Call | `outreach_tasks.py` | 468 | `voice.send()` direct | Generate KB first for Hot |
-| Enrichment | `enrichment_flow.py` | 150 | `enrich_batch()` | `enrich_lead_with_sdk()` for Hot |
-| Pool Enrich | `lead_enrichment_flow.py` | 401 | Stops after scoring | Continue to SDK for Hot |
+| Flow | File | Status |
+|------|------|--------|
+| Email Outreach | `outreach_flow.py` | ✅ Uses `generate_email_with_sdk()` for Hot |
+| Voice Call | `outreach_tasks.py` | ✅ Generates voice KB for Hot before call |
+| Enrichment | `enrichment_flow.py` | ✅ SDK enrichment for Hot with signals |
+| Pool Enrich | `lead_enrichment_flow.py` | ✅ Full SDK pipeline for Hot leads |
 
-**Fix pattern for flows:**
+**Pattern used in flows:**
 ```python
-# BEFORE calling content generation in any flow:
-lead = await get_lead(db, lead_id)
-if lead.als_score >= 85:  # Hot threshold
-    result = await engine.method_with_sdk(...)
+# In orchestration flows - SDK routing for Hot leads
+from src.agents.sdk_agents import should_use_sdk_email, should_use_sdk_voice_kb
+
+lead_data = {"als_score": lead.als_score, ...}
+if should_use_sdk_email(lead_data):  # Hot check (ALS >= 85)
+    result = await content.generate_email_with_sdk(...)
 else:
-    result = await engine.standard_method(...)
+    result = await content.generate_email(...)
 ```
 
 ### SDK Enhancement Opportunities (Future)

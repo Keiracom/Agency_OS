@@ -28,6 +28,7 @@ from prefect.task_runners import ConcurrentTaskRunner
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.agents.sdk_agents import should_use_sdk_enrichment
 from src.engines.allocator import get_allocator_engine
 from src.engines.scorer import get_scorer_engine
 from src.engines.scout import get_scout_engine
@@ -179,7 +180,7 @@ async def score_lead_task(lead_id: str) -> dict[str, Any]:
         lead_id: Lead UUID string
 
     Returns:
-        Dict with scoring results
+        Dict with scoring results including SDK eligibility info
     """
     async with get_db_session() as db:
         scorer_engine = get_scorer_engine()
@@ -189,20 +190,99 @@ async def score_lead_task(lead_id: str) -> dict[str, Any]:
         result = await scorer_engine.calculate_als(db=db, lead_id=lead_uuid)
 
         if result.success:
+            als_score = result.data['als_score']
+            als_tier = result.data['als_tier']
             logger.info(
-                f"Lead {lead_id} scored: {result.data['als_score']} "
-                f"({result.data['als_tier']} tier)"
+                f"Lead {lead_id} scored: {als_score} ({als_tier} tier)"
             )
+
+            # Check if Hot lead needs SDK enrichment
+            # Fetch lead for signal check
+            lead_stmt = select(Lead).where(Lead.id == lead_uuid)
+            lead_result = await db.execute(lead_stmt)
+            lead = lead_result.scalar_one_or_none()
+
+            sdk_eligible = False
+            sdk_signals = []
+            if lead and als_score >= 85:  # Hot threshold
+                lead_data = {
+                    "als_score": als_score,
+                    "company_latest_funding_date": lead.organization_latest_funding_date,
+                    "company_open_roles": 3 if lead.organization_is_hiring else 0,
+                    "company_employee_count": lead.organization_employee_count,
+                    "source": getattr(lead, 'source', None),
+                }
+                sdk_eligible, sdk_signals = should_use_sdk_enrichment(lead_data)
+
+            return {
+                "lead_id": lead_id,
+                "success": True,
+                "als_score": als_score,
+                "als_tier": als_tier,
+                "sdk_eligible": sdk_eligible,
+                "sdk_signals": sdk_signals,
+                "error": None,
+            }
         else:
             logger.warning(f"Scoring failed for lead {lead_id}: {result.error}")
+            return {
+                "lead_id": lead_id,
+                "success": False,
+                "als_score": None,
+                "als_tier": None,
+                "sdk_eligible": False,
+                "sdk_signals": [],
+                "error": result.error,
+            }
 
-        return {
-            "lead_id": lead_id,
-            "success": result.success,
-            "als_score": result.data.get("als_score") if result.success else None,
-            "als_tier": result.data.get("als_tier") if result.success else None,
-            "error": result.error if not result.success else None,
-        }
+
+@task(name="sdk_enrich_hot_lead", retries=2, retry_delay_seconds=10)
+async def sdk_enrich_hot_lead_task(lead_id: str, signals: list[str]) -> dict[str, Any]:
+    """
+    Run SDK enrichment for a Hot lead with priority signals.
+
+    This performs deep web research to find funding info, hiring data,
+    recent news, and personalization opportunities.
+
+    Args:
+        lead_id: Lead UUID string
+        signals: Priority signals that triggered SDK eligibility
+
+    Returns:
+        Dict with SDK enrichment results
+    """
+    async with get_db_session() as db:
+        scout_engine = get_scout_engine()
+        lead_uuid = UUID(lead_id)
+
+        # Run SDK-enhanced enrichment
+        result = await scout_engine.enrich_lead_with_sdk(
+            db=db,
+            lead_id=lead_uuid,
+            force_refresh=False,
+        )
+
+        if result.success:
+            sdk_data = result.data.get("sdk_enrichment", {})
+            sdk_cost = result.data.get("sdk_cost_aud", 0)
+            logger.info(
+                f"SDK enrichment complete for lead {lead_id}: "
+                f"signals={signals}, cost=${sdk_cost:.2f}"
+            )
+            return {
+                "lead_id": lead_id,
+                "success": True,
+                "sdk_enrichment": sdk_data,
+                "sdk_cost_aud": sdk_cost,
+                "signals": signals,
+            }
+        else:
+            logger.warning(f"SDK enrichment failed for {lead_id}: {result.error}")
+            return {
+                "lead_id": lead_id,
+                "success": False,
+                "error": result.error,
+            }
 
 
 @task(name="allocate_channels_for_lead", retries=2, retry_delay_seconds=5)
@@ -415,6 +495,20 @@ async def daily_enrichment_flow(
         result = await score_lead_task(lead_id=lead_id)
         scoring_results.append(result)
 
+    # Step 3.5: SDK enrichment for Hot leads with priority signals
+    sdk_enrichment_results = []
+    for score_result in scoring_results:
+        if score_result.get("sdk_eligible") and score_result.get("sdk_signals"):
+            logger.info(
+                f"Hot lead {score_result['lead_id']} qualifies for SDK enrichment: "
+                f"{score_result['sdk_signals']}"
+            )
+            sdk_result = await sdk_enrich_hot_lead_task(
+                lead_id=score_result["lead_id"],
+                signals=score_result["sdk_signals"],
+            )
+            sdk_enrichment_results.append(sdk_result)
+
     # Step 4: Allocate channels for scored leads
     allocation_results = []
     for score_result in scoring_results:
@@ -450,6 +544,10 @@ async def daily_enrichment_flow(
     total_allocated = sum(1 for r in allocation_results if r["success"])
     total_credits_deducted = sum(r["credits_deducted"] for r in credit_results)
 
+    # SDK enrichment stats
+    total_sdk_enriched = sum(1 for r in sdk_enrichment_results if r.get("success"))
+    total_sdk_cost = sum(r.get("sdk_cost_aud", 0) for r in sdk_enrichment_results if r.get("success"))
+
     summary = {
         "total_leads_processed": leads_data["total_leads"],
         "total_enriched": total_enriched,
@@ -457,14 +555,18 @@ async def daily_enrichment_flow(
         "total_allocated": total_allocated,
         "clients_processed": len(leads_data["leads_by_client"]),
         "total_credits_deducted": total_credits_deducted,
+        "sdk_enriched": total_sdk_enriched,
+        "sdk_cost_aud": total_sdk_cost,
         "enrichment_results": enrichment_results,
+        "sdk_enrichment_results": sdk_enrichment_results,
         "completed_at": datetime.utcnow().isoformat(),
     }
 
     logger.info(
         f"Daily enrichment flow completed: {total_enriched} enriched, "
         f"{total_scored} scored, {total_allocated} allocated, "
-        f"{total_credits_deducted} credits deducted"
+        f"{total_credits_deducted} credits deducted, "
+        f"{total_sdk_enriched} SDK enriched (${total_sdk_cost:.2f})"
     )
 
     return summary

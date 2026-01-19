@@ -29,7 +29,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.engines.base import BaseEngine, EngineResult
 from src.exceptions import AISpendLimitError, ValidationError
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
+from src.agents.sdk_agents.sdk_eligibility import should_use_sdk_email
+from src.agents.sdk_agents.email_agent import run_sdk_email, generate_hot_lead_email
 from src.models.base import ChannelType
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ContentEngine(BaseEngine):
@@ -218,6 +224,253 @@ Return as JSON with: {{"subject": "...", "body": "..."}}"""
                     "lead_id": str(lead_id),
                     "campaign_id": str(campaign_id),
                 },
+            )
+
+    # ============================================
+    # SDK EMAIL (Hot Leads - ALS 85+)
+    # ============================================
+
+    async def generate_email_with_sdk(
+        self,
+        db: AsyncSession,
+        lead_id: UUID,
+        campaign_id: UUID,
+        template: str | None = None,
+        tone: str = "professional",
+        include_subject: bool = True,
+        sdk_enrichment: dict[str, Any] | None = None,
+    ) -> EngineResult[dict[str, Any]]:
+        """
+        Generate email with automatic SDK routing for Hot leads.
+
+        This method:
+        1. Checks if lead is Hot (ALS >= 85)
+        2. If Hot: Uses SDK for hyper-personalized email generation
+        3. If not Hot: Falls back to standard Haiku generation
+
+        Args:
+            db: Database session (passed by caller)
+            lead_id: Lead UUID
+            campaign_id: Campaign UUID
+            template: Optional email template with placeholders
+            tone: Desired tone (professional, friendly, direct)
+            include_subject: Whether to generate subject line
+            sdk_enrichment: Pre-fetched SDK enrichment data (optional)
+
+        Returns:
+            EngineResult with email content (subject, body, source)
+        """
+        try:
+            # Get lead and campaign
+            lead = await self.get_lead_by_id(db, lead_id)
+            campaign = await self.get_campaign_by_id(db, campaign_id)
+
+            # Build lead data for SDK eligibility check
+            lead_data = {
+                "first_name": lead.first_name,
+                "last_name": lead.last_name or "",
+                "title": lead.title or "",
+                "company_name": lead.company,
+                "company_industry": lead.organization_industry or "",
+                "company_employee_count": lead.organization_employee_count,
+                "linkedin_headline": getattr(lead, "linkedin_headline", None),
+                "linkedin_recent_posts": getattr(lead, "linkedin_recent_posts", None),
+                "als_score": lead.als_score or 0,
+            }
+
+            # Check if Hot lead (SDK email for ALL Hot leads)
+            if should_use_sdk_email(lead_data):
+                logger.info(
+                    f"Using SDK email for Hot lead",
+                    extra={
+                        "lead_id": str(lead_id),
+                        "als_score": lead.als_score,
+                    }
+                )
+
+                # Get SDK enrichment from lead if not provided
+                enrichment_data = sdk_enrichment
+                if not enrichment_data:
+                    # Try to get from lead's deep_research_data
+                    if hasattr(lead, "deep_research_data") and lead.deep_research_data:
+                        enrichment_data = lead.deep_research_data.get("sdk_enrichment")
+                    elif hasattr(lead, "sdk_enrichment") and lead.sdk_enrichment:
+                        enrichment_data = lead.sdk_enrichment
+
+                # Build campaign context
+                campaign_context = {
+                    "product_name": getattr(campaign, "product_name", None) or campaign.name,
+                    "value_prop": getattr(campaign, "value_proposition", None) or getattr(campaign, "description", None),
+                    "tone": tone,
+                    "company_name": getattr(campaign, "company_name", None),
+                    "sender_name": getattr(campaign, "sender_name", None),
+                }
+
+                # Generate with SDK
+                sdk_result = await run_sdk_email(
+                    lead_data=lead_data,
+                    enrichment_data=enrichment_data,
+                    campaign_context=campaign_context,
+                )
+
+                if sdk_result.success and sdk_result.data:
+                    # Convert Pydantic model to dict if needed
+                    email_data = sdk_result.data
+                    if hasattr(email_data, "model_dump"):
+                        email_data = email_data.model_dump()
+
+                    return EngineResult.ok(
+                        data={
+                            "subject": email_data.get("subject", "Quick question"),
+                            "body": email_data.get("body", ""),
+                            "lead_id": str(lead_id),
+                            "campaign_id": str(campaign_id),
+                            "source": "sdk",
+                            "personalization_used": email_data.get("personalization_used", []),
+                        },
+                        metadata={
+                            "cost_aud": sdk_result.cost_aud,
+                            "sdk": True,
+                            "tone": tone,
+                            "als_score": lead.als_score,
+                        },
+                    )
+
+                # SDK failed - fall back to standard
+                logger.warning(
+                    f"SDK email failed for Hot lead, falling back to standard",
+                    extra={
+                        "lead_id": str(lead_id),
+                        "error": sdk_result.error,
+                    }
+                )
+
+            # Fall through to standard generation (for non-Hot or SDK failure)
+            return await self.generate_email(
+                db=db,
+                lead_id=lead_id,
+                campaign_id=campaign_id,
+                template=template,
+                tone=tone,
+                include_subject=include_subject,
+            )
+
+        except AISpendLimitError as e:
+            return EngineResult.fail(
+                error=f"AI spend limit exceeded: {str(e)}",
+                metadata={
+                    "lead_id": str(lead_id),
+                    "campaign_id": str(campaign_id),
+                },
+            )
+        except Exception as e:
+            return EngineResult.fail(
+                error=str(e),
+                metadata={
+                    "lead_id": str(lead_id),
+                    "campaign_id": str(campaign_id),
+                },
+            )
+
+    async def generate_sdk_email_for_pool(
+        self,
+        db: AsyncSession,
+        lead_pool_id: UUID,
+        campaign_name: str,
+        template: str | None = None,
+        tone: str = "professional",
+        sdk_enrichment: dict[str, Any] | None = None,
+    ) -> EngineResult[dict[str, Any]]:
+        """
+        Generate SDK email for a pool lead (Hot leads only).
+
+        Args:
+            db: Database session
+            lead_pool_id: Lead pool UUID
+            campaign_name: Campaign name
+            template: Optional template
+            tone: Desired tone
+            sdk_enrichment: Pre-fetched SDK enrichment data
+
+        Returns:
+            EngineResult with email content
+        """
+        try:
+            # Get pool lead data
+            pool_lead = await self._get_pool_lead(db, lead_pool_id)
+            if not pool_lead:
+                return EngineResult.fail(
+                    error="Lead not found in pool",
+                    metadata={"lead_pool_id": str(lead_pool_id)},
+                )
+
+            # Build lead data
+            lead_data = {
+                "first_name": pool_lead.get("first_name", ""),
+                "last_name": pool_lead.get("last_name", ""),
+                "title": pool_lead.get("title", ""),
+                "company_name": pool_lead.get("company_name", ""),
+                "company_industry": pool_lead.get("company_industry", ""),
+                "company_employee_count": pool_lead.get("company_employee_count"),
+                "als_score": pool_lead.get("als_score", 0),
+            }
+
+            # Check if Hot
+            if not should_use_sdk_email(lead_data):
+                # Not Hot - use standard pool method
+                return await self.generate_email_for_pool(
+                    db=db,
+                    lead_pool_id=lead_pool_id,
+                    campaign_name=campaign_name,
+                    template=template,
+                    tone=tone,
+                )
+
+            # Generate SDK email
+            campaign_context = {
+                "product_name": "Agency OS",
+                "tone": tone,
+            }
+
+            sdk_result = await run_sdk_email(
+                lead_data=lead_data,
+                enrichment_data=sdk_enrichment,
+                campaign_context=campaign_context,
+            )
+
+            if sdk_result.success and sdk_result.data:
+                email_data = sdk_result.data
+                if hasattr(email_data, "model_dump"):
+                    email_data = email_data.model_dump()
+
+                return EngineResult.ok(
+                    data={
+                        "subject": email_data.get("subject", ""),
+                        "body": email_data.get("body", ""),
+                        "lead_pool_id": str(lead_pool_id),
+                        "campaign_name": campaign_name,
+                        "source": "sdk",
+                    },
+                    metadata={
+                        "cost_aud": sdk_result.cost_aud,
+                        "sdk": True,
+                        "tone": tone,
+                    },
+                )
+
+            # SDK failed - fall back
+            return await self.generate_email_for_pool(
+                db=db,
+                lead_pool_id=lead_pool_id,
+                campaign_name=campaign_name,
+                template=template,
+                tone=tone,
+            )
+
+        except Exception as e:
+            return EngineResult.fail(
+                error=str(e),
+                metadata={"lead_pool_id": str(lead_pool_id)},
             )
 
     async def generate_sms(

@@ -42,6 +42,8 @@ logger = logging.getLogger(__name__)
 from src.engines.base import BaseEngine, EngineResult
 from src.exceptions import EngineError, ValidationError
 from src.agents.skills.research_skills import DeepResearchSkill
+from src.agents.sdk_agents.sdk_eligibility import should_use_sdk_enrichment
+from src.agents.sdk_agents.enrichment_agent import run_sdk_enrichment
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
 from src.integrations.apollo import ApolloClient, get_apollo_client
 from src.integrations.apify import ApifyClient, get_apify_client
@@ -50,6 +52,13 @@ from src.integrations.redis import enrichment_cache
 from src.models.base import LeadStatus
 from src.models.lead import Lead
 from src.models.lead_social_post import LeadSocialPost
+
+# Sentry for error tracking
+try:
+    from sentry_sdk import capture_exception
+except ImportError:
+    def capture_exception(e):
+        pass
 
 
 # Minimum required fields for valid enrichment
@@ -419,6 +428,247 @@ class ScoutEngine(BaseEngine):
             pass
 
         return None
+
+    # ============================================
+    # SDK ENRICHMENT (Hot Leads with Signals)
+    # ============================================
+
+    async def _sdk_enrich(
+        self,
+        lead: Lead,
+        enrichment_data: dict[str, Any],
+        signals: list[str],
+    ) -> dict[str, Any] | None:
+        """
+        Run SDK enrichment for Hot lead with priority signals.
+
+        SDK enrichment performs deep web research to find:
+        - Recent funding announcements
+        - Current hiring activity
+        - Recent news and press releases
+        - Pain points and personalization hooks
+
+        Args:
+            lead: Lead model instance
+            enrichment_data: Standard enrichment data (from Apollo/Clay)
+            signals: Priority signals that triggered SDK eligibility
+
+        Returns:
+            Merged enrichment data with SDK findings, or None if SDK fails
+        """
+        try:
+            # Build lead data dict for SDK agent
+            lead_data = {
+                "first_name": lead.first_name,
+                "last_name": lead.last_name,
+                "title": lead.title,
+                "company_name": lead.company or enrichment_data.get("company"),
+                "company_domain": lead.domain or enrichment_data.get("domain"),
+                "company_industry": lead.organization_industry or enrichment_data.get("organization_industry"),
+                "company_employee_count": lead.organization_employee_count or enrichment_data.get("organization_employee_count"),
+                "linkedin_url": lead.linkedin_url or enrichment_data.get("linkedin_url"),
+                "linkedin_headline": enrichment_data.get("linkedin_headline"),
+                "linkedin_about": enrichment_data.get("linkedin_about"),
+                "linkedin_recent_posts": enrichment_data.get("linkedin_recent_posts"),
+            }
+
+            logger.info(
+                f"Running SDK enrichment for Hot lead",
+                extra={
+                    "lead_id": str(lead.id),
+                    "signals": signals,
+                    "company": lead_data.get("company_name"),
+                }
+            )
+
+            # Run SDK enrichment agent
+            result = await run_sdk_enrichment(lead_data)
+
+            if result.success and result.data:
+                logger.info(
+                    f"SDK enrichment succeeded",
+                    extra={
+                        "lead_id": str(lead.id),
+                        "cost_aud": result.cost_aud,
+                        "turns": result.turns_used,
+                        "tool_calls": len(result.tool_calls),
+                    }
+                )
+
+                # Convert Pydantic model to dict if needed
+                sdk_data = result.data
+                if hasattr(sdk_data, "model_dump"):
+                    sdk_data = sdk_data.model_dump()
+
+                return {
+                    "sdk_enrichment": sdk_data,
+                    "sdk_signals": signals,
+                    "sdk_cost_aud": result.cost_aud,
+                    "sdk_turns_used": result.turns_used,
+                    "sdk_tool_calls": result.tool_calls,
+                }
+            else:
+                logger.warning(
+                    f"SDK enrichment failed",
+                    extra={
+                        "lead_id": str(lead.id),
+                        "error": result.error,
+                    }
+                )
+                return None
+
+        except Exception as e:
+            logger.exception(f"SDK enrichment error: {e}")
+            capture_exception(e)
+            return None
+
+    async def enrich_lead_with_sdk(
+        self,
+        db: AsyncSession,
+        lead_id: UUID,
+        als_score: int | None = None,
+        force_refresh: bool = False,
+    ) -> EngineResult[dict[str, Any]]:
+        """
+        Enrich a lead with optional SDK enhancement for Hot leads.
+
+        This method:
+        1. Runs standard waterfall enrichment (cache -> Apollo+Apify -> Clay)
+        2. If lead is Hot (ALS >= 85) AND has priority signals, runs SDK enrichment
+        3. Merges SDK findings into enrichment data
+
+        Args:
+            db: Database session (passed by caller)
+            lead_id: Lead UUID to enrich
+            als_score: Pre-calculated ALS score (optional, will be inferred from enrichment)
+            force_refresh: Skip cache and force re-enrichment
+
+        Returns:
+            EngineResult with enrichment data (including SDK data if applicable)
+        """
+        # Run standard enrichment first
+        standard_result = await self.enrich_lead(db, lead_id, force_refresh)
+
+        if not standard_result.success:
+            return standard_result
+
+        # Get the lead to check for SDK eligibility
+        lead = await self.get_lead_by_id(db, lead_id)
+        enrichment_data = standard_result.data
+
+        # Determine ALS score
+        effective_als_score = als_score or lead.als_score or enrichment_data.get("als_score", 0)
+
+        # Build lead data for eligibility check
+        lead_data_for_check = {
+            "als_score": effective_als_score,
+            "company_latest_funding_date": enrichment_data.get("company_latest_funding_date"),
+            "company_open_roles": enrichment_data.get("company_is_hiring") or enrichment_data.get("organization_is_hiring"),
+            "company_employee_count": enrichment_data.get("organization_employee_count"),
+            "linkedin_engagement_score": enrichment_data.get("linkedin_engagement_score"),
+            "source": lead.source if hasattr(lead, "source") else None,
+            "tech_stack_match_score": enrichment_data.get("tech_stack_match_score"),
+        }
+
+        # Check SDK eligibility
+        sdk_eligible, signals = should_use_sdk_enrichment(lead_data_for_check)
+
+        if sdk_eligible:
+            logger.info(
+                f"Lead qualifies for SDK enrichment",
+                extra={
+                    "lead_id": str(lead_id),
+                    "als_score": effective_als_score,
+                    "signals": signals,
+                }
+            )
+
+            # Run SDK enrichment
+            sdk_result = await self._sdk_enrich(lead, enrichment_data, signals)
+
+            if sdk_result:
+                # Merge SDK data into enrichment result
+                enrichment_data["sdk_enrichment"] = sdk_result.get("sdk_enrichment")
+                enrichment_data["sdk_signals"] = sdk_result.get("sdk_signals")
+                enrichment_data["sdk_cost_aud"] = sdk_result.get("sdk_cost_aud", 0)
+                enrichment_data["enrichment_source"] = f"{enrichment_data.get('source', 'unknown')}+sdk"
+
+                # Update the lead with SDK data
+                await self._update_lead_sdk_enrichment(db, lead, sdk_result)
+
+                return EngineResult.ok(
+                    data=enrichment_data,
+                    metadata={
+                        **standard_result.metadata,
+                        "sdk_enhanced": True,
+                        "sdk_signals": signals,
+                        "sdk_cost_aud": sdk_result.get("sdk_cost_aud", 0),
+                    },
+                )
+            else:
+                # SDK failed but standard enrichment succeeded
+                return EngineResult.ok(
+                    data=enrichment_data,
+                    metadata={
+                        **standard_result.metadata,
+                        "sdk_enhanced": False,
+                        "sdk_eligible": True,
+                        "sdk_signals": signals,
+                        "sdk_error": "SDK enrichment failed",
+                    },
+                )
+
+        # Not eligible for SDK - return standard result
+        return EngineResult.ok(
+            data=enrichment_data,
+            metadata={
+                **standard_result.metadata,
+                "sdk_enhanced": False,
+                "sdk_eligible": False,
+            },
+        )
+
+    async def _update_lead_sdk_enrichment(
+        self,
+        db: AsyncSession,
+        lead: Lead,
+        sdk_result: dict[str, Any],
+    ) -> None:
+        """
+        Update lead record with SDK enrichment data.
+
+        Args:
+            db: Database session
+            lead: Lead model instance
+            sdk_result: SDK enrichment result dict
+        """
+        from sqlalchemy import update as sql_update
+
+        sdk_data = sdk_result.get("sdk_enrichment", {})
+        signals = sdk_result.get("sdk_signals", [])
+        cost = sdk_result.get("sdk_cost_aud", 0)
+
+        # Store SDK data in dedicated fields (added in migration 035)
+        update_values = {
+            "updated_at": datetime.utcnow(),
+            "sdk_enrichment": sdk_data,
+            "sdk_signals": signals,
+            "sdk_cost_aud": cost,
+            "sdk_enriched_at": datetime.utcnow(),
+        }
+
+        # Update enrichment source to indicate SDK enhancement
+        current_source = lead.enrichment_source or "unknown"
+        if "+sdk" not in current_source:
+            update_values["enrichment_source"] = f"{current_source}+sdk"
+
+        stmt = (
+            sql_update(Lead)
+            .where(Lead.id == lead.id)
+            .values(**update_values)
+        )
+        await db.execute(stmt)
+        await db.commit()
 
     def _validate_enrichment(self, data: dict[str, Any]) -> bool:
         """

@@ -127,6 +127,14 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     deep_research_data: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=True)
     deep_research_run_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
 
+    # === SDK Enrichment (Hot Leads - ALS 85+) ===
+    sdk_enrichment: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    sdk_signals: Mapped[Optional[list]] = mapped_column(ARRAY(Text), nullable=True)
+    sdk_cost_aud: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    sdk_enriched_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    sdk_voice_kb: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    sdk_email_content: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+
     # === Compliance ===
     dncr_checked: Mapped[bool] = mapped_column(Boolean, default=False)
     dncr_result: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)

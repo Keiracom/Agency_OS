@@ -45,9 +45,12 @@ from src.integrations.vapi import (
     VapiCallResult,
     get_vapi_client,
 )
+from src.agents.sdk_agents.sdk_eligibility import should_use_sdk_voice_kb
+from src.agents.sdk_agents.voice_kb_agent import run_sdk_voice_kb, get_basic_voice_kb
 from src.models.activity import Activity
 from src.models.base import ChannelType, LeadStatus
 from src.models.lead import Lead
+from src.models.campaign import Campaign
 
 
 class VoiceEngine(OutreachEngine):
@@ -487,6 +490,304 @@ Qualify the lead and either:
 3. Schedule a callback if timing is bad
 
 Always be respectful of their time."""
+
+    # ============================================
+    # SDK VOICE KB (Hot Leads - ALS 85+)
+    # ============================================
+
+    async def generate_voice_kb(
+        self,
+        db: AsyncSession,
+        lead_id: UUID,
+        campaign_id: UUID,
+        sdk_enrichment: dict[str, Any] | None = None,
+    ) -> EngineResult[dict[str, Any]]:
+        """
+        Generate voice knowledge base for a lead.
+
+        This method:
+        1. Checks if lead is Hot (ALS >= 85)
+        2. If Hot: Uses SDK for comprehensive KB generation
+        3. If not Hot: Returns basic KB
+
+        The KB is used by the voice AI to:
+        - Open calls with specific, relevant hooks
+        - Handle objections with company-specific responses
+        - Navigate conversations intelligently
+
+        Args:
+            db: Database session (passed by caller)
+            lead_id: Lead UUID
+            campaign_id: Campaign UUID
+            sdk_enrichment: Pre-fetched SDK enrichment data (optional)
+
+        Returns:
+            EngineResult with voice KB dict
+        """
+        try:
+            # Get lead
+            lead = await self.get_lead_by_id(db, lead_id)
+
+            # Build lead data dict
+            lead_data = {
+                "first_name": lead.first_name,
+                "last_name": lead.last_name or "",
+                "title": lead.title or "",
+                "company_name": lead.company,
+                "company_industry": lead.organization_industry or "",
+                "company_employee_count": lead.organization_employee_count,
+                "company_city": getattr(lead, "organization_city", None),
+                "company_country": getattr(lead, "organization_country", None),
+                "linkedin_headline": getattr(lead, "linkedin_headline", None),
+                "linkedin_about": getattr(lead, "linkedin_about", None),
+                "linkedin_recent_posts": getattr(lead, "linkedin_recent_posts", None),
+                "als_score": lead.als_score or 0,
+            }
+
+            # Check if Hot lead (SDK voice KB for ALL Hot leads)
+            if should_use_sdk_voice_kb(lead_data):
+                logger.info(
+                    f"Generating SDK voice KB for Hot lead",
+                    extra={
+                        "lead_id": str(lead_id),
+                        "als_score": lead.als_score,
+                    }
+                )
+
+                # Get SDK enrichment from lead if not provided
+                enrichment_data = sdk_enrichment
+                if not enrichment_data:
+                    # Try to get from lead's deep_research_data
+                    if hasattr(lead, "deep_research_data") and lead.deep_research_data:
+                        enrichment_data = lead.deep_research_data.get("sdk_enrichment")
+                    elif hasattr(lead, "sdk_enrichment") and lead.sdk_enrichment:
+                        enrichment_data = lead.sdk_enrichment
+
+                # Get campaign for context
+                campaign = None
+                try:
+                    campaign = await self.get_campaign_by_id(db, campaign_id)
+                except Exception:
+                    pass
+
+                campaign_context = None
+                if campaign:
+                    campaign_context = {
+                        "product_name": getattr(campaign, "product_name", None) or campaign.name,
+                        "value_prop": getattr(campaign, "value_proposition", None) or getattr(campaign, "description", None),
+                        "differentiator": getattr(campaign, "differentiator", None),
+                    }
+
+                # Generate SDK voice KB
+                sdk_result = await run_sdk_voice_kb(
+                    lead_data=lead_data,
+                    enrichment_data=enrichment_data,
+                    campaign_context=campaign_context,
+                )
+
+                if sdk_result.success and sdk_result.data:
+                    # Convert Pydantic model to dict if needed
+                    kb_data = sdk_result.data
+                    if hasattr(kb_data, "model_dump"):
+                        kb_data = kb_data.model_dump()
+
+                    return EngineResult.ok(
+                        data={
+                            **kb_data,
+                            "lead_id": str(lead_id),
+                            "campaign_id": str(campaign_id),
+                            "source": "sdk",
+                        },
+                        metadata={
+                            "cost_aud": sdk_result.cost_aud,
+                            "sdk": True,
+                            "als_score": lead.als_score,
+                        },
+                    )
+
+                # SDK failed - fall back to basic
+                logger.warning(
+                    f"SDK voice KB failed for Hot lead, falling back to basic",
+                    extra={
+                        "lead_id": str(lead_id),
+                        "error": sdk_result.error,
+                    }
+                )
+
+            # Non-Hot lead or SDK failure: return basic KB
+            basic_kb = get_basic_voice_kb(lead_data)
+            return EngineResult.ok(
+                data={
+                    **basic_kb,
+                    "lead_id": str(lead_id),
+                    "campaign_id": str(campaign_id),
+                },
+                metadata={
+                    "sdk": False,
+                    "als_score": lead.als_score,
+                },
+            )
+
+        except Exception as e:
+            return EngineResult.fail(
+                error=f"Failed to generate voice KB: {str(e)}",
+                metadata={
+                    "lead_id": str(lead_id),
+                    "campaign_id": str(campaign_id),
+                },
+            )
+
+    async def create_campaign_assistant_with_kb(
+        self,
+        db: AsyncSession,
+        campaign_id: str,
+        lead_id: UUID,
+        script: str,
+        first_message: str,
+        voice_id: str = None,
+        sdk_enrichment: dict[str, Any] | None = None,
+    ) -> EngineResult[dict[str, Any]]:
+        """
+        Create a Vapi assistant with SDK voice KB integration.
+
+        This method:
+        1. Generates voice KB for the lead (SDK for Hot, basic otherwise)
+        2. Enhances the script with KB data
+        3. Creates the Vapi assistant
+
+        Args:
+            db: Database session
+            campaign_id: Campaign UUID
+            lead_id: Lead UUID for KB generation
+            script: Base system prompt/script
+            first_message: Opening message
+            voice_id: ElevenLabs voice ID (optional)
+            sdk_enrichment: Pre-fetched SDK enrichment data
+
+        Returns:
+            EngineResult with assistant_id and KB data
+        """
+        try:
+            # Generate voice KB for this lead
+            kb_result = await self.generate_voice_kb(
+                db=db,
+                lead_id=lead_id,
+                campaign_id=UUID(campaign_id),
+                sdk_enrichment=sdk_enrichment,
+            )
+
+            if not kb_result.success:
+                logger.warning(f"Voice KB generation failed, using base script: {kb_result.error}")
+                kb_data = {}
+            else:
+                kb_data = kb_result.data
+
+            # Enhance the script with KB data
+            enhanced_script = self._enhance_script_with_kb(script, kb_data)
+
+            # Personalize the first message if we have a recommended opener
+            personalized_first_message = first_message
+            if kb_data.get("recommended_opener"):
+                personalized_first_message = kb_data["recommended_opener"]
+
+            # Create the assistant
+            config = VapiAssistantConfig(
+                name=f"AgencyOS-{campaign_id[:8]}",
+                first_message=personalized_first_message,
+                system_prompt=self._build_system_prompt(enhanced_script),
+                voice_id=voice_id or self.DEFAULT_VOICE_ID,
+            )
+
+            result = await self.vapi.create_assistant(config)
+            assistant_id = result["id"]
+
+            return EngineResult.ok(
+                data={
+                    "assistant_id": assistant_id,
+                    "voice_kb": kb_data,
+                    "first_message_used": personalized_first_message,
+                    "sdk_enhanced": kb_result.metadata.get("sdk", False) if kb_result.success else False,
+                },
+                metadata={
+                    "cost_aud": kb_result.metadata.get("cost_aud", 0) if kb_result.success else 0,
+                },
+            )
+
+        except Exception as e:
+            return EngineResult.fail(
+                error=f"Failed to create assistant with KB: {str(e)}",
+                metadata={
+                    "campaign_id": campaign_id,
+                    "lead_id": str(lead_id),
+                },
+            )
+
+    def _enhance_script_with_kb(
+        self,
+        base_script: str,
+        kb_data: dict[str, Any],
+    ) -> str:
+        """
+        Enhance the voice script with knowledge base data.
+
+        Args:
+            base_script: Original script
+            kb_data: Voice KB data
+
+        Returns:
+            Enhanced script with KB context
+        """
+        if not kb_data or kb_data.get("source") == "standard":
+            return base_script
+
+        enhancements = []
+
+        # Add company context
+        if kb_data.get("company_context"):
+            enhancements.append(f"COMPANY CONTEXT:\n{kb_data['company_context']}")
+
+        # Add opening hooks
+        if kb_data.get("opening_hooks"):
+            hooks = "\n- ".join(kb_data["opening_hooks"][:3])
+            enhancements.append(f"OPENING HOOKS (use one of these):\n- {hooks}")
+
+        # Add pain point questions
+        if kb_data.get("pain_point_questions"):
+            questions = "\n- ".join(kb_data["pain_point_questions"][:3])
+            enhancements.append(f"DISCOVERY QUESTIONS:\n- {questions}")
+
+        # Add objection responses
+        if kb_data.get("objection_responses"):
+            obj = kb_data["objection_responses"]
+            obj_text = []
+            if isinstance(obj, dict):
+                for key, value in obj.items():
+                    if key != "custom_objections" and value:
+                        obj_text.append(f'- "{key.replace("_", " ").title()}": {value}')
+            if obj_text:
+                enhancements.append(f"OBJECTION RESPONSES:\n" + "\n".join(obj_text[:4]))
+
+        # Add topics to avoid
+        if kb_data.get("do_not_mention"):
+            avoid = "\n- ".join(kb_data["do_not_mention"][:3])
+            enhancements.append(f"DO NOT MENTION:\n- {avoid}")
+
+        # Add meeting ask
+        if kb_data.get("meeting_ask"):
+            enhancements.append(f"MEETING ASK:\n{kb_data['meeting_ask']}")
+
+        if enhancements:
+            kb_section = "\n\n".join(enhancements)
+            return f"""{base_script}
+
+---
+LEAD-SPECIFIC INTELLIGENCE:
+
+{kb_section}
+
+Use this intelligence to personalize the conversation. Reference specific company context and pain points when relevant."""
+
+        return base_script
 
 
 # Singleton instance

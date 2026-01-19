@@ -1,0 +1,285 @@
+{
+  "version": "1.0",
+  "status": "approved",
+  "approved_date": "2026-01-18",
+  "current_phase": "P2",
+  "current_task": "P2.4",
+  "phases": {
+    "P1": {
+      "name": "Foundation",
+      "description": "Core SDK wrapper and tools infrastructure",
+      "status": "completed",
+      "tasks": [
+        {
+          "id": "P1.1",
+          "title": "Create sdk_brain.py",
+          "target_file": "src/integrations/sdk_brain.py",
+          "source_file": "docs/e2e/SDK/src/sdk_brain.py",
+          "status": "completed",
+          "checks": [
+            "SDKBrain class with cost control",
+            "SDKBrainConfig dataclass",
+            "SDKBrainResult dataclass",
+            "MODEL_PRICING constants (AUD)",
+            "_calculate_cost method",
+            "_check_daily_budget method",
+            "run() method with tool execution loop",
+            "Turn limiting",
+            "Prompt caching support"
+          ],
+          "completed_at": "2026-01-18T22:29:08.912072"
+        },
+        {
+          "id": "P1.2",
+          "title": "Create sdk_tools.py",
+          "target_file": "src/agents/sdk_agents/sdk_tools.py",
+          "source_file": "docs/e2e/SDK/src/sdk_tools.py",
+          "status": "completed",
+          "checks": [
+            "WEB_SEARCH_TOOL definition",
+            "WEB_FETCH_TOOL definition",
+            "LINKEDIN_POSTS_TOOL definition",
+            "web_search() implementation",
+            "web_fetch() implementation",
+            "linkedin_posts() implementation",
+            "TOOL_REGISTRY mapping"
+          ],
+          "completed_at": "2026-01-18T22:31:03.411498"
+        },
+        {
+          "id": "P1.3",
+          "title": "Create sdk_agents directory",
+          "target_file": "src/agents/sdk_agents/__init__.py",
+          "status": "completed",
+          "checks": [
+            "Directory exists",
+            "__init__.py with exports"
+          ],
+          "completed_at": "2026-01-18T22:31:03.654036"
+        },
+        {
+          "id": "P1.4",
+          "title": "Update settings.py",
+          "target_file": "src/config/settings.py",
+          "status": "completed",
+          "checks": [
+            "sdk_brain_enabled flag",
+            "sdk_min_als_score (85)",
+            "SDK daily limits per tier"
+          ],
+          "completed_at": "2026-01-18T22:32:22.292839"
+        },
+        {
+          "id": "P1.5",
+          "title": "Create sdk_usage_log migration",
+          "target_file": "migrations/xxx_add_sdk_usage_log.sql",
+          "status": "completed",
+          "checks": [
+            "sdk_usage_log table created",
+            "Indexes on client_id, lead_id"
+          ],
+          "completed_at": "2026-01-18T22:34:58.340269"
+        }
+      ]
+    },
+    "P2": {
+      "name": "ICP Agent",
+      "description": "Intelligent ICP extraction for client onboarding",
+      "status": "in_progress",
+      "tasks": [
+        {
+          "id": "P2.1",
+          "title": "Create icp_agent.py",
+          "target_file": "src/agents/sdk_agents/icp_agent.py",
+          "status": "completed",
+          "checks": [
+            "ICPAgent class",
+            "ICPInput schema",
+            "ICPOutput schema (industries, sizes, titles, pain_points)",
+            "SYSTEM_PROMPT for ICP analysis",
+            "extract() method with web_search/web_fetch tools",
+            "Self-review loop for confidence check"
+          ],
+          "completed_at": "2026-01-19T14:05:24.238476"
+        },
+        {
+          "id": "P2.2",
+          "title": "Integrate SDK into icp_scraper.py",
+          "target_file": "src/engines/icp_scraper.py",
+          "status": "completed",
+          "checks": [
+            "Import ICPAgent",
+            "Call SDK agent after portfolio enrichment",
+            "Pass scraped data + enriched companies to agent",
+            "Handle SDK errors gracefully",
+            "Track SDK usage in metadata"
+          ],
+          "completed_at": "2026-01-19T14:07:11.048920"
+        },
+        {
+          "id": "P2.3",
+          "title": "Update ICP extraction flow",
+          "target_file": "src/orchestration/flows/onboarding_flow.py",
+          "status": "completed",
+          "checks": [
+            "SDK agent task added",
+            "Cost tracking in flow metadata"
+          ],
+          "completed_at": "2026-01-19T15:10:00.000000"
+        },
+        {
+          "id": "P2.4",
+          "title": "E2E test ICP with SDK",
+          "status": "pending",
+          "checks": [
+            "Test on sparro.com.au",
+            "Verify multi-turn execution",
+            "Verify cost tracking",
+            "Verify ICP quality improvement"
+          ]
+        }
+      ]
+    },
+    "P3": {
+      "name": "Enrichment Agent",
+      "description": "Deep research for Hot leads (ALS >= 85)",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "P3.1",
+          "title": "Create enrichment_agent.py",
+          "target_file": "src/agents/sdk_agents/enrichment_agent.py",
+          "status": "pending",
+          "checks": [
+            "EnrichmentAgent class",
+            "EnrichmentInput/Output schemas",
+            "Pain points extraction",
+            "Recent news search",
+            "Hiring signals detection",
+            "Personalization hooks generation"
+          ]
+        },
+        {
+          "id": "P3.2",
+          "title": "Integrate SDK into scout.py",
+          "target_file": "src/engines/scout.py",
+          "status": "pending",
+          "checks": [
+            "ALS >= 85 check",
+            "Route Hot leads to SDK agent",
+            "Keep standard flow for Cold/Warm"
+          ]
+        }
+      ]
+    },
+    "P4": {
+      "name": "Email Agent",
+      "description": "Personalized emails for Hot leads",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "P4.1",
+          "title": "Create email_agent.py",
+          "target_file": "src/agents/sdk_agents/email_agent.py",
+          "status": "pending",
+          "checks": [
+            "EmailAgent class",
+            "Template augmentation",
+            "Personalization from enrichment data",
+            "Self-review for specificity"
+          ]
+        },
+        {
+          "id": "P4.2",
+          "title": "Integrate SDK into content.py",
+          "target_file": "src/engines/content.py",
+          "status": "pending",
+          "checks": [
+            "ALS >= 85 check",
+            "Route Hot leads to SDK agent"
+          ]
+        }
+      ]
+    },
+    "P5": {
+      "name": "Voice KB Agent",
+      "description": "Per-call knowledge bases for Vapi",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "P5.1",
+          "title": "Create voice_kb_agent.py",
+          "target_file": "src/agents/sdk_agents/voice_kb_agent.py",
+          "status": "pending",
+          "checks": [
+            "VoiceKBAgent class",
+            "Pronunciation guide generation",
+            "Opening lines",
+            "Pain point discussion points",
+            "Objection responses",
+            "Don't mention list"
+          ]
+        },
+        {
+          "id": "P5.2",
+          "title": "Integrate SDK into voice.py",
+          "target_file": "src/engines/voice.py",
+          "status": "pending",
+          "checks": [
+            "Generate KB before call",
+            "Pass KB to Vapi config"
+          ]
+        }
+      ]
+    },
+    "P6": {
+      "name": "Objection Agent",
+      "description": "Context-aware objection handling",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "P6.1",
+          "title": "Create objection_agent.py",
+          "target_file": "src/agents/sdk_agents/objection_agent.py",
+          "status": "pending",
+          "checks": [
+            "ObjectionAgent class",
+            "Objection type classification",
+            "Framework loading from campaign",
+            "Personalized response generation"
+          ]
+        },
+        {
+          "id": "P6.2",
+          "title": "Integrate SDK into closer.py",
+          "target_file": "src/engines/closer.py",
+          "status": "pending",
+          "checks": [
+            "Detect complex objections",
+            "Route to SDK agent"
+          ]
+        }
+      ]
+    }
+  },
+  "completed": [
+    "P1.1",
+    "P1.2",
+    "P1.3",
+    "P1.4",
+    "P1.5",
+    "P2.1",
+    "P2.2",
+    "P2.3"
+  ],
+  "cost_tracking": {
+    "estimated_total_dev_hours": 40,
+    "actual_hours": 0,
+    "api_costs_during_dev": 0.0
+  },
+  "notes": [
+    "2026-01-18: CEO approved SDK integration. Rationale: test upgraded system, not legacy.",
+    "2026-01-18: Added Use Case 6 (ICP Extraction) to plan.",
+    "2026-01-18: ICP Agent is Phase 2 - implement immediately after foundation for E2E testing."
+  ]
+}

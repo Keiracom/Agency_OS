@@ -1,0 +1,405 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SDK Agent Input/Output Schemas",
+  "description": "JSON schemas for SDK agent inputs and outputs",
+  "version": "1.0.0",
+
+  "schemas": {
+    "enrichment": {
+      "input": {
+        "type": "object",
+        "required": ["first_name", "last_name", "company"],
+        "properties": {
+          "first_name": {"type": "string", "description": "Lead's first name"},
+          "last_name": {"type": "string", "description": "Lead's last name"},
+          "company": {"type": "string", "description": "Company name"},
+          "title": {"type": ["string", "null"], "description": "Job title"},
+          "linkedin_url": {"type": ["string", "null"], "format": "uri", "description": "LinkedIn profile URL"},
+          "company_website": {"type": ["string", "null"], "format": "uri", "description": "Company website URL"},
+          "industry": {"type": ["string", "null"], "description": "Industry vertical"},
+          "company_size": {"type": ["integer", "null"], "description": "Number of employees"},
+          "location": {"type": ["string", "null"], "description": "Geographic location"}
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": ["confidence"],
+        "properties": {
+          "pain_points": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Identified business pain points"
+          },
+          "recent_news": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "headline": {"type": "string"},
+                "date": {"type": "string", "format": "date"},
+                "source": {"type": "string"},
+                "relevance": {"type": "string", "enum": ["high", "medium", "low"]}
+              }
+            },
+            "description": "Recent company news"
+          },
+          "hiring_signals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "role": {"type": "string"},
+                "department": {"type": "string"},
+                "implication": {"type": "string"}
+              }
+            },
+            "description": "Current hiring activity"
+          },
+          "tech_stack": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Identified technologies used"
+          },
+          "personalization_hooks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "hook": {"type": "string"},
+                "source": {"type": "string"},
+                "strength": {"type": "string", "enum": ["strong", "medium", "weak"]}
+              }
+            },
+            "description": "Specific items to reference in outreach"
+          },
+          "company_summary": {"type": "string", "description": "Brief company overview"},
+          "decision_maker_insights": {"type": "string", "description": "Insights about the specific person"},
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1, "description": "Confidence in research quality"}
+        }
+      }
+    },
+
+    "email": {
+      "input": {
+        "type": "object",
+        "required": ["lead", "campaign", "enrichment"],
+        "properties": {
+          "lead": {
+            "type": "object",
+            "properties": {
+              "first_name": {"type": "string"},
+              "last_name": {"type": "string"},
+              "company": {"type": "string"},
+              "title": {"type": "string"},
+              "industry": {"type": "string"}
+            }
+          },
+          "campaign": {
+            "type": "object",
+            "properties": {
+              "value_prop": {"type": "string"},
+              "target_persona": {"type": "string"},
+              "tone": {"type": "string", "enum": ["professional", "friendly", "direct", "casual"]},
+              "cta_type": {"type": "string", "enum": ["meeting", "reply", "resource", "demo"]}
+            }
+          },
+          "enrichment": {
+            "type": "object",
+            "description": "Output from enrichment agent"
+          },
+          "sender": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "title": {"type": "string"},
+              "company": {"type": "string"}
+            }
+          },
+          "template_name": {
+            "type": "string",
+            "enum": ["cold_outreach", "follow_up", "objection_response"],
+            "description": "Which template to use for augmentation"
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": ["subject", "body", "confidence"],
+        "properties": {
+          "subject": {"type": "string", "maxLength": 100, "description": "Email subject line"},
+          "body": {"type": "string", "maxLength": 1500, "description": "Email body"},
+          "hook_used": {"type": "string", "description": "Which personalization hook was used"},
+          "personalization_type": {
+            "type": "string",
+            "enum": ["news", "hiring", "linkedin_post", "company_initiative", "mutual_connection", "generic"],
+            "description": "Type of personalization applied"
+          },
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+          "word_count": {"type": "integer"},
+          "reading_level": {"type": "string", "enum": ["simple", "moderate", "complex"]}
+        }
+      }
+    },
+
+    "voice_kb": {
+      "input": {
+        "type": "object",
+        "required": ["lead", "enrichment", "campaign"],
+        "properties": {
+          "lead": {
+            "type": "object",
+            "properties": {
+              "first_name": {"type": "string"},
+              "last_name": {"type": "string"},
+              "company": {"type": "string"},
+              "title": {"type": "string"},
+              "phone": {"type": "string"}
+            }
+          },
+          "enrichment": {
+            "type": "object",
+            "description": "Output from enrichment agent"
+          },
+          "campaign": {
+            "type": "object",
+            "properties": {
+              "value_prop": {"type": "string"},
+              "target_persona": {"type": "string"},
+              "common_objections": {"type": "array", "items": {"type": "string"}},
+              "case_studies": {"type": "array", "items": {"type": "object"}}
+            }
+          },
+          "caller": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "company": {"type": "string"},
+              "voice_style": {"type": "string", "enum": ["professional", "friendly", "energetic"]}
+            }
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": ["pronunciation", "openers", "objection_handlers"],
+        "properties": {
+          "pronunciation": {
+            "type": "object",
+            "properties": {
+              "prospect_name": {"type": "string", "description": "Phonetic pronunciation"},
+              "company_name": {"type": "string", "description": "Phonetic pronunciation"},
+              "notes": {"type": "string"}
+            }
+          },
+          "openers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "line": {"type": "string"},
+                "context": {"type": "string"},
+                "use_when": {"type": "string"}
+              }
+            },
+            "description": "Opening lines ranked by strength"
+          },
+          "pain_point_probes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pain_point": {"type": "string"},
+                "probe_question": {"type": "string"},
+                "follow_up": {"type": "string"}
+              }
+            },
+            "description": "Questions to uncover pain points"
+          },
+          "objection_handlers": {
+            "type": "object",
+            "properties": {
+              "no_budget": {"type": "string"},
+              "no_time": {"type": "string"},
+              "not_interested": {"type": "string"},
+              "using_competitor": {"type": "string"},
+              "need_to_think": {"type": "string"},
+              "not_decision_maker": {"type": "string"}
+            },
+            "description": "Responses to common objections"
+          },
+          "value_statements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "statement": {"type": "string"},
+                "supporting_stat": {"type": "string"},
+                "relevant_case_study": {"type": "string"}
+              }
+            }
+          },
+          "dont_mention": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Topics to avoid"
+          },
+          "meeting_ask": {
+            "type": "object",
+            "properties": {
+              "primary": {"type": "string"},
+              "soft_alternative": {"type": "string"},
+              "calendar_link_intro": {"type": "string"}
+            }
+          },
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+        }
+      }
+    },
+
+    "objection": {
+      "input": {
+        "type": "object",
+        "required": ["objection_text", "lead", "thread_context"],
+        "properties": {
+          "objection_text": {"type": "string", "description": "The objection message from prospect"},
+          "objection_type": {
+            "type": "string",
+            "enum": ["budget", "timing", "authority", "need", "competition", "trust", "unknown"],
+            "description": "Classified objection type"
+          },
+          "lead": {
+            "type": "object",
+            "properties": {
+              "first_name": {"type": "string"},
+              "company": {"type": "string"},
+              "title": {"type": "string"},
+              "industry": {"type": "string"}
+            }
+          },
+          "thread_context": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "role": {"type": "string", "enum": ["us", "them"]},
+                "message": {"type": "string"},
+                "timestamp": {"type": "string", "format": "date-time"}
+              }
+            },
+            "description": "Previous messages in thread"
+          },
+          "campaign": {
+            "type": "object",
+            "properties": {
+              "value_prop": {"type": "string"},
+              "objection_frameworks": {"type": "object"}
+            }
+          },
+          "enrichment": {
+            "type": "object",
+            "description": "Enrichment data if available"
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": ["response_text", "tone", "confidence"],
+        "properties": {
+          "response_text": {"type": "string", "maxLength": 500, "description": "The response to send"},
+          "objection_addressed": {"type": "string", "description": "Which objection was addressed"},
+          "technique_used": {
+            "type": "string",
+            "enum": ["acknowledge_redirect", "question_back", "social_proof", "future_pace", "soft_close", "graceful_exit"],
+            "description": "Objection handling technique"
+          },
+          "tone": {
+            "type": "string",
+            "enum": ["empathetic", "consultative", "confident", "curious"],
+            "description": "Tone of response"
+          },
+          "suggested_follow_up_days": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 90,
+            "description": "Days to wait before follow-up (0 = no follow-up)"
+          },
+          "escalate_to_human": {
+            "type": "boolean",
+            "description": "Whether this needs human review"
+          },
+          "escalation_reason": {"type": "string"},
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+        }
+      }
+    },
+
+    "classification": {
+      "input": {
+        "type": "object",
+        "required": ["message"],
+        "properties": {
+          "message": {"type": "string", "description": "Message to classify"},
+          "channel": {"type": "string", "enum": ["email", "linkedin", "sms"]},
+          "thread_context": {"type": "array", "items": {"type": "object"}}
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": ["intent", "confidence"],
+        "properties": {
+          "intent": {
+            "type": "string",
+            "enum": ["meeting_request", "interested", "question", "not_interested", "unsubscribe", "out_of_office", "auto_reply", "referral", "competitor"]
+          },
+          "sub_intent": {"type": "string", "description": "More specific classification"},
+          "sentiment": {"type": "string", "enum": ["positive", "neutral", "negative"]},
+          "urgency": {"type": "string", "enum": ["high", "medium", "low"]},
+          "objection_type": {
+            "type": ["string", "null"],
+            "enum": ["budget", "timing", "authority", "need", "competition", "trust", null]
+          },
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+          "reasoning": {"type": "string"}
+        }
+      }
+    }
+  },
+
+  "tool_schemas": {
+    "web_search": {
+      "name": "web_search",
+      "description": "Search the web for information about companies, people, news, etc.",
+      "input_schema": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "query": {"type": "string", "description": "Search query"},
+          "num_results": {"type": "integer", "default": 5, "minimum": 1, "maximum": 10}
+        }
+      }
+    },
+    "web_fetch": {
+      "name": "web_fetch",
+      "description": "Fetch and read the content of a specific webpage",
+      "input_schema": {
+        "type": "object",
+        "required": ["url"],
+        "properties": {
+          "url": {"type": "string", "format": "uri", "description": "URL to fetch"}
+        }
+      }
+    },
+    "linkedin_posts": {
+      "name": "linkedin_posts",
+      "description": "Fetch recent LinkedIn posts from a profile",
+      "input_schema": {
+        "type": "object",
+        "required": ["linkedin_url"],
+        "properties": {
+          "linkedin_url": {"type": "string", "format": "uri"},
+          "max_posts": {"type": "integer", "default": 5, "minimum": 1, "maximum": 10}
+        }
+      }
+    }
+  }
+}

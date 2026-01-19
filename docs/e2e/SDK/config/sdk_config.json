@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SDK Brain Configuration",
+  "description": "Configuration for Claude Agent SDK integration in Agency OS",
+  "version": "1.0.0",
+  "last_updated": "2026-01-17",
+
+  "feature_flags": {
+    "sdk_brain_enabled": true,
+    "sdk_enrichment_enabled": true,
+    "sdk_email_enabled": true,
+    "sdk_voice_kb_enabled": true,
+    "sdk_objection_enabled": true,
+    "sdk_batch_processing_enabled": true,
+    "sdk_prompt_caching_enabled": true
+  },
+
+  "models": {
+    "default": "claude-sonnet-4-20250514",
+    "complex_reasoning": "claude-sonnet-4-20250514",
+    "simple_tasks": "claude-3-5-haiku-20241022",
+    "classification": "claude-3-5-haiku-20241022"
+  },
+
+  "model_routing": {
+    "intent_classification": "claude-3-5-haiku-20241022",
+    "sentiment_analysis": "claude-3-5-haiku-20241022",
+    "template_selection": "claude-3-5-haiku-20241022",
+    "simple_extraction": "claude-3-5-haiku-20241022",
+    "icp_extraction": "claude-sonnet-4-20250514",
+    "deep_research": "claude-sonnet-4-20250514",
+    "email_writing": "claude-sonnet-4-20250514",
+    "voice_kb_generation": "claude-sonnet-4-20250514",
+    "objection_handling": "claude-sonnet-4-20250514"
+  },
+
+  "pricing_aud": {
+    "claude-sonnet-4-20250514": {
+      "input_per_mtok": 4.65,
+      "output_per_mtok": 23.25,
+      "cached_input_per_mtok": 0.465
+    },
+    "claude-3-5-haiku-20241022": {
+      "input_per_mtok": 1.24,
+      "output_per_mtok": 6.20,
+      "cached_input_per_mtok": 0.124
+    },
+    "claude-opus-4-5-20251101": {
+      "input_per_mtok": 7.75,
+      "output_per_mtok": 38.75,
+      "cached_input_per_mtok": 0.775
+    }
+  },
+
+  "limits": {
+    "global": {
+      "max_turns_default": 10,
+      "max_cost_per_call_aud": 5.00,
+      "cache_ttl_seconds": 300
+    },
+    "per_tier": {
+      "ignition": {
+        "daily_sdk_budget_aud": 50.00,
+        "max_sdk_leads_per_day": 100,
+        "max_voice_kb_per_day": 50
+      },
+      "velocity": {
+        "daily_sdk_budget_aud": 100.00,
+        "max_sdk_leads_per_day": 200,
+        "max_voice_kb_per_day": 100
+      },
+      "dominance": {
+        "daily_sdk_budget_aud": 200.00,
+        "max_sdk_leads_per_day": 400,
+        "max_voice_kb_per_day": 200
+      }
+    },
+    "per_agent": {
+      "icp_extraction": {
+        "max_cost_aud": 1.00,
+        "max_turns": 12,
+        "timeout_seconds": 180,
+        "description": "ICP extraction during client onboarding - runs ONCE per client"
+      },
+      "enrichment": {
+        "max_cost_aud": 1.50,
+        "max_turns": 10,
+        "timeout_seconds": 120
+      },
+      "email": {
+        "max_cost_aud": 0.50,
+        "max_turns": 5,
+        "timeout_seconds": 60
+      },
+      "voice_kb": {
+        "max_cost_aud": 2.00,
+        "max_turns": 15,
+        "timeout_seconds": 180
+      },
+      "objection": {
+        "max_cost_aud": 0.50,
+        "max_turns": 5,
+        "timeout_seconds": 60
+      }
+    }
+  },
+
+  "thresholds": {
+    "min_als_for_sdk": 85,
+    "min_confidence_for_output": 0.70,
+    "max_hot_lead_percentage": 0.15,
+    "max_warm_lead_percentage": 0.30
+  },
+
+  "selective_usage": {
+    "enabled": true,
+    "priority_signals": [
+      {
+        "name": "recent_funding",
+        "condition": "lead.recent_funding_date AND days_since(lead.recent_funding_date) < 90",
+        "weight": 1.0
+      },
+      {
+        "name": "active_hiring",
+        "condition": "lead.hiring_count >= 3",
+        "weight": 0.8
+      },
+      {
+        "name": "tech_stack_match",
+        "condition": "lead.tech_stack_match > 0.8",
+        "weight": 0.7
+      },
+      {
+        "name": "linkedin_engagement",
+        "condition": "lead.linkedin_engagement_score > 70",
+        "weight": 0.6
+      },
+      {
+        "name": "referral_source",
+        "condition": "lead.source == 'referral'",
+        "weight": 1.0
+      },
+      {
+        "name": "sweet_spot_size",
+        "condition": "lead.company_employee_count BETWEEN 50 AND 500",
+        "weight": 0.5
+      }
+    ],
+    "min_signals_required": 1
+  },
+
+  "caching": {
+    "enabled": true,
+    "strategies": {
+      "icp_context": {
+        "cache_key_pattern": "sdk:icp:{client_id}",
+        "ttl_seconds": 300,
+        "description": "Cache ICP profile per client"
+      },
+      "industry_research": {
+        "cache_key_pattern": "sdk:industry:{industry_slug}",
+        "ttl_seconds": 300,
+        "description": "Cache industry research"
+      },
+      "company_context": {
+        "cache_key_pattern": "sdk:company:{company_domain}",
+        "ttl_seconds": 300,
+        "description": "Cache company research for multi-contact accounts"
+      },
+      "objection_frameworks": {
+        "cache_key_pattern": "sdk:objections:{campaign_id}",
+        "ttl_seconds": 300,
+        "description": "Cache objection handling frameworks"
+      }
+    }
+  },
+
+  "tools": {
+    "web_search": {
+      "enabled": true,
+      "provider": "serper",
+      "max_results": 5,
+      "cost_estimate_aud": 0.002
+    },
+    "web_fetch": {
+      "enabled": true,
+      "max_content_length": 8000,
+      "timeout_seconds": 10,
+      "cost_estimate_aud": 0.001
+    },
+    "linkedin_fetch": {
+      "enabled": true,
+      "provider": "apify",
+      "cost_estimate_aud": 0.005
+    }
+  },
+
+  "templates": {
+    "email": {
+      "cold_outreach": {
+        "template": "Hi {first_name},\n\n[HOOK]\n\nI help {industry} companies like {company} {value_prop}.\n\n[PROOF]\n\nWorth a quick chat this week?\n\n{sender}",
+        "placeholders": ["HOOK", "PROOF"],
+        "max_tokens": 200
+      },
+      "follow_up": {
+        "template": "Hi {first_name},\n\n[CALLBACK]\n\n[NEW_VALUE]\n\nStill interested in chatting?\n\n{sender}",
+        "placeholders": ["CALLBACK", "NEW_VALUE"],
+        "max_tokens": 150
+      },
+      "objection_response": {
+        "template": "Hi {first_name},\n\n[ACKNOWLEDGE]\n\n[REFRAME]\n\n[SOFT_CTA]\n\n{sender}",
+        "placeholders": ["ACKNOWLEDGE", "REFRAME", "SOFT_CTA"],
+        "max_tokens": 200
+      }
+    }
+  },
+
+  "monitoring": {
+    "log_all_sdk_calls": true,
+    "alert_thresholds": {
+      "daily_cost_warning_aud": 150.00,
+      "daily_cost_critical_aud": 250.00,
+      "avg_enrichment_cost_warning_aud": 0.60,
+      "avg_enrichment_cost_critical_aud": 1.00,
+      "cache_hit_rate_warning": 0.50,
+      "cache_hit_rate_critical": 0.30
+    },
+    "metrics_to_track": [
+      "daily_sdk_cost",
+      "cost_per_agent_type",
+      "cache_hit_rate",
+      "avg_turns_per_call",
+      "success_rate",
+      "timeout_rate"
+    ]
+  }
+}

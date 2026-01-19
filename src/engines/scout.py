@@ -44,6 +44,7 @@ from src.exceptions import EngineError, ValidationError
 from src.agents.skills.research_skills import DeepResearchSkill
 from src.agents.sdk_agents.sdk_eligibility import should_use_sdk_enrichment
 from src.agents.sdk_agents.enrichment_agent import run_sdk_enrichment
+from src.services.sdk_usage_service import log_sdk_usage
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
 from src.integrations.apollo import ApolloClient, get_apollo_client
 from src.integrations.apify import ApifyClient, get_apify_client
@@ -585,6 +586,25 @@ class ScoutEngine(BaseEngine):
 
             # Run SDK enrichment
             sdk_result = await self._sdk_enrich(lead, enrichment_data, signals)
+
+            # Log SDK usage to database for cost tracking
+            if sdk_result:
+                try:
+                    await log_sdk_usage(
+                        db,
+                        client_id=lead.client_id,
+                        agent_type="enrichment",
+                        model_used="claude-sonnet-4-20250514",
+                        input_tokens=sdk_result.get("sdk_tool_calls", [{}])[0].get("input_tokens", 0) if sdk_result.get("sdk_tool_calls") else 0,
+                        output_tokens=0,  # Not tracked at this level
+                        cost_aud=sdk_result.get("sdk_cost_aud", 0),
+                        turns_used=sdk_result.get("sdk_turns_used", 1),
+                        tool_calls=sdk_result.get("sdk_tool_calls", []),
+                        success=True,
+                        lead_id=lead_id,
+                    )
+                except Exception as log_err:
+                    logger.warning(f"Failed to log SDK usage: {log_err}")
 
             if sdk_result:
                 # Merge SDK data into enrichment result

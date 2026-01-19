@@ -268,14 +268,31 @@ class JITValidator:
         lead_pool_id: UUID,
         client_id: UUID
     ) -> dict[str, Any] | None:
-        """Get assignment for lead and client."""
+        """
+        Get assignment for lead and client.
+
+        Phase 37 Update: Now queries lead_pool directly instead of lead_assignments.
+        Lead ownership is stored on lead_pool.client_id, not in a separate table.
+        """
         query = text("""
-            SELECT id, status, total_touches, max_touches,
-                   cooling_until, has_replied, reply_intent,
-                   last_contacted_at, channels_used
-            FROM lead_assignments
-            WHERE lead_pool_id = :lead_pool_id
-            AND client_id = :client_id
+            SELECT
+                lp.id,
+                lp.pool_status as status,
+                lp.total_touches,
+                COALESCE(c.sequence_steps, 10) as max_touches,
+                CASE
+                    WHEN lp.last_contacted_at IS NOT NULL
+                    THEN lp.last_contacted_at + INTERVAL '2 days'
+                    ELSE NULL
+                END as cooling_until,
+                lp.has_replied,
+                lp.reply_intent,
+                lp.last_contacted_at,
+                lp.channels_used
+            FROM lead_pool lp
+            LEFT JOIN campaigns c ON c.id = lp.campaign_id
+            WHERE lp.id = :lead_pool_id
+            AND lp.client_id = :client_id
         """)
         result = await self.session.execute(
             query,
@@ -370,13 +387,21 @@ class JITValidator:
         self,
         assignment: dict[str, Any]
     ) -> JITValidationResult:
-        """Check assignment-level conditions."""
+        """
+        Check assignment-level conditions.
+
+        Phase 37 Update: Uses lead_pool.pool_status instead of lead_assignments.status.
+        Valid contactable statuses: 'available', 'assigned'
+        Invalid statuses: 'converted', 'bounced', 'unsubscribed', 'invalid'
+        """
         status = assignment.get("status")
 
-        if status != "active":
+        # Phase 37: lead_pool uses pool_status with different values
+        blocked_statuses = ("converted", "bounced", "unsubscribed", "invalid")
+        if status in blocked_statuses:
             return JITValidationResult.fail(
-                f"Assignment is '{status}'",
-                f"assignment_{status}"
+                f"Lead pool status is '{status}'",
+                f"pool_status_{status}"
             )
 
         # Max touches

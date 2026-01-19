@@ -25,12 +25,14 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 
 from src.engines.base import BaseEngine, EngineResult
 from src.exceptions import AISpendLimitError, ValidationError
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
 from src.agents.sdk_agents.sdk_eligibility import should_use_sdk_email
 from src.agents.sdk_agents.email_agent import run_sdk_email, generate_hot_lead_email
+from src.services.sdk_usage_service import log_sdk_usage
 from src.models.base import ChannelType
 
 import logging
@@ -69,6 +71,69 @@ class ContentEngine(BaseEngine):
         if self._anthropic is None:
             self._anthropic = get_anthropic_client()
         return self._anthropic
+
+    async def _get_client_intelligence(
+        self,
+        db: AsyncSession,
+        client_id: UUID,
+    ) -> dict[str, Any] | None:
+        """
+        Fetch client intelligence data for SDK personalization.
+
+        Args:
+            db: Database session
+            client_id: Client UUID
+
+        Returns:
+            Dict with proof points or None if not available
+        """
+        try:
+            query = text("""
+                SELECT
+                    proof_metrics,
+                    proof_clients,
+                    proof_industries,
+                    common_pain_points,
+                    differentiators,
+                    website_testimonials,
+                    website_case_studies,
+                    g2_rating,
+                    g2_review_count,
+                    capterra_rating,
+                    capterra_review_count,
+                    trustpilot_rating,
+                    trustpilot_review_count,
+                    google_rating,
+                    google_review_count
+                FROM client_intelligence
+                WHERE client_id = :client_id
+                AND deleted_at IS NULL
+            """)
+
+            result = await db.execute(query, {"client_id": str(client_id)})
+            row = result.fetchone()
+
+            if not row:
+                return None
+
+            return {
+                "proof_metrics": row.proof_metrics or [],
+                "proof_clients": row.proof_clients or [],
+                "proof_industries": row.proof_industries or [],
+                "common_pain_points": row.common_pain_points or [],
+                "differentiators": row.differentiators or [],
+                "testimonials": row.website_testimonials or [],
+                "case_studies": row.website_case_studies or [],
+                "ratings": {
+                    "g2": {"rating": float(row.g2_rating) if row.g2_rating else None, "count": row.g2_review_count},
+                    "capterra": {"rating": float(row.capterra_rating) if row.capterra_rating else None, "count": row.capterra_review_count},
+                    "trustpilot": {"rating": float(row.trustpilot_rating) if row.trustpilot_rating else None, "count": row.trustpilot_review_count},
+                    "google": {"rating": float(row.google_rating) if row.google_rating else None, "count": row.google_review_count},
+                },
+            }
+        except Exception as e:
+            logger.warning(f"Failed to fetch client intelligence: {e}")
+            return None
 
     async def generate_email(
         self,
@@ -306,12 +371,40 @@ Return as JSON with: {{"subject": "...", "body": "..."}}"""
                     "sender_name": getattr(campaign, "sender_name", None),
                 }
 
+                # Fetch client intelligence for proof points
+                client_intelligence = None
+                if hasattr(campaign, "client_id") and campaign.client_id:
+                    client_intelligence = await self._get_client_intelligence(db, campaign.client_id)
+
                 # Generate with SDK
                 sdk_result = await run_sdk_email(
                     lead_data=lead_data,
                     enrichment_data=enrichment_data,
                     campaign_context=campaign_context,
+                    client_intelligence=client_intelligence,
                 )
+
+                # Log SDK usage to database for cost tracking
+                try:
+                    await log_sdk_usage(
+                        db,
+                        client_id=campaign.client_id,
+                        agent_type="email",
+                        model_used=sdk_result.model_used or "claude-sonnet-4-20250514",
+                        input_tokens=sdk_result.input_tokens,
+                        output_tokens=sdk_result.output_tokens,
+                        cached_tokens=sdk_result.cached_tokens,
+                        cost_aud=sdk_result.cost_aud,
+                        turns_used=sdk_result.turns_used,
+                        duration_ms=sdk_result.duration_ms,
+                        tool_calls=sdk_result.tool_calls,
+                        success=sdk_result.success,
+                        error_message=sdk_result.error,
+                        lead_id=lead_id,
+                        campaign_id=campaign_id,
+                    )
+                except Exception as log_err:
+                    logger.warning(f"Failed to log SDK email usage: {log_err}")
 
                 if sdk_result.success and sdk_result.data:
                     # Convert Pydantic model to dict if needed
@@ -380,6 +473,7 @@ Return as JSON with: {{"subject": "...", "body": "..."}}"""
         template: str | None = None,
         tone: str = "professional",
         sdk_enrichment: dict[str, Any] | None = None,
+        client_id: UUID | None = None,
     ) -> EngineResult[dict[str, Any]]:
         """
         Generate SDK email for a pool lead (Hot leads only).
@@ -391,20 +485,21 @@ Return as JSON with: {{"subject": "...", "body": "..."}}"""
             template: Optional template
             tone: Desired tone
             sdk_enrichment: Pre-fetched SDK enrichment data
+            client_id: Client UUID for fetching client intelligence
 
         Returns:
             EngineResult with email content
         """
         try:
-            # Get pool lead data
-            pool_lead = await self._get_pool_lead(db, lead_pool_id)
+            # Get pool lead data (with ALS score from lead_assignments for SDK routing)
+            pool_lead = await self._get_pool_lead(db, lead_pool_id, include_als_score=True)
             if not pool_lead:
                 return EngineResult.fail(
                     error="Lead not found in pool",
                     metadata={"lead_pool_id": str(lead_pool_id)},
                 )
 
-            # Build lead data
+            # Build lead data (als_score now comes from lead_assignments via join)
             lead_data = {
                 "first_name": pool_lead.get("first_name", ""),
                 "last_name": pool_lead.get("last_name", ""),
@@ -412,10 +507,10 @@ Return as JSON with: {{"subject": "...", "body": "..."}}"""
                 "company_name": pool_lead.get("company_name", ""),
                 "company_industry": pool_lead.get("company_industry", ""),
                 "company_employee_count": pool_lead.get("company_employee_count"),
-                "als_score": pool_lead.get("als_score", 0),
+                "als_score": pool_lead.get("als_score") or 0,  # From lead_assignments
             }
 
-            # Check if Hot
+            # Check if Hot (requires als_score >= 85)
             if not should_use_sdk_email(lead_data):
                 # Not Hot - use standard pool method
                 return await self.generate_email_for_pool(
@@ -432,10 +527,16 @@ Return as JSON with: {{"subject": "...", "body": "..."}}"""
                 "tone": tone,
             }
 
+            # Fetch client intelligence if client_id provided
+            client_intelligence = None
+            if client_id:
+                client_intelligence = await self._get_client_intelligence(db, client_id)
+
             sdk_result = await run_sdk_email(
                 lead_data=lead_data,
                 enrichment_data=sdk_enrichment,
                 campaign_context=campaign_context,
+                client_intelligence=client_intelligence,
             )
 
             if sdk_result.success and sdk_result.data:
@@ -1312,6 +1413,7 @@ Return as JSON with: {{"opening": "...", "value_prop": "...", "cta": "..."}}"""
         self,
         db: AsyncSession,
         lead_pool_id: UUID,
+        include_als_score: bool = False,
     ) -> dict[str, Any] | None:
         """
         Get lead data from pool for content generation.
@@ -1319,19 +1421,35 @@ Return as JSON with: {{"opening": "...", "value_prop": "...", "cta": "..."}}"""
         Args:
             db: Database session
             lead_pool_id: Pool lead UUID
+            include_als_score: If True, joins with lead_assignments for ALS score
 
         Returns:
             Pool lead data dict or None
         """
         from sqlalchemy import text
 
-        query = text("""
-            SELECT id, first_name, last_name, title, email,
-                   company_name, company_industry, company_employee_count,
-                   linkedin_url, icebreaker_hook
-            FROM lead_pool
-            WHERE id = :id
-        """)
+        if include_als_score:
+            # Join with lead_assignments to get ALS score (for SDK routing)
+            query = text("""
+                SELECT lp.id, lp.first_name, lp.last_name, lp.title, lp.email,
+                       lp.company_name, lp.company_industry, lp.company_employee_count,
+                       lp.linkedin_url, lp.icebreaker_hook,
+                       la.als_score, la.als_tier,
+                       la.id as assignment_id
+                FROM lead_pool lp
+                LEFT JOIN lead_assignments la ON la.lead_pool_id = lp.id
+                WHERE lp.id = :id
+                ORDER BY la.scored_at DESC NULLS LAST
+                LIMIT 1
+            """)
+        else:
+            query = text("""
+                SELECT id, first_name, last_name, title, email,
+                       company_name, company_industry, company_employee_count,
+                       linkedin_url, icebreaker_hook
+                FROM lead_pool
+                WHERE id = :id
+            """)
 
         result = await db.execute(query, {"id": str(lead_pool_id)})
         row = result.fetchone()

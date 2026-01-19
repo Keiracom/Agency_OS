@@ -29,7 +29,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config.settings import settings
@@ -47,6 +47,7 @@ from src.integrations.vapi import (
 )
 from src.agents.sdk_agents.sdk_eligibility import should_use_sdk_voice_kb
 from src.agents.sdk_agents.voice_kb_agent import run_sdk_voice_kb, get_basic_voice_kb
+from src.services.sdk_usage_service import log_sdk_usage
 from src.models.activity import Activity
 from src.models.base import ChannelType, LeadStatus
 from src.models.lead import Lead
@@ -98,6 +99,69 @@ class VoiceEngine(OutreachEngine):
         if self._vapi is None:
             self._vapi = get_vapi_client()
         return self._vapi
+
+    async def _get_client_intelligence(
+        self,
+        db: AsyncSession,
+        client_id: UUID,
+    ) -> dict[str, Any] | None:
+        """
+        Fetch client intelligence data for SDK personalization.
+
+        Args:
+            db: Database session
+            client_id: Client UUID
+
+        Returns:
+            Dict with proof points or None if not available
+        """
+        try:
+            query = text("""
+                SELECT
+                    proof_metrics,
+                    proof_clients,
+                    proof_industries,
+                    common_pain_points,
+                    differentiators,
+                    website_testimonials,
+                    website_case_studies,
+                    g2_rating,
+                    g2_review_count,
+                    capterra_rating,
+                    capterra_review_count,
+                    trustpilot_rating,
+                    trustpilot_review_count,
+                    google_rating,
+                    google_review_count
+                FROM client_intelligence
+                WHERE client_id = :client_id
+                AND deleted_at IS NULL
+            """)
+
+            result = await db.execute(query, {"client_id": str(client_id)})
+            row = result.fetchone()
+
+            if not row:
+                return None
+
+            return {
+                "proof_metrics": row.proof_metrics or [],
+                "proof_clients": row.proof_clients or [],
+                "proof_industries": row.proof_industries or [],
+                "common_pain_points": row.common_pain_points or [],
+                "differentiators": row.differentiators or [],
+                "testimonials": row.website_testimonials or [],
+                "case_studies": row.website_case_studies or [],
+                "ratings": {
+                    "g2": {"rating": float(row.g2_rating) if row.g2_rating else None, "count": row.g2_review_count},
+                    "capterra": {"rating": float(row.capterra_rating) if row.capterra_rating else None, "count": row.capterra_review_count},
+                    "trustpilot": {"rating": float(row.trustpilot_rating) if row.trustpilot_rating else None, "count": row.trustpilot_review_count},
+                    "google": {"rating": float(row.google_rating) if row.google_rating else None, "count": row.google_review_count},
+                },
+            }
+        except Exception as e:
+            logger.warning(f"Failed to fetch client intelligence: {e}")
+            return None
 
     async def create_campaign_assistant(
         self,
@@ -578,12 +642,41 @@ Always be respectful of their time."""
                         "differentiator": getattr(campaign, "differentiator", None),
                     }
 
+                # Fetch client intelligence for proof points
+                client_intelligence = None
+                if campaign and hasattr(campaign, "client_id") and campaign.client_id:
+                    client_intelligence = await self._get_client_intelligence(db, campaign.client_id)
+
                 # Generate SDK voice KB
                 sdk_result = await run_sdk_voice_kb(
                     lead_data=lead_data,
                     enrichment_data=enrichment_data,
                     campaign_context=campaign_context,
+                    client_intelligence=client_intelligence,
                 )
+
+                # Log SDK usage to database for cost tracking
+                try:
+                    client_id = campaign.client_id if campaign and hasattr(campaign, "client_id") else lead.client_id
+                    await log_sdk_usage(
+                        db,
+                        client_id=client_id,
+                        agent_type="voice_kb",
+                        model_used=sdk_result.model_used or "claude-sonnet-4-20250514",
+                        input_tokens=sdk_result.input_tokens,
+                        output_tokens=sdk_result.output_tokens,
+                        cached_tokens=sdk_result.cached_tokens,
+                        cost_aud=sdk_result.cost_aud,
+                        turns_used=sdk_result.turns_used,
+                        duration_ms=sdk_result.duration_ms,
+                        tool_calls=sdk_result.tool_calls,
+                        success=sdk_result.success,
+                        error_message=sdk_result.error,
+                        lead_id=lead_id,
+                        campaign_id=campaign_id,
+                    )
+                except Exception as log_err:
+                    logger.warning(f"Failed to log SDK voice KB usage: {log_err}")
 
                 if sdk_result.success and sdk_result.data:
                     # Convert Pydantic model to dict if needed

@@ -41,6 +41,14 @@ PROJECT_BLUEPRINT.md          ← Start here (slim overview)
 ├── skills/                   ← Implementation patterns
 │   └── SKILL_INDEX.md        ← Available skills
 │
+├── docs/e2e/                 ← E2E Testing System (Phase 21)
+│   ├── E2E_MASTER.md         ← Testing dashboard & status
+│   ├── E2E_INSTRUCTIONS.md   ← How to execute tests
+│   ├── J0-J6 journey files   ← Detailed test specs
+│   ├── ISSUES_FOUND.md       ← Problems discovered
+│   ├── FIXES_APPLIED.md      ← Changes made during testing
+│   └── FILES_CREATED.md      ← New files created
+│
 ├── PROGRESS.md               ← Task tracking (active work)
 │
 └── PROJECT_BLUEPRINT_FULL_ARCHIVE.md  ← Original full blueprint
@@ -73,6 +81,8 @@ PROJECT_BLUEPRINT.md          ← Start here (slim overview)
 - **DO NOT** use hard DELETE (use soft delete)
 - **DO NOT** create files not in the blueprint/phase spec
 - **DO NOT** call paid APIs without CEO approval and cost estimate
+- **DO NOT** create E2E testing files outside of `docs/e2e/` (single source of truth)
+- **DO NOT** create E2E prompts in `prompts/` — use `docs/e2e/E2E_INSTRUCTIONS.md`
 
 ### ✅ DO
 
@@ -113,6 +123,108 @@ If you need data from another engine, pass it as argument from orchestration lay
 
 ---
 
+## SDK Integration for Hot Leads (CRITICAL)
+
+**Hot leads (ALS 85+) MUST use SDK-enhanced methods.** SDK provides hyper-personalized content using Claude Agent SDK with web research tools.
+
+### SDK Routing Rules
+
+| Channel | Standard Method | SDK Method | When to Use SDK |
+|---------|-----------------|------------|-----------------|
+| **Enrichment** | `scout.enrich_lead()` | `scout.enrich_lead_with_sdk()` | Hot + priority signals |
+| **Email** | `content.generate_email()` | `content.generate_email_with_sdk()` | ALL Hot leads |
+| **Voice KB** | N/A | `voice.generate_voice_kb()` | ALL Hot leads |
+| **Voice Call** | `voice.send()` | `voice.create_campaign_assistant_with_kb()` | ALL Hot leads |
+
+### SDK Files Location
+
+```
+src/agents/sdk_agents/
+├── __init__.py              # Exports all SDK agents
+├── sdk_eligibility.py       # Gate functions (should_use_sdk_*)
+├── enrichment_agent.py      # Deep research agent
+├── email_agent.py           # Personalized email agent
+├── voice_kb_agent.py        # Voice knowledge base agent
+├── icp_agent.py             # ICP extraction agent
+└── sdk_tools.py             # Web search/fetch tools
+```
+
+### SDK Eligibility Functions
+
+```python
+from src.agents.sdk_agents import (
+    should_use_sdk_enrichment,  # Hot + signals → True/False, signals
+    should_use_sdk_email,       # Hot → True/False
+    should_use_sdk_voice_kb,    # Hot → True/False
+)
+
+# Check before content generation
+lead_data = {"als_score": 88, ...}
+if should_use_sdk_email(lead_data):
+    result = await content.generate_email_with_sdk(db, lead_id, campaign_id)
+else:
+    result = await content.generate_email(db, lead_id, campaign_id)
+```
+
+### Priority Signals (for SDK Enrichment)
+
+SDK enrichment triggers for Hot leads with at least ONE signal:
+1. **Recent funding** - `company_latest_funding_date` < 90 days
+2. **Actively hiring** - `company_open_roles` >= 3
+3. **Tech stack match** - `tech_stack_match_score` > 0.8
+4. **LinkedIn engaged** - `linkedin_engagement_score` > 70
+5. **Referral source** - `source` == "referral"
+6. **Sweet spot size** - 50 <= `company_employee_count` <= 500
+
+### SDK Cost Controls
+
+| Agent | Max Cost (AUD) | Max Turns |
+|-------|----------------|-----------|
+| Enrichment | $1.50 | 8 |
+| Email | $0.50 | 3 |
+| Voice KB | $2.00 | 3 |
+
+### Database Fields for SDK
+
+Lead model has SDK fields (migration 035):
+- `sdk_enrichment` (JSONB) - Enrichment data
+- `sdk_signals` (TEXT[]) - Triggered signals
+- `sdk_cost_aud` (DECIMAL) - Cost tracking
+- `sdk_enriched_at` (TIMESTAMP) - When enriched
+- `sdk_voice_kb` (JSONB) - Voice knowledge base
+- `sdk_email_content` (JSONB) - Generated email
+
+### ⚠️ KNOWN INTEGRATION GAPS (Fix Required)
+
+**CRITICAL - Orchestration flows not using SDK:**
+
+| Flow | File | Line | Current | Should Be |
+|------|------|------|---------|-----------|
+| Email Outreach | `outreach_flow.py` | 329 | `generate_email()` | `generate_email_with_sdk()` for Hot |
+| Voice Call | `outreach_tasks.py` | 468 | `voice.send()` direct | Generate KB first for Hot |
+| Enrichment | `enrichment_flow.py` | 150 | `enrich_batch()` | `enrich_lead_with_sdk()` for Hot |
+| Pool Enrich | `lead_enrichment_flow.py` | 401 | Stops after scoring | Continue to SDK for Hot |
+
+**Fix pattern for flows:**
+```python
+# BEFORE calling content generation in any flow:
+lead = await get_lead(db, lead_id)
+if lead.als_score >= 85:  # Hot threshold
+    result = await engine.method_with_sdk(...)
+else:
+    result = await engine.standard_method(...)
+```
+
+### SDK Enhancement Opportunities (Future)
+
+1. **LinkedIn SDK** - Personalized connection requests for Hot leads
+2. **SMS SDK** - Research-informed SMS for Hot leads
+3. **Reply Objection Agent** - SDK-powered objection handling
+4. **Meeting Prep Agent** - Auto-generate call briefs
+5. **ICP Refiner** - Learn from results to improve ICP
+
+---
+
 ## Technology Stack (LOCKED)
 
 | Component | Use This | NOT This |
@@ -122,7 +234,7 @@ If you need data from another engine, pass it as argument from orchestration lay
 | Auth | Supabase Auth | Clerk, Auth0 |
 | Database | Supabase PostgreSQL | Firebase, MongoDB |
 | Cache | Redis (Upstash) | Memcached |
-| Email | Resend + Salesforge | SendGrid, Smartlead |
+| Email | Salesforge | Resend, SendGrid, Smartlead |
 
 **Full details:** `docs/architecture/DECISIONS.md`
 
@@ -147,7 +259,7 @@ If you need data from another engine, pass it as argument from orchestration lay
 | **Apify** | Google Search | ~$0.001 | per search |
 | **Clay** | Person Enrichment | 1-5 credits | per person |
 | **Anthropic** | Claude API | varies | per token |
-| **Resend** | Email Send | $0.001 | per email |
+| **Salesforge** | Email Send | Included | per mailbox/month |
 | **Twilio** | SMS Send | ~$0.01 | per SMS |
 | **Twilio** | Voice Call | ~$0.02/min | per minute |
 
@@ -166,6 +278,51 @@ Approve?"
 - **Prefect Flows:** All E2E testing must go through Prefect flows (not manual Python)
 - **Real Data:** Use real APIs - just ask for permission first with cost estimate
 - **TEST_MODE:** Ensure TEST_MODE=true on Railway before outreach testing
+
+---
+
+## E2E Testing
+
+### Single Source of Truth
+
+**`docs/e2e/e2e_state.json` is the ONLY place that tracks E2E progress.**
+
+- Do NOT read status from markdown files
+- Do NOT update status in markdown files
+- Markdown files contain instructions only
+
+### Commands
+
+| Command | Who | Purpose |
+|---------|-----|---------|
+| `/e2e status` | Anyone | Show current state from JSON |
+| `/e2e approve` | CEO | Approve next group (required) |
+| `/e2e continue` | Claude | Execute next group (requires approval) |
+
+### Workflow
+
+```
+1. /e2e status     → See current state
+2. /e2e approve    → CEO approves next group
+3. /e2e continue   → Claude executes, updates JSON, STOPS
+4. Repeat
+```
+
+### Enforcement
+
+- `/e2e continue` REFUSES to run unless status = "approved"
+- Claude cannot bypass the approval gate
+- One group per command, then STOP
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `docs/e2e/e2e_state.json` | **ONLY source of truth** |
+| `docs/e2e/e2e_config.json` | Test configuration |
+| `docs/e2e/J*_*.md` | Journey instructions (no status) |
+| `docs/e2e/ISSUES_FOUND.md` | Issue log |
+| `docs/e2e/FIXES_APPLIED.md` | Fix log |
 
 ---
 
@@ -259,7 +416,18 @@ DO NOT guess. ASK.
 | Integration specs | `docs/specs/integrations/INTEGRATION_INDEX.md` |
 | Skills | `skills/SKILL_INDEX.md` |
 | Task tracking | `PROGRESS.md` |
+| **E2E Testing** | `docs/e2e/E2E_MASTER.md` |
+| E2E Instructions | `docs/e2e/E2E_INSTRUCTIONS.md` |
+| **Financial Advisor Agent** | `xero/data/pay/CLAUDE.md` |
 | Full original blueprint | `PROJECT_BLUEPRINT_FULL_ARCHIVE.md` |
+
+---
+
+## Australian Financial Advisor Agent
+
+For Australian tax, accounting, or Xero questions, read `xero/data/pay/advisor.py` and use it.
+
+Covers: Tax, super, GST, BAS, payroll, deductions, Xero API, and 284 topics across 21 modules.
 
 ---
 

@@ -103,7 +103,9 @@
 | Warmup scheduler | `src/services/warmup_scheduler.py` | 🔴 Not created |
 | Threading (In-Reply-To) | `src/integrations/salesforge.py` | ✅ |
 | Bounce handling | `src/services/email_events_service.py` | ✅ |
-| Recipient timezone | — | 🔴 Not implemented |
+| Recipient timezone | `src/services/timezone_service.py` | ✅ |
+| Australian state timezones | `src/services/timezone_service.py:AUSTRALIAN_STATE_TIMEZONES` | ✅ |
+| 9-11 AM send window | `src/services/timezone_service.py:get_optimal_email_send_time()` | ✅ |
 | `client_personas` table | `supabase/migrations/042_client_personas.sql` | ✅ |
 | `ClientPersona` model | `src/models/client_persona.py` | ✅ |
 | `clients.branding` field | `supabase/migrations/042_client_personas.sql` | ✅ |
@@ -166,7 +168,7 @@ Based on dependencies and business impact:
 
 ### Phase D: Email Remaining (CURRENT)
 7. `EMAIL_DISTRIBUTION.md` → Warmup scheduler
-8. `EMAIL_DISTRIBUTION.md` → Recipient timezone
+8. ~~`EMAIL_DISTRIBUTION.md` → Recipient timezone~~ ✅
 
 ### Phase E: Automated Sequences
 9. `AUTOMATED_DISTRIBUTION_DEFAULTS.md` → Sequence generator

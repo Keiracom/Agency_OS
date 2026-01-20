@@ -34,6 +34,10 @@ Phase 24F additions:
 
 Phase 21 additions:
 - SendLimiter: Daily send limits during TEST_MODE
+
+Phase D additions:
+- Australian state-level timezone mapping
+- 9-11 AM email send window functions
 """
 from src.services.buyer_signal_service import BuyerSignalService, BuyerSignal, BuyerScoreBoost
 from src.services.conversation_analytics_service import ConversationAnalyticsService
@@ -47,7 +51,13 @@ from src.services.reply_analyzer import ReplyAnalyzer
 from src.services.send_limiter import SendLimiter, send_limiter
 from src.services.suppression_service import SuppressionService, SuppressionResult
 from src.services.thread_service import ThreadService
-from src.services.timezone_service import TimezoneService
+from src.services.timezone_service import (
+    TimezoneService,
+    AUSTRALIAN_STATE_TIMEZONES,
+    detect_australian_timezone,
+    get_optimal_send_time,
+    get_timezone_service,
+)
 from src.services.resource_assignment_service import (
     assign_resources_to_client,
     release_client_resources,
@@ -88,6 +98,11 @@ __all__ = [
     # Phase 21
     "SendLimiter",
     "send_limiter",
+    # Phase D - Timezone
+    "AUSTRALIAN_STATE_TIMEZONES",
+    "detect_australian_timezone",
+    "get_optimal_send_time",
+    "get_timezone_service",
     # Resource Pool
     "assign_resources_to_client",
     "release_client_resources",

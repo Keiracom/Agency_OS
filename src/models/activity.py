@@ -103,6 +103,13 @@ class Activity(Base, UUIDMixin):
         nullable=True,
     )
 
+    # === Domain Health Tracking (Phase D) ===
+    sender_domain: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        index=True,
+    )
+
     # === Content Reference ===
     sequence_step: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     subject: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

@@ -4,15 +4,20 @@ Purpose: Resource pool models for platform-level resource allocation
 Layer: 1 - models
 Imports: base only
 Consumers: services, orchestration
-Spec: docs/architecture/distribution/RESOURCE_POOL.md
+Spec: docs/architecture/distribution/RESOURCE_POOL.md, EMAIL_DISTRIBUTION.md
+
+Phase D additions:
+- Domain health tracking fields (bounce_rate, complaint_rate, health_status)
+- Health-based daily limit override
 """
 
 from datetime import datetime
+from decimal import Decimal
 from enum import Enum
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import Integer, String, Text, ForeignKey
+from sqlalchemy import Integer, Numeric, String, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import ENUM, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -44,6 +49,37 @@ class ResourceStatus(str, Enum):
     ASSIGNED = "assigned"
     WARMING = "warming"
     RETIRED = "retired"
+
+
+class HealthStatus(str, Enum):
+    """Domain health status based on bounce/complaint rates."""
+    GOOD = "good"          # <2% bounce, <0.05% complaint → 50/day
+    WARNING = "warning"    # 2-5% bounce, 0.05-0.1% complaint → 35/day
+    CRITICAL = "critical"  # >5% bounce, >0.1% complaint → 0/day (paused)
+
+
+# ============================================
+# HEALTH THRESHOLDS (per EMAIL_DISTRIBUTION.md)
+# ============================================
+
+HEALTH_THRESHOLDS = {
+    "bounce": {
+        "good": 0.02,      # <2%
+        "warning": 0.05,   # 2-5%
+        # >5% = critical
+    },
+    "complaint": {
+        "good": 0.0005,    # <0.05%
+        "warning": 0.001,  # 0.05-0.1%
+        # >0.1% = critical
+    },
+}
+
+HEALTH_DAILY_LIMITS = {
+    HealthStatus.GOOD: 50,
+    HealthStatus.WARNING: 35,
+    HealthStatus.CRITICAL: 0,
+}
 
 
 # ============================================
@@ -149,6 +185,55 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
         nullable=True,
     )
 
+    # === Health Tracking (Phase D - EMAIL_DISTRIBUTION.md) ===
+    # 30-day rolling metrics
+    sends_30d: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        nullable=False,
+    )
+    bounces_30d: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        nullable=False,
+    )
+    complaints_30d: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        nullable=False,
+    )
+
+    # Calculated rates (updated by domain_health_service)
+    bounce_rate: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(5, 4),
+        default=0,
+        nullable=True,
+    )
+    complaint_rate: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(6, 5),
+        default=0,
+        nullable=True,
+    )
+
+    # Health status: good, warning, critical
+    health_status: Mapped[str] = mapped_column(
+        String(20),
+        default=HealthStatus.GOOD.value,
+        nullable=False,
+    )
+
+    # Daily limit override (for health-based reduction)
+    # NULL = use default warmup-based limit
+    daily_limit_override: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    # Last health check timestamp
+    health_checked_at: Mapped[Optional[datetime]] = mapped_column(
+        nullable=True,
+    )
+
     # Relationships
     client_resources: Mapped[list["ClientResource"]] = relationship(
         "ClientResource",
@@ -174,9 +259,9 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
 
     def get_daily_limit(self) -> int:
         """
-        Get daily limit based on resource type and warmup status.
+        Get daily limit based on resource type, warmup status, and health.
 
-        Email domains: 5-50 based on warmup progress
+        Email domains: Health override takes precedence, then warmup-based
         Phone numbers: 50 calls/day
         LinkedIn seats: 20 connections/day (handled by seat service)
         """
@@ -189,13 +274,30 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
         return 0
 
     def _get_email_daily_limit(self) -> int:
-        """Get daily email limit based on warmup status."""
+        """
+        Get daily email limit based on health status and warmup.
+
+        Priority:
+        1. Health-based override (if set)
+        2. Warmup-based limit (if not fully warmed)
+        3. Full capacity (50/day)
+        """
+        # Health override takes precedence
+        if self.daily_limit_override is not None:
+            return self.daily_limit_override
+
+        # Check health status for fully warmed domains
         if self.warmup_completed_at:
-            return 50  # Full capacity
+            return HEALTH_DAILY_LIMITS.get(
+                HealthStatus(self.health_status),
+                50
+            )
 
+        # Not started warmup
         if not self.warmup_started_at:
-            return 5  # Not started
+            return 5
 
+        # Warmup in progress
         days_warming = (datetime.utcnow() - self.warmup_started_at).days
 
         if days_warming < 4:
@@ -208,6 +310,57 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
             return 35
         else:
             return 50
+
+    @property
+    def is_healthy(self) -> bool:
+        """Check if domain has healthy bounce/complaint rates."""
+        return self.health_status == HealthStatus.GOOD.value
+
+    @property
+    def is_paused(self) -> bool:
+        """Check if domain is paused due to critical health."""
+        return self.health_status == HealthStatus.CRITICAL.value
+
+    def update_health_metrics(
+        self,
+        sends: int,
+        bounces: int,
+        complaints: int,
+    ) -> None:
+        """
+        Update health metrics and recalculate status.
+
+        Called by domain_health_service after aggregating 30-day metrics.
+        """
+        self.sends_30d = sends
+        self.bounces_30d = bounces
+        self.complaints_30d = complaints
+
+        # Calculate rates
+        if sends > 0:
+            self.bounce_rate = Decimal(str(bounces / sends))
+            self.complaint_rate = Decimal(str(complaints / sends))
+        else:
+            self.bounce_rate = Decimal("0")
+            self.complaint_rate = Decimal("0")
+
+        # Determine health status
+        bounce_float = float(self.bounce_rate) if self.bounce_rate else 0
+        complaint_float = float(self.complaint_rate) if self.complaint_rate else 0
+
+        if bounce_float > HEALTH_THRESHOLDS["bounce"]["warning"] or \
+           complaint_float > HEALTH_THRESHOLDS["complaint"]["warning"]:
+            self.health_status = HealthStatus.CRITICAL.value
+            self.daily_limit_override = 0
+        elif bounce_float > HEALTH_THRESHOLDS["bounce"]["good"] or \
+             complaint_float > HEALTH_THRESHOLDS["complaint"]["good"]:
+            self.health_status = HealthStatus.WARNING.value
+            self.daily_limit_override = 35
+        else:
+            self.health_status = HealthStatus.GOOD.value
+            self.daily_limit_override = None  # Use default
+
+        self.health_checked_at = datetime.utcnow()
 
 
 class ClientResource(Base, UUIDMixin, TimestampMixin):
@@ -300,11 +453,16 @@ class ClientResource(Base, UUIDMixin, TimestampMixin):
 # [x] No hardcoded credentials
 # [x] ResourceType enum
 # [x] ResourceStatus enum
+# [x] HealthStatus enum (Phase D)
 # [x] TIER_ALLOCATIONS constant
+# [x] HEALTH_THRESHOLDS constant (Phase D)
+# [x] HEALTH_DAILY_LIMITS constant (Phase D)
 # [x] ResourcePool model with all fields from spec
+# [x] Health tracking fields (sends_30d, bounces_30d, etc.) (Phase D)
 # [x] ClientResource model with all fields from spec
 # [x] Relationships defined
-# [x] Helper properties (is_available, is_warmed)
-# [x] Daily limit calculation with warmup schedule
+# [x] Helper properties (is_available, is_warmed, is_healthy, is_paused)
+# [x] Daily limit calculation with warmup + health override
+# [x] update_health_metrics() method (Phase D)
 # [x] No imports from engines/integrations/orchestration (Rule 12)
 # [x] All fields have type hints

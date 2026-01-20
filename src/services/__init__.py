@@ -38,8 +38,20 @@ Phase 21 additions:
 Phase D additions:
 - Australian state-level timezone mapping
 - 9-11 AM email send window functions
+- DomainHealthService: Domain health monitoring (bounce/complaint rates)
+- DomainCapacityService: Domain capacity with health-based reduction
 """
 from src.services.buyer_signal_service import BuyerSignalService, BuyerSignal, BuyerScoreBoost
+from src.services.domain_health_service import (
+    DomainHealthService,
+    DomainHealthResult,
+    get_domain_health_service,
+)
+from src.services.domain_capacity_service import (
+    DomainCapacityService,
+    DomainCapacityResult,
+    get_domain_capacity_service,
+)
 from src.services.conversation_analytics_service import ConversationAnalyticsService
 from src.services.crm_push_service import CRMPushService, CRMPushResult, LeadData, MeetingData
 from src.services.customer_import_service import CustomerImportService, ImportResult, ColumnMapping
@@ -103,6 +115,13 @@ __all__ = [
     "detect_australian_timezone",
     "get_optimal_send_time",
     "get_timezone_service",
+    # Phase D - Domain Health
+    "DomainHealthService",
+    "DomainHealthResult",
+    "get_domain_health_service",
+    "DomainCapacityService",
+    "DomainCapacityResult",
+    "get_domain_capacity_service",
     # Resource Pool
     "assign_resources_to_client",
     "release_client_resources",

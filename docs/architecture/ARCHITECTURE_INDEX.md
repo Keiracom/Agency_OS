@@ -100,7 +100,8 @@
 |--------------|---------------|--------|
 | Salesforge client | `src/integrations/salesforge.py` | ✅ |
 | Email engine | `src/engines/email.py` | ✅ |
-| Warmup scheduler | `src/services/warmup_scheduler.py` | 🔴 Not created |
+| Domain health service | `src/services/domain_health_service.py` | ✅ |
+| Domain capacity service | `src/services/domain_capacity_service.py` | ✅ |
 | Threading (In-Reply-To) | `src/integrations/salesforge.py` | ✅ |
 | Bounce handling | `src/services/email_events_service.py` | ✅ |
 | Recipient timezone | `src/services/timezone_service.py` | ✅ |
@@ -166,8 +167,8 @@ Based on dependencies and business impact:
 5. ~~`LINKEDIN_DISTRIBUTION.md` → `linkedin_seats` table + model~~
 6. ~~`LINKEDIN_DISTRIBUTION.md` → `linkedin_connections` table + model~~
 
-### Phase D: Email Remaining (CURRENT)
-7. `EMAIL_DISTRIBUTION.md` → Warmup scheduler
+### Phase D: Email Remaining ✅ COMPLETE
+7. ~~`EMAIL_DISTRIBUTION.md` → Domain health/capacity services~~ ✅
 8. ~~`EMAIL_DISTRIBUTION.md` → Recipient timezone~~ ✅
 
 ### Phase E: Automated Sequences

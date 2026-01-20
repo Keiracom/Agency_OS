@@ -121,13 +121,47 @@ ADD COLUMN client_resource_id UUID REFERENCES client_resources(id);
 
 ## Resource Allocation Rules
 
-### Per-Tier Allocation
+### CEO Decisions (2026-01-20)
 
-| Tier | Domains | Phone Numbers | LinkedIn Seats |
-|------|---------|---------------|----------------|
-| Ignition ($2,500) | 2 | 1 | 0 |
-| Velocity ($5,000) | 3 | 2 | 1 |
-| Dominance ($7,500) | 4 | 3 | 2 |
+| Decision | Choice |
+|----------|--------|
+| Sharing model | **Dedicated** (1 domain = 1 client) |
+| Allocation trigger | **Payment confirmed** (Stripe webhook) |
+| Churn handling | **30-day hold** then release |
+| Upgrade | **Immediate** resource addition |
+| Downgrade | **End of billing month** (keep current until then) |
+| Buffer strategy | **40% buffer** — auto-purchase when low |
+
+### Per-Tier Allocation (Calculated)
+
+Based on:
+- ALS distribution: Hot 10%, Warm 25%, Cool 40%, Cold 25%
+- Channel access: Email (all), LinkedIn (Cool+), Voice (Warm+), SMS (Hot only)
+- 5-step sequence with reply handling (+10%)
+- 22 working days/month
+
+| Tier | Leads | Domains | Mailboxes | Phone Numbers | LinkedIn Seats |
+|------|-------|---------|-----------|---------------|----------------|
+| Ignition ($2,500) | 1,250 | 3 | 6 | 1 | 3 |
+| Velocity ($5,000) | 2,250 | 5 | 10 | 2 | 7 |
+| Dominance ($7,500) | 4,500 | 9 | 18 | 3 | 14 |
+
+### Calculation Breakdown
+
+**Email Domains (50/day/domain):**
+- Ignition: 2,750 emails/month ÷ 22 days = 125/day → 3 domains
+- Velocity: 4,950 emails/month ÷ 22 days = 225/day → 5 domains
+- Dominance: 9,900 emails/month ÷ 22 days = 450/day → 9 domains
+
+**Phone Numbers (Voice 50/day + SMS 100/day):**
+- Ignition: 26 actions/day → 1 number
+- Velocity: 46 actions/day → 2 numbers
+- Dominance: 92 actions/day → 3 numbers
+
+**LinkedIn Seats (20 connections/day + messages):**
+- Ignition: 56 actions/day → 3 seats
+- Velocity: 100 actions/day → 7 seats (with headroom)
+- Dominance: 199 actions/day → 14 seats (with headroom)
 
 ### Domain Selection Priority
 
@@ -241,6 +275,61 @@ async def release_client_resources(
     await db.commit()
     return result.rowcount
 ```
+
+---
+
+## Buffer Strategy (40% Rule)
+
+### Formula
+
+```
+buffer_needed = current_allocated × 0.40
+total_warmed = current_allocated + buffer_needed
+```
+
+### Example Scenarios
+
+| Active Clients | Domains In Use | Buffer (40%) | Total Warmed Needed |
+|----------------|----------------|--------------|---------------------|
+| 1 Velocity | 5 | 2 | 7 |
+| 2 Velocity | 10 | 4 | 14 |
+| 5 mixed | 25 | 10 | 35 |
+| 10 mixed | 50 | 20 | 70 |
+
+### Auto-Provisioning Trigger
+
+```python
+async def check_buffer_and_provision(db: AsyncSession):
+    """
+    Check if buffer is below 40%, trigger InfraForge purchase.
+    """
+    stats = await get_pool_stats(db, resource_type='email_domain')
+
+    allocated = stats['allocated']
+    available = stats['available']
+    total_warmed = allocated + available
+
+    required_buffer = int(allocated * 0.40)
+    actual_buffer = available
+
+    if actual_buffer < required_buffer:
+        shortfall = required_buffer - actual_buffer
+        await infraforge_client.purchase_domains(count=shortfall)
+        await send_admin_alert(
+            f"Auto-purchased {shortfall} domains. Buffer was {actual_buffer}, needed {required_buffer}."
+        )
+```
+
+### Warmup Lead Time
+
+| Phase | Days |
+|-------|------|
+| Domain purchase | 1 |
+| DNS propagation | 1 |
+| Warmup start | 14-21 |
+| **Total** | **16-23 days** |
+
+**Implication:** Buffer must account for 3-week warmup. If signup rate is high, buffer % may need to increase.
 
 ---
 

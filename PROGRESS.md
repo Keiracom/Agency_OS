@@ -268,6 +268,31 @@ PREFECT_API_URL=https://prefect-server-production-f9b1.up.railway.app/api
 
 ---
 
+## AUTOMATED DISTRIBUTION (Phase 25)
+
+**Principle:** Agency OS is AUTOMATED. Users configure WHAT, system controls HOW.
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Document defaults spec | ✅ | `docs/architecture/AUTOMATED_DISTRIBUTION_DEFAULTS.md` |
+| Create sequence_generator.py | 🔴 | Auto-generate 5-step default sequence |
+| Implement gradual warmup | 🔴 | Day 1-3: 5/day → Day 22+: 50/day |
+| Add timezone detection | 🔴 | Use recipient TZ, not campaign TZ |
+| Remove user sequence config | 🔴 | Frontend form simplification |
+
+**Default Sequence:**
+| Step | Day | Channel |
+|------|-----|---------|
+| 1 | 0 | Email |
+| 2 | 3 | Voice |
+| 3 | 5 | LinkedIn |
+| 4 | 8 | Email |
+| 5 | 12 | SMS |
+
+**Spec:** `docs/architecture/AUTOMATED_DISTRIBUTION_DEFAULTS.md`
+
+---
+
 ## EMAIL INFRASTRUCTURE
 
 **Stack:** InfraForge (domains) → Warmforge (warmup) → Salesforge (sending)

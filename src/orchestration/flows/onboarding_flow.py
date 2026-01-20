@@ -6,6 +6,7 @@ PURPOSE: Prefect flow for async ICP extraction during client onboarding
 
 DEPENDENCIES:
 - src/agents/icp_discovery_agent.py
+- src/agents/sdk_agents/icp_agent.py (SDK enhancement)
 - src/engines/icp_scraper.py
 - src/integrations/supabase.py
 
@@ -29,6 +30,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.icp_discovery_agent import ICPExtractionResult, get_icp_discovery_agent
 from src.integrations.supabase import get_db_session
+from src.config.settings import get_settings
+from src.engines.client_intelligence import (
+    ClientIntelligenceEngine,
+    ScrapeConfig,
+    get_client_intelligence_engine,
+)
+from src.services.resource_assignment_service import (
+    assign_resources_to_client,
+    get_pool_stats,
+    check_buffer_and_alert,
+)
+from src.models.resource_pool import ResourceType
 
 logger = logging.getLogger(__name__)
 
@@ -189,6 +202,146 @@ async def run_icp_extraction_task(
         return {"success": False, "error": result.error}
 
 
+@task(name="enhance_icp_with_sdk", retries=1, timeout_seconds=300)
+async def enhance_icp_with_sdk_task(
+    job_id: UUID,
+    client_id: UUID,
+    website_url: str,
+    basic_result: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    Enhance ICP extraction using Claude Agent SDK.
+
+    This task takes the basic ICP result and uses the SDK Agent to:
+    - Research additional context via web search
+    - Build more detailed pain points and buying signals
+    - Self-review and refine the ICP
+
+    Args:
+        job_id: Extraction job UUID
+        client_id: Client UUID
+        website_url: Website URL being analyzed
+        basic_result: Result from basic ICP extraction
+
+    Returns:
+        Enhanced ICP result dict or original if SDK disabled/fails
+    """
+    settings = get_settings()
+
+    # Check if SDK is enabled
+    if not settings.sdk_brain_enabled:
+        logger.info("SDK Brain disabled, returning basic ICP result")
+        return basic_result
+
+    # Only enhance if basic extraction succeeded
+    if not basic_result.get("success"):
+        logger.info("Basic extraction failed, skipping SDK enhancement")
+        return basic_result
+
+    try:
+        # Update progress
+        await update_job_status_task(
+            job_id=job_id,
+            status="running",
+            current_step="Enhancing ICP with AI research",
+            completed_steps=5,
+        )
+
+        # Import SDK components
+        from src.agents.sdk_agents.icp_agent import ICPInput, extract_icp
+
+        # Prepare website content from basic result profile
+        profile = basic_result.get("profile", {})
+        website_content = profile.get("company_description", "")
+
+        # Add services and other scraped data
+        if profile.get("services_offered"):
+            website_content += "\n\nServices: " + ", ".join(profile.get("services_offered", []))
+        if profile.get("value_proposition"):
+            website_content += "\n\nValue Proposition: " + profile.get("value_proposition", "")
+
+        # Extract portfolio companies if available
+        portfolio_companies = []
+        # Note: basic result may not have portfolio data, SDK will research
+
+        # Get client name from database
+        async with get_db_session() as db:
+            result_row = await db.execute(
+                text("SELECT company_name FROM clients WHERE id = :client_id"),
+                {"client_id": str(client_id)},
+            )
+            row = result_row.fetchone()
+            client_name = row[0] if row else "Unknown Agency"
+
+        # Run SDK ICP extraction
+        logger.info(f"Running SDK ICP enhancement for {client_name}")
+        sdk_result = await extract_icp(
+            client_name=client_name,
+            website_url=website_url,
+            website_content=website_content,
+            portfolio_companies=portfolio_companies,
+            social_links=profile.get("social_links", {}),
+            existing_icp=profile,  # Pass basic ICP for refinement
+            client_id=client_id,
+        )
+
+        if sdk_result.success and sdk_result.data:
+            logger.info(
+                f"SDK ICP enhancement completed: "
+                f"confidence={sdk_result.data.confidence_score:.2f}, "
+                f"cost=${sdk_result.cost_aud:.4f}"
+            )
+
+            # Merge SDK result into the profile
+            enhanced_profile = basic_result.get("profile", {}).copy()
+
+            # Update with SDK-enhanced fields
+            sdk_data = sdk_result.data
+            enhanced_profile["icp_industries"] = [
+                ind.name for ind in sdk_data.target_industries
+            ]
+            enhanced_profile["icp_titles"] = [
+                title.title for title in sdk_data.target_titles
+            ]
+            enhanced_profile["icp_pain_points"] = [
+                pp.pain_point for pp in sdk_data.pain_points
+            ]
+            enhanced_profile["icp_company_sizes"] = [
+                f"{sdk_data.company_size_range.min_employees}-{sdk_data.company_size_range.max_employees}"
+            ]
+            enhanced_profile["icp_locations"] = sdk_data.target_locations
+            enhanced_profile["services_offered"] = sdk_data.services_offered
+            enhanced_profile["value_proposition"] = ", ".join(sdk_data.agency_strengths)
+
+            # Add SDK-specific metadata
+            enhanced_profile["sdk_confidence_score"] = sdk_data.confidence_score
+            enhanced_profile["sdk_data_gaps"] = sdk_data.data_gaps
+            enhanced_profile["sdk_buying_signals"] = [
+                {"signal": bs.signal, "urgency": bs.urgency}
+                for bs in sdk_data.buying_signals
+            ]
+            enhanced_profile["sdk_sources_used"] = sdk_data.sources_used
+
+            return {
+                "success": True,
+                "profile": enhanced_profile,
+                "tokens_used": basic_result.get("tokens_used", 0) + (sdk_result.input_tokens + sdk_result.output_tokens),
+                "cost_aud": basic_result.get("cost_aud", 0.0) + sdk_result.cost_aud,
+                "duration_seconds": basic_result.get("duration_seconds", 0),
+                "sdk_enhanced": True,
+                "sdk_confidence": sdk_data.confidence_score,
+            }
+        else:
+            logger.warning(f"SDK ICP enhancement failed: {sdk_result.error}")
+            # Return original result if SDK fails
+            return basic_result
+
+    except Exception as e:
+        logger.exception(f"SDK ICP enhancement error: {e}")
+        # Return original result on error
+        return basic_result
+
+
 @task(name="save_extraction_result", retries=3, retry_delay_seconds=5)
 async def save_extraction_result_task(
     job_id: UUID,
@@ -317,6 +470,144 @@ async def apply_icp_to_client_task(
     return True
 
 
+@task(name="assign_client_resources", retries=2, retry_delay_seconds=5)
+async def assign_client_resources_task(
+    client_id: UUID,
+    tier: str,
+) -> dict[str, Any]:
+    """
+    Assign resources from pool to a new client based on tier.
+
+    Called during onboarding after payment confirmation.
+    Per RESOURCE_POOL.md spec.
+
+    Args:
+        client_id: Client UUID
+        tier: Pricing tier ('ignition', 'velocity', 'dominance')
+
+    Returns:
+        Dict with assignment result including resource IDs
+    """
+    logger.info(f"Assigning resources to client {client_id} (tier: {tier})")
+
+    try:
+        async with get_db_session() as db:
+            # Assign resources from pool
+            assigned = await assign_resources_to_client(db, client_id, tier)
+
+            # Check buffer status after assignment
+            buffer_status = {}
+            for resource_type in [ResourceType.EMAIL_DOMAIN, ResourceType.PHONE_NUMBER]:
+                status = await check_buffer_and_alert(db, resource_type)
+                buffer_status[resource_type.value] = status
+
+            # Log any buffer warnings
+            for rt, status in buffer_status.items():
+                if status.get("status") in ("warning", "critical"):
+                    logger.warning(
+                        f"Resource pool buffer {status.get('status')}: "
+                        f"{rt} - {status.get('message')}"
+                    )
+
+            return {
+                "success": True,
+                "client_id": str(client_id),
+                "tier": tier,
+                "assigned": {k: [str(v) for v in ids] for k, ids in assigned.items()},
+                "total_resources": sum(len(ids) for ids in assigned.values()),
+                "buffer_status": buffer_status,
+            }
+
+    except Exception as e:
+        logger.exception(f"Resource assignment failed for client {client_id}: {e}")
+        return {
+            "success": False,
+            "client_id": str(client_id),
+            "tier": tier,
+            "error": str(e),
+        }
+
+
+@task(name="scrape_client_intelligence", retries=1, timeout_seconds=600)
+async def scrape_client_intelligence_task(
+    job_id: UUID,
+    client_id: UUID,
+    config: ScrapeConfig | None = None,
+) -> dict[str, Any]:
+    """
+    Scrape client intelligence data for SDK personalization.
+
+    Scrapes:
+    - Website (case studies, testimonials, services)
+    - LinkedIn company page
+    - Twitter/X, Facebook, Instagram profiles
+    - Review platforms (Trustpilot, G2, Capterra, Google)
+
+    Then uses AI to extract proof points for SDK agents.
+
+    Args:
+        job_id: Extraction job UUID
+        client_id: Client UUID
+        config: Optional scrape configuration
+
+    Returns:
+        Dict with scrape result summary
+    """
+    # Update progress
+    await update_job_status_task(
+        job_id=job_id,
+        status="running",
+        current_step="Scraping client intelligence",
+        completed_steps=6,
+    )
+
+    try:
+        engine = get_client_intelligence_engine()
+
+        async with get_db_session() as db:
+            # Run the full scrape
+            result = await engine.scrape_client(
+                db=db,
+                client_id=client_id,
+                config=config,
+            )
+
+            if result.success:
+                # Save to database
+                intel = await engine.save_to_database(
+                    db=db,
+                    client_id=client_id,
+                    result=result,
+                )
+
+                logger.info(
+                    f"Client intelligence scrape completed for {client_id}: "
+                    f"{len(result.sources_scraped)} sources, ${result.total_cost_aud:.2f}"
+                )
+
+                return {
+                    "success": True,
+                    "sources_scraped": result.sources_scraped,
+                    "total_cost_aud": float(result.total_cost_aud),
+                    "errors": result.errors,
+                    "intelligence_id": str(intel.id),
+                }
+            else:
+                logger.warning(f"Client intelligence scrape failed: {result.errors}")
+                return {
+                    "success": False,
+                    "sources_scraped": result.sources_scraped,
+                    "errors": result.errors,
+                }
+
+    except Exception as e:
+        logger.exception(f"Client intelligence scrape error: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+        }
+
+
 # ============================================
 # FLOWS
 # ============================================
@@ -340,9 +631,10 @@ async def icp_onboarding_flow(
 
     Flow steps:
     1. Update job status to running
-    2. Run ICP extraction (includes scraping + AI analysis)
-    3. Save extraction result
-    4. Optionally apply to client
+    2. Run basic ICP extraction (scraping + AI analysis)
+    3. Enhance with SDK Agent (if enabled - adds research, pain points, buying signals)
+    4. Save extraction result
+    5. Optionally apply to client
 
     Args:
         job_id: Extraction job UUID (string or UUID)
@@ -370,20 +662,28 @@ async def icp_onboarding_flow(
             completed_steps=0,
         )
 
-        # Step 2: Run extraction
+        # Step 2: Run basic extraction
         extraction_result = await run_icp_extraction_task(
             job_id=job_id,
             website_url=website_url,
         )
 
-        # Step 3: Save result
+        # Step 3: Enhance with SDK (if enabled and basic succeeded)
+        extraction_result = await enhance_icp_with_sdk_task(
+            job_id=job_id,
+            client_id=client_id,
+            website_url=website_url,
+            basic_result=extraction_result,
+        )
+
+        # Step 4: Save result
         saved = await save_extraction_result_task(
             job_id=job_id,
             client_id=client_id,
             result=extraction_result,
         )
 
-        # Step 4: Auto-apply if enabled and successful
+        # Step 5: Auto-apply if enabled and successful
         if auto_apply and extraction_result.get("success") and extraction_result.get("profile"):
             await apply_icp_to_client_task(
                 client_id=client_id,
@@ -391,14 +691,24 @@ async def icp_onboarding_flow(
                 job_id=job_id,
             )
 
+        # Step 6: Scrape client intelligence for SDK personalization
+        intel_result = await scrape_client_intelligence_task(
+            job_id=job_id,
+            client_id=client_id,
+        )
+
         return {
             "success": extraction_result.get("success", False),
             "job_id": str(job_id),
             "client_id": str(client_id),
             "website_url": website_url,
             "tokens_used": extraction_result.get("tokens_used", 0),
-            "cost_aud": extraction_result.get("cost_aud", 0.0),
+            "cost_aud": extraction_result.get("cost_aud", 0.0) + intel_result.get("total_cost_aud", 0.0),
             "duration_seconds": extraction_result.get("duration_seconds", 0),
+            "sdk_enhanced": extraction_result.get("sdk_enhanced", False),
+            "sdk_confidence": extraction_result.get("sdk_confidence"),
+            "intel_sources_scraped": intel_result.get("sources_scraped", []),
+            "intel_cost_aud": intel_result.get("total_cost_aud", 0.0),
             "error": extraction_result.get("error"),
         }
 
@@ -475,6 +785,58 @@ async def icp_reextract_flow(
     )
 
 
+@flow(
+    name="resource_assignment_flow",
+    description="Assign resources from pool to client based on tier",
+    retries=1,
+    timeout_seconds=60,
+)
+async def resource_assignment_flow(
+    client_id: str | UUID,
+    tier: str,
+) -> dict[str, Any]:
+    """
+    Standalone flow for resource assignment.
+
+    Can be triggered by:
+    - Stripe payment confirmed webhook
+    - Admin manual trigger
+    - Onboarding completion
+
+    Per RESOURCE_POOL.md: Allocation trigger is **Payment confirmed** (Stripe webhook)
+
+    Args:
+        client_id: Client UUID (string or UUID)
+        tier: Pricing tier ('ignition', 'velocity', 'dominance')
+
+    Returns:
+        Dict with assignment result
+    """
+    # Convert string to UUID if needed
+    if isinstance(client_id, str):
+        client_id = UUID(client_id)
+
+    logger.info(f"Starting resource assignment flow for client {client_id} (tier: {tier})")
+
+    result = await assign_client_resources_task(
+        client_id=client_id,
+        tier=tier,
+    )
+
+    if result.get("success"):
+        logger.info(
+            f"Resource assignment completed for client {client_id}: "
+            f"{result.get('total_resources')} resources assigned"
+        )
+    else:
+        logger.error(
+            f"Resource assignment failed for client {client_id}: "
+            f"{result.get('error')}"
+        )
+
+    return result
+
+
 # ============================================
 # DEPLOYMENT
 # ============================================
@@ -506,7 +868,16 @@ def deploy_onboarding_flows():
     )
     reextract_deployment.apply()
 
-    logger.info("Deployed ICP onboarding flows")
+    # Resource assignment flow deployment
+    resource_deployment = Deployment.build_from_flow(
+        flow=resource_assignment_flow,
+        name="resource-assignment",
+        work_queue_name="default",
+        tags=["onboarding", "resources"],
+    )
+    resource_deployment.apply()
+
+    logger.info("Deployed ICP onboarding and resource assignment flows")
 
 
 """
@@ -521,7 +892,9 @@ VERIFICATION CHECKLIST:
 - [x] Progress tracking via update_job_status_task
 - [x] Error handling with proper logging
 - [x] Main flow and re-extraction flow
-- [x] Deployment function for Prefect registration
+- [x] Resource assignment task (assign_client_resources_task)
+- [x] Resource assignment flow (resource_assignment_flow)
+- [x] Deployment function for Prefect registration (includes resource assignment)
 - [x] Type hints on all functions
 - [x] Docstrings on all functions
 """

@@ -48,6 +48,19 @@ from src.services.send_limiter import SendLimiter, send_limiter
 from src.services.suppression_service import SuppressionService, SuppressionResult
 from src.services.thread_service import ThreadService
 from src.services.timezone_service import TimezoneService
+from src.services.resource_assignment_service import (
+    assign_resources_to_client,
+    release_client_resources,
+    get_client_resources,
+    get_client_resource_values,
+    get_pool_stats,
+    check_buffer_and_alert,
+    add_resource_to_pool,
+    retire_resource,
+    start_warmup,
+    complete_warmup,
+    record_resource_usage,
+)
 
 __all__ = [
     "LeadPoolService",
@@ -75,4 +88,16 @@ __all__ = [
     # Phase 21
     "SendLimiter",
     "send_limiter",
+    # Resource Pool
+    "assign_resources_to_client",
+    "release_client_resources",
+    "get_client_resources",
+    "get_client_resource_values",
+    "get_pool_stats",
+    "check_buffer_and_alert",
+    "add_resource_to_pool",
+    "retire_resource",
+    "start_warmup",
+    "complete_warmup",
+    "record_resource_usage",
 ]

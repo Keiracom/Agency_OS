@@ -26,6 +26,7 @@ from src.models.url_validation import URLValidationResult
 from src.models.linkedin_credential import LinkedInCredential
 from src.models.sdk_usage_log import SDKUsageLog
 from src.models.client_intelligence import ClientIntelligence
+from src.models.resource_pool import ResourcePool, ClientResource, ResourceType, ResourceStatus, TIER_ALLOCATIONS
 
 __all__ = [
     # Base
@@ -62,4 +63,10 @@ __all__ = [
     "SDKUsageLog",
     # Client Intelligence
     "ClientIntelligence",
+    # Resource Pool
+    "ResourcePool",
+    "ClientResource",
+    "ResourceType",
+    "ResourceStatus",
+    "TIER_ALLOCATIONS",
 ]

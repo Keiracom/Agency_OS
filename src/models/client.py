@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from src.models.lead_pool import LeadPool
     from src.models.linkedin_credential import LinkedInCredential
     from src.models.membership import Membership
+    from src.models.resource_pool import ClientResource
 
 
 class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
@@ -144,6 +145,11 @@ class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         "LeadPool",
         back_populates="client",
         foreign_keys="LeadPool.client_id",
+        lazy="selectin",
+    )
+    resources: Mapped[list["ClientResource"]] = relationship(
+        "ClientResource",
+        back_populates="client",
         lazy="selectin",
     )
 

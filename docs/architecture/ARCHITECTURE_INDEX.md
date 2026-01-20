@@ -2,7 +2,7 @@
 
 **Purpose:** Master index of all architecture documentation.
 **Principle:** Architecture docs are the source of truth. Code must match specs.
-**Last Updated:** 2026-01-20
+**Last Updated:** 2026-01-20 (Resource Pool ✅, Client Personas ✅, LinkedIn Tables ✅)
 
 ---
 
@@ -37,12 +37,18 @@
 | Document | Purpose | Status | Code Status |
 |----------|---------|--------|-------------|
 | `distribution/DISTRIBUTION_INDEX.md` | Channel overview, verification protocol | ✅ Spec done | — |
-| `distribution/RESOURCE_POOL.md` | Domain/phone/seat allocation from pool | ✅ Spec done | 🔴 Not implemented |
-| `distribution/EMAIL_DISTRIBUTION.md` | Salesforge, warmup, threading, timezone | ✅ Spec done | 🟡 Partial |
+| `distribution/RESOURCE_POOL.md` | Domain/phone/seat allocation from pool | ✅ Spec done | ✅ Implemented |
+| `distribution/EMAIL_DISTRIBUTION.md` | Salesforge, warmup, threading, timezone | ✅ Spec done | 🟡 Partial (personas ✅) |
 | `distribution/SMS_DISTRIBUTION.md` | ClickSend, DNCR compliance | ✅ Spec done | 🟡 Partial |
 | `distribution/VOICE_DISTRIBUTION.md` | Vapi/Twilio, voice KB generation | ✅ Spec done | 🟡 Partial |
-| `distribution/LINKEDIN_DISTRIBUTION.md` | Unipile, humanized timing | ✅ Spec done | 🟡 Partial |
+| `distribution/LINKEDIN_DISTRIBUTION.md` | Unipile, humanized timing | ✅ Spec done | 🟡 Partial (tables ✅, services 🔴) |
 | `distribution/MAIL_DISTRIBUTION.md` | Direct mail (optional) | ✅ Spec done | 🔴 Not implemented |
+
+### Recently Created
+
+| Document | Purpose | Status | Code Status |
+|----------|---------|--------|-------------|
+| `REPLY_ARCHITECTURE.md` | Unified reply handling (intent → response → sequence) | ✅ Spec done | 🔴 Not implemented |
 
 ### Missing Architecture (To Be Created)
 
@@ -50,7 +56,6 @@
 |----------|---------|----------|---------|
 | `ONBOARDING_ARCHITECTURE.md` | ICP extraction → sourcing → enrichment | HIGH | `onboarding_flow.py`, `icp_scraper.py`, `scout.py` |
 | `SCORING_ARCHITECTURE.md` | ALS formula, tier thresholds, signals | MEDIUM | `scorer.py`, `lead_pool` table |
-| `REPLY_ARCHITECTURE.md` | Intent classification, SDK response | MEDIUM | `reply_agent.py`, `email_events_service.py` |
 | `MEETING_ARCHITECTURE.md` | Calendar booking, deal creation | LOW | `meeting_service.py`, `deal_service.py` |
 
 ---
@@ -82,11 +87,12 @@
 
 | Spec Section | Code Location | Status |
 |--------------|---------------|--------|
-| `resource_pool` table | `supabase/migrations/041_*.sql` | 🔴 Not created |
-| `client_resources` table | `supabase/migrations/041_*.sql` | 🔴 Not created |
-| `ResourcePool` model | `src/models/resource_pool.py` | 🔴 Not created |
-| Assignment service | `src/services/resource_assignment_service.py` | 🔴 Not created |
-| Onboarding integration | `src/orchestration/flows/onboarding_flow.py` | 🔴 Not wired |
+| `resource_pool` table | `supabase/migrations/041_resource_pool.sql` | ✅ |
+| `client_resources` table | `supabase/migrations/041_resource_pool.sql` | ✅ |
+| `ResourcePool` model | `src/models/resource_pool.py` | ✅ |
+| `ClientResource` model | `src/models/resource_pool.py` | ✅ |
+| Assignment service | `src/services/resource_assignment_service.py` | ✅ |
+| Onboarding integration | `src/orchestration/flows/onboarding_flow.py` | ✅ |
 
 ### `distribution/EMAIL_DISTRIBUTION.md`
 
@@ -98,6 +104,10 @@
 | Threading (In-Reply-To) | `src/integrations/salesforge.py` | ✅ |
 | Bounce handling | `src/services/email_events_service.py` | ✅ |
 | Recipient timezone | — | 🔴 Not implemented |
+| `client_personas` table | `supabase/migrations/042_client_personas.sql` | ✅ |
+| `ClientPersona` model | `src/models/client_persona.py` | ✅ |
+| `clients.branding` field | `supabase/migrations/042_client_personas.sql` | ✅ |
+| Signature generation | `src/models/client_persona.py:generate_signature()` | ✅ |
 
 ### `distribution/SMS_DISTRIBUTION.md`
 
@@ -126,6 +136,13 @@
 | Unipile client | `src/integrations/unipile.py` | ✅ |
 | LinkedIn engine | `src/engines/linkedin.py` | ✅ |
 | Timing engine | `src/engines/timing.py` | ✅ |
+| `linkedin_seats` table | `supabase/migrations/043_linkedin_seats.sql` | ✅ |
+| `linkedin_connections` table | `supabase/migrations/043_linkedin_seats.sql` | ✅ |
+| `LinkedInSeat` model | `src/models/linkedin_seat.py` | ✅ |
+| `LinkedInConnection` model | `src/models/linkedin_connection.py` | ✅ |
+| White-label auth flow | `src/services/linkedin_seat_service.py` | 🔴 Not created |
+| Seat warmup service | `src/services/linkedin_seat_service.py` | 🔴 Not created |
+| Health monitoring | `src/services/linkedin_health_service.py` | 🔴 Not created |
 | Connection tracking | `src/services/linkedin_connection_service.py` | 🟡 Basic |
 | Post-accept messaging | — | 🔴 Not implemented |
 
@@ -135,27 +152,34 @@
 
 Based on dependencies and business impact:
 
-### Phase A: Resource Foundation (Blocks Everything)
-1. `RESOURCE_POOL.md` → Create tables + service
-2. Wire to onboarding flow
+### Phase A: Resource Foundation ✅ COMPLETE
+1. ~~`RESOURCE_POOL.md` → Create tables + service~~
+2. ~~Wire to onboarding flow~~
 
-### Phase B: Email (Core Channel)
-3. `EMAIL_DISTRIBUTION.md` → Warmup scheduler
-4. `EMAIL_DISTRIBUTION.md` → Recipient timezone
+### Phase B: Email Personas ✅ COMPLETE
+3. ~~`EMAIL_DISTRIBUTION.md` → Client personas table~~
+4. ~~`EMAIL_DISTRIBUTION.md` → Branding field~~
 
-### Phase C: Automated Sequences
-5. `AUTOMATED_DISTRIBUTION_DEFAULTS.md` → Sequence generator
-6. Remove user sequence configuration from frontend
+### Phase C: LinkedIn Infrastructure ✅ COMPLETE
+5. ~~`LINKEDIN_DISTRIBUTION.md` → `linkedin_seats` table + model~~
+6. ~~`LINKEDIN_DISTRIBUTION.md` → `linkedin_connections` table + model~~
 
-### Phase D: Secondary Channels
-7. `SMS_DISTRIBUTION.md` → DNCR wiring
-8. `VOICE_DISTRIBUTION.md` → Vapi full integration
-9. `LINKEDIN_DISTRIBUTION.md` → Seat pool + tracking
+### Phase D: Email Remaining (CURRENT)
+7. `EMAIL_DISTRIBUTION.md` → Warmup scheduler
+8. `EMAIL_DISTRIBUTION.md` → Recipient timezone
 
-### Phase E: Documentation
-10. Create `ONBOARDING_ARCHITECTURE.md`
-11. Create `SCORING_ARCHITECTURE.md`
-12. Update `FILE_STRUCTURE.md`
+### Phase E: Automated Sequences
+9. `AUTOMATED_DISTRIBUTION_DEFAULTS.md` → Sequence generator
+10. Remove user sequence configuration from frontend
+
+### Phase F: Secondary Channels
+11. `SMS_DISTRIBUTION.md` → DNCR wiring
+12. `VOICE_DISTRIBUTION.md` → Vapi full integration
+
+### Phase G: Documentation
+13. Create `ONBOARDING_ARCHITECTURE.md`
+14. Create `SCORING_ARCHITECTURE.md`
+15. Update `FILE_STRUCTURE.md`
 
 ---
 

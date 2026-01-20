@@ -32,9 +32,11 @@ from src.models.base import (
 
 if TYPE_CHECKING:
     from src.models.campaign import Campaign
+    from src.models.client_persona import ClientPersona
     from src.models.lead import Lead
     from src.models.lead_pool import LeadPool
     from src.models.linkedin_credential import LinkedInCredential
+    from src.models.linkedin_seat import LinkedInSeat
     from src.models.membership import Membership
     from src.models.resource_pool import ClientResource
 
@@ -113,6 +115,9 @@ class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     # ALS weights (customized scoring)
     als_weights: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
+    # Branding (for signatures, personalization)
+    branding: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=dict)
+
     # ICP extraction tracking
     icp_extracted_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     icp_extraction_source: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -149,6 +154,16 @@ class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     )
     resources: Mapped[list["ClientResource"]] = relationship(
         "ClientResource",
+        back_populates="client",
+        lazy="selectin",
+    )
+    personas: Mapped[list["ClientPersona"]] = relationship(
+        "ClientPersona",
+        back_populates="client",
+        lazy="selectin",
+    )
+    linkedin_seats: Mapped[list["LinkedInSeat"]] = relationship(
+        "LinkedInSeat",
         back_populates="client",
         lazy="selectin",
     )

@@ -27,6 +27,9 @@ from src.models.linkedin_credential import LinkedInCredential
 from src.models.sdk_usage_log import SDKUsageLog
 from src.models.client_intelligence import ClientIntelligence
 from src.models.resource_pool import ResourcePool, ClientResource, ResourceType, ResourceStatus, TIER_ALLOCATIONS
+from src.models.client_persona import ClientPersona, PERSONA_ALLOCATIONS
+from src.models.linkedin_seat import LinkedInSeat, LinkedInSeatStatus, LINKEDIN_WARMUP_SCHEDULE
+from src.models.linkedin_connection import LinkedInConnection, LinkedInConnectionStatus
 
 __all__ = [
     # Base
@@ -69,4 +72,13 @@ __all__ = [
     "ResourceType",
     "ResourceStatus",
     "TIER_ALLOCATIONS",
+    # Client Personas
+    "ClientPersona",
+    "PERSONA_ALLOCATIONS",
+    # LinkedIn
+    "LinkedInSeat",
+    "LinkedInSeatStatus",
+    "LINKEDIN_WARMUP_SCHEDULE",
+    "LinkedInConnection",
+    "LinkedInConnectionStatus",
 ]

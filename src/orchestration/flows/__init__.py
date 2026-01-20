@@ -33,6 +33,10 @@ from src.orchestration.flows.pool_assignment_flow import (
     pool_daily_allocation_flow,
 )
 from src.orchestration.flows.reply_recovery_flow import reply_recovery_flow
+from src.orchestration.flows.stale_lead_refresh_flow import (
+    daily_outreach_prep_flow,
+    refresh_stale_leads_flow,
+)
 
 __all__ = [
     # Core flows
@@ -49,4 +53,7 @@ __all__ = [
     "pool_campaign_assignment_flow",
     "pool_daily_allocation_flow",
     "jit_validate_outreach_batch_flow",
+    # SDK Architecture Phase 3: Data Freshness
+    "refresh_stale_leads_flow",
+    "daily_outreach_prep_flow",
 ]

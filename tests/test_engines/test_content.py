@@ -1,7 +1,7 @@
 """
 FILE: tests/test_engines/test_content.py
 PURPOSE: Unit tests for Content engine (AI content generation)
-PHASE: 4 (Engines)
+PHASE: 4 (Engines), updated Phase 2 (Smart Prompt System)
 TASK: ENG-011
 """
 
@@ -13,6 +13,10 @@ import pytest
 from src.engines.content import ContentEngine, get_content_engine
 from src.exceptions import AISpendLimitError, ValidationError
 from src.models.base import LeadStatus
+
+
+# Smart prompt module path for patching
+SMART_PROMPTS_MODULE = "src.engines.content"
 
 
 # ============================================
@@ -61,7 +65,47 @@ def mock_campaign():
     campaign.id = uuid4()
     campaign.name = "Q1 Outreach"
     campaign.client_id = uuid4()
+    campaign.product_name = "Agency OS"
+    campaign.value_proposition = "Automate your sales outreach"
     return campaign
+
+
+@pytest.fixture
+def mock_lead_context():
+    """Create mock lead context from smart prompt system."""
+    return {
+        "person": {
+            "first_name": "John",
+            "last_name": "Doe",
+            "full_name": "John Doe",
+            "title": "CEO",
+            "seniority": "c_suite",
+        },
+        "company": {
+            "name": "Acme Inc",
+            "industry": "Technology",
+            "employee_count": 50,
+        },
+        "signals": {
+            "is_hiring": True,
+            "recently_funded": False,
+        },
+        "score": {
+            "als_score": 75,
+            "als_tier": "warm",
+        },
+    }
+
+
+@pytest.fixture
+def mock_proof_points():
+    """Create mock proof points from client intelligence."""
+    return {
+        "available": True,
+        "metrics": [{"metric": "50% increase in meetings", "context": "average for clients"}],
+        "named_clients": ["TechCorp", "StartupXYZ"],
+        "differentiators": ["AI-powered personalization"],
+    }
 
 
 @pytest.fixture
@@ -95,58 +139,63 @@ class TestContentEngineProperties:
 
 
 class TestEmailGeneration:
-    """Test email content generation."""
+    """Test email content generation with Smart Prompt system."""
 
     @pytest.mark.asyncio
     async def test_generate_email_success(
-        self, content_engine, mock_db_session, mock_lead, mock_campaign
+        self, content_engine, mock_db_session, mock_lead, mock_campaign,
+        mock_lead_context, mock_proof_points
     ):
-        """Test successful email generation."""
-        with patch.object(content_engine, "get_lead_by_id", return_value=mock_lead):
-            with patch.object(content_engine, "get_campaign_by_id", return_value=mock_campaign):
-                # Mock AI response
-                content_engine.anthropic.complete.return_value = {
-                    "content": '{"subject": "Test Subject", "body": "Test Body"}',
-                    "cost_aud": 0.05,
-                    "input_tokens": 100,
-                    "output_tokens": 50,
-                }
+        """Test successful email generation with smart prompt."""
+        with patch.object(content_engine, "get_campaign_by_id", new_callable=AsyncMock, return_value=mock_campaign):
+            with patch(f"{SMART_PROMPTS_MODULE}.build_full_lead_context", new_callable=AsyncMock, return_value=mock_lead_context):
+                with patch(f"{SMART_PROMPTS_MODULE}.build_client_proof_points", new_callable=AsyncMock, return_value=mock_proof_points):
+                    # Mock AI response
+                    content_engine.anthropic.complete.return_value = {
+                        "content": '{"subject": "Test Subject", "body": "Test Body"}',
+                        "cost_aud": 0.05,
+                        "input_tokens": 100,
+                        "output_tokens": 50,
+                    }
 
-                result = await content_engine.generate_email(
-                    db=mock_db_session,
-                    lead_id=mock_lead.id,
-                    campaign_id=mock_campaign.id,
-                )
+                    result = await content_engine.generate_email(
+                        db=mock_db_session,
+                        lead_id=mock_lead.id,
+                        campaign_id=mock_campaign.id,
+                    )
 
-                assert result.success is True
-                assert result.data["subject"] == "Test Subject"
-                assert result.data["body"] == "Test Body"
-                assert result.metadata["cost_aud"] == 0.05
+                    assert result.success is True
+                    assert result.data["subject"] == "Test Subject"
+                    assert result.data["body"] == "Test Body"
+                    assert result.metadata["cost_aud"] == 0.05
+                    assert result.metadata.get("smart_prompt") is True
 
     @pytest.mark.asyncio
     async def test_generate_email_with_template(
-        self, content_engine, mock_db_session, mock_lead, mock_campaign
+        self, content_engine, mock_db_session, mock_lead, mock_campaign,
+        mock_lead_context, mock_proof_points
     ):
         """Test email generation with template."""
-        with patch.object(content_engine, "get_lead_by_id", return_value=mock_lead):
-            with patch.object(content_engine, "get_campaign_by_id", return_value=mock_campaign):
-                content_engine.anthropic.complete.return_value = {
-                    "content": '{"subject": "Custom Subject", "body": "Custom Body"}',
-                    "cost_aud": 0.05,
-                    "input_tokens": 150,
-                    "output_tokens": 60,
-                }
+        with patch.object(content_engine, "get_campaign_by_id", new_callable=AsyncMock, return_value=mock_campaign):
+            with patch(f"{SMART_PROMPTS_MODULE}.build_full_lead_context", new_callable=AsyncMock, return_value=mock_lead_context):
+                with patch(f"{SMART_PROMPTS_MODULE}.build_client_proof_points", new_callable=AsyncMock, return_value=mock_proof_points):
+                    content_engine.anthropic.complete.return_value = {
+                        "content": '{"subject": "Custom Subject", "body": "Custom Body"}',
+                        "cost_aud": 0.05,
+                        "input_tokens": 150,
+                        "output_tokens": 60,
+                    }
 
-                result = await content_engine.generate_email(
-                    db=mock_db_session,
-                    lead_id=mock_lead.id,
-                    campaign_id=mock_campaign.id,
-                    template="Hi {{first_name}}, from {{company}}",
-                )
+                    result = await content_engine.generate_email(
+                        db=mock_db_session,
+                        lead_id=mock_lead.id,
+                        campaign_id=mock_campaign.id,
+                        template="Hi {{first_name}}, from {{company}}",
+                    )
 
-                assert result.success is True
-                # Verify template was passed to AI
-                content_engine.anthropic.complete.assert_called_once()
+                    assert result.success is True
+                    # Verify AI was called
+                    content_engine.anthropic.complete.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_generate_email_missing_lead_data(
@@ -156,64 +205,75 @@ class TestEmailGeneration:
         incomplete_lead = MagicMock()
         incomplete_lead.id = uuid4()
         incomplete_lead.first_name = None  # Missing
+        incomplete_lead.full_name = ""
+        incomplete_lead.title = None
         incomplete_lead.company = None  # Missing
+        incomplete_lead.organization_industry = None
 
-        with patch.object(content_engine, "get_lead_by_id", return_value=incomplete_lead):
-            with patch.object(content_engine, "get_campaign_by_id", return_value=mock_campaign):
-                result = await content_engine.generate_email(
-                    db=mock_db_session,
-                    lead_id=incomplete_lead.id,
-                    campaign_id=mock_campaign.id,
-                )
+        # Empty context simulates missing lead data
+        empty_context = {}
 
-                assert result.success is False
-                assert "first_name" in result.error or "company" in result.error
+        with patch.object(content_engine, "get_campaign_by_id", new_callable=AsyncMock, return_value=mock_campaign):
+            with patch(f"{SMART_PROMPTS_MODULE}.build_full_lead_context", new_callable=AsyncMock, return_value=empty_context):
+                with patch.object(content_engine, "get_lead_by_id", new_callable=AsyncMock, return_value=incomplete_lead):
+                    result = await content_engine.generate_email(
+                        db=mock_db_session,
+                        lead_id=incomplete_lead.id,
+                        campaign_id=mock_campaign.id,
+                    )
+
+                    assert result.success is False
+                    assert "first_name" in result.error or "company" in result.error
 
     @pytest.mark.asyncio
     async def test_generate_email_json_fallback(
-        self, content_engine, mock_db_session, mock_lead, mock_campaign
+        self, content_engine, mock_db_session, mock_lead, mock_campaign,
+        mock_lead_context, mock_proof_points
     ):
         """Test email generation with JSON parsing fallback."""
-        with patch.object(content_engine, "get_lead_by_id", return_value=mock_lead):
-            with patch.object(content_engine, "get_campaign_by_id", return_value=mock_campaign):
-                # Mock AI response with invalid JSON
-                content_engine.anthropic.complete.return_value = {
-                    "content": "This is not valid JSON",
-                    "cost_aud": 0.05,
-                    "input_tokens": 100,
-                    "output_tokens": 50,
-                }
+        with patch.object(content_engine, "get_campaign_by_id", new_callable=AsyncMock, return_value=mock_campaign):
+            with patch(f"{SMART_PROMPTS_MODULE}.build_full_lead_context", new_callable=AsyncMock, return_value=mock_lead_context):
+                with patch(f"{SMART_PROMPTS_MODULE}.build_client_proof_points", new_callable=AsyncMock, return_value=mock_proof_points):
+                    # Mock AI response with invalid JSON
+                    content_engine.anthropic.complete.return_value = {
+                        "content": "This is not valid JSON",
+                        "cost_aud": 0.05,
+                        "input_tokens": 100,
+                        "output_tokens": 50,
+                    }
 
-                result = await content_engine.generate_email(
-                    db=mock_db_session,
-                    lead_id=mock_lead.id,
-                    campaign_id=mock_campaign.id,
-                )
+                    result = await content_engine.generate_email(
+                        db=mock_db_session,
+                        lead_id=mock_lead.id,
+                        campaign_id=mock_campaign.id,
+                    )
 
-                assert result.success is True
-                assert result.data["body"] == "This is not valid JSON"
-                assert result.metadata.get("fallback") is True
+                    assert result.success is True
+                    assert result.data["body"] == "This is not valid JSON"
+                    assert result.metadata.get("fallback") is True
 
     @pytest.mark.asyncio
     async def test_generate_email_spend_limit(
-        self, content_engine, mock_db_session, mock_lead, mock_campaign
+        self, content_engine, mock_db_session, mock_lead, mock_campaign,
+        mock_lead_context, mock_proof_points
     ):
         """Test email generation respects spend limit."""
-        with patch.object(content_engine, "get_lead_by_id", return_value=mock_lead):
-            with patch.object(content_engine, "get_campaign_by_id", return_value=mock_campaign):
-                # Mock AI spend limit error
-                content_engine.anthropic.complete.side_effect = AISpendLimitError(
-                    spent=100.0, limit=100.0
-                )
+        with patch.object(content_engine, "get_campaign_by_id", new_callable=AsyncMock, return_value=mock_campaign):
+            with patch(f"{SMART_PROMPTS_MODULE}.build_full_lead_context", new_callable=AsyncMock, return_value=mock_lead_context):
+                with patch(f"{SMART_PROMPTS_MODULE}.build_client_proof_points", new_callable=AsyncMock, return_value=mock_proof_points):
+                    # Mock AI spend limit error
+                    content_engine.anthropic.complete.side_effect = AISpendLimitError(
+                        spent=100.0, limit=100.0
+                    )
 
-                result = await content_engine.generate_email(
-                    db=mock_db_session,
-                    lead_id=mock_lead.id,
-                    campaign_id=mock_campaign.id,
-                )
+                    result = await content_engine.generate_email(
+                        db=mock_db_session,
+                        lead_id=mock_lead.id,
+                        campaign_id=mock_campaign.id,
+                    )
 
-                assert result.success is False
-                assert "spend limit" in result.error.lower()
+                    assert result.success is False
+                    assert "spend limit" in result.error.lower()
 
 
 # ============================================

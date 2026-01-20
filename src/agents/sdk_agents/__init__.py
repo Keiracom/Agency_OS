@@ -37,7 +37,12 @@ from src.agents.sdk_agents.sdk_eligibility import (
     should_use_sdk_email,
     should_use_sdk_voice_kb,
     get_sdk_coverage_estimate,
+    calculate_data_completeness,
+    is_executive_title,
     HOT_THRESHOLD,
+    ENTERPRISE_THRESHOLD,
+    COMPLETENESS_THRESHOLD,
+    EXECUTIVE_TITLES,
 )
 
 from src.agents.sdk_agents.enrichment_agent import (
@@ -78,12 +83,17 @@ __all__ = [
     "ICPOutput",
     "get_icp_agent",
     "extract_icp",
-    # SDK Eligibility
+    # SDK Eligibility (Phase 4: Tiered Enrichment)
     "should_use_sdk_enrichment",
     "should_use_sdk_email",
     "should_use_sdk_voice_kb",
     "get_sdk_coverage_estimate",
+    "calculate_data_completeness",
+    "is_executive_title",
     "HOT_THRESHOLD",
+    "ENTERPRISE_THRESHOLD",
+    "COMPLETENESS_THRESHOLD",
+    "EXECUTIVE_TITLES",
     # Enrichment Agent
     "run_sdk_enrichment",
     "enrich_hot_lead",

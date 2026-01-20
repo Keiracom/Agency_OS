@@ -28,11 +28,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
 from src.engines.base import BaseEngine, EngineResult
+from src.engines.smart_prompts import (
+    SMART_EMAIL_PROMPT,
+    build_full_lead_context,
+    build_full_pool_lead_context,
+    build_client_proof_points,
+    format_lead_context_for_prompt,
+    format_proof_points_for_prompt,
+)
 from src.exceptions import AISpendLimitError, ValidationError
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
-from src.agents.sdk_agents.sdk_eligibility import should_use_sdk_email
-from src.agents.sdk_agents.email_agent import run_sdk_email, generate_hot_lead_email
-from src.services.sdk_usage_service import log_sdk_usage
 from src.models.base import ChannelType
 
 import logging
@@ -145,13 +150,16 @@ class ContentEngine(BaseEngine):
         include_subject: bool = True,
     ) -> EngineResult[dict[str, Any]]:
         """
-        Generate personalized email content for a lead.
+        Generate personalized email content for a lead using Smart Prompt system.
+
+        Uses ALL available data from lead enrichment, SDK research, and client
+        intelligence to generate highly personalized emails.
 
         Args:
             db: Database session (passed by caller)
             lead_id: Lead UUID
             campaign_id: Campaign UUID
-            template: Optional email template with placeholders
+            template: Optional email template with placeholders (overrides smart prompt)
             tone: Desired tone (professional, friendly, direct)
             include_subject: Whether to generate subject line
 
@@ -163,66 +171,52 @@ class ContentEngine(BaseEngine):
             AISpendLimitError: If daily spend limit exceeded
         """
         try:
-            # Get lead and campaign
-            lead = await self.get_lead_by_id(db, lead_id)
+            # Get campaign for context
             campaign = await self.get_campaign_by_id(db, campaign_id)
 
-            # Validate lead has enough data
-            if not lead.first_name or not lead.company:
-                raise ValidationError(
-                    field="lead_data",
-                    message="Lead must have at least first_name and company for personalization",
-                )
+            # Build full lead context using Smart Prompt system
+            lead_context = await build_full_lead_context(db, lead_id, include_engagement=True)
 
-            # Build lead data for personalization
-            lead_data = {
-                "first_name": lead.first_name,
-                "last_name": lead.last_name or "",
-                "company": lead.company,
-                "title": lead.title or "",
-                "organization_industry": lead.organization_industry or "",
-                "organization_employee_count": lead.organization_employee_count,
-            }
+            if not lead_context:
+                # Fallback to basic query if smart context fails
+                lead = await self.get_lead_by_id(db, lead_id)
+                if not lead.first_name or not lead.company:
+                    raise ValidationError(
+                        field="lead_data",
+                        message="Lead must have at least first_name and company for personalization",
+                    )
+                lead_context = {
+                    "person": {"first_name": lead.first_name, "full_name": lead.full_name, "title": lead.title},
+                    "company": {"name": lead.company, "industry": lead.organization_industry},
+                }
 
-            # Build system prompt
-            system = f"""You are an expert sales copywriter for B2B outreach.
-Tone: {tone}
-Keep emails concise (under 150 words for body).
-Use the provided lead data for personalization.
-Campaign: {campaign.name}
-{f"Template: {template}" if template else ""}"""
+            # Get client proof points
+            proof_points = {}
+            if campaign.client_id:
+                proof_points = await build_client_proof_points(db, campaign.client_id)
 
-            # Build prompt
-            if template:
-                prompt = f"""Generate a personalized email based on this template:
+            # Format for prompt
+            lead_context_str = format_lead_context_for_prompt(lead_context)
+            proof_points_str = format_proof_points_for_prompt(proof_points)
 
-Template:
-{template}
+            # Build campaign context
+            campaign_context = f"""**Campaign:** {campaign.name}
+**Tone:** {tone}
+**Product/Service:** {getattr(campaign, 'product_name', campaign.name)}
+{f"**Value Prop:** {getattr(campaign, 'value_proposition', '')}" if hasattr(campaign, 'value_proposition') and campaign.value_proposition else ""}
+{f"**Template Guidance:** {template}" if template else ""}"""
 
-Lead Data:
-- Name: {lead_data['first_name']} {lead_data['last_name']}
-- Company: {lead_data['company']}
-- Title: {lead_data['title']}
-- Industry: {lead_data['organization_industry']}
-- Employee Count: {lead_data['organization_employee_count']}
+            # Use Smart Email Prompt
+            prompt = SMART_EMAIL_PROMPT.format(
+                lead_context=lead_context_str,
+                proof_points=proof_points_str,
+                campaign_context=campaign_context,
+            )
 
-{"Generate a compelling subject line (under 50 characters) and email body." if include_subject else "Generate only the email body text."}
-
-Return as JSON with: {{"subject": "...", "body": "..."}}"""
-            else:
-                prompt = f"""Generate a personalized outreach email for this lead:
-
-Lead Data:
-- Name: {lead_data['first_name']} {lead_data['last_name']}
-- Company: {lead_data['company']}
-- Title: {lead_data['title']}
-- Industry: {lead_data['organization_industry']}
-
-Campaign: {campaign.name}
-
-{"Generate a compelling subject line (under 50 characters) and email body." if include_subject else "Generate only the email body text."}
-
-Return as JSON with: {{"subject": "...", "body": "..."}}"""
+            # System prompt for email generation
+            system = """You are an expert B2B sales copywriter. Generate cold emails that feel personal and human.
+Never use generic phrases. Always reference something specific about the lead.
+Return valid JSON only."""
 
             # Generate content via AI
             result = await self.anthropic.complete(
@@ -250,12 +244,15 @@ Return as JSON with: {{"subject": "...", "body": "..."}}"""
                         "body": generated.get("body", ""),
                         "lead_id": str(lead_id),
                         "campaign_id": str(campaign_id),
+                        "personalization_used": self._extract_personalization_fields(lead_context),
                     },
                     metadata={
                         "cost_aud": result["cost_aud"],
                         "input_tokens": result["input_tokens"],
                         "output_tokens": result["output_tokens"],
                         "tone": tone,
+                        "smart_prompt": True,
+                        "has_proof_points": proof_points.get("available", False),
                     },
                 )
             except json.JSONDecodeError:
@@ -291,8 +288,40 @@ Return as JSON with: {{"subject": "...", "body": "..."}}"""
                 },
             )
 
+    def _extract_personalization_fields(self, context: dict[str, Any]) -> list[str]:
+        """Extract which personalization fields were available in the context."""
+        fields = []
+        person = context.get("person", {})
+        company = context.get("company", {})
+        signals = context.get("signals", {})
+
+        if person.get("title"):
+            fields.append("title")
+        if person.get("linkedin_headline"):
+            fields.append("linkedin_headline")
+        if person.get("tenure_months") and person["tenure_months"] > 0:
+            fields.append("tenure")
+        if company.get("industry"):
+            fields.append("industry")
+        if company.get("employee_count"):
+            fields.append("company_size")
+        if company.get("description"):
+            fields.append("company_description")
+        if signals.get("is_hiring"):
+            fields.append("hiring_signal")
+        if signals.get("recently_funded"):
+            fields.append("funding_signal")
+        if signals.get("technologies"):
+            fields.append("tech_stack")
+        if context.get("research") or context.get("sdk_research"):
+            fields.append("deep_research")
+
+        return fields
+
     # ============================================
-    # SDK EMAIL (Hot Leads - ALS 85+)
+    # DEPRECATED: generate_email_with_sdk
+    # Now delegates to generate_email() - SDK removed
+    # per architecture decision (2026-01-20)
     # ============================================
 
     async def generate_email_with_sdk(
@@ -306,12 +335,14 @@ Return as JSON with: {{"subject": "...", "body": "..."}}"""
         sdk_enrichment: dict[str, Any] | None = None,
     ) -> EngineResult[dict[str, Any]]:
         """
-        Generate email with automatic SDK routing for Hot leads.
+        Generate personalized email content for a lead.
 
-        This method:
-        1. Checks if lead is Hot (ALS >= 85)
-        2. If Hot: Uses SDK for hyper-personalized email generation
-        3. If not Hot: Falls back to standard Haiku generation
+        NOTE: SDK routing has been removed per architecture decision (2026-01-20).
+        SDK is for reasoning (reply handling, meeting prep), not content generation.
+        Email personalization now uses Smart Prompt with all DB data.
+
+        This method now simply delegates to generate_email() for backwards
+        compatibility with existing orchestration flows.
 
         Args:
             db: Database session (passed by caller)
@@ -320,150 +351,20 @@ Return as JSON with: {{"subject": "...", "body": "..."}}"""
             template: Optional email template with placeholders
             tone: Desired tone (professional, friendly, direct)
             include_subject: Whether to generate subject line
-            sdk_enrichment: Pre-fetched SDK enrichment data (optional)
+            sdk_enrichment: DEPRECATED - ignored
 
         Returns:
-            EngineResult with email content (subject, body, source)
+            EngineResult with email content (subject, body)
         """
-        try:
-            # Get lead and campaign
-            lead = await self.get_lead_by_id(db, lead_id)
-            campaign = await self.get_campaign_by_id(db, campaign_id)
-
-            # Build lead data for SDK eligibility check
-            lead_data = {
-                "first_name": lead.first_name,
-                "last_name": lead.last_name or "",
-                "title": lead.title or "",
-                "company_name": lead.company,
-                "company_industry": lead.organization_industry or "",
-                "company_employee_count": lead.organization_employee_count,
-                "linkedin_headline": getattr(lead, "linkedin_headline", None),
-                "linkedin_recent_posts": getattr(lead, "linkedin_recent_posts", None),
-                "als_score": lead.als_score or 0,
-            }
-
-            # Check if Hot lead (SDK email for ALL Hot leads)
-            if should_use_sdk_email(lead_data):
-                logger.info(
-                    f"Using SDK email for Hot lead",
-                    extra={
-                        "lead_id": str(lead_id),
-                        "als_score": lead.als_score,
-                    }
-                )
-
-                # Get SDK enrichment from lead if not provided
-                enrichment_data = sdk_enrichment
-                if not enrichment_data:
-                    # Try to get from lead's deep_research_data
-                    if hasattr(lead, "deep_research_data") and lead.deep_research_data:
-                        enrichment_data = lead.deep_research_data.get("sdk_enrichment")
-                    elif hasattr(lead, "sdk_enrichment") and lead.sdk_enrichment:
-                        enrichment_data = lead.sdk_enrichment
-
-                # Build campaign context
-                campaign_context = {
-                    "product_name": getattr(campaign, "product_name", None) or campaign.name,
-                    "value_prop": getattr(campaign, "value_proposition", None) or getattr(campaign, "description", None),
-                    "tone": tone,
-                    "company_name": getattr(campaign, "company_name", None),
-                    "sender_name": getattr(campaign, "sender_name", None),
-                }
-
-                # Fetch client intelligence for proof points
-                client_intelligence = None
-                if hasattr(campaign, "client_id") and campaign.client_id:
-                    client_intelligence = await self._get_client_intelligence(db, campaign.client_id)
-
-                # Generate with SDK
-                sdk_result = await run_sdk_email(
-                    lead_data=lead_data,
-                    enrichment_data=enrichment_data,
-                    campaign_context=campaign_context,
-                    client_intelligence=client_intelligence,
-                )
-
-                # Log SDK usage to database for cost tracking
-                try:
-                    await log_sdk_usage(
-                        db,
-                        client_id=campaign.client_id,
-                        agent_type="email",
-                        model_used=sdk_result.model_used or "claude-sonnet-4-20250514",
-                        input_tokens=sdk_result.input_tokens,
-                        output_tokens=sdk_result.output_tokens,
-                        cached_tokens=sdk_result.cached_tokens,
-                        cost_aud=sdk_result.cost_aud,
-                        turns_used=sdk_result.turns_used,
-                        duration_ms=sdk_result.duration_ms,
-                        tool_calls=sdk_result.tool_calls,
-                        success=sdk_result.success,
-                        error_message=sdk_result.error,
-                        lead_id=lead_id,
-                        campaign_id=campaign_id,
-                    )
-                except Exception as log_err:
-                    logger.warning(f"Failed to log SDK email usage: {log_err}")
-
-                if sdk_result.success and sdk_result.data:
-                    # Convert Pydantic model to dict if needed
-                    email_data = sdk_result.data
-                    if hasattr(email_data, "model_dump"):
-                        email_data = email_data.model_dump()
-
-                    return EngineResult.ok(
-                        data={
-                            "subject": email_data.get("subject", "Quick question"),
-                            "body": email_data.get("body", ""),
-                            "lead_id": str(lead_id),
-                            "campaign_id": str(campaign_id),
-                            "source": "sdk",
-                            "personalization_used": email_data.get("personalization_used", []),
-                        },
-                        metadata={
-                            "cost_aud": sdk_result.cost_aud,
-                            "sdk": True,
-                            "tone": tone,
-                            "als_score": lead.als_score,
-                        },
-                    )
-
-                # SDK failed - fall back to standard
-                logger.warning(
-                    f"SDK email failed for Hot lead, falling back to standard",
-                    extra={
-                        "lead_id": str(lead_id),
-                        "error": sdk_result.error,
-                    }
-                )
-
-            # Fall through to standard generation (for non-Hot or SDK failure)
-            return await self.generate_email(
-                db=db,
-                lead_id=lead_id,
-                campaign_id=campaign_id,
-                template=template,
-                tone=tone,
-                include_subject=include_subject,
-            )
-
-        except AISpendLimitError as e:
-            return EngineResult.fail(
-                error=f"AI spend limit exceeded: {str(e)}",
-                metadata={
-                    "lead_id": str(lead_id),
-                    "campaign_id": str(campaign_id),
-                },
-            )
-        except Exception as e:
-            return EngineResult.fail(
-                error=str(e),
-                metadata={
-                    "lead_id": str(lead_id),
-                    "campaign_id": str(campaign_id),
-                },
-            )
+        # Delegate to standard email generation
+        return await self.generate_email(
+            db=db,
+            lead_id=lead_id,
+            campaign_id=campaign_id,
+            template=template,
+            tone=tone,
+            include_subject=include_subject,
+        )
 
     async def generate_sdk_email_for_pool(
         self,
@@ -476,7 +377,11 @@ Return as JSON with: {{"subject": "...", "body": "..."}}"""
         client_id: UUID | None = None,
     ) -> EngineResult[dict[str, Any]]:
         """
-        Generate SDK email for a pool lead (Hot leads only).
+        Generate email for a pool lead.
+
+        NOTE: SDK routing has been removed per architecture decision (2026-01-20).
+        This method now simply delegates to generate_email_for_pool() for
+        backwards compatibility with existing orchestration flows.
 
         Args:
             db: Database session
@@ -484,95 +389,20 @@ Return as JSON with: {{"subject": "...", "body": "..."}}"""
             campaign_name: Campaign name
             template: Optional template
             tone: Desired tone
-            sdk_enrichment: Pre-fetched SDK enrichment data
-            client_id: Client UUID for fetching client intelligence
+            sdk_enrichment: DEPRECATED - ignored
+            client_id: DEPRECATED - ignored
 
         Returns:
             EngineResult with email content
         """
-        try:
-            # Get pool lead data (with ALS score from lead_assignments for SDK routing)
-            pool_lead = await self._get_pool_lead(db, lead_pool_id, include_als_score=True)
-            if not pool_lead:
-                return EngineResult.fail(
-                    error="Lead not found in pool",
-                    metadata={"lead_pool_id": str(lead_pool_id)},
-                )
-
-            # Build lead data (als_score now comes from lead_assignments via join)
-            lead_data = {
-                "first_name": pool_lead.get("first_name", ""),
-                "last_name": pool_lead.get("last_name", ""),
-                "title": pool_lead.get("title", ""),
-                "company_name": pool_lead.get("company_name", ""),
-                "company_industry": pool_lead.get("company_industry", ""),
-                "company_employee_count": pool_lead.get("company_employee_count"),
-                "als_score": pool_lead.get("als_score") or 0,  # From lead_assignments
-            }
-
-            # Check if Hot (requires als_score >= 85)
-            if not should_use_sdk_email(lead_data):
-                # Not Hot - use standard pool method
-                return await self.generate_email_for_pool(
-                    db=db,
-                    lead_pool_id=lead_pool_id,
-                    campaign_name=campaign_name,
-                    template=template,
-                    tone=tone,
-                )
-
-            # Generate SDK email
-            campaign_context = {
-                "product_name": "Agency OS",
-                "tone": tone,
-            }
-
-            # Fetch client intelligence if client_id provided
-            client_intelligence = None
-            if client_id:
-                client_intelligence = await self._get_client_intelligence(db, client_id)
-
-            sdk_result = await run_sdk_email(
-                lead_data=lead_data,
-                enrichment_data=sdk_enrichment,
-                campaign_context=campaign_context,
-                client_intelligence=client_intelligence,
-            )
-
-            if sdk_result.success and sdk_result.data:
-                email_data = sdk_result.data
-                if hasattr(email_data, "model_dump"):
-                    email_data = email_data.model_dump()
-
-                return EngineResult.ok(
-                    data={
-                        "subject": email_data.get("subject", ""),
-                        "body": email_data.get("body", ""),
-                        "lead_pool_id": str(lead_pool_id),
-                        "campaign_name": campaign_name,
-                        "source": "sdk",
-                    },
-                    metadata={
-                        "cost_aud": sdk_result.cost_aud,
-                        "sdk": True,
-                        "tone": tone,
-                    },
-                )
-
-            # SDK failed - fall back
-            return await self.generate_email_for_pool(
-                db=db,
-                lead_pool_id=lead_pool_id,
-                campaign_name=campaign_name,
-                template=template,
-                tone=tone,
-            )
-
-        except Exception as e:
-            return EngineResult.fail(
-                error=str(e),
-                metadata={"lead_pool_id": str(lead_pool_id)},
-            )
+        # Delegate to standard pool email generation
+        return await self.generate_email_for_pool(
+            db=db,
+            lead_pool_id=lead_pool_id,
+            campaign_name=campaign_name,
+            template=template,
+            tone=tone,
+        )
 
     async def generate_sms(
         self,
@@ -978,11 +808,13 @@ Return as JSON with: {{"opening": "...", "value_prop": "...", "cta": "..."}}"""
         template: str | None = None,
         tone: str = "professional",
         include_subject: bool = True,
+        client_id: UUID | None = None,
     ) -> EngineResult[dict[str, Any]]:
         """
-        Generate personalized email for a pool lead.
+        Generate personalized email for a pool lead using Smart Prompt system.
 
-        Phase 24A: Works with pool lead data directly.
+        Pool leads have richer data than legacy leads since they come directly
+        from Apollo with full enrichment. This method leverages ALL that data.
 
         Args:
             db: Database session (passed by caller)
@@ -991,64 +823,55 @@ Return as JSON with: {{"opening": "...", "value_prop": "...", "cta": "..."}}"""
             template: Optional email template
             tone: Desired tone
             include_subject: Whether to generate subject line
+            client_id: Optional client ID for proof points
 
         Returns:
             EngineResult with email content
         """
         try:
-            # Get pool lead data
-            pool_lead = await self._get_pool_lead(db, lead_pool_id)
-            if not pool_lead:
+            # Build full pool lead context using Smart Prompt system
+            lead_context = await build_full_pool_lead_context(db, lead_pool_id, client_id)
+
+            if not lead_context:
                 return EngineResult.fail(
                     error="Lead not found in pool",
                     metadata={"lead_pool_id": str(lead_pool_id)},
                 )
 
-            # Validate lead has enough data
-            first_name = pool_lead.get("first_name")
-            company = pool_lead.get("company_name")
-            if not first_name or not company:
+            # Validate minimum data
+            person = lead_context.get("person", {})
+            company = lead_context.get("company", {})
+            if not person.get("first_name") or not company.get("name"):
                 return EngineResult.fail(
                     error="Lead must have at least first_name and company for personalization",
                     metadata={"lead_pool_id": str(lead_pool_id)},
                 )
 
-            # Build lead data
-            lead_data = {
-                "first_name": first_name,
-                "last_name": pool_lead.get("last_name", ""),
-                "company": company,
-                "title": pool_lead.get("title", ""),
-                "industry": pool_lead.get("company_industry", ""),
-                "employee_count": pool_lead.get("company_employee_count"),
-                "icebreaker": pool_lead.get("icebreaker_hook", ""),
-            }
+            # Get client proof points if client_id provided
+            proof_points = {}
+            if client_id:
+                proof_points = await build_client_proof_points(db, client_id)
 
-            # Build system prompt
-            system = f"""You are an expert sales copywriter for B2B outreach.
-Tone: {tone}
-Keep emails concise (under 150 words for body).
-Use the provided lead data for personalization.
-Campaign: {campaign_name}
-{f"Use this icebreaker if relevant: {lead_data['icebreaker']}" if lead_data.get('icebreaker') else ""}
-{f"Template: {template}" if template else ""}"""
+            # Format for prompt
+            lead_context_str = format_lead_context_for_prompt(lead_context)
+            proof_points_str = format_proof_points_for_prompt(proof_points)
 
-            # Build prompt
-            prompt = f"""Generate a personalized outreach email for this lead:
+            # Build campaign context
+            campaign_context = f"""**Campaign:** {campaign_name}
+**Tone:** {tone}
+{f"**Template Guidance:** {template}" if template else ""}"""
 
-Lead Data:
-- Name: {lead_data['first_name']} {lead_data['last_name']}
-- Company: {lead_data['company']}
-- Title: {lead_data['title']}
-- Industry: {lead_data['industry']}
-- Employee Count: {lead_data['employee_count']}
+            # Use Smart Email Prompt
+            prompt = SMART_EMAIL_PROMPT.format(
+                lead_context=lead_context_str,
+                proof_points=proof_points_str,
+                campaign_context=campaign_context,
+            )
 
-Campaign: {campaign_name}
-{f"Template to follow: {template}" if template else ""}
-
-{"Generate a compelling subject line (under 50 characters) and email body." if include_subject else "Generate only the email body text."}
-
-Return as JSON with: {{"subject": "...", "body": "..."}}"""
+            # System prompt
+            system = """You are an expert B2B sales copywriter. Generate cold emails that feel personal and human.
+Never use generic phrases. Always reference something specific about the lead.
+Return valid JSON only."""
 
             # Generate content via AI
             result = await self.anthropic.complete(
@@ -1075,6 +898,7 @@ Return as JSON with: {{"subject": "...", "body": "..."}}"""
                         "body": generated.get("body", ""),
                         "lead_pool_id": str(lead_pool_id),
                         "campaign_name": campaign_name,
+                        "personalization_used": self._extract_personalization_fields(lead_context),
                     },
                     metadata={
                         "cost_aud": result["cost_aud"],
@@ -1082,6 +906,8 @@ Return as JSON with: {{"subject": "...", "body": "..."}}"""
                         "output_tokens": result["output_tokens"],
                         "tone": tone,
                         "source": "lead_pool",
+                        "smart_prompt": True,
+                        "has_proof_points": proof_points.get("available", False),
                     },
                 )
             except json.JSONDecodeError:

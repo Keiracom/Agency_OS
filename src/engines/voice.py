@@ -45,9 +45,14 @@ from src.integrations.vapi import (
     VapiCallResult,
     get_vapi_client,
 )
-from src.agents.sdk_agents.sdk_eligibility import should_use_sdk_voice_kb
-from src.agents.sdk_agents.voice_kb_agent import run_sdk_voice_kb, get_basic_voice_kb
-from src.services.sdk_usage_service import log_sdk_usage
+from src.engines.smart_prompts import (
+    SMART_VOICE_KB_PROMPT,
+    build_full_lead_context,
+    build_client_proof_points,
+    format_lead_context_for_prompt,
+    format_proof_points_for_prompt,
+)
+from src.integrations.anthropic import get_anthropic_client
 from src.models.activity import Activity
 from src.models.base import ChannelType, LeadStatus
 from src.models.lead import Lead
@@ -556,7 +561,8 @@ Qualify the lead and either:
 Always be respectful of their time."""
 
     # ============================================
-    # SDK VOICE KB (Hot Leads - ALS 85+)
+    # VOICE KB GENERATION (Smart Prompt System)
+    # Updated 2026-01-20 per SDK_AND_CONTENT_ARCHITECTURE.md
     # ============================================
 
     async def generate_voice_kb(
@@ -567,12 +573,10 @@ Always be respectful of their time."""
         sdk_enrichment: dict[str, Any] | None = None,
     ) -> EngineResult[dict[str, Any]]:
         """
-        Generate voice knowledge base for a lead.
+        Generate voice knowledge base for a lead using Smart Prompt system.
 
-        This method:
-        1. Checks if lead is Hot (ALS >= 85)
-        2. If Hot: Uses SDK for comprehensive KB generation
-        3. If not Hot: Returns basic KB
+        Uses ALL available data from lead enrichment and client intelligence
+        to generate a comprehensive KB the voice AI can use during calls.
 
         The KB is used by the voice AI to:
         - Open calls with specific, relevant hooks
@@ -583,143 +587,109 @@ Always be respectful of their time."""
             db: Database session (passed by caller)
             lead_id: Lead UUID
             campaign_id: Campaign UUID
-            sdk_enrichment: Pre-fetched SDK enrichment data (optional)
+            sdk_enrichment: DEPRECATED - ignored
 
         Returns:
             EngineResult with voice KB dict
         """
         try:
-            # Get lead
-            lead = await self.get_lead_by_id(db, lead_id)
+            # Build full lead context using Smart Prompt system
+            lead_context = await build_full_lead_context(db, lead_id, include_engagement=True)
 
-            # Build lead data dict
-            lead_data = {
-                "first_name": lead.first_name,
-                "last_name": lead.last_name or "",
-                "title": lead.title or "",
-                "company_name": lead.company,
-                "company_industry": lead.organization_industry or "",
-                "company_employee_count": lead.organization_employee_count,
-                "company_city": getattr(lead, "organization_city", None),
-                "company_country": getattr(lead, "organization_country", None),
-                "linkedin_headline": getattr(lead, "linkedin_headline", None),
-                "linkedin_about": getattr(lead, "linkedin_about", None),
-                "linkedin_recent_posts": getattr(lead, "linkedin_recent_posts", None),
-                "als_score": lead.als_score or 0,
-            }
+            if not lead_context:
+                # Fallback to basic query
+                lead = await self.get_lead_by_id(db, lead_id)
+                lead_context = {
+                    "person": {
+                        "first_name": lead.first_name,
+                        "full_name": lead.full_name,
+                        "title": lead.title,
+                    },
+                    "company": {
+                        "name": lead.company,
+                        "industry": lead.organization_industry,
+                    },
+                    "score": {"als_score": lead.als_score},
+                }
 
-            # Check if Hot lead (SDK voice KB for ALL Hot leads)
-            if should_use_sdk_voice_kb(lead_data):
-                logger.info(
-                    f"Generating SDK voice KB for Hot lead",
-                    extra={
-                        "lead_id": str(lead_id),
-                        "als_score": lead.als_score,
-                    }
-                )
+            # Get campaign for context
+            campaign = await self.get_campaign_by_id(db, campaign_id)
 
-                # Get SDK enrichment from lead if not provided
-                enrichment_data = sdk_enrichment
-                if not enrichment_data:
-                    # Try to get from lead's deep_research_data
-                    if hasattr(lead, "deep_research_data") and lead.deep_research_data:
-                        enrichment_data = lead.deep_research_data.get("sdk_enrichment")
-                    elif hasattr(lead, "sdk_enrichment") and lead.sdk_enrichment:
-                        enrichment_data = lead.sdk_enrichment
+            # Get client proof points
+            proof_points = {}
+            if campaign.client_id:
+                proof_points = await build_client_proof_points(db, campaign.client_id)
 
-                # Get campaign for context
-                campaign = None
-                try:
-                    campaign = await self.get_campaign_by_id(db, campaign_id)
-                except Exception:
-                    pass
+            # Format for prompt
+            lead_context_str = format_lead_context_for_prompt(lead_context)
+            proof_points_str = format_proof_points_for_prompt(proof_points)
 
-                campaign_context = None
-                if campaign:
-                    campaign_context = {
-                        "product_name": getattr(campaign, "product_name", None) or campaign.name,
-                        "value_prop": getattr(campaign, "value_proposition", None) or getattr(campaign, "description", None),
-                        "differentiator": getattr(campaign, "differentiator", None),
-                    }
+            # Build campaign context
+            campaign_context = f"""**Campaign:** {campaign.name}
+**Product/Service:** {getattr(campaign, 'product_name', campaign.name)}
+{f"**Value Prop:** {getattr(campaign, 'value_proposition', '')}" if hasattr(campaign, 'value_proposition') and campaign.value_proposition else ""}
+{f"**Differentiator:** {getattr(campaign, 'differentiator', '')}" if hasattr(campaign, 'differentiator') and campaign.differentiator else ""}"""
 
-                # Fetch client intelligence for proof points
-                client_intelligence = None
-                if campaign and hasattr(campaign, "client_id") and campaign.client_id:
-                    client_intelligence = await self._get_client_intelligence(db, campaign.client_id)
-
-                # Generate SDK voice KB
-                sdk_result = await run_sdk_voice_kb(
-                    lead_data=lead_data,
-                    enrichment_data=enrichment_data,
-                    campaign_context=campaign_context,
-                    client_intelligence=client_intelligence,
-                )
-
-                # Log SDK usage to database for cost tracking
-                try:
-                    client_id = campaign.client_id if campaign and hasattr(campaign, "client_id") else lead.client_id
-                    await log_sdk_usage(
-                        db,
-                        client_id=client_id,
-                        agent_type="voice_kb",
-                        model_used=sdk_result.model_used or "claude-sonnet-4-20250514",
-                        input_tokens=sdk_result.input_tokens,
-                        output_tokens=sdk_result.output_tokens,
-                        cached_tokens=sdk_result.cached_tokens,
-                        cost_aud=sdk_result.cost_aud,
-                        turns_used=sdk_result.turns_used,
-                        duration_ms=sdk_result.duration_ms,
-                        tool_calls=sdk_result.tool_calls,
-                        success=sdk_result.success,
-                        error_message=sdk_result.error,
-                        lead_id=lead_id,
-                        campaign_id=campaign_id,
-                    )
-                except Exception as log_err:
-                    logger.warning(f"Failed to log SDK voice KB usage: {log_err}")
-
-                if sdk_result.success and sdk_result.data:
-                    # Convert Pydantic model to dict if needed
-                    kb_data = sdk_result.data
-                    if hasattr(kb_data, "model_dump"):
-                        kb_data = kb_data.model_dump()
-
-                    return EngineResult.ok(
-                        data={
-                            **kb_data,
-                            "lead_id": str(lead_id),
-                            "campaign_id": str(campaign_id),
-                            "source": "sdk",
-                        },
-                        metadata={
-                            "cost_aud": sdk_result.cost_aud,
-                            "sdk": True,
-                            "als_score": lead.als_score,
-                        },
-                    )
-
-                # SDK failed - fall back to basic
-                logger.warning(
-                    f"SDK voice KB failed for Hot lead, falling back to basic",
-                    extra={
-                        "lead_id": str(lead_id),
-                        "error": sdk_result.error,
-                    }
-                )
-
-            # Non-Hot lead or SDK failure: return basic KB
-            basic_kb = get_basic_voice_kb(lead_data)
-            return EngineResult.ok(
-                data={
-                    **basic_kb,
-                    "lead_id": str(lead_id),
-                    "campaign_id": str(campaign_id),
-                },
-                metadata={
-                    "sdk": False,
-                    "als_score": lead.als_score,
-                },
+            # Use Smart Voice KB Prompt
+            prompt = SMART_VOICE_KB_PROMPT.format(
+                lead_context=lead_context_str,
+                proof_points=proof_points_str,
+                campaign_context=campaign_context,
             )
+
+            # System prompt
+            system = """You are an expert sales call strategist. Generate voice call knowledge bases that help sales reps have personalized, effective conversations.
+Be specific and actionable. Return valid JSON only."""
+
+            # Generate via AI
+            anthropic = get_anthropic_client()
+            result = await anthropic.complete(
+                prompt=prompt,
+                system=system,
+                max_tokens=1200,
+                temperature=0.7,
+            )
+
+            # Parse JSON from response
+            import json
+            try:
+                content = result["content"]
+                if "```json" in content:
+                    content = content.split("```json")[1].split("```")[0]
+                elif "```" in content:
+                    content = content.split("```")[1].split("```")[0]
+
+                kb_data = json.loads(content.strip())
+
+                return EngineResult.ok(
+                    data={
+                        **kb_data,
+                        "lead_id": str(lead_id),
+                        "campaign_id": str(campaign_id),
+                    },
+                    metadata={
+                        "cost_aud": result["cost_aud"],
+                        "smart_prompt": True,
+                        "als_score": lead_context.get("score", {}).get("als_score"),
+                        "has_proof_points": proof_points.get("available", False),
+                    },
+                )
+            except json.JSONDecodeError:
+                # Fallback to basic KB structure
+                return EngineResult.ok(
+                    data={
+                        "recommended_opener": f"Hi {lead_context.get('person', {}).get('first_name', 'there')}, this is a quick call about {campaign.name}.",
+                        "opening_hooks": ["Ask about their current challenges", "Reference their company's industry"],
+                        "objection_responses": {},
+                        "lead_id": str(lead_id),
+                        "campaign_id": str(campaign_id),
+                    },
+                    metadata={
+                        "cost_aud": result["cost_aud"],
+                        "fallback": True,
+                        "als_score": lead_context.get("score", {}).get("als_score"),
+                    },
+                )
 
         except Exception as e:
             return EngineResult.fail(

@@ -15,9 +15,6 @@ Phase 24A additions:
 - LeadAllocatorService: Assign leads to clients
 - JITValidator: Pre-send validation
 
-Phase 24B additions:
-- ABTestService: A/B test management for content optimization
-
 Phase 24C additions:
 - EmailEventsService: Email engagement event ingestion
 - TimezoneService: Timezone lookup for leads
@@ -38,8 +35,6 @@ Phase 24F additions:
 Phase 21 additions:
 - SendLimiter: Daily send limits during TEST_MODE
 """
-
-from src.services.ab_test_service import ABTestService
 from src.services.buyer_signal_service import BuyerSignalService, BuyerSignal, BuyerScoreBoost
 from src.services.conversation_analytics_service import ConversationAnalyticsService
 from src.services.crm_push_service import CRMPushService, CRMPushResult, LeadData, MeetingData
@@ -59,7 +54,6 @@ __all__ = [
     "LeadAllocatorService",
     "JITValidator",
     "JITValidationResult",
-    "ABTestService",
     "EmailEventsService",
     "TimezoneService",
     "ThreadService",

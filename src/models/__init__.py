@@ -39,6 +39,7 @@ from src.models.resource_pool import (
 from src.models.client_persona import ClientPersona, PERSONA_ALLOCATIONS
 from src.models.linkedin_seat import LinkedInSeat, LinkedInSeatStatus, LINKEDIN_WARMUP_SCHEDULE
 from src.models.linkedin_connection import LinkedInConnection, LinkedInConnectionStatus
+from src.models.campaign_suggestion import CampaignSuggestion, CampaignSuggestionHistory, SuggestionType, SuggestionStatus
 
 __all__ = [
     # Base
@@ -93,4 +94,9 @@ __all__ = [
     "LINKEDIN_WARMUP_SCHEDULE",
     "LinkedInConnection",
     "LinkedInConnectionStatus",
+    # Campaign Suggestions
+    "CampaignSuggestion",
+    "CampaignSuggestionHistory",
+    "SuggestionType",
+    "SuggestionStatus",
 ]

@@ -12,8 +12,8 @@
 
 ### Where We Are
 - **Phase:** Phase D — Code Fixes — IN PROGRESS
-- **Last Completed:** Item 17 (Monthly replenishment flow)
-- **Next Action:** Item 18-23 (remaining code fixes), Phase E (METRICS.md), Phase F (Frontend UI docs), or Phase H (Transparency)
+- **Last Completed:** Item 18 (Campaign evolution agents)
+- **Next Action:** Item 19-23 (remaining code fixes), Phase E (METRICS.md), Phase F (Frontend UI docs), or Phase H (Transparency)
 
 ### Key Decisions Made
 1. **47 total items** — 12 docs created, 3 verified, 6 docs to create, 10 to verify, 11 code fixes, 8 transparency features
@@ -209,7 +209,7 @@ For gaps and implementation status, see `../TODO.md`.
 |-----|----------|--------|-------|
 | ~~Daily pacing flow~~ | `business/TIERS_AND_BILLING.md` | **FIXED** | `daily_pacing_flow.py` + 7 AM AEST schedule + >120%/<50% alerts |
 | ~~Monthly replenishment flow~~ | `flows/MONTHLY_LIFECYCLE.md` | **FIXED** | `monthly_replenishment_flow.py` + credit_reset trigger + gap calculation |
-| Campaign evolution agents | `flows/MONTHLY_LIFECYCLE.md` | NOT IMPLEMENTED | No multi-agent campaign suggestions for month 2+ |
+| ~~Campaign evolution agents~~ | `flows/MONTHLY_LIFECYCLE.md` | **FIXED** | WHO/WHAT/HOW analyzers + orchestrator → campaign_suggestions table |
 | ICP refinement from CIS | `flows/MONTHLY_LIFECYCLE.md` | NOT IMPLEMENTED | WHO patterns not used to refine Apollo search |
 | ~~DNCR wiring~~ | `distribution/SMS.md` | **FIXED** | Batch wash at enrichment + cached check at send + quarterly re-wash |
 | ~~LinkedIn seat warmup~~ | `distribution/LINKEDIN.md` | **FIXED** | Warmup service + health service + daily flow created |
@@ -441,6 +441,7 @@ All 13 pre-existing architecture files have been verified against codebase (Phas
 | **P2: Implement daily pacing flow** | 2026-01-22 | `daily_pacing_flow.py` (465 lines), schedule at 7 AM AEST, flags >120% fast / <50% slow |
 | **P2: Implement reply handling code** | 2026-01-22 | Migration 046 (lead_replies table), 3 new intents (referral, wrong_person, angry_or_complaint), response timing service |
 | **P2: Implement monthly replenishment flow** | 2026-01-22 | `monthly_replenishment_flow.py`, gap calculation (Tier Quota - Active Pipeline), campaign assignment, credit_reset_flow trigger |
+| **P2: Implement campaign evolution agents** | 2026-01-22 | WHO/WHAT/HOW analyzers + orchestrator agent, migration 047 (campaign_suggestions table), Prefect flow + batch flow, confidence thresholds |
 
 ---
 
@@ -472,7 +473,7 @@ All 13 pre-existing architecture files have been verified against codebase (Phas
 15. [x] P2: Implement daily pacing flow — **DONE** (`daily_pacing_flow.py`, 7 AM AEST schedule, >120%/<50% alerts)
 16. [x] P2: Implement reply handling code — **DONE** (migration 046, 10 intents, response timing service, remaining: SMS/LinkedIn webhooks)
 17. [x] P2: Implement monthly replenishment flow — **DONE** (`monthly_replenishment_flow.py`, gap calculation, campaign assignment, credit_reset trigger)
-18. [ ] P2: Implement campaign evolution agents
+18. [x] P2: Implement campaign evolution agents — **DONE** (WHO/WHAT/HOW analyzers, orchestrator, campaign_suggestions table, Prefect flow)
 19. [ ] P2: Implement ICP refinement from CIS
 20. [ ] P2: Implement two-way CRM sync
 21. [ ] P2: Fix frontend hardcoded values

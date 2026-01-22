@@ -349,6 +349,16 @@ SCHEDULE_REGISTRY: Dict[str, Any] = {
             "force_full": False,  # Default: smart replenishment (gap only)
         },
     },
+    # Item 18: Campaign Evolution (triggered after pattern_learning, not scheduled)
+    "campaign_evolution": {
+        "schedule": None,  # Triggered after pattern_learning_flow, not scheduled
+        "description": "CIS-driven campaign optimization suggestions (triggered, not scheduled)",
+        "work_queue": "agency-os-queue",
+        "tags": ["campaigns", "evolution", "cis", "suggestions"],
+        "parameters": {
+            "force": False,  # Default: check eligibility
+        },
+    },
 }
 
 

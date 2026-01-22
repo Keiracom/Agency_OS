@@ -167,6 +167,11 @@ class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         back_populates="client",
         lazy="selectin",
     )
+    campaign_suggestions: Mapped[list["CampaignSuggestion"]] = relationship(
+        "CampaignSuggestion",
+        back_populates="client",
+        lazy="selectin",
+    )
 
     def __repr__(self) -> str:
         return f"<Client(id={self.id}, name='{self.name}', tier={self.tier.value})>"

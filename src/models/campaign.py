@@ -196,6 +196,11 @@ class Campaign(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     # Sequence settings
     sequence_steps: Mapped[int] = mapped_column(Integer, default=5)
     sequence_delay_days: Mapped[int] = mapped_column(Integer, default=3)
+    uses_default_sequence: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+    )
 
     # Relationships
     client: Mapped["Client"] = relationship(
@@ -223,6 +228,11 @@ class Campaign(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         "LeadPool",
         back_populates="campaign",
         foreign_keys="LeadPool.campaign_id",
+        lazy="selectin",
+    )
+    suggestions: Mapped[list["CampaignSuggestion"]] = relationship(
+        "CampaignSuggestion",
+        back_populates="campaign",
         lazy="selectin",
     )
 
@@ -372,6 +382,16 @@ class CampaignSequence(Base, UUIDMixin, TimestampMixin):
     # Conditional logic
     skip_if_replied: Mapped[bool] = mapped_column(Boolean, default=True)
     skip_if_bounced: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    # Phase E: Additional sequence metadata
+    purpose: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+    )  # intro, connect, value_add, pattern_interrupt, breakup, discovery
+    skip_if: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+    )  # phone_missing, linkedin_url_missing, address_missing
 
     # Relationship
     campaign: Mapped["Campaign"] = relationship(

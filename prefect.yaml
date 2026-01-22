@@ -203,6 +203,34 @@ deployments:
     schedules: []
 
   # ============================================
+  # CAMPAIGN EVOLUTION FLOWS
+  # ============================================
+
+  # Campaign evolution flow (triggered after pattern learning)
+  - name: campaign-evolution-flow
+    version: 1.0.0
+    paused: false  # Triggered by pattern_learning - active
+    tags: [campaigns, evolution, cis, suggestions]
+    description: "CIS-driven campaign optimization suggestions (triggered, not scheduled)"
+    entrypoint: src/orchestration/flows/campaign_evolution_flow.py:campaign_evolution_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    schedules: []
+
+  # Batch campaign evolution (all eligible clients)
+  - name: batch-campaign-evolution-flow
+    version: 1.0.0
+    paused: false  # Triggered after weekly pattern learning
+    tags: [campaigns, evolution, batch]
+    description: "Run campaign evolution for all eligible clients"
+    entrypoint: src/orchestration/flows/campaign_evolution_flow.py:batch_campaign_evolution_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    schedules: []
+
+  # ============================================
   # INTELLIGENCE FLOWS
   # ============================================
 

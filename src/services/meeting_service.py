@@ -197,6 +197,110 @@ class MeetingService:
 
         return meeting_data
 
+    async def create_blind_meeting(
+        self,
+        client_id: UUID,
+        lead_id: UUID | None = None,
+        deal_id: UUID | None = None,
+        source: str = "crm_sync",
+        notes: str | None = None,
+        external_deal_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Create a blind meeting (captured from external CRM, not booked through Agency OS).
+
+        This method is used for "blind conversions" - meetings/deals that were created
+        directly in the client's CRM without going through Agency OS. We capture these
+        to ensure complete conversion tracking.
+
+        Args:
+            client_id: Client UUID
+            lead_id: Lead UUID (optional - may be unknown for blind conversions)
+            deal_id: Deal UUID if already linked
+            source: Source of the blind meeting (e.g., "hubspot_sync", "pipedrive_sync")
+            notes: Additional notes about the blind conversion
+            external_deal_id: External CRM deal ID for deduplication
+
+        Returns:
+            Created meeting record with is_blind=True
+
+        Note:
+            - scheduled_at defaults to NOW() since actual meeting time may be unknown
+            - meeting_type defaults to "other" since we don't know the type
+            - booked_by is set to "external" to indicate CRM origin
+        """
+        # Check for existing blind meeting with same external deal ID to prevent duplicates
+        if external_deal_id:
+            existing_query = text("""
+                SELECT id FROM meetings
+                WHERE client_id = :client_id
+                AND external_deal_id = :external_deal_id
+            """)
+            existing_result = await self.session.execute(existing_query, {
+                "client_id": client_id,
+                "external_deal_id": external_deal_id,
+            })
+            existing = existing_result.fetchone()
+            if existing:
+                logger.info(f"Blind meeting already exists for external deal {external_deal_id}")
+                return await self.get_by_id(existing.id)  # type: ignore
+
+        query = text("""
+            INSERT INTO meetings (
+                client_id, lead_id, deal_id,
+                scheduled_at, duration_minutes, meeting_type,
+                booked_by, booking_method,
+                meeting_notes, external_deal_id, is_blind,
+                created_at, updated_at
+            ) VALUES (
+                :client_id, :lead_id, :deal_id,
+                NOW(), 30, 'other',
+                'external', :source,
+                :notes, :external_deal_id, TRUE,
+                NOW(), NOW()
+            )
+            RETURNING *
+        """)
+
+        result = await self.session.execute(query, {
+            "client_id": client_id,
+            "lead_id": lead_id,
+            "deal_id": deal_id,
+            "source": source,
+            "notes": notes,
+            "external_deal_id": external_deal_id,
+        })
+
+        row = result.fetchone()
+        await self.session.commit()
+
+        logger.info(
+            f"Created blind meeting {row.id} from {source} "
+            f"(external_deal_id={external_deal_id}, lead_id={lead_id})"
+        )
+
+        # Update lead with meeting info if lead_id provided
+        if lead_id:
+            await self.session.execute(
+                text("""
+                    UPDATE leads SET
+                        meeting_booked = TRUE,
+                        meeting_booked_at = COALESCE(meeting_booked_at, NOW()),
+                        meeting_id = COALESCE(meeting_id, :meeting_id),
+                        status = CASE
+                            WHEN status NOT IN ('meeting_booked', 'closed_won', 'closed_lost')
+                            THEN 'meeting_booked'
+                            ELSE status
+                        END,
+                        updated_at = NOW()
+                    WHERE id = :lead_id
+                """),
+                {"meeting_id": row.id, "lead_id": lead_id}
+            )
+            await self.session.commit()
+
+        return dict(row._mapping)
+
     async def get_by_id(self, meeting_id: UUID) -> dict[str, Any] | None:
         """
         Get a meeting by ID.

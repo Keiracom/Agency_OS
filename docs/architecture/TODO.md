@@ -12,8 +12,8 @@
 
 ### Where We Are
 - **Phase:** Phase D — Code Fixes — IN PROGRESS
-- **Last Completed:** Item 18 (Campaign evolution agents)
-- **Next Action:** Item 19-23 (remaining code fixes), Phase E (METRICS.md), Phase F (Frontend UI docs), or Phase H (Transparency)
+- **Last Completed:** Item 20 (Two-way CRM sync)
+- **Next Action:** Item 19, 21-23 (remaining code fixes), Phase E (METRICS.md), Phase F (Frontend UI docs), or Phase H (Transparency)
 
 ### Key Decisions Made
 1. **47 total items** — 12 docs created, 3 verified, 6 docs to create, 10 to verify, 11 code fixes, 8 transparency features
@@ -214,7 +214,7 @@ For gaps and implementation status, see `../TODO.md`.
 | ~~DNCR wiring~~ | `distribution/SMS.md` | **FIXED** | Batch wash at enrichment + cached check at send + quarterly re-wash |
 | ~~LinkedIn seat warmup~~ | `distribution/LINKEDIN.md` | **FIXED** | Warmup service + health service + daily flow created |
 | ~~Reply handling~~ | `flows/REPLY_HANDLING.md` | **PARTIAL** | Migration 046 + 10 intents + response timing. Remaining: SMS/LinkedIn webhooks |
-| Two-way CRM sync | `flows/MEETINGS_CRM.md` | NOT IMPLEMENTED | Pull meetings from CRM to capture blind conversions |
+| ~~Two-way CRM sync~~ | `flows/MEETINGS_CRM.md` | **FIXED** | Webhook receivers + polling flow + blind meeting capture |
 | Frontend hardcoded values | `process/FRONTEND.md` | GAP | credits_remaining=2250, leads_contacted hardcoded |
 | Content QA check | `flows/OUTREACH.md` | NOT IMPLEMENTED | No validation before send (length, placeholders, spam) |
 | Smart Prompt priority | `content/SDK_AND_PROMPTS.md` | NOT IMPLEMENTED | No weighting of which lead data to prioritize |
@@ -442,6 +442,7 @@ All 13 pre-existing architecture files have been verified against codebase (Phas
 | **P2: Implement reply handling code** | 2026-01-22 | Migration 046 (lead_replies table), 3 new intents (referral, wrong_person, angry_or_complaint), response timing service |
 | **P2: Implement monthly replenishment flow** | 2026-01-22 | `monthly_replenishment_flow.py`, gap calculation (Tier Quota - Active Pipeline), campaign assignment, credit_reset_flow trigger |
 | **P2: Implement campaign evolution agents** | 2026-01-22 | WHO/WHAT/HOW analyzers + orchestrator agent, migration 047 (campaign_suggestions table), Prefect flow + batch flow, confidence thresholds |
+| **P2: Implement two-way CRM sync** | 2026-01-22 | Close CRM parser, blind meeting creation, `crm_sync_flow.py` (6-hour polling), migration 048 (CRM fields + is_blind + crm_sync_log table), scheduled job |
 
 ---
 
@@ -475,7 +476,7 @@ All 13 pre-existing architecture files have been verified against codebase (Phas
 17. [x] P2: Implement monthly replenishment flow — **DONE** (`monthly_replenishment_flow.py`, gap calculation, campaign assignment, credit_reset trigger)
 18. [x] P2: Implement campaign evolution agents — **DONE** (WHO/WHAT/HOW analyzers, orchestrator, campaign_suggestions table, Prefect flow)
 19. [ ] P2: Implement ICP refinement from CIS
-20. [ ] P2: Implement two-way CRM sync
+20. [x] P2: Implement two-way CRM sync — **DONE** (Close parser, blind meeting creation, crm_sync_flow polling, migration 048)
 21. [ ] P2: Fix frontend hardcoded values
 22. [ ] P2: Add content QA check node in outreach flow
 23. [ ] P2: Add priority weighting to Smart Prompt

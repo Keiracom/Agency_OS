@@ -1430,6 +1430,8 @@ async def crm_deal_webhook(
             deal_data = _parse_salesforce_deal(payload)
         elif crm_source == "pipedrive":
             deal_data = _parse_pipedrive_deal(payload)
+        elif crm_source == "close":
+            deal_data = _parse_close_deal(payload)
         else:
             # Generic payload
             deal_data = payload
@@ -1439,8 +1441,11 @@ async def crm_deal_webhook(
         if not external_deal_id:
             return {"status": "error", "error": "Missing external deal ID"}
 
-        # Sync deal
+        # Check if deal already exists
         deal_service = DealService(db)
+        existing_deal = await deal_service.get_by_external_id(crm_source, str(external_deal_id))
+
+        # Sync deal
         deal = await deal_service.sync_from_external(
             client_id=client_id,
             external_crm=crm_source,
@@ -1448,10 +1453,42 @@ async def crm_deal_webhook(
             data=deal_data,
         )
 
+        # Create blind meeting if this is a NEW deal without a meeting
+        # This captures "blind conversions" - meetings booked directly in CRM
+        blind_meeting_created = False
+        if not existing_deal and not deal.get("meeting_id"):
+            from src.services.meeting_service import MeetingService
+            meeting_service = MeetingService(db)
+
+            # Create a "blind meeting" record for attribution tracking
+            try:
+                blind_meeting = await meeting_service.create_blind_meeting(
+                    client_id=client_id,
+                    lead_id=deal.get("lead_id"),
+                    deal_id=deal["id"],
+                    source=f"{crm_source}_sync",
+                    notes=f"Meeting captured from {crm_source} deal sync (blind conversion)",
+                    external_deal_id=str(external_deal_id),
+                )
+                blind_meeting_created = True
+
+                # Link deal to meeting
+                from sqlalchemy import text
+                await db.execute(
+                    text("UPDATE deals SET meeting_id = :meeting_id WHERE id = :deal_id"),
+                    {"meeting_id": blind_meeting["id"], "deal_id": deal["id"]}
+                )
+                await db.commit()
+            except Exception as e:
+                # Log but don't fail - deal sync is more important
+                import logging
+                logging.getLogger(__name__).warning(f"Failed to create blind meeting: {e}")
+
         return {
             "status": "processed",
             "deal_id": str(deal["id"]),
             "external_id": str(external_deal_id),
+            "blind_meeting_created": blind_meeting_created,
         }
 
     except Exception as e:
@@ -1588,6 +1625,30 @@ def _parse_pipedrive_deal(payload: dict) -> dict:
         "contact_email": current.get("person_id", {}).get("email", [{}])[0].get("value") if isinstance(current.get("person_id"), dict) else None,
         "close_date": current.get("expected_close_date"),
     }
+
+
+def _parse_close_deal(payload: dict) -> dict:
+    """Parse Close CRM opportunity webhook payload."""
+    # Close uses "opportunity" terminology
+    return {
+        "external_id": payload.get("id"),
+        "name": payload.get("note") or payload.get("lead_name", "Close Opportunity"),
+        "value": payload.get("value"),
+        "stage": _map_close_status(payload.get("status_type", "")),
+        "contact_email": payload.get("contact", {}).get("email") if payload.get("contact") else None,
+        "close_date": payload.get("date_won") or payload.get("expected_close_date"),
+        "lead_id": payload.get("lead_id"),  # Close has lead_id in payload
+    }
+
+
+def _map_close_status(status_type: str) -> str:
+    """Map Close CRM status_type to our stage names."""
+    status_map = {
+        "active": "qualification",
+        "won": "closed_won",
+        "lost": "closed_lost",
+    }
+    return status_map.get(status_type.lower(), "qualification")
 
 
 async def _handle_calendly_webhook(db, payload: dict, meeting_service) -> dict:

@@ -237,6 +237,28 @@ def get_dncr_rewash_schedule() -> CronSchedule:
     )
 
 
+# ============================================
+# Item 20: CRM Sync Schedule
+# ============================================
+
+
+def get_crm_sync_schedule() -> IntervalSchedule:
+    """
+    CRM sync every 6 hours.
+
+    This is a safety net for missed CRM webhooks.
+    Polls HubSpot, Pipedrive, and Close for recent deal updates
+    to ensure complete data capture for blind conversions.
+
+    Returns:
+        IntervalSchedule: Every 6 hours
+    """
+    return IntervalSchedule(
+        interval=21600,  # 6 hours in seconds
+        timezone="Australia/Sydney",
+    )
+
+
 # Schedule registry for deployment configuration
 SCHEDULE_REGISTRY: Dict[str, Any] = {
     "enrichment": {
@@ -359,6 +381,16 @@ SCHEDULE_REGISTRY: Dict[str, Any] = {
             "force": False,  # Default: check eligibility
         },
     },
+    # Item 20: Two-way CRM Sync
+    "crm_sync": {
+        "schedule": get_crm_sync_schedule(),
+        "description": "CRM sync every 6 hours - safety net for missed webhooks (blind conversions)",
+        "work_queue": "agency-os-queue",
+        "tags": ["crm", "sync", "safety-net", "blind-conversions"],
+        "parameters": {
+            "since_hours": 24,  # Look back 24 hours for safety
+        },
+    },
 }
 
 
@@ -433,3 +465,7 @@ def list_all_schedules() -> Dict[str, str]:
 # [x] Monthly replenishment in schedule registry (on-demand, not scheduled)
 # [x] Triggered by credit_reset_flow, not cron scheduled
 # [x] Parameters for force_full mode
+# --- Item 20: Two-way CRM Sync ---
+# [x] CRM sync every 6 hours as safety net for missed webhooks
+# [x] CRM sync in schedule registry with blind-conversions tag
+# [x] Parameters for since_hours (24)

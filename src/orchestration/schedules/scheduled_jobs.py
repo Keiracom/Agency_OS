@@ -1,19 +1,25 @@
 """
 FILE: src/orchestration/schedules/scheduled_jobs.py
 PURPOSE: Prefect schedule configurations for automated flows
-PHASE: 5 (Orchestration), modified Phase 16 for Conversion Intelligence
-TASK: ORC-010, 16F-004
+PHASE: 5 (Orchestration), modified Phase 16 for Conversion Intelligence, P0 for Credit Reset, Phase D for DNCR
+TASK: ORC-010, 16F-004, P0-001, Item 13
 DEPENDENCIES:
   - src/orchestration/flows/enrichment_flow.py
   - src/orchestration/flows/outreach_flow.py
   - src/orchestration/flows/reply_recovery_flow.py
   - src/orchestration/flows/pattern_learning_flow.py (Phase 16)
   - src/orchestration/flows/pattern_backfill_flow.py (Phase 16)
+  - src/orchestration/flows/credit_reset_flow.py (P0)
+  - src/orchestration/flows/dncr_rewash_flow.py (Phase D - DNCR compliance)
+  - src/orchestration/flows/linkedin_health_flow.py (Phase D - LinkedIn warmup/health)
+  - src/orchestration/flows/daily_pacing_flow.py (Item 15 - Daily pacing)
+  - src/orchestration/flows/monthly_replenishment_flow.py (Item 17 - Monthly replenishment)
   - src/engines/reporter.py
 RULES APPLIED:
   - Rule 20: Webhook-first architecture - cron jobs are safety nets only
   - Rule 1: Follow blueprint exactly
   - Prefect 3.x schedule patterns
+  - DNCR quarterly re-wash for Australian SMS compliance
 """
 
 from datetime import time
@@ -135,6 +141,102 @@ def get_pattern_backfill_schedule() -> CronSchedule:
     )
 
 
+# ============================================
+# P0: Credit Reset Schedule
+# ============================================
+
+
+def get_credit_reset_schedule() -> CronSchedule:
+    """
+    Hourly credit reset check.
+
+    Finds clients whose billing date has passed and resets their
+    credits_remaining to their tier quota. Critical for billing integrity.
+
+    Runs hourly to catch resets promptly without excessive load.
+    Actual reset only happens when credits_reset_at <= now().
+
+    Returns:
+        CronSchedule: Every hour at minute 0
+    """
+    return CronSchedule(
+        cron="0 * * * *",  # Top of every hour
+        timezone="Australia/Sydney",
+    )
+
+
+# ============================================
+# Phase D: LinkedIn Health Schedule
+# ============================================
+
+
+def get_linkedin_health_schedule() -> CronSchedule:
+    """
+    Daily LinkedIn health check at 6 AM AEST.
+
+    Processes warmup completions, updates health metrics,
+    marks stale connections, and detects restrictions.
+
+    Runs early morning before business hours to ensure
+    limits are correctly set for the day.
+
+    Returns:
+        CronSchedule: Daily at 6 AM AEST
+    """
+    return CronSchedule(
+        cron="0 6 * * *",  # 6 AM daily
+        timezone="Australia/Sydney",
+    )
+
+
+# ============================================
+# Item 15: Daily Pacing Schedule
+# ============================================
+
+
+def get_daily_pacing_schedule() -> CronSchedule:
+    """
+    Daily pacing check at 7 AM AEST.
+
+    Monitors lead consumption rate for all active clients.
+    Flags clients burning >120% or <50% of expected pace.
+
+    Runs daily to catch pacing issues early.
+
+    Returns:
+        CronSchedule: Daily at 7 AM AEST
+    """
+    return CronSchedule(
+        cron="0 7 * * *",  # 7 AM daily
+        timezone="Australia/Sydney",
+    )
+
+
+# ============================================
+# Phase D: DNCR Compliance Schedule
+# ============================================
+
+
+def get_dncr_rewash_schedule() -> CronSchedule:
+    """
+    Quarterly DNCR re-wash on 1st of Jan, Apr, Jul, Oct at 5 AM AEST.
+
+    Re-checks all Australian phone numbers against the Do Not Call Register
+    to ensure compliance with ACMA regulations. Numbers can be added/removed
+    from the register at any time, so quarterly re-checks are required.
+
+    Runs at 5 AM to avoid business hours impact.
+
+    Returns:
+        CronSchedule: 1st of Jan, Apr, Jul, Oct at 5 AM AEST
+    """
+    return CronSchedule(
+        # Day 1, months 1 (Jan), 4 (Apr), 7 (Jul), 10 (Oct), at 5 AM
+        cron="0 5 1 1,4,7,10 *",
+        timezone="Australia/Sydney",
+    )
+
+
 # Schedule registry for deployment configuration
 SCHEDULE_REGISTRY: Dict[str, Any] = {
     "enrichment": {
@@ -196,6 +298,57 @@ SCHEDULE_REGISTRY: Dict[str, Any] = {
             "min_activities": 50,
         },
     },
+    # P0: Credit Reset
+    "credit_reset": {
+        "schedule": get_credit_reset_schedule(),
+        "description": "Hourly credit reset check for billing integrity",
+        "work_queue": "agency-os-queue",
+        "tags": ["billing", "credits", "hourly", "critical"],
+        "parameters": {},
+    },
+    # Phase D: LinkedIn Health
+    "linkedin_health": {
+        "schedule": get_linkedin_health_schedule(),
+        "description": "Daily LinkedIn seat health and warmup management at 6 AM AEST",
+        "work_queue": "agency-os-queue",
+        "tags": ["linkedin", "health", "warmup", "daily"],
+        "parameters": {
+            "stale_days": 14,
+        },
+    },
+    # Phase D: DNCR Compliance
+    "dncr_rewash": {
+        "schedule": get_dncr_rewash_schedule(),
+        "description": "Quarterly DNCR re-wash for Australian SMS compliance (1st of Jan, Apr, Jul, Oct)",
+        "work_queue": "agency-os-queue",
+        "tags": ["compliance", "dncr", "sms", "quarterly"],
+        "parameters": {
+            "stale_days": 90,
+            "max_leads": 10000,
+            "batch_size": 500,
+        },
+    },
+    # Item 15: Daily Pacing
+    "daily_pacing": {
+        "schedule": get_daily_pacing_schedule(),
+        "description": "Daily pacing check at 7 AM AEST - monitors lead consumption rate",
+        "work_queue": "agency-os-queue",
+        "tags": ["pacing", "daily", "monitoring"],
+        "parameters": {
+            "fast_threshold": 1.2,  # 120%
+            "slow_threshold": 0.5,  # 50%
+        },
+    },
+    # Item 17: Monthly Replenishment (triggered by credit_reset, not scheduled)
+    "monthly_replenishment": {
+        "schedule": None,  # Triggered by credit_reset_flow, not scheduled
+        "description": "Post-credit-reset lead replenishment (triggered, not scheduled)",
+        "work_queue": "agency-os-queue",
+        "tags": ["leads", "monthly", "replenishment"],
+        "parameters": {
+            "force_full": False,  # Default: smart replenishment (gap only)
+        },
+    },
 }
 
 
@@ -252,3 +405,21 @@ def list_all_schedules() -> Dict[str, str]:
 # [x] Weekly pattern learning at 3 AM Sunday AEST
 # [x] Daily pattern backfill at 4 AM AEST
 # [x] Conversion Intelligence schedules in registry
+# --- P0: Credit Reset ---
+# [x] Hourly credit reset check
+# [x] Credit reset in schedule registry with "critical" tag
+# --- Phase D: LinkedIn Health ---
+# [x] Daily LinkedIn health check at 6 AM AEST
+# [x] LinkedIn warmup processing
+# [x] LinkedIn health metrics and limit reductions
+# --- Phase D: DNCR Compliance ---
+# [x] Quarterly DNCR re-wash (1st of Jan, Apr, Jul, Oct at 5 AM AEST)
+# [x] DNCR re-wash in schedule registry with compliance tags
+# --- Item 15: Daily Pacing ---
+# [x] Daily pacing check at 7 AM AEST
+# [x] Daily pacing in schedule registry with pacing/monitoring tags
+# [x] Parameters for fast_threshold (1.2) and slow_threshold (0.5)
+# --- Item 17: Monthly Replenishment ---
+# [x] Monthly replenishment in schedule registry (on-demand, not scheduled)
+# [x] Triggered by credit_reset_flow, not cron scheduled
+# [x] Parameters for force_full mode

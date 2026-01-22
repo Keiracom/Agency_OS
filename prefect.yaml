@@ -172,6 +172,37 @@ deployments:
         active: false
 
   # ============================================
+  # BILLING/CREDIT FLOWS
+  # ============================================
+
+  # Credit reset check flow (hourly safety net)
+  - name: credit-reset-flow
+    version: 1.0.0
+    paused: false  # Critical billing flow - active
+    tags: [billing, credits, hourly, critical]
+    description: "Hourly credit reset check for billing integrity"
+    entrypoint: src/orchestration/flows/credit_reset_flow.py:credit_reset_check_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    schedules:
+      - cron: "0 * * * *"
+        timezone: Australia/Sydney
+        active: false
+
+  # Monthly replenishment flow (triggered by credit reset)
+  - name: monthly-replenishment-flow
+    version: 1.0.0
+    paused: false  # Triggered by credit_reset - active
+    tags: [leads, monthly, replenishment]
+    description: "Post-credit-reset lead replenishment (triggered, not scheduled)"
+    entrypoint: src/orchestration/flows/monthly_replenishment_flow.py:monthly_replenishment_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    schedules: []
+
+  # ============================================
   # INTELLIGENCE FLOWS
   # ============================================
 
@@ -276,7 +307,7 @@ deployments:
 
 # === VERIFICATION CHECKLIST ===
 # [x] Prefect 3.x syntax
-# [x] 16 flows defined (all operational flows)
+# [x] 18 flows defined (all operational flows)
 # [x] Work pool: agency-os-pool
 # [x] Work queue: agency-os-queue
 # [x] Schedules configured with Australia/Sydney timezone

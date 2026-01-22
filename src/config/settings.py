@@ -90,6 +90,28 @@ class Settings(BaseSettings):
         description="Daily AI spend limit in AUD"
     )
 
+    # === SDK Brain (Claude Agent SDK) ===
+    sdk_brain_enabled: bool = Field(
+        default=True,
+        description="Enable SDK Brain for agentic AI tasks"
+    )
+    sdk_min_als_score: int = Field(
+        default=85,
+        description="Minimum ALS score for SDK enrichment (Hot tier threshold)"
+    )
+    sdk_daily_limit_ignition: float = Field(
+        default=50.0,
+        description="Daily SDK budget for Ignition tier (AUD)"
+    )
+    sdk_daily_limit_velocity: float = Field(
+        default=100.0,
+        description="Daily SDK budget for Velocity tier (AUD)"
+    )
+    sdk_daily_limit_dominance: float = Field(
+        default=200.0,
+        description="Daily SDK budget for Dominance tier (AUD)"
+    )
+
     apollo_api_key: str = Field(default="", description="Apollo.io API key")
     apify_api_key: str = Field(default="", description="Apify API key")
     clay_api_key: str = Field(default="", description="Clay API key")

@@ -6,5 +6,29 @@
     "summary": "Test summary",
     "forced": false,
     "drafts_created": []
+  },
+  {
+    "timestamp": "2026-01-18T21:44:14.495627",
+    "task_id": "J1.7",
+    "action": "completed",
+    "summary": "All 6 checks passed. Part A: Code verified POST /onboarding/analyze (202), client lookup from memberships, Prefect deployment trigger, status/result/confirm endpoints. Part B: All 4 endpoints return 401 (exist, require auth).",
+    "forced": false,
+    "drafts_created": []
+  },
+  {
+    "timestamp": "2026-01-18T21:51:04.495050",
+    "task_id": "J1.8",
+    "action": "completed",
+    "summary": "All 7 checks passed. Waterfall tiers 0-4 documented. URL validation via url_validator.validate_and_normalize(). Apify Cheerio/Playwright via scrape_website_with_waterfall(). Manual fallback URL generated. Portfolio pages fetched via _fetch_portfolio_pages(). Social links extracted for 6 platforms.",
+    "forced": false,
+    "drafts_created": []
+  },
+  {
+    "timestamp": "2026-01-18T21:52:11.998916",
+    "task_id": "J1.9",
+    "action": "completed",
+    "summary": "All 7 checks passed. 3 tabs (paste/linkedin/skip). Paste calls /analyze-content with 100 char min. LinkedIn calls /analyze-linkedin with URL validation. Skip calls /skip-icp. failedUrl preserved from query param.",
+    "forced": false,
+    "drafts_created": []
   }
 ]

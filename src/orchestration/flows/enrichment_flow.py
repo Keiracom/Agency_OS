@@ -5,6 +5,7 @@ PHASE: 5 (Orchestration)
 TASK: ORC-003
 DEPENDENCIES:
   - src/integrations/supabase.py
+  - src/integrations/dncr.py
   - src/engines/scout.py
   - src/engines/scorer.py
   - src/engines/allocator.py
@@ -16,6 +17,7 @@ RULES APPLIED:
   - Rule 11: Session passed as argument
   - Rule 13: JIT validation - check client billing before enrichment
   - Rule 14: Soft deletes only
+  - DNCR batch wash at enrichment for Australian numbers
 """
 
 import logging
@@ -29,6 +31,7 @@ from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.sdk_agents import should_use_sdk_enrichment
+from src.config.tiers import get_available_channels_enum
 from src.engines.allocator import get_allocator_engine
 from src.engines.scorer import get_scorer_engine
 from src.engines.scout import get_scout_engine
@@ -171,6 +174,92 @@ async def enrich_lead_batch_task(
         }
 
 
+@task(name="dncr_batch_check", retries=2, retry_delay_seconds=10)
+async def dncr_batch_check_task(lead_ids: list[str]) -> dict[str, Any]:
+    """
+    Batch check DNCR status for Australian phone numbers.
+
+    This runs after enrichment to cache DNCR status on leads,
+    avoiding API calls at send-time for already-checked numbers.
+
+    Args:
+        lead_ids: List of lead UUID strings to check
+
+    Returns:
+        Dict with DNCR check results
+    """
+    from src.integrations.dncr import get_dncr_client
+
+    async with get_db_session() as db:
+        dncr_client = get_dncr_client()
+
+        # Fetch leads with Australian phone numbers
+        lead_uuids = [UUID(lid) for lid in lead_ids]
+        stmt = select(Lead).where(
+            and_(
+                Lead.id.in_(lead_uuids),
+                Lead.phone.isnot(None),
+                Lead.phone.startswith("+61"),  # Australian numbers only
+                Lead.dncr_checked == False,  # Not already checked
+            )
+        )
+        result = await db.execute(stmt)
+        leads_to_check = result.scalars().all()
+
+        if not leads_to_check:
+            logger.info("No Australian phone numbers to check against DNCR")
+            return {
+                "total": 0,
+                "checked": 0,
+                "on_dncr": 0,
+                "clean": 0,
+            }
+
+        # Extract phone numbers
+        phone_to_lead: dict[str, Lead] = {
+            lead.phone: lead for lead in leads_to_check
+        }
+        phones = list(phone_to_lead.keys())
+
+        logger.info(f"Checking {len(phones)} Australian phone numbers against DNCR")
+
+        # Batch check via DNCR client
+        dncr_results = await dncr_client.check_numbers_batch(phones)
+
+        # Update lead records
+        on_dncr_count = 0
+        clean_count = 0
+        now = datetime.utcnow()
+
+        for phone, is_on_dncr in dncr_results.items():
+            if phone in phone_to_lead:
+                lead = phone_to_lead[phone]
+                lead.dncr_checked = True
+                lead.dncr_result = is_on_dncr
+                # Note: Lead model doesn't have dncr_checked_at, but LeadPool does
+                # We set dncr_checked=True and dncr_result to cache the result
+
+                if is_on_dncr:
+                    on_dncr_count += 1
+                    logger.info(f"Lead {lead.id} phone {phone[:8]}... is on DNCR")
+                else:
+                    clean_count += 1
+
+        await db.commit()
+
+        logger.info(
+            f"DNCR batch check complete: {len(phones)} checked, "
+            f"{on_dncr_count} on DNCR, {clean_count} clean"
+        )
+
+        return {
+            "total": len(phones),
+            "checked": len(dncr_results),
+            "on_dncr": on_dncr_count,
+            "clean": clean_count,
+        }
+
+
 @task(name="score_lead", retries=2, retry_delay_seconds=5)
 async def score_lead_task(lead_id: str) -> dict[str, Any]:
     """
@@ -294,7 +383,7 @@ async def allocate_channels_for_lead_task(
 
     Args:
         lead_id: Lead UUID string
-        als_tier: Lead tier (hot, warm, cool, cold, dead)
+        als_tier: Lead tier (hot, warm, cool, cold, dead) - used for logging only
 
     Returns:
         Dict with allocation results
@@ -303,31 +392,18 @@ async def allocate_channels_for_lead_task(
         allocator_engine = get_allocator_engine()
         lead_uuid = UUID(lead_id)
 
-        # Map tier to channels based on blueprint
-        tier_channel_map = {
-            "hot": [
-                ChannelType.EMAIL,
-                ChannelType.SMS,
-                ChannelType.LINKEDIN,
-                ChannelType.VOICE,
-                ChannelType.MAIL,
-            ],
-            "warm": [
-                ChannelType.EMAIL,
-                ChannelType.LINKEDIN,
-                ChannelType.VOICE,
-            ],
-            "cool": [
-                ChannelType.EMAIL,
-                ChannelType.LINKEDIN,
-            ],
-            "cold": [
-                ChannelType.EMAIL,
-            ],
-            "dead": [],  # No channels for dead leads
-        }
+        # Fetch lead to get current ALS score
+        lead = await db.get(Lead, lead_uuid)
+        if not lead:
+            return {
+                "lead_id": lead_id,
+                "success": False,
+                "error": "Lead not found",
+            }
 
-        available_channels = tier_channel_map.get(als_tier.lower(), [])
+        # P1 Fix: Use canonical channel access from tiers.py (single source of truth)
+        als_score = lead.als_score or 0
+        available_channels = get_available_channels_enum(als_score)
 
         if not available_channels:
             return {
@@ -489,6 +565,16 @@ async def daily_enrichment_flow(
 
     logger.info(f"Successfully enriched {len(enriched_lead_ids)} leads")
 
+    # Step 2.5: DNCR batch check for Australian phone numbers
+    dncr_result = {"total": 0, "on_dncr": 0, "clean": 0}
+    if enriched_lead_ids:
+        dncr_result = await dncr_batch_check_task(lead_ids=enriched_lead_ids)
+        if dncr_result["on_dncr"] > 0:
+            logger.warning(
+                f"DNCR check found {dncr_result['on_dncr']} numbers on "
+                f"Do Not Call Register - these will be blocked from SMS"
+            )
+
     # Step 3: Score enriched leads
     scoring_results = []
     for lead_id in enriched_lead_ids:
@@ -557,6 +643,8 @@ async def daily_enrichment_flow(
         "total_credits_deducted": total_credits_deducted,
         "sdk_enriched": total_sdk_enriched,
         "sdk_cost_aud": total_sdk_cost,
+        "dncr_checked": dncr_result.get("total", 0),
+        "dncr_blocked": dncr_result.get("on_dncr", 0),
         "enrichment_results": enrichment_results,
         "sdk_enrichment_results": sdk_enrichment_results,
         "completed_at": datetime.utcnow().isoformat(),
@@ -566,7 +654,8 @@ async def daily_enrichment_flow(
         f"Daily enrichment flow completed: {total_enriched} enriched, "
         f"{total_scored} scored, {total_allocated} allocated, "
         f"{total_credits_deducted} credits deducted, "
-        f"{total_sdk_enriched} SDK enriched (${total_sdk_cost:.2f})"
+        f"{total_sdk_enriched} SDK enriched (${total_sdk_cost:.2f}), "
+        f"DNCR: {dncr_result.get('on_dncr', 0)}/{dncr_result.get('total', 0)} blocked"
     )
 
     return summary
@@ -589,6 +678,8 @@ async def daily_enrichment_flow(
 # [x] Logging throughout
 # [x] Batches leads for efficiency
 # [x] Credit deduction after successful enrichment
+# [x] DNCR batch wash at enrichment for Australian numbers
+# [x] DNCR results cached in lead.dncr_checked and lead.dncr_result
 # [x] All functions have type hints
 # [x] All functions have docstrings
 # [x] Returns structured dict results

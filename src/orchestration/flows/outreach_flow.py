@@ -507,6 +507,27 @@ async def send_sms_outreach_task(
         lead_uuid = UUID(lead_id)
         campaign_uuid = UUID(campaign_id)
 
+        # P1 Fix: Validate ALS score (SMS requires Hot tier, ALS >= 85)
+        lead = await db.get(Lead, lead_uuid)
+        if not lead:
+            return {
+                "lead_id": lead_id,
+                "channel": "sms",
+                "success": False,
+                "error": "Lead not found",
+            }
+
+        if lead.als_score is None or lead.als_score < 85:
+            logger.warning(
+                f"SMS blocked for lead {lead_id}: ALS {lead.als_score} < 85 (Hot required)"
+            )
+            return {
+                "lead_id": lead_id,
+                "channel": "sms",
+                "success": False,
+                "error": f"SMS requires Hot tier (ALS >= 85). Lead has ALS {lead.als_score}",
+            }
+
         # Check rate limit
         quota_result = await allocator_engine.check_and_consume_quota(
             channel=ChannelType.SMS,

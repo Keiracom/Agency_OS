@@ -18,11 +18,14 @@ RULES APPLIED:
   - Rule 15: AI spend limiter (via Anthropic client)
 """
 
+import logging
 from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy import and_, select, text, update
+
+logger = logging.getLogger(__name__)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import BaseEngine, EngineResult
@@ -44,6 +47,9 @@ INTENT_MAP = {
     "unsubscribe": IntentType.UNSUBSCRIBE,
     "out_of_office": IntentType.OUT_OF_OFFICE,
     "auto_reply": IntentType.AUTO_REPLY,
+    "referral": IntentType.REFERRAL,
+    "wrong_person": IntentType.WRONG_PERSON,
+    "angry_or_complaint": IntentType.ANGRY_COMPLAINT,
 }
 
 
@@ -69,6 +75,9 @@ class CloserEngine(BaseEngine):
     - unsubscribe: Wants to stop receiving messages
     - out_of_office: Automated out of office reply
     - auto_reply: Other automated reply
+    - referral: Lead suggests contacting someone else
+    - wrong_person: Lead no longer at company or wrong contact
+    - angry_or_complaint: Lead is upset, threatening, or complaining
     """
 
     def __init__(self, anthropic_client: AnthropicClient | None = None):
@@ -486,6 +495,47 @@ class CloserEngine(BaseEngine):
             # No action needed for auto-replies
             actions.append("ignored_auto_reply")
 
+        elif intent == IntentType.REFERRAL:
+            # Stop sequence, extract referral info, flag for new lead creation
+            if lead.status == LeadStatus.IN_SEQUENCE:
+                lead.status = LeadStatus.ENRICHED
+                actions.append("stopped_sequence")
+            actions.append("referral_received")
+            actions.append("created_referral_task")
+            # Store referral flag in lead metadata for downstream processing
+            if not lead.metadata:
+                lead.metadata = {}
+            lead.metadata["has_referral"] = True
+            lead.metadata["referral_received_at"] = datetime.utcnow().isoformat()
+
+        elif intent == IntentType.WRONG_PERSON:
+            # Stop sequence, mark lead as invalid
+            lead.status = LeadStatus.BOUNCED  # Reuse BOUNCED status for invalid contacts
+            actions.append("stopped_sequence")
+            actions.append("marked_lead_invalid")
+            # Store reason in lead metadata
+            if not lead.metadata:
+                lead.metadata = {}
+            lead.metadata["invalid_reason"] = "wrong_person"
+            lead.metadata["invalid_at"] = datetime.utcnow().isoformat()
+
+        elif intent == IntentType.ANGRY_COMPLAINT:
+            # Stop sequence, set admin_review_required, log alert
+            if lead.status == LeadStatus.IN_SEQUENCE:
+                lead.status = LeadStatus.ENRICHED
+                actions.append("stopped_sequence")
+            logger.warning(
+                f"ADMIN ALERT: Angry/complaint reply from lead {lead.id} - "
+                f"requires manual review"
+            )
+            actions.append("admin_review_required")
+            # Store admin review flag in lead metadata
+            if not lead.metadata:
+                lead.metadata = {}
+            lead.metadata["admin_review_required"] = True
+            lead.metadata["admin_review_reason"] = "angry_or_complaint"
+            lead.metadata["admin_review_flagged_at"] = datetime.utcnow().isoformat()
+
         # Phase 24D: Track objection in lead history
         if reply_analysis and reply_analysis.get("objection_type"):
             await self._add_objection_to_history(
@@ -598,6 +648,24 @@ class CloserEngine(BaseEngine):
                 outcome="rejected",
                 outcome_reason=f"Objection: {objection}",
             )
+        elif intent == IntentType.REFERRAL:
+            await thread_service.set_outcome(
+                thread_id=thread_id,
+                outcome="referral",
+                outcome_reason="Lead suggested contacting someone else",
+            )
+        elif intent == IntentType.WRONG_PERSON:
+            await thread_service.set_outcome(
+                thread_id=thread_id,
+                outcome="invalid_contact",
+                outcome_reason="Lead no longer at company or wrong contact",
+            )
+        elif intent == IntentType.ANGRY_COMPLAINT:
+            await thread_service.set_outcome(
+                thread_id=thread_id,
+                outcome="escalated",
+                outcome_reason="Lead upset or complaining - requires admin review",
+            )
         # For questions, out of office, auto reply - keep thread active
 
 
@@ -624,7 +692,7 @@ def get_closer_engine() -> CloserEngine:
 # [x] AI spend limiter via Anthropic client (Rule 15)
 # [x] Extends BaseEngine from base.py
 # [x] Uses Anthropic integration for intent classification
-# [x] Handles 7 intent types as specified
+# [x] Handles 10 intent types as specified (7 original + referral, wrong_person, angry_complaint)
 # [x] Updates lead status based on intent
 # [x] Creates follow-up tasks for positive intents
 # [x] Activity logging with intent and confidence

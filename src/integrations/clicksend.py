@@ -1,20 +1,26 @@
 """
 FILE: src/integrations/clicksend.py
-PURPOSE: ClickSend integration for direct mail (Australian)
-PHASE: 3 (Integrations)
+PURPOSE: ClickSend integration for SMS and direct mail (Australian)
+PHASE: 3 (Integrations), updated E2E Testing
 TASK: INT-011
 DEPENDENCIES:
   - src/config/settings.py
   - src/exceptions.py
+  - src/integrations/dncr.py (for DNCR compliance)
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 11: No hardcoded credentials
+  - Australia DNCR compliance for SMS
 
 ClickSend is an Australian company (Perth) providing:
+- SMS (primary SMS provider for AU market)
 - Direct mail (letters, postcards)
-- SMS (also available)
 - No minimum volumes
 - REST API with Basic Auth
+- Native Australian phone number support
+
+NOTE: Twilio is used for VOICE CALLS only (via Vapi).
+      ClickSend is used for ALL SMS in Australia.
 """
 
 import base64
@@ -111,6 +117,256 @@ class ClickSendClient:
         """
         result = await self._request("GET", "/account")
         return result.get("data", {})
+
+    # ==========================================
+    # SMS Methods (Primary SMS for Australia)
+    # ==========================================
+
+    async def send_sms(
+        self,
+        to_number: str,
+        message: str,
+        from_number: str | None = None,
+        check_dncr: bool = True,
+        custom_string: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Send an SMS message via ClickSend.
+
+        Args:
+            to_number: Recipient phone number (E.164 format, e.g., +61412345678)
+            message: SMS message content (max 918 chars, splits into segments)
+            from_number: Sender ID or phone number (optional)
+            check_dncr: Whether to check DNCR first (default True for AU)
+            custom_string: Custom reference string for tracking
+
+        Returns:
+            Send result with message ID and status
+
+        Raises:
+            DNCRError: If number is on DNCR list
+            APIError: If ClickSend API returns an error
+        """
+        from src.exceptions import DNCRError
+
+        # Check DNCR for Australian numbers
+        if check_dncr and self._is_australian_number(to_number):
+            is_on_dncr = await self.check_dncr(to_number)
+            if is_on_dncr:
+                raise DNCRError(
+                    phone=to_number,
+                    message=f"Phone number {to_number} is on the Do Not Call Register",
+                )
+
+        # Build message payload
+        sms_message = {
+            "to": to_number,
+            "body": message,
+        }
+
+        if from_number:
+            sms_message["from"] = from_number
+        if custom_string:
+            sms_message["custom_string"] = custom_string
+
+        data = {
+            "messages": [sms_message]
+        }
+
+        result = await self._request("POST", "/sms/send", data)
+
+        # Extract response
+        response_data = result.get("data", {})
+        messages = response_data.get("messages", [{}])
+        first_message = messages[0] if messages else {}
+
+        return {
+            "success": first_message.get("status") == "SUCCESS",
+            "message_id": first_message.get("message_id"),
+            "message_sid": first_message.get("message_id"),  # Alias for compatibility
+            "status": first_message.get("status"),
+            "to": first_message.get("to"),
+            "cost": first_message.get("message_price"),
+            "parts": first_message.get("message_parts", 1),
+            "provider": "clicksend",
+        }
+
+    async def send_sms_batch(
+        self,
+        messages: list[dict[str, Any]],
+        check_dncr: bool = True,
+    ) -> list[dict[str, Any]]:
+        """
+        Send multiple SMS messages in batch.
+
+        Args:
+            messages: List of message dicts with 'to' and 'body' keys
+            check_dncr: Whether to check DNCR for each number
+
+        Returns:
+            List of send results
+        """
+        from src.exceptions import DNCRError
+
+        sms_messages = []
+        skipped = []
+
+        for msg in messages:
+            to_number = msg.get("to")
+
+            # Check DNCR if enabled
+            if check_dncr and self._is_australian_number(to_number):
+                try:
+                    is_on_dncr = await self.check_dncr(to_number)
+                    if is_on_dncr:
+                        skipped.append({
+                            "to": to_number,
+                            "status": "DNCR_BLOCKED",
+                            "success": False,
+                        })
+                        continue
+                except Exception:
+                    pass  # Fail open on DNCR check errors
+
+            sms_messages.append({
+                "to": to_number,
+                "body": msg.get("body", msg.get("message", "")),
+                "from": msg.get("from"),
+                "custom_string": msg.get("custom_string"),
+            })
+
+        if not sms_messages:
+            return skipped
+
+        data = {"messages": sms_messages}
+        result = await self._request("POST", "/sms/send", data)
+
+        # Extract responses
+        response_data = result.get("data", {})
+        api_messages = response_data.get("messages", [])
+
+        results = []
+        for api_msg in api_messages:
+            results.append({
+                "success": api_msg.get("status") == "SUCCESS",
+                "message_id": api_msg.get("message_id"),
+                "status": api_msg.get("status"),
+                "to": api_msg.get("to"),
+                "cost": api_msg.get("message_price"),
+                "provider": "clicksend",
+            })
+
+        return results + skipped
+
+    async def check_dncr(self, phone_number: str) -> bool:
+        """
+        Check if phone number is on Australian DNCR.
+
+        Uses the DNCRClient integration which:
+        - Connects to ACMA DNCR API
+        - Caches results in Redis (default 24h)
+        - Fails open if API unavailable
+
+        Args:
+            phone_number: Phone number to check
+
+        Returns:
+            True if on DNCR list, False otherwise
+        """
+        from src.integrations.dncr import get_dncr_client
+
+        dncr_client = get_dncr_client()
+        return await dncr_client.check_number(phone_number)
+
+    def _is_australian_number(self, phone_number: str) -> bool:
+        """Check if phone number is Australian."""
+        return phone_number.startswith("+61")
+
+    async def get_sms_history(
+        self,
+        page: int = 1,
+        limit: int = 15,
+        date_from: str | None = None,
+        date_to: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Get SMS sending history.
+
+        Args:
+            page: Page number
+            limit: Results per page
+            date_from: Start date (Unix timestamp)
+            date_to: End date (Unix timestamp)
+
+        Returns:
+            SMS history with pagination
+        """
+        params = f"?page={page}&limit={limit}"
+        if date_from:
+            params += f"&date_from={date_from}"
+        if date_to:
+            params += f"&date_to={date_to}"
+
+        result = await self._request("GET", f"/sms/history{params}")
+        return result.get("data", {})
+
+    async def get_sms_message(self, message_id: str) -> dict[str, Any]:
+        """
+        Get details of a specific SMS message.
+
+        Args:
+            message_id: ClickSend message ID
+
+        Returns:
+            Message details including status and delivery info
+        """
+        result = await self._request("GET", f"/sms/history/{message_id}")
+        return result.get("data", {})
+
+    def parse_sms_webhook(self, payload: dict) -> dict[str, Any]:
+        """
+        Parse ClickSend SMS webhook (delivery receipt or inbound).
+
+        Args:
+            payload: Raw webhook payload
+
+        Returns:
+            Parsed SMS event
+        """
+        return {
+            "event_type": payload.get("event_type", "delivery"),
+            "message_id": payload.get("message_id"),
+            "from_number": payload.get("from"),
+            "to_number": payload.get("to"),
+            "body": payload.get("body"),
+            "status": payload.get("status"),
+            "status_code": payload.get("status_code"),
+            "timestamp": payload.get("timestamp"),
+            "custom_string": payload.get("custom_string"),
+        }
+
+    def parse_inbound_sms(self, payload: dict) -> dict[str, Any]:
+        """
+        Parse ClickSend inbound SMS webhook.
+
+        Args:
+            payload: Raw webhook payload from inbound SMS
+
+        Returns:
+            Parsed inbound SMS data
+        """
+        return {
+            "message_id": payload.get("message_id"),
+            "from_number": payload.get("from"),
+            "to_number": payload.get("to"),
+            "body": payload.get("body"),
+            "timestamp": payload.get("timestamp"),
+            "custom_string": payload.get("custom_string"),
+        }
+
+    # ==========================================
+    # Direct Mail Methods
+    # ==========================================
 
     async def send_letter(
         self,
@@ -367,12 +623,22 @@ def get_clicksend_client() -> ClickSendClient:
 # ============================================
 # [x] Contract comment at top
 # [x] No hardcoded credentials
+# --- SMS (Primary for Australia) ---
+# [x] SMS sending with DNCR check
+# [x] SMS batch sending
+# [x] DNCR compliance check
+# [x] SMS history retrieval
+# [x] Inbound SMS webhook parsing
+# [x] SMS delivery webhook parsing
+# --- Direct Mail ---
 # [x] Letter sending with templates or file URL
 # [x] Postcard sending
-# [x] History retrieval
+# [x] Letter/postcard history retrieval
 # [x] Price calculation
-# [x] Webhook parsing for delivery tracking
-# [x] Australian address support (native)
+# [x] Mail webhook parsing for delivery tracking
+# --- Common ---
+# [x] Australian address/phone support (native)
 # [x] Error handling with custom exceptions
 # [x] All functions have type hints
 # [x] All functions have docstrings
+# [x] SMS added (FIX-E2E-006) - ClickSend is primary SMS for AU

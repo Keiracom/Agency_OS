@@ -1,9 +1,9 @@
 {
   "version": "2.1",
   "current_phase": "J1",
-  "current_group": "J1.5",
-  "session": 13,
-  "last_updated": "2026-01-17T21:00:00.000000",
+  "current_group": "J1.10",
+  "session": 14,
+  "last_updated": "2026-01-18T21:52:11.968916",
   "completed": [
     "J0.1",
     "J0.2",
@@ -17,268 +17,1703 @@
     "J1.1",
     "J1.2",
     "J1.3",
-    "J1.4"
+    "J1.4",
+    "J1.5",
+    "J1.6",
+    "J1.7",
+    "J1.8",
+    "J1.9"
   ],
   "phases": {
     "J0": {
       "name": "Infrastructure & Wiring Audit",
       "groups": 9,
       "tasks": [
-        {"id": "J0.1", "title": "Railway Services Health", "status": "completed", "skill_file": "j0_railway_health.py", "checks": 6, "_phase_id": "J0", "_phase_name": "Infrastructure & Wiring Audit"},
-        {"id": "J0.2", "title": "Environment Variables Audit", "status": "completed", "skill_file": "j0_env_variables.py", "checks": 7, "_phase_id": "J0", "_phase_name": "Infrastructure & Wiring Audit"},
-        {"id": "J0.3", "title": "Prefect Configuration Verification", "status": "completed", "skill_file": "j0_prefect_config.py", "checks": 6, "_phase_id": "J0", "_phase_name": "Infrastructure & Wiring Audit"},
-        {"id": "J0.4", "title": "Database Connection Verification", "status": "completed", "skill_file": "j0_database_connection.py", "checks": 6, "_phase_id": "J0", "_phase_name": "Infrastructure & Wiring Audit"},
-        {"id": "J0.5", "title": "Integration Wiring Audit", "status": "completed", "skill_file": "j0_integration_wiring.py", "checks": 9, "_phase_id": "J0", "_phase_name": "Infrastructure & Wiring Audit"},
-        {"id": "J0.6", "title": "Code Completeness Scan", "status": "completed", "skill_file": "j0_code_completeness.py", "checks": 8, "_phase_id": "J0", "_phase_name": "Infrastructure & Wiring Audit"},
-        {"id": "J0.7", "title": "Import Hierarchy Verification", "status": "completed", "skill_file": "j0_import_hierarchy.py", "checks": 6, "_phase_id": "J0", "_phase_name": "Infrastructure & Wiring Audit"},
-        {"id": "J0.8", "title": "Docker & Deployment Verification", "status": "completed", "skill_file": "j0_docker_deployment.py", "checks": 7, "_phase_id": "J0", "_phase_name": "Infrastructure & Wiring Audit"},
-        {"id": "J0.9", "title": "E2E Coverage Verification", "status": "completed", "skill_file": "j0_e2e_coverage.py", "checks": 7, "_phase_id": "J0", "_phase_name": "Infrastructure & Wiring Audit"}
+        {
+          "id": "J0.1",
+          "title": "Railway Services Health",
+          "status": "completed",
+          "skill_file": "j0_railway_health.py",
+          "checks": 6,
+          "_phase_id": "J0",
+          "_phase_name": "Infrastructure & Wiring Audit"
+        },
+        {
+          "id": "J0.2",
+          "title": "Environment Variables Audit",
+          "status": "completed",
+          "skill_file": "j0_env_variables.py",
+          "checks": 7,
+          "_phase_id": "J0",
+          "_phase_name": "Infrastructure & Wiring Audit"
+        },
+        {
+          "id": "J0.3",
+          "title": "Prefect Configuration Verification",
+          "status": "completed",
+          "skill_file": "j0_prefect_config.py",
+          "checks": 6,
+          "_phase_id": "J0",
+          "_phase_name": "Infrastructure & Wiring Audit"
+        },
+        {
+          "id": "J0.4",
+          "title": "Database Connection Verification",
+          "status": "completed",
+          "skill_file": "j0_database_connection.py",
+          "checks": 6,
+          "_phase_id": "J0",
+          "_phase_name": "Infrastructure & Wiring Audit"
+        },
+        {
+          "id": "J0.5",
+          "title": "Integration Wiring Audit",
+          "status": "completed",
+          "skill_file": "j0_integration_wiring.py",
+          "checks": 9,
+          "_phase_id": "J0",
+          "_phase_name": "Infrastructure & Wiring Audit"
+        },
+        {
+          "id": "J0.6",
+          "title": "Code Completeness Scan",
+          "status": "completed",
+          "skill_file": "j0_code_completeness.py",
+          "checks": 8,
+          "_phase_id": "J0",
+          "_phase_name": "Infrastructure & Wiring Audit"
+        },
+        {
+          "id": "J0.7",
+          "title": "Import Hierarchy Verification",
+          "status": "completed",
+          "skill_file": "j0_import_hierarchy.py",
+          "checks": 6,
+          "_phase_id": "J0",
+          "_phase_name": "Infrastructure & Wiring Audit"
+        },
+        {
+          "id": "J0.8",
+          "title": "Docker & Deployment Verification",
+          "status": "completed",
+          "skill_file": "j0_docker_deployment.py",
+          "checks": 7,
+          "_phase_id": "J0",
+          "_phase_name": "Infrastructure & Wiring Audit"
+        },
+        {
+          "id": "J0.9",
+          "title": "E2E Coverage Verification",
+          "status": "completed",
+          "skill_file": "j0_e2e_coverage.py",
+          "checks": 7,
+          "_phase_id": "J0",
+          "_phase_name": "Infrastructure & Wiring Audit"
+        }
       ]
     },
     "J1": {
       "name": "Signup & Onboarding",
       "groups": 15,
       "tasks": [
-        {"id": "J1.1", "title": "Login Page", "status": "completed", "skill_file": "j1_login_page.py", "checks": 5, "_phase_id": "J1", "_phase_name": "Signup & Onboarding"},
-        {"id": "J1.2", "title": "Signup Page & Validation", "status": "completed", "skill_file": "j1_signup_validation.py", "checks": 5, "_phase_id": "J1", "_phase_name": "Signup & Onboarding"},
-        {"id": "J1.3", "title": "Auto-Provisioning Trigger", "status": "completed", "skill_file": "j1_auto_provision.py", "checks": 5, "_phase_id": "J1", "_phase_name": "Signup & Onboarding"},
-        {"id": "J1.4", "title": "Auth Callback", "status": "completed", "skill_file": "j1_auth_callback.py", "checks": 5, "_phase_id": "J1", "_phase_name": "Signup & Onboarding", "completed_at": "2026-01-17T20:24:23.013437", "completion_summary": "Test summary", "drafts_created": []},
-        {"id": "J1.5", "title": "Middleware Route Protection", "status": "pending", "skill_file": "j1_middleware_protection.py", "checks": 5, "_phase_id": "J1", "_phase_name": "Signup & Onboarding"},
-        {"id": "J1.6", "title": "Onboarding Page (Website URL)", "status": "pending", "skill_file": "j1_onboarding_page.py", "checks": 6, "_phase_id": "J1", "_phase_name": "Signup & Onboarding"},
-        {"id": "J1.7", "title": "Onboarding API Endpoints", "status": "pending", "skill_file": "j1_onboarding_api.py", "checks": 6, "_phase_id": "J1", "_phase_name": "Signup & Onboarding"},
-        {"id": "J1.8", "title": "ICP Scraper Engine (Waterfall)", "status": "pending", "skill_file": "j1_icp_scraper.py", "checks": 7, "_phase_id": "J1", "_phase_name": "Signup & Onboarding"},
-        {"id": "J1.9", "title": "Manual Entry Fallback", "status": "pending", "skill_file": "j1_manual_entry.py", "checks": 7, "_phase_id": "J1", "_phase_name": "Signup & Onboarding"},
-        {"id": "J1.10", "title": "LinkedIn Credential Connection", "status": "pending", "skill_file": "j1_linkedin_connection.py", "checks": 7, "_phase_id": "J1", "_phase_name": "Signup & Onboarding"},
-        {"id": "J1.11", "title": "ICP Extraction Job Tracking", "status": "pending", "skill_file": "j1_job_tracking.py", "checks": 6, "_phase_id": "J1", "_phase_name": "Signup & Onboarding"},
-        {"id": "J1.12", "title": "ICP Confirmation Flow", "status": "pending", "skill_file": "j1_icp_confirmation.py", "checks": 5, "_phase_id": "J1", "_phase_name": "Signup & Onboarding"},
-        {"id": "J1.13", "title": "Onboarding Completion", "status": "pending", "skill_file": "j1_onboarding_completion.py", "checks": 5, "_phase_id": "J1", "_phase_name": "Signup & Onboarding"},
-        {"id": "J1.14", "title": "Database Schema Verification", "status": "pending", "skill_file": "j1_database_schema.py", "checks": 6, "_phase_id": "J1", "_phase_name": "Signup & Onboarding"},
-        {"id": "J1.15", "title": "Edge Cases & Error Handling", "status": "pending", "skill_file": "j1_edge_cases.py", "checks": 7, "_phase_id": "J1", "_phase_name": "Signup & Onboarding"}
+        {
+          "id": "J1.1",
+          "title": "Login Page",
+          "status": "completed",
+          "skill_file": "j1_login_page.py",
+          "checks": 5,
+          "_phase_id": "J1",
+          "_phase_name": "Signup & Onboarding"
+        },
+        {
+          "id": "J1.2",
+          "title": "Signup Page & Validation",
+          "status": "completed",
+          "skill_file": "j1_signup_validation.py",
+          "checks": 5,
+          "_phase_id": "J1",
+          "_phase_name": "Signup & Onboarding"
+        },
+        {
+          "id": "J1.3",
+          "title": "Auto-Provisioning Trigger",
+          "status": "completed",
+          "skill_file": "j1_auto_provision.py",
+          "checks": 5,
+          "_phase_id": "J1",
+          "_phase_name": "Signup & Onboarding"
+        },
+        {
+          "id": "J1.4",
+          "title": "Auth Callback",
+          "status": "completed",
+          "skill_file": "j1_auth_callback.py",
+          "checks": 5,
+          "_phase_id": "J1",
+          "_phase_name": "Signup & Onboarding",
+          "completed_at": "2026-01-17T20:24:23.013437",
+          "completion_summary": "Test summary",
+          "drafts_created": []
+        },
+        {
+          "id": "J1.5",
+          "title": "Middleware Route Protection",
+          "status": "completed",
+          "skill_file": "j1_middleware_protection.py",
+          "checks": 5,
+          "_phase_id": "J1",
+          "_phase_name": "Signup & Onboarding",
+          "completed_at": "2026-01-18T10:00:00.000000"
+        },
+        {
+          "id": "J1.6",
+          "title": "Onboarding Page (Website URL)",
+          "status": "completed",
+          "skill_file": "j1_onboarding_page.py",
+          "checks": 6,
+          "_phase_id": "J1",
+          "_phase_name": "Signup & Onboarding",
+          "completed_at": "2026-01-18T10:05:00.000000"
+        },
+        {
+          "id": "J1.7",
+          "title": "Onboarding API Endpoints",
+          "status": "completed",
+          "skill_file": "j1_onboarding_api.py",
+          "checks": 6,
+          "_phase_id": "J1",
+          "_phase_name": "Signup & Onboarding",
+          "completed_at": "2026-01-18T21:44:14.486495",
+          "completion_summary": "All 6 checks passed. Part A: Code verified POST /onboarding/analyze (202), client lookup from memberships, Prefect deployment trigger, status/result/confirm endpoints. Part B: All 4 endpoints return 401 (exist, require auth).",
+          "drafts_created": []
+        },
+        {
+          "id": "J1.8",
+          "title": "ICP Scraper Engine (Waterfall)",
+          "status": "completed",
+          "skill_file": "j1_icp_scraper.py",
+          "checks": 7,
+          "_phase_id": "J1",
+          "_phase_name": "Signup & Onboarding",
+          "completed_at": "2026-01-18T21:51:04.465496",
+          "completion_summary": "All 7 checks passed. Waterfall tiers 0-4 documented. URL validation via url_validator.validate_and_normalize(). Apify Cheerio/Playwright via scrape_website_with_waterfall(). Manual fallback URL generated. Portfolio pages fetched via _fetch_portfolio_pages(). Social links extracted for 6 platforms.",
+          "drafts_created": []
+        },
+        {
+          "id": "J1.9",
+          "title": "Manual Entry Fallback",
+          "status": "completed",
+          "skill_file": "j1_manual_entry.py",
+          "checks": 7,
+          "_phase_id": "J1",
+          "_phase_name": "Signup & Onboarding",
+          "completed_at": "2026-01-18T21:52:11.968860",
+          "completion_summary": "All 7 checks passed. 3 tabs (paste/linkedin/skip). Paste calls /analyze-content with 100 char min. LinkedIn calls /analyze-linkedin with URL validation. Skip calls /skip-icp. failedUrl preserved from query param.",
+          "drafts_created": []
+        },
+        {
+          "id": "J1.10",
+          "title": "LinkedIn Credential Connection",
+          "status": "pending",
+          "skill_file": "j1_linkedin_connection.py",
+          "checks": 7,
+          "_phase_id": "J1",
+          "_phase_name": "Signup & Onboarding"
+        },
+        {
+          "id": "J1.11",
+          "title": "ICP Extraction Job Tracking",
+          "status": "pending",
+          "skill_file": "j1_job_tracking.py",
+          "checks": 6,
+          "_phase_id": "J1",
+          "_phase_name": "Signup & Onboarding"
+        },
+        {
+          "id": "J1.12",
+          "title": "ICP Confirmation Flow",
+          "status": "pending",
+          "skill_file": "j1_icp_confirmation.py",
+          "checks": 5,
+          "_phase_id": "J1",
+          "_phase_name": "Signup & Onboarding"
+        },
+        {
+          "id": "J1.13",
+          "title": "Onboarding Completion",
+          "status": "pending",
+          "skill_file": "j1_onboarding_completion.py",
+          "checks": 5,
+          "_phase_id": "J1",
+          "_phase_name": "Signup & Onboarding"
+        },
+        {
+          "id": "J1.14",
+          "title": "Database Schema Verification",
+          "status": "pending",
+          "skill_file": "j1_database_schema.py",
+          "checks": 6,
+          "_phase_id": "J1",
+          "_phase_name": "Signup & Onboarding"
+        },
+        {
+          "id": "J1.15",
+          "title": "Edge Cases & Error Handling",
+          "status": "pending",
+          "skill_file": "j1_edge_cases.py",
+          "checks": 7,
+          "_phase_id": "J1",
+          "_phase_name": "Signup & Onboarding"
+        }
       ]
     },
     "J2": {
       "name": "Campaign Creation & Management",
       "groups": 12,
       "tasks": [
-        {"id": "J2.1", "title": "Campaign Create Page", "status": "pending", "skill_file": "j2_campaign_create.py", "checks": 5, "_phase_id": "J2", "_phase_name": "Campaign Creation & Management"},
-        {"id": "J2.2", "title": "Campaign Validation", "status": "pending", "skill_file": "j2_campaign_validation.py", "checks": 5, "_phase_id": "J2", "_phase_name": "Campaign Creation & Management"},
-        {"id": "J2.3", "title": "Campaign Persistence", "status": "pending", "skill_file": "j2_campaign_persistence.py", "checks": 5, "_phase_id": "J2", "_phase_name": "Campaign Creation & Management"},
-        {"id": "J2.4", "title": "Campaign Lead Pool", "status": "pending", "skill_file": "j2_campaign_pool.py", "checks": 5, "_phase_id": "J2", "_phase_name": "Campaign Creation & Management"},
-        {"id": "J2.5", "title": "Lead Assignment Flow", "status": "pending", "skill_file": "j2_lead_assignment.py", "checks": 5, "_phase_id": "J2", "_phase_name": "Campaign Creation & Management"},
-        {"id": "J2.6", "title": "Campaign Status Management", "status": "pending", "skill_file": "j2_campaign_status.py", "checks": 5, "_phase_id": "J2", "_phase_name": "Campaign Creation & Management"},
-        {"id": "J2.7", "title": "Sequence Configuration", "status": "pending", "skill_file": "j2_sequence_config.py", "checks": 5, "_phase_id": "J2", "_phase_name": "Campaign Creation & Management"},
-        {"id": "J2.8", "title": "Template Management", "status": "pending", "skill_file": "j2_template_management.py", "checks": 5, "_phase_id": "J2", "_phase_name": "Campaign Creation & Management"},
-        {"id": "J2.9", "title": "Content Engine Integration", "status": "pending", "skill_file": "j2_content_engine.py", "checks": 5, "_phase_id": "J2", "_phase_name": "Campaign Creation & Management"},
-        {"id": "J2.10", "title": "Campaign Analytics", "status": "pending", "skill_file": "j2_campaign_analytics.py", "checks": 5, "_phase_id": "J2", "_phase_name": "Campaign Creation & Management"},
-        {"id": "J2.11", "title": "Campaign Export", "status": "pending", "skill_file": "j2_campaign_export.py", "checks": 5, "_phase_id": "J2", "_phase_name": "Campaign Creation & Management"},
-        {"id": "J2.12", "title": "Live Campaign Test", "status": "pending", "skill_file": "j2_live_campaign_test.py", "checks": 5, "_phase_id": "J2", "_phase_name": "Campaign Creation & Management"}
+        {
+          "id": "J2.1",
+          "title": "Campaign Create Page",
+          "status": "pending",
+          "skill_file": "j2_campaign_create.py",
+          "checks": 5,
+          "_phase_id": "J2",
+          "_phase_name": "Campaign Creation & Management"
+        },
+        {
+          "id": "J2.2",
+          "title": "Campaign Validation",
+          "status": "pending",
+          "skill_file": "j2_campaign_validation.py",
+          "checks": 5,
+          "_phase_id": "J2",
+          "_phase_name": "Campaign Creation & Management"
+        },
+        {
+          "id": "J2.3",
+          "title": "Campaign Persistence",
+          "status": "pending",
+          "skill_file": "j2_campaign_persistence.py",
+          "checks": 5,
+          "_phase_id": "J2",
+          "_phase_name": "Campaign Creation & Management"
+        },
+        {
+          "id": "J2.4",
+          "title": "Campaign Lead Pool",
+          "status": "pending",
+          "skill_file": "j2_campaign_pool.py",
+          "checks": 5,
+          "_phase_id": "J2",
+          "_phase_name": "Campaign Creation & Management"
+        },
+        {
+          "id": "J2.5",
+          "title": "Lead Assignment Flow",
+          "status": "pending",
+          "skill_file": "j2_lead_assignment.py",
+          "checks": 5,
+          "_phase_id": "J2",
+          "_phase_name": "Campaign Creation & Management"
+        },
+        {
+          "id": "J2.6",
+          "title": "Campaign Status Management",
+          "status": "pending",
+          "skill_file": "j2_campaign_status.py",
+          "checks": 5,
+          "_phase_id": "J2",
+          "_phase_name": "Campaign Creation & Management"
+        },
+        {
+          "id": "J2.7",
+          "title": "Sequence Configuration",
+          "status": "pending",
+          "skill_file": "j2_sequence_config.py",
+          "checks": 5,
+          "_phase_id": "J2",
+          "_phase_name": "Campaign Creation & Management"
+        },
+        {
+          "id": "J2.8",
+          "title": "Template Management",
+          "status": "pending",
+          "skill_file": "j2_template_management.py",
+          "checks": 5,
+          "_phase_id": "J2",
+          "_phase_name": "Campaign Creation & Management"
+        },
+        {
+          "id": "J2.9",
+          "title": "Content Engine Integration",
+          "status": "pending",
+          "skill_file": "j2_content_engine.py",
+          "checks": 5,
+          "_phase_id": "J2",
+          "_phase_name": "Campaign Creation & Management"
+        },
+        {
+          "id": "J2.10",
+          "title": "Campaign Analytics",
+          "status": "pending",
+          "skill_file": "j2_campaign_analytics.py",
+          "checks": 5,
+          "_phase_id": "J2",
+          "_phase_name": "Campaign Creation & Management"
+        },
+        {
+          "id": "J2.11",
+          "title": "Campaign Export",
+          "status": "pending",
+          "skill_file": "j2_campaign_export.py",
+          "checks": 5,
+          "_phase_id": "J2",
+          "_phase_name": "Campaign Creation & Management"
+        },
+        {
+          "id": "J2.12",
+          "title": "Live Campaign Test",
+          "status": "pending",
+          "skill_file": "j2_live_campaign_test.py",
+          "checks": 5,
+          "_phase_id": "J2",
+          "_phase_name": "Campaign Creation & Management"
+        }
       ]
     },
     "J2B": {
       "name": "Lead Enrichment Pipeline",
       "groups": 9,
       "tasks": [
-        {"id": "J2B.1", "title": "Apollo Search Integration", "status": "pending", "skill_file": "j2b_apollo_search.py", "checks": 5, "_phase_id": "J2B", "_phase_name": "Lead Enrichment Pipeline"},
-        {"id": "J2B.2", "title": "Apollo Enrichment", "status": "pending", "skill_file": "j2b_apollo_enrichment.py", "checks": 5, "_phase_id": "J2B", "_phase_name": "Lead Enrichment Pipeline"},
-        {"id": "J2B.3", "title": "Scout Engine", "status": "pending", "skill_file": "j2b_scout_engine.py", "checks": 5, "_phase_id": "J2B", "_phase_name": "Lead Enrichment Pipeline"},
-        {"id": "J2B.4", "title": "LinkedIn Data Enrichment", "status": "pending", "skill_file": "j2b_linkedin_enrichment.py", "checks": 5, "_phase_id": "J2B", "_phase_name": "Lead Enrichment Pipeline"},
-        {"id": "J2B.5", "title": "ALS Scoring Engine", "status": "pending", "skill_file": "j2b_als_scoring.py", "checks": 5, "_phase_id": "J2B", "_phase_name": "Lead Enrichment Pipeline"},
-        {"id": "J2B.6", "title": "Tier Assignment", "status": "pending", "skill_file": "j2b_tier_assignment.py", "checks": 5, "_phase_id": "J2B", "_phase_name": "Lead Enrichment Pipeline"},
-        {"id": "J2B.7", "title": "Enrichment Flow", "status": "pending", "skill_file": "j2b_enrichment_flow.py", "checks": 5, "_phase_id": "J2B", "_phase_name": "Lead Enrichment Pipeline"},
-        {"id": "J2B.8", "title": "Enrichment Analytics", "status": "pending", "skill_file": "j2b_enrichment_analytics.py", "checks": 5, "_phase_id": "J2B", "_phase_name": "Lead Enrichment Pipeline"},
-        {"id": "J2B.9", "title": "SDK Enrichment Agent", "status": "pending", "skill_file": "j2b_sdk_enrichment.py", "checks": 6, "_phase_id": "J2B", "_phase_name": "Lead Enrichment Pipeline"}
+        {
+          "id": "J2B.1",
+          "title": "Apollo Search Integration",
+          "status": "pending",
+          "skill_file": "j2b_apollo_search.py",
+          "checks": 5,
+          "_phase_id": "J2B",
+          "_phase_name": "Lead Enrichment Pipeline"
+        },
+        {
+          "id": "J2B.2",
+          "title": "Apollo Enrichment",
+          "status": "pending",
+          "skill_file": "j2b_apollo_enrichment.py",
+          "checks": 5,
+          "_phase_id": "J2B",
+          "_phase_name": "Lead Enrichment Pipeline"
+        },
+        {
+          "id": "J2B.3",
+          "title": "Scout Engine",
+          "status": "pending",
+          "skill_file": "j2b_scout_engine.py",
+          "checks": 5,
+          "_phase_id": "J2B",
+          "_phase_name": "Lead Enrichment Pipeline"
+        },
+        {
+          "id": "J2B.4",
+          "title": "LinkedIn Data Enrichment",
+          "status": "pending",
+          "skill_file": "j2b_linkedin_enrichment.py",
+          "checks": 5,
+          "_phase_id": "J2B",
+          "_phase_name": "Lead Enrichment Pipeline"
+        },
+        {
+          "id": "J2B.5",
+          "title": "ALS Scoring Engine",
+          "status": "pending",
+          "skill_file": "j2b_als_scoring.py",
+          "checks": 5,
+          "_phase_id": "J2B",
+          "_phase_name": "Lead Enrichment Pipeline"
+        },
+        {
+          "id": "J2B.6",
+          "title": "Tier Assignment",
+          "status": "pending",
+          "skill_file": "j2b_tier_assignment.py",
+          "checks": 5,
+          "_phase_id": "J2B",
+          "_phase_name": "Lead Enrichment Pipeline"
+        },
+        {
+          "id": "J2B.7",
+          "title": "Enrichment Flow",
+          "status": "pending",
+          "skill_file": "j2b_enrichment_flow.py",
+          "checks": 5,
+          "_phase_id": "J2B",
+          "_phase_name": "Lead Enrichment Pipeline"
+        },
+        {
+          "id": "J2B.8",
+          "title": "Enrichment Analytics",
+          "status": "pending",
+          "skill_file": "j2b_enrichment_analytics.py",
+          "checks": 5,
+          "_phase_id": "J2B",
+          "_phase_name": "Lead Enrichment Pipeline"
+        },
+        {
+          "id": "J2B.9",
+          "title": "SDK Enrichment Agent",
+          "status": "pending",
+          "skill_file": "j2b_sdk_enrichment.py",
+          "checks": 6,
+          "_phase_id": "J2B",
+          "_phase_name": "Lead Enrichment Pipeline"
+        }
       ]
     },
     "J3": {
       "name": "Email Outreach",
       "groups": 13,
       "tasks": [
-        {"id": "J3.1", "title": "TEST_MODE Verification", "status": "pending", "skill_file": "j3_test_mode.py", "checks": 4, "_phase_id": "J3", "_phase_name": "Email Outreach"},
-        {"id": "J3.2", "title": "Salesforge Integration", "status": "pending", "skill_file": "j3_salesforge_integration.py", "checks": 6, "_phase_id": "J3", "_phase_name": "Email Outreach"},
-        {"id": "J3.3", "title": "Email Engine Implementation", "status": "pending", "skill_file": "j3_email_engine.py", "checks": 7, "_phase_id": "J3", "_phase_name": "Email Outreach"},
-        {"id": "J3.4", "title": "Rate Limiting", "status": "pending", "skill_file": "j3_rate_limiting.py", "checks": 5, "_phase_id": "J3", "_phase_name": "Email Outreach"},
-        {"id": "J3.5", "title": "Email Template Personalization", "status": "pending", "skill_file": "j3_email_personalization.py", "checks": 5, "_phase_id": "J3", "_phase_name": "Email Outreach"},
-        {"id": "J3.6", "title": "Activity Logging", "status": "pending", "skill_file": "j3_activity_logging.py", "checks": 5, "_phase_id": "J3", "_phase_name": "Email Outreach"},
-        {"id": "J3.7", "title": "Bounce Handling", "status": "pending", "skill_file": "j3_bounce_handling.py", "checks": 4, "_phase_id": "J3", "_phase_name": "Email Outreach"},
-        {"id": "J3.8", "title": "Unsubscribe Handling", "status": "pending", "skill_file": "j3_unsubscribe_handling.py", "checks": 4, "_phase_id": "J3", "_phase_name": "Email Outreach"},
-        {"id": "J3.9", "title": "Open/Click Tracking", "status": "pending", "skill_file": "j3_tracking.py", "checks": 4, "_phase_id": "J3", "_phase_name": "Email Outreach"},
-        {"id": "J3.10", "title": "Error Handling", "status": "pending", "skill_file": "j3_error_handling.py", "checks": 4, "_phase_id": "J3", "_phase_name": "Email Outreach"},
-        {"id": "J3.11", "title": "Sequence Steps", "status": "pending", "skill_file": "j3_sequence_steps.py", "checks": 5, "_phase_id": "J3", "_phase_name": "Email Outreach"},
-        {"id": "J3.12", "title": "Live Email Test", "status": "pending", "skill_file": "j3_live_email_test.py", "checks": 6, "_phase_id": "J3", "_phase_name": "Email Outreach"},
-        {"id": "J3.13", "title": "SDK Email Personalization", "status": "pending", "skill_file": "j3_sdk_email.py", "checks": 6, "_phase_id": "J3", "_phase_name": "Email Outreach"}
+        {
+          "id": "J3.1",
+          "title": "TEST_MODE Verification",
+          "status": "pending",
+          "skill_file": "j3_test_mode.py",
+          "checks": 4,
+          "_phase_id": "J3",
+          "_phase_name": "Email Outreach"
+        },
+        {
+          "id": "J3.2",
+          "title": "Salesforge Integration",
+          "status": "pending",
+          "skill_file": "j3_salesforge_integration.py",
+          "checks": 6,
+          "_phase_id": "J3",
+          "_phase_name": "Email Outreach"
+        },
+        {
+          "id": "J3.3",
+          "title": "Email Engine Implementation",
+          "status": "pending",
+          "skill_file": "j3_email_engine.py",
+          "checks": 7,
+          "_phase_id": "J3",
+          "_phase_name": "Email Outreach"
+        },
+        {
+          "id": "J3.4",
+          "title": "Rate Limiting",
+          "status": "pending",
+          "skill_file": "j3_rate_limiting.py",
+          "checks": 5,
+          "_phase_id": "J3",
+          "_phase_name": "Email Outreach"
+        },
+        {
+          "id": "J3.5",
+          "title": "Email Template Personalization",
+          "status": "pending",
+          "skill_file": "j3_email_personalization.py",
+          "checks": 5,
+          "_phase_id": "J3",
+          "_phase_name": "Email Outreach"
+        },
+        {
+          "id": "J3.6",
+          "title": "Activity Logging",
+          "status": "pending",
+          "skill_file": "j3_activity_logging.py",
+          "checks": 5,
+          "_phase_id": "J3",
+          "_phase_name": "Email Outreach"
+        },
+        {
+          "id": "J3.7",
+          "title": "Bounce Handling",
+          "status": "pending",
+          "skill_file": "j3_bounce_handling.py",
+          "checks": 4,
+          "_phase_id": "J3",
+          "_phase_name": "Email Outreach"
+        },
+        {
+          "id": "J3.8",
+          "title": "Unsubscribe Handling",
+          "status": "pending",
+          "skill_file": "j3_unsubscribe_handling.py",
+          "checks": 4,
+          "_phase_id": "J3",
+          "_phase_name": "Email Outreach"
+        },
+        {
+          "id": "J3.9",
+          "title": "Open/Click Tracking",
+          "status": "pending",
+          "skill_file": "j3_tracking.py",
+          "checks": 4,
+          "_phase_id": "J3",
+          "_phase_name": "Email Outreach"
+        },
+        {
+          "id": "J3.10",
+          "title": "Error Handling",
+          "status": "pending",
+          "skill_file": "j3_error_handling.py",
+          "checks": 4,
+          "_phase_id": "J3",
+          "_phase_name": "Email Outreach"
+        },
+        {
+          "id": "J3.11",
+          "title": "Sequence Steps",
+          "status": "pending",
+          "skill_file": "j3_sequence_steps.py",
+          "checks": 5,
+          "_phase_id": "J3",
+          "_phase_name": "Email Outreach"
+        },
+        {
+          "id": "J3.12",
+          "title": "Live Email Test",
+          "status": "pending",
+          "skill_file": "j3_live_email_test.py",
+          "checks": 6,
+          "_phase_id": "J3",
+          "_phase_name": "Email Outreach"
+        },
+        {
+          "id": "J3.13",
+          "title": "SDK Email Personalization",
+          "status": "pending",
+          "skill_file": "j3_sdk_email.py",
+          "checks": 6,
+          "_phase_id": "J3",
+          "_phase_name": "Email Outreach"
+        }
       ]
     },
     "J4": {
       "name": "SMS Outreach",
       "groups": 12,
       "tasks": [
-        {"id": "J4.1", "title": "TEST_MODE Verification", "status": "pending", "skill_file": "j4_test_mode.py", "checks": 4, "_phase_id": "J4", "_phase_name": "SMS Outreach"},
-        {"id": "J4.2", "title": "Twilio Integration", "status": "pending", "skill_file": "j4_twilio_integration.py", "checks": 6, "_phase_id": "J4", "_phase_name": "SMS Outreach"},
-        {"id": "J4.3", "title": "ClickSend Integration", "status": "pending", "skill_file": "j4_clicksend_integration.py", "checks": 6, "_phase_id": "J4", "_phase_name": "SMS Outreach"},
-        {"id": "J4.4", "title": "SMS Engine Implementation", "status": "pending", "skill_file": "j4_sms_engine.py", "checks": 7, "_phase_id": "J4", "_phase_name": "SMS Outreach"},
-        {"id": "J4.5", "title": "Rate Limiting", "status": "pending", "skill_file": "j4_rate_limiting.py", "checks": 5, "_phase_id": "J4", "_phase_name": "SMS Outreach"},
-        {"id": "J4.6", "title": "SMS Template Personalization", "status": "pending", "skill_file": "j4_sms_personalization.py", "checks": 4, "_phase_id": "J4", "_phase_name": "SMS Outreach"},
-        {"id": "J4.7", "title": "Activity Logging", "status": "pending", "skill_file": "j4_activity_logging.py", "checks": 5, "_phase_id": "J4", "_phase_name": "SMS Outreach"},
-        {"id": "J4.8", "title": "Reply Detection", "status": "pending", "skill_file": "j4_reply_detection.py", "checks": 4, "_phase_id": "J4", "_phase_name": "SMS Outreach"},
-        {"id": "J4.9", "title": "Opt-out Handling", "status": "pending", "skill_file": "j4_optout_handling.py", "checks": 4, "_phase_id": "J4", "_phase_name": "SMS Outreach"},
-        {"id": "J4.10", "title": "Error Handling", "status": "pending", "skill_file": "j4_error_handling.py", "checks": 4, "_phase_id": "J4", "_phase_name": "SMS Outreach"},
-        {"id": "J4.11", "title": "Provider Selection", "status": "pending", "skill_file": "j4_provider_selection.py", "checks": 4, "_phase_id": "J4", "_phase_name": "SMS Outreach"},
-        {"id": "J4.12", "title": "Live SMS Test", "status": "pending", "skill_file": "j4_live_sms_test.py", "checks": 6, "_phase_id": "J4", "_phase_name": "SMS Outreach"}
+        {
+          "id": "J4.1",
+          "title": "TEST_MODE Verification",
+          "status": "pending",
+          "skill_file": "j4_test_mode.py",
+          "checks": 4,
+          "_phase_id": "J4",
+          "_phase_name": "SMS Outreach"
+        },
+        {
+          "id": "J4.2",
+          "title": "Twilio Integration",
+          "status": "pending",
+          "skill_file": "j4_twilio_integration.py",
+          "checks": 6,
+          "_phase_id": "J4",
+          "_phase_name": "SMS Outreach"
+        },
+        {
+          "id": "J4.3",
+          "title": "ClickSend Integration",
+          "status": "pending",
+          "skill_file": "j4_clicksend_integration.py",
+          "checks": 6,
+          "_phase_id": "J4",
+          "_phase_name": "SMS Outreach"
+        },
+        {
+          "id": "J4.4",
+          "title": "SMS Engine Implementation",
+          "status": "pending",
+          "skill_file": "j4_sms_engine.py",
+          "checks": 7,
+          "_phase_id": "J4",
+          "_phase_name": "SMS Outreach"
+        },
+        {
+          "id": "J4.5",
+          "title": "Rate Limiting",
+          "status": "pending",
+          "skill_file": "j4_rate_limiting.py",
+          "checks": 5,
+          "_phase_id": "J4",
+          "_phase_name": "SMS Outreach"
+        },
+        {
+          "id": "J4.6",
+          "title": "SMS Template Personalization",
+          "status": "pending",
+          "skill_file": "j4_sms_personalization.py",
+          "checks": 4,
+          "_phase_id": "J4",
+          "_phase_name": "SMS Outreach"
+        },
+        {
+          "id": "J4.7",
+          "title": "Activity Logging",
+          "status": "pending",
+          "skill_file": "j4_activity_logging.py",
+          "checks": 5,
+          "_phase_id": "J4",
+          "_phase_name": "SMS Outreach"
+        },
+        {
+          "id": "J4.8",
+          "title": "Reply Detection",
+          "status": "pending",
+          "skill_file": "j4_reply_detection.py",
+          "checks": 4,
+          "_phase_id": "J4",
+          "_phase_name": "SMS Outreach"
+        },
+        {
+          "id": "J4.9",
+          "title": "Opt-out Handling",
+          "status": "pending",
+          "skill_file": "j4_optout_handling.py",
+          "checks": 4,
+          "_phase_id": "J4",
+          "_phase_name": "SMS Outreach"
+        },
+        {
+          "id": "J4.10",
+          "title": "Error Handling",
+          "status": "pending",
+          "skill_file": "j4_error_handling.py",
+          "checks": 4,
+          "_phase_id": "J4",
+          "_phase_name": "SMS Outreach"
+        },
+        {
+          "id": "J4.11",
+          "title": "Provider Selection",
+          "status": "pending",
+          "skill_file": "j4_provider_selection.py",
+          "checks": 4,
+          "_phase_id": "J4",
+          "_phase_name": "SMS Outreach"
+        },
+        {
+          "id": "J4.12",
+          "title": "Live SMS Test",
+          "status": "pending",
+          "skill_file": "j4_live_sms_test.py",
+          "checks": 6,
+          "_phase_id": "J4",
+          "_phase_name": "SMS Outreach"
+        }
       ]
     },
     "J5": {
       "name": "Voice Outreach",
       "groups": 14,
       "tasks": [
-        {"id": "J5.1", "title": "TEST_MODE Verification", "status": "pending", "skill_file": "j5_test_mode.py", "checks": 4, "_phase_id": "J5", "_phase_name": "Voice Outreach"},
-        {"id": "J5.2", "title": "Vapi Integration", "status": "pending", "skill_file": "j5_vapi_integration.py", "checks": 7, "_phase_id": "J5", "_phase_name": "Voice Outreach"},
-        {"id": "J5.3", "title": "ElevenLabs Voice Configuration", "status": "pending", "skill_file": "j5_elevenlabs_config.py", "checks": 4, "_phase_id": "J5", "_phase_name": "Voice Outreach"},
-        {"id": "J5.4", "title": "Voice Engine Implementation", "status": "pending", "skill_file": "j5_voice_engine.py", "checks": 7, "_phase_id": "J5", "_phase_name": "Voice Outreach"},
-        {"id": "J5.5", "title": "ALS Score Validation", "status": "pending", "skill_file": "j5_als_validation.py", "checks": 3, "_phase_id": "J5", "_phase_name": "Voice Outreach"},
-        {"id": "J5.6", "title": "Assistant Configuration", "status": "pending", "skill_file": "j5_assistant_config.py", "checks": 5, "_phase_id": "J5", "_phase_name": "Voice Outreach"},
-        {"id": "J5.7", "title": "Rate Limiting", "status": "pending", "skill_file": "j5_rate_limiting.py", "checks": 4, "_phase_id": "J5", "_phase_name": "Voice Outreach"},
-        {"id": "J5.8", "title": "Activity Logging", "status": "pending", "skill_file": "j5_activity_logging.py", "checks": 5, "_phase_id": "J5", "_phase_name": "Voice Outreach"},
-        {"id": "J5.9", "title": "Webhook Processing", "status": "pending", "skill_file": "j5_webhook_processing.py", "checks": 6, "_phase_id": "J5", "_phase_name": "Voice Outreach"},
-        {"id": "J5.10", "title": "Call Recording", "status": "pending", "skill_file": "j5_call_recording.py", "checks": 3, "_phase_id": "J5", "_phase_name": "Voice Outreach"},
-        {"id": "J5.11", "title": "Call Outcome Handling", "status": "pending", "skill_file": "j5_call_outcome.py", "checks": 4, "_phase_id": "J5", "_phase_name": "Voice Outreach"},
-        {"id": "J5.12", "title": "Error Handling", "status": "pending", "skill_file": "j5_error_handling.py", "checks": 4, "_phase_id": "J5", "_phase_name": "Voice Outreach"},
-        {"id": "J5.13", "title": "Live Voice Call Test", "status": "pending", "skill_file": "j5_live_voice_test.py", "checks": 8, "_phase_id": "J5", "_phase_name": "Voice Outreach"},
-        {"id": "J5.14", "title": "SDK Voice KB Generation", "status": "pending", "skill_file": "j5_sdk_voice_kb.py", "checks": 7, "_phase_id": "J5", "_phase_name": "Voice Outreach"}
+        {
+          "id": "J5.1",
+          "title": "TEST_MODE Verification",
+          "status": "pending",
+          "skill_file": "j5_test_mode.py",
+          "checks": 4,
+          "_phase_id": "J5",
+          "_phase_name": "Voice Outreach"
+        },
+        {
+          "id": "J5.2",
+          "title": "Vapi Integration",
+          "status": "pending",
+          "skill_file": "j5_vapi_integration.py",
+          "checks": 7,
+          "_phase_id": "J5",
+          "_phase_name": "Voice Outreach"
+        },
+        {
+          "id": "J5.3",
+          "title": "ElevenLabs Voice Configuration",
+          "status": "pending",
+          "skill_file": "j5_elevenlabs_config.py",
+          "checks": 4,
+          "_phase_id": "J5",
+          "_phase_name": "Voice Outreach"
+        },
+        {
+          "id": "J5.4",
+          "title": "Voice Engine Implementation",
+          "status": "pending",
+          "skill_file": "j5_voice_engine.py",
+          "checks": 7,
+          "_phase_id": "J5",
+          "_phase_name": "Voice Outreach"
+        },
+        {
+          "id": "J5.5",
+          "title": "ALS Score Validation",
+          "status": "pending",
+          "skill_file": "j5_als_validation.py",
+          "checks": 3,
+          "_phase_id": "J5",
+          "_phase_name": "Voice Outreach"
+        },
+        {
+          "id": "J5.6",
+          "title": "Assistant Configuration",
+          "status": "pending",
+          "skill_file": "j5_assistant_config.py",
+          "checks": 5,
+          "_phase_id": "J5",
+          "_phase_name": "Voice Outreach"
+        },
+        {
+          "id": "J5.7",
+          "title": "Rate Limiting",
+          "status": "pending",
+          "skill_file": "j5_rate_limiting.py",
+          "checks": 4,
+          "_phase_id": "J5",
+          "_phase_name": "Voice Outreach"
+        },
+        {
+          "id": "J5.8",
+          "title": "Activity Logging",
+          "status": "pending",
+          "skill_file": "j5_activity_logging.py",
+          "checks": 5,
+          "_phase_id": "J5",
+          "_phase_name": "Voice Outreach"
+        },
+        {
+          "id": "J5.9",
+          "title": "Webhook Processing",
+          "status": "pending",
+          "skill_file": "j5_webhook_processing.py",
+          "checks": 6,
+          "_phase_id": "J5",
+          "_phase_name": "Voice Outreach"
+        },
+        {
+          "id": "J5.10",
+          "title": "Call Recording",
+          "status": "pending",
+          "skill_file": "j5_call_recording.py",
+          "checks": 3,
+          "_phase_id": "J5",
+          "_phase_name": "Voice Outreach"
+        },
+        {
+          "id": "J5.11",
+          "title": "Call Outcome Handling",
+          "status": "pending",
+          "skill_file": "j5_call_outcome.py",
+          "checks": 4,
+          "_phase_id": "J5",
+          "_phase_name": "Voice Outreach"
+        },
+        {
+          "id": "J5.12",
+          "title": "Error Handling",
+          "status": "pending",
+          "skill_file": "j5_error_handling.py",
+          "checks": 4,
+          "_phase_id": "J5",
+          "_phase_name": "Voice Outreach"
+        },
+        {
+          "id": "J5.13",
+          "title": "Live Voice Call Test",
+          "status": "pending",
+          "skill_file": "j5_live_voice_test.py",
+          "checks": 8,
+          "_phase_id": "J5",
+          "_phase_name": "Voice Outreach"
+        },
+        {
+          "id": "J5.14",
+          "title": "SDK Voice KB Generation",
+          "status": "pending",
+          "skill_file": "j5_sdk_voice_kb.py",
+          "checks": 7,
+          "_phase_id": "J5",
+          "_phase_name": "Voice Outreach"
+        }
       ]
     },
     "J6": {
       "name": "LinkedIn Outreach",
       "groups": 13,
       "tasks": [
-        {"id": "J6.1", "title": "TEST_MODE Verification", "status": "pending", "skill_file": "j6_test_mode.py", "checks": 4, "_phase_id": "J6", "_phase_name": "LinkedIn Outreach"},
-        {"id": "J6.2", "title": "HeyReach Integration", "status": "pending", "skill_file": "j6_heyreach_integration.py", "checks": 6, "_phase_id": "J6", "_phase_name": "LinkedIn Outreach"},
-        {"id": "J6.3", "title": "LinkedIn Engine Implementation", "status": "pending", "skill_file": "j6_linkedin_engine.py", "checks": 7, "_phase_id": "J6", "_phase_name": "LinkedIn Outreach"},
-        {"id": "J6.4", "title": "Rate Limiting (Rule 17)", "status": "pending", "skill_file": "j6_rate_limiting.py", "checks": 5, "_phase_id": "J6", "_phase_name": "LinkedIn Outreach"},
-        {"id": "J6.5", "title": "LinkedIn URL Validation", "status": "pending", "skill_file": "j6_url_validation.py", "checks": 3, "_phase_id": "J6", "_phase_name": "LinkedIn Outreach"},
-        {"id": "J6.6", "title": "Connection Requests", "status": "pending", "skill_file": "j6_connection_requests.py", "checks": 4, "_phase_id": "J6", "_phase_name": "LinkedIn Outreach"},
-        {"id": "J6.7", "title": "Direct Messages", "status": "pending", "skill_file": "j6_direct_messages.py", "checks": 3, "_phase_id": "J6", "_phase_name": "LinkedIn Outreach"},
-        {"id": "J6.8", "title": "LinkedIn Account Management", "status": "pending", "skill_file": "j6_account_management.py", "checks": 4, "_phase_id": "J6", "_phase_name": "LinkedIn Outreach"},
-        {"id": "J6.9", "title": "Activity Logging", "status": "pending", "skill_file": "j6_activity_logging.py", "checks": 5, "_phase_id": "J6", "_phase_name": "LinkedIn Outreach"},
-        {"id": "J6.10", "title": "Reply Detection", "status": "pending", "skill_file": "j6_reply_detection.py", "checks": 3, "_phase_id": "J6", "_phase_name": "LinkedIn Outreach"},
-        {"id": "J6.11", "title": "Seat Management", "status": "pending", "skill_file": "j6_seat_management.py", "checks": 3, "_phase_id": "J6", "_phase_name": "LinkedIn Outreach"},
-        {"id": "J6.12", "title": "Error Handling", "status": "pending", "skill_file": "j6_error_handling.py", "checks": 4, "_phase_id": "J6", "_phase_name": "LinkedIn Outreach"},
-        {"id": "J6.13", "title": "Live LinkedIn Test", "status": "pending", "skill_file": "j6_live_linkedin_test.py", "checks": 4, "_phase_id": "J6", "_phase_name": "LinkedIn Outreach"}
+        {
+          "id": "J6.1",
+          "title": "TEST_MODE Verification",
+          "status": "pending",
+          "skill_file": "j6_test_mode.py",
+          "checks": 4,
+          "_phase_id": "J6",
+          "_phase_name": "LinkedIn Outreach"
+        },
+        {
+          "id": "J6.2",
+          "title": "HeyReach Integration",
+          "status": "pending",
+          "skill_file": "j6_heyreach_integration.py",
+          "checks": 6,
+          "_phase_id": "J6",
+          "_phase_name": "LinkedIn Outreach"
+        },
+        {
+          "id": "J6.3",
+          "title": "LinkedIn Engine Implementation",
+          "status": "pending",
+          "skill_file": "j6_linkedin_engine.py",
+          "checks": 7,
+          "_phase_id": "J6",
+          "_phase_name": "LinkedIn Outreach"
+        },
+        {
+          "id": "J6.4",
+          "title": "Rate Limiting (Rule 17)",
+          "status": "pending",
+          "skill_file": "j6_rate_limiting.py",
+          "checks": 5,
+          "_phase_id": "J6",
+          "_phase_name": "LinkedIn Outreach"
+        },
+        {
+          "id": "J6.5",
+          "title": "LinkedIn URL Validation",
+          "status": "pending",
+          "skill_file": "j6_url_validation.py",
+          "checks": 3,
+          "_phase_id": "J6",
+          "_phase_name": "LinkedIn Outreach"
+        },
+        {
+          "id": "J6.6",
+          "title": "Connection Requests",
+          "status": "pending",
+          "skill_file": "j6_connection_requests.py",
+          "checks": 4,
+          "_phase_id": "J6",
+          "_phase_name": "LinkedIn Outreach"
+        },
+        {
+          "id": "J6.7",
+          "title": "Direct Messages",
+          "status": "pending",
+          "skill_file": "j6_direct_messages.py",
+          "checks": 3,
+          "_phase_id": "J6",
+          "_phase_name": "LinkedIn Outreach"
+        },
+        {
+          "id": "J6.8",
+          "title": "LinkedIn Account Management",
+          "status": "pending",
+          "skill_file": "j6_account_management.py",
+          "checks": 4,
+          "_phase_id": "J6",
+          "_phase_name": "LinkedIn Outreach"
+        },
+        {
+          "id": "J6.9",
+          "title": "Activity Logging",
+          "status": "pending",
+          "skill_file": "j6_activity_logging.py",
+          "checks": 5,
+          "_phase_id": "J6",
+          "_phase_name": "LinkedIn Outreach"
+        },
+        {
+          "id": "J6.10",
+          "title": "Reply Detection",
+          "status": "pending",
+          "skill_file": "j6_reply_detection.py",
+          "checks": 3,
+          "_phase_id": "J6",
+          "_phase_name": "LinkedIn Outreach"
+        },
+        {
+          "id": "J6.11",
+          "title": "Seat Management",
+          "status": "pending",
+          "skill_file": "j6_seat_management.py",
+          "checks": 3,
+          "_phase_id": "J6",
+          "_phase_name": "LinkedIn Outreach"
+        },
+        {
+          "id": "J6.12",
+          "title": "Error Handling",
+          "status": "pending",
+          "skill_file": "j6_error_handling.py",
+          "checks": 4,
+          "_phase_id": "J6",
+          "_phase_name": "LinkedIn Outreach"
+        },
+        {
+          "id": "J6.13",
+          "title": "Live LinkedIn Test",
+          "status": "pending",
+          "skill_file": "j6_live_linkedin_test.py",
+          "checks": 4,
+          "_phase_id": "J6",
+          "_phase_name": "LinkedIn Outreach"
+        }
       ]
     },
     "J7": {
       "name": "Reply Handling",
       "groups": 15,
       "tasks": [
-        {"id": "J7.1", "title": "Email Reply Webhook (Postmark)", "status": "pending", "skill_file": "j7_email_reply_webhook.py", "checks": 5, "_phase_id": "J7", "_phase_name": "Reply Handling"},
-        {"id": "J7.2", "title": "SMS Reply Webhook (Twilio)", "status": "pending", "skill_file": "j7_sms_reply_webhook.py", "checks": 5, "_phase_id": "J7", "_phase_name": "Reply Handling"},
-        {"id": "J7.3", "title": "LinkedIn Reply Webhook (HeyReach)", "status": "pending", "skill_file": "j7_linkedin_reply_webhook.py", "checks": 4, "_phase_id": "J7", "_phase_name": "Reply Handling"},
-        {"id": "J7.4", "title": "Closer Engine Intent Classification", "status": "pending", "skill_file": "j7_intent_classification.py", "checks": 5, "_phase_id": "J7", "_phase_name": "Reply Handling"},
-        {"id": "J7.5", "title": "Reply Analyzer (Phase 24D)", "status": "pending", "skill_file": "j7_reply_analyzer.py", "checks": 6, "_phase_id": "J7", "_phase_name": "Reply Handling"},
-        {"id": "J7.6", "title": "Conversation Threading (Phase 24D)", "status": "pending", "skill_file": "j7_conversation_threading.py", "checks": 6, "_phase_id": "J7", "_phase_name": "Reply Handling"},
-        {"id": "J7.7", "title": "Lead Status Updates", "status": "pending", "skill_file": "j7_lead_status_updates.py", "checks": 7, "_phase_id": "J7", "_phase_name": "Reply Handling"},
-        {"id": "J7.8", "title": "Objection Tracking (Phase 24D)", "status": "pending", "skill_file": "j7_objection_tracking.py", "checks": 5, "_phase_id": "J7", "_phase_name": "Reply Handling"},
-        {"id": "J7.9", "title": "Thread Outcome (Phase 24D)", "status": "pending", "skill_file": "j7_thread_outcome.py", "checks": 4, "_phase_id": "J7", "_phase_name": "Reply Handling"},
-        {"id": "J7.10", "title": "Activity Logging", "status": "pending", "skill_file": "j7_activity_logging.py", "checks": 6, "_phase_id": "J7", "_phase_name": "Reply Handling"},
-        {"id": "J7.11", "title": "Reply Recovery Flow (Safety Net)", "status": "pending", "skill_file": "j7_reply_recovery.py", "checks": 7, "_phase_id": "J7", "_phase_name": "Reply Handling"},
-        {"id": "J7.12", "title": "Email Event Webhooks", "status": "pending", "skill_file": "j7_email_events.py", "checks": 6, "_phase_id": "J7", "_phase_name": "Reply Handling"},
-        {"id": "J7.13", "title": "Error Handling", "status": "pending", "skill_file": "j7_error_handling.py", "checks": 5, "_phase_id": "J7", "_phase_name": "Reply Handling"},
-        {"id": "J7.14", "title": "Live Reply Test (All Channels)", "status": "pending", "skill_file": "j7_live_reply_test.py", "checks": 7, "_phase_id": "J7", "_phase_name": "Reply Handling"},
-        {"id": "J7.15", "title": "SDK Objection Handler", "status": "pending", "skill_file": "j7_sdk_objection.py", "checks": 6, "_phase_id": "J7", "_phase_name": "Reply Handling"}
+        {
+          "id": "J7.1",
+          "title": "Email Reply Webhook (Postmark)",
+          "status": "pending",
+          "skill_file": "j7_email_reply_webhook.py",
+          "checks": 5,
+          "_phase_id": "J7",
+          "_phase_name": "Reply Handling"
+        },
+        {
+          "id": "J7.2",
+          "title": "SMS Reply Webhook (Twilio)",
+          "status": "pending",
+          "skill_file": "j7_sms_reply_webhook.py",
+          "checks": 5,
+          "_phase_id": "J7",
+          "_phase_name": "Reply Handling"
+        },
+        {
+          "id": "J7.3",
+          "title": "LinkedIn Reply Webhook (HeyReach)",
+          "status": "pending",
+          "skill_file": "j7_linkedin_reply_webhook.py",
+          "checks": 4,
+          "_phase_id": "J7",
+          "_phase_name": "Reply Handling"
+        },
+        {
+          "id": "J7.4",
+          "title": "Closer Engine Intent Classification",
+          "status": "pending",
+          "skill_file": "j7_intent_classification.py",
+          "checks": 5,
+          "_phase_id": "J7",
+          "_phase_name": "Reply Handling"
+        },
+        {
+          "id": "J7.5",
+          "title": "Reply Analyzer (Phase 24D)",
+          "status": "pending",
+          "skill_file": "j7_reply_analyzer.py",
+          "checks": 6,
+          "_phase_id": "J7",
+          "_phase_name": "Reply Handling"
+        },
+        {
+          "id": "J7.6",
+          "title": "Conversation Threading (Phase 24D)",
+          "status": "pending",
+          "skill_file": "j7_conversation_threading.py",
+          "checks": 6,
+          "_phase_id": "J7",
+          "_phase_name": "Reply Handling"
+        },
+        {
+          "id": "J7.7",
+          "title": "Lead Status Updates",
+          "status": "pending",
+          "skill_file": "j7_lead_status_updates.py",
+          "checks": 7,
+          "_phase_id": "J7",
+          "_phase_name": "Reply Handling"
+        },
+        {
+          "id": "J7.8",
+          "title": "Objection Tracking (Phase 24D)",
+          "status": "pending",
+          "skill_file": "j7_objection_tracking.py",
+          "checks": 5,
+          "_phase_id": "J7",
+          "_phase_name": "Reply Handling"
+        },
+        {
+          "id": "J7.9",
+          "title": "Thread Outcome (Phase 24D)",
+          "status": "pending",
+          "skill_file": "j7_thread_outcome.py",
+          "checks": 4,
+          "_phase_id": "J7",
+          "_phase_name": "Reply Handling"
+        },
+        {
+          "id": "J7.10",
+          "title": "Activity Logging",
+          "status": "pending",
+          "skill_file": "j7_activity_logging.py",
+          "checks": 6,
+          "_phase_id": "J7",
+          "_phase_name": "Reply Handling"
+        },
+        {
+          "id": "J7.11",
+          "title": "Reply Recovery Flow (Safety Net)",
+          "status": "pending",
+          "skill_file": "j7_reply_recovery.py",
+          "checks": 7,
+          "_phase_id": "J7",
+          "_phase_name": "Reply Handling"
+        },
+        {
+          "id": "J7.12",
+          "title": "Email Event Webhooks",
+          "status": "pending",
+          "skill_file": "j7_email_events.py",
+          "checks": 6,
+          "_phase_id": "J7",
+          "_phase_name": "Reply Handling"
+        },
+        {
+          "id": "J7.13",
+          "title": "Error Handling",
+          "status": "pending",
+          "skill_file": "j7_error_handling.py",
+          "checks": 5,
+          "_phase_id": "J7",
+          "_phase_name": "Reply Handling"
+        },
+        {
+          "id": "J7.14",
+          "title": "Live Reply Test (All Channels)",
+          "status": "pending",
+          "skill_file": "j7_live_reply_test.py",
+          "checks": 7,
+          "_phase_id": "J7",
+          "_phase_name": "Reply Handling"
+        },
+        {
+          "id": "J7.15",
+          "title": "SDK Objection Handler",
+          "status": "pending",
+          "skill_file": "j7_sdk_objection.py",
+          "checks": 6,
+          "_phase_id": "J7",
+          "_phase_name": "Reply Handling"
+        }
       ]
     },
     "J8": {
       "name": "Meeting & Deals",
       "groups": 14,
       "tasks": [
-        {"id": "J8.1", "title": "Meeting Webhook (Calendly)", "status": "pending", "skill_file": "j8_calendly_webhook.py", "checks": 5, "_phase_id": "J8", "_phase_name": "Meeting & Deals"},
-        {"id": "J8.2", "title": "Meeting Webhook (Cal.com)", "status": "pending", "skill_file": "j8_calcom_webhook.py", "checks": 2, "_phase_id": "J8", "_phase_name": "Meeting & Deals"},
-        {"id": "J8.3", "title": "MeetingService Implementation", "status": "pending", "skill_file": "j8_meeting_service.py", "checks": 8, "_phase_id": "J8", "_phase_name": "Meeting & Deals"},
-        {"id": "J8.4", "title": "Meeting Tracking Fields", "status": "pending", "skill_file": "j8_meeting_tracking.py", "checks": 5, "_phase_id": "J8", "_phase_name": "Meeting & Deals"},
-        {"id": "J8.5", "title": "Meeting Reminder System", "status": "pending", "skill_file": "j8_meeting_reminders.py", "checks": 4, "_phase_id": "J8", "_phase_name": "Meeting & Deals"},
-        {"id": "J8.6", "title": "Show Rate Tracking", "status": "pending", "skill_file": "j8_show_rate.py", "checks": 5, "_phase_id": "J8", "_phase_name": "Meeting & Deals"},
-        {"id": "J8.7", "title": "DealService Implementation", "status": "pending", "skill_file": "j8_deal_service.py", "checks": 6, "_phase_id": "J8", "_phase_name": "Meeting & Deals"},
-        {"id": "J8.8", "title": "Deal Pipeline", "status": "pending", "skill_file": "j8_deal_pipeline.py", "checks": 5, "_phase_id": "J8", "_phase_name": "Meeting & Deals"},
-        {"id": "J8.9", "title": "Deal Auto-Creation from Meeting", "status": "pending", "skill_file": "j8_deal_autocreate.py", "checks": 5, "_phase_id": "J8", "_phase_name": "Meeting & Deals"},
-        {"id": "J8.10", "title": "Revenue Attribution", "status": "pending", "skill_file": "j8_revenue_attribution.py", "checks": 4, "_phase_id": "J8", "_phase_name": "Meeting & Deals"},
-        {"id": "J8.11", "title": "CRM Push Service", "status": "pending", "skill_file": "j8_crm_push.py", "checks": 5, "_phase_id": "J8", "_phase_name": "Meeting & Deals"},
-        {"id": "J8.12", "title": "External CRM Sync", "status": "pending", "skill_file": "j8_crm_sync.py", "checks": 5, "_phase_id": "J8", "_phase_name": "Meeting & Deals"},
-        {"id": "J8.13", "title": "Lost Deal Analysis", "status": "pending", "skill_file": "j8_lost_deal_analysis.py", "checks": 3, "_phase_id": "J8", "_phase_name": "Meeting & Deals"},
-        {"id": "J8.14", "title": "End-to-End Meeting-to-Deal Test", "status": "pending", "skill_file": "j8_e2e_meeting_deal_test.py", "checks": 9, "_phase_id": "J8", "_phase_name": "Meeting & Deals"}
+        {
+          "id": "J8.1",
+          "title": "Meeting Webhook (Calendly)",
+          "status": "pending",
+          "skill_file": "j8_calendly_webhook.py",
+          "checks": 5,
+          "_phase_id": "J8",
+          "_phase_name": "Meeting & Deals"
+        },
+        {
+          "id": "J8.2",
+          "title": "Meeting Webhook (Cal.com)",
+          "status": "pending",
+          "skill_file": "j8_calcom_webhook.py",
+          "checks": 2,
+          "_phase_id": "J8",
+          "_phase_name": "Meeting & Deals"
+        },
+        {
+          "id": "J8.3",
+          "title": "MeetingService Implementation",
+          "status": "pending",
+          "skill_file": "j8_meeting_service.py",
+          "checks": 8,
+          "_phase_id": "J8",
+          "_phase_name": "Meeting & Deals"
+        },
+        {
+          "id": "J8.4",
+          "title": "Meeting Tracking Fields",
+          "status": "pending",
+          "skill_file": "j8_meeting_tracking.py",
+          "checks": 5,
+          "_phase_id": "J8",
+          "_phase_name": "Meeting & Deals"
+        },
+        {
+          "id": "J8.5",
+          "title": "Meeting Reminder System",
+          "status": "pending",
+          "skill_file": "j8_meeting_reminders.py",
+          "checks": 4,
+          "_phase_id": "J8",
+          "_phase_name": "Meeting & Deals"
+        },
+        {
+          "id": "J8.6",
+          "title": "Show Rate Tracking",
+          "status": "pending",
+          "skill_file": "j8_show_rate.py",
+          "checks": 5,
+          "_phase_id": "J8",
+          "_phase_name": "Meeting & Deals"
+        },
+        {
+          "id": "J8.7",
+          "title": "DealService Implementation",
+          "status": "pending",
+          "skill_file": "j8_deal_service.py",
+          "checks": 6,
+          "_phase_id": "J8",
+          "_phase_name": "Meeting & Deals"
+        },
+        {
+          "id": "J8.8",
+          "title": "Deal Pipeline",
+          "status": "pending",
+          "skill_file": "j8_deal_pipeline.py",
+          "checks": 5,
+          "_phase_id": "J8",
+          "_phase_name": "Meeting & Deals"
+        },
+        {
+          "id": "J8.9",
+          "title": "Deal Auto-Creation from Meeting",
+          "status": "pending",
+          "skill_file": "j8_deal_autocreate.py",
+          "checks": 5,
+          "_phase_id": "J8",
+          "_phase_name": "Meeting & Deals"
+        },
+        {
+          "id": "J8.10",
+          "title": "Revenue Attribution",
+          "status": "pending",
+          "skill_file": "j8_revenue_attribution.py",
+          "checks": 4,
+          "_phase_id": "J8",
+          "_phase_name": "Meeting & Deals"
+        },
+        {
+          "id": "J8.11",
+          "title": "CRM Push Service",
+          "status": "pending",
+          "skill_file": "j8_crm_push.py",
+          "checks": 5,
+          "_phase_id": "J8",
+          "_phase_name": "Meeting & Deals"
+        },
+        {
+          "id": "J8.12",
+          "title": "External CRM Sync",
+          "status": "pending",
+          "skill_file": "j8_crm_sync.py",
+          "checks": 5,
+          "_phase_id": "J8",
+          "_phase_name": "Meeting & Deals"
+        },
+        {
+          "id": "J8.13",
+          "title": "Lost Deal Analysis",
+          "status": "pending",
+          "skill_file": "j8_lost_deal_analysis.py",
+          "checks": 3,
+          "_phase_id": "J8",
+          "_phase_name": "Meeting & Deals"
+        },
+        {
+          "id": "J8.14",
+          "title": "End-to-End Meeting-to-Deal Test",
+          "status": "pending",
+          "skill_file": "j8_e2e_meeting_deal_test.py",
+          "checks": 9,
+          "_phase_id": "J8",
+          "_phase_name": "Meeting & Deals"
+        }
       ]
     },
     "J9": {
       "name": "Client Dashboard",
       "groups": 14,
       "tasks": [
-        {"id": "J9.1", "title": "Dashboard Page Load", "status": "pending", "skill_file": "j9_dashboard_load.py", "checks": 6, "_phase_id": "J9", "_phase_name": "Client Dashboard"},
-        {"id": "J9.2", "title": "Dashboard Stats API", "status": "pending", "skill_file": "j9_dashboard_stats.py", "checks": 8, "_phase_id": "J9", "_phase_name": "Client Dashboard"},
-        {"id": "J9.3", "title": "Activity Feed", "status": "pending", "skill_file": "j9_activity_feed.py", "checks": 6, "_phase_id": "J9", "_phase_name": "Client Dashboard"},
-        {"id": "J9.4", "title": "ALS Distribution Widget", "status": "pending", "skill_file": "j9_als_distribution.py", "checks": 6, "_phase_id": "J9", "_phase_name": "Client Dashboard"},
-        {"id": "J9.5", "title": "Meetings Widget", "status": "pending", "skill_file": "j9_meetings_widget.py", "checks": 4, "_phase_id": "J9", "_phase_name": "Client Dashboard"},
-        {"id": "J9.6", "title": "Leads List Page", "status": "pending", "skill_file": "j9_leads_list.py", "checks": 7, "_phase_id": "J9", "_phase_name": "Client Dashboard"},
-        {"id": "J9.7", "title": "Lead Detail Page", "status": "pending", "skill_file": "j9_lead_detail.py", "checks": 5, "_phase_id": "J9", "_phase_name": "Client Dashboard"},
-        {"id": "J9.8", "title": "Campaigns List Page", "status": "pending", "skill_file": "j9_campaigns_list.py", "checks": 5, "_phase_id": "J9", "_phase_name": "Client Dashboard"},
-        {"id": "J9.9", "title": "Campaign Detail Page", "status": "pending", "skill_file": "j9_campaign_detail.py", "checks": 5, "_phase_id": "J9", "_phase_name": "Client Dashboard"},
-        {"id": "J9.10", "title": "Reports Page", "status": "pending", "skill_file": "j9_reports_page.py", "checks": 5, "_phase_id": "J9", "_phase_name": "Client Dashboard"},
-        {"id": "J9.11", "title": "Replies Page", "status": "pending", "skill_file": "j9_replies_page.py", "checks": 5, "_phase_id": "J9", "_phase_name": "Client Dashboard"},
-        {"id": "J9.12", "title": "Settings Page", "status": "pending", "skill_file": "j9_settings_page.py", "checks": 3, "_phase_id": "J9", "_phase_name": "Client Dashboard"},
-        {"id": "J9.13", "title": "ICP Banner and Modal", "status": "pending", "skill_file": "j9_icp_banner.py", "checks": 4, "_phase_id": "J9", "_phase_name": "Client Dashboard"},
-        {"id": "J9.14", "title": "Real-Time Updates", "status": "pending", "skill_file": "j9_realtime_updates.py", "checks": 4, "_phase_id": "J9", "_phase_name": "Client Dashboard"}
+        {
+          "id": "J9.1",
+          "title": "Dashboard Page Load",
+          "status": "pending",
+          "skill_file": "j9_dashboard_load.py",
+          "checks": 6,
+          "_phase_id": "J9",
+          "_phase_name": "Client Dashboard"
+        },
+        {
+          "id": "J9.2",
+          "title": "Dashboard Stats API",
+          "status": "pending",
+          "skill_file": "j9_dashboard_stats.py",
+          "checks": 8,
+          "_phase_id": "J9",
+          "_phase_name": "Client Dashboard"
+        },
+        {
+          "id": "J9.3",
+          "title": "Activity Feed",
+          "status": "pending",
+          "skill_file": "j9_activity_feed.py",
+          "checks": 6,
+          "_phase_id": "J9",
+          "_phase_name": "Client Dashboard"
+        },
+        {
+          "id": "J9.4",
+          "title": "ALS Distribution Widget",
+          "status": "pending",
+          "skill_file": "j9_als_distribution.py",
+          "checks": 6,
+          "_phase_id": "J9",
+          "_phase_name": "Client Dashboard"
+        },
+        {
+          "id": "J9.5",
+          "title": "Meetings Widget",
+          "status": "pending",
+          "skill_file": "j9_meetings_widget.py",
+          "checks": 4,
+          "_phase_id": "J9",
+          "_phase_name": "Client Dashboard"
+        },
+        {
+          "id": "J9.6",
+          "title": "Leads List Page",
+          "status": "pending",
+          "skill_file": "j9_leads_list.py",
+          "checks": 7,
+          "_phase_id": "J9",
+          "_phase_name": "Client Dashboard"
+        },
+        {
+          "id": "J9.7",
+          "title": "Lead Detail Page",
+          "status": "pending",
+          "skill_file": "j9_lead_detail.py",
+          "checks": 5,
+          "_phase_id": "J9",
+          "_phase_name": "Client Dashboard"
+        },
+        {
+          "id": "J9.8",
+          "title": "Campaigns List Page",
+          "status": "pending",
+          "skill_file": "j9_campaigns_list.py",
+          "checks": 5,
+          "_phase_id": "J9",
+          "_phase_name": "Client Dashboard"
+        },
+        {
+          "id": "J9.9",
+          "title": "Campaign Detail Page",
+          "status": "pending",
+          "skill_file": "j9_campaign_detail.py",
+          "checks": 5,
+          "_phase_id": "J9",
+          "_phase_name": "Client Dashboard"
+        },
+        {
+          "id": "J9.10",
+          "title": "Reports Page",
+          "status": "pending",
+          "skill_file": "j9_reports_page.py",
+          "checks": 5,
+          "_phase_id": "J9",
+          "_phase_name": "Client Dashboard"
+        },
+        {
+          "id": "J9.11",
+          "title": "Replies Page",
+          "status": "pending",
+          "skill_file": "j9_replies_page.py",
+          "checks": 5,
+          "_phase_id": "J9",
+          "_phase_name": "Client Dashboard"
+        },
+        {
+          "id": "J9.12",
+          "title": "Settings Page",
+          "status": "pending",
+          "skill_file": "j9_settings_page.py",
+          "checks": 3,
+          "_phase_id": "J9",
+          "_phase_name": "Client Dashboard"
+        },
+        {
+          "id": "J9.13",
+          "title": "ICP Banner and Modal",
+          "status": "pending",
+          "skill_file": "j9_icp_banner.py",
+          "checks": 4,
+          "_phase_id": "J9",
+          "_phase_name": "Client Dashboard"
+        },
+        {
+          "id": "J9.14",
+          "title": "Real-Time Updates",
+          "status": "pending",
+          "skill_file": "j9_realtime_updates.py",
+          "checks": 4,
+          "_phase_id": "J9",
+          "_phase_name": "Client Dashboard"
+        }
       ]
     },
     "J10": {
       "name": "Admin Dashboard",
       "groups": 15,
       "tasks": [
-        {"id": "J10.1", "title": "Admin Access Control", "status": "pending", "skill_file": "j10_access_control.py", "checks": 5, "_phase_id": "J10", "_phase_name": "Admin Dashboard"},
-        {"id": "J10.2", "title": "Command Center Page", "status": "pending", "skill_file": "j10_command_center.py", "checks": 6, "_phase_id": "J10", "_phase_name": "Admin Dashboard"},
-        {"id": "J10.3", "title": "KPI Section", "status": "pending", "skill_file": "j10_kpi_section.py", "checks": 8, "_phase_id": "J10", "_phase_name": "Admin Dashboard"},
-        {"id": "J10.4", "title": "System Status Section", "status": "pending", "skill_file": "j10_system_status.py", "checks": 4, "_phase_id": "J10", "_phase_name": "Admin Dashboard"},
-        {"id": "J10.5", "title": "Alerts Section", "status": "pending", "skill_file": "j10_alerts_section.py", "checks": 4, "_phase_id": "J10", "_phase_name": "Admin Dashboard"},
-        {"id": "J10.6", "title": "Live Activity Feed", "status": "pending", "skill_file": "j10_live_activity.py", "checks": 5, "_phase_id": "J10", "_phase_name": "Admin Dashboard"},
-        {"id": "J10.7", "title": "Client Directory", "status": "pending", "skill_file": "j10_client_directory.py", "checks": 7, "_phase_id": "J10", "_phase_name": "Admin Dashboard"},
-        {"id": "J10.8", "title": "Client Detail Page", "status": "pending", "skill_file": "j10_client_detail.py", "checks": 5, "_phase_id": "J10", "_phase_name": "Admin Dashboard"},
-        {"id": "J10.9", "title": "Revenue Page", "status": "pending", "skill_file": "j10_revenue_page.py", "checks": 4, "_phase_id": "J10", "_phase_name": "Admin Dashboard"},
-        {"id": "J10.10", "title": "AI Costs Page", "status": "pending", "skill_file": "j10_ai_costs.py", "checks": 6, "_phase_id": "J10", "_phase_name": "Admin Dashboard"},
-        {"id": "J10.11", "title": "System Errors Page", "status": "pending", "skill_file": "j10_system_errors.py", "checks": 4, "_phase_id": "J10", "_phase_name": "Admin Dashboard"},
-        {"id": "J10.12", "title": "System Queues Page", "status": "pending", "skill_file": "j10_system_queues.py", "checks": 4, "_phase_id": "J10", "_phase_name": "Admin Dashboard"},
-        {"id": "J10.13", "title": "Rate Limits Page", "status": "pending", "skill_file": "j10_rate_limits.py", "checks": 3, "_phase_id": "J10", "_phase_name": "Admin Dashboard"},
-        {"id": "J10.14", "title": "Compliance Pages", "status": "pending", "skill_file": "j10_compliance.py", "checks": 6, "_phase_id": "J10", "_phase_name": "Admin Dashboard"},
-        {"id": "J10.15", "title": "Admin Settings", "status": "pending", "skill_file": "j10_admin_settings.py", "checks": 4, "_phase_id": "J10", "_phase_name": "Admin Dashboard"}
+        {
+          "id": "J10.1",
+          "title": "Admin Access Control",
+          "status": "pending",
+          "skill_file": "j10_access_control.py",
+          "checks": 5,
+          "_phase_id": "J10",
+          "_phase_name": "Admin Dashboard"
+        },
+        {
+          "id": "J10.2",
+          "title": "Command Center Page",
+          "status": "pending",
+          "skill_file": "j10_command_center.py",
+          "checks": 6,
+          "_phase_id": "J10",
+          "_phase_name": "Admin Dashboard"
+        },
+        {
+          "id": "J10.3",
+          "title": "KPI Section",
+          "status": "pending",
+          "skill_file": "j10_kpi_section.py",
+          "checks": 8,
+          "_phase_id": "J10",
+          "_phase_name": "Admin Dashboard"
+        },
+        {
+          "id": "J10.4",
+          "title": "System Status Section",
+          "status": "pending",
+          "skill_file": "j10_system_status.py",
+          "checks": 4,
+          "_phase_id": "J10",
+          "_phase_name": "Admin Dashboard"
+        },
+        {
+          "id": "J10.5",
+          "title": "Alerts Section",
+          "status": "pending",
+          "skill_file": "j10_alerts_section.py",
+          "checks": 4,
+          "_phase_id": "J10",
+          "_phase_name": "Admin Dashboard"
+        },
+        {
+          "id": "J10.6",
+          "title": "Live Activity Feed",
+          "status": "pending",
+          "skill_file": "j10_live_activity.py",
+          "checks": 5,
+          "_phase_id": "J10",
+          "_phase_name": "Admin Dashboard"
+        },
+        {
+          "id": "J10.7",
+          "title": "Client Directory",
+          "status": "pending",
+          "skill_file": "j10_client_directory.py",
+          "checks": 7,
+          "_phase_id": "J10",
+          "_phase_name": "Admin Dashboard"
+        },
+        {
+          "id": "J10.8",
+          "title": "Client Detail Page",
+          "status": "pending",
+          "skill_file": "j10_client_detail.py",
+          "checks": 5,
+          "_phase_id": "J10",
+          "_phase_name": "Admin Dashboard"
+        },
+        {
+          "id": "J10.9",
+          "title": "Revenue Page",
+          "status": "pending",
+          "skill_file": "j10_revenue_page.py",
+          "checks": 4,
+          "_phase_id": "J10",
+          "_phase_name": "Admin Dashboard"
+        },
+        {
+          "id": "J10.10",
+          "title": "AI Costs Page",
+          "status": "pending",
+          "skill_file": "j10_ai_costs.py",
+          "checks": 6,
+          "_phase_id": "J10",
+          "_phase_name": "Admin Dashboard"
+        },
+        {
+          "id": "J10.11",
+          "title": "System Errors Page",
+          "status": "pending",
+          "skill_file": "j10_system_errors.py",
+          "checks": 4,
+          "_phase_id": "J10",
+          "_phase_name": "Admin Dashboard"
+        },
+        {
+          "id": "J10.12",
+          "title": "System Queues Page",
+          "status": "pending",
+          "skill_file": "j10_system_queues.py",
+          "checks": 4,
+          "_phase_id": "J10",
+          "_phase_name": "Admin Dashboard"
+        },
+        {
+          "id": "J10.13",
+          "title": "Rate Limits Page",
+          "status": "pending",
+          "skill_file": "j10_rate_limits.py",
+          "checks": 3,
+          "_phase_id": "J10",
+          "_phase_name": "Admin Dashboard"
+        },
+        {
+          "id": "J10.14",
+          "title": "Compliance Pages",
+          "status": "pending",
+          "skill_file": "j10_compliance.py",
+          "checks": 6,
+          "_phase_id": "J10",
+          "_phase_name": "Admin Dashboard"
+        },
+        {
+          "id": "J10.15",
+          "title": "Admin Settings",
+          "status": "pending",
+          "skill_file": "j10_admin_settings.py",
+          "checks": 4,
+          "_phase_id": "J10",
+          "_phase_name": "Admin Dashboard"
+        }
       ]
     },
     "J11": {
       "name": "SDK Foundation",
       "groups": 12,
       "tasks": [
-        {"id": "J11.1", "title": "SDK Brain Core", "status": "pending", "skill_file": "j11_sdk_brain_core.py", "checks": 6, "_phase_id": "J11", "_phase_name": "SDK Foundation"},
-        {"id": "J11.2", "title": "SDK Tools", "status": "pending", "skill_file": "j11_sdk_tools.py", "checks": 5, "_phase_id": "J11", "_phase_name": "SDK Foundation"},
-        {"id": "J11.3", "title": "SDK Models & Schemas", "status": "pending", "skill_file": "j11_sdk_models.py", "checks": 4, "_phase_id": "J11", "_phase_name": "SDK Foundation"},
-        {"id": "J11.4", "title": "SDK Cost Tracking", "status": "pending", "skill_file": "j11_sdk_cost_tracking.py", "checks": 5, "_phase_id": "J11", "_phase_name": "SDK Foundation"},
-        {"id": "J11.5", "title": "SDK Rate Limiting", "status": "pending", "skill_file": "j11_sdk_rate_limiting.py", "checks": 4, "_phase_id": "J11", "_phase_name": "SDK Foundation"},
-        {"id": "J11.6", "title": "SDK Circuit Breaker", "status": "pending", "skill_file": "j11_sdk_circuit_breaker.py", "checks": 4, "_phase_id": "J11", "_phase_name": "SDK Foundation"},
-        {"id": "J11.7", "title": "SDK Prompt Caching", "status": "pending", "skill_file": "j11_sdk_prompt_caching.py", "checks": 5, "_phase_id": "J11", "_phase_name": "SDK Foundation"},
-        {"id": "J11.8", "title": "SDK Model Routing", "status": "pending", "skill_file": "j11_sdk_model_routing.py", "checks": 4, "_phase_id": "J11", "_phase_name": "SDK Foundation"},
-        {"id": "J11.9", "title": "SDK Unit Tests", "status": "pending", "skill_file": "j11_sdk_unit_tests.py", "checks": 6, "_phase_id": "J11", "_phase_name": "SDK Foundation"},
-        {"id": "J11.10", "title": "SDK Integration Tests", "status": "pending", "skill_file": "j11_sdk_integration_tests.py", "checks": 5, "_phase_id": "J11", "_phase_name": "SDK Foundation"},
-        {"id": "J11.11", "title": "SDK E2E Flow Test", "status": "pending", "skill_file": "j11_sdk_e2e_flow.py", "checks": 7, "_phase_id": "J11", "_phase_name": "SDK Foundation"},
-        {"id": "J11.12", "title": "SDK Cost Validation", "status": "pending", "skill_file": "j11_sdk_cost_validation.py", "checks": 5, "_phase_id": "J11", "_phase_name": "SDK Foundation"}
+        {
+          "id": "J11.1",
+          "title": "SDK Brain Core",
+          "status": "pending",
+          "skill_file": "j11_sdk_brain_core.py",
+          "checks": 6,
+          "_phase_id": "J11",
+          "_phase_name": "SDK Foundation"
+        },
+        {
+          "id": "J11.2",
+          "title": "SDK Tools",
+          "status": "pending",
+          "skill_file": "j11_sdk_tools.py",
+          "checks": 5,
+          "_phase_id": "J11",
+          "_phase_name": "SDK Foundation"
+        },
+        {
+          "id": "J11.3",
+          "title": "SDK Models & Schemas",
+          "status": "pending",
+          "skill_file": "j11_sdk_models.py",
+          "checks": 4,
+          "_phase_id": "J11",
+          "_phase_name": "SDK Foundation"
+        },
+        {
+          "id": "J11.4",
+          "title": "SDK Cost Tracking",
+          "status": "pending",
+          "skill_file": "j11_sdk_cost_tracking.py",
+          "checks": 5,
+          "_phase_id": "J11",
+          "_phase_name": "SDK Foundation"
+        },
+        {
+          "id": "J11.5",
+          "title": "SDK Rate Limiting",
+          "status": "pending",
+          "skill_file": "j11_sdk_rate_limiting.py",
+          "checks": 4,
+          "_phase_id": "J11",
+          "_phase_name": "SDK Foundation"
+        },
+        {
+          "id": "J11.6",
+          "title": "SDK Circuit Breaker",
+          "status": "pending",
+          "skill_file": "j11_sdk_circuit_breaker.py",
+          "checks": 4,
+          "_phase_id": "J11",
+          "_phase_name": "SDK Foundation"
+        },
+        {
+          "id": "J11.7",
+          "title": "SDK Prompt Caching",
+          "status": "pending",
+          "skill_file": "j11_sdk_prompt_caching.py",
+          "checks": 5,
+          "_phase_id": "J11",
+          "_phase_name": "SDK Foundation"
+        },
+        {
+          "id": "J11.8",
+          "title": "SDK Model Routing",
+          "status": "pending",
+          "skill_file": "j11_sdk_model_routing.py",
+          "checks": 4,
+          "_phase_id": "J11",
+          "_phase_name": "SDK Foundation"
+        },
+        {
+          "id": "J11.9",
+          "title": "SDK Unit Tests",
+          "status": "pending",
+          "skill_file": "j11_sdk_unit_tests.py",
+          "checks": 6,
+          "_phase_id": "J11",
+          "_phase_name": "SDK Foundation"
+        },
+        {
+          "id": "J11.10",
+          "title": "SDK Integration Tests",
+          "status": "pending",
+          "skill_file": "j11_sdk_integration_tests.py",
+          "checks": 5,
+          "_phase_id": "J11",
+          "_phase_name": "SDK Foundation"
+        },
+        {
+          "id": "J11.11",
+          "title": "SDK E2E Flow Test",
+          "status": "pending",
+          "skill_file": "j11_sdk_e2e_flow.py",
+          "checks": 7,
+          "_phase_id": "J11",
+          "_phase_name": "SDK Foundation"
+        },
+        {
+          "id": "J11.12",
+          "title": "SDK Cost Validation",
+          "status": "pending",
+          "skill_file": "j11_sdk_cost_validation.py",
+          "checks": 5,
+          "_phase_id": "J11",
+          "_phase_name": "SDK Foundation"
+        }
       ]
     },
     "J12": {
       "name": "SDK Rollout & Monitoring",
       "groups": 10,
       "tasks": [
-        {"id": "J12.1", "title": "Shadow Mode Infrastructure", "status": "pending", "skill_file": "j12_shadow_mode.py", "checks": 5, "_phase_id": "J12", "_phase_name": "SDK Rollout & Monitoring"},
-        {"id": "J12.2", "title": "Traffic Splitting", "status": "pending", "skill_file": "j12_traffic_split.py", "checks": 4, "_phase_id": "J12", "_phase_name": "SDK Rollout & Monitoring"},
-        {"id": "J12.3", "title": "A/B Comparison Logging", "status": "pending", "skill_file": "j12_ab_logging.py", "checks": 4, "_phase_id": "J12", "_phase_name": "SDK Rollout & Monitoring"},
-        {"id": "J12.4", "title": "10% Rollout Test", "status": "pending", "skill_file": "j12_10pct_rollout.py", "checks": 5, "_phase_id": "J12", "_phase_name": "SDK Rollout & Monitoring"},
-        {"id": "J12.5", "title": "50% Rollout Test", "status": "pending", "skill_file": "j12_50pct_rollout.py", "checks": 5, "_phase_id": "J12", "_phase_name": "SDK Rollout & Monitoring"},
-        {"id": "J12.6", "title": "100% Rollout Verification", "status": "pending", "skill_file": "j12_100pct_rollout.py", "checks": 5, "_phase_id": "J12", "_phase_name": "SDK Rollout & Monitoring"},
-        {"id": "J12.7", "title": "Monitoring Dashboard", "status": "pending", "skill_file": "j12_monitoring_dashboard.py", "checks": 6, "_phase_id": "J12", "_phase_name": "SDK Rollout & Monitoring"},
-        {"id": "J12.8", "title": "Alert Configuration", "status": "pending", "skill_file": "j12_alert_config.py", "checks": 4, "_phase_id": "J12", "_phase_name": "SDK Rollout & Monitoring"},
-        {"id": "J12.9", "title": "Cost Anomaly Detection", "status": "pending", "skill_file": "j12_cost_anomaly.py", "checks": 4, "_phase_id": "J12", "_phase_name": "SDK Rollout & Monitoring"},
-        {"id": "J12.10", "title": "Rollback Procedure", "status": "pending", "skill_file": "j12_rollback.py", "checks": 5, "_phase_id": "J12", "_phase_name": "SDK Rollout & Monitoring"}
+        {
+          "id": "J12.1",
+          "title": "Shadow Mode Infrastructure",
+          "status": "pending",
+          "skill_file": "j12_shadow_mode.py",
+          "checks": 5,
+          "_phase_id": "J12",
+          "_phase_name": "SDK Rollout & Monitoring"
+        },
+        {
+          "id": "J12.2",
+          "title": "Traffic Splitting",
+          "status": "pending",
+          "skill_file": "j12_traffic_split.py",
+          "checks": 4,
+          "_phase_id": "J12",
+          "_phase_name": "SDK Rollout & Monitoring"
+        },
+        {
+          "id": "J12.3",
+          "title": "A/B Comparison Logging",
+          "status": "pending",
+          "skill_file": "j12_ab_logging.py",
+          "checks": 4,
+          "_phase_id": "J12",
+          "_phase_name": "SDK Rollout & Monitoring"
+        },
+        {
+          "id": "J12.4",
+          "title": "10% Rollout Test",
+          "status": "pending",
+          "skill_file": "j12_10pct_rollout.py",
+          "checks": 5,
+          "_phase_id": "J12",
+          "_phase_name": "SDK Rollout & Monitoring"
+        },
+        {
+          "id": "J12.5",
+          "title": "50% Rollout Test",
+          "status": "pending",
+          "skill_file": "j12_50pct_rollout.py",
+          "checks": 5,
+          "_phase_id": "J12",
+          "_phase_name": "SDK Rollout & Monitoring"
+        },
+        {
+          "id": "J12.6",
+          "title": "100% Rollout Verification",
+          "status": "pending",
+          "skill_file": "j12_100pct_rollout.py",
+          "checks": 5,
+          "_phase_id": "J12",
+          "_phase_name": "SDK Rollout & Monitoring"
+        },
+        {
+          "id": "J12.7",
+          "title": "Monitoring Dashboard",
+          "status": "pending",
+          "skill_file": "j12_monitoring_dashboard.py",
+          "checks": 6,
+          "_phase_id": "J12",
+          "_phase_name": "SDK Rollout & Monitoring"
+        },
+        {
+          "id": "J12.8",
+          "title": "Alert Configuration",
+          "status": "pending",
+          "skill_file": "j12_alert_config.py",
+          "checks": 4,
+          "_phase_id": "J12",
+          "_phase_name": "SDK Rollout & Monitoring"
+        },
+        {
+          "id": "J12.9",
+          "title": "Cost Anomaly Detection",
+          "status": "pending",
+          "skill_file": "j12_cost_anomaly.py",
+          "checks": 4,
+          "_phase_id": "J12",
+          "_phase_name": "SDK Rollout & Monitoring"
+        },
+        {
+          "id": "J12.10",
+          "title": "Rollback Procedure",
+          "status": "pending",
+          "skill_file": "j12_rollback.py",
+          "checks": 5,
+          "_phase_id": "J12",
+          "_phase_name": "SDK Rollout & Monitoring"
+        }
       ]
     }
   }

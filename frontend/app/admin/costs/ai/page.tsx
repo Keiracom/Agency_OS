@@ -18,53 +18,42 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertCircle, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { AlertCircle, TrendingUp, TrendingDown, Minus, Loader2 } from "lucide-react";
+import { useAISpend } from "@/hooks/use-admin";
 
-// Mock data
-const mockSpendData = {
-  today: {
-    spent: 89.42,
-    limit: 500,
-  },
-  monthToDate: {
-    spent: 1247.83,
-    projected: 1890,
-  },
-  byAgent: [
-    { name: "Content Agent", spent: 523, percentage: 42 },
-    { name: "Reply Agent", spent: 412, percentage: 33 },
-    { name: "CMO Agent", spent: 312, percentage: 25 },
-  ],
-  byClient: [
-    { name: "LeadGen Pro", spent: 287, change: 12 },
-    { name: "GrowthLab", spent: 245, change: -5 },
-    { name: "ScaleUp Co", spent: 198, change: 8 },
-    { name: "Marketing Plus", spent: 156, change: 0 },
-    { name: "Enterprise Co", spent: 134, change: 23 },
-    { name: "StartupXYZ", spent: 89, change: -12 },
-    { name: "TechVentures", spent: 67, change: 5 },
-    { name: "GrowthHQ", spent: 45, change: -3 },
-    { name: "SalesForce Pro", spent: 23, change: 15 },
-    { name: "MarketingMax", spent: 12, change: 0 },
-  ],
-  dailyTrend: [
-    { date: "Dec 1", spent: 78 },
-    { date: "Dec 2", spent: 92 },
-    { date: "Dec 3", spent: 65 },
-    { date: "Dec 4", spent: 88 },
-    { date: "Dec 5", spent: 103 },
-    { date: "Dec 6", spent: 95 },
-    { date: "Dec 7", spent: 110 },
-    { date: "Dec 8", spent: 82 },
-    { date: "Dec 9", spent: 76 },
-    { date: "Dec 10", spent: 89 },
-  ],
+// Agent name mapping for display
+const agentDisplayNames: Record<string, string> = {
+  content: "Content Agent",
+  reply: "Reply Agent",
+  cmo: "CMO Agent",
 };
 
 export default function AdminAISpendPage() {
-  const todayPercent = Math.round(
-    (mockSpendData.today.spent / mockSpendData.today.limit) * 100
-  );
+  const { data: spendData, isLoading, error } = useAISpend();
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !spendData) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="text-lg font-medium">Failed to load AI spend data</p>
+          <p className="text-muted-foreground">Please try refreshing the page</p>
+        </div>
+      </div>
+    );
+  }
+
+  const todayPercent = Math.round(spendData.today_percentage || 0);
   const isNearLimit = todayPercent >= 80;
 
   return (
@@ -74,7 +63,7 @@ export default function AdminAISpendPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">AI Spend</h1>
           <p className="text-muted-foreground">
-            December 2025 - Token usage and cost tracking
+            {new Date().toLocaleDateString("en-AU", { month: "long", year: "numeric" })} - Token usage and cost tracking
           </p>
         </div>
       </div>
@@ -104,10 +93,10 @@ export default function AdminAISpendPage() {
           <CardContent>
             <div className="flex items-end gap-2 mb-4">
               <span className="text-3xl font-bold">
-                ${mockSpendData.today.spent.toFixed(2)}
+                ${Number(spendData.today_spend || 0).toFixed(2)}
               </span>
               <span className="text-muted-foreground mb-1">
-                / ${mockSpendData.today.limit}
+                / ${Number(spendData.today_limit || 500).toFixed(0)}
               </span>
             </div>
             <Progress value={todayPercent} className="h-3" />
@@ -126,13 +115,13 @@ export default function AdminAISpendPage() {
           <CardContent>
             <div className="flex items-end gap-2 mb-4">
               <span className="text-3xl font-bold">
-                ${mockSpendData.monthToDate.spent.toFixed(2)}
+                ${Number(spendData.mtd_spend || 0).toFixed(2)}
               </span>
             </div>
             <p className="text-sm text-muted-foreground">
               Projected end of month:{" "}
               <span className="font-medium">
-                ${mockSpendData.monthToDate.projected.toFixed(2)}
+                ${Number(spendData.projected_mtd || 0).toFixed(2)}
               </span>
             </p>
           </CardContent>
@@ -145,15 +134,17 @@ export default function AdminAISpendPage() {
           <CardTitle>Spend by Agent</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {mockSpendData.byAgent.map((agent) => (
-            <div key={agent.name} className="space-y-2">
+          {(spendData.by_agent || []).map((agent) => (
+            <div key={agent.agent} className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-medium">{agent.name}</span>
+                <span className="font-medium">
+                  {agentDisplayNames[agent.agent] || agent.agent}
+                </span>
                 <span className="text-muted-foreground">
-                  ${agent.spent} ({agent.percentage}%)
+                  ${Number(agent.spend_aud || 0).toFixed(2)} ({agent.percentage?.toFixed(0) || 0}%)
                 </span>
               </div>
-              <Progress value={agent.percentage} className="h-2" />
+              <Progress value={agent.percentage || 0} className="h-2" />
             </div>
           ))}
         </CardContent>
@@ -169,40 +160,26 @@ export default function AdminAISpendPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Client</TableHead>
-                <TableHead className="text-right">Spend (MTD)</TableHead>
-                <TableHead className="text-right">vs Last Month</TableHead>
+                <TableHead className="text-right">Spend (Today)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockSpendData.byClient.map((client) => (
-                <TableRow key={client.name}>
-                  <TableCell className="font-medium">{client.name}</TableCell>
-                  <TableCell className="text-right">${client.spent}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {client.change > 0 ? (
-                        <TrendingUp className="h-4 w-4 text-red-500" />
-                      ) : client.change < 0 ? (
-                        <TrendingDown className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <Minus className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <span
-                        className={
-                          client.change > 0
-                            ? "text-red-500"
-                            : client.change < 0
-                            ? "text-green-500"
-                            : "text-muted-foreground"
-                        }
-                      >
-                        {client.change > 0 ? "+" : ""}
-                        {client.change}%
-                      </span>
-                    </div>
+              {(spendData.by_client || []).length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={2} className="text-center text-muted-foreground py-8">
+                    No client spend data available
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                (spendData.by_client || []).map((client) => (
+                  <TableRow key={client.client_id}>
+                    <TableCell className="font-medium">{client.client_name}</TableCell>
+                    <TableCell className="text-right">
+                      ${Number(client.spend_aud || 0).toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -211,26 +188,28 @@ export default function AdminAISpendPage() {
       {/* Daily Trend */}
       <Card>
         <CardHeader>
-          <CardTitle>Daily Trend (Last 10 Days)</CardTitle>
+          <CardTitle>Daily Trend (Last 7 Days)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-end justify-between h-40 gap-2">
-            {mockSpendData.dailyTrend.map((day) => {
-              const height = (day.spent / 120) * 100; // max ~120
+            {(spendData.daily_trend || []).map((day, index) => {
+              const maxSpend = Math.max(...(spendData.daily_trend || []).map((d) => d.spend || 0), 1);
+              const height = ((day.spend || 0) / maxSpend) * 100;
+              const dateLabel = day.date ? day.date.split("-").slice(1).join("/") : `Day ${index + 1}`;
               return (
                 <div
-                  key={day.date}
+                  key={day.date || index}
                   className="flex flex-col items-center gap-2 flex-1"
                 >
                   <span className="text-xs text-muted-foreground">
-                    ${day.spent}
+                    ${(day.spend || 0).toFixed(0)}
                   </span>
                   <div
-                    className="w-full bg-primary rounded-t"
-                    style={{ height: `${height}%` }}
+                    className="w-full bg-primary rounded-t min-h-[4px]"
+                    style={{ height: `${Math.max(height, 2)}%` }}
                   />
                   <span className="text-xs text-muted-foreground">
-                    {day.date.split(" ")[1]}
+                    {dateLabel}
                   </span>
                 </div>
               );

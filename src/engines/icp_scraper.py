@@ -1097,6 +1097,129 @@ Respond in JSON format only:
             },
         )
 
+    async def analyze_icp_with_sdk(
+        self,
+        client_name: str,
+        website_url: str,
+        scraped_website: ScrapedWebsite,
+        enriched_companies: list[EnrichedPortfolioCompany],
+        client_id: UUID | None = None,
+    ) -> EngineResult[dict[str, Any]]:
+        """
+        Use SDK Brain to analyze and build comprehensive ICP.
+
+        This is the final step after website scraping and portfolio enrichment.
+        The SDK agent uses tools (web_search, web_fetch) to:
+        - Research additional context
+        - Validate assumptions
+        - Build evidence-based ICP
+
+        Args:
+            client_name: Agency/client name
+            website_url: Agency website URL
+            scraped_website: Scraped website data
+            enriched_companies: List of enriched portfolio companies
+            client_id: Optional client ID for tracking
+
+        Returns:
+            EngineResult containing ICPOutput as dict
+        """
+        from src.config.settings import settings
+
+        # Check if SDK is enabled
+        if not settings.sdk_brain_enabled:
+            logger.info("SDK Brain disabled, skipping enhanced ICP analysis")
+            return EngineResult.ok(
+                data={"sdk_skipped": True, "reason": "SDK Brain disabled"},
+                metadata={"sdk_used": False},
+            )
+
+        try:
+            from src.agents.sdk_agents.icp_agent import ICPInput, extract_icp
+
+            # Prepare input data
+            input_data = ICPInput(
+                client_name=client_name,
+                website_url=website_url,
+                website_content=scraped_website.raw_html[:50000],  # Limit size
+                portfolio_companies=[
+                    {
+                        "company_name": c.company_name,
+                        "domain": c.domain,
+                        "industry": c.industry,
+                        "employee_count": c.employee_count,
+                        "employee_range": c.employee_range,
+                        "location": c.location,
+                        "country": c.country,
+                        "founded_year": c.founded_year,
+                        "linkedin_url": c.linkedin_url,
+                    }
+                    for c in enriched_companies
+                ],
+                social_links={
+                    "linkedin": scraped_website.social_links.linkedin if scraped_website.social_links else None,
+                    "instagram": scraped_website.social_links.instagram if scraped_website.social_links else None,
+                    "facebook": scraped_website.social_links.facebook if scraped_website.social_links else None,
+                    "twitter": scraped_website.social_links.twitter if scraped_website.social_links else None,
+                } if scraped_website.social_links else {},
+            )
+
+            logger.info(f"Starting SDK ICP analysis for {client_name}")
+
+            # Run SDK agent
+            result = await extract_icp(
+                client_name=input_data.client_name,
+                website_url=input_data.website_url,
+                website_content=input_data.website_content,
+                portfolio_companies=input_data.portfolio_companies,
+                social_links=input_data.social_links,
+                client_id=client_id,
+            )
+
+            if result.success:
+                # Convert Pydantic model to dict
+                icp_data = result.data.model_dump() if hasattr(result.data, 'model_dump') else result.data
+
+                logger.info(
+                    f"SDK ICP analysis complete for {client_name}: "
+                    f"confidence={icp_data.get('confidence_score', 0):.2f}, "
+                    f"cost=${result.cost_aud:.4f} AUD"
+                )
+
+                return EngineResult.ok(
+                    data=icp_data,
+                    metadata={
+                        "sdk_used": True,
+                        "cost_aud": result.cost_aud,
+                        "turns_used": result.turns_used,
+                        "input_tokens": result.input_tokens,
+                        "output_tokens": result.output_tokens,
+                        "tool_calls": len(result.tool_calls),
+                    },
+                )
+            else:
+                logger.warning(f"SDK ICP analysis failed for {client_name}: {result.error}")
+                return EngineResult.fail(
+                    error=f"SDK analysis failed: {result.error}",
+                    metadata={
+                        "sdk_used": True,
+                        "cost_aud": result.cost_aud,
+                    },
+                )
+
+        except ImportError as e:
+            logger.error(f"SDK agent import failed: {e}")
+            return EngineResult.fail(
+                error=f"SDK agent not available: {e}",
+                metadata={"sdk_used": False},
+            )
+        except Exception as e:
+            logger.error(f"SDK ICP analysis error: {e}", exc_info=True)
+            return EngineResult.fail(
+                error=f"SDK analysis error: {str(e)}",
+                metadata={"sdk_used": False},
+            )
+
     async def save_extraction_progress(
         self,
         db: AsyncSession,

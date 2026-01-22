@@ -44,13 +44,14 @@ These are needed for channels to function. Add to `config/.env` as you obtain th
 |----------|---------|----------|
 | `POSTMARK_SERVER_TOKEN` | Inbound reply detection via webhooks | [account.postmarkapp.com](https://account.postmarkapp.com/servers) |
 
-### SMS Channel
+### SMS Channel (ClickSend)
 
 | Variable | Purpose | Get From |
 |----------|---------|----------|
-| `TWILIO_ACCOUNT_SID` | SMS outreach account ID | [console.twilio.com](https://console.twilio.com/) |
-| `TWILIO_AUTH_TOKEN` | SMS authentication | Same as above |
-| `TWILIO_PHONE_NUMBER` | Australian sending number (+61...) | Same as above |
+| `CLICKSEND_USERNAME` | ClickSend account username | [clicksend.com](https://dashboard.clicksend.com/) |
+| `CLICKSEND_API_KEY` | ClickSend API key | Same as above → API Credentials |
+
+**Note:** ClickSend is an Australian company (Perth) - primary SMS provider for AU market. Twilio is used for VOICE ONLY via Vapi.
 
 ### LinkedIn Channel
 
@@ -128,7 +129,7 @@ These can be added later. System works without them.
 1. **Apollo + Apify** — Lead sourcing won't work without these
 2. **Stripe (all 6 vars)** — Can't charge customers
 3. **Postmark** — Won't detect email replies
-4. **Twilio (3 vars)** — SMS channel
+4. **ClickSend (2 vars)** — SMS channel
 5. **HeyReach** — LinkedIn channel
 6. **Vapi + ElevenLabs** — Voice channel
 7. **Lob** — Direct mail (can defer to post-launch)
@@ -147,7 +148,8 @@ These can be added later. System works without them.
 | **Apify** | Free | $0 | $5/mo in credits (renews monthly). Enough for testing scrapers. |
 | **Stripe** | Pay-as-you-go | ~1.7% + $0.30/tx | No monthly fee. 1.7% + A$0.30 per AU domestic card. |
 | **Postmark** | Starter | $15/mo | 10K emails. Excellent deliverability. Free dev tier (100/mo) for initial setup. |
-| **Twilio** | Pay-as-you-go | ~$20-50/mo | ~$0.055/SMS (AU outbound) + $2/mo per AU number. Start with 1 number. |
+| **ClickSend** | Pay-as-you-go | ~$20-50/mo | ~$0.06-0.08/SMS (AU outbound). No monthly fees. Australian company. |
+| **Twilio** | Pay-as-you-go | ~$5-10/mo | Voice calls ONLY (via Vapi). ~$0.01/min. NOT for SMS. |
 | **HeyReach** | Starter | $79/mo | 1 LinkedIn sender. 14-day free trial with 3 accounts first. |
 | **Vapi** | Pay-as-you-go | ~$50-100/mo | $0.05/min base + ~$0.08-0.15/min for STT/TTS/LLM. $10 free credit on signup. |
 | **ElevenLabs** | Starter | $5/mo | 30K credits (~30 min TTS). Or use Vapi's built-in voices to skip this initially. |
@@ -182,14 +184,18 @@ These can be added later. System works without them.
 - **Upgrade trigger:** >10K emails → $25/mo for 25K
 - **My recommendation:** $15/mo is worth it for reliable deliverability + inbound webhooks.
 
-#### 5. Twilio (SMS) — **~$20-50/mo usage-based**
-- **Plan:** Pay-as-you-go
+#### 5. ClickSend (SMS) — **~$20-50/mo usage-based**
+- **Provider:** ClickSend (Australian company, Perth)
+- **Plan:** Pay-as-you-go (no monthly fees)
 - **Costs breakdown:**
-  - AU phone number: ~$2/mo
-  - Outbound SMS to AU: ~$0.055/message
-  - Inbound SMS: ~$0.0075/message
-- **Testing budget:** 500 outbound SMS = ~$27.50 + $2 number = ~$30/mo
-- **My recommendation:** Start with 1 AU number. Scale numbers as campaigns grow.
+  - Outbound SMS to AU: ~$0.06-0.08/message
+  - Inbound SMS: ~$0.02/message
+  - No phone number rental fees
+- **Testing budget:** 500 outbound SMS = ~$35/mo
+- **Why ClickSend:** Native Australian support, DNCR compliant, no minimum volumes
+- **My recommendation:** Best choice for Australian SMS. Twilio is NOT used for SMS.
+
+**Note:** Twilio is used for VOICE CALLS only (via Vapi), NOT for SMS.
 
 #### 6. HeyReach (LinkedIn) — **$79/mo or FREE trial**
 - **Plan:** Starter ($79/sender/month)
@@ -227,7 +233,7 @@ These can be added later. System works without them.
 | Apify | Free | $0 |
 | Stripe | Free | $0 |
 | Postmark | Starter | $15 |
-| Twilio | PAYG (~200 SMS) | ~$15 |
+| ClickSend | PAYG (~200 SMS) | ~$15 |
 | HeyReach | Free Trial | $0 |
 | Vapi | PAYG (~200 mins) | ~$50 |
 | ElevenLabs | Skip | $0 |
@@ -240,7 +246,7 @@ These can be added later. System works without them.
 | Apify | Free | $0 |
 | Stripe | Free | $0 |
 | Postmark | Starter | $15 |
-| Twilio | PAYG (~500 SMS) | ~$30 |
+| ClickSend | PAYG (~500 SMS) | ~$35 |
 | HeyReach | Starter | $79 |
 | Vapi | PAYG (~500 mins) | ~$75 |
 | ElevenLabs | Starter | $5 |
@@ -253,7 +259,7 @@ These can be added later. System works without them.
 | Apify | Starter | $39 |
 | Stripe | Free | $0 |
 | Postmark | Growth | $25 |
-| Twilio | PAYG (~1000 SMS) | ~$60 |
+| ClickSend | PAYG (~1000 SMS) | ~$70 |
 | HeyReach | Starter | $79 |
 | Vapi | PAYG (~1000 mins) | ~$150 |
 | ElevenLabs | Creator | $11 |
@@ -272,17 +278,17 @@ These can be added later. System works without them.
 **Week 2: Channels ($95)**
 5. Postmark — Upgrade to $15 Starter when ready to test at volume
 6. HeyReach — Start 14-day free trial with your LinkedIn account
-7. Twilio — Buy 1 AU number ($2) + load $20 credit
+7. ClickSend — Create account, get API credentials (pay-as-you-go SMS)
 
 **Week 3: Voice ($50-100)**
 8. Vapi — Create account → $10 free credit → Test with built-in voices
-9. Link Twilio number to Vapi for inbound/outbound calls
+9. Twilio — Buy 1 AU number for voice → Link to Vapi (voice calls ONLY)
 10. ElevenLabs — Only if Vapi's built-in TTS isn't good enough
 
 **Pre-Launch: Scale as needed**
 - Upgrade Apollo if you need phone numbers
 - Upgrade Apify if heavy scraping
-- Add more Twilio numbers for scale
+- ClickSend scales automatically (pay per SMS)
 - Upgrade HeyReach if adding more LinkedIn senders
 
 ---

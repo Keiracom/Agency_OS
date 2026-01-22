@@ -19,11 +19,14 @@
 ```
 PROJECT_BLUEPRINT.md          ← Start here (slim overview)
 │
-├── docs/architecture/        ← System design
-│   ├── DECISIONS.md          ← Locked tech choices
-│   ├── IMPORT_HIERARCHY.md   ← Layer rules (ENFORCED)
-│   ├── RULES.md              ← Claude Code rules
-│   └── FILE_STRUCTURE.md     ← Complete file tree
+├── docs/architecture/        ← System design (SINGLE SOURCE OF TRUTH)
+│   ├── ARCHITECTURE_INDEX.md ← Master index
+│   ├── foundation/           ← LOCKED: Tech choices, rules
+│   ├── business/             ← Tiers, billing, scoring
+│   ├── distribution/         ← Channel specs (email, sms, etc.)
+│   ├── flows/                ← Data flows, automation
+│   ├── content/              ← SDK, Smart Prompts
+│   └── process/              ← Dev review workflow
 │
 ├── docs/phases/              ← Phase-specific specs
 │   ├── PHASE_INDEX.md        ← All phases overview
@@ -103,7 +106,7 @@ Layer 2: src/integrations/   → models ONLY
 Layer 1: src/models/         → exceptions ONLY
 ```
 
-**Full details:** `docs/architecture/IMPORT_HIERARCHY.md`
+**Full details:** `docs/architecture/foundation/IMPORT_HIERARCHY.md`
 
 If you need data from another engine, pass it as argument from orchestration layer.
 
@@ -238,7 +241,7 @@ else:
 | Cache | Redis (Upstash) | Memcached |
 | Email | Salesforge | Resend, SendGrid, Smartlead |
 
-**Full details:** `docs/architecture/DECISIONS.md`
+**Full details:** `docs/architecture/foundation/DECISIONS.md`
 
 ---
 
@@ -387,7 +390,7 @@ At end of session, append to `docs/progress/SESSION_LOG.md`:
 **Rules:**
 - PROGRESS.md = roadmap + status only (no narratives)
 - Don't fix unrelated issues mid-task — log to ISSUES.md
-- Full protocol: `docs/architecture/RULES.md` rules 21-26
+- Full protocol: `docs/architecture/foundation/RULES.md` rules 21-26
 
 ---
 
@@ -409,9 +412,9 @@ DO NOT guess. ASK.
 
 | Need | Location |
 |------|----------|
-| Architecture decisions | `docs/architecture/DECISIONS.md` |
-| Import rules | `docs/architecture/IMPORT_HIERARCHY.md` |
-| Claude Code rules | `docs/architecture/RULES.md` |
+| Architecture decisions | `docs/architecture/foundation/DECISIONS.md` |
+| Import rules | `docs/architecture/foundation/IMPORT_HIERARCHY.md` |
+| Claude Code rules | `docs/architecture/foundation/RULES.md` |
 | Phase details | `docs/phases/PHASE_INDEX.md` |
 | Database schema | `docs/specs/database/SCHEMA_OVERVIEW.md` |
 | Engine specs | `docs/specs/engines/ENGINE_INDEX.md` |

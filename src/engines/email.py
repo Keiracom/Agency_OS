@@ -1,12 +1,12 @@
 """
 FILE: src/engines/email.py
-PURPOSE: Email engine using Resend integration with threading support
+PURPOSE: Email engine using Salesforge integration with threading support
 PHASE: 4 (Engines), modified Phase 16/24B for Conversion Intelligence
 TASK: ENG-005, 16E-002, CONTENT-002
 DEPENDENCIES:
   - src/engines/base.py
   - src/engines/content_utils.py (Phase 16)
-  - src/integrations/resend.py
+  - src/integrations/salesforge.py
   - src/integrations/redis.py
   - src/models/lead.py
   - src/models/activity.py
@@ -26,6 +26,8 @@ PHASE 24B CHANGES:
   - Track ab_test_id and ab_variant for A/B testing
   - Store links_included and personalization_fields_used
   - Track ai_model_used and prompt_version
+PHASE 18/21 CHANGES:
+  - Replaced Resend with Salesforge for Warmforge mailbox compatibility
 """
 
 import logging
@@ -43,7 +45,7 @@ logger = logging.getLogger(__name__)
 from src.engines.content_utils import build_content_snapshot
 from src.exceptions import ResourceRateLimitError, ValidationError
 from src.integrations.redis import rate_limiter
-from src.integrations.resend import ResendClient, get_resend_client
+from src.integrations.salesforge import SalesforgeClient, get_salesforge_client
 from src.models.activity import Activity
 from src.models.base import ChannelType
 from src.models.lead import Lead
@@ -55,23 +57,24 @@ EMAIL_DAILY_LIMIT_PER_DOMAIN = 50
 
 class EmailEngine(OutreachEngine):
     """
-    Email engine for sending emails via Resend.
+    Email engine for sending emails via Salesforge.
 
     Features:
     - Email threading support (Rule 18)
     - Resource-level rate limiting (50/day/domain - Rule 17)
     - Activity logging
     - Follow-up sequence support
+    - Warmforge mailbox compatibility
     """
 
-    def __init__(self, resend_client: ResendClient | None = None):
+    def __init__(self, salesforge_client: SalesforgeClient | None = None):
         """
         Initialize Email engine.
 
         Args:
-            resend_client: Optional Resend client (uses singleton if not provided)
+            salesforge_client: Optional Salesforge client (uses singleton if not provided)
         """
-        self._resend = resend_client
+        self._salesforge = salesforge_client
 
     @property
     def name(self) -> str:
@@ -82,10 +85,10 @@ class EmailEngine(OutreachEngine):
         return ChannelType.EMAIL
 
     @property
-    def resend(self) -> ResendClient:
-        if self._resend is None:
-            self._resend = get_resend_client()
-        return self._resend
+    def salesforge(self) -> SalesforgeClient:
+        if self._salesforge is None:
+            self._salesforge = get_salesforge_client()
+        return self._salesforge
 
     async def send(
         self,
@@ -186,8 +189,8 @@ class EmailEngine(OutreachEngine):
         sender = f"{from_name} <{from_email}>" if from_name else from_email
 
         try:
-            # Send via Resend
-            result = await self.resend.send_email(
+            # Send via Salesforge (uses Warmforge-warmed mailboxes)
+            result = await self.salesforge.send_email(
                 from_email=sender,
                 to_email=lead.email,
                 subject=subject,
@@ -470,7 +473,7 @@ class EmailEngine(OutreachEngine):
             personalization_fields_used=personalization_fields_used,
             ai_model_used=ai_model_used,
             prompt_version=prompt_version,
-            provider="resend",
+            provider="salesforge",
             provider_status="sent",
             provider_response=provider_response,
             created_at=datetime.utcnow(),
@@ -537,3 +540,4 @@ def get_email_engine() -> EmailEngine:
 # [x] Phase 24B: links_included extracted from HTML
 # [x] Phase 24B: personalization_fields_used tracked
 # [x] Phase 24B: ai_model_used and prompt_version stored
+# [x] Phase 18/21: Replaced Resend with Salesforge for Warmforge compatibility

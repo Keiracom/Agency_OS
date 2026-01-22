@@ -180,6 +180,9 @@ class IntentType(str, Enum):
     UNSUBSCRIBE = "unsubscribe"
     OUT_OF_OFFICE = "out_of_office"
     AUTO_REPLY = "auto_reply"
+    REFERRAL = "referral"
+    WRONG_PERSON = "wrong_person"
+    ANGRY_COMPLAINT = "angry_or_complaint"
 
 
 class WebhookEventType(str, Enum):

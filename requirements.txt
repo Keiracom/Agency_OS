@@ -38,7 +38,7 @@ tenacity>=8.2.0
 python-jose>=3.3.0
 
 # === Email ===
-resend>=0.8.0
+# Salesforge uses REST API with httpx, no SDK needed
 
 # === SMS ===
 twilio>=8.10.0

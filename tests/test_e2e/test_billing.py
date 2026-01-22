@@ -262,17 +262,20 @@ class TestTierBasedLimits:
         """Ignition tier should have lowest limits."""
         # Arrange
         client = create_ignition_client()
+        # Official tier limits from docs/specs/PRICING_TIERS.md
+        from src.config.tiers import TIER_CONFIG
+
         tier_limits = {
-            "ignition": {"monthly_credits": 1250, "daily_outreach": 50},
-            "velocity": {"monthly_credits": 5000, "daily_outreach": 200},
-            "dominance": {"monthly_credits": 10000, "daily_outreach": 500},
+            "ignition": {"monthly_leads": 1250, "daily_outreach": 50},
+            "velocity": {"monthly_leads": 2250, "daily_outreach": 100},
+            "dominance": {"monthly_leads": 4500, "daily_outreach": 200},
         }
 
         # Act
         limits = tier_limits[client["tier"]]
 
         # Assert
-        assert limits["monthly_credits"] == 1250
+        assert limits["monthly_leads"] == 1250
         assert limits["daily_outreach"] == 50
         assert client["credits_remaining"] == 1250
 
@@ -282,20 +285,20 @@ class TestTierBasedLimits:
         db_session: AsyncMock,
     ):
         """Velocity tier should have medium limits."""
-        # Arrange
-        client = create_test_client(tier="velocity", credits=5000)
+        # Arrange - Official tier limits from docs/specs/PRICING_TIERS.md
+        client = create_test_client(tier="velocity", credits=2250)
         tier_limits = {
-            "ignition": {"monthly_credits": 1250, "daily_outreach": 50},
-            "velocity": {"monthly_credits": 5000, "daily_outreach": 200},
-            "dominance": {"monthly_credits": 10000, "daily_outreach": 500},
+            "ignition": {"monthly_leads": 1250, "daily_outreach": 50},
+            "velocity": {"monthly_leads": 2250, "daily_outreach": 100},
+            "dominance": {"monthly_leads": 4500, "daily_outreach": 200},
         }
 
         # Act
         limits = tier_limits[client["tier"]]
 
         # Assert
-        assert limits["monthly_credits"] == 5000
-        assert limits["daily_outreach"] == 200
+        assert limits["monthly_leads"] == 2250
+        assert limits["daily_outreach"] == 100
 
     @pytest.mark.asyncio
     async def test_dominance_tier_limits(
@@ -303,21 +306,21 @@ class TestTierBasedLimits:
         db_session: AsyncMock,
     ):
         """Dominance tier should have highest limits."""
-        # Arrange
+        # Arrange - Official tier limits from docs/specs/PRICING_TIERS.md
         client = create_dominance_client()
         tier_limits = {
-            "ignition": {"monthly_credits": 1250, "daily_outreach": 50},
-            "velocity": {"monthly_credits": 5000, "daily_outreach": 200},
-            "dominance": {"monthly_credits": 10000, "daily_outreach": 500},
+            "ignition": {"monthly_leads": 1250, "daily_outreach": 50},
+            "velocity": {"monthly_leads": 2250, "daily_outreach": 100},
+            "dominance": {"monthly_leads": 4500, "daily_outreach": 200},
         }
 
         # Act
         limits = tier_limits[client["tier"]]
 
         # Assert
-        assert limits["monthly_credits"] == 10000
-        assert limits["daily_outreach"] == 500
-        assert client["credits_remaining"] == 10000
+        assert limits["monthly_leads"] == 4500
+        assert limits["daily_outreach"] == 200
+        assert client["credits_remaining"] == 4500
 
 
 # ============================================================================
@@ -372,23 +375,24 @@ class TestStripeWebhooks:
             customer_id=client["stripe_customer_id"],
         )
 
-        tier_credit_amounts = {
+        # Official tier leads from docs/specs/PRICING_TIERS.md
+        tier_lead_amounts = {
             "ignition": 1250,
-            "velocity": 5000,
-            "dominance": 10000,
+            "velocity": 2250,
+            "dominance": 4500,
         }
 
         # Act - Simulate webhook processing
         event_type = webhook_payload["type"]
 
         if event_type == "invoice.paid":
-            # Refresh credits based on tier
-            new_credits = tier_credit_amounts[client["tier"]]
-            client["credits_remaining"] = new_credits
+            # Refresh leads based on tier
+            new_leads = tier_lead_amounts[client["tier"]]
+            client["credits_remaining"] = new_leads
             client["credits_reset_at"] = (datetime.utcnow() + timedelta(days=30)).isoformat()
 
         # Assert
-        assert client["credits_remaining"] == 5000  # Velocity tier
+        assert client["credits_remaining"] == 2250  # Velocity tier (corrected from 5000)
         assert client["credits_remaining"] > initial_credits
 
     @pytest.mark.asyncio

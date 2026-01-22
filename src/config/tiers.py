@@ -10,6 +10,10 @@ All tier limits are business decisions documented in PRICING_TIERS.md
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.models.base import ChannelType
 
 
 class TierName(str, Enum):
@@ -163,6 +167,27 @@ def get_available_channels(als_score: int) -> list[str]:
     """Get available channels for a given ALS score."""
     tier = get_als_tier(als_score)
     return CHANNEL_ACCESS_BY_ALS.get(tier, [])
+
+
+def get_available_channels_enum(als_score: int) -> list["ChannelType"]:
+    """
+    Get available channels as ChannelType enums for a given ALS score.
+
+    Use this in orchestration flows where ChannelType enums are needed.
+    Canonical source - replaces any hardcoded tier_channel_map.
+    """
+    from src.models.base import ChannelType
+
+    channel_str_to_enum = {
+        "email": ChannelType.EMAIL,
+        "linkedin": ChannelType.LINKEDIN,
+        "voice": ChannelType.VOICE,
+        "sms": ChannelType.SMS,
+        "mail": ChannelType.MAIL,
+    }
+
+    channels_str = get_available_channels(als_score)
+    return [channel_str_to_enum[ch] for ch in channels_str if ch in channel_str_to_enum]
 
 
 # =============================================================================

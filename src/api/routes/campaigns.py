@@ -186,6 +186,7 @@ class CampaignResponse(BaseModel):
     # Sequence settings
     sequence_steps: int
     sequence_delay_days: int
+    uses_default_sequence: bool = True
 
     # Metrics
     total_leads: int = 0
@@ -240,6 +241,9 @@ class SequenceStepResponse(BaseModel):
     body_template: str
     skip_if_replied: bool
     skip_if_bounced: bool
+    # Phase E additions
+    purpose: Optional[str] = None
+    skip_if: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -467,6 +471,8 @@ async def create_campaign(
     """
     Create a new campaign.
 
+    Phase E: Auto-generates default 5-step sequence for new campaigns.
+
     Args:
         client_id: Client UUID
         campaign_data: Campaign data
@@ -476,7 +482,9 @@ async def create_campaign(
     Returns:
         Created campaign
     """
-    # Create campaign
+    from src.services.sequence_generator_service import get_sequence_generator_service
+
+    # Create campaign (uses_default_sequence=True by default)
     campaign = Campaign(
         client_id=client_id,
         created_by=ctx.user_id,
@@ -502,11 +510,16 @@ async def create_campaign(
         work_days=campaign_data.work_days,
         sequence_steps=campaign_data.sequence_steps,
         sequence_delay_days=campaign_data.sequence_delay_days,
+        uses_default_sequence=True,
     )
 
     db.add(campaign)
     await db.flush()
     await db.refresh(campaign)
+
+    # Phase E: Auto-generate default sequence for new campaigns
+    sequence_service = get_sequence_generator_service()
+    await sequence_service.generate_default_sequence(db, campaign.id)
 
     return CampaignResponse.model_validate(campaign)
 

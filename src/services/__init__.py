@@ -40,6 +40,12 @@ Phase D additions:
 - 9-11 AM email send window functions
 - DomainHealthService: Domain health monitoring (bounce/complaint rates)
 - DomainCapacityService: Domain capacity with health-based reduction
+
+Phase E additions:
+- SequenceGeneratorService: Auto-generate default 5-step sequences
+
+Phase 16 additions (Reply Handling):
+- ResponseTimingService: Calculate response delays and schedule reply sending
 """
 from src.services.buyer_signal_service import BuyerSignalService, BuyerSignal, BuyerScoreBoost
 from src.services.domain_health_service import (
@@ -82,6 +88,21 @@ from src.services.resource_assignment_service import (
     start_warmup,
     complete_warmup,
     record_resource_usage,
+)
+from src.services.sequence_generator_service import (
+    SequenceGeneratorService,
+    get_sequence_generator_service,
+)
+from src.services.response_timing_service import (
+    ResponseTimingService,
+    is_business_hours,
+    calculate_response_delay,
+    calculate_send_time,
+    DEFAULT_TIMEZONE,
+    BUSINESS_HOURS_DELAY_MIN,
+    BUSINESS_HOURS_DELAY_MAX,
+    OUTSIDE_HOURS_DELAY_MIN,
+    OUTSIDE_HOURS_DELAY_MAX,
 )
 
 __all__ = [
@@ -134,4 +155,17 @@ __all__ = [
     "start_warmup",
     "complete_warmup",
     "record_resource_usage",
+    # Phase E - Sequence Generator
+    "SequenceGeneratorService",
+    "get_sequence_generator_service",
+    # Phase 16 - Reply Handling
+    "ResponseTimingService",
+    "is_business_hours",
+    "calculate_response_delay",
+    "calculate_send_time",
+    "DEFAULT_TIMEZONE",
+    "BUSINESS_HOURS_DELAY_MIN",
+    "BUSINESS_HOURS_DELAY_MAX",
+    "OUTSIDE_HOURS_DELAY_MIN",
+    "OUTSIDE_HOURS_DELAY_MAX",
 ]

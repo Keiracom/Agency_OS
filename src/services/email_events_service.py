@@ -9,7 +9,12 @@ LAYER: 3 (services)
 CONSUMERS: webhooks, orchestration, CIS detectors
 
 This service ingests email engagement events (opens, clicks, bounces)
-from various email providers (Smartlead, Salesforge, Postmark, Resend).
+from Salesforge (primary email provider) and fallback providers.
+
+Provider hierarchy:
+1. Salesforge (primary - uses Warmforge-warmed mailboxes)
+2. Smartlead (alternative)
+3. Postmark (transactional)
 """
 
 from datetime import datetime

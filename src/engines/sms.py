@@ -1,12 +1,12 @@
 """
 FILE: src/engines/sms.py
-PURPOSE: SMS engine using Twilio integration with DNCR compliance
-PHASE: 4 (Engines), modified Phase 16/24B for Conversion Intelligence
+PURPOSE: SMS engine using ClickSend integration with DNCR compliance
+PHASE: 4 (Engines), modified Phase 16/24B for Conversion Intelligence, E2E Testing
 TASK: ENG-006, 16E-003, CONTENT-003
 DEPENDENCIES:
   - src/engines/base.py
   - src/engines/content_utils.py (Phase 16)
-  - src/integrations/twilio.py
+  - src/integrations/clicksend.py (PRIMARY SMS for Australia)
   - src/integrations/redis.py
   - src/models/lead.py
   - src/models/activity.py
@@ -17,6 +17,10 @@ RULES APPLIED:
   - Rule 14: Soft deletes only
   - Rule 17: Resource-level rate limits (100/day/number)
   - DNCR compliance for Australian numbers
+
+NOTE: ClickSend is the primary SMS provider for Australia.
+      Twilio is used for VOICE CALLS only (via Vapi).
+
 PHASE 16 CHANGES:
   - Added content_snapshot capture for WHAT Detector learning
   - Tracks touch_number, sequence context, and segment count
@@ -26,6 +30,8 @@ PHASE 24B CHANGES:
   - Track ab_test_id and ab_variant for A/B testing
   - Store links_included and personalization_fields_used
   - Track ai_model_used and prompt_version
+FIX-E2E-006:
+  - Changed from Twilio to ClickSend for SMS
 """
 
 import logging
@@ -42,7 +48,7 @@ logger = logging.getLogger(__name__)
 from src.engines.content_utils import build_sms_snapshot
 from src.exceptions import DNCRError, ResourceRateLimitError, ValidationError
 from src.integrations.redis import rate_limiter
-from src.integrations.twilio import TwilioClient, get_twilio_client
+from src.integrations.clicksend import ClickSendClient, get_clicksend_client
 from src.models.activity import Activity
 from src.models.base import ChannelType
 from src.models.lead import Lead
@@ -54,23 +60,27 @@ SMS_DAILY_LIMIT_PER_NUMBER = 100
 
 class SMSEngine(OutreachEngine):
     """
-    SMS engine for sending text messages via Twilio.
+    SMS engine for sending text messages via ClickSend.
+
+    ClickSend is an Australian company (Perth) - primary SMS provider for AU market.
+    Twilio is used for VOICE CALLS only (via Vapi).
 
     Features:
     - DNCR compliance check for Australian numbers
     - Resource-level rate limiting (100/day/number - Rule 17)
     - Activity logging
     - ALS >= 85 requirement (enforced by allocator)
+    - Native Australian phone number support
     """
 
-    def __init__(self, twilio_client: TwilioClient | None = None):
+    def __init__(self, clicksend_client: ClickSendClient | None = None):
         """
         Initialize SMS engine.
 
         Args:
-            twilio_client: Optional Twilio client (uses singleton if not provided)
+            clicksend_client: Optional ClickSend client (uses singleton if not provided)
         """
-        self._twilio = twilio_client
+        self._clicksend = clicksend_client
 
     @property
     def name(self) -> str:
@@ -81,10 +91,10 @@ class SMSEngine(OutreachEngine):
         return ChannelType.SMS
 
     @property
-    def twilio(self) -> TwilioClient:
-        if self._twilio is None:
-            self._twilio = get_twilio_client()
-        return self._twilio
+    def clicksend(self) -> ClickSendClient:
+        if self._clicksend is None:
+            self._clicksend = get_clicksend_client()
+        return self._clicksend
 
     async def send(
         self,
@@ -157,9 +167,39 @@ class SMSEngine(OutreachEngine):
             )
 
         # DNCR check for Australian numbers
+        # Optimization: Check cached dncr_result first (set during enrichment)
+        # This avoids unnecessary DNCR API calls for already-checked numbers
         skip_dncr = kwargs.get("skip_dncr", False)
+
+        if not skip_dncr and lead.phone.startswith("+61"):
+            # Check if DNCR was already checked during enrichment
+            if lead.dncr_checked and lead.dncr_result:
+                # Lead is on DNCR - block immediately without API call
+                await self._log_activity(
+                    db=db,
+                    lead=lead,
+                    campaign_id=campaign_id,
+                    action="rejected_dncr",
+                    content_preview=content[:200] if len(content) > 200 else content,
+                    provider_response={"error": "Cached DNCR block", "source": "enrichment"},
+                    from_number=from_number,
+                )
+                return EngineResult.fail(
+                    error=f"Phone number {lead.phone} is on the Do Not Call Register (cached)",
+                    metadata={
+                        "lead_id": str(lead_id),
+                        "phone": lead.phone,
+                        "reason": "dncr",
+                        "source": "cached",
+                    },
+                )
+            elif lead.dncr_checked and not lead.dncr_result:
+                # Already checked and clean - skip DNCR API call
+                skip_dncr = True
+                logger.debug(f"Lead {lead_id} DNCR already checked (clean), skipping API call")
+
         try:
-            result = await self.twilio.send_sms(
+            result = await self.clicksend.send_sms(
                 to_number=lead.phone,
                 message=content,
                 from_number=from_number,
@@ -335,7 +375,7 @@ class SMSEngine(OutreachEngine):
             EngineResult with DNCR status
         """
         try:
-            is_on_dncr = await self.twilio.check_dncr(phone_number)
+            is_on_dncr = await self.clicksend.check_dncr(phone_number)
 
             return EngineResult.ok(
                 data={
@@ -428,7 +468,7 @@ class SMSEngine(OutreachEngine):
             personalization_fields_used=personalization_fields_used,
             ai_model_used=ai_model_used,
             prompt_version=prompt_version,
-            provider="twilio",
+            provider="clicksend",
             provider_status=action,
             provider_response=provider_response,
             extra_data=metadata,
@@ -461,6 +501,7 @@ def get_sms_engine() -> SMSEngine:
 # [x] Soft delete check inherited from BaseEngine
 # [x] Resource-level rate limits (100/day/number - Rule 17)
 # [x] DNCR check for Australian numbers
+# [x] DNCR cached check optimization (check lead.dncr_result before API call)
 # [x] DNCR rejection logging
 # [x] Activity logging after send
 # [x] Batch sending support
@@ -476,3 +517,4 @@ def get_sms_engine() -> SMSEngine:
 # [x] Phase 24B: links_included extracted from SMS
 # [x] Phase 24B: personalization_fields_used tracked
 # [x] Phase 24B: ai_model_used and prompt_version stored
+# [x] FIX-E2E-006: Changed from Twilio to ClickSend for SMS (AU market)

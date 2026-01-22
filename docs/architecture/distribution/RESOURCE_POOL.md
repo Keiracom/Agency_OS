@@ -1,32 +1,40 @@
 # Resource Pool Architecture
 
-**Status:** 🔴 NOT IMPLEMENTED
-**Priority:** CRITICAL (blocks all distribution)
+**Status:** 🟡 PARTIALLY IMPLEMENTED
+**Priority:** HIGH
 **Owner:** CTO
+**Last Updated:** January 22, 2026
 
 ---
 
 ## Executive Summary
 
-New clients must receive dedicated resources (domains, phone numbers) from a platform-level pool on signup. Currently, resources are manually tied to campaigns with no automated allocation.
+New clients receive dedicated resources (domains, phone numbers) from a platform-level pool on signup. Resource assignment is automated via onboarding flow.
 
 ---
 
-## Current State (BROKEN)
+## Current State
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| `resource_pool` table | ✅ | Migration 041 |
+| `client_resources` table | ✅ | Migration 041 |
+| ResourcePool model | ✅ | `src/models/resource_pool.py` |
+| ClientResource model | ✅ | `src/models/resource_pool.py` |
+| Assignment service | ✅ | `src/services/resource_assignment_service.py` |
+| Onboarding integration | ✅ | `assign_resources_to_client()` called |
+| Buffer monitoring | ✅ | `check_buffer_and_alert()` |
+| Health tracking | ✅ | Phase D additions |
+| Domain seeding | 🟡 | Manual via API |
+| Campaign auto-inherit | 🟡 | Needs verification |
 
 ```
 Client signs up
-    └── (nothing happens to resources)
-        └── Manual: Admin creates campaign
-            └── Manual: Admin adds campaign_resources
-                └── allocator.py uses them
+    └── Onboarding flow triggers
+        └── resource_assignment_service allocates from pool
+            └── client_resources created
+                └── Buffer status checked and alerts sent
 ```
-
-**Problems:**
-1. No automated resource assignment
-2. Resources tied to campaigns, not clients
-3. No domain pool to draw from
-4. New clients can't send until manual setup
 
 ---
 
@@ -464,25 +472,28 @@ src/orchestration/flows/onboarding_flow.py
 
 ---
 
-## Files to Create/Modify
+## Files Involved
 
-| File | Action | Purpose |
+| File | Status | Purpose |
 |------|--------|---------|
-| `supabase/migrations/041_resource_pool.sql` | CREATE | Schema |
-| `src/models/resource_pool.py` | CREATE | SQLAlchemy models |
-| `src/services/resource_assignment_service.py` | CREATE | Assignment logic |
-| `src/orchestration/flows/onboarding_flow.py` | MODIFY | Add assignment task |
-| `src/api/routes/campaigns.py` | MODIFY | Auto-populate resources |
+| `supabase/migrations/041_resource_pool.sql` | ✅ | Schema + RLS + helper functions |
+| `src/models/resource_pool.py` | ✅ | SQLAlchemy models with health tracking |
+| `src/services/resource_assignment_service.py` | ✅ | Assignment, release, buffer monitoring |
+| `src/orchestration/flows/onboarding_flow.py` | ✅ | Calls assignment service |
+| `src/services/domain_health_service.py` | ✅ | Updates health metrics |
+| `src/api/routes/campaigns.py` | 🟡 | Auto-populate needs verification |
 
 ---
 
 ## Verification Checklist
 
-- [ ] `resource_pool` table exists
-- [ ] `client_resources` table exists
-- [ ] Existing domains seeded into pool
-- [ ] `resource_assignment_service.py` created
-- [ ] Onboarding flow calls assignment service
-- [ ] Campaign creation auto-populates resources
-- [ ] Warmup limits respected
-- [ ] Release works on client churn
+- [x] `resource_pool` table exists (migration 041)
+- [x] `client_resources` table exists (migration 041)
+- [x] `resource_assignment_service.py` created with full implementation
+- [x] Onboarding flow calls assignment service
+- [x] Warmup limits respected (model calculates daily limits)
+- [x] Release works on client churn (`release_client_resources()`)
+- [x] Buffer monitoring (`check_buffer_and_alert()`)
+- [x] Health tracking fields (Phase D: bounce_rate, complaint_rate, health_status)
+- [ ] Existing domains seeded into pool (manual via API)
+- [ ] Campaign creation auto-populates resources (needs verification)

@@ -533,12 +533,12 @@ async def get_pool_analytics(
     converted = status_counts.get("converted", 0)
     bounced = status_counts.get("bounced", 0)
 
-    # Get tier distribution
+    # Get tier distribution from lead_assignments (where ALS scoring happens)
     tier_query = text("""
         SELECT
             COALESCE(als_tier, 'unscored') as tier,
             COUNT(*) as count
-        FROM lead_pool
+        FROM lead_assignments
         GROUP BY als_tier
     """)
     result = await db.execute(tier_query)
@@ -568,10 +568,10 @@ async def get_pool_analytics(
     result = await db.execute(email_query)
     email_status_distribution = {row.status: row.count for row in result.fetchall()}
 
-    # Get average ALS score
+    # Get average ALS score from lead_assignments (where ALS scoring happens)
     avg_query = text("""
         SELECT AVG(als_score) as avg_score
-        FROM lead_pool
+        FROM lead_assignments
         WHERE als_score IS NOT NULL
     """)
     result = await db.execute(avg_query)

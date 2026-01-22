@@ -25,10 +25,10 @@
 | 15 | Live UX Testing | ✅ | — | `PHASE_15_UX_TEST.md` |
 | 16 | Conversion Intelligence | ✅ | 30 | `PHASE_16_CONVERSION.md` |
 | 17 | Launch Prerequisites | ✅ | 13 | `PHASE_17_LAUNCH_PREREQ.md` |
-| **18** | **Email Infrastructure** | ✅ | 12 | `PHASE_18_E2E_JOURNEY.md` *(file needs rename)* |
+| **18** | **Email Infrastructure** | ✅ | 12 | `PHASE_18_EMAIL_INFRA.md` |
 | **19** | **Scraper Waterfall** | ✅ | 9 | `SCRAPER_WATERFALL.md` (in specs/integrations) |
 | **20** | **Landing Page + UI Wiring** | ✅ | 22 | `PHASE_21_UI_OVERHAUL.md` *(file needs rename)* |
-| **21** | **E2E Journey Test** | 🟡 | 16 | See `PROGRESS.md` |
+| **21** | **E2E Journey Test** | 🟡 | 7 journeys | `docs/e2e/E2E_MASTER.md` |
 | 22 | Marketing Automation | 📋 | 5 | `PHASE_22_MARKETING_AUTO.md` |
 | 23 | Platform Intelligence | 📋 | 18 | `PHASE_23_PLATFORM_INTEL.md` |
 | 24 | Lead Pool Architecture | ✅ | 15 | `PHASE_24_LEAD_POOL.md` |
@@ -101,8 +101,7 @@ Phase 23 (Platform Intel)
 ## File Naming Note
 
 Some phase files have mismatched names due to historical renumbering:
-- `PHASE_18_E2E_JOURNEY.md` → Actually describes Email Infrastructure
-- `PHASE_19_EMAIL_INFRA.md` → Should be Phase 18 content
+- ~~`PHASE_18_E2E_JOURNEY.md`~~ → Renamed to `PHASE_18_EMAIL_INFRA.md` ✅
 - `PHASE_21_UI_OVERHAUL.md` → Actually describes Phase 20 UI Wiring
 
 See `docs/progress/ISSUES.md` ISS-002 for tracking.
@@ -118,6 +117,7 @@ See `docs/progress/ISSUES.md` ISS-002 for tracking.
 | Database schema | `docs/specs/database/SCHEMA_OVERVIEW.md` |
 | Engine specs | `docs/specs/engines/ENGINE_INDEX.md` |
 | Integration specs | `docs/specs/integrations/INTEGRATION_INDEX.md` |
+| **E2E Testing** | `docs/e2e/E2E_MASTER.md` |
 | Active tasks | `PROGRESS.md` |
 | Session history | `docs/progress/SESSION_LOG.md` |
 | Known issues | `docs/progress/ISSUES.md` |

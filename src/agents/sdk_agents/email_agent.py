@@ -123,6 +123,7 @@ async def run_sdk_email(
     lead_data: dict[str, Any],
     enrichment_data: dict[str, Any] | None = None,
     campaign_context: dict[str, Any] | None = None,
+    client_intelligence: dict[str, Any] | None = None,
     client_id: UUID | None = None,
     generate_variants: bool = False,
 ) -> SDKBrainResult:
@@ -133,6 +134,7 @@ async def run_sdk_email(
         lead_data: Lead info (name, company, title, etc.)
         enrichment_data: Optional SDK enrichment output (funding, hiring, etc.)
         campaign_context: Optional campaign info (product, ICP, tone)
+        client_intelligence: Optional client proof points (case studies, testimonials, metrics)
         client_id: Optional client ID for cost tracking
         generate_variants: If True, generate A/B test variants
 
@@ -242,6 +244,60 @@ CAMPAIGN CONTEXT:
 {chr(10).join(f'- {p}' for p in campaign_parts)}
 """
 
+    # Client intelligence section (proof points for credibility)
+    proof_section = ""
+    if client_intelligence:
+        proof_parts = []
+
+        # Proof metrics (e.g., "40% increase in leads")
+        if client_intelligence.get("proof_metrics"):
+            metrics = client_intelligence["proof_metrics"][:3]
+            if isinstance(metrics[0], dict):
+                metrics_str = "; ".join([m.get("metric", "") for m in metrics if m.get("metric")])
+            else:
+                metrics_str = "; ".join(metrics[:3])
+            if metrics_str:
+                proof_parts.append(f"PROOF METRICS: {metrics_str}")
+
+        # Named clients (social proof)
+        if client_intelligence.get("proof_clients"):
+            clients = client_intelligence["proof_clients"][:5]
+            proof_parts.append(f"NAMED CLIENTS: {', '.join(clients)}")
+
+        # Industries served
+        if client_intelligence.get("proof_industries"):
+            industries = client_intelligence["proof_industries"][:3]
+            proof_parts.append(f"INDUSTRIES SERVED: {', '.join(industries)}")
+
+        # Testimonials
+        if client_intelligence.get("testimonials"):
+            testimonials = client_intelligence["testimonials"][:2]
+            for t in testimonials:
+                if isinstance(t, dict) and t.get("quote"):
+                    author = t.get("author", "Client")
+                    proof_parts.append(f"TESTIMONIAL: \"{t['quote'][:100]}...\" - {author}")
+
+        # Review ratings
+        if client_intelligence.get("ratings"):
+            ratings = client_intelligence["ratings"]
+            rating_str = []
+            for platform, data in ratings.items():
+                if isinstance(data, dict) and data.get("rating"):
+                    rating_str.append(f"{platform}: {data['rating']}/5")
+            if rating_str:
+                proof_parts.append(f"REVIEW RATINGS: {', '.join(rating_str)}")
+
+        # Differentiators
+        if client_intelligence.get("differentiators"):
+            diffs = client_intelligence["differentiators"][:3]
+            proof_parts.append(f"KEY DIFFERENTIATORS: {'; '.join(diffs)}")
+
+        if proof_parts:
+            proof_section = f"""
+YOUR COMPANY'S PROOF POINTS (use 1-2 subtly in the email):
+{chr(10).join(f'- {p}' for p in proof_parts)}
+"""
+
     # Build the prompt
     variants_instruction = """
 Also generate 2 variants for A/B testing:
@@ -266,7 +322,7 @@ RESEARCH FINDINGS:{enrichment_section if enrichment_section else ' None availabl
 
 LINKEDIN DATA:
 {linkedin_section if linkedin_section else 'N/A'}
-{campaign_section}
+{campaign_section}{proof_section}
 INSTRUCTIONS:
 1. Use the research findings to personalize the email
 2. Lead with THEIR situation, not your product
@@ -309,6 +365,7 @@ async def generate_hot_lead_email(
     lead_data: dict[str, Any],
     enrichment_data: dict[str, Any] | None = None,
     campaign_context: dict[str, Any] | None = None,
+    client_intelligence: dict[str, Any] | None = None,
     client_id: UUID | None = None,
 ) -> dict[str, Any] | None:
     """
@@ -318,6 +375,7 @@ async def generate_hot_lead_email(
         lead_data: Lead data dict
         enrichment_data: Optional SDK enrichment data
         campaign_context: Optional campaign context
+        client_intelligence: Optional client proof points
         client_id: Optional client ID
 
     Returns:
@@ -327,6 +385,7 @@ async def generate_hot_lead_email(
         lead_data=lead_data,
         enrichment_data=enrichment_data,
         campaign_context=campaign_context,
+        client_intelligence=client_intelligence,
         client_id=client_id,
     )
 
@@ -355,6 +414,7 @@ async def generate_email_sequence(
     lead_data: dict[str, Any],
     enrichment_data: dict[str, Any] | None = None,
     campaign_context: dict[str, Any] | None = None,
+    client_intelligence: dict[str, Any] | None = None,
     sequence_length: int = 3,
     client_id: UUID | None = None,
 ) -> list[dict[str, Any]]:
@@ -370,6 +430,7 @@ async def generate_email_sequence(
         lead_data: Lead data dict
         enrichment_data: Optional SDK enrichment data
         campaign_context: Optional campaign context
+        client_intelligence: Optional client proof points
         sequence_length: Number of emails to generate (1-5)
         client_id: Optional client ID
 
@@ -403,6 +464,7 @@ async def generate_email_sequence(
             lead_data=lead_data,
             enrichment_data=enrichment_data,
             campaign_context=modified_context,
+            client_intelligence=client_intelligence,
             client_id=client_id,
         )
 

@@ -607,40 +607,34 @@ async def confirm_icp(
     )
     await db.commit()
 
-    # Trigger pool population with the confirmed ICP
-    # This sources leads from Apollo matching the client's ICP criteria
-    async def run_pool_population(cid: UUID, limit: int = 25):
-        from src.orchestration.flows.pool_population_flow import pool_population_flow
-        import logging
-        logger = logging.getLogger(__name__)
-        try:
-            logger.info(f"Starting pool population for client {cid} after ICP confirmation")
-            result = await pool_population_flow(client_id=cid, limit=limit)
-            logger.info(f"Pool population completed: {result.get('leads_added', 0)} leads added")
-        except Exception as e:
-            logger.error(f"Pool population failed for client {cid}: {e}")
-
-    # Trigger Prefect flow for pool population after ICP confirmation
+    # Trigger Prefect post-onboarding flow after ICP confirmation
+    # This comprehensive flow handles:
+    # 1. AI campaign suggestions
+    # 2. Draft campaign creation
+    # 3. Lead sourcing from Apollo
+    # 4. Lead-to-campaign assignment
     import logging
     from prefect.deployments import run_deployment
 
     logger = logging.getLogger(__name__)
 
     await run_deployment(
-        name="pool_population/pool-population-flow",
+        name="post_onboarding_setup/post-onboarding-setup",
         parameters={
             "client_id": str(client.client_id),
-            "limit": 25,
+            "auto_create_campaigns": True,
+            "auto_source_leads": True,
+            "auto_activate_campaigns": False,  # Keep as drafts for review
         },
         timeout=0,  # Don't wait for completion
     )
-    logger.info(f"Triggered Prefect pool population flow for client {client.client_id}")
+    logger.info(f"Triggered Prefect post-onboarding setup flow for client {client.client_id}")
 
     return {
         "success": True,
-        "message": "ICP profile confirmed and saved. Pool population started via Prefect.",
+        "message": "ICP profile confirmed. Campaign generation and lead sourcing started via Prefect.",
         "client_id": str(client.client_id),
-        "pool_population": "queued",
+        "post_onboarding": "queued",
     }
 
 

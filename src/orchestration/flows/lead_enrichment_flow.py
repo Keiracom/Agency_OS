@@ -39,12 +39,74 @@ from src.agents.sdk_agents.enrichment_agent import run_sdk_enrichment
 from src.agents.sdk_agents.email_agent import run_sdk_email
 from src.agents.sdk_agents.voice_kb_agent import run_sdk_voice_kb
 from src.agents.skills.research_skills import PersonalizationAnalysisSkill
+from src.models.client_intelligence import ClientIntelligence
 from src.engines.scorer import get_scorer_engine
 from src.engines.scout import get_scout_engine
 from src.integrations.anthropic import get_anthropic_client
 from src.integrations.supabase import get_db_session
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================
+# HELPER FUNCTIONS
+# ============================================
+
+
+async def get_client_intelligence_for_sdk(client_id: str) -> dict[str, Any] | None:
+    """
+    Fetch client intelligence data for SDK personalization.
+
+    Args:
+        client_id: Client UUID string
+
+    Returns:
+        Dict with proof points or None if not available
+    """
+    async with get_db_session() as db:
+        query = text("""
+            SELECT
+                proof_metrics,
+                proof_clients,
+                proof_industries,
+                common_pain_points,
+                differentiators,
+                website_testimonials,
+                website_case_studies,
+                g2_rating,
+                g2_review_count,
+                capterra_rating,
+                capterra_review_count,
+                trustpilot_rating,
+                trustpilot_review_count,
+                google_rating,
+                google_review_count
+            FROM client_intelligence
+            WHERE client_id = :client_id
+            AND deleted_at IS NULL
+        """)
+
+        result = await db.execute(query, {"client_id": client_id})
+        row = result.fetchone()
+
+        if not row:
+            return None
+
+        return {
+            "proof_metrics": row.proof_metrics or [],
+            "proof_clients": row.proof_clients or [],
+            "proof_industries": row.proof_industries or [],
+            "common_pain_points": row.common_pain_points or [],
+            "differentiators": row.differentiators or [],
+            "testimonials": row.website_testimonials or [],
+            "case_studies": row.website_case_studies or [],
+            "ratings": {
+                "g2": {"rating": float(row.g2_rating) if row.g2_rating else None, "count": row.g2_review_count},
+                "capterra": {"rating": float(row.capterra_rating) if row.capterra_rating else None, "count": row.capterra_review_count},
+                "trustpilot": {"rating": float(row.trustpilot_rating) if row.trustpilot_rating else None, "count": row.trustpilot_review_count},
+                "google": {"rating": float(row.google_rating) if row.google_rating else None, "count": row.google_review_count},
+            },
+        }
 
 
 # ============================================
@@ -341,6 +403,7 @@ async def sdk_enrich_hot_assignment_task(
 @task(name="sdk_generate_email_for_assignment", retries=2, retry_delay_seconds=10)
 async def sdk_generate_email_for_assignment_task(
     assignment_id: str,
+    client_id: str,
     lead_data: dict[str, Any],
     sdk_enrichment: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -349,6 +412,7 @@ async def sdk_generate_email_for_assignment_task(
 
     Args:
         assignment_id: Lead assignment UUID string
+        client_id: Client UUID string (for fetching client intelligence)
         lead_data: Lead info
         sdk_enrichment: Optional SDK enrichment data
 
@@ -356,9 +420,13 @@ async def sdk_generate_email_for_assignment_task(
         Dict with generated email
     """
     try:
+        # Fetch client intelligence for proof points
+        client_intelligence = await get_client_intelligence_for_sdk(client_id)
+
         result = await run_sdk_email(
             lead_data=lead_data,
             enrichment_data=sdk_enrichment,
+            client_intelligence=client_intelligence,
         )
 
         if result.success and result.parsed_data:
@@ -407,6 +475,7 @@ async def sdk_generate_email_for_assignment_task(
 @task(name="sdk_generate_voice_kb_for_assignment", retries=2, retry_delay_seconds=10)
 async def sdk_generate_voice_kb_for_assignment_task(
     assignment_id: str,
+    client_id: str,
     lead_data: dict[str, Any],
     sdk_enrichment: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -415,6 +484,7 @@ async def sdk_generate_voice_kb_for_assignment_task(
 
     Args:
         assignment_id: Lead assignment UUID string
+        client_id: Client UUID string (for fetching client intelligence)
         lead_data: Lead info
         sdk_enrichment: Optional SDK enrichment data
 
@@ -422,9 +492,13 @@ async def sdk_generate_voice_kb_for_assignment_task(
         Dict with voice KB
     """
     try:
+        # Fetch client intelligence for proof points
+        client_intelligence = await get_client_intelligence_for_sdk(client_id)
+
         result = await run_sdk_voice_kb(
             lead_data=lead_data,
             enrichment_data=sdk_enrichment,
+            client_intelligence=client_intelligence,
         )
 
         if result.success and result.parsed_data:
@@ -659,6 +733,7 @@ async def lead_enrichment_flow(
         sdk_enrichment_data = sdk_enrichment_result.get("sdk_enrichment") if sdk_enrichment_result and sdk_enrichment_result.get("success") else None
         sdk_email_result = await sdk_generate_email_for_assignment_task(
             assignment_id=assignment_id,
+            client_id=assignment_data["client_id"],
             lead_data=lead_data,
             sdk_enrichment=sdk_enrichment_data,
         )
@@ -668,6 +743,7 @@ async def lead_enrichment_flow(
         # Stage 5c: SDK voice KB generation (for ALL Hot leads)
         sdk_voice_kb_result = await sdk_generate_voice_kb_for_assignment_task(
             assignment_id=assignment_id,
+            client_id=assignment_data["client_id"],
             lead_data=lead_data,
             sdk_enrichment=sdk_enrichment_data,
         )

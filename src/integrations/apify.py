@@ -112,13 +112,22 @@ class ApifyClient:
     """
 
     # Common actor IDs
-    LINKEDIN_SCRAPER = "anchor/linkedin-people-scraper"
-    LINKEDIN_COMPANY_SCRAPER = "curious_coder/linkedin-company-scraper"
+    # Using vulnv actor - works on free tier, no login required
+    LINKEDIN_SCRAPER = "vulnv/linkedin-profile-scraper"
+    # Using dev_fusion actor - works on free tier, no cookies required
+    LINKEDIN_COMPANY_SCRAPER = "dev_fusion/linkedin-company-scraper"
     GOOGLE_SEARCH = "apify/google-search-scraper"
     WEBSITE_CONTENT = "apify/website-content-crawler"
     INSTAGRAM_SCRAPER = "apify/instagram-profile-scraper"
     FACEBOOK_SCRAPER = "apify/facebook-pages-scraper"
     GOOGLE_MAPS_SCRAPER = "apify/google-maps-scraper"
+    # Review platform scrapers
+    TRUSTPILOT_SCRAPER = "casper11515/trustpilot-reviews-scraper"
+    G2_SCRAPER = "alizarin_refrigerator-owner/g2-scraper"
+    CAPTERRA_SCRAPER = "powerai/capterra-products-reviews-scraper"
+    GOOGLE_REVIEWS_SCRAPER = "compass/google-maps-reviews-scraper"
+    # Twitter/X scraper
+    TWITTER_SCRAPER = "apidojo/twitter-scraper"
 
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key or settings.apify_api_key
@@ -673,20 +682,75 @@ class ApifyClient:
         return contacts
 
     def _transform_linkedin_profile(self, data: dict) -> dict[str, Any]:
-        """Transform Apify LinkedIn data to standard format."""
+        """Transform Apify LinkedIn data to standard format.
+
+        Supports vulnv/linkedin-profile-scraper output format:
+        - name (full name as string)
+        - about (bio text)
+        - city, country_code (location)
+        - current_company.name, current_company.position, current_company.url
+        - experience (list)
+        - education (list)
+        - followers, connections
+        - activity (recent posts)
+        """
+        # Parse full name into first/last
+        full_name = data.get("name", "") or ""
+        name_parts = full_name.split(" ", 1)
+        first_name = name_parts[0] if name_parts else ""
+        last_name = name_parts[1] if len(name_parts) > 1 else ""
+
+        # Extract current company info
+        current_company = data.get("current_company", {}) or {}
+        company_name = current_company.get("name", "")
+        title = current_company.get("position", "")
+        company_linkedin_url = current_company.get("url", "")
+
+        # Build location from city + country
+        city = data.get("city", "")
+        country_code = data.get("country_code", "")
+        location = f"{city}, {country_code}" if city and country_code else city or country_code
+
+        # Get connections (vulnv returns as 'connections' string like "500+")
+        connections_raw = data.get("connections", "")
+        if isinstance(connections_raw, str):
+            # Parse "500+" to 500
+            connections = int(connections_raw.replace("+", "").replace(",", "").strip() or 0)
+        else:
+            connections = connections_raw or 0
+
+        # Extract recent activity/posts for personalization
+        activity = data.get("activity", []) or []
+        recent_posts = []
+        for post in activity[:5]:  # Top 5 posts
+            if isinstance(post, dict):
+                recent_posts.append({
+                    "text": post.get("text", ""),
+                    "reactions": post.get("reactions", 0),
+                    "comments": post.get("comments", 0),
+                })
+            elif isinstance(post, str):
+                recent_posts.append({"text": post})
+
         return {
             "found": True,
             "source": "apify",
-            "linkedin_url": data.get("url"),
-            "first_name": data.get("firstName"),
-            "last_name": data.get("lastName"),
-            "title": data.get("headline"),
-            "company": data.get("company"),
-            "location": data.get("location"),
-            "connections": data.get("connectionsCount"),
-            "about": data.get("about"),
+            "linkedin_url": data.get("url") or data.get("profile_url"),
+            "first_name": first_name,
+            "last_name": last_name,
+            "full_name": full_name,
+            "title": title,
+            "company": company_name,
+            "company_linkedin_url": company_linkedin_url,
+            "location": location,
+            "city": city,
+            "country_code": country_code,
+            "connections": connections,
+            "followers": data.get("followers", 0),
+            "about": data.get("about", ""),
             "experience": data.get("experience", []),
             "education": data.get("education", []),
+            "recent_posts": recent_posts,
         }
 
     async def scrape_linkedin_company(
@@ -695,6 +759,8 @@ class ApifyClient:
     ) -> dict[str, Any]:
         """
         Scrape LinkedIn company page data.
+
+        Uses dev_fusion/linkedin-company-scraper (FREE tier, no cookies).
 
         Args:
             linkedin_url: LinkedIn company page URL
@@ -709,9 +775,9 @@ class ApifyClient:
 
         actor = self._get_actor(self.LINKEDIN_COMPANY_SCRAPER)
 
+        # dev_fusion actor uses profileUrls as input
         run_input = {
-            "startUrls": [{"url": linkedin_url}],
-            "proxy": {"useApifyProxy": True},
+            "profileUrls": [linkedin_url],
         }
 
         try:
@@ -723,20 +789,42 @@ class ApifyClient:
                 return {"found": False, "source": "apify"}
 
             data = items[0]
+
+            # Extract headquarters info
+            hq = data.get("headquarter", {}) or {}
+            headquarters = None
+            if hq:
+                hq_parts = [hq.get("city"), hq.get("geographicArea"), hq.get("country")]
+                headquarters = ", ".join(filter(None, hq_parts))
+
+            # Extract employee range
+            emp_range = data.get("employeeCountRange", {}) or {}
+            employee_range = None
+            if emp_range:
+                start = emp_range.get("start", 0)
+                end = emp_range.get("end")
+                if end:
+                    employee_range = f"{start}-{end}"
+                else:
+                    employee_range = f"{start}+"
+
             return {
                 "found": True,
                 "source": "apify",
-                "name": data.get("name"),
-                "followers": data.get("followersCount"),
-                "employee_count": data.get("employeesCount"),
-                "employee_range": data.get("employeeCountRange"),
+                "name": data.get("companyName"),
+                "followers": data.get("followerCount"),
+                "employee_count": data.get("employeeCount"),
+                "employee_range": employee_range,
                 "specialties": data.get("specialities", []),
                 "description": data.get("description"),
-                "industry": data.get("industry"),
-                "headquarters": data.get("headquarters"),
-                "website": data.get("website"),
-                "founded_year": data.get("foundedYear"),
-                "linkedin_url": linkedin_url,
+                "industry": data.get("industry") or data.get("industryV2Taxonomy"),
+                "headquarters": headquarters,
+                "website": data.get("websiteUrl"),
+                "founded_year": data.get("foundedOn"),
+                "linkedin_url": data.get("url") or linkedin_url,
+                "tagline": data.get("tagline"),
+                "company_id": data.get("companyId"),
+                "logo_url": data.get("logoResolutionResult"),
             }
         except Exception as e:
             logger.warning(f"LinkedIn company scraping failed: {str(e)}")
@@ -922,6 +1010,332 @@ class ApifyClient:
                 status_code=500,
                 message=f"Google Business scraping failed: {str(e)}",
             )
+
+    async def scrape_twitter_profile(
+        self,
+        twitter_handle: str,
+        max_tweets: int = 50,
+    ) -> dict[str, Any]:
+        """
+        Scrape Twitter/X profile and recent tweets.
+
+        Args:
+            twitter_handle: Twitter username (with or without @)
+            max_tweets: Maximum number of tweets to fetch
+
+        Returns:
+            Profile data: username, followers, bio, recent_tweets
+        """
+        handle = twitter_handle.lstrip("@")
+        logger.info(f"Scraping Twitter profile: @{handle}")
+
+        actor = self._get_actor(self.TWITTER_SCRAPER)
+
+        run_input = {
+            "searchTerms": [],
+            "handles": [handle],
+            "tweetsDesired": max_tweets,
+            "proxyConfig": {"useApifyProxy": True},
+        }
+
+        try:
+            run = actor.call(run_input=run_input)
+            dataset = self._client.dataset(run["defaultDatasetId"])
+            items = list(dataset.iterate_items())
+
+            if not items:
+                return {"found": False, "source": "apify"}
+
+            # Extract user data from first tweet
+            first_tweet = items[0]
+            user_data = first_tweet.get("user", {})
+
+            # Build tweet list
+            tweets = []
+            for item in items[:max_tweets]:
+                tweets.append({
+                    "text": item.get("text"),
+                    "date": item.get("createdAt"),
+                    "likes": item.get("likeCount", 0),
+                    "retweets": item.get("retweetCount", 0),
+                })
+
+            return {
+                "found": True,
+                "source": "apify",
+                "username": user_data.get("username", handle),
+                "followers": user_data.get("followersCount"),
+                "following": user_data.get("followingCount"),
+                "bio": user_data.get("description"),
+                "location": user_data.get("location"),
+                "verified": user_data.get("isVerified", False),
+                "tweets": tweets,
+                "twitter_url": f"https://twitter.com/{handle}",
+            }
+        except Exception as e:
+            logger.warning(f"Twitter scraping failed: {str(e)}")
+            raise APIError(
+                service="apify",
+                status_code=500,
+                message=f"Twitter scraping failed: {str(e)}",
+            )
+
+    async def scrape_trustpilot_reviews(
+        self,
+        company_domain: str,
+        max_reviews: int = 100,
+    ) -> dict[str, Any]:
+        """
+        Scrape Trustpilot reviews for a company.
+
+        Args:
+            company_domain: Company domain (e.g., "stripe.com")
+            max_reviews: Maximum reviews to fetch
+
+        Returns:
+            Review data: rating, review_count, top_reviews
+        """
+        logger.info(f"Scraping Trustpilot reviews for: {company_domain}")
+
+        actor = self._get_actor(self.TRUSTPILOT_SCRAPER)
+
+        # Trustpilot URL format
+        trustpilot_url = f"https://www.trustpilot.com/review/{company_domain}"
+
+        run_input = {
+            "startUrls": [{"url": trustpilot_url}],
+            "maxReviews": max_reviews,
+            "proxy": {"useApifyProxy": True},
+        }
+
+        try:
+            run = actor.call(run_input=run_input)
+            dataset = self._client.dataset(run["defaultDatasetId"])
+            items = list(dataset.iterate_items())
+
+            if not items:
+                return {"found": False, "source": "apify", "url": trustpilot_url}
+
+            # Extract company summary from first item if available
+            company_info = items[0].get("companyInfo", {}) if items else {}
+
+            # Build reviews list
+            reviews = []
+            for item in items[:max_reviews]:
+                reviews.append({
+                    "rating": item.get("rating"),
+                    "title": item.get("title"),
+                    "text": item.get("text"),
+                    "author": item.get("author", {}).get("name"),
+                    "date": item.get("date"),
+                })
+
+            return {
+                "found": True,
+                "source": "apify",
+                "url": trustpilot_url,
+                "rating": company_info.get("trustScore"),
+                "review_count": company_info.get("reviewCount"),
+                "reviews": reviews,
+            }
+        except Exception as e:
+            logger.warning(f"Trustpilot scraping failed: {str(e)}")
+            return {"found": False, "source": "apify", "error": str(e)}
+
+    async def scrape_g2_reviews(
+        self,
+        product_url: str,
+        max_reviews: int = 50,
+    ) -> dict[str, Any]:
+        """
+        Scrape G2 reviews for a product.
+
+        Args:
+            product_url: G2 product URL (e.g., "https://www.g2.com/products/slack")
+            max_reviews: Maximum reviews to fetch
+
+        Returns:
+            Review data: rating, review_count, ai_summary, top_reviews
+        """
+        logger.info(f"Scraping G2 reviews for: {product_url}")
+
+        actor = self._get_actor(self.G2_SCRAPER)
+
+        run_input = {
+            "startUrls": [{"url": product_url}],
+            "maxItems": max_reviews,
+            "proxy": {"useApifyProxy": True},
+        }
+
+        try:
+            run = actor.call(run_input=run_input)
+            dataset = self._client.dataset(run["defaultDatasetId"])
+            items = list(dataset.iterate_items())
+
+            if not items:
+                return {"found": False, "source": "apify", "url": product_url}
+
+            # G2 scraper returns product info and reviews
+            product_info = items[0].get("productInfo", {}) if items else {}
+
+            # Build reviews list
+            reviews = []
+            for item in items:
+                if item.get("reviewText"):
+                    reviews.append({
+                        "rating": item.get("rating"),
+                        "title": item.get("title"),
+                        "pros": item.get("pros"),
+                        "cons": item.get("cons"),
+                        "text": item.get("reviewText"),
+                        "reviewer": item.get("reviewer", {}).get("name"),
+                        "date": item.get("date"),
+                    })
+
+            return {
+                "found": True,
+                "source": "apify",
+                "url": product_url,
+                "rating": product_info.get("rating"),
+                "review_count": product_info.get("reviewsCount"),
+                "ai_summary": product_info.get("aiSummary"),
+                "reviews": reviews[:max_reviews],
+            }
+        except Exception as e:
+            logger.warning(f"G2 scraping failed: {str(e)}")
+            return {"found": False, "source": "apify", "error": str(e)}
+
+    async def scrape_capterra_reviews(
+        self,
+        product_url: str,
+        max_reviews: int = 50,
+    ) -> dict[str, Any]:
+        """
+        Scrape Capterra reviews for a product.
+
+        Args:
+            product_url: Capterra product URL
+            max_reviews: Maximum reviews to fetch
+
+        Returns:
+            Review data: rating, review_count, top_reviews
+        """
+        logger.info(f"Scraping Capterra reviews for: {product_url}")
+
+        actor = self._get_actor(self.CAPTERRA_SCRAPER)
+
+        run_input = {
+            "startUrls": [{"url": product_url}],
+            "maxItems": max_reviews,
+            "proxy": {"useApifyProxy": True},
+        }
+
+        try:
+            run = actor.call(run_input=run_input)
+            dataset = self._client.dataset(run["defaultDatasetId"])
+            items = list(dataset.iterate_items())
+
+            if not items:
+                return {"found": False, "source": "apify", "url": product_url}
+
+            # Extract product info
+            product_info = items[0].get("productInfo", {}) if items else {}
+
+            # Build reviews list
+            reviews = []
+            for item in items:
+                if item.get("reviewText"):
+                    reviews.append({
+                        "rating": item.get("overallRating"),
+                        "title": item.get("title"),
+                        "pros": item.get("pros"),
+                        "cons": item.get("cons"),
+                        "text": item.get("reviewText"),
+                        "reviewer": item.get("reviewer"),
+                        "date": item.get("date"),
+                    })
+
+            return {
+                "found": True,
+                "source": "apify",
+                "url": product_url,
+                "rating": product_info.get("overallRating"),
+                "review_count": product_info.get("numberOfReviews"),
+                "reviews": reviews[:max_reviews],
+            }
+        except Exception as e:
+            logger.warning(f"Capterra scraping failed: {str(e)}")
+            return {"found": False, "source": "apify", "error": str(e)}
+
+    async def scrape_google_reviews(
+        self,
+        place_id: str | None = None,
+        business_name: str | None = None,
+        location: str = "Australia",
+        max_reviews: int = 100,
+    ) -> dict[str, Any]:
+        """
+        Scrape Google Maps reviews for a business.
+
+        Args:
+            place_id: Google Place ID (preferred)
+            business_name: Business name to search (fallback)
+            location: Location for search
+            max_reviews: Maximum reviews to fetch
+
+        Returns:
+            Review data: rating, review_count, top_reviews
+        """
+        logger.info(f"Scraping Google reviews for: {place_id or business_name}")
+
+        actor = self._get_actor(self.GOOGLE_REVIEWS_SCRAPER)
+
+        if place_id:
+            run_input = {
+                "placeIds": [place_id],
+                "maxReviews": max_reviews,
+                "proxy": {"useApifyProxy": True},
+            }
+        else:
+            run_input = {
+                "searchStringsArray": [f"{business_name} {location}"],
+                "maxReviews": max_reviews,
+                "proxy": {"useApifyProxy": True},
+            }
+
+        try:
+            run = actor.call(run_input=run_input)
+            dataset = self._client.dataset(run["defaultDatasetId"])
+            items = list(dataset.iterate_items())
+
+            if not items:
+                return {"found": False, "source": "apify"}
+
+            # Build reviews list
+            reviews = []
+            for item in items:
+                reviews.append({
+                    "rating": item.get("stars"),
+                    "text": item.get("text"),
+                    "author": item.get("name"),
+                    "date": item.get("publishedAtDate"),
+                    "likes": item.get("likesCount", 0),
+                })
+
+            # Get place info from reviews
+            place_info = items[0] if items else {}
+
+            return {
+                "found": True,
+                "source": "apify",
+                "place_id": place_id,
+                "rating": place_info.get("totalScore"),
+                "review_count": place_info.get("reviewsCount"),
+                "reviews": reviews[:max_reviews],
+            }
+        except Exception as e:
+            logger.warning(f"Google Reviews scraping failed: {str(e)}")
+            return {"found": False, "source": "apify", "error": str(e)}
 
 
 # Singleton instance

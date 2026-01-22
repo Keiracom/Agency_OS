@@ -325,6 +325,7 @@ async def run_sdk_voice_kb(
     lead_data: dict[str, Any],
     enrichment_data: dict[str, Any] | None = None,
     campaign_context: dict[str, Any] | None = None,
+    client_intelligence: dict[str, Any] | None = None,
     client_id: UUID | None = None,
 ) -> SDKBrainResult:
     """
@@ -334,6 +335,7 @@ async def run_sdk_voice_kb(
         lead_data: Lead info (name, company, title, etc.)
         enrichment_data: Optional SDK enrichment output
         campaign_context: Optional campaign info
+        client_intelligence: Optional client proof points (case studies, testimonials, metrics)
         client_id: Optional client ID for cost tracking
 
     Returns:
@@ -462,6 +464,64 @@ OUR PRODUCT:
         if custom_product:
             product_section = "OUR PRODUCT:\n" + "\n".join(custom_product)
 
+    # Client intelligence section (proof points for credibility)
+    proof_section = ""
+    if client_intelligence:
+        proof_parts = []
+
+        # Proof metrics (e.g., "40% increase in leads")
+        if client_intelligence.get("proof_metrics"):
+            metrics = client_intelligence["proof_metrics"][:3]
+            if metrics and isinstance(metrics[0], dict):
+                metrics_str = "; ".join([m.get("metric", "") for m in metrics if m.get("metric")])
+            else:
+                metrics_str = "; ".join([str(m) for m in metrics[:3]])
+            if metrics_str:
+                proof_parts.append(f"PROOF METRICS you can mention: {metrics_str}")
+
+        # Named clients (social proof)
+        if client_intelligence.get("proof_clients"):
+            clients = client_intelligence["proof_clients"][:5]
+            proof_parts.append(f"NAMED CLIENTS you can drop: {', '.join(clients)}")
+
+        # Case studies
+        if client_intelligence.get("case_studies"):
+            cases = client_intelligence["case_studies"][:2]
+            for cs in cases:
+                if isinstance(cs, dict):
+                    case_str = f"{cs.get('client_name', 'A client')}: {cs.get('result_metrics', cs.get('summary', ''))[:100]}"
+                    proof_parts.append(f"CASE STUDY: {case_str}")
+
+        # Testimonials
+        if client_intelligence.get("testimonials"):
+            testimonials = client_intelligence["testimonials"][:2]
+            for t in testimonials:
+                if isinstance(t, dict) and t.get("quote"):
+                    quote = t["quote"][:80] + "..." if len(t.get("quote", "")) > 80 else t.get("quote", "")
+                    author = t.get("author", "Client")
+                    proof_parts.append(f"TESTIMONIAL: \"{quote}\" - {author}")
+
+        # Review ratings
+        if client_intelligence.get("ratings"):
+            ratings = client_intelligence["ratings"]
+            rating_str = []
+            for platform, data in ratings.items():
+                if isinstance(data, dict) and data.get("rating"):
+                    rating_str.append(f"{platform}: {data['rating']}/5")
+            if rating_str:
+                proof_parts.append(f"REVIEW RATINGS: {', '.join(rating_str)}")
+
+        # Differentiators
+        if client_intelligence.get("differentiators"):
+            diffs = client_intelligence["differentiators"][:3]
+            proof_parts.append(f"KEY DIFFERENTIATORS: {'; '.join(diffs)}")
+
+        if proof_parts:
+            proof_section = f"""
+YOUR COMPANY'S PROOF POINTS (use these naturally if relevant):
+{chr(10).join(f'- {p}' for p in proof_parts)}
+"""
+
     user_prompt = f"""Build a voice knowledge base for calling this prospect:
 
 PROSPECT:
@@ -479,7 +539,7 @@ RESEARCH FINDINGS:
 {enrichment_section}
 
 {product_section}
-
+{proof_section}
 Create a comprehensive voice knowledge base. The voice AI needs to:
 1. Sound informed about their company and situation
 2. Have specific opening hooks based on research
@@ -521,6 +581,7 @@ async def generate_hot_lead_voice_kb(
     lead_data: dict[str, Any],
     enrichment_data: dict[str, Any] | None = None,
     campaign_context: dict[str, Any] | None = None,
+    client_intelligence: dict[str, Any] | None = None,
     client_id: UUID | None = None,
 ) -> dict[str, Any] | None:
     """
@@ -530,6 +591,7 @@ async def generate_hot_lead_voice_kb(
         lead_data: Lead data dict
         enrichment_data: Optional SDK enrichment data
         campaign_context: Optional campaign context
+        client_intelligence: Optional client proof points
         client_id: Optional client ID
 
     Returns:
@@ -539,6 +601,7 @@ async def generate_hot_lead_voice_kb(
         lead_data=lead_data,
         enrichment_data=enrichment_data,
         campaign_context=campaign_context,
+        client_intelligence=client_intelligence,
         client_id=client_id,
     )
 

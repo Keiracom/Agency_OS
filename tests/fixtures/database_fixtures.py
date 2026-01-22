@@ -18,7 +18,7 @@ def create_test_client(
     name: str = "Test Agency",
     tier: str = "velocity",
     subscription_status: str = "active",
-    credits: int = 5000,
+    credits: int = 2250,  # Velocity tier default - see docs/specs/PRICING_TIERS.md
     permission_mode: str = "co_pilot",
 ) -> dict[str, Any]:
     """Create a test client fixture."""
@@ -64,10 +64,11 @@ def create_ignition_client() -> dict[str, Any]:
 
 def create_dominance_client() -> dict[str, Any]:
     """Create a Dominance tier client (highest)."""
+    # Official: 4500 leads - see docs/specs/PRICING_TIERS.md
     return create_test_client(
         name="Dominance Agency",
         tier="dominance",
-        credits=10000,
+        credits=4500,
     )
 
 

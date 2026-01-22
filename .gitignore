@@ -94,3 +94,9 @@ docs/node_modules/
 nul
 
 .vercel
+
+# Financial Advisor state files (optional - may want to track)
+# xero/data/pay/state/session_history.json
+
+# Temporary Claude working directories
+tmpclaude-*

@@ -1,16 +1,18 @@
 """
 FILE: src/integrations/twilio.py
 PURPOSE: Twilio integration for SMS with DNCR check
-PHASE: 3 (Integrations)
+PHASE: 3 (Integrations), updated E2E Testing
 TASK: INT-008
 DEPENDENCIES:
   - src/config/settings.py
   - src/exceptions.py
+  - src/integrations/dncr.py (for DNCR compliance)
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
-  - Australia DNCR compliance
+  - Australia DNCR compliance via ACMA API
 """
 
+import asyncio
 from typing import Any
 
 from twilio.rest import Client as TwilioBaseClient
@@ -25,10 +27,9 @@ class TwilioClient:
     Twilio client for SMS messaging.
 
     Handles outbound SMS with Australian DNCR compliance.
+    Uses DNCRClient integration for checking numbers against
+    the Australian Do Not Call Register.
     """
-
-    # Australian DNCR check endpoint (mock for now, use actual API in production)
-    DNCR_API_URL = "https://api.dncr.gov.au/v1/check"
 
     def __init__(
         self,
@@ -82,7 +83,9 @@ class TwilioClient:
                 )
 
         try:
-            message_obj = self._client.messages.create(
+            # Wrap sync Twilio call in thread to avoid blocking event loop
+            message_obj = await asyncio.to_thread(
+                self._client.messages.create,
                 body=message,
                 from_=from_number,
                 to=to_number,
@@ -106,16 +109,21 @@ class TwilioClient:
         """
         Check if phone number is on Australian DNCR.
 
+        Uses the DNCRClient integration which:
+        - Connects to ACMA DNCR API
+        - Caches results in Redis (default 24h)
+        - Fails open if API unavailable
+
         Args:
             phone_number: Phone number to check
 
         Returns:
-            True if on DNCR list
+            True if on DNCR list, False otherwise
         """
-        # In production, integrate with actual DNCR API
-        # For now, return False (not on list)
-        # The actual DNCR API requires registration and has specific requirements
-        return False
+        from src.integrations.dncr import get_dncr_client
+
+        dncr_client = get_dncr_client()
+        return await dncr_client.check_number(phone_number)
 
     def _is_australian_number(self, phone_number: str) -> bool:
         """Check if phone number is Australian."""
@@ -172,7 +180,10 @@ class TwilioClient:
             Message details
         """
         try:
-            message = self._client.messages(message_sid).fetch()
+            # Wrap sync Twilio call in thread to avoid blocking event loop
+            message = await asyncio.to_thread(
+                self._client.messages(message_sid).fetch
+            )
             return {
                 "sid": message.sid,
                 "from": message.from_,
@@ -200,9 +211,13 @@ class TwilioClient:
             Phone number details
         """
         try:
-            lookup = self._client.lookups.v1.phone_numbers(phone_number).fetch(
-                type=["carrier", "caller-name"]
-            )
+            # Wrap sync Twilio call in thread to avoid blocking event loop
+            def _do_lookup():
+                return self._client.lookups.v1.phone_numbers(phone_number).fetch(
+                    type=["carrier", "caller-name"]
+                )
+
+            lookup = await asyncio.to_thread(_do_lookup)
             return {
                 "phone_number": lookup.phone_number,
                 "national_format": lookup.national_format,
@@ -247,3 +262,4 @@ def get_twilio_client() -> TwilioClient:
 # [x] Error handling with custom exceptions
 # [x] All functions have type hints
 # [x] All functions have docstrings
+# [x] Sync Twilio SDK wrapped with asyncio.to_thread() (FIX-E2E-005)

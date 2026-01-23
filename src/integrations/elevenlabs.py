@@ -61,7 +61,7 @@ class ElevenLabsClient:
         "bella": "EXAVITQu4vr4xnSDxMaL",     # Friendly female
     }
 
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or settings.elevenlabs_api_key
         if not self.api_key:
             raise IntegrationError("ELEVENLABS_API_KEY not configured")
@@ -114,8 +114,8 @@ class ElevenLabsClient:
     async def text_to_speech(
         self,
         text: str,
-        voice_id: str = None,
-        voice_settings: VoiceSettings = None
+        voice_id: Optional[str] = None,
+        voice_settings: Optional[VoiceSettings] = None
     ) -> bytes:
         """
         Convert text to speech audio.

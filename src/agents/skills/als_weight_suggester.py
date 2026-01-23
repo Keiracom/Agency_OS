@@ -1,4 +1,10 @@
 """
+Contract: src/agents/skills/als_weight_suggester.py
+Purpose: Suggest custom ALS scoring weights based on ICP profile
+Layer: 4 - agents/skills
+Imports: agents.skills.base_skill, agents.skills.icp_deriver, integrations
+Consumers: ICP discovery agent
+
 FILE: src/agents/skills/als_weight_suggester.py
 TASK: ICP-010
 PHASE: 11 (ICP Discovery System)

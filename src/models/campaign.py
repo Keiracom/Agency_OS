@@ -1,4 +1,10 @@
 """
+Contract: src/models/campaign.py
+Purpose: Campaign model with channel allocation percentages
+Layer: 1 - models
+Imports: exceptions only
+Consumers: ALL layers
+
 FILE: src/models/campaign.py
 PURPOSE: Campaign model with channel allocation percentages
 PHASE: 2 (Models & Schemas)
@@ -41,9 +47,11 @@ from src.models.base import (
 )
 
 if TYPE_CHECKING:
+    from src.models.campaign_suggestion import CampaignSuggestion
     from src.models.client import Client
     from src.models.lead import Lead
     from src.models.lead_pool import LeadPool
+    from src.models.resource_pool import ClientResource
     from src.models.user import User
 
 
@@ -292,6 +300,11 @@ class Campaign(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
             return 0.0
         return (self.leads_converted / self.leads_contacted) * 100
 
+    @property
+    def is_ai_suggested(self) -> bool:
+        """Check if campaign was AI-suggested (Phase I Dashboard)."""
+        return self.campaign_type == CampaignType.AI_SUGGESTED
+
     def get_channel_allocation(self, channel: ChannelType) -> int:
         """Get allocation percentage for a specific channel."""
         allocations = {
@@ -322,6 +335,14 @@ class CampaignResource(Base, UUIDMixin, TimestampMixin):
         index=True,
     )
 
+    # Source client resource for auto-inheritance tracking
+    client_resource_id: Mapped[Optional[UUID]] = mapped_column(
+        UUID_DB(as_uuid=True),
+        ForeignKey("client_resources.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # Resource info
     channel: Mapped[ChannelType] = mapped_column(
         ENUM(ChannelType, name="channel_type", create_type=False, values_callable=lambda x: [e.value for e in x]),
@@ -343,10 +364,14 @@ class CampaignResource(Base, UUIDMixin, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_warmed: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    # Relationship
+    # Relationships
     campaign: Mapped["Campaign"] = relationship(
         "Campaign",
         back_populates="resources",
+    )
+    client_resource: Mapped[Optional["ClientResource"]] = relationship(
+        "ClientResource",
+        back_populates="campaign_resources",
     )
 
     def __repr__(self) -> str:

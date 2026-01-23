@@ -1,4 +1,10 @@
 """
+Contract: src/services/email_events_service.py
+Purpose: Email engagement events ingestion and processing
+Layer: 3 - services
+Imports: models
+Consumers: webhooks, orchestration, CIS detectors
+
 FILE: src/services/email_events_service.py
 PURPOSE: Email engagement events ingestion and processing
 PHASE: 24C (Email Engagement Tracking)
@@ -148,9 +154,10 @@ class EmailEventsService:
         row = result.fetchone()
         await self.session.commit()
 
+        event_id = str(row.id) if row else "unknown"
         return {
             "status": "created",
-            "event_id": str(row.id),
+            "event_id": event_id,
             "event_type": event_type,
             "activity_id": str(activity_id),
         }
@@ -543,6 +550,7 @@ def parse_resend_webhook(payload: dict) -> dict[str, Any]:
         "email.clicked": "clicked",
         "email.bounced": "bounced",
         "email.complained": "complained",
+        "email.replied": "replied",
     }
 
     raw_type = payload.get("type", "")

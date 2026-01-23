@@ -185,8 +185,8 @@ class DNCRClient:
             True if on DNCR, False if not, None if not cached
         """
         try:
-            from src.integrations.redis import get_redis_client
-            redis = get_redis_client()
+            from src.integrations.redis import get_redis
+            redis = await get_redis()
 
             cache_key = self._get_cache_key(phone)
             cached = await redis.get(cache_key)
@@ -207,8 +207,8 @@ class DNCRClient:
             on_dncr: Whether the number is on DNCR
         """
         try:
-            from src.integrations.redis import get_redis_client
-            redis = get_redis_client()
+            from src.integrations.redis import get_redis
+            redis = await get_redis()
 
             cache_key = self._get_cache_key(phone)
             ttl_seconds = self.cache_ttl_hours * 3600

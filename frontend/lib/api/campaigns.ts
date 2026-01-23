@@ -14,6 +14,9 @@ import type {
   Lead,
   PaginatedResponse,
   PaginationParams,
+  SequenceStep,
+  SequenceStepCreate,
+  SequenceStepUpdate,
 } from "./types";
 
 interface CampaignFilters {
@@ -178,12 +181,104 @@ export async function getCampaignLeads(
   );
 }
 
+// ============================================
+// Phase I, Item 56: Sequence Steps
+// ============================================
+
 /**
  * Get campaign sequences
  */
 export async function getCampaignSequences(
   clientId: string,
   campaignId: string
-): Promise<unknown[]> {
-  return api.get(`/api/v1/clients/${clientId}/campaigns/${campaignId}/sequences`);
+): Promise<SequenceStep[]> {
+  return api.get<SequenceStep[]>(
+    `/api/v1/clients/${clientId}/campaigns/${campaignId}/sequences`
+  );
+}
+
+/**
+ * Create a sequence step
+ */
+export async function createSequenceStep(
+  clientId: string,
+  campaignId: string,
+  data: SequenceStepCreate
+): Promise<SequenceStep> {
+  return api.post<SequenceStep>(
+    `/api/v1/clients/${clientId}/campaigns/${campaignId}/sequences`,
+    data
+  );
+}
+
+/**
+ * Update a sequence step
+ */
+export async function updateSequenceStep(
+  clientId: string,
+  campaignId: string,
+  stepNumber: number,
+  data: SequenceStepUpdate
+): Promise<SequenceStep> {
+  return api.put<SequenceStep>(
+    `/api/v1/clients/${clientId}/campaigns/${campaignId}/sequences/${stepNumber}`,
+    data
+  );
+}
+
+/**
+ * Delete a sequence step
+ */
+export async function deleteSequenceStep(
+  clientId: string,
+  campaignId: string,
+  stepNumber: number
+): Promise<void> {
+  return api.delete(
+    `/api/v1/clients/${clientId}/campaigns/${campaignId}/sequences/${stepNumber}`
+  );
+}
+
+// ============================================
+// Phase I, Item 51: Campaign Allocation
+// ============================================
+
+export interface CampaignAllocation {
+  campaign_id: string;
+  priority_pct: number;
+}
+
+export interface AllocateCampaignsRequest {
+  allocations: CampaignAllocation[];
+}
+
+export interface AllocateCampaignsResponse {
+  status: string;
+  message: string;
+  allocations: {
+    campaign_id: string;
+    campaign_name: string;
+    old_priority_pct: number;
+    new_priority_pct: number;
+  }[];
+}
+
+/**
+ * Allocate priority percentages across campaigns
+ *
+ * Updates lead_allocation_pct on each campaign and triggers
+ * pool population flow in the background.
+ *
+ * Validation:
+ * - Percentages must sum to 100%
+ * - Each campaign: minimum 10%, maximum 80%
+ */
+export async function allocateCampaigns(
+  clientId: string,
+  allocations: CampaignAllocation[]
+): Promise<AllocateCampaignsResponse> {
+  return api.post<AllocateCampaignsResponse>(
+    `/api/v1/clients/${clientId}/campaigns/allocate`,
+    { allocations }
+  );
 }

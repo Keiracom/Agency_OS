@@ -1,4 +1,10 @@
 """
+Contract: src/engines/sms.py
+Purpose: SMS engine using ClickSend integration with DNCR compliance
+Layer: 3 - engines
+Imports: models, integrations
+Consumers: orchestration only
+
 FILE: src/engines/sms.py
 PURPOSE: SMS engine using ClickSend integration with DNCR compliance
 PHASE: 4 (Engines), modified Phase 16/24B for Conversion Intelligence, E2E Testing

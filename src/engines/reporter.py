@@ -1,4 +1,10 @@
 """
+Contract: src/engines/reporter.py
+Purpose: Metrics aggregation and reporting engine
+Layer: 3 - engines
+Imports: models
+Consumers: orchestration, API routes
+
 FILE: src/engines/reporter.py
 PURPOSE: Metrics aggregation and reporting engine
 PHASE: 4 (Engines)

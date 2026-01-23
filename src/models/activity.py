@@ -1,4 +1,10 @@
 """
+Contract: src/models/activity.py
+Purpose: Activity model with message ID for email threading
+Layer: 1 - models
+Imports: exceptions only
+Consumers: ALL layers
+
 FILE: src/models/activity.py
 PURPOSE: Activity model with message ID for email threading
 PHASE: 2 (Models & Schemas), modified Phase 24B, 24C, 24D

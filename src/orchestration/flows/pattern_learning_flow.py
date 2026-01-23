@@ -19,7 +19,7 @@ RULES APPLIED:
 
 FLOW DESCRIPTION:
   Runs weekly to learn conversion patterns from historical data.
-  Executes all 4 detectors (WHO, WHAT, WHEN, HOW) for each client
+  Executes all 5 detectors (WHO, WHAT, WHEN, HOW, FUNNEL) for each client
   with sufficient conversion data, then optimizes ALS weights.
 """
 
@@ -33,6 +33,7 @@ from prefect.task_runners import ConcurrentTaskRunner
 from sqlalchemy import and_, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.detectors.funnel_detector import FunnelDetector
 from src.detectors.how_detector import HowDetector
 from src.detectors.what_detector import WhatDetector
 from src.detectors.when_detector import WhenDetector
@@ -344,6 +345,51 @@ async def run_how_detector_task(client_id: str) -> dict[str, Any]:
             }
 
 
+@task(name="run_funnel_detector", retries=1, retry_delay_seconds=5)
+async def run_funnel_detector_task(client_id: str) -> dict[str, Any]:
+    """
+    Run FUNNEL detector for a client.
+
+    Analyzes downstream funnel patterns (meetings, deals, revenue)
+    to identify conversion patterns beyond initial booking.
+
+    Args:
+        client_id: Client UUID string
+
+    Returns:
+        Dict with detection results
+    """
+    async with get_db_session() as db:
+        detector = FunnelDetector()
+        client_uuid = UUID(client_id)
+
+        try:
+            pattern = await detector.detect(db=db, client_id=client_uuid)
+
+            logger.info(
+                f"FUNNEL pattern detected for client {client_id}: "
+                f"sample={pattern.sample_size}, confidence={pattern.confidence:.2f}"
+            )
+
+            return {
+                "client_id": client_id,
+                "pattern_type": "funnel",
+                "success": True,
+                "pattern_id": str(pattern.id),
+                "sample_size": pattern.sample_size,
+                "confidence": pattern.confidence,
+            }
+
+        except Exception as e:
+            logger.error(f"FUNNEL detection failed for client {client_id}: {e}")
+            return {
+                "client_id": client_id,
+                "pattern_type": "funnel",
+                "success": False,
+                "error": str(e),
+            }
+
+
 @task(name="optimize_client_weights", retries=2, retry_delay_seconds=10)
 async def optimize_client_weights_task(client_id: str) -> dict[str, Any]:
     """
@@ -411,9 +457,9 @@ async def optimize_client_weights_task(client_id: str) -> dict[str, Any]:
 @task(name="run_all_detectors", retries=1, retry_delay_seconds=5)
 async def run_all_detectors_task(client_id: str) -> dict[str, Any]:
     """
-    Run all 4 detectors for a client.
+    Run all 5 detectors for a client.
 
-    Runs WHO, WHAT, WHEN, HOW detectors sequentially for a single client.
+    Runs WHO, WHAT, WHEN, HOW, FUNNEL detectors sequentially for a single client.
 
     Args:
         client_id: Client UUID string
@@ -457,6 +503,13 @@ async def run_all_detectors_task(client_id: str) -> dict[str, Any]:
     else:
         results["failure_count"] += 1
 
+    funnel_result = await run_funnel_detector_task(client_id)
+    results["detectors"]["funnel"] = funnel_result
+    if funnel_result["success"]:
+        results["success_count"] += 1
+    else:
+        results["failure_count"] += 1
+
     return results
 
 
@@ -481,7 +534,7 @@ async def weekly_pattern_learning_flow(
     Steps:
     1. Archive expired patterns
     2. Get clients eligible for pattern learning
-    3. Run all 4 detectors (WHO, WHAT, WHEN, HOW) for each client
+    3. Run all 5 detectors (WHO, WHAT, WHEN, HOW, FUNNEL) for each client
     4. Optimize ALS weights for each client
     5. Return summary
 
@@ -528,7 +581,7 @@ async def weekly_pattern_learning_flow(
     for client_info in eligible_clients:
         client_id_str = client_info["client_id"]
 
-        # Run all 4 detectors
+        # Run all 5 detectors
         detector_result = await run_all_detectors_task(client_id_str)
         detection_results.append(detector_result)
 
@@ -595,7 +648,7 @@ async def single_client_pattern_learning_flow(
 
     client_id_str = str(client_id)
 
-    # Run all 4 detectors
+    # Run all 5 detectors
     detector_result = await run_all_detectors_task(client_id_str)
 
     # Optimize weights
@@ -625,7 +678,7 @@ async def single_client_pattern_learning_flow(
 # [x] Proper error handling with retries
 # [x] Logging throughout
 # [x] Archives expired patterns before creating new ones
-# [x] Runs all 4 detectors (WHO, WHAT, WHEN, HOW)
+# [x] Runs all 5 detectors (WHO, WHAT, WHEN, HOW, FUNNEL)
 # [x] Weight optimization via scipy
 # [x] Updates client.als_learned_weights
 # [x] All functions have type hints

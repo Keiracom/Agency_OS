@@ -1,4 +1,10 @@
 """
+Contract: src/agents/skills/sequence_builder.py
+Purpose: Build optimal multi-channel touch sequences for campaigns
+Layer: 4 - agents/skills
+Imports: agents.skills.base_skill
+Consumers: campaign generation agent
+
 FILE: src/agents/skills/sequence_builder.py
 TASK: CAM-001, 16C-002, 16D-002
 PHASE: 12A (Campaign Generation - Core), modified Phase 16 for Conversion Intelligence

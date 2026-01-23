@@ -1,4 +1,10 @@
 """
+Contract: src/services/digest_service.py
+Purpose: Service for daily/weekly digest email generation and delivery
+Layer: 3 - services
+Imports: models, engines
+Consumers: orchestration, scheduled tasks
+
 FILE: src/services/digest_service.py
 PURPOSE: Service for daily/weekly digest email generation and delivery
 PHASE: H (Client Transparency)
@@ -151,11 +157,11 @@ class DigestService:
         """
         query = select(Client).where(
             and_(
-                Client.digest_enabled == True,
+                Client.digest_enabled == True,  # noqa: E712
                 Client.digest_frequency.in_(["daily", "weekly"]),
                 Client.digest_send_hour == target_hour,
                 Client.paused_at.is_(None),  # Don't send if paused
-                Client.is_deleted == False,
+                Client.deleted_at.is_(None),  # Not soft-deleted
             )
         )
 
@@ -337,7 +343,7 @@ class DigestService:
             select(
                 Activity.id,
                 Activity.channel,
-                Activity.subject_line,
+                Activity.subject,
                 Activity.content_snapshot,
                 Activity.created_at,
                 Lead.first_name,
@@ -482,13 +488,14 @@ class DigestService:
             return client.digest_recipients
 
         # Fall back to all member emails
+        # Note: User doesn't have soft delete; Membership does
         query = (
             select(User.email)
             .join(Membership, Membership.user_id == User.id)
             .where(
                 and_(
                     Membership.client_id == client_id,
-                    User.is_deleted == False,
+                    Membership.deleted_at.is_(None),  # Membership not deleted
                 )
             )
         )

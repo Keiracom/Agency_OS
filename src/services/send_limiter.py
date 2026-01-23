@@ -1,4 +1,10 @@
 """
+Contract: src/services/send_limiter.py
+Purpose: Protect mailbox warmup with daily send limits during TEST_MODE
+Layer: 3 - services
+Imports: config, models
+Consumers: channel engines
+
 FILE: src/services/send_limiter.py
 PURPOSE: Protect mailbox warmup with daily send limits during TEST_MODE
 PHASE: 21 (E2E Testing)

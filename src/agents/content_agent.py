@@ -1,4 +1,10 @@
 """
+Contract: src/agents/content_agent.py
+Purpose: AI content agent for personalized outreach copy generation
+Layer: 4 - agents
+Imports: models, engines, integrations, agents.base_agent
+Consumers: orchestration
+
 FILE: src/agents/content_agent.py
 PURPOSE: AI content agent for personalized outreach copy generation
 PHASE: 6 (Agents)

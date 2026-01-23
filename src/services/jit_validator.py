@@ -1,4 +1,10 @@
 """
+Contract: src/services/jit_validator.py
+Purpose: Just-in-time validation before any outreach
+Layer: 3 - services
+Imports: models, services
+Consumers: channel engines (email, sms, linkedin, voice, mail)
+
 FILE: src/services/jit_validator.py
 PURPOSE: Just-in-time validation before any outreach
 PHASE: 24A (Lead Pool Architecture), Updated Phase 24F (Suppression)
@@ -468,7 +474,7 @@ class JITValidator:
         """Check rate limits for the client/channel."""
         # Get today's count for this channel
         query = text("""
-            SELECT COUNT(*) as count
+            SELECT COUNT(*) as cnt
             FROM activities a
             JOIN leads l ON l.id = a.lead_id
             WHERE l.client_id = :client_id
@@ -481,7 +487,7 @@ class JITValidator:
             {"client_id": str(client_id), "channel": channel}
         )
         row = result.fetchone()
-        today_count = row.count if row else 0
+        today_count: int = int(row[0]) if row else 0
 
         # Get limit based on channel
         # These should come from settings in production

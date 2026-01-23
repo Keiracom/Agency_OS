@@ -1,4 +1,10 @@
 """
+Contract: src/agents/skills/campaign_splitter.py
+Purpose: Split multi-industry ICPs into separate campaign plans
+Layer: 4 - agents/skills
+Imports: agents.skills.base_skill
+Consumers: campaign generation agent
+
 FILE: src/agents/skills/campaign_splitter.py
 TASK: CAM-003
 PHASE: 12A (Campaign Generation - Core)

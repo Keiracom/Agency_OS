@@ -2,7 +2,7 @@
 
 **Purpose:** Design documentation, UI specifications, and visual guidelines for Agency OS frontend.
 
-**Tool:** [v0.dev](https://v0.dev) for AI-powered UI generation + Claude Code for integration.
+**Tool:** [Plasmic](https://studio.plasmic.app/) for visual design + Claude Code for integration.
 
 ---
 
@@ -15,7 +15,7 @@ frontend/design/
 │   ├── OVERVIEW.md        # Goals, principles, terminology
 │   ├── campaigns.md       # Campaign allocation UI
 │   ├── metrics.md         # Metrics display decisions
-│   └── mockups/           # Screenshots, v0 exports
+│   └── mockups/           # Screenshots, Plasmic exports
 └── tokens/                # Design tokens (future)
     ├── colors.md
     ├── typography.md
@@ -38,11 +38,14 @@ See `dashboard/OVERVIEW.md` for the active redesign initiative.
 ## Design-to-Code Workflow
 
 1. **Spec** - Document requirements in `design/` folder
-2. **Generate** - Use v0.dev API to create visual mockups
-3. **Integrate** - Claude Code wires up APIs, auth, data
-4. **Review** - Run locally, screenshot feedback
-5. **Iterate** - Adjust until vision matches
-6. **Ship** - Commit component changes
+2. **Design** - Use Plasmic Studio to create visual mockups
+3. **Fetch** - Claude Code fetches via Plasmic API or exports code
+4. **Integrate** - Wire up APIs, auth, data bindings
+5. **Preview** - Test with Plasmic preview mode
+6. **Iterate** - Adjust until vision matches
+7. **Ship** - Commit component changes
+
+See [PLASMIC_WORKFLOW.md](PLASMIC_WORKFLOW.md) and [PLASMIC_SKILL.md](PLASMIC_SKILL.md) for details.
 
 ---
 

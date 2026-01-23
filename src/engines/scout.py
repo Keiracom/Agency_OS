@@ -1,4 +1,10 @@
 """
+Contract: src/engines/scout.py
+Purpose: Enrich leads via Cache, Apollo, Apify, Clay waterfall
+Layer: 3 - engines
+Imports: models, integrations, agents.sdk_agents, services
+Consumers: orchestration only
+
 FILE: src/engines/scout.py
 PURPOSE: Enrich leads via Cache → Apollo+Apify → Clay waterfall
 PHASE: 4 (Engines), updated Phase 24A (Lead Pool), Phase 24F (Suppression)

@@ -95,12 +95,13 @@ class SerperClient:
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client."""
         if self._client is None:
+            headers: dict[str, str] = {
+                "X-API-KEY": self.api_key or "",
+                "Content-Type": "application/json",
+            }
             self._client = httpx.AsyncClient(
                 base_url=self.BASE_URL,
-                headers={
-                    "X-API-KEY": self.api_key,
-                    "Content-Type": "application/json",
-                },
+                headers=headers,
                 timeout=30.0,
             )
         return self._client

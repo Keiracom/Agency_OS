@@ -1,4 +1,10 @@
 """
+Contract: src/services/deal_service.py
+Purpose: Service for managing deals and downstream outcomes
+Layer: 3 - services
+Imports: models, exceptions
+Consumers: orchestration, API routes, CIS detectors
+
 FILE: src/services/deal_service.py
 PURPOSE: Service for managing deals and downstream outcomes
 PHASE: 24E (Downstream Outcomes)
@@ -161,6 +167,9 @@ class DealService:
         row = result.fetchone()
         await self.session.commit()
 
+        if not row:
+            return {}
+
         # Update lead with deal info
         await self.session.execute(
             text("""
@@ -269,7 +278,7 @@ class DealService:
 
         deal = await self.get_by_id(deal_id)
         if not deal:
-            raise NotFoundError(resource="deal", resource_id=str(deal_id))
+            raise NotFoundError(resource_type="deal", resource_id=str(deal_id))
 
         # Auto-adjust probability based on stage
         if probability is None:
@@ -302,6 +311,8 @@ class DealService:
         row = result.fetchone()
         await self.session.commit()
 
+        if not row:
+            return {}
         return dict(row._mapping)
 
     async def close_won(
@@ -323,7 +334,7 @@ class DealService:
         """
         deal = await self.get_by_id(deal_id)
         if not deal:
-            raise NotFoundError(resource="deal", resource_id=str(deal_id))
+            raise NotFoundError(resource_type="deal", resource_id=str(deal_id))
 
         update_value = value if value is not None else deal.get("value")
 
@@ -346,6 +357,9 @@ class DealService:
 
         row = result.fetchone()
         await self.session.commit()
+
+        if not row:
+            return {}
 
         # Update lead with win
         await self.session.execute(
@@ -392,7 +406,7 @@ class DealService:
 
         deal = await self.get_by_id(deal_id)
         if not deal:
-            raise NotFoundError(resource="deal", resource_id=str(deal_id))
+            raise NotFoundError(resource_type="deal", resource_id=str(deal_id))
 
         query = text("""
             UPDATE deals
@@ -416,6 +430,8 @@ class DealService:
         row = result.fetchone()
         await self.session.commit()
 
+        if not row:
+            return {}
         return dict(row._mapping)
 
     async def update_value(
@@ -437,7 +453,7 @@ class DealService:
         """
         deal = await self.get_by_id(deal_id)
         if not deal:
-            raise NotFoundError(resource="deal", resource_id=str(deal_id))
+            raise NotFoundError(resource_type="deal", resource_id=str(deal_id))
 
         if currency:
             query = text("""
@@ -465,6 +481,9 @@ class DealService:
 
         row = result.fetchone()
         await self.session.commit()
+
+        if not row:
+            return {}
 
         # Update lead value
         await self.session.execute(
@@ -562,17 +581,17 @@ class DealService:
         result = await self.session.execute(query, {"client_id": client_id})
         rows = result.fetchall()
 
-        stages = {row.stage: {
-            "count": row.count,
-            "total_value": float(row.total_value),
+        stages: dict[str, dict[str, int | float]] = {row.stage: {
+            "count": int(row.count) if row.count else 0,
+            "total_value": float(row.total_value) if row.total_value else 0.0,
             "avg_probability": int(row.avg_probability) if row.avg_probability else 0,
         } for row in rows}
 
         # Calculate totals
-        total_count = sum(s["count"] for s in stages.values())
-        total_value = sum(s["total_value"] for s in stages.values())
+        total_count = sum(int(s["count"]) for s in stages.values())
+        total_value = sum(float(s["total_value"]) for s in stages.values())
         weighted_value = sum(
-            s["total_value"] * s["avg_probability"] / 100
+            float(s["total_value"]) * int(s["avg_probability"]) / 100
             for s in stages.values()
         )
 
@@ -809,6 +828,8 @@ class DealService:
             row = result.fetchone()
             await self.session.commit()
 
+            if not row:
+                return {}
             return dict(row._mapping)
         else:
             # Need lead_id to create deal

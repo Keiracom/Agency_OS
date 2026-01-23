@@ -1435,6 +1435,7 @@ async def resend_events_webhook(
     - email.bounced: Handle bounces
     - email.complained: Handle spam complaints
     - email.delivered: Track successful delivery
+    - email.replied: Forward to Closer engine for intent classification
 
     Webhook-first architecture (Rule 20).
 
@@ -1526,6 +1527,32 @@ async def resend_events_webhook(
                 provider="resend",
                 provider_event_id=parsed.get("provider_event_id"),
             )
+
+        elif event_type == "replied":
+            # Forward to closer engine for intent classification and ALS score update
+            lead = await find_lead_by_email(db, parsed.get("lead_email", ""))
+            if lead:
+                closer = get_closer_engine()
+                result = await closer.process_reply(
+                    db=db,
+                    lead_id=lead.id,
+                    message=parsed.get("raw", {}).get("data", {}).get("reply_text", ""),
+                    channel=ChannelType.EMAIL,
+                    provider_message_id=provider_id,
+                    metadata={
+                        **parsed.get("raw", {}),
+                        "provider": "resend",
+                    },
+                )
+
+                return {
+                    "status": "processed",
+                    "event_type": event_type,
+                    "activity_id": str(activity.id),
+                    "lead_id": str(lead.id),
+                    "intent": result.data.get("intent") if result.success else None,
+                    "confidence": result.data.get("confidence") if result.success else None,
+                }
 
         return {
             "status": "processed",

@@ -1,4 +1,10 @@
 """
+Contract: src/services/lead_pool_service.py
+Purpose: CRUD operations for the centralised lead pool
+Layer: 3 - services
+Imports: models, integrations, exceptions
+Consumers: orchestration, API routes
+
 FILE: src/services/lead_pool_service.py
 PURPOSE: CRUD operations for the centralised lead pool
 PHASE: 24A (Lead Pool Architecture)
@@ -184,15 +190,19 @@ class LeadPoolService:
                 update_fields.append(f"{field} = :{field}")
                 value = lead_data[field]
                 # Handle special types
-                if isinstance(value, (list, dict)):
+                if isinstance(value, dict):
                     import json
-                    params[field] = json.dumps(value) if isinstance(value, dict) else value
+                    params[field] = json.dumps(value)
+                elif isinstance(value, list):
+                    import json
+                    params[field] = json.dumps(value)
                 else:
                     params[field] = value
 
         if not update_fields:
             # No updates to make, just return existing
-            return await self.get_by_id(lead_pool_id)
+            existing = await self.get_by_id(lead_pool_id)
+            return existing if existing else {}
 
         # Always update last_enriched_at
         update_fields.append("last_enriched_at = NOW()")
@@ -210,7 +220,7 @@ class LeadPoolService:
         await self.session.commit()
 
         if not row:
-            raise NotFoundError(f"Lead pool {lead_pool_id} not found")
+            raise NotFoundError(resource_type="LeadPool", resource_id=str(lead_pool_id))
 
         return self._row_to_dict(row)
 

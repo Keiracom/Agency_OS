@@ -1,4 +1,10 @@
 """
+Contract: src/engines/voice.py
+Purpose: Voice engine using Vapi and ElevenLabs for AI voice calls
+Layer: 3 - engines
+Imports: models, integrations, services
+Consumers: orchestration only
+
 FILE: src/engines/voice.py
 PURPOSE: Voice engine using Vapi + Twilio + ElevenLabs for AI voice calls
 PHASE: 4 (Engines), modified Phase 16 for Conversion Intelligence, Phase 17 for Vapi
@@ -25,19 +31,26 @@ PHASE 17 CHANGES:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config.settings import settings
 from src.engines.base import EngineResult, OutreachEngine
+from src.services.voice_retry_service import (
+    VoiceRetryService,
+    RETRYABLE_OUTCOMES,
+    MAX_RETRIES,
+)
 
 logger = logging.getLogger(__name__)
 from src.engines.content_utils import build_voice_snapshot
-from src.exceptions import ValidationError
+from src.exceptions import DNCRError, ValidationError
+from src.integrations.dncr import get_dncr_client
 from src.integrations.vapi import (
     VapiClient,
     VapiAssistantConfig,
@@ -57,6 +70,120 @@ from src.models.activity import Activity
 from src.models.base import ChannelType, LeadStatus
 from src.models.lead import Lead
 from src.models.campaign import Campaign
+
+
+# ============================================
+# BUSINESS HOURS CONSTANTS (Per VOICE.md spec)
+# ============================================
+VOICE_BUSINESS_HOURS = {
+    "start": 9,   # 9 AM
+    "end": 17,    # 5 PM
+    "lunch_start": 12,  # Skip 12-1 PM (low answer rate)
+    "lunch_end": 13,
+    "days": [0, 1, 2, 3, 4],  # Monday-Friday (weekday() values)
+    "default_timezone": "Australia/Sydney",
+}
+
+
+def is_within_business_hours(
+    lead_timezone: str | None = None,
+) -> tuple[bool, str | None]:
+    """
+    Check if current time is within business hours for voice calls.
+
+    Per VOICE.md spec:
+    - Business hours: 9 AM - 5 PM
+    - Weekdays only (Monday-Friday)
+    - Skip lunch hour 12-1 PM (low answer rate)
+
+    Args:
+        lead_timezone: Lead's timezone (e.g., "Australia/Sydney").
+                      Falls back to Australia/Sydney if not provided.
+
+    Returns:
+        Tuple of (is_within_hours, reason_if_not)
+    """
+    timezone = lead_timezone or VOICE_BUSINESS_HOURS["default_timezone"]
+
+    try:
+        tz = ZoneInfo(timezone)
+    except Exception:
+        # Invalid timezone, fall back to default
+        logger.warning(f"Invalid timezone '{timezone}', using default")
+        tz = ZoneInfo(VOICE_BUSINESS_HOURS["default_timezone"])
+
+    now = datetime.now(tz)
+
+    # Check day of week (Monday=0, Sunday=6)
+    if now.weekday() not in VOICE_BUSINESS_HOURS["days"]:
+        return False, "weekend"
+
+    # Check if before business hours
+    if now.hour < VOICE_BUSINESS_HOURS["start"]:
+        return False, "before_business_hours"
+
+    # Check if after business hours
+    if now.hour >= VOICE_BUSINESS_HOURS["end"]:
+        return False, "after_business_hours"
+
+    # Check lunch hour (12-1 PM has low answer rate)
+    if VOICE_BUSINESS_HOURS["lunch_start"] <= now.hour < VOICE_BUSINESS_HOURS["lunch_end"]:
+        return False, "lunch_hour"
+
+    return True, None
+
+
+def get_next_business_hour(
+    lead_timezone: str | None = None,
+) -> datetime:
+    """
+    Calculate the next available business hour for voice calls.
+
+    Finds the next time that is:
+    - Within 9 AM - 5 PM
+    - Not during lunch (12-1 PM)
+    - On a weekday (Monday-Friday)
+
+    Args:
+        lead_timezone: Lead's timezone. Falls back to Australia/Sydney.
+
+    Returns:
+        Datetime of next available business hour (timezone-aware).
+    """
+    timezone = lead_timezone or VOICE_BUSINESS_HOURS["default_timezone"]
+
+    try:
+        tz = ZoneInfo(timezone)
+    except Exception:
+        tz = ZoneInfo(VOICE_BUSINESS_HOURS["default_timezone"])
+
+    now = datetime.now(tz)
+
+    # Start with current time
+    next_time = now.replace(minute=0, second=0, microsecond=0)
+
+    # If currently in lunch hour, skip to after lunch
+    if VOICE_BUSINESS_HOURS["lunch_start"] <= next_time.hour < VOICE_BUSINESS_HOURS["lunch_end"]:
+        next_time = next_time.replace(hour=VOICE_BUSINESS_HOURS["lunch_end"])
+        # Verify this is still valid (not past end of day)
+        if next_time.hour >= VOICE_BUSINESS_HOURS["end"]:
+            next_time = next_time.replace(hour=VOICE_BUSINESS_HOURS["start"])
+            next_time += timedelta(days=1)
+
+    # If past end of business day, move to next day
+    elif next_time.hour >= VOICE_BUSINESS_HOURS["end"]:
+        next_time = next_time.replace(hour=VOICE_BUSINESS_HOURS["start"])
+        next_time += timedelta(days=1)
+
+    # If before start of business day, set to start time
+    elif next_time.hour < VOICE_BUSINESS_HOURS["start"]:
+        next_time = next_time.replace(hour=VOICE_BUSINESS_HOURS["start"])
+
+    # Skip to Monday if weekend
+    while next_time.weekday() not in VOICE_BUSINESS_HOURS["days"]:
+        next_time += timedelta(days=1)
+
+    return next_time
 
 
 class VoiceEngine(OutreachEngine):
@@ -232,6 +359,59 @@ class VoiceEngine(OutreachEngine):
                 metadata={"lead_id": str(lead_id)},
             )
 
+        # DNCR check for Australian numbers (legal requirement)
+        # Check cached result first (set during enrichment), then API if needed
+        skip_dncr = kwargs.get("skip_dncr", False)
+
+        if not skip_dncr and lead.phone.startswith("+61"):
+            # Check if DNCR was already checked during enrichment
+            if lead.dncr_checked and lead.dncr_result:
+                # Lead is on DNCR - block immediately without API call
+                await self._log_dncr_rejection(
+                    db=db,
+                    lead=lead,
+                    campaign_id=campaign_id,
+                    source="cached",
+                )
+                return EngineResult.fail(
+                    error=f"Phone number {lead.phone} is on the Do Not Call Register (cached)",
+                    metadata={
+                        "lead_id": str(lead_id),
+                        "phone": lead.phone,
+                        "reason": "dncr",
+                        "source": "cached",
+                    },
+                )
+            elif not lead.dncr_checked:
+                # Not checked during enrichment - check now via DNCR API
+                try:
+                    dncr_client = get_dncr_client()
+                    if dncr_client.is_enabled:
+                        is_on_dncr = await dncr_client.check_number(lead.phone)
+                        # Cache the result on the lead
+                        lead.dncr_checked = True
+                        lead.dncr_result = is_on_dncr
+                        if is_on_dncr:
+                            await self._log_dncr_rejection(
+                                db=db,
+                                lead=lead,
+                                campaign_id=campaign_id,
+                                source="api",
+                            )
+                            await db.commit()
+                            return EngineResult.fail(
+                                error=f"Phone number {lead.phone} is on the Do Not Call Register",
+                                metadata={
+                                    "lead_id": str(lead_id),
+                                    "phone": lead.phone,
+                                    "reason": "dncr",
+                                    "source": "api",
+                                },
+                            )
+                except Exception as e:
+                    # Log but don't block - fail open (business decision)
+                    logger.warning(f"DNCR check failed for voice call, proceeding: {e}")
+
         # Validate ALS score (70+ required for voice)
         if lead.als_score is None or lead.als_score < 70:
             return EngineResult.fail(
@@ -239,6 +419,21 @@ class VoiceEngine(OutreachEngine):
                 metadata={
                     "lead_id": str(lead_id),
                     "als_score": lead.als_score,
+                },
+            )
+
+        # Validate business hours (9-5 weekdays, skip lunch 12-1 PM)
+        can_call, reason = is_within_business_hours(lead.timezone)
+        if not can_call:
+            next_available = get_next_business_hour(lead.timezone)
+            return EngineResult.fail(
+                error=f"Outside business hours: {reason}",
+                metadata={
+                    "lead_id": str(lead_id),
+                    "reason": reason,
+                    "lead_timezone": lead.timezone or VOICE_BUSINESS_HOURS["default_timezone"],
+                    "retry_at": next_available.isoformat(),
+                    "status": "scheduled",
                 },
             )
 
@@ -480,6 +675,22 @@ class VoiceEngine(OutreachEngine):
                     lead.last_replied_at = datetime.utcnow()
                     lead.reply_count += 1
 
+                # === VOICE RETRY SCHEDULING ===
+                # Schedule retry for busy/no_answer outcomes
+                retry_result = None
+                if outcome in RETRYABLE_OUTCOMES or outcome.lower().replace("_", "-") in RETRYABLE_OUTCOMES:
+                    retry_service = VoiceRetryService(db)
+                    retry_result = await retry_service.schedule_retry(
+                        activity_id=completion_activity.id,
+                        outcome=outcome,
+                    )
+                    if retry_result["scheduled"]:
+                        logger.info(
+                            f"Voice retry scheduled: lead={activity.lead_id}, "
+                            f"outcome={outcome}, retry_at={retry_result['retry_at']}, "
+                            f"attempt={retry_result['attempt_number']}/{MAX_RETRIES}"
+                        )
+
             await db.commit()
 
             return EngineResult.ok(
@@ -487,6 +698,8 @@ class VoiceEngine(OutreachEngine):
                     "call_id": call_id,
                     "event": event_type,
                     "processed": True,
+                    "retry_scheduled": retry_result["scheduled"] if retry_result else False,
+                    "retry_at": retry_result["retry_at"].isoformat() if retry_result and retry_result.get("retry_at") else None,
                 },
                 metadata={"activity_id": str(activity.id)},
             )
@@ -535,6 +748,44 @@ class VoiceEngine(OutreachEngine):
         )
         db.add(activity)
         await db.commit()
+
+    async def _log_dncr_rejection(
+        self,
+        db: AsyncSession,
+        lead: Lead,
+        campaign_id: UUID,
+        source: str = "api",
+    ) -> None:
+        """
+        Log DNCR rejection activity to database.
+
+        Args:
+            db: Database session
+            lead: Lead being blocked
+            campaign_id: Campaign UUID
+            source: Source of DNCR check ("cached" or "api")
+        """
+        activity = Activity(
+            client_id=lead.client_id,
+            campaign_id=campaign_id,
+            lead_id=lead.id,
+            channel=ChannelType.VOICE,
+            action="rejected_dncr",
+            provider="vapi",
+            provider_status="blocked",
+            metadata={
+                "to_number": lead.phone,
+                "lead_name": lead.full_name,
+                "company": lead.company,
+                "reason": "dncr_registered",
+                "source": source,
+            },
+        )
+        db.add(activity)
+        logger.info(
+            f"DNCR rejection logged for voice call: lead={lead.id}, "
+            f"phone={lead.phone[:6]}***, source={source}"
+        )
 
     def _build_system_prompt(self, script: str) -> str:
         """Build the system prompt for the voice assistant."""
@@ -891,3 +1142,12 @@ def get_voice_engine() -> VoiceEngine:
 # [x] Phase 16: outcome, duration, touch_number tracked
 # [x] Phase 16: led_to_booking flag for converting touches
 # [x] Phase 17: Vapi + ElevenLabs stack (STT handled by Vapi)
+# [x] Voice retry: busy=2hr, no_answer=next business day (TODO.md #3)
+# [x] Voice retry: MAX_RETRIES=3 enforced
+# [x] Voice retry: VoiceRetryService integration in process_call_webhook
+# [x] Business hours validation: 9-5 weekdays, skip 12-1 PM lunch (TODO.md #15)
+# [x] Timezone-aware: uses lead.timezone or Australia/Sydney default
+# [x] get_next_business_hour() calculates next valid call time
+# [x] DNCR check: Australian numbers checked against Do Not Call Register (TODO.md #16)
+# [x] DNCR cached: uses lead.dncr_checked/dncr_result to avoid redundant API calls
+# [x] DNCR rejection logging: _log_dncr_rejection() for audit trail

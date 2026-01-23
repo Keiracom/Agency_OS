@@ -1,4 +1,10 @@
 """
+Contract: src/engines/content_utils.py
+Purpose: Shared utilities for content extraction across channel engines
+Layer: 3 - engines
+Imports: models
+Consumers: channel engines (email, sms, voice, linkedin)
+
 FILE: src/engines/content_utils.py
 PURPOSE: Shared utilities for content extraction across channel engines
 PHASE: 16 (Conversion Intelligence)

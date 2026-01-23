@@ -128,13 +128,13 @@ class AnthropicClient:
         await self._check_budget(estimated_cost)
 
         try:
-            messages = [{"role": "user", "content": prompt}]
+            messages: list[anthropic.types.MessageParam] = [{"role": "user", "content": prompt}]
 
             response = await self._client.messages.create(
                 model=model,
                 max_tokens=max_tokens,
                 temperature=temperature,
-                system=system if system else anthropic.NOT_GIVEN,
+                system=system or "",
                 messages=messages,
             )
 
@@ -144,8 +144,15 @@ class AnthropicClient:
                 response.usage.output_tokens,
             )
 
+            # Extract text content from response
+            content_text = ""
+            if response.content:
+                first_block = response.content[0]
+                if hasattr(first_block, "text"):
+                    content_text = first_block.text
+
             return {
-                "content": response.content[0].text if response.content else "",
+                "content": content_text,
                 "model": response.model,
                 "input_tokens": response.usage.input_tokens,
                 "output_tokens": response.usage.output_tokens,

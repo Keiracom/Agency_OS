@@ -1,4 +1,10 @@
 """
+Contract: src/agents/skills/research_skills.py
+Purpose: Deep research skills for Hot Lead enrichment (ALS > 85)
+Layer: 4 - agents/skills
+Imports: agents.skills.base_skill, integrations
+Consumers: scout engine, SDK agents
+
 FILE: src/agents/skills/research_skills.py
 PURPOSE: Deep research skills for Hot Lead enrichment (ALS > 85)
 PHASE: 21 (Deep Research & UI)

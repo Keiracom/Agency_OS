@@ -1,4 +1,10 @@
 """
+Contract: src/engines/campaign_suggester.py
+Purpose: AI-powered campaign suggestion engine based on client ICP
+Layer: 3 - engines
+Imports: models, integrations, config
+Consumers: orchestration, API routes
+
 FILE: src/engines/campaign_suggester.py
 PURPOSE: AI-powered campaign suggestion engine based on client ICP
 PHASE: 37 (Lead/Campaign Architecture)

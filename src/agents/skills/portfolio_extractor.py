@@ -1,4 +1,10 @@
 """
+Contract: src/agents/skills/portfolio_extractor.py
+Purpose: Extract client logos, case studies, and testimonials from agency website
+Layer: 4 - agents/skills
+Imports: agents.skills.base_skill, agents.skills.website_parser, integrations
+Consumers: ICP discovery agent
+
 FILE: src/agents/skills/portfolio_extractor.py
 TASK: ICP-006, ICP-FIX-001
 PHASE: 11 (ICP Discovery System), 18-B (ICP Enrichment Fix)

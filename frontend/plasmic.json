@@ -1,0 +1,40 @@
+{
+  "platform": "nextjs",
+  "code": {
+    "lang": "ts",
+    "scheme": "blackbox",
+    "reactRuntime": "classic"
+  },
+  "style": {
+    "scheme": "css-modules",
+    "defaultStyleCssFilePath": ""
+  },
+  "images": {
+    "scheme": "public-files",
+    "publicDir": "../public",
+    "publicUrlPrefix": "/"
+  },
+  "tokens": {
+    "scheme": "theo",
+    "tokensFilePath": "plasmic-tokens.theo.json"
+  },
+  "srcDir": "components",
+  "defaultPlasmicDir": "./plasmic",
+  "projects": [
+    {
+      "projectId": "sTVtoZDhkmD2Edyr9vqjyS",
+      "projectApiToken": "G7yBb0pJunWgXBudrZgeFlWcFefTStpgKRG7sZzXaptyjntznVP5byxR5GLyx9sso6pKJwASEpGtg9RA",
+      "version": "latest"
+    }
+  ],
+  "globalVariants": {
+    "variantGroups": []
+  },
+  "wrapPagesWithGlobalContexts": true,
+  "preserveJsImportExtensions": false,
+  "nextjsConfig": {
+    "pagesDir": "../app"
+  },
+  "cliVersion": "0.1.353",
+  "$schema": "https://unpkg.com/@plasmicapp/cli@0.1.353/dist/plasmic.schema.json"
+}

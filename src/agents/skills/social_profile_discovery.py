@@ -1,4 +1,10 @@
 """
+Contract: src/agents/skills/social_profile_discovery.py
+Purpose: Search Google to find agency social profiles when not found on website
+Layer: 4 - agents/skills
+Imports: agents.skills.base_skill, integrations
+Consumers: ICP discovery agent
+
 FILE: src/agents/skills/social_profile_discovery.py
 TASK: ICP-FALLBACK-001
 PHASE: 21 (Portfolio Fallback Discovery)

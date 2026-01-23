@@ -485,7 +485,7 @@ async def check_redis_health() -> dict:
     """
     try:
         redis = await get_redis()
-        await redis.ping()
+        await redis.ping()  # type: ignore[misc]
         info = await redis.info("server")
         return {
             "status": "healthy",

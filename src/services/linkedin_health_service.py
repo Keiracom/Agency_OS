@@ -24,7 +24,8 @@ from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.linkedin_seat import LinkedInSeat, LinkedInSeatStatus
-from src.models.linkedin_connection import LinkedInConnection
+from src.models.linkedin_connection import LinkedInConnection, LinkedInConnectionStatus
+from src.integrations.unipile import get_unipile_client
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,11 @@ PENDING_CRITICAL_THRESHOLD = 80
 # Limit reductions
 LIMIT_WARNING_REDUCTION = 15  # 25% reduction (from 20 to 15)
 LIMIT_CRITICAL_REDUCTION = 10  # 50% reduction (from 20 to 10)
+
+# Stale connection constants
+STALE_CONNECTION_DAYS = 30  # Withdraw after 30 days pending
+MAX_WITHDRAWALS_PER_RUN = 10  # Max withdrawals per seat per daily run
+WITHDRAWAL_DELAY_SECONDS = 2  # Delay between withdrawals (rate limiting)
 
 
 class LinkedInHealthService:
@@ -354,6 +360,148 @@ class LinkedInHealthService:
             "threshold_days": days,
         }
 
+    async def withdraw_stale_requests(
+        self,
+        db: AsyncSession,
+        days: int = STALE_CONNECTION_DAYS,
+        max_per_seat: int = MAX_WITHDRAWALS_PER_RUN,
+    ) -> dict[str, Any]:
+        """
+        Withdraw pending connections older than threshold via Unipile API.
+
+        Per spec: 30 days pending -> withdraw request.
+        Withdrawing frees up connection request slots on LinkedIn.
+
+        This runs weekly (or can be triggered manually) and processes
+        stale connections across all active seats.
+
+        Args:
+            db: Database session
+            days: Days threshold for stale (default 30)
+            max_per_seat: Max withdrawals per seat per run (default 10)
+
+        Returns:
+            Dict with withdrawal summary:
+            - total_stale: Number of stale connections found
+            - withdrawn: Number successfully withdrawn
+            - failed: Number that failed to withdraw
+            - by_seat: Per-seat breakdown
+        """
+        import asyncio
+
+        cutoff = datetime.utcnow() - timedelta(days=days)
+
+        # Get all stale pending connections with their seats
+        stmt = (
+            select(LinkedInConnection)
+            .join(LinkedInSeat)
+            .where(
+                and_(
+                    LinkedInConnection.status == LinkedInConnectionStatus.PENDING,
+                    LinkedInConnection.requested_at < cutoff,
+                    LinkedInSeat.status.in_([
+                        LinkedInSeatStatus.WARMUP,
+                        LinkedInSeatStatus.ACTIVE,
+                    ]),
+                )
+            )
+            .order_by(LinkedInConnection.requested_at.asc())  # Oldest first
+        )
+        result = await db.execute(stmt)
+        stale_connections = list(result.scalars().all())
+
+        if not stale_connections:
+            logger.info(f"No stale connections found (>{days} days)")
+            return {
+                "total_stale": 0,
+                "withdrawn": 0,
+                "failed": 0,
+                "by_seat": {},
+            }
+
+        # Group by seat for processing limits
+        by_seat: dict[str, list[LinkedInConnection]] = {}
+        for conn in stale_connections:
+            seat_id = str(conn.seat_id)
+            if seat_id not in by_seat:
+                by_seat[seat_id] = []
+            by_seat[seat_id].append(conn)
+
+        # Get Unipile client
+        unipile = get_unipile_client()
+
+        # Process withdrawals
+        total_withdrawn = 0
+        total_failed = 0
+        seat_results: dict[str, dict] = {}
+
+        for seat_id, connections in by_seat.items():
+            # Get seat for account_id
+            seat = connections[0].seat if connections else None
+            if not seat or not seat.unipile_account_id:
+                logger.warning(f"Seat {seat_id} has no Unipile account ID, skipping")
+                seat_results[seat_id] = {
+                    "stale": len(connections),
+                    "withdrawn": 0,
+                    "failed": 0,
+                    "error": "no_unipile_account",
+                }
+                continue
+
+            withdrawn = 0
+            failed = 0
+
+            # Process up to max_per_seat for this seat
+            for conn in connections[:max_per_seat]:
+                if not conn.unipile_request_id:
+                    # No invitation ID stored, mark as withdrawn locally
+                    conn.mark_withdrawn()
+                    withdrawn += 1
+                    logger.debug(f"Connection {conn.id} marked withdrawn (no invitation ID)")
+                    continue
+
+                try:
+                    await unipile.withdraw_invitation(
+                        account_id=seat.unipile_account_id,
+                        invitation_id=conn.unipile_request_id,
+                    )
+                    conn.mark_withdrawn()
+                    withdrawn += 1
+                    logger.debug(f"Withdrew connection {conn.id} ({conn.days_pending} days old)")
+
+                    # Rate limiting between withdrawals
+                    if withdrawn < max_per_seat:
+                        await asyncio.sleep(WITHDRAWAL_DELAY_SECONDS)
+
+                except Exception as e:
+                    failed += 1
+                    logger.warning(f"Failed to withdraw connection {conn.id}: {e}")
+
+            await db.commit()
+
+            seat_results[seat_id] = {
+                "stale": len(connections),
+                "withdrawn": withdrawn,
+                "failed": failed,
+                "remaining": max(0, len(connections) - max_per_seat),
+            }
+
+            total_withdrawn += withdrawn
+            total_failed += failed
+
+        logger.info(
+            f"Withdrew {total_withdrawn} stale connections (>{days} days), "
+            f"{total_failed} failed, {len(stale_connections) - total_withdrawn - total_failed} remaining"
+        )
+
+        return {
+            "total_stale": len(stale_connections),
+            "withdrawn": total_withdrawn,
+            "failed": total_failed,
+            "threshold_days": days,
+            "by_seat": seat_results,
+        }
+
     async def detect_restrictions(
         self,
         db: AsyncSession,
@@ -492,6 +640,10 @@ linkedin_health_service = LinkedInHealthService()
 # [x] update_seat_health - single seat
 # [x] update_all_seats_health - batch processing
 # [x] mark_stale_connections_ignored - 14 day timeout
+# [x] withdraw_stale_requests - 30 day withdrawal (calls Unipile API)
+# [x] STALE_CONNECTION_DAYS constant = 30
+# [x] MAX_WITHDRAWALS_PER_RUN = 10 (daily limit per seat)
+# [x] Rate limiting between withdrawals (2 second delay)
 # [x] detect_restrictions - safety check
 # [x] get_health_summary - detailed status
 # [x] Logging throughout

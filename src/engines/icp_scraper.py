@@ -1,4 +1,10 @@
 """
+Contract: src/engines/icp_scraper.py
+Purpose: Multi-source data scraping for ICP extraction with waterfall architecture
+Layer: 3 - engines
+Imports: models, integrations
+Consumers: orchestration, agents
+
 FILE: src/engines/icp_scraper.py
 TASK: ICP-011, SCR-005
 PHASE: 11 (ICP Discovery System), 19 (Scraper Waterfall)
@@ -25,7 +31,7 @@ WATERFALL ARCHITECTURE (Phase 19):
   Tier 0: URL Validation (url_validator.py)
   Tier 1: Cheerio (apify.py)
   Tier 2: Playwright (apify.py)
-  Tier 3: Camoufox (future)
+  Tier 3: Camoufox (camoufox_scraper.py) - anti-detection for Cloudflare sites
   Tier 4: Manual fallback UI
 """
 
@@ -51,6 +57,11 @@ from src.exceptions import EngineError, ValidationError
 from src.integrations.anthropic import get_anthropic_client
 from src.integrations.apify import get_apify_client, ScrapeResult
 from src.integrations.apollo import get_apollo_client
+from src.integrations.camoufox_scraper import (
+    CamoufoxScraper,
+    get_camoufox_scraper,
+    is_camoufox_available,
+)
 from src.integrations.clay import get_clay_client
 
 # Portfolio page paths to fetch directly (ICP-FIX-008)
@@ -168,6 +179,7 @@ class ICPScraperEngine(BaseEngine):
         clay_client: "ClayClient | None" = None,
         anthropic_client: "AnthropicClient | None" = None,
         url_validator: "URLValidator | None" = None,
+        camoufox_scraper: "CamoufoxScraper | None" = None,
     ):
         """
         Initialize with optional client overrides for testing.
@@ -178,12 +190,14 @@ class ICPScraperEngine(BaseEngine):
             clay_client: Optional Clay client override
             anthropic_client: Optional Anthropic client override
             url_validator: Optional URL validator override
+            camoufox_scraper: Optional Camoufox scraper override (Tier 3)
         """
         self._apify = apify_client
         self._apollo = apollo_client
         self._clay = clay_client
         self._anthropic = anthropic_client
         self._url_validator = url_validator
+        self._camoufox = camoufox_scraper
 
     @property
     def name(self) -> str:
@@ -224,6 +238,19 @@ class ICPScraperEngine(BaseEngine):
         if self._url_validator is None:
             self._url_validator = get_url_validator()
         return self._url_validator
+
+    @property
+    def camoufox(self) -> CamoufoxScraper:
+        """Get Camoufox scraper (Tier 3 anti-detection)."""
+        if self._camoufox is None:
+            self._camoufox = get_camoufox_scraper()
+        return self._camoufox
+
+    @property
+    def camoufox_enabled(self) -> bool:
+        """Check if Camoufox Tier 3 scraper is enabled and available."""
+        from src.config.settings import settings
+        return settings.camoufox_enabled and is_camoufox_available()
 
     def _extract_domain(self, url: str) -> str:
         """Extract domain from URL."""
@@ -420,7 +447,75 @@ class ICPScraperEngine(BaseEngine):
 
             # Check if waterfall succeeded
             if scrape_result.needs_fallback:
-                logger.warning(f"Waterfall failed for {url}, needs manual fallback")
+                logger.warning(f"Tier 1/2 (Apify) failed for {url}, trying Tier 3 (Camoufox)")
+
+                # ===== TIER 3: Camoufox Anti-Detection =====
+                # Only try if Camoufox is enabled and available
+                if self.camoufox_enabled:
+                    try:
+                        logger.info(f"Tier 3: Attempting Camoufox scrape for {canonical_url}")
+                        camoufox_result = await self.camoufox.scrape(canonical_url)
+
+                        if camoufox_result.success:
+                            logger.info(
+                                f"Tier 3 success for {url}: {len(camoufox_result.raw_html):,} chars"
+                            )
+
+                            # Create ScrapedPage from Camoufox result
+                            camoufox_page = ScrapedPage(
+                                url=canonical_url,
+                                title=camoufox_result.title,
+                                html=camoufox_result.raw_html,
+                                text="",  # Camoufox returns raw HTML
+                                links=[],
+                                images=[],
+                            )
+
+                            # Fetch portfolio pages to supplement
+                            portfolio_html = await self._fetch_portfolio_pages(canonical_url)
+                            combined_html = camoufox_result.raw_html
+                            if portfolio_html:
+                                combined_html = combined_html + "\n\n---DIRECT FETCH---\n\n" + portfolio_html
+
+                            # Extract social links
+                            social_links = self._extract_social_links(combined_html)
+
+                            scraped = ScrapedWebsite(
+                                url=url,
+                                domain=domain,
+                                pages=[camoufox_page],
+                                raw_html=combined_html,
+                                page_count=1,
+                                tier_used=3,
+                                needs_fallback=False,
+                                canonical_url=canonical_url,
+                                social_links=social_links,
+                            )
+
+                            return EngineResult.ok(
+                                data=scraped,
+                                metadata={
+                                    "domain": domain,
+                                    "pages_scraped": 1,
+                                    "tier_used": 3,
+                                    "redirected": validation.redirected,
+                                    "canonical_url": canonical_url,
+                                    "camoufox_used": True,
+                                },
+                            )
+                        else:
+                            logger.warning(
+                                f"Tier 3 (Camoufox) failed for {url}: {camoufox_result.failure_reason}"
+                            )
+                    except Exception as camoufox_error:
+                        logger.error(f"Tier 3 (Camoufox) exception for {url}: {camoufox_error}")
+                else:
+                    logger.info(f"Tier 3 (Camoufox) skipped - not enabled or not available")
+
+                # ===== TIER 4: Manual Fallback =====
+                # All automated tiers failed, return with manual fallback flag
+                tier_used = 3 if self.camoufox_enabled else 2
+                logger.warning(f"All tiers failed for {url}, needs manual fallback")
                 return EngineResult.ok(
                     data=ScrapedWebsite(
                         url=url,
@@ -428,17 +523,18 @@ class ICPScraperEngine(BaseEngine):
                         pages=pages,
                         raw_html=scrape_result.raw_html,
                         page_count=scrape_result.page_count,
-                        tier_used=scrape_result.tier_used,
+                        tier_used=tier_used,
                         needs_fallback=True,
-                        failure_reason=scrape_result.failure_reason,
+                        failure_reason=f"All automated tiers ({tier_used}) failed",
                         manual_fallback_url=f"/onboarding/manual-entry?url={url}",
                         canonical_url=canonical_url,
                     ),
                     metadata={
                         "domain": domain,
-                        "tier_used": scrape_result.tier_used,
+                        "tier_used": tier_used,
                         "needs_fallback": True,
                         "failure_reason": scrape_result.failure_reason,
+                        "camoufox_attempted": self.camoufox_enabled,
                     },
                 )
 
@@ -1332,7 +1428,8 @@ VERIFICATION CHECKLIST:
 WATERFALL ARCHITECTURE (SCR-005):
 - [x] URLValidator integration (Tier 0)
 - [x] scrape_website_with_waterfall (Tier 1 & 2)
+- [x] Camoufox integration (Tier 3) - anti-detection for Cloudflare
 - [x] ScrapedWebsite includes tier tracking fields
-- [x] Manual fallback URL generation
+- [x] Manual fallback URL generation (Tier 4)
 - [x] Canonical URL tracking after redirects
 """

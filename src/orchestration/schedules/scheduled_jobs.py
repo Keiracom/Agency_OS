@@ -2,7 +2,7 @@
 FILE: src/orchestration/schedules/scheduled_jobs.py
 PURPOSE: Prefect schedule configurations for automated flows
 PHASE: 5 (Orchestration), modified Phase 16 for Conversion Intelligence, P0 for Credit Reset, Phase D for DNCR
-TASK: ORC-010, 16F-004, P0-001, Item 13
+TASK: ORC-010, 16F-004, P0-001, Item 13, Item 14
 DEPENDENCIES:
   - src/orchestration/flows/enrichment_flow.py
   - src/orchestration/flows/outreach_flow.py
@@ -14,12 +14,14 @@ DEPENDENCIES:
   - src/orchestration/flows/linkedin_health_flow.py (Phase D - LinkedIn warmup/health)
   - src/orchestration/flows/daily_pacing_flow.py (Item 15 - Daily pacing)
   - src/orchestration/flows/monthly_replenishment_flow.py (Item 17 - Monthly replenishment)
+  - src/orchestration/flows/recording_cleanup_flow.py (Item 14 - 90-day recording retention)
   - src/engines/reporter.py
 RULES APPLIED:
   - Rule 20: Webhook-first architecture - cron jobs are safety nets only
   - Rule 1: Follow blueprint exactly
   - Prefect 3.x schedule patterns
   - DNCR quarterly re-wash for Australian SMS compliance
+  - Voice recording 90-day retention policy
 """
 
 from datetime import time
@@ -283,6 +285,34 @@ def get_daily_digest_schedule() -> CronSchedule:
     )
 
 
+# ============================================
+# Item 14: Recording Cleanup Schedule (90-day retention)
+# ============================================
+
+
+def get_recording_cleanup_schedule() -> CronSchedule:
+    """
+    Daily voice recording cleanup at 3 AM AEST.
+
+    Deletes voice call recordings older than 90 days for compliance.
+    Respects flagged_for_retention flag on activities.
+
+    Runs at 3 AM to avoid business hours impact and complete
+    before the day's voice calls begin.
+
+    Blueprint requirement (VOICE.md):
+    - 0-90 days: Stored for QA and compliance
+    - 90 days: Auto-delete unless flagged
+
+    Returns:
+        CronSchedule: Daily at 3 AM AEST
+    """
+    return CronSchedule(
+        cron="0 3 * * *",  # 3 AM daily
+        timezone="Australia/Sydney",
+    )
+
+
 # Schedule registry for deployment configuration
 SCHEDULE_REGISTRY: Dict[str, Any] = {
     "enrichment": {
@@ -425,6 +455,17 @@ SCHEDULE_REGISTRY: Dict[str, Any] = {
             "target_hour": 7,  # Process clients configured for 7 AM send time
         },
     },
+    # Item 14: Voice Recording Cleanup (90-day retention)
+    "recording_cleanup": {
+        "schedule": get_recording_cleanup_schedule(),
+        "description": "Daily voice recording cleanup at 3 AM AEST - 90-day retention compliance",
+        "work_queue": "agency-os-queue",
+        "tags": ["voice", "compliance", "daily", "cleanup", "retention"],
+        "parameters": {
+            "retention_days": 90,
+            "batch_size": 100,
+        },
+    },
 }
 
 
@@ -503,3 +544,8 @@ def list_all_schedules() -> Dict[str, str]:
 # [x] CRM sync every 6 hours as safety net for missed webhooks
 # [x] CRM sync in schedule registry with blind-conversions tag
 # [x] Parameters for since_hours (24)
+# --- Item 14: Voice Recording Cleanup ---
+# [x] Daily recording cleanup at 3 AM AEST
+# [x] 90-day retention policy compliance
+# [x] Recording cleanup in schedule registry with compliance/retention tags
+# [x] Parameters for retention_days (90) and batch_size (100)

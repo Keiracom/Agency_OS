@@ -1,4 +1,10 @@
 """
+Contract: src/agents/skills/industry_classifier.py
+Purpose: Classify target industries from services and portfolio data
+Layer: 4 - agents/skills
+Imports: agents.skills.base_skill, agents.skills.service_extractor, agents.skills.portfolio_extractor, integrations
+Consumers: ICP discovery agent
+
 FILE: src/agents/skills/industry_classifier.py
 TASK: ICP-007
 PHASE: 11 (ICP Discovery System)

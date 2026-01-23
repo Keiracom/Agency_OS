@@ -20,7 +20,8 @@ Daily tasks:
 2. Update health metrics (accept rates, pending counts)
 3. Apply health-based limit reductions
 4. Mark stale connections as ignored (14-day timeout)
-5. Detect potentially restricted seats
+5. Withdraw stale connection requests (30-day timeout)
+6. Detect potentially restricted seats
 
 Schedule: Daily at 6 AM AEST
 """
@@ -123,6 +124,38 @@ async def mark_stale_connections_task(days: int = 14) -> dict[str, Any]:
         return result
 
 
+@task(name="withdraw_stale_linkedin_connections", retries=2, retry_delay_seconds=10)
+async def withdraw_stale_connections_task(days: int = 30) -> dict[str, Any]:
+    """
+    Withdraw pending connections older than threshold via Unipile API.
+
+    Per spec: 30 days pending -> withdraw request.
+    Withdrawing frees up connection request slots on LinkedIn.
+
+    Args:
+        days: Days threshold for withdrawal (default 30)
+
+    Returns:
+        Dict with withdrawal summary
+    """
+    async with get_db_session() as db:
+        result = await linkedin_health_service.withdraw_stale_requests(db, days=days)
+
+        if result["withdrawn"] > 0:
+            logger.info(
+                f"Withdrew {result['withdrawn']} stale LinkedIn "
+                f"connections (>{days} days)"
+            )
+
+        if result["failed"] > 0:
+            logger.warning(
+                f"Failed to withdraw {result['failed']} stale "
+                f"LinkedIn connections"
+            )
+
+        return result
+
+
 @task(name="detect_linkedin_restrictions", retries=2, retry_delay_seconds=5)
 async def detect_restrictions_task() -> dict[str, Any]:
     """
@@ -157,26 +190,29 @@ async def detect_restrictions_task() -> dict[str, Any]:
 async def linkedin_daily_health_flow(
     client_id: str | None = None,
     stale_days: int = 14,
+    withdrawal_days: int = 30,
 ) -> dict[str, Any]:
     """
     Daily LinkedIn health management flow.
 
     Steps:
-    1. Process warmup completions (WARMUP → ACTIVE)
+    1. Process warmup completions (WARMUP -> ACTIVE)
     2. Update health metrics (accept rates, limits)
-    3. Mark stale connections as ignored
-    4. Detect potentially restricted seats
+    3. Mark stale connections as ignored (14 days)
+    4. Withdraw stale connection requests (30 days)
+    5. Detect potentially restricted seats
 
     Args:
         client_id: Optional client ID to process (string UUID)
-        stale_days: Days threshold for stale connections (default 14)
+        stale_days: Days threshold for marking ignored (default 14)
+        withdrawal_days: Days threshold for withdrawal (default 30)
 
     Returns:
         Dict with comprehensive health summary
     """
     logger.info(
         f"Starting LinkedIn daily health flow "
-        f"(client_id={client_id}, stale_days={stale_days})"
+        f"(client_id={client_id}, stale_days={stale_days}, withdrawal_days={withdrawal_days})"
     )
 
     # Step 1: Process warmup completions
@@ -185,10 +221,13 @@ async def linkedin_daily_health_flow(
     # Step 2: Update health metrics
     health_result = await update_health_task(client_id=client_id)
 
-    # Step 3: Mark stale connections
+    # Step 3: Mark stale connections as ignored (14 days)
     stale_result = await mark_stale_connections_task(days=stale_days)
 
-    # Step 4: Detect restrictions
+    # Step 4: Withdraw stale connection requests (30 days)
+    withdrawal_result = await withdraw_stale_connections_task(days=withdrawal_days)
+
+    # Step 5: Detect restrictions
     restriction_result = await detect_restrictions_task()
 
     # Compile summary
@@ -206,6 +245,9 @@ async def linkedin_daily_health_flow(
         },
         "stale_connections": {
             "marked_ignored": stale_result["updated_count"],
+            "withdrawn": withdrawal_result["withdrawn"],
+            "withdrawal_failed": withdrawal_result["failed"],
+            "total_stale": withdrawal_result["total_stale"],
         },
         "restrictions": {
             "suspicious_count": restriction_result["suspicious_count"],
@@ -216,7 +258,7 @@ async def linkedin_daily_health_flow(
     # Overall status
     if health_result["critical"] > 0 or restriction_result["suspicious_count"] > 0:
         summary["overall_status"] = "attention_required"
-    elif health_result["warning"] > 0:
+    elif health_result["warning"] > 0 or withdrawal_result["failed"] > 0:
         summary["overall_status"] = "warning"
     else:
         summary["overall_status"] = "healthy"
@@ -225,7 +267,8 @@ async def linkedin_daily_health_flow(
         f"LinkedIn daily health complete: "
         f"{warmup_result['completed']} warmups completed, "
         f"{health_result['healthy']}/{health_result['total']} healthy, "
-        f"{stale_result['updated_count']} stale marked, "
+        f"{stale_result['updated_count']} stale marked ignored, "
+        f"{withdrawal_result['withdrawn']} stale withdrawn, "
         f"{restriction_result['suspicious_count']} suspicious"
     )
 
@@ -246,7 +289,8 @@ async def linkedin_daily_health_flow(
 # [x] Logging throughout
 # [x] Process warmup completions
 # [x] Update health metrics
-# [x] Mark stale connections
+# [x] Mark stale connections (14 days -> ignored)
+# [x] Withdraw stale connections (30 days -> withdrawn via Unipile API)
 # [x] Detect restrictions
 # [x] Overall status summary
 # [x] All functions have type hints

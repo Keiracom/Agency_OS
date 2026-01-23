@@ -1,4 +1,10 @@
 """
+Contract: src/services/reply_analyzer.py
+Purpose: AI-powered reply analysis for sentiment, objections, and questions
+Layer: 3 - services
+Imports: integrations
+Consumers: orchestration, closer engine, thread service
+
 FILE: src/services/reply_analyzer.py
 PURPOSE: AI-powered reply analysis for sentiment, objections, and questions
 PHASE: 24D (Conversation Threading)
@@ -195,7 +201,7 @@ Return a JSON object with these fields:
 
 Return ONLY valid JSON, no other text."""
 
-            response = await client.generate(
+            response = await client.complete(
                 prompt=prompt,
                 max_tokens=500,
                 temperature=0.1,  # Low temperature for consistent analysis
@@ -300,7 +306,7 @@ Return ONLY valid JSON, no other text."""
                 return "objection"
 
         # Return highest scoring intent
-        return max(intent_scores, key=intent_scores.get)
+        return max(intent_scores, key=lambda k: intent_scores.get(k, 0))
 
     def _detect_objection_type(self, content: str) -> str | None:
         """Detect specific objection type."""
@@ -372,7 +378,7 @@ Return ONLY valid JSON, no other text."""
             "trust": "Share credentials, testimonials, or case studies",
             "other": "Address their specific concern",
         }
-        return actions.get(objection_type, "Address their concern")
+        return actions.get(objection_type or "other", "Address their concern")
 
     def _empty_analysis(self) -> dict[str, Any]:
         """Return empty analysis result."""
@@ -463,8 +469,8 @@ Return ONLY valid JSON, no other text."""
 
         rejection_reason = None
         if analysis.get("intent") == "not_interested":
-            objection = analysis.get("objection_type")
-            rejection_reason = objection_to_rejection.get(objection, "not_interested_generic")
+            objection = analysis.get("objection_type") or "other"
+            rejection_reason = objection_to_rejection.get(str(objection), "not_interested_generic")
 
             # Check for specific patterns
             content_lower = content.lower()

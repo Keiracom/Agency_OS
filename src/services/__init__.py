@@ -55,6 +55,12 @@ Phase 22 additions (Content QA):
 
 Phase H additions (Client Transparency):
 - DigestService: Daily digest email generation and delivery (Item 44)
+
+Voice Retry additions (TODO.md #3):
+- VoiceRetryService: Schedule voice call retries (busy=2hr, no_answer=next business day)
+
+Phone Provisioning additions (TODO.md #13):
+- PhoneProvisioningService: Automated phone number provisioning via Twilio
 """
 from src.services.buyer_signal_service import BuyerSignalService, BuyerSignal, BuyerScoreBoost
 from src.services.domain_health_service import (
@@ -131,6 +137,28 @@ from src.services.content_qa_service import (
     validate_voice_script,
 )
 from src.services.digest_service import DigestService
+from src.services.voice_retry_service import (
+    VoiceRetryService,
+    get_voice_retry_service,
+    RETRY_DELAYS,
+    MAX_RETRIES,
+    RETRYABLE_OUTCOMES,
+)
+from src.services.email_signature_service import (
+    generate_signature_text,
+    generate_signature_html,
+    get_display_name,
+    get_signature_for_persona,
+    get_signature_for_client,
+    get_display_name_for_persona,
+    append_signature_to_body,
+)
+from src.services.phone_provisioning_service import (
+    PhoneProvisioningService,
+    get_phone_provisioning_service,
+    get_voice_daily_limit,
+    VOICE_WARMUP_SCHEDULE,
+)
 
 __all__ = [
     "LeadPoolService",
@@ -212,4 +240,23 @@ __all__ = [
     "validate_voice_script",
     # Phase H - Daily Digest
     "DigestService",
+    # Voice Retry (TODO.md #3)
+    "VoiceRetryService",
+    "get_voice_retry_service",
+    "RETRY_DELAYS",
+    "MAX_RETRIES",
+    "RETRYABLE_OUTCOMES",
+    # Email Signature (TODO.md #20)
+    "generate_signature_text",
+    "generate_signature_html",
+    "get_display_name",
+    "get_signature_for_persona",
+    "get_signature_for_client",
+    "get_display_name_for_persona",
+    "append_signature_to_body",
+    # Phone Provisioning (TODO.md #13)
+    "PhoneProvisioningService",
+    "get_phone_provisioning_service",
+    "get_voice_daily_limit",
+    "VOICE_WARMUP_SCHEDULE",
 ]

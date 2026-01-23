@@ -26,13 +26,13 @@ When starting a new Claude session for frontend/dashboard work:
 ### Current Status (Update This)
 
 **Last Session:** 2026-01-23
-**Current Phase:** Phase H (Client Transparency) — COMPLETE ✅
-**Current Focus:** Dashboard Redesign (remaining components)
-**Blocking Issues:** 1 backend endpoint missing (campaigns/allocate)
+**Current Phase:** Phase I (Dashboard Redesign) — COMPLETE ✅ (10/10 done)
+**Current Focus:** Audit Fixes (P0/P1 Critical)
+**Blocking Issues:** NONE
 
-**Dashboard Build Status:** PARTIALLY UNBLOCKED
+**Dashboard Build Status:** COMPLETE ✅
 
-**What's Done (Phase H Complete):**
+**What's Done (Phase H + Phase I Complete):**
 - ✅ All architecture docs created (Phases A-G complete)
 - ✅ Design specs complete (OVERVIEW.md, campaigns.md, metrics.md)
 - ✅ Item 40: Claude fact-check gate (`_fact_check_content()`)
@@ -43,24 +43,17 @@ When starting a new Claude session for frontend/dashboard work:
 - ✅ Item 45: Live Activity Feed (endpoint, hook, LiveActivityFeed.tsx)
 - ✅ Item 46: Content Archive page (/dashboard/archive)
 - ✅ Item 47: Best Of Showcase (BestOfShowcase.tsx)
+- ✅ Item 52: PrioritySlider component
+- ✅ Item 53: CampaignPriorityPanel component
+- ✅ Item 54: CampaignPriorityCard component
+- ✅ Item 55: CampaignAllocationManager component
+- ✅ Item 56: SequenceBuilder component (with edit functionality)
+- ✅ Item 57: CampaignMetricsPanel component (meetings, show rate, active sequences)
 
-**Endpoint Status:**
-| Backend Endpoint | Blocks | Status |
-|------------------|--------|--------|
-| `POST /clients/{id}/pause-all` | EmergencyPauseButton | ✅ Done |
-| `POST /clients/{id}/resume-all` | EmergencyPauseButton | ✅ Done |
-| `GET /clients/{id}/activities` | LiveActivityFeed | ✅ Done |
-| `GET /clients/{id}/archive/content` | Content Archive | ✅ Done |
-| `GET /clients/{id}/best-of` | BestOfShowcase | ✅ Done |
-| `GET /clients/{id}/dashboard-metrics` | HeroMetricsCard | ✅ Done |
-| `POST /clients/{id}/campaigns/allocate` | PrioritySlider | ❌ Missing |
+**All endpoints and components complete.**
 
-**What's Next (In Order):**
-1. ~~Build `GET /clients/{id}/dashboard-metrics` endpoint~~ ✅ DONE
-2. ~~Build HeroMetricsCard component~~ ✅ DONE
-3. ~~Build OnTrackIndicator component~~ ✅ DONE
-4. Build `POST /clients/{id}/campaigns/allocate` endpoint
-5. Build remaining dashboard components (PrioritySlider, CampaignPriorityPanel)
+**What's Next:**
+See `docs/architecture/TODO.md` for Audit Fixes (P0/P1 Critical)
 
 ---
 
@@ -78,10 +71,13 @@ When starting a new Claude session for frontend/dashboard work:
 | File | What It Covers | Use When |
 |------|----------------|----------|
 | [README.md](README.md) | Design system overview, workflow | Understanding the design-to-code process |
+| [PLASMIC_WORKFLOW.md](PLASMIC_WORKFLOW.md) | Plasmic visual design collaboration workflow | CEO + Claude design iteration |
+| [PLASMIC_SKILL.md](PLASMIC_SKILL.md) | Plasmic access, navigation, shortcuts | Quick reference for Plasmic tasks |
+| [PLASMIC_DASHBOARD_AUDIT.md](PLASMIC_DASHBOARD_AUDIT.md) | Full dashboard feature audit for Plasmic | Building dashboard in Plasmic |
 | [dashboard/OVERVIEW.md](dashboard/OVERVIEW.md) | Design philosophy, terminology, banned words | Starting any dashboard work |
 | [dashboard/campaigns.md](dashboard/campaigns.md) | Priority sliders, auto-balance, states | Building campaign allocation UI |
 | [dashboard/metrics.md](dashboard/metrics.md) | Metric tiers (T1-T4), formatting, empty states | Displaying KPIs and stats |
-| [dashboard/mockups/](dashboard/mockups/) | Visual mockups (v0 exports) | Reference designs |
+| [dashboard/mockups/](dashboard/mockups/) | Visual mockups (Plasmic exports) | Reference designs |
 | [tokens/](tokens/) | Design tokens (future) | Colors, typography, spacing |
 
 ---
@@ -117,19 +113,26 @@ When starting a new Claude session for frontend/dashboard work:
 | **Content Archive** | `app/dashboard/archive/page.tsx` | Searchable content history ✅ |
 | **HeroMetricsCard** | `components/dashboard/HeroMetricsCard.tsx` | Meetings & show rate display ✅ |
 | **OnTrackIndicator** | `components/dashboard/OnTrackIndicator.tsx` | Pace indicator (ahead/on track/behind) ✅ |
+| **PrioritySlider** | `components/ui/slider.tsx` | Campaign priority adjustment ✅ |
+| **CampaignPriorityPanel** | `components/campaigns/CampaignPriorityPanel.tsx` | Priority management panel ✅ |
+| **CampaignPriorityCard** | `components/campaigns/CampaignPriorityCard.tsx` | Individual campaign priority ✅ |
+| **SequenceBuilder** | `components/campaigns/SequenceBuilder.tsx` | Sequence step editor ✅ |
+| **CampaignMetricsPanel** | `components/campaigns/CampaignMetricsPanel.tsx` | Campaign performance metrics ✅ |
+| **CampaignTabs** | `components/campaigns/CampaignTabs.tsx` | Campaign detail tab navigation ✅ |
 
-### Components to Build (Specs Ready)
+### Phase I Components (All Complete)
 
-| Component | Spec Location | Priority | Blocked By |
-|-----------|---------------|----------|------------|
-| ~~HeroMetricsCard~~ | `docs/architecture/frontend/DASHBOARD.md:258` | P1 | ✅ **DONE** |
-| ~~OnTrackIndicator~~ | `docs/architecture/frontend/DASHBOARD.md:380` | P1 | ✅ **DONE** |
-| PrioritySlider | `docs/architecture/frontend/DASHBOARD.md:286` | P1 | `POST /campaigns/allocate` |
-| CampaignPriorityPanel | `docs/architecture/frontend/DASHBOARD.md:318` | P1 | `POST /campaigns/allocate` |
-| CampaignPriorityCard | `docs/architecture/frontend/CAMPAIGNS.md:287` | P1 | `POST /campaigns/allocate` |
-| CampaignAllocationManager | `docs/architecture/frontend/CAMPAIGNS.md:311` | P1 | `POST /campaigns/allocate` |
-| SequenceBuilder | `docs/architecture/frontend/CAMPAIGNS.md:341` | P2 | None |
-| CampaignMetricsPanel | `docs/architecture/frontend/CAMPAIGNS.md:363` | P2 | None |
+| Component | Spec Location | Status |
+|-----------|---------------|--------|
+| HeroMetricsCard | `DASHBOARD.md:258` | ✅ DONE |
+| OnTrackIndicator | `DASHBOARD.md:380` | ✅ DONE |
+| PrioritySlider | `DASHBOARD.md:286` | ✅ DONE |
+| CampaignPriorityPanel | `DASHBOARD.md:318` | ✅ DONE |
+| CampaignPriorityCard | `CAMPAIGNS.md:287` | ✅ DONE |
+| CampaignAllocationManager | `CAMPAIGNS.md:311` | ✅ DONE |
+| SequenceBuilder | `CAMPAIGNS.md:341` | ✅ DONE |
+| CampaignMetricsPanel | `CAMPAIGNS.md:363` | ✅ DONE |
+| CampaignTabs | `CAMPAIGNS.md:382` | ✅ DONE |
 
 ---
 
@@ -143,7 +146,9 @@ When starting a new Claude session for frontend/dashboard work:
 | `GET /clients/{id}/archive/content` | Content archive | ✅ Done |
 | `GET /clients/{id}/best-of` | Best performers | ✅ Done |
 | `GET /clients/{id}/dashboard-metrics` | Hero metrics data | ✅ Done |
-| `POST /clients/{id}/campaigns/allocate` | Priority allocation | ❌ Needed |
+| `POST /clients/{id}/campaigns/allocate` | Priority allocation | ✅ Done |
+
+**All required endpoints complete.**
 
 ---
 
@@ -163,12 +168,12 @@ When starting a new Claude session for frontend/dashboard work:
 | useCampaigns | `hooks/use-campaigns.ts` | Campaign CRUD | ✅ Wired |
 | useClient | `hooks/use-client.ts` | Client data | ✅ Wired |
 
-### Hooks to Create
+### Phase I Hooks (All Complete)
 
-| Hook | Endpoint | Blocked By |
-|------|----------|------------|
-| ~~useHeroMetrics~~ | `GET /clients/{id}/dashboard-metrics` | ✅ Done (useDashboardMetrics) |
-| useUpdatePriorities | `POST /clients/{id}/campaigns/allocate` | Endpoint needed |
+| Hook | Endpoint | Status |
+|------|----------|--------|
+| useDashboardMetrics | `GET /clients/{id}/dashboard-metrics` | ✅ Done |
+| useAllocateCampaigns | `POST /clients/{id}/campaigns/allocate` | ✅ Done |
 
 ---
 

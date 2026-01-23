@@ -1,4 +1,10 @@
 """
+Contract: src/agents/skills/base_skill.py
+Purpose: Base class for modular, testable AI skills with registry pattern
+Layer: 4 - agents/skills
+Imports: integrations, exceptions
+Consumers: all skill subclasses
+
 FILE: src/agents/skills/base_skill.py
 TASK: ICP-002
 PHASE: 11 (ICP Discovery System)

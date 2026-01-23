@@ -1,4 +1,10 @@
 """
+Contract: src/agents/cmo_agent.py
+Purpose: CMO (Chief Marketing Officer) agent for orchestration decisions
+Layer: 4 - agents
+Imports: models, engines, agents.base_agent
+Consumers: orchestration flows
+
 FILE: src/agents/cmo_agent.py
 PURPOSE: CMO (Chief Marketing Officer) agent for orchestration decisions
 PHASE: 6 (Agents)

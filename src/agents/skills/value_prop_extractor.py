@@ -1,4 +1,10 @@
 """
+Contract: src/agents/skills/value_prop_extractor.py
+Purpose: Extract agency value proposition, taglines, and differentiators
+Layer: 4 - agents/skills
+Imports: agents.skills.base_skill, agents.skills.website_parser, integrations
+Consumers: ICP discovery agent
+
 FILE: src/agents/skills/value_prop_extractor.py
 TASK: ICP-005
 PHASE: 11 (ICP Discovery System)

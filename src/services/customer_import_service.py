@@ -1,4 +1,10 @@
 """
+Contract: src/services/customer_import_service.py
+Purpose: Import customer data from CRM or CSV, manage suppression and buyer signals
+Layer: 3 - services
+Imports: models, config, services
+Consumers: orchestration, API routes
+
 FILE: src/services/customer_import_service.py
 TASK: CUST-004 to CUST-007
 PHASE: 24F - Customer Import
@@ -331,14 +337,14 @@ class CustomerImportService:
 
         # Get won opportunities
         url = f"{CLOSE_API}/opportunity"
-        params = {
+        params: dict[str, str | int] = {
             "status_type": "won",
             "_limit": 100,
             "_skip": 0,
         }
 
         while True:
-            response = await self.http.get(url, params=params, auth=auth)
+            response = await self.http.get(url, params=params, auth=auth)  # type: ignore[arg-type]
             response.raise_for_status()
             data = response.json()
 
@@ -387,7 +393,8 @@ class CustomerImportService:
 
             # Pagination
             if data.get("has_more"):
-                params["_skip"] += 100
+                current_skip = params.get("_skip", 0)
+                params["_skip"] = int(current_skip) + 100 if current_skip else 100
             else:
                 break
 
@@ -576,6 +583,8 @@ class CustomerImportService:
         )
         row = result.fetchone()
         await self.db.commit()
+        if not row:
+            raise ValueError(f"Failed to insert customer for client {client_id}")
         return row.id
 
     async def _add_suppression(
@@ -632,7 +641,7 @@ class CustomerImportService:
                    status, customer_since, deal_value, can_use_as_reference,
                    case_study_url, testimonial, logo_approved, source, imported_at
             FROM client_customers
-            WHERE client_id = :client_id
+            WHERE client_id = :client_id AND deleted_at IS NULL
         """
 
         if status:
@@ -653,10 +662,10 @@ class CustomerImportService:
         return [dict(row._mapping) for row in rows]
 
     async def delete_customer(self, client_id: UUID, customer_id: UUID) -> bool:
-        """Delete a customer and its suppression entry."""
-        # Get domain before delete
+        """Soft delete a customer and its suppression entry (Rule 14)."""
+        # Get domain before soft delete
         result = await self.db.execute(
-            text("SELECT domain FROM client_customers WHERE id = :id AND client_id = :client_id"),
+            text("SELECT domain FROM client_customers WHERE id = :id AND client_id = :client_id AND deleted_at IS NULL"),
             {"id": str(customer_id), "client_id": str(client_id)},
         )
         row = result.fetchone()
@@ -666,18 +675,19 @@ class CustomerImportService:
 
         domain = row.domain
 
-        # Delete customer
+        # Soft delete customer (Rule 14)
         await self.db.execute(
-            text("DELETE FROM client_customers WHERE id = :id AND client_id = :client_id"),
+            text("UPDATE client_customers SET deleted_at = NOW() WHERE id = :id AND client_id = :client_id AND deleted_at IS NULL"),
             {"id": str(customer_id), "client_id": str(client_id)},
         )
 
-        # Delete associated suppression (if domain-based)
+        # Soft delete associated suppression (if domain-based)
         if domain:
             await self.db.execute(
                 text("""
-                    DELETE FROM suppression_list
-                    WHERE client_id = :client_id AND domain = :domain AND customer_id = :customer_id
+                    UPDATE suppression_list
+                    SET deleted_at = NOW()
+                    WHERE client_id = :client_id AND domain = :domain AND customer_id = :customer_id AND deleted_at IS NULL
                 """),
                 {"client_id": str(client_id), "domain": domain, "customer_id": str(customer_id)},
             )
@@ -703,7 +713,7 @@ class CustomerImportService:
                     testimonial = COALESCE(:testimonial, testimonial),
                     logo_approved = COALESCE(:logo_approved, logo_approved),
                     updated_at = NOW()
-                WHERE id = :id AND client_id = :client_id
+                WHERE id = :id AND client_id = :client_id AND deleted_at IS NULL
                 RETURNING *
             """),
             {
@@ -729,7 +739,7 @@ class CustomerImportService:
             text("""
                 SELECT id, company_name, domain, industry, case_study_url, testimonial
                 FROM client_customers
-                WHERE client_id = :client_id AND can_use_as_reference = true
+                WHERE client_id = :client_id AND can_use_as_reference = true AND deleted_at IS NULL
                 ORDER BY company_name
             """),
             {"client_id": str(client_id)},

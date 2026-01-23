@@ -1,4 +1,10 @@
 """
+Contract: src/services/response_timing_service.py
+Purpose: Calculate response delays and schedule reply sending
+Layer: 3 - services
+Imports: services, integrations
+Consumers: closer engine, reply handling flows
+
 FILE: src/services/response_timing_service.py
 PURPOSE: Calculate response delays and schedule reply sending
 PHASE: Item 16 (Reply Handling)

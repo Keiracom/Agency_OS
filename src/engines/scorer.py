@@ -1,4 +1,10 @@
 """
+Contract: src/engines/scorer.py
+Purpose: Calculate ALS (Agency Lead Score) using 5-component formula
+Layer: 3 - engines
+Imports: models, integrations
+Consumers: orchestration only
+
 FILE: src/engines/scorer.py
 PURPOSE: Calculate ALS (Agency Lead Score) using 5-component formula
 PHASE: 4 (Engines), modified Phase 16, 24A (Lead Pool), 24F (Buyer Signals)

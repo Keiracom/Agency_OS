@@ -383,7 +383,7 @@ export default function ContentArchivePage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Campaigns</SelectItem>
-                {campaigns?.map((campaign) => (
+                {campaigns?.items?.map((campaign) => (
                   <SelectItem key={campaign.id} value={campaign.id}>
                     {campaign.name}
                   </SelectItem>

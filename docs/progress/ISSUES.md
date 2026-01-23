@@ -44,6 +44,10 @@ When you find an issue during development:
 
 | ID | Issue | Fixed | Resolution |
 |----|-------|-------|------------|
+| ISS-010 | PaginatedResponse.map error | Jan 23 | Fixed `archive/page.tsx:386` to use `campaigns?.items?.map()` |
+| ISS-009 | Missing @sentry/nextjs | Jan 23 | Installed package via `npm install @sentry/nextjs` |
+| ISS-008 | Missing @radix-ui/react-slider | Jan 23 | Installed package via `npm install @radix-ui/react-slider` |
+| ISS-007 | AISpendBreakdown type mismatch | Jan 23 | Updated `lib/api/types.ts` with full AISpendBreakdown interface matching page expectations |
 | ISS-001 | SCHEMA_OVERVIEW.md missing migrations 018-031 | Jan 8 | Added all migrations 021-031 with proper table documentation |
 | ISS-003 | Synthflow references in 8 files | Jan 8 | Changed to Vapi in: FULL_SYSTEM_ARCHITECTURE.md, user-journey-diagram.html, COMPLETED_PHASES.md, EXPERT_PANEL_LANDING_PAGE.md, user-manual.html. Also fixed Lob → ClickSend |
 | ISS-000 | FILE_STRUCTURE.md migration list outdated | Jan 8 | Updated to show migrations 001-031 with gap note |

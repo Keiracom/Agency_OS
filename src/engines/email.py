@@ -1,4 +1,10 @@
 """
+Contract: src/engines/email.py
+Purpose: Email engine using Salesforge integration with threading support
+Layer: 3 - engines
+Imports: models, integrations, services
+Consumers: orchestration only
+
 FILE: src/engines/email.py
 PURPOSE: Email engine using Salesforge integration with threading support
 PHASE: 4 (Engines), modified Phase 16/24B for Conversion Intelligence
@@ -10,6 +16,7 @@ DEPENDENCIES:
   - src/integrations/redis.py
   - src/models/lead.py
   - src/models/activity.py
+  - src/services/email_signature_service.py (Gap Fix #20)
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 11: Session passed as argument
@@ -28,6 +35,13 @@ PHASE 24B CHANGES:
   - Track ai_model_used and prompt_version
 PHASE 18/21 CHANGES:
   - Replaced Resend with Salesforge for Warmforge mailbox compatibility
+GAP FIX #20:
+  - Dynamic signature generation via email_signature_service
+  - Display name format "{First} from {Company}" per EMAIL.md spec
+GAP FIX #21:
+  - Display name format enforcement via format_display_name()
+  - Validation via validate_display_name()
+  - RFC 5322 From header formatting via format_from_header()
 """
 
 import logging
@@ -49,6 +63,16 @@ from src.integrations.salesforge import SalesforgeClient, get_salesforge_client
 from src.models.activity import Activity
 from src.models.base import ChannelType
 from src.models.lead import Lead
+from src.services.email_signature_service import (
+    get_signature_for_persona,
+    get_signature_for_client,
+    get_display_name_for_persona,
+    append_signature_to_body,
+    # Gap Fix #21: Display name formatting and validation
+    format_display_name,
+    validate_display_name,
+    format_from_header,
+)
 
 
 # Rate limit (Rule 17)
@@ -120,6 +144,8 @@ class EmailEngine(OutreachEngine):
                 - ai_model_used: AI model used for generation (Phase 24B)
                 - prompt_version: Version of prompt used (Phase 24B)
                 - personalization_fields_used: List of personalization fields (Phase 24B)
+                - include_signature: Whether to append signature (default: True) (Gap Fix #20)
+                - persona_id: ClientPersona UUID for signature generation (Gap Fix #20)
 
         Returns:
             EngineResult with send result
@@ -184,9 +210,73 @@ class EmailEngine(OutreachEngine):
             references = thread_info.get("references", [])
             thread_id = thread_info.get("thread_id")
 
-        # Build sender
+        # Build sender with display name (Gap Fix #20 + #21)
         from_name = kwargs.get("from_name")
-        sender = f"{from_name} <{from_email}>" if from_name else from_email
+        persona_id = kwargs.get("persona_id")
+        sender_first_name = kwargs.get("sender_first_name")
+        sender_last_name = kwargs.get("sender_last_name")
+        sender_company = kwargs.get("sender_company")
+
+        # If persona_id provided, get display name from persona
+        if persona_id and not from_name:
+            try:
+                from_name = await get_display_name_for_persona(db, persona_id)
+            except Exception as e:
+                logger.warning(f"Failed to get display name for persona {persona_id}: {e}")
+
+        # Gap Fix #21: Format and validate display name
+        if from_name:
+            # Validate existing display name
+            is_valid, reason = validate_display_name(from_name)
+            if not is_valid:
+                logger.warning(f"Invalid from_name '{from_name}': {reason}")
+                # Try to reformat if we have the components
+                if sender_first_name:
+                    from_name = format_display_name(
+                        first_name=sender_first_name,
+                        last_name=sender_last_name,
+                        company=sender_company,
+                    )
+            sender = f'"{from_name}" <{from_email}>'
+        elif sender_first_name:
+            # Use format_from_header for complete RFC 5322 formatting
+            sender = format_from_header(
+                email_address=from_email,
+                first_name=sender_first_name,
+                last_name=sender_last_name,
+                company=sender_company,
+            )
+        else:
+            # Fallback to just email address
+            sender = from_email
+
+        # Append signature if requested (Gap Fix #20)
+        include_signature = kwargs.get("include_signature", True)
+        final_content = content
+        signature_used = False
+
+        if include_signature:
+            try:
+                if persona_id:
+                    # Get signature from persona
+                    signature = await get_signature_for_persona(
+                        db, persona_id, include_calendar=True, html=True
+                    )
+                elif campaign.client_id:
+                    # Fallback to client-level signature
+                    signature = await get_signature_for_client(
+                        db, campaign.client_id, sender_name=from_name, html=True
+                    )
+                else:
+                    signature = ""
+
+                if signature:
+                    final_content = append_signature_to_body(content, signature, is_html=True)
+                    signature_used = True
+                    logger.debug(f"Appended signature for lead {lead_id}")
+            except Exception as e:
+                logger.warning(f"Failed to generate signature: {e}")
+                # Continue without signature
 
         try:
             # Send via Salesforge (uses Warmforge-warmed mailboxes)
@@ -194,7 +284,7 @@ class EmailEngine(OutreachEngine):
                 from_email=sender,
                 to_email=lead.email,
                 subject=subject,
-                html_body=content,
+                html_body=final_content,
                 text_body=kwargs.get("text_content"),
                 reply_to=kwargs.get("reply_to"),
                 in_reply_to=in_reply_to,
@@ -219,8 +309,8 @@ class EmailEngine(OutreachEngine):
                 in_reply_to=in_reply_to,
                 sequence_step=kwargs.get("sequence_step"),
                 subject=subject,
-                content_preview=self._get_content_preview(content),
-                html_content=content,  # Phase 16: Pass full content for snapshot
+                content_preview=self._get_content_preview(final_content),
+                html_content=final_content,  # Phase 16: Pass full content for snapshot (with signature)
                 sequence_id=kwargs.get("sequence_id"),  # Phase 16: Sequence context
                 provider_response=result,
                 # Phase 24B: Content tracking fields
@@ -242,12 +332,14 @@ class EmailEngine(OutreachEngine):
                     "is_followup": bool(in_reply_to),
                     "domain": domain,
                     "remaining_quota": EMAIL_DAILY_LIMIT_PER_DOMAIN - current_count,
+                    "signature_included": signature_used,  # Gap Fix #20
                 },
                 metadata={
                     "engine": self.name,
                     "channel": self.channel.value,
                     "lead_id": str(lead_id),
                     "campaign_id": str(campaign_id),
+                    "persona_id": str(persona_id) if persona_id else None,  # Gap Fix #20
                 },
             )
 
@@ -544,8 +636,14 @@ class EmailEngine(OutreachEngine):
 
         try:
             # Send via Salesforge
-            # Format from_email with name if provided
-            formatted_from = f"{from_name} <{from_email}>" if from_name else from_email
+            # Gap Fix #21: Format and validate display name
+            if from_name:
+                is_valid, reason = validate_display_name(from_name)
+                if not is_valid:
+                    logger.warning(f"Invalid from_name '{from_name}': {reason}, using as-is for transactional")
+                formatted_from = f'"{from_name}" <{from_email}>'
+            else:
+                formatted_from = from_email
 
             result = await self.salesforge.send_email(
                 from_email=formatted_from,
@@ -625,3 +723,11 @@ def get_email_engine() -> EmailEngine:
 # [x] Phase 24B: personalization_fields_used tracked
 # [x] Phase 24B: ai_model_used and prompt_version stored
 # [x] Phase 18/21: Replaced Resend with Salesforge for Warmforge compatibility
+# [x] Gap Fix #20: Dynamic signature generation from persona/client data
+# [x] Gap Fix #20: include_signature and persona_id kwargs supported
+# [x] Gap Fix #20: Display name format "{First} from {Company}" per EMAIL.md
+# [x] Gap Fix #21: format_display_name() handles edge cases
+# [x] Gap Fix #21: validate_display_name() checks format
+# [x] Gap Fix #21: format_from_header() creates RFC 5322 From header
+# [x] Gap Fix #21: Validation enforced in send() method
+# [x] Gap Fix #21: Validation enforced in send_transactional() method

@@ -1,4 +1,10 @@
 """
+Contract: src/agents/skills/portfolio_fallback.py
+Purpose: Extract client names from Apollo descriptions and Google search results
+Layer: 4 - agents/skills
+Imports: agents.skills.base_skill, integrations
+Consumers: ICP discovery agent
+
 FILE: src/agents/skills/portfolio_fallback.py
 TASK: ICP-FALLBACK-002
 PHASE: 21 (Portfolio Fallback Discovery)

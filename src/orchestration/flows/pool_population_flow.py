@@ -31,6 +31,7 @@ from src.engines.scout import get_scout_engine
 from src.integrations.supabase import get_db_session
 from src.models.base import SubscriptionStatus
 from src.models.client import Client
+from src.services.who_refinement_service import get_who_refined_criteria
 
 logger = logging.getLogger(__name__)
 
@@ -316,15 +317,29 @@ async def populate_pool_from_portfolio_task(
     async with get_db_session() as db:
         scout = get_scout_engine()
 
+        # Build base criteria for WHO refinement
+        base_criteria = {
+            "titles": icp_titles,
+            "industries": list(portfolio_industries),
+            "countries": icp_locations or ["Australia"],
+            "employee_min": employee_min,
+            "employee_max": employee_max,
+            "seniorities": ["director", "vp", "c_suite", "owner", "founder", "manager"],
+        }
+
+        # Apply WHO refinement to improve targeting based on conversion patterns
+        refined_criteria = await get_who_refined_criteria(db, client_id, base_criteria)
+        logger.info(f"Tier 1: Applied WHO refinement to search criteria")
+
         # Search Apollo by industries (not by domain)
         try:
             leads = await apollo.search_people_for_pool(
-                industries=list(portfolio_industries),
-                titles=icp_titles,
-                seniorities=["director", "vp", "c_suite", "owner", "founder", "manager"],
-                countries=icp_locations or ["Australia"],
-                employee_min=employee_min,
-                employee_max=employee_max,
+                industries=refined_criteria.get("industries", list(portfolio_industries)),
+                titles=refined_criteria.get("titles", icp_titles),
+                seniorities=refined_criteria.get("seniorities", ["director", "vp", "c_suite", "owner", "founder", "manager"]),
+                countries=refined_criteria.get("countries", icp_locations or ["Australia"]),
+                employee_min=refined_criteria.get("employee_min", employee_min),
+                employee_max=refined_criteria.get("employee_max", employee_max),
                 limit=min(limit * 2, 100),  # Fetch more to account for exclusions
             )
             industries_searched = len(portfolio_industries)
@@ -433,7 +448,7 @@ async def populate_pool_from_industries_task(
     async with get_db_session() as db:
         scout = get_scout_engine()
 
-        apollo_criteria = {
+        base_criteria = {
             "titles": icp_titles,
             "industries": portfolio_industries,  # Use portfolio industries!
             "countries": icp_locations or ["Australia"],
@@ -442,8 +457,12 @@ async def populate_pool_from_industries_task(
             "seniorities": ["director", "vp", "c_suite", "owner", "founder", "manager"],
         }
 
+        # Apply WHO refinement to improve targeting based on conversion patterns
+        apollo_criteria = await get_who_refined_criteria(db, client_id, base_criteria)
+        logger.info(f"Tier 2: Applied WHO refinement to search criteria")
+
         logger.info(
-            f"Tier 2: Searching Apollo by portfolio industries: {portfolio_industries}"
+            f"Tier 2: Searching Apollo by portfolio industries: {apollo_criteria.get('industries', portfolio_industries)}"
         )
 
         result = await scout.search_and_populate_pool(
@@ -497,8 +516,8 @@ async def populate_pool_from_apollo_task(
     async with get_db_session() as db:
         scout = get_scout_engine()
 
-        # Build Apollo-compatible criteria
-        apollo_criteria = {
+        # Build Apollo-compatible base criteria
+        base_criteria = {
             "titles": icp_criteria.get("icp_titles", []),
             "industries": icp_criteria.get("icp_industries", []),
             "countries": icp_criteria.get("icp_locations", []),
@@ -508,10 +527,14 @@ async def populate_pool_from_apollo_task(
             "seniorities": ["director", "vp", "c_suite", "owner", "founder"],
         }
 
+        # Apply WHO refinement to improve targeting based on conversion patterns
+        apollo_criteria = await get_who_refined_criteria(db, client_id, base_criteria)
+        logger.info(f"Tier 3: Applied WHO refinement to search criteria")
+
         logger.info(
             f"Populating pool for client {client_id} with criteria: "
-            f"industries={apollo_criteria['industries']}, "
-            f"titles={apollo_criteria['titles']}, "
+            f"industries={apollo_criteria.get('industries', [])}, "
+            f"titles={apollo_criteria.get('titles', [])}, "
             f"limit={limit}"
         )
 
@@ -771,3 +794,7 @@ async def pool_population_batch_flow(
 # [x] Gets enriched_portfolio from ICP extraction job
 # [x] Tracks results per tier in summary
 # [x] CRITICAL FIX: Tier 1 now searches for LOOKALIKES, not existing client contacts
+# [x] WHO REFINEMENT INTEGRATED:
+#     - All tiers apply get_who_refined_criteria() before Apollo search
+#     - Refines titles, industries, and company size based on conversion patterns
+#     - Transparent logging of refinement application

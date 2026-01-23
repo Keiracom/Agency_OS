@@ -1,4 +1,10 @@
 """
+Contract: src/agents/skills/industry_researcher.py
+Purpose: Web search skill to supplement weak ICP data with industry research
+Layer: 4 - agents/skills
+Imports: agents.skills.base_skill, integrations
+Consumers: campaign generation agent, ICP discovery agent
+
 FILE: src/agents/skills/industry_researcher.py
 TASK: CAM-008
 PHASE: 12B (Campaign Enhancement)

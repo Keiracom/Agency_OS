@@ -1,4 +1,10 @@
 """
+Contract: src/agents/reply_agent.py
+Purpose: Reply intent classification agent with response suggestions
+Layer: 4 - agents
+Imports: models, engines, agents.base_agent
+Consumers: orchestration, closer engine
+
 FILE: src/agents/reply_agent.py
 PURPOSE: Reply intent classification agent with response suggestions
 PHASE: 6 (Agents)

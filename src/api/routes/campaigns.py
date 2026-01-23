@@ -166,6 +166,10 @@ class CampaignResponse(BaseModel):
     status: CampaignStatus
     permission_mode: Optional[PermissionMode] = None
 
+    # Priority allocation (Phase I Dashboard)
+    lead_allocation_pct: int = Field(default=50, description="Lead allocation percentage (10-80%)")
+    is_ai_suggested: bool = Field(default=False, description="Whether campaign was AI-suggested")
+
     # Target settings
     target_industries: Optional[List[str]] = None
     target_titles: Optional[List[str]] = None
@@ -203,6 +207,11 @@ class CampaignResponse(BaseModel):
     reply_rate: float = 0.0
     conversion_rate: float = 0.0
 
+    # Phase I Dashboard metrics (Item 57)
+    meetings_booked: int = Field(default=0, description="Meetings booked from this campaign")
+    show_rate: float = Field(default=0.0, description="Percentage of meetings that showed up")
+    active_sequences: int = Field(default=0, description="Leads currently in active sequence")
+
     # Timestamps
     created_at: datetime
     updated_at: datetime
@@ -232,6 +241,17 @@ class SequenceStepCreate(BaseModel):
     body_template: str = Field(..., min_length=1, description="Body template")
     skip_if_replied: bool = Field(True, description="Skip if lead replied")
     skip_if_bounced: bool = Field(True, description="Skip if lead bounced")
+
+
+class SequenceStepUpdate(BaseModel):
+    """Schema for updating a sequence step (Phase I, Item 56)."""
+
+    channel: Optional[ChannelType] = Field(None, description="Channel for this step")
+    delay_days: Optional[int] = Field(None, ge=0, le=30, description="Days to wait before this step")
+    subject_template: Optional[str] = Field(None, description="Subject template (email only)")
+    body_template: Optional[str] = Field(None, min_length=1, description="Body template")
+    skip_if_replied: Optional[bool] = Field(None, description="Skip if lead replied")
+    skip_if_bounced: Optional[bool] = Field(None, description="Skip if lead bounced")
 
 
 class SequenceStepResponse(BaseModel):
@@ -350,6 +370,82 @@ async def get_campaign_or_404(
     return campaign
 
 
+async def compute_campaign_metrics(
+    campaign_id: UUID,
+    db: AsyncSession,
+) -> dict:
+    """
+    Compute dashboard metrics for a campaign (Phase I, Item 57).
+
+    Returns:
+        dict with meetings_booked, show_rate, active_sequences
+    """
+    # Get meetings booked for this campaign
+    meetings_query = text("""
+        SELECT
+            COUNT(*) as total_meetings,
+            COUNT(*) FILTER (WHERE showed_up = true) as showed_count
+        FROM meetings
+        WHERE campaign_id = :campaign_id
+          AND deleted_at IS NULL
+    """)
+    meetings_result = await db.execute(meetings_query, {"campaign_id": campaign_id})
+    meetings_row = meetings_result.fetchone()
+
+    total_meetings = meetings_row.total_meetings if meetings_row else 0
+    showed_count = meetings_row.showed_count if meetings_row else 0
+    show_rate = (showed_count / total_meetings * 100) if total_meetings > 0 else 0.0
+
+    # Get active sequences count (leads currently in sequence)
+    sequences_query = text("""
+        SELECT COUNT(DISTINCT lead_id) as active_count
+        FROM lead_sequence_state
+        WHERE campaign_id = :campaign_id
+          AND status = 'in_progress'
+    """)
+    try:
+        sequences_result = await db.execute(sequences_query, {"campaign_id": campaign_id})
+        sequences_row = sequences_result.fetchone()
+        active_sequences = sequences_row.active_count if sequences_row else 0
+    except Exception:
+        # Table may not exist yet
+        active_sequences = 0
+
+    return {
+        "meetings_booked": total_meetings,
+        "show_rate": round(show_rate, 1),
+        "active_sequences": active_sequences,
+    }
+
+
+async def enrich_campaign_response(
+    campaign: Campaign,
+    db: AsyncSession,
+) -> CampaignResponse:
+    """
+    Create CampaignResponse with computed metrics.
+
+    Args:
+        campaign: Campaign ORM object
+        db: Database session
+
+    Returns:
+        CampaignResponse with all metrics populated
+    """
+    response = CampaignResponse.model_validate(campaign)
+    response.reply_rate = campaign.reply_rate
+    response.conversion_rate = campaign.conversion_rate
+    response.is_ai_suggested = campaign.is_ai_suggested
+
+    # Add dashboard metrics
+    metrics = await compute_campaign_metrics(campaign.id, db)
+    response.meetings_booked = metrics["meetings_booked"]
+    response.show_rate = metrics["show_rate"]
+    response.active_sequences = metrics["active_sequences"]
+
+    return response
+
+
 # ============================================
 # Campaign CRUD Routes
 # ============================================
@@ -415,12 +511,10 @@ async def list_campaigns(
     # Calculate pages
     pages = (total + page_size - 1) // page_size
 
-    # Build response with computed metrics
+    # Build response with computed metrics (Phase I, Item 57)
     campaign_responses = []
     for campaign in campaigns:
-        response = CampaignResponse.model_validate(campaign)
-        response.reply_rate = campaign.reply_rate
-        response.conversion_rate = campaign.conversion_rate
+        response = await enrich_campaign_response(campaign, db)
         campaign_responses.append(response)
 
     return CampaignListResponse(
@@ -456,10 +550,7 @@ async def get_campaign(
         Campaign details
     """
     campaign = await get_campaign_or_404(campaign_id, client_id, db)
-    response = CampaignResponse.model_validate(campaign)
-    response.reply_rate = campaign.reply_rate
-    response.conversion_rate = campaign.conversion_rate
-    return response
+    return await enrich_campaign_response(campaign, db)
 
 
 @router.post(
@@ -1049,6 +1140,63 @@ async def create_sequence(
     return SequenceStepResponse.model_validate(sequence)
 
 
+@router.put(
+    "/clients/{client_id}/campaigns/{campaign_id}/sequences/{step_number}",
+    response_model=SequenceStepResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def update_sequence(
+    client_id: UUID,
+    campaign_id: UUID,
+    step_number: int,
+    sequence_data: SequenceStepUpdate,
+    ctx: Annotated[ClientContext, Depends(require_member)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> SequenceStepResponse:
+    """
+    Update a sequence step (Phase I, Item 56).
+
+    Args:
+        client_id: Client UUID
+        campaign_id: Campaign UUID
+        step_number: Step number to update
+        sequence_data: Fields to update
+        ctx: Client context (requires member role)
+        db: Database session
+
+    Returns:
+        Updated sequence step
+    """
+    # Verify campaign exists
+    await get_campaign_or_404(campaign_id, client_id, db)
+
+    stmt = select(CampaignSequence).where(
+        and_(
+            CampaignSequence.campaign_id == campaign_id,
+            CampaignSequence.step_number == step_number,
+            CampaignSequence.deleted_at.is_(None),
+        )
+    )
+    result = await db.execute(stmt)
+    sequence = result.scalar_one_or_none()
+
+    if not sequence:
+        raise ResourceNotFoundError(
+            resource_type="CampaignSequence",
+            resource_id=f"{campaign_id}/step/{step_number}",
+        )
+
+    # Update fields that were provided
+    update_data = sequence_data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(sequence, field, value)
+
+    await db.flush()
+    await db.refresh(sequence)
+
+    return SequenceStepResponse.model_validate(sequence)
+
+
 @router.delete(
     "/clients/{client_id}/campaigns/{campaign_id}/sequences/{step_number}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -1593,6 +1741,180 @@ async def create_campaigns_from_suggestions(
 
 
 # ============================================
+# Campaign Allocation Endpoint (Phase I Dashboard)
+# ============================================
+
+
+class CampaignAllocation(BaseModel):
+    """Single campaign allocation in request."""
+
+    campaign_id: UUID = Field(..., description="Campaign UUID")
+    priority_pct: int = Field(..., ge=10, le=80, description="Priority percentage (10-80)")
+
+
+class AllocateCampaignsRequest(BaseModel):
+    """Request to allocate priority across campaigns."""
+
+    allocations: List[CampaignAllocation] = Field(
+        ..., min_length=1, description="Campaign allocations"
+    )
+
+    @model_validator(mode="after")
+    def validate_allocation_sum(self) -> "AllocateCampaignsRequest":
+        """Validate that allocations sum to 100%."""
+        total = sum(a.priority_pct for a in self.allocations)
+        if total != 100:
+            raise ValueError(f"Allocations must sum to 100%, got {total}%")
+        return self
+
+
+class AllocateCampaignsResponse(BaseModel):
+    """Response after allocating campaigns."""
+
+    status: str = Field(..., description="Processing status")
+    message: str = Field(..., description="Status message")
+    allocations: List[dict] = Field(..., description="Updated allocations")
+
+
+@router.post(
+    "/clients/{client_id}/campaigns/allocate",
+    response_model=AllocateCampaignsResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def allocate_campaigns(
+    client_id: UUID,
+    request: AllocateCampaignsRequest,
+    background_tasks: BackgroundTasks,
+    ctx: Annotated[ClientContext, Depends(require_member)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> AllocateCampaignsResponse:
+    """
+    Allocate priority percentages across client campaigns.
+
+    Updates lead_allocation_pct on each campaign and optionally triggers
+    pool population flow in the background.
+
+    Validation rules:
+    - Percentages must sum to 100%
+    - Each campaign: minimum 10%, maximum 80%
+    - All campaign IDs must belong to the client
+
+    Args:
+        client_id: Client UUID
+        request: Allocation request with campaign priorities
+        background_tasks: FastAPI background tasks
+        ctx: Client context (requires member role)
+        db: Database session
+
+    Returns:
+        Processing status and updated allocations
+    """
+    # Validate all campaigns belong to client and exist
+    campaign_ids = [a.campaign_id for a in request.allocations]
+
+    stmt = select(Campaign).where(
+        and_(
+            Campaign.client_id == client_id,
+            Campaign.id.in_(campaign_ids),
+            Campaign.deleted_at.is_(None),
+        )
+    )
+    result = await db.execute(stmt)
+    campaigns = {c.id: c for c in result.scalars().all()}
+
+    # Check all campaigns were found
+    missing = set(campaign_ids) - set(campaigns.keys())
+    if missing:
+        raise AgencyValidationError(
+            message=f"Campaigns not found or not owned by client: {missing}",
+            field="allocations",
+        )
+
+    # Update allocations
+    updated_allocations = []
+    for allocation in request.allocations:
+        campaign = campaigns[allocation.campaign_id]
+        old_pct = campaign.lead_allocation_pct
+        campaign.lead_allocation_pct = allocation.priority_pct
+
+        updated_allocations.append({
+            "campaign_id": str(campaign.id),
+            "campaign_name": campaign.name,
+            "old_priority_pct": old_pct,
+            "new_priority_pct": allocation.priority_pct,
+        })
+
+        logger.info(
+            f"Campaign {campaign.id} allocation: {old_pct}% → {allocation.priority_pct}%"
+        )
+
+    await db.commit()
+
+    # Trigger pool population flow in background (if needed)
+    # This is async - frontend can poll for completion
+    background_tasks.add_task(
+        _trigger_pool_population_if_needed,
+        client_id=client_id,
+        campaign_ids=campaign_ids,
+    )
+
+    return AllocateCampaignsResponse(
+        status="processing",
+        message="Campaign priorities updated. Lead sourcing will begin shortly.",
+        allocations=updated_allocations,
+    )
+
+
+def _trigger_pool_population_if_needed(
+    client_id: UUID,
+    campaign_ids: List[UUID],
+) -> None:
+    """
+    Background task to trigger pool population flow.
+
+    This runs after the allocation endpoint returns.
+    It sources leads based on updated campaign allocations.
+
+    Note: Uses asyncio.run() since BackgroundTasks expects sync functions
+    for proper execution context.
+
+    Args:
+        client_id: Client UUID
+        campaign_ids: Campaign UUIDs that were updated
+    """
+    import asyncio
+
+    async def _run_flow():
+        try:
+            from src.orchestration.flows.pool_population_flow import pool_population_flow
+
+            logger.info(f"Triggering pool population for client {client_id}")
+
+            # Run the Prefect flow directly
+            result = await pool_population_flow(
+                client_id=str(client_id),
+                limit=25,  # Default limit per allocation change
+            )
+
+            logger.info(
+                f"Pool population complete for client {client_id}: "
+                f"{result.get('leads_added', 0)} leads added"
+            )
+
+        except Exception as e:
+            # Log but don't fail - this is a background task
+            logger.error(f"Pool population failed for client {client_id}: {e}")
+
+    # Run the async flow
+    try:
+        asyncio.run(_run_flow())
+    except RuntimeError:
+        # If event loop already running, use nest_asyncio pattern
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(_run_flow())
+
+
+# ============================================
 # VERIFICATION CHECKLIST
 # ============================================
 # [x] Contract comment at top
@@ -1615,3 +1937,4 @@ async def create_campaigns_from_suggestions(
 # [x] No hardcoded credentials
 # [x] Session passed as argument (Rule 11)
 # [x] Campaign suggestion endpoints (Phase 37)
+# [x] Campaign allocation endpoint (Phase I Dashboard - Item 51)

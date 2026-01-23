@@ -12,7 +12,7 @@ import type { NextRequest } from "next/server";
 const protectedRoutes = ["/dashboard", "/admin", "/onboarding"];
 
 // Routes that are always public
-const publicRoutes = ["/", "/login", "/signup", "/about", "/pricing", "/how-it-works", "/api"];
+const publicRoutes = ["/", "/login", "/signup", "/about", "/pricing", "/how-it-works", "/api", "/dashboard-v2"];
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();

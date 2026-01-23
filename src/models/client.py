@@ -1,4 +1,10 @@
 """
+Contract: src/models/client.py
+Purpose: Client (tenant) model with subscription status
+Layer: 1 - models
+Imports: exceptions only
+Consumers: ALL layers
+
 FILE: src/models/client.py
 PURPOSE: Client (tenant) model with subscription status
 PHASE: 2 (Models & Schemas)
@@ -32,6 +38,7 @@ from src.models.base import (
 
 if TYPE_CHECKING:
     from src.models.campaign import Campaign
+    from src.models.campaign_suggestion import CampaignSuggestion
     from src.models.client_persona import ClientPersona
     from src.models.digest_log import DigestLog
     from src.models.lead import Lead

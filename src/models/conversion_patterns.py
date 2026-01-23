@@ -1,4 +1,10 @@
 """
+Contract: src/models/conversion_patterns.py
+Purpose: Models for Conversion Intelligence pattern storage
+Layer: 1 - models
+Imports: exceptions only
+Consumers: engines, orchestration, CIS detectors
+
 FILE: src/models/conversion_patterns.py
 PURPOSE: Models for Conversion Intelligence pattern storage
 PHASE: 16 (Conversion Intelligence)

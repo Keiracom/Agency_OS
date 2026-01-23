@@ -1,4 +1,10 @@
 """
+Contract: src/services/conversation_analytics_service.py
+Purpose: Conversation analytics service for CIS learning
+Layer: 3 - services
+Imports: models
+Consumers: orchestration, API routes, CIS detectors
+
 FILE: src/services/conversation_analytics_service.py
 PURPOSE: Conversation analytics service for CIS learning
 PHASE: 24D (Conversation Threading)
@@ -215,8 +221,8 @@ class ConversationAnalyticsService:
         rows = result.fetchall()
 
         # Find optimal response time window
-        best_bucket = None
-        best_rate = 0
+        best_bucket: str | None = None
+        best_rate: float = 0.0
         for row in rows:
             rate = float(row.conversion_rate or 0)
             if rate > best_rate and row.thread_count >= 5:  # Min sample size
@@ -269,7 +275,7 @@ class ConversationAnalyticsService:
         rows = result.fetchall()
 
         # Organize by position
-        by_position = {}
+        by_position: dict[int, dict[str, Any]] = {}
         for row in rows:
             pos = row.position
             if pos not in by_position:

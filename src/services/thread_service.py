@@ -1,4 +1,10 @@
 """
+Contract: src/services/thread_service.py
+Purpose: Service for managing conversation threads
+Layer: 3 - services
+Imports: models, exceptions
+Consumers: orchestration, API routes, closer engine
+
 FILE: src/services/thread_service.py
 PURPOSE: Service for managing conversation threads
 PHASE: 24D (Conversation Threading)
@@ -79,6 +85,8 @@ class ThreadService:
         row = result.fetchone()
         await self.session.commit()
 
+        if not row:
+            return {}
         return dict(row._mapping)
 
     async def get_by_id(self, thread_id: UUID) -> dict[str, Any] | None:
@@ -200,7 +208,8 @@ class ThreadService:
             FROM thread_messages WHERE thread_id = :thread_id
         """)
         pos_result = await self.session.execute(pos_query, {"thread_id": thread_id})
-        next_position = pos_result.fetchone().next_pos
+        pos_row = pos_result.fetchone()
+        next_position = pos_row.next_pos if pos_row else 1
 
         query = text("""
             INSERT INTO thread_messages (
@@ -239,6 +248,8 @@ class ThreadService:
         row = result.fetchone()
         await self.session.commit()
 
+        if not row:
+            return {}
         return dict(row._mapping)
 
     async def update_status(
@@ -274,7 +285,7 @@ class ThreadService:
 
         row = result.fetchone()
         if not row:
-            raise NotFoundError(resource="thread", resource_id=str(thread_id))
+            raise NotFoundError(resource_type="thread", resource_id=str(thread_id))
 
         await self.session.commit()
         return dict(row._mapping)
@@ -328,7 +339,7 @@ class ThreadService:
 
         row = result.fetchone()
         if not row:
-            raise NotFoundError(resource="thread", resource_id=str(thread_id))
+            raise NotFoundError(resource_type="thread", resource_id=str(thread_id))
 
         await self.session.commit()
         return dict(row._mapping)
@@ -365,7 +376,7 @@ class ThreadService:
 
         row = result.fetchone()
         if not row:
-            raise NotFoundError(resource="thread", resource_id=str(thread_id))
+            raise NotFoundError(resource_type="thread", resource_id=str(thread_id))
 
         await self.session.commit()
         return dict(row._mapping)

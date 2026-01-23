@@ -668,7 +668,8 @@ def format_proof_points_for_prompt(proof_points: dict[str, Any]) -> str:
         for cs in case_studies[:2]:
             if isinstance(cs, dict):
                 title = cs.get("title", "Untitled")
-                result = cs.get("result_metrics", cs.get("summary", ""))[:100]
+                result_text = cs.get("result_metrics") or cs.get("summary") or ""
+                result = result_text[:100] if result_text else ""
                 lines.append(f"  - {title}: {result}")
 
     return "\n".join(lines) if lines else "No proof points available."
@@ -735,7 +736,7 @@ def _get_nested_value(data: dict[str, Any], path: str) -> Any:
         The value at the path, or None if not found
     """
     keys = path.split(".")
-    current = data
+    current: Any = data
     for key in keys:
         if not isinstance(current, dict):
             return None

@@ -1,4 +1,10 @@
 """
+Contract: src/models/lead.py
+Purpose: Lead model with ALS fields and suppression tables
+Layer: 1 - models
+Imports: exceptions only
+Consumers: ALL layers
+
 FILE: src/models/lead.py
 PURPOSE: Lead model with ALS fields and suppression tables
 PHASE: 2 (Models & Schemas), modified Phase 24C, 24D

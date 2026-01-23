@@ -1,4 +1,10 @@
 """
+Contract: src/services/buyer_signal_service.py
+Purpose: Query platform buyer signals for lead scoring
+Layer: 3 - services
+Imports: models, config
+Consumers: scorer engine, content engine
+
 FILE: src/services/buyer_signal_service.py
 TASK: CUST-011
 PHASE: 24F - Customer Import
@@ -236,6 +242,16 @@ class BuyerSignalService:
             """)
         )
         row = result.fetchone()
+
+        if not row:
+            return {
+                "total_signals": 0,
+                "repeat_buyers": 0,
+                "high_score_buyers": 0,
+                "avg_buyer_score": 0,
+                "avg_deal_value": None,
+                "unique_industries": 0,
+            }
 
         return {
             "total_signals": row.total_signals,

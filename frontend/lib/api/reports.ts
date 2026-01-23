@@ -255,18 +255,68 @@ export async function getContentArchive(
 }
 
 /**
- * Get campaign performance metrics
+ * Backend response for campaign performance list endpoint
+ */
+interface BackendCampaignPerformanceItem {
+  campaign_id: string;
+  campaign_name: string;
+  status: string;
+  total_leads: number;
+  contacted: number;
+  replied: number;
+  converted: number;
+  reply_rate: number;
+  conversion_rate: number;
+}
+
+interface BackendCampaignPerformanceResponse {
+  client_id: string;
+  campaigns: BackendCampaignPerformanceItem[];
+  start_date: string | null;
+  end_date: string | null;
+}
+
+/**
+ * Get campaign performance metrics for all campaigns of a client
+ *
+ * Returns performance metrics including:
+ * - total_leads: Leads assigned to campaign
+ * - contacted: Leads that have been sent outreach
+ * - replied: Leads that have replied
+ * - converted: Leads that have converted (meetings booked)
+ * - reply_rate: replied / contacted percentage
+ * - conversion_rate: converted / contacted percentage
  */
 export async function getCampaignPerformance(
   clientId: string,
   params?: { start_date?: string; end_date?: string }
 ): Promise<CampaignPerformance[]> {
-  // TODO: wire to backend - endpoint /api/v1/reports/clients/{client_id}/campaigns does not exist
-  // Backend only has /api/v1/reports/campaigns/{campaign_id} for individual campaigns
-  console.warn("[getCampaignPerformance] Endpoint not implemented, returning empty array");
-  void clientId;
-  void params;
-  return [];
+  try {
+    const searchParams = new URLSearchParams();
+    if (params?.start_date) searchParams.set("start_date", params.start_date);
+    if (params?.end_date) searchParams.set("end_date", params.end_date);
+
+    const queryString = searchParams.toString();
+    const url = `/api/v1/reports/clients/${clientId}/campaigns/performance${queryString ? `?${queryString}` : ""}`;
+
+    const response = await api.get<BackendCampaignPerformanceResponse>(url);
+
+    // Transform backend response to CampaignPerformance array
+    return response.campaigns.map((item): CampaignPerformance => ({
+      campaign_id: item.campaign_id,
+      campaign_name: item.campaign_name,
+      status: item.status as CampaignPerformance["status"],
+      total_leads: item.total_leads,
+      contacted: item.contacted,
+      replied: item.replied,
+      converted: item.converted,
+      reply_rate: item.reply_rate,
+      conversion_rate: item.conversion_rate,
+    }));
+  } catch (error) {
+    console.error("[getCampaignPerformance] Failed to fetch campaign performance:", error);
+    return [];
+  }
 }
 
 /**

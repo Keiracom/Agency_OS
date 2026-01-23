@@ -28,6 +28,7 @@ from src.models.base import (
 )
 
 if TYPE_CHECKING:
+    from src.models.campaign import CampaignResource
     from src.models.client import Client
 
 
@@ -411,6 +412,11 @@ class ClientResource(Base, UUIDMixin, TimestampMixin):
     resource: Mapped["ResourcePool"] = relationship(
         "ResourcePool",
         back_populates="client_resources",
+        lazy="selectin",
+    )
+    campaign_resources: Mapped[list["CampaignResource"]] = relationship(
+        "CampaignResource",
+        back_populates="client_resource",
         lazy="selectin",
     )
 

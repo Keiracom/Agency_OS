@@ -1,4 +1,10 @@
 """
+Contract: src/services/timezone_service.py
+Purpose: Timezone lookup, UTC offset calculation, and optimal send time for leads
+Layer: 3 - services
+Imports: models
+Consumers: channel engines, orchestration, WHEN detector
+
 FILE: src/services/timezone_service.py
 PURPOSE: Timezone lookup, UTC offset calculation, and optimal send time for leads
 PHASE: 24C (Email Engagement Tracking), Phase D (Email Distribution)

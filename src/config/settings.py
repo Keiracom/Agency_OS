@@ -77,6 +77,13 @@ class Settings(BaseSettings):
     redis_cache_ttl: int = Field(default=7776000, description="Default cache TTL (90 days in seconds)")
     redis_cache_version: str = Field(default="v1", description="Cache key version prefix")
 
+    # === Backend API Base URL ===
+    base_url: str = Field(
+        default="http://localhost:8000",
+        description="Backend API base URL (for webhook callbacks)",
+        alias="BASE_URL"
+    )
+
     # === Prefect (Workflow Orchestration) ===
     prefect_api_url: str = Field(
         default="http://localhost:4200/api",
@@ -303,13 +310,13 @@ class Settings(BaseSettings):
     # Close CRM (API key auth - no OAuth needed)
     # Note: Close API key is stored per-client in client_crm_configs
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def is_production(self) -> bool:
         """Check if running in production environment."""
         return self.ENV == "production"
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def database_pool_config(self) -> dict:
         """Get SQLAlchemy pool configuration."""

@@ -1679,6 +1679,184 @@ async def get_dashboard_metrics(
 
 
 # ============================================
+# Campaign Performance List (Item 11 - getCampaignPerformance stub)
+# ============================================
+
+
+class CampaignPerformanceItem(BaseModel):
+    """Performance metrics for a single campaign."""
+    campaign_id: UUID
+    campaign_name: str
+    status: str
+    total_leads: int = 0
+    contacted: int = 0
+    replied: int = 0
+    converted: int = 0
+    reply_rate: float = 0.0
+    conversion_rate: float = 0.0
+
+
+class CampaignPerformanceListResponse(BaseModel):
+    """Response for campaign performance list endpoint."""
+    client_id: UUID
+    campaigns: list[CampaignPerformanceItem] = Field(default_factory=list)
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+
+
+@router.get(
+    "/clients/{client_id}/campaigns/performance",
+    response_model=CampaignPerformanceListResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_client_campaigns_performance(
+    client_id: UUID,
+    start_date: date | None = Query(None, description="Start date for metrics (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="End date for metrics (YYYY-MM-DD)"),
+    db: AsyncSession = Depends(get_async_session),
+    current_user: CurrentUser = Depends(get_current_user_from_token),
+) -> CampaignPerformanceListResponse:
+    """
+    Get performance metrics for all campaigns of a client.
+
+    Returns a list of campaigns with their key performance metrics:
+    - total_leads: Total leads assigned to campaign
+    - contacted: Leads that have been contacted (sent activity)
+    - replied: Leads that have replied
+    - converted: Leads that have converted (meetings booked)
+    - reply_rate: replied / contacted * 100
+    - conversion_rate: converted / contacted * 100
+
+    Args:
+        client_id: Client UUID
+        start_date: Optional start date for activity filtering (defaults to 30 days ago)
+        end_date: Optional end date for activity filtering (defaults to today)
+        db: Database session (injected)
+        current_user: Authenticated user
+
+    Returns:
+        CampaignPerformanceListResponse with list of campaign performance metrics
+
+    Raises:
+        404: Client not found
+        403: Unauthorized access to client
+    """
+    from sqlalchemy import and_, func, select, distinct
+
+    from src.models.activity import Activity
+    from src.models.campaign import Campaign
+    from src.models.client import Client
+    from src.models.lead import Lead
+
+    # Verify client exists
+    client_stmt = select(Client).where(
+        and_(
+            Client.id == client_id,
+            Client.deleted_at.is_(None),
+        )
+    )
+    client_result = await db.execute(client_stmt)
+    client = client_result.scalar_one_or_none()
+
+    if not client:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Client not found",
+        )
+
+    # Set default date range
+    if not end_date:
+        end_date = date.today()
+    if not start_date:
+        start_date = end_date - timedelta(days=30)
+
+    # Get all campaigns for client (not deleted)
+    campaigns_stmt = select(Campaign).where(
+        and_(
+            Campaign.client_id == client_id,
+            Campaign.deleted_at.is_(None),
+        )
+    ).order_by(Campaign.created_at.desc())
+    campaigns_result = await db.execute(campaigns_stmt)
+    campaigns = campaigns_result.scalars().all()
+
+    performance_items = []
+
+    for campaign in campaigns:
+        # Get total leads for this campaign
+        leads_count_stmt = select(func.count(Lead.id)).where(
+            and_(
+                Lead.campaign_id == campaign.id,
+                Lead.deleted_at.is_(None),
+            )
+        )
+        leads_result = await db.execute(leads_count_stmt)
+        total_leads = leads_result.scalar() or 0
+
+        # Get activity counts within date range
+        # Contacted = distinct leads with 'sent' action
+        contacted_stmt = select(func.count(distinct(Activity.lead_id))).where(
+            and_(
+                Activity.campaign_id == campaign.id,
+                Activity.action == "sent",
+                func.date(Activity.created_at) >= start_date,
+                func.date(Activity.created_at) <= end_date,
+            )
+        )
+        contacted_result = await db.execute(contacted_stmt)
+        contacted = contacted_result.scalar() or 0
+
+        # Replied = distinct leads with 'replied' action
+        replied_stmt = select(func.count(distinct(Activity.lead_id))).where(
+            and_(
+                Activity.campaign_id == campaign.id,
+                Activity.action == "replied",
+                func.date(Activity.created_at) >= start_date,
+                func.date(Activity.created_at) <= end_date,
+            )
+        )
+        replied_result = await db.execute(replied_stmt)
+        replied = replied_result.scalar() or 0
+
+        # Converted = distinct leads with 'converted' action
+        converted_stmt = select(func.count(distinct(Activity.lead_id))).where(
+            and_(
+                Activity.campaign_id == campaign.id,
+                Activity.action == "converted",
+                func.date(Activity.created_at) >= start_date,
+                func.date(Activity.created_at) <= end_date,
+            )
+        )
+        converted_result = await db.execute(converted_stmt)
+        converted = converted_result.scalar() or 0
+
+        # Calculate rates
+        reply_rate = round((replied / contacted * 100), 2) if contacted > 0 else 0.0
+        conversion_rate = round((converted / contacted * 100), 2) if contacted > 0 else 0.0
+
+        performance_items.append(
+            CampaignPerformanceItem(
+                campaign_id=campaign.id,
+                campaign_name=campaign.name,
+                status=campaign.status.value if hasattr(campaign.status, 'value') else str(campaign.status),
+                total_leads=total_leads,
+                contacted=contacted,
+                replied=replied,
+                converted=converted,
+                reply_rate=reply_rate,
+                conversion_rate=conversion_rate,
+            )
+        )
+
+    return CampaignPerformanceListResponse(
+        client_id=client_id,
+        campaigns=performance_items,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+
+# ============================================
 # VERIFICATION CHECKLIST
 # ============================================
 # [x] Contract comment at top
@@ -1708,3 +1886,7 @@ async def get_dashboard_metrics(
 # [x] GET /reports/pool/analytics - Pool size and utilization
 # [x] GET /reports/pool/assignments/analytics - Assignment metrics
 # [x] GET /reports/pool/clients/{id}/analytics - Client pool metrics
+# ============================================
+# ITEM 11 - getCampaignPerformance ENDPOINT
+# ============================================
+# [x] GET /reports/clients/{id}/campaigns/performance - Campaign performance list

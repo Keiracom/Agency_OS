@@ -1,4 +1,10 @@
 """
+Contract: src/agents/skills/service_extractor.py
+Purpose: Extract and categorize services offered by a marketing agency
+Layer: 4 - agents/skills
+Imports: agents.skills.base_skill, agents.skills.website_parser, integrations
+Consumers: ICP discovery agent
+
 FILE: src/agents/skills/service_extractor.py
 TASK: ICP-004
 PHASE: 11 (ICP Discovery System)

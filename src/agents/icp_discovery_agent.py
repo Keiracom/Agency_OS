@@ -1,4 +1,10 @@
 """
+Contract: src/agents/icp_discovery_agent.py
+Purpose: Orchestrate ICP extraction using modular skills
+Layer: 4 - agents
+Imports: agents.base_agent, agents.skills, engines, integrations
+Consumers: orchestration, API routes
+
 FILE: src/agents/icp_discovery_agent.py
 TASK: ICP-012
 PHASE: 11 (ICP Discovery System)

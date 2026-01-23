@@ -591,6 +591,116 @@ class UnipileClient:
             for inv in result.get("items", [])
         ]
 
+    async def withdraw_invitation(
+        self,
+        account_id: str,
+        invitation_id: str,
+    ) -> dict[str, Any]:
+        """
+        Withdraw a pending LinkedIn connection invitation.
+
+        Used to withdraw stale connection requests after 30 days,
+        freeing up connection request slots.
+
+        Args:
+            account_id: Unipile account ID (sender's LinkedIn)
+            invitation_id: ID of the invitation to withdraw
+
+        Returns:
+            Dict with withdrawal result
+        """
+        result = await self._request(
+            "DELETE",
+            f"/linkedin/invitations/{invitation_id}",
+            params={"account_id": account_id},
+        )
+
+        return {
+            "success": True,
+            "invitation_id": invitation_id,
+            "status": "withdrawn",
+            "provider": "unipile",
+        }
+
+    async def get_today_activity_count(
+        self,
+        account_id: str,
+    ) -> dict[str, int]:
+        """
+        Get total activity count for today (includes both manual and automated).
+
+        This fetches all invitations sent today from the LinkedIn account,
+        regardless of whether they were sent via our system or manually
+        by the user. Used for shared quota tracking per LINKEDIN.md spec.
+
+        Args:
+            account_id: Unipile account ID
+
+        Returns:
+            Dict with activity counts:
+            - invitations_sent: Connection requests sent today
+            - total: Combined activity count
+        """
+        # Get today's date range (UTC)
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+
+        # Fetch invitations with pagination to count all of today's activity
+        all_invitations = []
+        cursor = None
+        max_pages = 5  # Safety limit to avoid infinite loops
+
+        for _ in range(max_pages):
+            params = {
+                "account_id": account_id,
+                "limit": 100,
+            }
+            if cursor:
+                params["cursor"] = cursor
+
+            try:
+                result = await self._request("GET", "/linkedin/invitations", params=params)
+            except Exception:
+                # If we can't fetch from Unipile, return 0 to avoid blocking sends
+                # The Redis counter will still track automated sends
+                return {"invitations_sent": 0, "total": 0}
+
+            items = result.get("items", [])
+            if not items:
+                break
+
+            all_invitations.extend(items)
+
+            # Check if oldest item in this batch is before today - can stop paginating
+            oldest_in_batch = items[-1].get("created_at")
+            if oldest_in_batch:
+                try:
+                    oldest_dt = datetime.fromisoformat(oldest_in_batch.replace("Z", "+00:00"))
+                    if oldest_dt.replace(tzinfo=None) < today_start:
+                        break
+                except (ValueError, TypeError):
+                    pass
+
+            cursor = result.get("cursor")
+            if not cursor:
+                break
+
+        # Count invitations sent today
+        invitations_today = 0
+        for inv in all_invitations:
+            sent_at = inv.get("created_at")
+            if sent_at:
+                try:
+                    sent_dt = datetime.fromisoformat(sent_at.replace("Z", "+00:00"))
+                    if sent_dt.replace(tzinfo=None) >= today_start:
+                        invitations_today += 1
+                except (ValueError, TypeError):
+                    pass
+
+        return {
+            "invitations_sent": invitations_today,
+            "total": invitations_today,
+        }
+
     # ==========================================
     # Webhook Parsing
     # ==========================================
@@ -696,3 +806,6 @@ def get_unipile_client() -> UnipileClient:
 # [x] Retry logic with exponential backoff
 # [x] All functions have type hints
 # [x] All functions have docstrings
+# [x] Gap #18: get_today_activity_count() for shared quota tracking
+# [x] Gap #18: Pagination support for counting all today's invitations
+# [x] Gap #18: Graceful fallback if API fails (returns 0)

@@ -1,4 +1,10 @@
 """
+Contract: src/agents/campaign_generation_agent.py
+Purpose: Orchestrate campaign generation using modular skills
+Layer: 4 - agents
+Imports: agents.base_agent, agents.skills, integrations
+Consumers: orchestration, API routes
+
 FILE: src/agents/campaign_generation_agent.py
 TASK: CAM-004
 PHASE: 12A (Campaign Generation - Core)

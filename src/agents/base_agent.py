@@ -1,4 +1,10 @@
 """
+Contract: src/agents/base_agent.py
+Purpose: Pydantic AI base agent with shared functionality
+Layer: 4 - agents
+Imports: config, integrations
+Consumers: all agent subclasses
+
 FILE: src/agents/base_agent.py
 PURPOSE: Pydantic AI base agent with shared functionality
 PHASE: 6 (Agents)

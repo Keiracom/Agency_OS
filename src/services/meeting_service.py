@@ -1,4 +1,10 @@
 """
+Contract: src/services/meeting_service.py
+Purpose: Service for managing meetings and show rate tracking
+Layer: 3 - services
+Imports: models, services, exceptions
+Consumers: orchestration, API routes, CIS detectors, closer engine
+
 FILE: src/services/meeting_service.py
 PURPOSE: Service for managing meetings and show rate tracking
 PHASE: 24E (Downstream Outcomes), Updated Phase 24E-CRM

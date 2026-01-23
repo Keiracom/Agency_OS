@@ -1,4 +1,10 @@
 """
+Contract: src/services/crm_push_service.py
+Purpose: Push meetings to client's CRM (HubSpot, Pipedrive, Close)
+Layer: 3 - services
+Imports: models, config
+Consumers: orchestration, API routes, closer engine
+
 FILE: src/services/crm_push_service.py
 TASK: CRM-003 to CRM-007
 PHASE: 24E - CRM Push

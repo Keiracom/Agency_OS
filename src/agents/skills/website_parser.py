@@ -1,4 +1,10 @@
 """
+Contract: src/agents/skills/website_parser.py
+Purpose: Parse raw website HTML into structured page content for downstream skills
+Layer: 4 - agents/skills
+Imports: agents.skills.base_skill, integrations
+Consumers: ICP discovery agent, other skills
+
 FILE: src/agents/skills/website_parser.py
 TASK: ICP-003
 PHASE: 11 (ICP Discovery System)

@@ -1,4 +1,10 @@
 """
+Contract: src/engines/closer.py
+Purpose: Reply handling engine with AI intent classification and conversation threading
+Layer: 3 - engines
+Imports: models, integrations, services
+Consumers: orchestration only
+
 FILE: src/engines/closer.py
 PURPOSE: Reply handling engine with AI intent classification and conversation threading
 PHASE: 4 (Engines), Updated Phase 24D (Conversation Threading)

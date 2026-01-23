@@ -103,7 +103,7 @@ class WeightOptimizer:
         # Extract component arrays and conversion labels
         X, y = self._prepare_data(leads)
 
-        if X is None or len(X) < self.min_samples:
+        if X is None or y is None or len(X) < self.min_samples:
             return {
                 "weights": DEFAULT_WEIGHTS.copy(),
                 "confidence": 0.0,
@@ -112,7 +112,7 @@ class WeightOptimizer:
                 "note": "Not enough leads have ALS component scores",
             }
 
-        # Run optimization
+        # Run optimization (X and y guaranteed non-None at this point)
         result = self._optimize(X, y)
 
         # Convert to dict
@@ -139,15 +139,15 @@ class WeightOptimizer:
         """Get leads with ALS components and definitive outcomes."""
         cutoff = datetime.utcnow() - timedelta(days=lookback_days)
 
+        # Use individual ALS component fields instead of als_components JSONB
         stmt = select(Lead).where(
             and_(
                 Lead.client_id == client_id,
-                Lead.als_components.isnot(None),
+                Lead.als_data_quality.isnot(None),  # Ensure components exist
                 Lead.status.in_([
                     LeadStatus.CONVERTED,
                     LeadStatus.BOUNCED,
-                    LeadStatus.OPT_OUT,
-                    LeadStatus.NURTURING,
+                    LeadStatus.UNSUBSCRIBED,
                 ]),
                 Lead.created_at >= cutoff,
                 Lead.deleted_at.is_(None),
@@ -172,9 +172,14 @@ class WeightOptimizer:
         y_vals = []
 
         for lead in leads:
-            components = lead.als_components
-            if not components:
-                continue
+            # Build components dict from individual Lead fields
+            components = {
+                "data_quality": lead.als_data_quality,
+                "authority": lead.als_authority,
+                "company_fit": lead.als_company_fit,
+                "timing": lead.als_timing,
+                "risk": lead.als_risk,
+            }
 
             # Build row in component order
             row = []
@@ -188,7 +193,9 @@ class WeightOptimizer:
                 continue  # Skip incomplete records
 
             X_rows.append(row)
-            y_vals.append(1 if lead.status == LeadStatus.CONVERTED else 0)
+            # Check status as string since it may be stored as string in DB
+            lead_status = lead.status.value if hasattr(lead.status, 'value') else lead.status
+            y_vals.append(1 if lead_status == LeadStatus.CONVERTED.value else 0)
 
         if not X_rows:
             return None, None

@@ -1,4 +1,10 @@
 """
+Contract: src/engines/allocator.py
+Purpose: Channel and resource allocation with round-robin and rate limiting
+Layer: 3 - engines
+Imports: models, integrations
+Consumers: orchestration only
+
 FILE: src/engines/allocator.py
 PURPOSE: Channel and resource allocation with round-robin and rate limiting
 PHASE: 4 (Engines), modified Phase 16 for Conversion Intelligence

@@ -1,4 +1,10 @@
 """
+Contract: src/engines/base.py
+Purpose: Abstract base engine with dependency injection pattern
+Layer: 3 - engines
+Imports: models, exceptions
+Consumers: all engines
+
 FILE: src/engines/base.py
 PURPOSE: Abstract base engine with dependency injection pattern
 PHASE: 4 (Engines)
@@ -129,8 +135,8 @@ class BaseEngine(ABC):
 
         if not client:
             raise NotFoundError(
-                resource="Client",
-                identifier=str(client_id),
+                resource_type="Client",
+                resource_id=str(client_id),
             )
 
         # Check subscription status
@@ -175,8 +181,8 @@ class BaseEngine(ABC):
 
         if not campaign:
             raise NotFoundError(
-                resource="Campaign",
-                identifier=str(campaign_id),
+                resource_type="Campaign",
+                resource_id=str(campaign_id),
             )
 
         if campaign.status != CampaignStatus.ACTIVE:
@@ -221,8 +227,8 @@ class BaseEngine(ABC):
 
         if not lead:
             raise NotFoundError(
-                resource="Lead",
-                identifier=str(lead_id),
+                resource_type="Lead",
+                resource_id=str(lead_id),
             )
 
         # Check suppression status
@@ -282,8 +288,8 @@ class BaseEngine(ABC):
 
         if not lead:
             raise NotFoundError(
-                resource="Lead",
-                identifier=str(lead_id),
+                resource_type="Lead",
+                resource_id=str(lead_id),
             )
 
         return lead
@@ -319,8 +325,8 @@ class BaseEngine(ABC):
 
         if not campaign:
             raise NotFoundError(
-                resource="Campaign",
-                identifier=str(campaign_id),
+                resource_type="Campaign",
+                resource_id=str(campaign_id),
             )
 
         return campaign
@@ -356,8 +362,8 @@ class BaseEngine(ABC):
 
         if not client:
             raise NotFoundError(
-                resource="Client",
-                identifier=str(client_id),
+                resource_type="Client",
+                resource_id=str(client_id),
             )
 
         return client
@@ -387,7 +393,7 @@ class BaseEngine(ABC):
         Returns:
             Log entry dictionary
         """
-        entry = {
+        entry: dict[str, Any] = {
             "engine": self.name,
             "operation": operation,
             "timestamp": datetime.utcnow().isoformat(),

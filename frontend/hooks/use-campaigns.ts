@@ -20,6 +20,11 @@ import {
   deleteCampaign,
   getCampaignLeads,
   getCampaignSequences,
+  createSequenceStep,
+  updateSequenceStep,
+  deleteSequenceStep,
+  allocateCampaigns,
+  type CampaignAllocation,
 } from "@/lib/api/campaigns";
 import type {
   Campaign,
@@ -27,6 +32,9 @@ import type {
   CampaignUpdate,
   CampaignStatus,
   PaginationParams,
+  SequenceStep,
+  SequenceStepCreate,
+  SequenceStepUpdate,
 } from "@/lib/api/types";
 
 interface CampaignFilters {
@@ -87,6 +95,65 @@ export function useCampaignSequences(campaignId: string | undefined) {
     queryFn: () => getCampaignSequences(clientId!, campaignId!),
     enabled: !!clientId && !!campaignId,
     staleTime: 60 * 1000, // 1 minute
+  });
+}
+
+/**
+ * Hook to create a sequence step
+ */
+export function useCreateSequenceStep(campaignId: string | undefined) {
+  const { clientId } = useClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: SequenceStepCreate) =>
+      createSequenceStep(clientId!, campaignId!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["campaign-sequences", clientId, campaignId],
+      });
+    },
+  });
+}
+
+/**
+ * Hook to update a sequence step
+ */
+export function useUpdateSequenceStep(campaignId: string | undefined) {
+  const { clientId } = useClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      stepNumber,
+      data,
+    }: {
+      stepNumber: number;
+      data: SequenceStepUpdate;
+    }) => updateSequenceStep(clientId!, campaignId!, stepNumber, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["campaign-sequences", clientId, campaignId],
+      });
+    },
+  });
+}
+
+/**
+ * Hook to delete a sequence step
+ */
+export function useDeleteSequenceStep(campaignId: string | undefined) {
+  const { clientId } = useClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (stepNumber: number) =>
+      deleteSequenceStep(clientId!, campaignId!, stepNumber),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["campaign-sequences", clientId, campaignId],
+      });
+    },
   });
 }
 
@@ -196,6 +263,72 @@ export function useDeleteCampaign() {
     mutationFn: (campaignId: string) => deleteCampaign(clientId!, campaignId),
     onSuccess: (_, campaignId) => {
       queryClient.removeQueries({ queryKey: ["campaign", clientId, campaignId] });
+      queryClient.invalidateQueries({ queryKey: ["campaigns", clientId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats", clientId] });
+    },
+  });
+}
+
+/**
+ * Hook to allocate priorities across campaigns
+ *
+ * Updates lead_allocation_pct for each campaign and triggers
+ * pool population in the background.
+ *
+ * Validation (backend enforced):
+ * - Percentages must sum to 100%
+ * - Each campaign: minimum 10%, maximum 80%
+ */
+export function useAllocateCampaigns() {
+  const { clientId } = useClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (allocations: CampaignAllocation[]) =>
+      allocateCampaigns(clientId!, allocations),
+
+    onMutate: async (newAllocations) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["campaigns", clientId] });
+
+      // Snapshot current data for rollback
+      const previousCampaigns = queryClient.getQueryData(["campaigns", clientId]);
+
+      // Optimistically update campaign priorities
+      queryClient.setQueryData(
+        ["campaigns", clientId],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (old: any) => {
+          if (!old?.items) return old;
+          return {
+            ...old,
+            items: old.items.map((c: Campaign) => {
+              const allocation = newAllocations.find(
+                (a) => a.campaign_id === c.id
+              );
+              return allocation
+                ? { ...c, lead_allocation_pct: allocation.priority_pct }
+                : c;
+            }),
+          };
+        }
+      );
+
+      return { previousCampaigns };
+    },
+
+    onError: (_err, _variables, context) => {
+      // Rollback on error
+      if (context?.previousCampaigns) {
+        queryClient.setQueryData(
+          ["campaigns", clientId],
+          context.previousCampaigns
+        );
+      }
+    },
+
+    onSettled: () => {
+      // Refetch to ensure sync with server
       queryClient.invalidateQueries({ queryKey: ["campaigns", clientId] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats", clientId] });
     },

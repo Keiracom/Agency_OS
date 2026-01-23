@@ -1,4 +1,10 @@
 """
+Contract: src/agents/skills/messaging_generator.py
+Purpose: Generate channel-specific messaging content for campaign touches
+Layer: 4 - agents/skills
+Imports: agents.skills.base_skill
+Consumers: campaign generation agent
+
 FILE: src/agents/skills/messaging_generator.py
 TASK: CAM-002, 16B-004
 PHASE: 12A (Campaign Generation - Core), modified Phase 16 for Conversion Intelligence

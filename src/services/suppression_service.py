@@ -1,4 +1,10 @@
 """
+Contract: src/services/suppression_service.py
+Purpose: Check and manage suppression list for leads
+Layer: 3 - services
+Imports: models, config
+Consumers: JIT validator, scout engine, API routes
+
 FILE: src/services/suppression_service.py
 TASK: CUST-008
 PHASE: 24F - Customer Import
@@ -272,6 +278,9 @@ class SuppressionService:
         row = result.fetchone()
         await self.db.commit()
 
+        if not row:
+            raise ValueError(f"Failed to create suppression entry for client {client_id}")
+
         logger.info(f"Added suppression for client {client_id}: domain={domain}, email={email}, reason={reason}")
         return row.id
 
@@ -294,11 +303,13 @@ class SuppressionService:
         Returns:
             True if removed, False if not found
         """
+        # Soft delete (Rule 14) - set deleted_at instead of DELETE
         if suppression_id:
             result = await self.db.execute(
                 text("""
-                    DELETE FROM suppression_list
-                    WHERE id = :id AND client_id = :client_id
+                    UPDATE suppression_list
+                    SET deleted_at = NOW()
+                    WHERE id = :id AND client_id = :client_id AND deleted_at IS NULL
                     RETURNING id
                 """),
                 {"id": str(suppression_id), "client_id": str(client_id)},
@@ -306,8 +317,9 @@ class SuppressionService:
         elif domain:
             result = await self.db.execute(
                 text("""
-                    DELETE FROM suppression_list
-                    WHERE client_id = :client_id AND domain = :domain
+                    UPDATE suppression_list
+                    SET deleted_at = NOW()
+                    WHERE client_id = :client_id AND domain = :domain AND deleted_at IS NULL
                     RETURNING id
                 """),
                 {"client_id": str(client_id), "domain": domain.lower()},
@@ -315,8 +327,9 @@ class SuppressionService:
         elif email:
             result = await self.db.execute(
                 text("""
-                    DELETE FROM suppression_list
-                    WHERE client_id = :client_id AND email = :email
+                    UPDATE suppression_list
+                    SET deleted_at = NOW()
+                    WHERE client_id = :client_id AND email = :email AND deleted_at IS NULL
                     RETURNING id
                 """),
                 {"client_id": str(client_id), "email": email.lower()},
@@ -356,7 +369,7 @@ class SuppressionService:
             SELECT id, domain, email, company_name, reason, source,
                    notes, expires_at, created_at
             FROM suppression_list
-            WHERE client_id = :client_id
+            WHERE client_id = :client_id AND deleted_at IS NULL
         """
 
         if reason:
@@ -394,14 +407,14 @@ class SuppressionService:
         """Get count of suppression entries for a client."""
         result = await self.db.execute(
             text("""
-                SELECT COUNT(*) as count
+                SELECT COUNT(*) as cnt
                 FROM suppression_list
-                WHERE client_id = :client_id
+                WHERE client_id = :client_id AND deleted_at IS NULL
             """),
             {"client_id": str(client_id)},
         )
         row = result.fetchone()
-        return row.count if row else 0
+        return int(row[0]) if row else 0
 
     # =========================================================================
     # AUTOMATIC SUPPRESSION

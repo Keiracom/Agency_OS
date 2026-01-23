@@ -212,7 +212,9 @@ class ClickSendClient:
         skipped = []
 
         for msg in messages:
-            to_number = msg.get("to")
+            to_number: str = str(msg.get("to", ""))
+            if not to_number:
+                continue
 
             # Check DNCR if enabled
             if check_dncr and self._is_australian_number(to_number):
@@ -417,7 +419,7 @@ class ClickSendClient:
             "address_country": from_address.get("country", "AU"),
         }
 
-        data = {
+        data: dict[str, Any] = {
             "recipients": [recipient],
             "return_address": return_addr,
             "colour": 1 if colour else 0,

@@ -1,4 +1,10 @@
 """
+Contract: src/agents/skills/icp_deriver.py
+Purpose: Derive Ideal Customer Profile from enriched portfolio data
+Layer: 4 - agents/skills
+Imports: agents.skills.base_skill, agents.skills.industry_classifier, integrations
+Consumers: ICP discovery agent
+
 FILE: src/agents/skills/icp_deriver.py
 TASK: ICP-009
 PHASE: 11 (ICP Discovery System)

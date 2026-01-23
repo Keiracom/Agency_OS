@@ -1,4 +1,10 @@
 """
+Contract: src/services/content_qa_service.py
+Purpose: Pre-send content quality validation for all outreach channels
+Layer: 3 - services
+Imports: none (standalone)
+Consumers: outreach_flow
+
 FILE: src/services/content_qa_service.py
 PURPOSE: Pre-send content quality validation for all outreach channels
 PHASE: 22 (Content QA Check)

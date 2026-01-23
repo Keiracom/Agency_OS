@@ -1,4 +1,10 @@
 """
+Contract: src/models/base.py
+Purpose: Base model with SoftDeleteMixin and UUIDv7 support
+Layer: 1 - models
+Imports: exceptions only
+Consumers: ALL model files
+
 FILE: src/models/base.py
 PURPOSE: Base model with SoftDeleteMixin and UUIDv7 support
 PHASE: 2 (Models & Schemas)

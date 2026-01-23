@@ -1,4 +1,10 @@
 """
+Contract: src/services/who_refinement_service.py
+Purpose: Apply WHO conversion patterns to refine ICP search criteria
+Layer: 3 - services
+Imports: models
+Consumers: scout engine, pool population flow
+
 FILE: src/services/who_refinement_service.py
 PURPOSE: Apply WHO conversion patterns to refine ICP search criteria
 PHASE: 19 (ICP Refinement from CIS)
@@ -188,7 +194,6 @@ class WhoRefinementService:
                 ConversionPattern.client_id == client_id,
                 ConversionPattern.pattern_type == "who",
                 ConversionPattern.valid_until > datetime.utcnow(),
-                ConversionPattern.deleted_at.is_(None),
             )
         ).order_by(ConversionPattern.computed_at.desc()).limit(1)
 
@@ -423,9 +428,10 @@ class WhoRefinementService:
             final_min = max(base_min, sweet_min)
             final_max = sweet_max
         else:
-            # Only max specified
+            # Only max specified (base_min is None, base_max is not None)
             final_min = sweet_min
-            final_max = min(base_max, sweet_max)
+            # base_max is guaranteed non-None here by the elif chain logic
+            final_max = min(base_max, sweet_max) if base_max is not None else sweet_max
 
         # Check if we actually changed anything
         if final_min == base_min and final_max == base_max:

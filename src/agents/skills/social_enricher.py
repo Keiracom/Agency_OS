@@ -1,4 +1,10 @@
 """
+Contract: src/agents/skills/social_enricher.py
+Purpose: Extract additional portfolio companies from agency social media profiles
+Layer: 4 - agents/skills
+Imports: agents.skills.base_skill, integrations
+Consumers: ICP discovery agent
+
 FILE: src/agents/skills/social_enricher.py
 TASK: ICP-SOC-002 (Repurposed)
 PHASE: 18-B (ICP Enrichment)
@@ -17,7 +23,7 @@ HOW IT HELPS FIND LEADS:
 1. Scrapes agency's LinkedIn description, Instagram bio, Facebook about
 2. Uses Claude to extract client/company names mentioned
 3. Returns additional portfolio companies to enrich via Apollo
-4. More portfolio data → Better ICP derivation → More accurate lead targeting
+4. More portfolio data -> Better ICP derivation -> More accurate lead targeting
 """
 
 from __future__ import annotations

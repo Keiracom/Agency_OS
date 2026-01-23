@@ -1,4 +1,10 @@
 """
+Contract: src/services/lead_allocator_service.py
+Purpose: Allocate leads from pool to clients with exclusive assignment
+Layer: 3 - services
+Imports: models, services
+Consumers: orchestration, API routes
+
 FILE: src/services/lead_allocator_service.py
 PURPOSE: Allocate leads from pool to clients with exclusive assignment
 PHASE: 24A (Lead Pool Architecture), updated Phase 37
@@ -530,7 +536,9 @@ class LeadAllocatorService:
         )
 
         await self.session.commit()
-        return result.rowcount
+        # CursorResult has rowcount attribute
+        row_count = getattr(result, 'rowcount', 0)
+        return row_count if row_count else 0
 
 
 # ============================================

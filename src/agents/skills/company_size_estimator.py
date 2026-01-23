@@ -1,4 +1,10 @@
 """
+Contract: src/agents/skills/company_size_estimator.py
+Purpose: Estimate agency team size from website and LinkedIn data
+Layer: 4 - agents/skills
+Imports: agents.skills.base_skill, agents.skills.website_parser, integrations
+Consumers: ICP discovery agent
+
 FILE: src/agents/skills/company_size_estimator.py
 TASK: ICP-008
 PHASE: 11 (ICP Discovery System)

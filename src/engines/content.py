@@ -1,4 +1,10 @@
 """
+Contract: src/engines/content.py
+Purpose: AI content generation engine with spend limiter
+Layer: 3 - engines
+Imports: models, integrations
+Consumers: orchestration, agents
+
 FILE: src/engines/content.py
 PURPOSE: AI content generation engine with spend limiter
 PHASE: 4 (Engines), updated Phase 24A (Lead Pool)

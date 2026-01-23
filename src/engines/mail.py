@@ -1,4 +1,10 @@
 """
+Contract: src/engines/mail.py
+Purpose: Direct mail engine using ClickSend for physical mail (Australian)
+Layer: 3 - engines
+Imports: models, integrations
+Consumers: orchestration only
+
 FILE: src/engines/mail.py
 PURPOSE: Direct mail engine using ClickSend integration for physical mail (Australian)
 PHASE: 4 (Engines)

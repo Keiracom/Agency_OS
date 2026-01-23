@@ -1,7 +1,7 @@
 # Architecture TODO
 
 **Purpose:** Track gaps, priorities, and rules for architecture work.
-**Last Updated:** 2026-01-22
+**Last Updated:** 2026-01-23
 **Skill:** See `ARCHITECTURE_DOC_SKILL.md` for templates and checklists.
 
 ---
@@ -11,9 +11,9 @@
 **Read this section first when starting a new session.**
 
 ### Where We Are
-- **Phase:** Phase D — Code Fixes — IN PROGRESS
-- **Last Completed:** Item 20 (Two-way CRM sync)
-- **Next Action:** Item 19, 21-23 (remaining code fixes), Phase E (METRICS.md), Phase F (Frontend UI docs), or Phase H (Transparency)
+- **Phase:** Phase H — Client Transparency — COMPLETE ✅
+- **Last Completed:** Item 47 (Best Of Showcase) — ALL 8 ITEMS DONE
+- **Next Action:** Dashboard Redesign (HeroMetricsCard, PrioritySlider, etc.) or new phase
 
 ### Key Decisions Made
 1. **47 total items** — 12 docs created, 3 verified, 6 docs to create, 10 to verify, 11 code fixes, 8 transparency features
@@ -26,6 +26,12 @@
 8. **Post-onboarding flow** — Defer fix until after CAMPAIGNS.md. Reason: `pool_population_flow` and `post_onboarding_setup_flow` overlap on lead sourcing. Need ENRICHMENT.md + CAMPAIGNS.md context to choose between: (A) replace pool_population entirely, (B) skip sourcing if done, (C) keep flows separate.
 9. **Content hallucination risk** — Claude can hallucinate facts not in source data. Solution: Claude fact-check gate (~$0.01/email) + conservative prompt + safe fallback
 10. **Client transparency** — Automated outreach stays automated, but client sees everything via: Emergency Pause, Daily Digest, Live Feed, Archive, Best Of Showcase
+11. **Monthly Lifecycle Decisions (CEO Approved 2026-01-23):**
+    - Replenishment: `smart` (gap only, not full quota)
+    - Campaign suggestions: Require client approval (no auto-apply)
+    - CIS refinement: Minimum 20 conversions before patterns apply
+    - Campaign pause: Auto-pause at <1% reply rate after 100 leads
+    - Lead carryover: Active leads carry over, do NOT count against new quota
 
 ### Doc Creation Order (Reconciled)
 ```
@@ -170,13 +176,36 @@ For gaps and implementation status, see `../TODO.md`.
 
 **Rule:** Any architecture decision that requires judgment (not just documenting what exists) needs CEO sign-off before implementation.
 
-| # | Decision | Options | Recommendation | Doc | Status |
+| # | Decision | Options | Final Decision | Doc | Status |
 |---|----------|---------|----------------|-----|--------|
-| 1 | Default replenishment mode | `full` / `smart` / `manual` | `smart` | MONTHLY_LIFECYCLE.md | PENDING |
-| 2 | Auto-apply campaign suggestions | Yes / No (require approval) | No | MONTHLY_LIFECYCLE.md | PENDING |
-| 3 | Min conversions for CIS refinement | 10 / 20 / 50 | 20 | MONTHLY_LIFECYCLE.md | PENDING |
-| 4 | Campaign pause threshold | 0.5% / 1% / 2% reply rate | 1% after 100 leads | MONTHLY_LIFECYCLE.md | PENDING |
-| 5 | Lead carryover to month 2 | All / Active only / None | Active only | MONTHLY_LIFECYCLE.md | PENDING |
+| 1 | Default replenishment mode | `full` / `smart` / `manual` | **`smart`** | MONTHLY_LIFECYCLE.md | ✅ APPROVED 2026-01-23 |
+| 2 | Auto-apply campaign suggestions | Yes / No (require approval) | **`No`** (require approval) | MONTHLY_LIFECYCLE.md | ✅ APPROVED 2026-01-23 |
+| 3 | Min conversions for CIS refinement | 10 / 20 / 50 | **`20`** | MONTHLY_LIFECYCLE.md | ✅ APPROVED 2026-01-23 |
+| 4 | Campaign pause threshold | 0.5% / 1% / 2% reply rate | **`1% after 100 leads`** | MONTHLY_LIFECYCLE.md | ✅ APPROVED 2026-01-23 |
+| 5 | Lead carryover to month 2 | All / Active only / None | **`Active only`** (don't count against quota) | MONTHLY_LIFECYCLE.md | ✅ APPROVED 2026-01-23 |
+
+### Decision Details (CEO Approved 2026-01-23)
+
+**Decision 1 - Smart Replenishment:**
+- Only source `Tier Quota - Active Pipeline` new leads
+- Avoids waste, scales cost with actual need
+
+**Decision 2 - Require Approval for Suggestions:**
+- CIS suggestions shown in dashboard, client approves/dismisses
+- Builds trust, maintains client control over their outreach
+
+**Decision 3 - 20 Conversions Minimum:**
+- ~80% statistical confidence
+- Achievable within first month for all tiers
+
+**Decision 4 - 1% Pause Threshold:**
+- Auto-pause campaigns with <1% reply rate after 100 leads contacted
+- Industry standard, protects sender reputation
+
+**Decision 5 - Active Only Carryover:**
+- Active leads (mid-sequence) carry over to month 2
+- **Do NOT count against new month's quota** - carryover is bonus, not penalty
+- Client paid for month 1 leads, pays for month 2 leads → gets both
 
 **Process:**
 1. Dev Team adds decision to this table with recommendation
@@ -197,11 +226,11 @@ For gaps and implementation status, see `../TODO.md`.
 | ALS check at SMS execution | `business/SCORING.md` | **FIXED** | Added hard check in `outreach_flow.py:520` — ALS >= 85 required |
 | ALS check at Voice execution | `business/SCORING.md` | **OK** | Hard check in `voice.py:236` requires ALS >= 70 |
 | `get_available_channels()` unused | `business/SCORING.md` | **FIXED** | Added `get_available_channels_enum()` to tiers.py, refactored enrichment_flow.py to use it |
-| Claude fact-check gate | `content/SDK_AND_PROMPTS.md` | NOT IMPLEMENTED | Verify content against source data before send — prevents hallucination |
-| Conservative prompt update | `content/SDK_AND_PROMPTS.md` | NOT IMPLEMENTED | Instruct Claude to only use verified facts, never assume |
-| Safe fallback template | `content/SDK_AND_PROMPTS.md` | NOT IMPLEMENTED | Brand-safe template when AI fails fact-check twice |
-| Emergency Pause Button | `frontend/DASHBOARD.md` | NOT IMPLEMENTED | Client can pause all outreach instantly from dashboard |
-| Daily Digest Email | `flows/TRANSPARENCY.md` | NOT IMPLEMENTED | Automated email summary of content sent + metrics |
+| ~~Claude fact-check gate~~ | `content/SDK_AND_PROMPTS.md` | **FIXED** | Item 40 — `_fact_check_content()` in content.py verifies claims against source data |
+| ~~Conservative prompt update~~ | `content/SDK_AND_PROMPTS.md` | **FIXED** | Item 41 — SMART_EMAIL_PROMPT updated with "VERIFIED FACTS ONLY" section |
+| ~~Safe fallback template~~ | `content/SDK_AND_PROMPTS.md` | **FIXED** | Item 42 — SAFE_FALLBACK_TEMPLATE + `_generate_safe_fallback()` for brand-safe emails |
+| ~~Emergency Pause Button~~ | `frontend/DASHBOARD.md` | **FIXED** | Item 43 — Client + campaign pause fields, JIT check, API endpoints, dashboard button |
+| ~~Daily Digest Email~~ | `flows/TRANSPARENCY.md` | **FIXED** | Item 44 — DigestService + daily_digest_flow + migration 051 + API endpoints |
 
 ### Priority 2: Important (Should Fix Soon)
 
@@ -210,16 +239,16 @@ For gaps and implementation status, see `../TODO.md`.
 | ~~Daily pacing flow~~ | `business/TIERS_AND_BILLING.md` | **FIXED** | `daily_pacing_flow.py` + 7 AM AEST schedule + >120%/<50% alerts |
 | ~~Monthly replenishment flow~~ | `flows/MONTHLY_LIFECYCLE.md` | **FIXED** | `monthly_replenishment_flow.py` + credit_reset trigger + gap calculation |
 | ~~Campaign evolution agents~~ | `flows/MONTHLY_LIFECYCLE.md` | **FIXED** | WHO/WHAT/HOW analyzers + orchestrator → campaign_suggestions table |
-| ICP refinement from CIS | `flows/MONTHLY_LIFECYCLE.md` | NOT IMPLEMENTED | WHO patterns not used to refine Apollo search |
+| ~~ICP refinement from CIS~~ | `flows/MONTHLY_LIFECYCLE.md` | **FIXED** | WhoRefinementService, migration 049, scout.py integration |
 | ~~DNCR wiring~~ | `distribution/SMS.md` | **FIXED** | Batch wash at enrichment + cached check at send + quarterly re-wash |
 | ~~LinkedIn seat warmup~~ | `distribution/LINKEDIN.md` | **FIXED** | Warmup service + health service + daily flow created |
 | ~~Reply handling~~ | `flows/REPLY_HANDLING.md` | **PARTIAL** | Migration 046 + 10 intents + response timing. Remaining: SMS/LinkedIn webhooks |
 | ~~Two-way CRM sync~~ | `flows/MEETINGS_CRM.md` | **FIXED** | Webhook receivers + polling flow + blind meeting capture |
-| Frontend hardcoded values | `process/FRONTEND.md` | GAP | credits_remaining=2250, leads_contacted hardcoded |
-| Content QA check | `flows/OUTREACH.md` | NOT IMPLEMENTED | No validation before send (length, placeholders, spam) |
-| Smart Prompt priority | `content/SDK_AND_PROMPTS.md` | NOT IMPLEMENTED | No weighting of which lead data to prioritize |
-| Live Activity Feed | `frontend/DASHBOARD.md` | NOT IMPLEMENTED | Real-time outreach stream visible to client |
-| Content Archive | `frontend/DASHBOARD.md` | NOT IMPLEMENTED | Searchable archive of all sent content |
+| ~~Frontend hardcoded values~~ | `process/FRONTEND.md` | **FIXED** | credits_remaining wired, demo mode indicators added |
+| ~~Content QA check~~ | `flows/OUTREACH.md` | **FIXED** | ContentQAService validates placeholders, length, spam for all channels |
+| ~~Smart Prompt priority~~ | `content/SDK_AND_PROMPTS.md` | **FIXED** | Priority weighting system with HIGH/MEDIUM/LOW levels, ★ markers |
+| ~~Live Activity Feed~~ | `frontend/DASHBOARD.md` | **FIXED** | Item 45 — useActivityFeed hook, LiveActivityFeed.tsx component |
+| ~~Content Archive~~ | `frontend/DASHBOARD.md` | **FIXED** | Item 46 — /dashboard/archive page, searchable sent content |
 
 ### Priority 3: Documentation (Architecture Docs Needed)
 
@@ -253,11 +282,11 @@ For gaps and implementation status, see `../TODO.md`.
 
 | Gap | Location | Status | Code Exists | Notes |
 |-----|----------|--------|-------------|-------|
-| Client Dashboard | `frontend/DASHBOARD.md` | NOT CREATED | YES | 11 dashboard pages, KPIs, reports |
-| Campaign UI | `frontend/CAMPAIGNS.md` | NOT CREATED | YES | Campaign list, detail, sequences |
-| Lead UI | `frontend/LEADS.md` | NOT CREATED | YES | Lead list, detail, ALS display |
-| Settings UI | `frontend/SETTINGS.md` | NOT CREATED | YES | ICP, LinkedIn, client settings |
-| Onboarding UI | `frontend/ONBOARDING.md` | NOT CREATED | YES | 4 onboarding flow pages |
+| Client Dashboard | `frontend/DASHBOARD.md` | **CREATED** | YES | 11 dashboard pages, KPIs, reports |
+| Campaign UI | `frontend/CAMPAIGNS.md` | **CREATED** | YES | Campaign list, detail, sequences |
+| Lead UI | `frontend/LEADS.md` | **CREATED** | YES | Lead list, detail, ALS display |
+| Settings UI | `frontend/SETTINGS.md` | **CREATED** | YES | ICP, LinkedIn, client settings |
+| Onboarding UI | `frontend/ONBOARDING.md` | **CREATED** | YES | 4 onboarding flow pages |
 
 ### Priority 4: Nice to Have
 
@@ -265,8 +294,8 @@ For gaps and implementation status, see `../TODO.md`.
 |-----|----------|--------|-------|
 | Analytics + Spend Control | `business/METRICS.md` | MISSING DOC | Combines reporter.py, AI spend limiter, SDK cost tracking |
 | ~~Admin panel~~ | `frontend/ADMIN.md` | **CREATED** | 23+ endpoints, 21 pages documented |
-| Direct mail | `distribution/MAIL.md` | NOT IMPLEMENTED | Spec exists, no code |
-| "Best Of" Showcase | `frontend/DASHBOARD.md` | NOT IMPLEMENTED | Display high-performing content examples to client |
+| Direct mail | `distribution/MAIL.md` | NOT IMPLEMENTED | Spec exists, no code (by design) |
+| ~~"Best Of" Showcase~~ | `frontend/DASHBOARD.md` | **FIXED** | Item 47 — BestOfShowcase.tsx, high-performing content examples |
 
 ### Priority 5: Future Consideration
 
@@ -443,6 +472,15 @@ All 13 pre-existing architecture files have been verified against codebase (Phas
 | **P2: Implement monthly replenishment flow** | 2026-01-22 | `monthly_replenishment_flow.py`, gap calculation (Tier Quota - Active Pipeline), campaign assignment, credit_reset_flow trigger |
 | **P2: Implement campaign evolution agents** | 2026-01-22 | WHO/WHAT/HOW analyzers + orchestrator agent, migration 047 (campaign_suggestions table), Prefect flow + batch flow, confidence thresholds |
 | **P2: Implement two-way CRM sync** | 2026-01-22 | Close CRM parser, blind meeting creation, `crm_sync_flow.py` (6-hour polling), migration 048 (CRM fields + is_blind + crm_sync_log table), scheduled job |
+| **P2: Implement ICP refinement from CIS** | 2026-01-22 | `WhoRefinementService` (597 lines), `icp_refinement_log` model, migration 049, scout.py integration, customer locked fields |
+| **P2: Fix frontend hardcoded values** | 2026-01-22 | `reports.ts` wired credits_remaining, `layout.tsx` DB fetch, ICP uses `useClient()`, demo mode indicators in ActivityTicker + TranscriptViewer |
+| **P2: Add content QA check node** | 2026-01-22 | `ContentQAService` (900 lines), validates placeholders/length/spam for Email, SMS, LinkedIn, Voice in outreach_flow.py + outreach_tasks.py |
+| **P2: Add priority weighting to Smart Prompt** | 2026-01-22 | `FieldPriority` enum, `FIELD_PRIORITIES` config, ★ markers in format output, `generate_priority_guidance()`, wired in content.py |
+| **P1: Claude fact-check gate (Item 40)** | 2026-01-23 | `_fact_check_content()` in content.py, verifies claims against source data, tiered risk response |
+| **P1: Conservative prompt (Item 41)** | 2026-01-23 | SMART_EMAIL_PROMPT updated with "VERIFIED FACTS ONLY" section, explicit wrong/right examples |
+| **P1: Safe fallback template (Item 42)** | 2026-01-23 | `SAFE_FALLBACK_TEMPLATE` + `_generate_safe_fallback()` for brand-safe emails when fact-check fails |
+| **P1: Emergency Pause Button (Item 43)** | 2026-01-23 | Migration 050, client/campaign pause fields, JIT validation in outreach_flow.py, API endpoints, EmergencyPauseButton.tsx |
+| **P1: Daily Digest Email (Item 44)** | 2026-01-23 | Migration 051, DigestService, daily_digest_flow, send_transactional(), 4 API endpoints, 7 AM AEST schedule |
 
 ---
 
@@ -475,21 +513,21 @@ All 13 pre-existing architecture files have been verified against codebase (Phas
 16. [x] P2: Implement reply handling code — **DONE** (migration 046, 10 intents, response timing service, remaining: SMS/LinkedIn webhooks)
 17. [x] P2: Implement monthly replenishment flow — **DONE** (`monthly_replenishment_flow.py`, gap calculation, campaign assignment, credit_reset trigger)
 18. [x] P2: Implement campaign evolution agents — **DONE** (WHO/WHAT/HOW analyzers, orchestrator, campaign_suggestions table, Prefect flow)
-19. [ ] P2: Implement ICP refinement from CIS
+19. [x] P2: Implement ICP refinement from CIS — **DONE** (WhoRefinementService, icp_refinement_log model, migration 049, scout.py integration)
 20. [x] P2: Implement two-way CRM sync — **DONE** (Close parser, blind meeting creation, crm_sync_flow polling, migration 048)
-21. [ ] P2: Fix frontend hardcoded values
-22. [ ] P2: Add content QA check node in outreach flow
-23. [ ] P2: Add priority weighting to Smart Prompt
+21. [x] P2: Fix frontend hardcoded values — **DONE** (credits_remaining wired to API, ICP uses useClient(), demo mode indicators)
+22. [x] P2: Add content QA check node in outreach flow — **DONE** (ContentQAService validates placeholders, length, spam for Email, SMS, LinkedIn, Voice)
+23. [x] P2: Add priority weighting to Smart Prompt — **DONE** (FieldPriority enum, FIELD_PRIORITIES config, ★ markers, generate_priority_guidance())
 
 ### Phase E: Nice to Have (1 doc)
 24. [ ] Create `business/METRICS.md` — Reporter engine, analytics, spend control combined
 
 ### Phase F: Frontend UI Docs (5 docs)
-25. [ ] Create `frontend/DASHBOARD.md` — Client dashboard, KPIs, reports
-26. [ ] Create `frontend/CAMPAIGNS.md` — Campaign list, detail, sequences UI
-27. [ ] Create `frontend/LEADS.md` — Lead list, detail, ALS display
-28. [ ] Create `frontend/SETTINGS.md` — ICP, LinkedIn, client settings
-29. [ ] Create `frontend/ONBOARDING.md` — 4 onboarding flow pages
+25. [x] Create `frontend/DASHBOARD.md` — **DONE** (T1-T4 metric tiers, 6 new components, API gaps, wireframe)
+26. [x] Create `frontend/CAMPAIGNS.md` — **DONE** (Priority sliders, auto-balance, tier limits, 6 new components, API gaps, wireframes)
+27. [x] Create `frontend/LEADS.md` — **DONE** (ALS tiers, client vs admin visibility, 6 new components, activity timeline, API gaps, wireframes)
+28. [x] Create `frontend/SETTINGS.md` — **DONE** (ICP form, LinkedIn state machine, Emergency pause, 6 new components, 9 API gaps, wireframes)
+29. [x] Create `frontend/ONBOARDING.md` — **DONE** (4-step flow, state machine, 6 new components, ICP extraction progress, wireframes)
 
 ### Phase G: Verify Existing Docs (10 items — 3 already verified)
 
@@ -506,12 +544,12 @@ All 13 pre-existing architecture files have been verified against codebase (Phas
 38. [x] Verify `distribution/RESOURCE_POOL.md` — updated status to PARTIALLY IMPLEMENTED, documented existing service
 39. [x] Verify `flows/REPLY_HANDLING.md` — updated status to PARTIALLY IMPLEMENTED, documented closer.py + reply_analyzer
 
-### Phase H: Client Transparency (Brand Safety + Visibility)
-40. [ ] P1: Implement Claude fact-check gate in outreach flow
-41. [ ] P1: Update SMART_EMAIL_PROMPT with conservative instructions
-42. [ ] P1: Create safe fallback template for fact-check failures
-43. [ ] P1: Add Emergency Pause Button to dashboard (client-facing)
-44. [ ] P1: Implement Daily Digest Email (content summary + metrics)
-45. [ ] P2: Build Live Activity Feed component (real-time outreach stream)
-46. [ ] P2: Create Content Archive page (all sent content, searchable)
-47. [ ] P3: Build "Best Of" Showcase (high-performing content examples)
+### Phase H: Client Transparency (Brand Safety + Visibility) — COMPLETE ✅
+40. [x] P1: Implement Claude fact-check gate in outreach flow — **DONE** (`_fact_check_content()` in content.py)
+41. [x] P1: Update SMART_EMAIL_PROMPT with conservative instructions — **DONE** ("VERIFIED FACTS ONLY" section)
+42. [x] P1: Create safe fallback template for fact-check failures — **DONE** (`SAFE_FALLBACK_TEMPLATE` + `_generate_safe_fallback()`)
+43. [x] P1: Add Emergency Pause Button to dashboard (client-facing) — **DONE** (migration 050, JIT check, API, EmergencyPauseButton.tsx)
+44. [x] P1: Implement Daily Digest Email (content summary + metrics) — **DONE** (DigestService, daily_digest_flow, migration 051, API endpoints)
+45. [x] P2: Build Live Activity Feed component (real-time outreach stream) — **DONE** (endpoint, useActivityFeed, LiveActivityFeed.tsx)
+46. [x] P2: Create Content Archive page (all sent content, searchable) — **DONE** (endpoint, types, hook, /dashboard/archive page)
+47. [x] P3: Build "Best Of" Showcase (high-performing content examples) — **DONE** (endpoint, types, hook, BestOfShowcase.tsx)

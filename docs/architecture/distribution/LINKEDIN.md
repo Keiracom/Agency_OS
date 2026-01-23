@@ -892,7 +892,7 @@ linkedin_accept_rate_critical: float = 0.20
 - [ ] Quota tracking (including manual activity)
 - [ ] Accept → follow-up scheduling
 - [x] 14-day ignored timeout — `linkedin_health_service.mark_stale_connections_ignored()`
-- [ ] 30-day stale withdrawal
+- [x] 30-day stale withdrawal — `linkedin_health_service.withdraw_stale_requests()`
 - [ ] Reply routing to reply_agent
 - [x] Health monitoring active — `linkedin_health_service.py` + `linkedin_health_flow.py`
 - [x] Restriction detection works — `linkedin_health_service.detect_restrictions()`

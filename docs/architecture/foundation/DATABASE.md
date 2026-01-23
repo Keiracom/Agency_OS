@@ -2,7 +2,7 @@
 
 **Purpose:** Supabase PostgreSQL with SQLAlchemy async ORM for multi-tenant lead generation SaaS
 **Status:** IMPLEMENTED
-**Last Updated:** 2026-01-21
+**Last Updated:** 2026-01-23
 
 ---
 
@@ -20,7 +20,7 @@ Key characteristics:
 
 ## Code Locations
 
-### SQLAlchemy Models (20 files)
+### SQLAlchemy Models (24 files)
 
 | Model | File | Purpose |
 |-------|------|---------|
@@ -34,6 +34,8 @@ Key characteristics:
 | `Campaign` | `src/models/campaign.py` | Outreach campaign configuration |
 | `CampaignResource` | `src/models/campaign.py` | Campaign resource allocation |
 | `CampaignSequence` | `src/models/campaign.py` | Multi-step sequence configuration |
+| `CampaignSuggestion` | `src/models/campaign_suggestion.py` | AI-driven campaign suggestions from CIS |
+| `CampaignSuggestionHistory` | `src/models/campaign_suggestion.py` | Suggestion status change audit trail |
 | `Lead` | `src/models/lead.py` | Lead with ALS score and enrichment |
 | `LeadPool` | `src/models/lead_pool.py` | Platform-wide lead repository |
 | `LeadSocialPost` | `src/models/lead_social_post.py` | Scraped social posts for personalization |
@@ -47,11 +49,13 @@ Key characteristics:
 | `ResourcePool` | `src/models/resource_pool.py` | Platform resource pool (domains, phones) |
 | `ClientResource` | `src/models/resource_pool.py` | Client-resource assignment |
 | `ClientPersona` | `src/models/client_persona.py` | Sender identity for outreach |
-| `LinkedInCredential` | `src/models/linkedin_credential.py` | LinkedIn credentials (legacy) |
+| `LinkedInCredential` | `src/models/linkedin_credential.py` | LinkedIn credentials for HeyReach |
 | `LinkedInSeat` | `src/models/linkedin_seat.py` | LinkedIn seat for multi-seat support |
 | `LinkedInConnection` | `src/models/linkedin_connection.py` | LinkedIn connection tracking |
-| `ClientIntelligence` | `src/models/client_intelligence.py` | Scraped client data for SDK |
+| `ClientIntelligence` | `src/models/client_intelligence.py` | Scraped client data for SDK personalization |
 | `SDKUsageLog` | `src/models/sdk_usage_log.py` | SDK Brain usage and cost tracking |
+| `DigestLog` | `src/models/digest_log.py` | Daily/weekly digest delivery tracking |
+| `IcpRefinementLog` | `src/models/icp_refinement_log.py` | WHO pattern refinement audit trail |
 
 ### Pydantic Models (non-SQLAlchemy)
 
@@ -135,7 +139,7 @@ class MyModel(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
 
 ## Enums
 
-All enums are defined in `src/models/base.py` and match PostgreSQL ENUM types.
+Most enums are defined in `src/models/base.py`, with domain-specific enums in their respective model files. All enums match PostgreSQL ENUM types.
 
 ### Subscription & Billing
 
@@ -163,18 +167,25 @@ All enums are defined in `src/models/base.py` and match PostgreSQL ENUM types.
 | Enum | Values | Purpose |
 |------|--------|---------|
 | `ChannelType` | `email`, `sms`, `linkedin`, `voice`, `mail` | Outreach channels |
-| `IntentType` | `meeting_request`, `interested`, `question`, `not_interested`, `unsubscribe`, `out_of_office`, `auto_reply` | Reply classification |
+| `IntentType` | `meeting_request`, `interested`, `question`, `not_interested`, `unsubscribe`, `out_of_office`, `auto_reply`, `referral`, `wrong_person`, `angry_or_complaint` | Reply intent classification |
 
 ### System
 
 | Enum | Values | Purpose |
 |------|--------|---------|
-| `WebhookEventType` | `lead.created`, `lead.enriched`, etc. | Webhook events |
-| `AuditAction` | `create`, `update`, `delete`, `login`, etc. | Audit log actions |
+| `WebhookEventType` | `lead.created`, `lead.enriched`, `lead.scored`, `lead.converted`, `campaign.started`, `campaign.paused`, `campaign.completed`, `reply.received`, `meeting.booked` | Webhook events |
+| `AuditAction` | `create`, `update`, `delete`, `login`, `logout`, `export`, `import`, `webhook_sent`, `webhook_failed` | Audit log actions |
 | `PatternType` | `who`, `what`, `when`, `how` | Conversion Intelligence patterns |
 | `ResourceType` | `email_domain`, `phone_number`, `linkedin_seat` | Resource pool types |
 | `ResourceStatus` | `available`, `assigned`, `warming`, `retired` | Resource lifecycle |
 | `HealthStatus` | `good`, `warning`, `critical` | Domain health status |
+
+### Campaign Suggestions
+
+| Enum | Values | Purpose |
+|------|--------|---------|
+| `SuggestionType` | `create_campaign`, `pause_campaign`, `adjust_allocation`, `refine_targeting`, `change_channel_mix`, `update_content`, `adjust_timing` | Types of CIS-driven campaign suggestions |
+| `SuggestionStatus` | `pending`, `approved`, `rejected`, `applied`, `expired` | Suggestion lifecycle status |
 
 ---
 
@@ -372,6 +383,275 @@ postgresql+asyncpg://postgres.xxx:password@aws-0-ap-southeast-2.pooler.supabase.
 # Direct Connection (port 5432) - for migrations
 postgresql://postgres.xxx:password@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres
 ```
+
+---
+
+## Model Detail: CampaignSuggestion
+
+**Table:** `campaign_suggestions`
+**Purpose:** AI-driven campaign suggestions from Conversion Intelligence System (CIS) pattern analysis
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PK | Unique identifier |
+| `client_id` | UUID | FK, NOT NULL, indexed | Reference to owning client |
+| `campaign_id` | UUID | FK, nullable | Target campaign (NULL for create suggestions) |
+| `suggestion_type` | TEXT | NOT NULL | Type: create_campaign, pause_campaign, adjust_allocation, etc. |
+| `status` | TEXT | NOT NULL, default 'pending' | Lifecycle: pending, approved, rejected, applied, expired |
+| `title` | TEXT | NOT NULL | Human-readable suggestion title |
+| `description` | TEXT | NOT NULL | Detailed suggestion description |
+| `rationale` | JSONB | NOT NULL | Pattern-based reasoning |
+| `recommended_action` | JSONB | NOT NULL | Specific action to take |
+| `confidence` | NUMERIC(3,2) | CHECK 0-1 | CIS confidence score |
+| `priority` | INTEGER | CHECK 1-100, default 50 | Priority ranking |
+| `pattern_types` | TEXT[] | NOT NULL | Pattern sources (who, what, when, how) |
+| `pattern_snapshot` | JSONB | nullable | Frozen pattern data at suggestion time |
+| `current_metrics` | JSONB | nullable | Metrics at time of suggestion |
+| `projected_improvement` | JSONB | nullable | Expected improvement if applied |
+| `generated_at` | TIMESTAMP | NOT NULL, default NOW() | When CIS generated suggestion |
+| `reviewed_at` | TIMESTAMP | nullable | When client reviewed |
+| `reviewed_by` | UUID | nullable | User who reviewed |
+| `applied_at` | TIMESTAMP | nullable | When suggestion was applied |
+| `expires_at` | TIMESTAMP | NOT NULL | Auto-expire after 14 days |
+| `client_notes` | TEXT | nullable | Client feedback notes |
+| `rejection_reason` | TEXT | nullable | Why suggestion was rejected |
+| `created_at` | TIMESTAMP | NOT NULL | Record creation time |
+| `updated_at` | TIMESTAMP | NOT NULL | Last update time |
+| `deleted_at` | TIMESTAMP | nullable | Soft delete marker |
+
+**Relationships:**
+- `belongs_to`: Client, Campaign
+- `has_many`: CampaignSuggestionHistory
+
+**Indexes:**
+- `idx_campaign_suggestions_pending` (client_id, status) WHERE status='pending' AND deleted_at IS NULL
+
+---
+
+## Model Detail: CampaignSuggestionHistory
+
+**Table:** `campaign_suggestion_history`
+**Purpose:** Audit trail for suggestion status changes
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PK | Unique identifier |
+| `suggestion_id` | UUID | FK, NOT NULL, indexed | Reference to suggestion |
+| `old_status` | TEXT | nullable | Previous status |
+| `new_status` | TEXT | NOT NULL | New status |
+| `changed_by` | UUID | nullable | User who made change |
+| `change_reason` | TEXT | nullable | Reason for change |
+| `changed_at` | TIMESTAMP | NOT NULL, default NOW() | When change occurred |
+
+**Relationships:**
+- `belongs_to`: CampaignSuggestion
+
+---
+
+## Model Detail: DigestLog
+
+**Table:** `digest_logs`
+**Purpose:** Track daily/weekly digest emails sent to clients (Phase H, Item 44)
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PK | Unique identifier |
+| `client_id` | UUID | FK, NOT NULL | Reference to client |
+| `digest_date` | DATE | NOT NULL | Date the digest covers |
+| `digest_type` | TEXT | NOT NULL, default 'daily' | Type: daily, weekly |
+| `recipients` | JSONB | NOT NULL | List of email addresses |
+| `metrics_snapshot` | JSONB | NOT NULL | Metrics at time of digest |
+| `content_summary` | JSONB | NOT NULL | What content was sent |
+| `status` | TEXT | NOT NULL, default 'pending' | Delivery status: pending, sent, failed |
+| `sent_at` | TIMESTAMP | nullable | When email was sent |
+| `error_message` | TEXT | nullable | Error if send failed |
+| `opened_at` | TIMESTAMP | nullable | When recipient opened |
+| `clicked_at` | TIMESTAMP | nullable | When recipient clicked |
+| `created_at` | TIMESTAMP | NOT NULL | Record creation time |
+| `updated_at` | TIMESTAMP | NOT NULL | Last update time |
+
+**Relationships:**
+- `belongs_to`: Client
+
+**Properties:**
+- `is_sent`: Check if digest was successfully sent
+- `was_opened`: Check if digest was opened
+
+---
+
+## Model Detail: IcpRefinementLog
+
+**Table:** `icp_refinement_log`
+**Purpose:** Audit trail for WHO pattern refinements applied to ICP searches (Phase 19)
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PK | Unique identifier |
+| `client_id` | UUID | FK, NOT NULL, indexed | Reference to client |
+| `pattern_id` | UUID | FK, NOT NULL | Reference to WHO pattern used |
+| `base_criteria` | JSONB | NOT NULL | Original ICP criteria before refinement |
+| `refined_criteria` | JSONB | NOT NULL | Final criteria after WHO refinement |
+| `refinements_applied` | JSONB | NOT NULL | Array of refinement actions taken |
+| `confidence` | FLOAT | NOT NULL | WHO pattern confidence at refinement time |
+| `applied_at` | TIMESTAMP | NOT NULL | When refinement was applied |
+| `deleted_at` | TIMESTAMP | nullable | Soft delete marker |
+| `created_at` | TIMESTAMP | NOT NULL | Record creation time |
+| `updated_at` | TIMESTAMP | NOT NULL | Last update time |
+
+**Relationships:**
+- `belongs_to`: Client, ConversionPattern
+
+**Properties:**
+- `refinement_count`: Number of refinements applied
+- `fields_refined`: List of field names that were refined
+
+---
+
+## Model Detail: LinkedInCredential
+
+**Table:** `client_linkedin_credentials`
+**Purpose:** LinkedIn credential storage for HeyReach automation (Phase 24H)
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PK | Unique identifier |
+| `client_id` | UUID | FK, NOT NULL, UNIQUE, indexed | Reference to client (one per client) |
+| `linkedin_email_encrypted` | TEXT | NOT NULL | AES-256 encrypted LinkedIn email |
+| `linkedin_password_encrypted` | TEXT | NOT NULL | AES-256 encrypted LinkedIn password |
+| `connection_status` | VARCHAR(50) | NOT NULL, default 'pending' | Status: pending, connecting, awaiting_2fa, connected, failed, disconnected |
+| `heyreach_sender_id` | VARCHAR(255) | nullable | HeyReach sender ID after connection |
+| `heyreach_account_id` | VARCHAR(255) | nullable | HeyReach account ID |
+| `linkedin_profile_url` | TEXT | nullable | LinkedIn profile URL |
+| `linkedin_profile_name` | VARCHAR(255) | nullable | LinkedIn display name |
+| `linkedin_headline` | TEXT | nullable | LinkedIn headline |
+| `linkedin_connection_count` | INTEGER | nullable | Number of LinkedIn connections |
+| `two_fa_method` | VARCHAR(50) | nullable | 2FA method: sms, email, authenticator |
+| `two_fa_requested_at` | TIMESTAMP | nullable | When 2FA was requested |
+| `last_error` | TEXT | nullable | Last error message |
+| `error_count` | INTEGER | NOT NULL, default 0 | Number of connection errors |
+| `last_error_at` | TIMESTAMP | nullable | When last error occurred |
+| `connected_at` | TIMESTAMP | nullable | When connection was established |
+| `disconnected_at` | TIMESTAMP | nullable | When account was disconnected |
+| `created_at` | TIMESTAMP | NOT NULL | Record creation time |
+| `updated_at` | TIMESTAMP | NOT NULL | Last update time |
+
+**Relationships:**
+- `belongs_to`: Client (one-to-one)
+
+**Properties:**
+- `is_connected`: Check if LinkedIn is successfully connected
+- `is_awaiting_2fa`: Check if waiting for 2FA verification
+- `has_error`: Check if connection has failed
+
+---
+
+## Model Detail: ClientIntelligence
+
+**Table:** `client_intelligence`
+**Purpose:** Scraped client data for SDK personalization (multi-source aggregation)
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PK | Unique identifier |
+| `client_id` | TEXT | NOT NULL, indexed | Reference to client |
+| **Website Data** | | | |
+| `website_tagline` | TEXT | nullable | Company tagline from website |
+| `website_value_prop` | TEXT | nullable | Value proposition |
+| `website_services` | JSONB | nullable | Array of {name, description} |
+| `website_case_studies` | JSONB | nullable | Array of case study objects |
+| `website_testimonials` | JSONB | nullable | Array of testimonial objects |
+| `website_team_bios` | JSONB | nullable | Array of team member objects |
+| `website_blog_topics` | TEXT[] | nullable | Common blog topics |
+| `website_scraped_at` | TIMESTAMP | nullable | When website was scraped |
+| **LinkedIn Data** | | | |
+| `linkedin_url` | TEXT | nullable | Company LinkedIn URL |
+| `linkedin_follower_count` | INTEGER | nullable | LinkedIn follower count |
+| `linkedin_employee_count` | INTEGER | nullable | Employee count from LinkedIn |
+| `linkedin_description` | TEXT | nullable | Company description |
+| `linkedin_specialties` | TEXT[] | nullable | Company specialties |
+| `linkedin_recent_posts` | JSONB | nullable | Recent LinkedIn posts |
+| `linkedin_scraped_at` | TIMESTAMP | nullable | When LinkedIn was scraped |
+| **Twitter/X Data** | | | |
+| `twitter_handle` | TEXT | nullable | Twitter handle |
+| `twitter_follower_count` | INTEGER | nullable | Follower count |
+| `twitter_bio` | TEXT | nullable | Bio |
+| `twitter_recent_posts` | JSONB | nullable | Recent tweets |
+| `twitter_topics` | TEXT[] | nullable | Common topics |
+| `twitter_scraped_at` | TIMESTAMP | nullable | When Twitter was scraped |
+| **Facebook Data** | | | |
+| `facebook_url` | TEXT | nullable | Facebook page URL |
+| `facebook_follower_count` | INTEGER | nullable | Follower count |
+| `facebook_about` | TEXT | nullable | About section |
+| `facebook_recent_posts` | JSONB | nullable | Recent posts |
+| `facebook_scraped_at` | TIMESTAMP | nullable | When Facebook was scraped |
+| **Instagram Data** | | | |
+| `instagram_handle` | TEXT | nullable | Instagram handle |
+| `instagram_follower_count` | INTEGER | nullable | Follower count |
+| `instagram_bio` | TEXT | nullable | Bio |
+| `instagram_recent_posts` | JSONB | nullable | Recent posts |
+| `instagram_scraped_at` | TIMESTAMP | nullable | When Instagram was scraped |
+| **Review Platform Data** | | | |
+| `g2_url`, `g2_rating`, `g2_review_count`, `g2_top_reviews`, `g2_ai_summary` | Various | nullable | G2 review data |
+| `capterra_url`, `capterra_rating`, `capterra_review_count`, `capterra_top_reviews` | Various | nullable | Capterra review data |
+| `trustpilot_url`, `trustpilot_rating`, `trustpilot_review_count`, `trustpilot_top_reviews` | Various | nullable | Trustpilot review data |
+| `google_business_url`, `google_rating`, `google_review_count`, `google_top_reviews` | Various | nullable | Google Business review data |
+| **Extracted Proof Points** | | | |
+| `proof_metrics` | JSONB | nullable | Array of {metric, context, source} |
+| `proof_clients` | TEXT[] | nullable | Notable client names |
+| `proof_industries` | TEXT[] | nullable | Industries served |
+| `common_pain_points` | TEXT[] | nullable | Common pain points addressed |
+| `differentiators` | TEXT[] | nullable | Key differentiators |
+| **Metadata** | | | |
+| `total_scrape_cost_aud` | DECIMAL(10,4) | nullable | Total scraping cost in AUD |
+| `last_full_scrape_at` | TIMESTAMP | nullable | When full scrape completed |
+| `scrape_errors` | JSONB | nullable | Array of scrape error objects |
+| `created_at` | TIMESTAMP | NOT NULL | Record creation time |
+| `updated_at` | TIMESTAMP | NOT NULL | Last update time |
+| `deleted_at` | TIMESTAMP | nullable | Soft delete marker |
+
+**Properties:**
+- `has_website_data`: Check if website data has been scraped
+- `has_social_data`: Check if any social media data has been scraped
+- `has_review_data`: Check if any review platform data has been scraped
+- `needs_refresh`: Check if data is stale (older than 30 days)
+
+**Methods:**
+- `get_proof_summary()`: Get a summary of proof points for SDK agents
+
+---
+
+## Model Detail: SDKUsageLog
+
+**Table:** `sdk_usage_log`
+**Purpose:** Track SDK Brain usage for cost control and analytics
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PK | Unique identifier |
+| `client_id` | UUID | FK, NOT NULL, indexed | Reference to client |
+| `lead_id` | UUID | FK, nullable, indexed | Reference to lead (if applicable) |
+| `campaign_id` | UUID | FK, nullable | Reference to campaign (if applicable) |
+| `user_id` | UUID | FK, nullable | Reference to user (if applicable) |
+| `agent_type` | VARCHAR(50) | NOT NULL, indexed | Type: icp_extraction, enrichment, email, voice_kb, objection |
+| `model_used` | VARCHAR(100) | NOT NULL | Model ID: claude-sonnet-4-20250514, etc. |
+| `input_tokens` | INTEGER | NOT NULL, default 0 | Input tokens used |
+| `output_tokens` | INTEGER | NOT NULL, default 0 | Output tokens used |
+| `cached_tokens` | INTEGER | NOT NULL, default 0 | Cached tokens (prompt caching) |
+| `cost_aud` | NUMERIC(10,6) | NOT NULL, default 0 | Total cost in Australian dollars |
+| `turns_used` | INTEGER | NOT NULL, default 1 | Number of agent turns |
+| `duration_ms` | INTEGER | NOT NULL, default 0 | Execution duration in milliseconds |
+| `tool_calls` | JSONB | NOT NULL | Array of tool calls made |
+| `success` | BOOLEAN | NOT NULL, default true | Whether execution succeeded |
+| `error_message` | TEXT | nullable | Error message if failed |
+| `created_at` | TIMESTAMP | NOT NULL | When execution occurred |
+| `deleted_at` | TIMESTAMP | nullable | Soft delete marker |
+
+**Relationships:**
+- `belongs_to`: Client, Lead (optional), Campaign (optional), User (optional)
+
+**Properties:**
+- `total_tokens`: Total tokens used (input + output)
+- `cache_hit_rate`: Percentage of input tokens that were cached
 
 ---
 

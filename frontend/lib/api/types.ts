@@ -64,6 +64,10 @@ export interface Campaign {
   status: CampaignStatus;
   permission_mode: PermissionMode | null;
 
+  // Priority allocation (percentage of lead pool)
+  lead_allocation_pct: number;
+  is_ai_suggested: boolean;
+
   // Allocations
   allocation_email: number;
   allocation_sms: number;
@@ -84,6 +88,11 @@ export interface Campaign {
   reply_rate: number;
   conversion_rate: number;
 
+  // Phase I Dashboard metrics (Item 57)
+  meetings_booked: number;
+  show_rate: number;
+  active_sequences: number;
+
   created_at: string;
   updated_at: string;
 }
@@ -99,6 +108,45 @@ export interface CampaignUpdate {
   description?: string;
   permission_mode?: PermissionMode;
   status?: CampaignStatus;
+}
+
+// ============================================
+// Sequence Step
+// ============================================
+
+export interface SequenceStep {
+  id: UUID;
+  campaign_id: UUID;
+  step_number: number;
+  channel: ChannelType;
+  delay_days: number;
+  subject_template: string | null;
+  body_template: string;
+  skip_if_replied: boolean;
+  skip_if_bounced: boolean;
+  purpose: string | null;
+  skip_if: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SequenceStepCreate {
+  step_number: number;
+  channel: ChannelType;
+  delay_days: number;
+  subject_template?: string;
+  body_template: string;
+  skip_if_replied?: boolean;
+  skip_if_bounced?: boolean;
+}
+
+export interface SequenceStepUpdate {
+  channel?: ChannelType;
+  delay_days?: number;
+  subject_template?: string;
+  body_template?: string;
+  skip_if_replied?: boolean;
+  skip_if_bounced?: boolean;
 }
 
 // ============================================
@@ -132,9 +180,39 @@ export interface Lead {
   organization_employee_count: number | null;
   organization_country: string | null;
 
+  // SDK Enrichment (Hot Leads - ALS 85+)
+  sdk_enrichment: SDKEnrichmentData | null;
+  sdk_signals: string[] | null;
+  sdk_cost_aud: number | null;
+  sdk_enriched_at: string | null;
+  sdk_voice_kb: Record<string, unknown> | null;
+  sdk_email_content: Record<string, unknown> | null;
+
   status: LeadStatus;
   created_at: string;
   updated_at: string;
+}
+
+// SDK Enrichment data structure
+export interface SDKEnrichmentData {
+  company_website?: string | null;
+  company_size?: string | null;
+  company_revenue?: string | null;
+  company_founded?: string | null;
+  company_description?: string | null;
+  recent_funding?: {
+    amount?: string;
+    round?: string;
+    date?: string;
+  } | null;
+  hiring_signals?: {
+    open_roles?: number;
+    recent_hires?: string[];
+  } | null;
+  tech_stack?: string[] | null;
+  icebreaker_hooks?: string[] | null;
+  research_summary?: string | null;
+  confidence_score?: number | null;
 }
 
 export interface LeadCreate {
@@ -453,11 +531,39 @@ export interface ClientHealth {
   last_activity?: string | null;
 }
 
+export interface AISpendByAgent {
+  agent: string;
+  spend_aud: number;
+  percentage: number;
+}
+
+export interface AISpendByClient {
+  client_id: string;
+  client_name: string;
+  spend_aud: number;
+}
+
+export interface AISpendDailyTrend {
+  date: string;
+  spend: number;
+}
+
 export interface AISpendBreakdown {
+  // Legacy fields (backend compatibility)
   today_aud: number;
   month_aud: number;
-  by_agent: Record<string, number>;
-  by_client: Record<string, number>;
+
+  // Dashboard fields
+  today_spend: number;
+  today_limit: number;
+  today_percentage: number;
+  mtd_spend: number;
+  projected_mtd: number;
+
+  // Detailed breakdowns
+  by_agent: AISpendByAgent[];
+  by_client: AISpendByClient[];
+  daily_trend: AISpendDailyTrend[];
 }
 
 // ============================================

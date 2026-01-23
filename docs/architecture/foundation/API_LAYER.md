@@ -52,6 +52,7 @@ The Agency OS API is built on **FastAPI** with async support throughout. It prov
 | `src/api/routes/customers.py` | Customer import and suppression lists |
 | `src/api/routes/linkedin.py` | LinkedIn connection via Unipile |
 | `src/api/routes/pool.py` | Lead pool management and population |
+| `src/api/routes/digest.py` | Daily digest settings, preview, and history |
 
 ---
 
@@ -350,6 +351,136 @@ stmt = select(Client).where(
 | POST | `/pool/populate` | User | Trigger pool population from Apollo |
 | POST | `/pool/clients/{client_id}/populate` | User | Populate for specific client |
 | GET | `/pool/stats` | User | Get pool statistics |
+
+### Digest Routes (`/api/v1/digest`)
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/digest/settings` | User | Get digest settings for client |
+| PATCH | `/digest/settings` | User | Update digest settings |
+| GET | `/digest/preview` | User | Preview digest content for a date |
+| GET | `/digest/history` | User | Get history of sent digests |
+
+#### GET `/digest/settings`
+
+**Description:** Retrieve digest email settings for the current user's client.
+
+**Response:**
+```json
+{
+  "digest_enabled": true,
+  "digest_frequency": "daily",
+  "digest_send_hour": 9,
+  "digest_timezone": "Australia/Sydney",
+  "digest_recipients": ["client@example.com"],
+  "last_digest_sent_at": "2026-01-22T09:00:00Z"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `digest_enabled` | boolean | Whether digest emails are enabled |
+| `digest_frequency` | string | Frequency: "daily", "weekly", or "none" |
+| `digest_send_hour` | integer | Hour of day to send (0-23) |
+| `digest_timezone` | string | Timezone for send time |
+| `digest_recipients` | array | List of email addresses |
+| `last_digest_sent_at` | string | ISO timestamp of last digest sent |
+
+#### PATCH `/digest/settings`
+
+**Description:** Update digest email settings for the client.
+
+**Request Body:**
+```json
+{
+  "digest_enabled": true,
+  "digest_frequency": "weekly",
+  "digest_send_hour": 8,
+  "digest_timezone": "America/New_York",
+  "digest_recipients": ["ceo@example.com", "marketing@example.com"]
+}
+```
+
+All fields are optional. Only provided fields are updated.
+
+**Response:** Same as GET `/digest/settings`
+
+#### GET `/digest/preview`
+
+**Description:** Preview what the digest would look like for a specific date. Useful for clients to review content before enabling digests.
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `digest_date` | date | No | Date to preview (defaults to yesterday) |
+
+**Response:**
+```json
+{
+  "client_name": "Acme Corp",
+  "digest_date": "2026-01-22",
+  "metrics": {
+    "leads_generated": 45,
+    "emails_sent": 120,
+    "replies_received": 8,
+    "meetings_booked": 2
+  },
+  "top_campaigns": [
+    {
+      "name": "Q1 Outreach",
+      "leads": 25,
+      "replies": 5
+    }
+  ],
+  "content_samples": [
+    {
+      "subject": "Quick question about...",
+      "snippet": "Hi John, I noticed..."
+    }
+  ],
+  "html_preview": "<html>...</html>"
+}
+```
+
+#### GET `/digest/history`
+
+**Description:** Get history of sent digests for the client with pagination.
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `limit` | integer | No | 30 | Maximum records to return |
+| `offset` | integer | No | 0 | Number of records to skip |
+
+**Response:**
+```json
+{
+  "digests": [
+    {
+      "id": "uuid",
+      "digest_date": "2026-01-22",
+      "digest_type": "daily",
+      "recipients": ["client@example.com"],
+      "status": "sent",
+      "sent_at": "2026-01-22T09:00:00Z",
+      "metrics_snapshot": {
+        "leads_generated": 45,
+        "emails_sent": 120
+      },
+      "opened_at": "2026-01-22T10:30:00Z",
+      "clicked_at": "2026-01-22T10:32:00Z"
+    }
+  ],
+  "total": 45
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `digests` | array | List of digest log entries |
+| `total` | integer | Total count for pagination |
 
 ### Patterns Routes (`/api/v1/patterns`)
 

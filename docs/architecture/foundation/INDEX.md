@@ -15,6 +15,7 @@
 | [FILE_STRUCTURE.md](FILE_STRUCTURE.md) | Project directory layout | ✅ Locked |
 | [API_LAYER.md](API_LAYER.md) | FastAPI routes, auth, multi-tenancy | ✅ Complete |
 | [DATABASE.md](DATABASE.md) | SQLAlchemy models, migrations | ✅ Complete |
+| [SECURITY.md](SECURITY.md) | Auth, RBAC, encryption, audit logging | ✅ Complete |
 
 ---
 

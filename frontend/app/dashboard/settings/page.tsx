@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Target, ChevronRight } from "lucide-react";
+import { Target, ChevronRight, Bell, User } from "lucide-react";
 
 export default function SettingsPage() {
   return (
@@ -24,25 +24,68 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      {/* ICP Settings Link */}
-      <Link href="/dashboard/settings/icp">
-        <Card className="cursor-pointer hover:border-primary/50 transition-colors">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <Target className="h-5 w-5 text-primary" />
+      {/* Quick Settings Links */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {/* Profile Settings Link */}
+        <Link href="/dashboard/settings/profile">
+          <Card className="cursor-pointer hover:border-primary/50 transition-colors h-full">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
+                  <User className="h-5 w-5 text-blue-500" />
+                </div>
+                <div>
+                  <p className="font-medium">Profile</p>
+                  <p className="text-sm text-muted-foreground">
+                    Manage your personal information
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-medium">Ideal Customer Profile</p>
-                <p className="text-sm text-muted-foreground">
-                  Define your target audience for all campaigns
-                </p>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* ICP Settings Link */}
+        <Link href="/dashboard/settings/icp">
+          <Card className="cursor-pointer hover:border-primary/50 transition-colors h-full">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                  <Target className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium">Ideal Customer Profile</p>
+                  <p className="text-sm text-muted-foreground">
+                    Define your target audience for all campaigns
+                  </p>
+                </div>
               </div>
-            </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-          </CardContent>
-        </Card>
-      </Link>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* Notifications Settings Link */}
+        <Link href="/dashboard/settings/notifications">
+          <Card className="cursor-pointer hover:border-primary/50 transition-colors h-full">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10">
+                  <Bell className="h-5 w-5 text-orange-500" />
+                </div>
+                <div>
+                  <p className="font-medium">Notifications</p>
+                  <p className="text-sm text-muted-foreground">
+                    Configure email, push, and SMS alerts
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
 
       {/* Organization */}
       <Card>
@@ -67,27 +110,6 @@ export default function SettingsPage() {
             </div>
           </div>
           <Button>Save Changes</Button>
-        </CardContent>
-      </Card>
-
-      {/* Profile */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile</CardTitle>
-          <CardDescription>Update your personal information</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
-              <Input id="fullName" defaultValue="John Smith" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" defaultValue="john@acmeagency.com" />
-            </div>
-          </div>
-          <Button>Update Profile</Button>
         </CardContent>
       </Card>
 

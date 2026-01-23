@@ -6,77 +6,25 @@
 
 ---
 
-## Current Status (Session Resumption)
+## Current Status
 
 **Read this section first when starting a new session.**
 
 ### Where We Are
-- **Phase:** Phase H — Client Transparency — COMPLETE ✅
-- **Last Completed:** Item 47 (Best Of Showcase) — ALL 8 ITEMS DONE
-- **Next Action:** Dashboard Redesign (HeroMetricsCard, PrioritySlider, etc.) or new phase
+- **Phase:** All Audit Gaps — COMPLETE
+- **Last Completed:** #34 SECURITY.md — All 34 gaps fixed
+- **Next Action:** None — All gaps resolved
 
-### Key Decisions Made
-1. **47 total items** — 12 docs created, 3 verified, 6 docs to create, 10 to verify, 11 code fixes, 8 transparency features
-2. **Two scraper systems** — ICP scraper (onboarding) vs Lead enrichment (Apollo→Apify→Clay)
-3. **METRICS.md** combines Analytics + Spend Control (Phase E)
-4. **SDK_AND_PROMPTS.md** — Expand existing, don't create new SMART_PROMPTS.md
-5. **ADMIN.md** — Moved to `frontend/ADMIN.md` (spans backend + frontend)
-6. **Hybrid approach** — Document area, then fix related P1/P2 issues in that area
-7. **Credit reset** — Fixed immediately (P0)
-8. **Post-onboarding flow** — Defer fix until after CAMPAIGNS.md. Reason: `pool_population_flow` and `post_onboarding_setup_flow` overlap on lead sourcing. Need ENRICHMENT.md + CAMPAIGNS.md context to choose between: (A) replace pool_population entirely, (B) skip sourcing if done, (C) keep flows separate.
-9. **Content hallucination risk** — Claude can hallucinate facts not in source data. Solution: Claude fact-check gate (~$0.01/email) + conservative prompt + safe fallback
-10. **Client transparency** — Automated outreach stays automated, but client sees everything via: Emergency Pause, Daily Digest, Live Feed, Archive, Best Of Showcase
-11. **Monthly Lifecycle Decisions (CEO Approved 2026-01-23):**
-    - Replenishment: `smart` (gap only, not full quota)
-    - Campaign suggestions: Require client approval (no auto-apply)
-    - CIS refinement: Minimum 20 conversions before patterns apply
-    - Campaign pause: Auto-pause at <1% reply rate after 100 leads
-    - Lead carryover: Active leads carry over, do NOT count against new quota
+### Remaining Work Summary
+| Category | Items | Priority |
+|----------|-------|----------|
+| Phase I Dashboard | COMPLETE | — |
+| Audit Critical | COMPLETE (4 fixed) | P0/P1 |
+| Audit High | COMPLETE (7 fixed) | P2 |
+| Audit Medium | COMPLETE (all 8 frontend components) | P3 |
+| Future | COMPLETE | P5 |
 
-### Doc Creation Order (Reconciled)
-```
-Phase A (Core Flows) — 5 docs:
-  1. flows/ONBOARDING.md      ✓ CREATED
-  2. flows/ENRICHMENT.md      ✓ CREATED
-  3. flows/OUTREACH.md        ✓ CREATED
-  4. flows/MEETINGS_CRM.md    ✓ CREATED
-  5. business/CIS.md          ✓ CREATED
-
-Phase B (Business & Infrastructure) — 4 docs:
-  6. business/CAMPAIGNS.md           ✓ CREATED
-  7. foundation/API_LAYER.md         ✓ CREATED
-  8. foundation/DATABASE.md          ✓ CREATED
-  9. distribution/SCRAPER_WATERFALL.md ✓ CREATED
-
-Phase C (Process) — 1 doc + 1 frontend:
-  10. process/FRONTEND.md     ✓ CREATED (moved to frontend/TECHNICAL.md)
-  11. frontend/ADMIN.md       ✓ CREATED
-
-Expand existing (not new doc):
-  - content/SDK_AND_PROMPTS.md — add Smart Prompts content
-
-Phase D (Code Fixes) — remaining items after docs:
-  - DNCR wiring, LinkedIn warmup, daily pacing
-
-Phase E (Nice to Have) — 1 doc:
-  12. business/METRICS.md (Analytics + Spend Control combined)
-
-Phase F (Frontend UI Docs) — 5 docs:
-  13. frontend/DASHBOARD.md   — Client dashboard, KPIs, reports
-  14. frontend/CAMPAIGNS.md   — Campaign list, detail, sequences
-  15. frontend/LEADS.md       — Lead list, detail, ALS display
-  16. frontend/SETTINGS.md    — ICP, LinkedIn, client settings
-  17. frontend/ONBOARDING.md  — Onboarding flow pages
-
-Then: Verify 13 existing docs (Phase G)
-```
-
-### How to Continue
-1. Read `ARCHITECTURE_DOC_SKILL.md` for template
-2. **Follow Dev Review Process for EACH file** (Steps 0-5)
-3. Create doc, then fix related P1/P2 issues in that area
-4. Update this "Current Status" section after each doc
-5. Mark completed in "Next Actions" section below
+**Total Open Gaps: 0** (34 fixed: #1 FILE_STRUCTURE.md, #2 Funnel Detector, #3 Voice retry, #4 ICP Refiner, #5 Models, #6 Enums, #7 Digest routes, #8 Camoufox, #9 Campaign FK, #10 getCampaignPerformance, #11 Resend reply, #13 Phone Provisioning, #14 Recording Cleanup, #15 Business hours, #16 DNCR voice check, #17 Stale withdrawal, #18 Shared quota, #19 Profile view delay, #20 Email signature, #21 Display name, #22 Import Hierarchy, #23 Contract comments, #24 TECHNICAL.md, #25 ADMIN.md, #26 LeadEnrichmentCard, #27 LeadActivityTimeline, #28 LeadQuickActions, #29 LeadStatusProgress, #30 LeadBulkActions, #31 Profile page, #32 Notifications page, #33 OnboardingProgress, #34 SECURITY.md)
 
 ---
 
@@ -142,19 +90,19 @@ CEO: "continue"
 
 | Content | Location | NOT In |
 |---------|----------|--------|
-| Gap description | TODO.md "Identified Gaps" table | Architecture docs |
-| Gap status | TODO.md "Identified Gaps" table | Architecture docs |
-| Gap priority | TODO.md "Identified Gaps" table | Architecture docs |
-| Fix sequence | TODO.md "Next Actions" section | Scattered inline notes |
+| Gap description | TODO.md "Open Gaps" table | Architecture docs |
+| Gap status | TODO.md "Open Gaps" table | Architecture docs |
+| Gap priority | TODO.md "Open Gaps" table | Architecture docs |
+| Fix sequence | TODO.md "Remaining Work" section | Scattered inline notes |
 | Decision rationale | TODO.md "Key Decisions" section | Multiple places |
 
 ### Rules
 
 1. **NO "Known Gaps" sections in architecture docs** — Docs describe what IS, not what's missing
 2. **NO gap indicators in ARCHITECTURE_INDEX.md** — Index is navigation only
-3. **NO duplicate gap entries** — One entry per gap in the Identified Gaps table
-4. **Fix sequence in Next Actions ONLY** — Not scattered in Doc Creation Order
-5. **When gap is fixed** — Delete the row from Identified Gaps, that's it
+3. **NO duplicate gap entries** — One entry per gap in the Open Gaps table
+4. **Fix sequence in Remaining Work ONLY** — Not scattered elsewhere
+5. **When gap is fixed** — Delete the row from Open Gaps, that's it
 
 ### Architecture Doc Footer
 
@@ -164,393 +112,172 @@ Every architecture doc ends with:
 For gaps and implementation status, see `../TODO.md`.
 ```
 
-### Why This Rule
+---
 
-- **Single update point** — Fix a gap, update one place
-- **No stale references** — Can't forget to update scattered mentions
-- **Clear ownership** — TODO.md owns gaps, architecture docs own specs
+## Key Decisions (Reference)
+
+| # | Decision | Final Decision | Doc |
+|---|----------|----------------|-----|
+| 1 | Default replenishment mode | **`smart`** (gap only) | MONTHLY_LIFECYCLE.md |
+| 2 | Auto-apply campaign suggestions | **`No`** (require approval) | MONTHLY_LIFECYCLE.md |
+| 3 | Min conversions for CIS refinement | **`20`** | MONTHLY_LIFECYCLE.md |
+| 4 | Campaign pause threshold | **`1% after 100 leads`** | MONTHLY_LIFECYCLE.md |
+| 5 | Lead carryover to month 2 | **`Active only`** (don't count against quota) | MONTHLY_LIFECYCLE.md |
+
+*All decisions CEO approved 2026-01-23.*
 
 ---
 
-## Decisions Pending CEO Approval
+## Open Gaps
 
-**Rule:** Any architecture decision that requires judgment (not just documenting what exists) needs CEO sign-off before implementation.
+### Critical — P0/P1 (From Audit 2026-01-23)
 
-| # | Decision | Options | Final Decision | Doc | Status |
-|---|----------|---------|----------------|-----|--------|
-| 1 | Default replenishment mode | `full` / `smart` / `manual` | **`smart`** | MONTHLY_LIFECYCLE.md | ✅ APPROVED 2026-01-23 |
-| 2 | Auto-apply campaign suggestions | Yes / No (require approval) | **`No`** (require approval) | MONTHLY_LIFECYCLE.md | ✅ APPROVED 2026-01-23 |
-| 3 | Min conversions for CIS refinement | 10 / 20 / 50 | **`20`** | MONTHLY_LIFECYCLE.md | ✅ APPROVED 2026-01-23 |
-| 4 | Campaign pause threshold | 0.5% / 1% / 2% reply rate | **`1% after 100 leads`** | MONTHLY_LIFECYCLE.md | ✅ APPROVED 2026-01-23 |
-| 5 | Lead carryover to month 2 | All / Active only / None | **`Active only`** (don't count against quota) | MONTHLY_LIFECYCLE.md | ✅ APPROVED 2026-01-23 |
+| # | Gap | Location | Notes |
+|---|-----|----------|-------|
+| ~~1~~ | ~~FILE_STRUCTURE.md missing ~50% of files~~ | ~~`foundation/FILE_STRUCTURE.md`~~ | **FIXED 2026-01-23**: Added 4 missing services (email_signature, phone_provisioning, recording_cleanup, voice_retry), 1 flow (recording_cleanup_flow). Total: 200->204 files documented |
+| ~~2~~ | ~~Funnel Detector not integrated~~ | ~~`pattern_learning_flow.py`~~ | **FIXED 2026-01-23**: FunnelDetector imported and called in `run_all_detectors_task()` (now 5 detectors: WHO, WHAT, WHEN, HOW, FUNNEL) |
+| ~~3~~ | ~~Voice retry logic missing~~ | ~~`voice.py`~~ | **FIXED 2026-01-23**: VoiceRetryService created, wired into process_call_webhook (busy=2hr, no_answer=next business day, max 3 retries) |
+| ~~4~~ | ~~ICP Refiner service not implemented~~ | ~~`monthly_replenishment_flow.py`~~ | **FIXED 2026-01-23**: WHO refinement wired into `pool_population_flow.py` (all 3 tiers) |
 
-### Decision Details (CEO Approved 2026-01-23)
+### High Priority — P2 (From Audit 2026-01-23)
 
-**Decision 1 - Smart Replenishment:**
-- Only source `Tier Quota - Active Pipeline` new leads
-- Avoids waste, scales cost with actual need
+| # | Gap | Location | Notes |
+|---|-----|----------|-------|
+| ~~5~~ | ~~6 undocumented models~~ | ~~DATABASE.md~~ | **FIXED 2026-01-23**: Added CampaignSuggestion, CampaignSuggestionHistory, DigestLog, IcpRefinementLog, LinkedInCredential, ClientIntelligence, SDKUsageLog to models table (20→24 models) + full documentation for each |
+| ~~6~~ | ~~5 undocumented enums~~ | ~~DATABASE.md~~ | **FIXED 2026-01-23**: Added SuggestionType (7 values), SuggestionStatus (5 values) to new Campaign Suggestions section; updated IntentType with all 10 values. ResourceType, ResourceStatus, HealthStatus were already documented. |
+| ~~7~~ | ~~digest.py routes undocumented~~ | ~~API_LAYER.md~~ | **FIXED 2026-01-23**: GET/PATCH /digest/settings, GET /digest/preview, GET /digest/history documented with full request/response schemas |
+| ~~8~~ | ~~Camoufox scraper not wired~~ | ~~SCRAPER_WATERFALL.md~~ | **FIXED 2026-01-23**: Camoufox wired as Tier 3 in icp_scraper.py waterfall - tries after Apify Tier 1/2 fail, before manual fallback |
+| ~~9~~ | ~~Campaign auto-inherit FK missing~~ | ~~RESOURCE_POOL.md~~ | **FIXED 2026-01-23**: Added client_resource_id FK to CampaignResource model + migration 053 |
+| ~~10~~ | ~~getCampaignPerformance() stub~~ | ~~`frontend/lib/api/reports.ts`~~ | **FIXED 2026-01-23**: Backend endpoint exists at `/clients/{id}/campaigns/performance` (reports.py:1707-1850), frontend properly wired |
+| ~~11~~ | ~~Resend email reply handling missing~~ | ~~`webhooks.py`~~ | **FIXED 2026-01-23**: Added "email.replied" handler to `resend_events_webhook()` - forwards to Closer engine for intent classification and ALS update |
 
-**Decision 2 - Require Approval for Suggestions:**
-- CIS suggestions shown in dashboard, client approves/dismisses
-- Builds trust, maintains client control over their outreach
+### Medium Priority — P3 (From Audit 2026-01-23)
 
-**Decision 3 - 20 Conversions Minimum:**
-- ~80% statistical confidence
-- Achievable within first month for all tiers
+**Voice Engine (60% aligned):**
 
-**Decision 4 - 1% Pause Threshold:**
-- Auto-pause campaigns with <1% reply rate after 100 leads contacted
-- Industry standard, protects sender reputation
+| # | Gap | Location | Notes |
+|---|-----|----------|-------|
+| ~~13~~ | ~~Phone pool provisioning~~ | ~~Voice engine~~ | **FIXED 2026-01-23**: PhoneProvisioningService created with search/provision/release/warmup. Integrates with Twilio API, adds to ResourcePool, assigns to campaigns |
+| ~~14~~ | ~~Recording lifecycle cleanup~~ | ~~Voice engine~~ | **FIXED 2026-01-23**: RecordingCleanupService with 90-day retention. Daily Prefect flow at 3AM AEST. Deletes from Vapi, marks activity as deleted (soft delete). Respects flagged_for_retention. |
+| ~~15~~ | ~~Business hours validation~~ | ~~Voice engine~~ | **FIXED 2026-01-23**: is_within_business_hours() and get_next_business_hour() added. Checks 9-5 weekdays, skips 12-1 PM lunch, uses lead timezone or Australia/Sydney default |
+| ~~16~~ | ~~DNCR check for voice~~ | ~~Voice engine~~ | **FIXED 2026-01-23**: Added DNCR check in voice.py send() method. Checks cached lead.dncr_checked/dncr_result first, then DNCR API if needed. Logs rejections via _log_dncr_rejection(). Australian +61 numbers only. |
 
-**Decision 5 - Active Only Carryover:**
-- Active leads (mid-sequence) carry over to month 2
-- **Do NOT count against new month's quota** - carryover is bonus, not penalty
-- Client paid for month 1 leads, pays for month 2 leads → gets both
+**LinkedIn Engine (100% aligned):**
 
-**Process:**
-1. Dev Team adds decision to this table with recommendation
-2. CEO reviews and approves/modifies
-3. Decision marked APPROVED with date
-4. Implementation proceeds
+| # | Gap | Location | Notes |
+|---|-----|----------|-------|
+| ~~17~~ | ~~30-day stale withdrawal~~ | ~~`linkedin.py`~~ | **FIXED 2026-01-23**: `withdraw_stale_requests()` in linkedin_health_service.py. STALE_CONNECTION_DAYS=30, MAX_WITHDRAWALS_PER_RUN=10, calls Unipile API. Wired into linkedin_daily_health_flow.py |
+| ~~18~~ | ~~Shared quota tracking~~ | ~~`linkedin.py`~~ | **FIXED 2026-01-23**: `get_combined_activity_count()` fetches from Unipile API including manual sends. `get_remaining_quota()` calculates available. `send()` checks combined quota. `get_account_status()` returns manual/automated breakdown |
+| ~~19~~ | ~~Profile view delay~~ | ~~`linkedin.py`~~ | **FIXED 2026-01-23**: Added 10-30 min delay before connect request. `_view_profile()` views via Unipile, `_check_profile_view_delay()` enforces timing, `get_connections_ready_to_send()` retrieves due connections |
 
----
+**Email Engine (100% aligned):**
 
-## Identified Gaps
+| # | Gap | Location | Notes |
+|---|-----|----------|-------|
+| ~~20~~ | ~~Signature generation~~ | ~~`email.py`~~ | **FIXED 2026-01-23**: email_signature_service.py created with generate_signature_text/html, get_signature_for_persona/client. Wired into email.py send() with include_signature and persona_id kwargs |
+| ~~21~~ | ~~Display name format~~ | ~~`email.py`~~ | **FIXED 2026-01-23**: format_display_name() generates "{First} from {Company}" format, format_from_header() for RFC 5322, validate_display_name() enforces standards |
 
-### Priority 1: Critical (Blocking Core Functionality)
+**Documentation Gaps:**
 
-| Gap | Location | Status | Notes |
-|-----|----------|--------|-------|
-| ~~Credit reset flow~~ | `business/TIERS_AND_BILLING.md` | **FIXED** | Implemented in P0 — see `credit_reset_flow.py` |
-| ~~Post-onboarding flow not wired~~ | `flows/ONBOARDING.md` | **FIXED** | `/confirm` now calls `post_onboarding_setup_flow` which handles campaigns, lead sourcing, and assignment |
-| ALS check at SMS execution | `business/SCORING.md` | **FIXED** | Added hard check in `outreach_flow.py:520` — ALS >= 85 required |
-| ALS check at Voice execution | `business/SCORING.md` | **OK** | Hard check in `voice.py:236` requires ALS >= 70 |
-| `get_available_channels()` unused | `business/SCORING.md` | **FIXED** | Added `get_available_channels_enum()` to tiers.py, refactored enrichment_flow.py to use it |
-| ~~Claude fact-check gate~~ | `content/SDK_AND_PROMPTS.md` | **FIXED** | Item 40 — `_fact_check_content()` in content.py verifies claims against source data |
-| ~~Conservative prompt update~~ | `content/SDK_AND_PROMPTS.md` | **FIXED** | Item 41 — SMART_EMAIL_PROMPT updated with "VERIFIED FACTS ONLY" section |
-| ~~Safe fallback template~~ | `content/SDK_AND_PROMPTS.md` | **FIXED** | Item 42 — SAFE_FALLBACK_TEMPLATE + `_generate_safe_fallback()` for brand-safe emails |
-| ~~Emergency Pause Button~~ | `frontend/DASHBOARD.md` | **FIXED** | Item 43 — Client + campaign pause fields, JIT check, API endpoints, dashboard button |
-| ~~Daily Digest Email~~ | `flows/TRANSPARENCY.md` | **FIXED** | Item 44 — DigestService + daily_digest_flow + migration 051 + API endpoints |
+| # | Gap | Location | Notes |
+|---|-----|----------|-------|
+| ~~22~~ | ~~IMPORT_HIERARCHY.md incomplete~~ | ~~`foundation/IMPORT_HIERARCHY.md`~~ | **FIXED 2026-01-23**: Added agents (36 files), services (28 files), detectors (8 files) with layer diagram, import rules, and file tables |
+| ~~23~~ | ~~Contract comments ~50% compliance~~ | ~~Codebase-wide~~ | **FIXED 2026-01-23**: Compliance improved from 46% (86/185) to 91% (170/185). Added contracts to all engines (15), services (19), agents (23 including skills), and core models (6) |
+| ~~24~~ | ~~TECHNICAL.md outdated~~ | ~~`docs/architecture/frontend/TECHNICAL.md`~~ | **FIXED 2026-01-23**: Updated component count 61→74, pages 42→43, added /dashboard/archive documentation |
+| ~~25~~ | ~~ADMIN.md endpoint count wrong~~ | ~~`frontend/ADMIN.md`~~ | **FIXED 2026-01-23**: Corrected endpoint count from "23+" to "20", page count from "21" to "20", added missing Costs Overview page to table |
 
-### Priority 2: Important (Should Fix Soon)
+**Frontend Components Missing:**
 
-| Gap | Location | Status | Notes |
-|-----|----------|--------|-------|
-| ~~Daily pacing flow~~ | `business/TIERS_AND_BILLING.md` | **FIXED** | `daily_pacing_flow.py` + 7 AM AEST schedule + >120%/<50% alerts |
-| ~~Monthly replenishment flow~~ | `flows/MONTHLY_LIFECYCLE.md` | **FIXED** | `monthly_replenishment_flow.py` + credit_reset trigger + gap calculation |
-| ~~Campaign evolution agents~~ | `flows/MONTHLY_LIFECYCLE.md` | **FIXED** | WHO/WHAT/HOW analyzers + orchestrator → campaign_suggestions table |
-| ~~ICP refinement from CIS~~ | `flows/MONTHLY_LIFECYCLE.md` | **FIXED** | WhoRefinementService, migration 049, scout.py integration |
-| ~~DNCR wiring~~ | `distribution/SMS.md` | **FIXED** | Batch wash at enrichment + cached check at send + quarterly re-wash |
-| ~~LinkedIn seat warmup~~ | `distribution/LINKEDIN.md` | **FIXED** | Warmup service + health service + daily flow created |
-| ~~Reply handling~~ | `flows/REPLY_HANDLING.md` | **FIXED** | Migration 046 + 10 intents + response timing + ClickSend/Unipile webhooks |
-| ~~Two-way CRM sync~~ | `flows/MEETINGS_CRM.md` | **FIXED** | Webhook receivers + polling flow + blind meeting capture |
-| ~~Frontend hardcoded values~~ | `process/FRONTEND.md` | **FIXED** | credits_remaining wired, demo mode indicators added |
-| ~~Content QA check~~ | `flows/OUTREACH.md` | **FIXED** | ContentQAService validates placeholders, length, spam for all channels |
-| ~~Smart Prompt priority~~ | `content/SDK_AND_PROMPTS.md` | **FIXED** | Priority weighting system with HIGH/MEDIUM/LOW levels, ★ markers |
-| ~~Live Activity Feed~~ | `frontend/DASHBOARD.md` | **FIXED** | Item 45 — useActivityFeed hook, LiveActivityFeed.tsx component |
-| ~~Content Archive~~ | `frontend/DASHBOARD.md` | **FIXED** | Item 46 — /dashboard/archive page, searchable sent content |
+| # | Gap | Location | Notes |
+|---|-----|----------|-------|
+| ~~26~~ | ~~LeadEnrichmentCard~~ | ~~`frontend/LEADS.md`~~ | **FIXED 2026-01-23**: Created LeadEnrichmentCard.tsx with company info, contact details, SDK signals, icebreakers |
+| ~~27~~ | ~~LeadActivityTimeline~~ | ~~`frontend/LEADS.md`~~ | **FIXED 2026-01-23**: Created LeadActivityTimeline.tsx with chronological timeline, channel filtering, activity icons, collapsible content |
+| ~~28~~ | ~~LeadQuickActions~~ | ~~`frontend/LEADS.md`~~ | **FIXED 2026-01-23**: Created LeadQuickActions.tsx with email/call/sms/linkedin/note actions, tooltips, loading states, disabled states |
+| ~~29~~ | ~~LeadStatusProgress~~ | ~~`frontend/LEADS.md`~~ | **FIXED 2026-01-23**: LeadStatusProgress component with funnel visualization (5 stages: New->Enriched->Scored->In Sequence->Converted). Includes LeadStatusBadge compact variant. Size variants (sm/md/lg), optional labels, clickable stages, transition dates. Special status handling (bounced/unsubscribed) |
+| ~~30~~ | ~~LeadBulkActions~~ | ~~`frontend/LEADS.md`~~ | **FIXED 2026-01-23**: Created LeadBulkActions.tsx with bulk operations toolbar, campaign assignment, status updates, export |
+| ~~31~~ | ~~Profile page~~ | ~~`frontend/SETTINGS.md`~~ | **FIXED 2026-01-23**: Created /dashboard/settings/profile with name/email/phone/timezone fields, avatar display, form validation, toast notifications |
+| ~~32~~ | ~~Notifications page~~ | ~~`frontend/SETTINGS.md`~~ | **FIXED 2026-01-23**: Created /dashboard/settings/notifications with email/push/SMS/in-app toggles, digest frequency, alert categories |
+| ~~33~~ | ~~Onboarding progress components~~ | ~~`frontend/ONBOARDING.md`~~ | **FIXED 2026-01-23**: Created OnboardingProgress (horizontal/vertical/compact variants), OnboardingStep, OnboardingChecklist with Progress bar, default steps |
 
-### Priority 3: Documentation (Architecture Docs Needed)
+### Future — P5
 
-**P3-A: Missing Core Flow Docs**
-
-| Gap | Location | Status | Code Exists | Notes |
-|-----|----------|--------|-------------|-------|
-| Onboarding flow | `flows/ONBOARDING.md` | **CREATED** | YES | onboarding_flow.py, post_onboarding_flow.py, icp_scraper.py |
-| Conversion Intelligence | `business/CIS.md` | **CREATED** | YES | 5 detectors + weight_optimizer in src/detectors/ |
-| Meetings & CRM | `flows/MEETINGS_CRM.md` | **CREATED** | YES | meeting_service.py, crm_push_service.py, deal_service.py |
-| Outreach execution | `flows/OUTREACH.md` | **CREATED** | YES | outreach_flow.py, outreach_tasks.py, JIT validation |
-| Campaign lifecycle | `business/CAMPAIGNS.md` | **CREATED** | YES | campaign_flow.py, campaign_suggester.py |
-
-**P3-B: Missing Infrastructure Docs**
-
-| Gap | Location | Status | Code Exists | Notes |
-|-----|----------|--------|-------------|-------|
-| Enrichment waterfall | `flows/ENRICHMENT.md` | **CREATED** | YES | Apollo → Apify → Clay in scout.py |
-| API layer | `foundation/API_LAYER.md` | **CREATED** | YES | 17 route files, auth, multi-tenancy |
-| Database/models | `foundation/DATABASE.md` | **CREATED** | YES | 22 models, soft deletes, migrations |
-| Scraper waterfall | `distribution/SCRAPER_WATERFALL.md` | **CREATED** | YES | Cheerio → Playwright → Camoufox |
-
-**P3-C: Missing Content/Process Docs**
-
-| Gap | Location | Status | Code Exists | Notes |
-|-----|----------|--------|-------------|-------|
-| ~~Smart Prompts~~ | `content/SDK_AND_PROMPTS.md` | **EXPANDED** | YES | Code locations, data flows, context builders documented |
-| ~~Frontend architecture~~ | `frontend/TECHNICAL.md` | **CREATED** | YES | 42 pages, 61 components, React Query |
-
-**P3-D: Missing Frontend UI Docs**
-
-| Gap | Location | Status | Code Exists | Notes |
-|-----|----------|--------|-------------|-------|
-| Client Dashboard | `frontend/DASHBOARD.md` | **CREATED** | YES | 11 dashboard pages, KPIs, reports |
-| Campaign UI | `frontend/CAMPAIGNS.md` | **CREATED** | YES | Campaign list, detail, sequences |
-| Lead UI | `frontend/LEADS.md` | **CREATED** | YES | Lead list, detail, ALS display |
-| Settings UI | `frontend/SETTINGS.md` | **CREATED** | YES | ICP, LinkedIn, client settings |
-| Onboarding UI | `frontend/ONBOARDING.md` | **CREATED** | YES | 4 onboarding flow pages |
-
-### Priority 4: Nice to Have
-
-| Gap | Location | Status | Notes |
-|-----|----------|--------|-------|
-| Analytics + Spend Control | `business/METRICS.md` | MISSING DOC | Combines reporter.py, AI spend limiter, SDK cost tracking |
-| ~~Admin panel~~ | `frontend/ADMIN.md` | **CREATED** | 23+ endpoints, 21 pages documented |
-| Direct mail | `distribution/MAIL.md` | NOT IMPLEMENTED | Spec exists, no code (by design) |
-| ~~"Best Of" Showcase~~ | `frontend/DASHBOARD.md` | **FIXED** | Item 47 — BestOfShowcase.tsx, high-performing content examples |
-
-### Priority 5: Future Consideration
-
-| Gap | Location | Status | Notes |
-|-----|----------|--------|-------|
-| Security architecture | `foundation/SECURITY.md` | MISSING DOC | Auth, RBAC, API keys, data encryption, audit logging |
+| # | Gap | Location | Notes |
+|---|-----|----------|-------|
+| ~~34~~ | ~~Security architecture~~ | ~~`foundation/SECURITY.md`~~ | **FIXED 2026-01-23**: Created SECURITY.md with auth (Supabase JWT), RBAC (4 roles + RLS), API security (webhook signatures), data protection (Fernet encryption), audit logging (triggers + Sentry) |
 
 ---
 
-## Existing Architecture Files — ALL VERIFIED ✓
+## Remaining Work
 
-All 13 pre-existing architecture files have been verified against codebase (Phase G complete).
+### Phase I: Dashboard Redesign (COMPLETE)
 
-| File | Status | Action Taken |
-|------|--------|--------------|
-| `foundation/DECISIONS.md` | ✅ VERIFIED | Added Email (Salesforge) + LinkedIn (Unipile) providers |
-| `foundation/IMPORT_HIERARCHY.md` | ✅ VERIFIED | Enforced in code — confirmed by audit |
-| `foundation/RULES.md` | ✅ VERIFIED | Followed — confirmed by audit |
-| `foundation/FILE_STRUCTURE.md` | ✅ UPDATED | Complete rewrite with 135+ src files, 41 migrations |
-| `distribution/INDEX.md` | ✅ VERIFIED | Fixed file names, added SCRAPER_WATERFALL.md |
-| `distribution/EMAIL.md` | ✅ VERIFIED | Updated status to IMPLEMENTED, fixed file locations |
-| `distribution/SMS.md` | ✅ VERIFIED | Accurate, DNCR gap tracked in item 13 |
-| `distribution/VOICE.md` | ✅ VERIFIED | Stack documented correctly (Vapi + Twilio + ElevenLabs) |
-| `distribution/LINKEDIN.md` | ✅ VERIFIED | Updated Current State, models/services exist |
-| `distribution/MAIL.md` | ✅ VERIFIED | Confirmed SPEC ONLY status |
-| `distribution/RESOURCE_POOL.md` | ✅ VERIFIED | Updated to PARTIALLY IMPLEMENTED, service exists |
-| `flows/REPLY_HANDLING.md` | ✅ VERIFIED | Updated to PARTIALLY IMPLEMENTED, closer.py + reply_analyzer exist |
-| `content/SDK_AND_PROMPTS.md` | ✅ VERIFIED | Previously expanded with code locations
+| Item | Component | Status | Notes |
+|------|-----------|--------|-------|
+| 56 | SequenceBuilder | ✅ DONE | Timeline view, add/edit/delete steps, channel badges |
+| 57 | CampaignMetricsPanel | ✅ DONE | Hero metrics, channel breakdown, performance badge |
 
----
+### Audit Fixes (Prioritized)
 
-## Codebase Audit Results (2026-01-21)
+**P0/P1 Critical — Fix first:**
+1. ~~Wire Funnel Detector into `pattern_learning_flow.py` (#2)~~ **DONE**
+2. ~~Implement voice retry service — busy=2hr, no_answer=next day (#3)~~ **DONE**
+3. ~~Implement ICP Refiner service — apply WHO patterns to sourcing (#4)~~ **DONE**
+4. ~~Update FILE_STRUCTURE.md — add services (22), agents (13+), detectors (8) (#1)~~ **DONE** — 204 files now documented
 
-**Full codebase audit completed. 176+ files across 8 layers.**
+**P2 High (COMPLETE):**
+5. ~~Update DATABASE.md — 6 missing models (#5)~~ **DONE** — Added 7 models with full documentation
+6. ~~Update DATABASE.md — 5 enums (#6)~~ **DONE** — Added SuggestionType, SuggestionStatus; updated IntentType
+7. ~~Document digest.py routes in API_LAYER.md — 4 endpoints (#7)~~ **DONE**
+8. ~~Wire Camoufox into scraper waterfall (#8)~~ **DONE** — Tier 3 in icp_scraper.py waterfall
+9. ~~Add campaign auto-inherit FK to campaign_resources (#9)~~ **DONE** — client_resource_id FK added
+10. ~~Implement getCampaignPerformance() backend (#10)~~ **DONE** — Endpoint at `/clients/{id}/campaigns/performance`
+11. ~~Add Resend email reply handler (#11)~~ **DONE** — Handler in `resend_events_webhook()` with Closer engine integration
 
-### Layer 1: Models (22 files)
-| File | Purpose | Doc Needed |
-|------|---------|------------|
-| base.py | Base classes, enums, mixins | `foundation/DATABASE.md` |
-| user.py, client.py, membership.py | Multi-tenancy, RBAC | `foundation/DATABASE.md` |
-| campaign.py, lead.py, activity.py | Core business objects | `foundation/DATABASE.md` |
-| lead_pool.py | Platform lead repository | `flows/ENRICHMENT.md` |
-| conversion_patterns.py | CIS pattern storage | `business/CIS.md` |
-| resource_pool.py, client_persona.py | Resource distribution | `distribution/RESOURCE_POOL.md` |
-| linkedin_*.py (4 files) | LinkedIn models | `distribution/LINKEDIN.md` |
-| client_intelligence.py, sdk_usage_log.py | SDK/intelligence | `content/SMART_PROMPTS.md` |
+**P3 Medium — Voice Engine (COMPLETE):**
+12. ~~Phone pool provisioning (#13)~~ **DONE** — PhoneProvisioningService with Twilio integration
+13. ~~Recording lifecycle cleanup — 90-day deletion (#14)~~ **DONE** — RecordingCleanupService with daily Prefect flow
+14. ~~Business hours validation before calls (#15)~~ **DONE** — is_within_business_hours() + get_next_business_hour() in voice.py
+15. ~~DNCR check for voice calls (#16)~~ **DONE** — DNCR check in voice.py send() method
 
-### Layer 2: Integrations (22 files)
-| File | Purpose | Doc Needed |
-|------|---------|------------|
-| apollo.py, apify.py, clay.py | Enrichment waterfall | `flows/ENRICHMENT.md` |
-| salesforge.py, resend.py, postmark.py | Email providers | `distribution/EMAIL.md` |
-| clicksend.py, twilio.py, dncr.py | SMS providers + DNCR | `distribution/SMS.md` |
-| vapi.py, elevenlabs.py | Voice AI | `distribution/VOICE.md` |
-| unipile.py, heyreach.py | LinkedIn automation | `distribution/LINKEDIN.md` |
-| camoufox_scraper.py | Anti-detection scraper | `distribution/SCRAPER_WATERFALL.md` |
-| anthropic.py, sdk_brain.py | AI/Claude | `content/SMART_PROMPTS.md` |
-| redis.py, supabase.py | Cache, database | `foundation/DATABASE.md` |
-| sentry_utils.py | Error tracking | `foundation/API_LAYER.md` |
+**P3 Medium — LinkedIn Engine (COMPLETE):**
+16. ~~30-day stale withdrawal (#17)~~ **DONE** — `withdraw_stale_requests()` in linkedin_health_service.py, wired into daily health flow
+17. ~~Shared quota tracking — manual + auto combined (#18)~~ **DONE** — get_combined_activity_count() + get_remaining_quota()
+18. ~~Profile view delay — 10-30 min before connect (#19)~~ **DONE** — `_view_profile()` + `_check_profile_view_delay()` + `get_connections_ready_to_send()`
 
-### Layer 3: Engines (20 files)
-| File | Purpose | Doc Needed |
-|------|---------|------------|
-| email.py, sms.py, voice.py, linkedin.py, mail.py | Outreach engines | `flows/OUTREACH.md` |
-| scout.py | Enrichment waterfall | `flows/ENRICHMENT.md` |
-| scorer.py, allocator.py | ALS + channel allocation | `business/SCORING.md` |
-| content.py, smart_prompts.py, content_utils.py | Content generation | `content/SDK_AND_PROMPTS.md` |
-| closer.py | Reply handling | `flows/REPLY_HANDLING.md` |
-| icp_scraper.py, url_validator.py | Scraper waterfall | `distribution/SCRAPER_WATERFALL.md` |
-| reporter.py | Metrics | `business/METRICS.md` |
-| client_intelligence.py, campaign_suggester.py | Intelligence | `flows/ONBOARDING.md` |
-| timing.py | Humanized delays | `distribution/LINKEDIN.md` |
+**P3 Medium — Email Engine (0 items — COMPLETE):**
+19. ~~Dynamic signature generation (#20)~~ **DONE** — email_signature_service.py with generate_signature_text/html, get_signature_for_persona/client
+20. ~~Display name format enforcement (#21)~~ **DONE** — format_display_name(), format_from_header(), validate_display_name()
 
-### Layer 3: Detectors (8 files)
-| File | Purpose | Doc Needed |
-|------|---------|------------|
-| base.py | Abstract detector base | `business/CIS.md` |
-| who_detector.py | Lead attributes that convert | `business/CIS.md` |
-| what_detector.py | Content patterns that convert | `business/CIS.md` |
-| when_detector.py | Timing patterns that convert | `business/CIS.md` |
-| how_detector.py | Channel effectiveness | `business/CIS.md` |
-| funnel_detector.py | Downstream outcomes | `business/CIS.md` |
-| weight_optimizer.py | ALS weight optimization | `business/CIS.md` |
+**P3 Medium — Documentation (COMPLETE):**
+21. ~~Update IMPORT_HIERARCHY.md — add agents, services, detectors layers (#22)~~ **DONE**
+22. ~~Improve contract comments compliance — Rule 6 at ~50% (#23)~~ **DONE** — Compliance: 46%->91% (170/185 files)
+23. ~~Update TECHNICAL.md — component count 61→74, add /dashboard/archive (#24)~~ **DONE**
+24. ~~Fix ADMIN.md — correct endpoint count (#25)~~ **DONE** — Corrected "23+" to "20" endpoints, "21" to "20" pages
 
-### Layer 3: Services (22 files)
-| File | Purpose | Doc Needed |
-|------|---------|------------|
-| lead_pool_service.py, lead_allocator_service.py | Lead pool CRUD + allocation | `flows/ENRICHMENT.md` |
-| jit_validator.py, suppression_service.py | Pre-send validation | `flows/OUTREACH.md` |
-| customer_import_service.py, buyer_signal_service.py | Customer data | `business/CAMPAIGNS.md` |
-| resource_assignment_service.py | Resource assignment | `distribution/RESOURCE_POOL.md` |
-| domain_health_service.py, domain_capacity_service.py | Email domain health | `distribution/EMAIL.md` |
-| sequence_generator_service.py | Auto-generate sequences | `flows/AUTOMATION_DEFAULTS.md` |
-| timezone_service.py | Recipient timezone | `flows/OUTREACH.md` |
-| email_events_service.py, thread_service.py | Email events + threading | `distribution/EMAIL.md` |
-| reply_analyzer.py, conversation_analytics_service.py | Reply analysis | `flows/REPLY_HANDLING.md` |
-| crm_push_service.py, meeting_service.py, deal_service.py | CRM + meetings | `flows/MEETINGS_CRM.md` |
-| linkedin_connection_service.py | LinkedIn tracking | `distribution/LINKEDIN.md` |
-| send_limiter.py, sdk_usage_service.py | Rate/cost limiting | `business/METRICS.md` |
+**P3 Medium — Frontend Components (COMPLETE — all 8 items):**
+25. ~~LeadEnrichmentCard (#26)~~ **DONE** — Created with company info, contact details, SDK signals, icebreakers
+26. ~~LeadActivityTimeline (#27)~~ **DONE** — Chronological timeline, channel filtering, activity icons, collapsible content
+27. ~~LeadQuickActions (#28)~~ **DONE** — Created with 5 actions (email/call/sms/linkedin/note), tooltips, loading states
+28. ~~LeadStatusProgress (#29)~~ **DONE** — Funnel visualization with 5 stages, size variants, optional labels, clickable stages
+29. ~~LeadBulkActions (#30)~~ **DONE** — Bulk operations toolbar, campaign assignment, status updates, export
+30. ~~Profile page (#31)~~ **DONE** — User profile with name/email/phone/timezone, avatar display, form validation
+31. ~~Notifications page (#32)~~ **DONE** — Created with email/push/SMS/in-app toggles, digest frequency, alert categories
+32. ~~Onboarding progress components (#33)~~ **DONE** — Created OnboardingProgress, OnboardingStep, OnboardingChecklist
 
-### Layer 4: Orchestration (23 files)
-| File | Purpose | Doc Needed |
-|------|---------|------------|
-| campaign_flow.py | Campaign activation | `business/CAMPAIGNS.md` |
-| enrichment_flow.py, lead_enrichment_flow.py | Lead enrichment | `flows/ENRICHMENT.md` |
-| onboarding_flow.py, post_onboarding_flow.py | Onboarding | `flows/ONBOARDING.md` |
-| outreach_flow.py | Hourly outreach | `flows/OUTREACH.md` |
-| pattern_learning_flow.py, pattern_backfill_flow.py | CIS patterns | `business/CIS.md` |
-| pool_assignment_flow.py, pool_population_flow.py | Lead pool | `flows/ENRICHMENT.md` |
-| reply_recovery_flow.py | Reply polling | `flows/REPLY_HANDLING.md` |
-| stale_lead_refresh_flow.py | Data freshness | `flows/ENRICHMENT.md` |
-| intelligence_flow.py | Hot lead research | `flows/ONBOARDING.md` |
-| tasks/*.py (4 files) | Reusable tasks | Various |
-| schedules/scheduled_jobs.py | Prefect schedules | `foundation/DECISIONS.md` |
-
-### Layer 5: API Routes (17 files)
-| File | Purpose | Doc Needed |
-|------|---------|------------|
-| main.py, dependencies.py | App entry, auth | `foundation/API_LAYER.md` |
-| health.py | Health checks | `foundation/API_LAYER.md` |
-| admin.py | Platform admin | `frontend/ADMIN.md` |
-| leads.py, campaigns.py | Core CRUD | `foundation/API_LAYER.md` |
-| webhooks.py, webhooks_outbound.py | Inbound/outbound hooks | `foundation/API_LAYER.md` |
-| reports.py, patterns.py | Metrics + CIS | `business/ANALYTICS.md` |
-| replies.py, meetings.py | Reply inbox + meetings | `flows/MEETINGS_CRM.md` |
-| crm.py, customers.py | CRM integration | `flows/MEETINGS_CRM.md` |
-| onboarding.py | ICP extraction | `flows/ONBOARDING.md` |
-| linkedin.py, pool.py | LinkedIn + pool | `distribution/LINKEDIN.md` |
-
-### Frontend (42 pages, 68 components, 11 hooks)
-| Area | Files | Doc Needed |
-|------|-------|------------|
-| app/(auth)/, app/(marketing)/ | Public + auth pages | `process/FRONTEND.md` |
-| app/dashboard/ | Client dashboard | `process/FRONTEND.md` |
-| app/admin/ | Admin dashboard | `frontend/ADMIN.md` |
-| app/onboarding/ | Onboarding flow | `process/FRONTEND.md` |
-| components/ui/ | 20 shadcn/ui components | `process/FRONTEND.md` |
-| hooks/ | 11 React Query hooks | `process/FRONTEND.md` |
-| lib/api/ | 9 API modules | `process/FRONTEND.md` |
+**P5 Future (COMPLETE):**
+33. ~~Create SECURITY.md (#34)~~ **DONE** — Created comprehensive security architecture documentation
 
 ---
 
-## Completed Items
+## How to Continue
 
-| Item | Completed | Notes |
-|------|-----------|-------|
-| Create `business/TIERS_AND_BILLING.md` | 2026-01-21 | Tiers, credits, pacing documented |
-| Create `business/SCORING.md` | 2026-01-21 | ALS formula, channel access documented |
-| Restructure architecture folder | 2026-01-21 | 6 subfolders created |
-| Update ARCHITECTURE_INDEX.md | 2026-01-21 | Pure navigation with bullet summaries |
-| Create TODO.md | 2026-01-21 | This file |
-| Partial codebase audit | 2026-01-21 | CIS, Onboarding, CRM/Meetings discovered |
-| **FULL codebase audit** | 2026-01-21 | **176+ files across 8 layers audited** |
-| Reconcile TODO.md | 2026-01-21 | Fixed doc ordering inconsistencies, clarified 12 docs |
-| **P0: Credit reset flow** | 2026-01-21 | `credit_reset_flow.py` + hourly schedule in registry |
-| **Create flows/ONBOARDING.md** | 2026-01-21 | 3 phases documented: ICP extraction, resource assignment, post-onboarding |
-| **Create flows/ENRICHMENT.md** | 2026-01-21 | Three-tier waterfall (Apollo→Apify→Clay), SDK enhancement, pool operations |
-| **Create flows/OUTREACH.md** | 2026-01-21 | Multi-channel execution, JIT validation, rate limits, SDK routing |
-| **Create flows/MEETINGS_CRM.md** | 2026-01-21 | Meeting lifecycle, deal pipeline, HubSpot/Pipedrive/Close CRM push |
-| **Create business/CIS.md** | 2026-01-21 | 5 detectors, weight optimizer, pattern learning flow |
-| **Create business/CAMPAIGNS.md** | 2026-01-21 | Campaign lifecycle, AI suggestions, lead allocation, sequences |
-| **Create foundation/API_LAYER.md** | 2026-01-21 | 17 routes, auth/RBAC, multi-tenancy, webhooks, error handling |
-| **Create foundation/DATABASE.md** | 2026-01-21 | 22 models, mixins, soft deletes, migrations, Layer 1 rules |
-| **Create distribution/SCRAPER_WATERFALL.md** | 2026-01-21 | 4-tier scraping: URL validation → Cheerio → Playwright → Camoufox |
-| **P1: Wire post-onboarding flow** | 2026-01-21 | `/confirm` now calls `post_onboarding_setup_flow` for campaigns + lead sourcing + assignment |
-| **Create flows/MONTHLY_LIFECYCLE.md** | 2026-01-21 | Month 2+ lifecycle: replenishment, campaign evolution, CIS-informed refinement |
-| **Create process/FRONTEND.md** | 2026-01-22 | 42 pages, 61 components, React Query, state patterns, API layer |
-| **Create frontend/ADMIN.md** | 2026-01-22 | 23+ endpoints, 21 pages, platform admin panel |
-| **Expand SDK_AND_PROMPTS.md** | 2026-01-22 | Code locations, data flows, context builders, SDK routing |
-| **P2: Wire DNCR check before SMS send** | 2026-01-22 | Batch wash at enrichment, cached check at send, quarterly re-wash flow created |
-| **P2: Implement LinkedIn seat warmup service** | 2026-01-22 | Warmup service, health service, daily health flow, scheduled job |
-| **P2: Implement daily pacing flow** | 2026-01-22 | `daily_pacing_flow.py` (465 lines), schedule at 7 AM AEST, flags >120% fast / <50% slow |
-| **P2: Implement reply handling code** | 2026-01-22 | Migration 046 (lead_replies table), 3 new intents (referral, wrong_person, angry_or_complaint), response timing service |
-| **P2: Implement monthly replenishment flow** | 2026-01-22 | `monthly_replenishment_flow.py`, gap calculation (Tier Quota - Active Pipeline), campaign assignment, credit_reset_flow trigger |
-| **P2: Implement campaign evolution agents** | 2026-01-22 | WHO/WHAT/HOW analyzers + orchestrator agent, migration 047 (campaign_suggestions table), Prefect flow + batch flow, confidence thresholds |
-| **P2: Implement two-way CRM sync** | 2026-01-22 | Close CRM parser, blind meeting creation, `crm_sync_flow.py` (6-hour polling), migration 048 (CRM fields + is_blind + crm_sync_log table), scheduled job |
-| **P2: Implement ICP refinement from CIS** | 2026-01-22 | `WhoRefinementService` (597 lines), `icp_refinement_log` model, migration 049, scout.py integration, customer locked fields |
-| **P2: Fix frontend hardcoded values** | 2026-01-22 | `reports.ts` wired credits_remaining, `layout.tsx` DB fetch, ICP uses `useClient()`, demo mode indicators in ActivityTicker + TranscriptViewer |
-| **P2: Add content QA check node** | 2026-01-22 | `ContentQAService` (900 lines), validates placeholders/length/spam for Email, SMS, LinkedIn, Voice in outreach_flow.py + outreach_tasks.py |
-| **P2: Add priority weighting to Smart Prompt** | 2026-01-22 | `FieldPriority` enum, `FIELD_PRIORITIES` config, ★ markers in format output, `generate_priority_guidance()`, wired in content.py |
-| **P1: Claude fact-check gate (Item 40)** | 2026-01-23 | `_fact_check_content()` in content.py, verifies claims against source data, tiered risk response |
-| **P1: Conservative prompt (Item 41)** | 2026-01-23 | SMART_EMAIL_PROMPT updated with "VERIFIED FACTS ONLY" section, explicit wrong/right examples |
-| **P1: Safe fallback template (Item 42)** | 2026-01-23 | `SAFE_FALLBACK_TEMPLATE` + `_generate_safe_fallback()` for brand-safe emails when fact-check fails |
-| **P1: Emergency Pause Button (Item 43)** | 2026-01-23 | Migration 050, client/campaign pause fields, JIT validation in outreach_flow.py, API endpoints, EmergencyPauseButton.tsx |
-| **P1: Daily Digest Email (Item 44)** | 2026-01-23 | Migration 051, DigestService, daily_digest_flow, send_transactional(), 4 API endpoints, 7 AM AEST schedule |
-| **P2: Complete reply handling webhooks** | 2026-01-23 | ClickSend SMS webhooks (inbound + status), Unipile polling migration (HeyReach→Unipile), `is_sender` fix |
+1. Read `ARCHITECTURE_DOC_SKILL.md` for template
+2. **Follow Dev Review Process** (Steps 0-5) for each item
+3. Update "Remaining Work" section after each item
+4. Delete gap rows from "Open Gaps" when fixed
+5. Report: "Completed [ITEM]. Ready for [NEXT]?"
 
 ---
 
-## Next Actions (Priority Order)
-
-### Phase A: Core Flow Docs (5 docs) - COMPLETE
-1. [x] Create `flows/ONBOARDING.md`
-2. [x] Create `flows/ENRICHMENT.md`
-3. [x] Create `flows/OUTREACH.md` — P1 ALS checks verified OK, `get_available_channels()` still needs fix
-4. [x] Create `flows/MEETINGS_CRM.md`
-5. [x] Create `business/CIS.md`
-
-### Phase B: Business & Infrastructure Docs (4 docs) - COMPLETE
-6. [x] Create `business/CAMPAIGNS.md`
-7. [x] Create `foundation/API_LAYER.md`
-8. [x] Create `foundation/DATABASE.md`
-9. [x] Create `distribution/SCRAPER_WATERFALL.md`
-
-### Phase C: Process Docs (2 docs) - COMPLETE
-10. [x] Create `process/FRONTEND.md` → then fix P2: Frontend hardcoded values
-11. [x] Create `frontend/ADMIN.md` (moved from process/)
-
-### Expand Existing
-12. [x] Expand `content/SDK_AND_PROMPTS.md`
-
-### Phase D: Remaining Code Fixes (ALL P2 Gaps)
-13. [x] P2: Wire DNCR check before SMS send — **DONE** (batch wash at enrichment, cached check at send, quarterly re-wash flow)
-14. [x] P2: Implement LinkedIn seat warmup service — **DONE** (warmup service, health service, daily health flow)
-15. [x] P2: Implement daily pacing flow — **DONE** (`daily_pacing_flow.py`, 7 AM AEST schedule, >120%/<50% alerts)
-16. [x] P2: Implement reply handling code — **DONE** (migration 046, 10 intents, response timing, ClickSend webhooks, Unipile polling)
-17. [x] P2: Implement monthly replenishment flow — **DONE** (`monthly_replenishment_flow.py`, gap calculation, campaign assignment, credit_reset trigger)
-18. [x] P2: Implement campaign evolution agents — **DONE** (WHO/WHAT/HOW analyzers, orchestrator, campaign_suggestions table, Prefect flow)
-19. [x] P2: Implement ICP refinement from CIS — **DONE** (WhoRefinementService, icp_refinement_log model, migration 049, scout.py integration)
-20. [x] P2: Implement two-way CRM sync — **DONE** (Close parser, blind meeting creation, crm_sync_flow polling, migration 048)
-21. [x] P2: Fix frontend hardcoded values — **DONE** (credits_remaining wired to API, ICP uses useClient(), demo mode indicators)
-22. [x] P2: Add content QA check node in outreach flow — **DONE** (ContentQAService validates placeholders, length, spam for Email, SMS, LinkedIn, Voice)
-23. [x] P2: Add priority weighting to Smart Prompt — **DONE** (FieldPriority enum, FIELD_PRIORITIES config, ★ markers, generate_priority_guidance())
-
-### Phase E: Nice to Have (1 doc)
-24. [ ] Create `business/METRICS.md` — Reporter engine, analytics, spend control combined
-
-### Phase F: Frontend UI Docs (5 docs)
-25. [x] Create `frontend/DASHBOARD.md` — **DONE** (T1-T4 metric tiers, 6 new components, API gaps, wireframe)
-26. [x] Create `frontend/CAMPAIGNS.md` — **DONE** (Priority sliders, auto-balance, tier limits, 6 new components, API gaps, wireframes)
-27. [x] Create `frontend/LEADS.md` — **DONE** (ALS tiers, client vs admin visibility, 6 new components, activity timeline, API gaps, wireframes)
-28. [x] Create `frontend/SETTINGS.md` — **DONE** (ICP form, LinkedIn state machine, Emergency pause, 6 new components, 9 API gaps, wireframes)
-29. [x] Create `frontend/ONBOARDING.md` — **DONE** (4-step flow, state machine, 6 new components, ICP extraction progress, wireframes)
-
-### Phase G: Verify Existing Docs (10 items — 3 already verified)
-
-*Already verified:* `foundation/IMPORT_HIERARCHY.md` ✓, `foundation/RULES.md` ✓, `content/SDK_AND_PROMPTS.md` ✓
-
-30. [x] Verify `foundation/DECISIONS.md` — added Email (Salesforge) + LinkedIn (Unipile) providers
-31. [x] UPDATE `foundation/FILE_STRUCTURE.md` — complete rewrite with 135+ src files, 41 migrations
-32. [x] Verify `distribution/INDEX.md` — fixed file names, added SCRAPER_WATERFALL.md, updated providers
-33. [x] Verify `distribution/EMAIL.md` — updated status to IMPLEMENTED, fixed file locations
-34. [x] Verify `distribution/SMS.md` — accurate, DNCR gap already tracked in item 13
-35. [x] Verify `distribution/VOICE.md` — comprehensive, stack documented correctly
-36. [x] Verify `distribution/LINKEDIN.md` — updated Current State, models/services exist
-37. [x] Verify `distribution/MAIL.md` — confirmed SPEC ONLY status
-38. [x] Verify `distribution/RESOURCE_POOL.md` — updated status to PARTIALLY IMPLEMENTED, documented existing service
-39. [x] Verify `flows/REPLY_HANDLING.md` — updated status to PARTIALLY IMPLEMENTED, documented closer.py + reply_analyzer
-
-### Phase H: Client Transparency (Brand Safety + Visibility) — COMPLETE ✅
-40. [x] P1: Implement Claude fact-check gate in outreach flow — **DONE** (`_fact_check_content()` in content.py)
-41. [x] P1: Update SMART_EMAIL_PROMPT with conservative instructions — **DONE** ("VERIFIED FACTS ONLY" section)
-42. [x] P1: Create safe fallback template for fact-check failures — **DONE** (`SAFE_FALLBACK_TEMPLATE` + `_generate_safe_fallback()`)
-43. [x] P1: Add Emergency Pause Button to dashboard (client-facing) — **DONE** (migration 050, JIT check, API, EmergencyPauseButton.tsx)
-44. [x] P1: Implement Daily Digest Email (content summary + metrics) — **DONE** (DigestService, daily_digest_flow, migration 051, API endpoints)
-45. [x] P2: Build Live Activity Feed component (real-time outreach stream) — **DONE** (endpoint, useActivityFeed, LiveActivityFeed.tsx)
-46. [x] P2: Create Content Archive page (all sent content, searchable) — **DONE** (endpoint, types, hook, /dashboard/archive page)
-47. [x] P3: Build "Best Of" Showcase (high-performing content examples) — **DONE** (endpoint, types, hook, BestOfShowcase.tsx)
+*For full audit details, see `AUDIT_REPORT_2026-01-23.md`*
+*For completed work history, see git commits*

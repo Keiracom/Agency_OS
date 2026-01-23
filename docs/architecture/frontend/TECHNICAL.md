@@ -2,7 +2,7 @@
 
 **Purpose:** Defines the Next.js 14 frontend architecture, component structure, state management patterns, and API integration layer for Agency OS.
 **Status:** IMPLEMENTED
-**Last Updated:** 2026-01-22
+**Last Updated:** 2026-01-23
 
 ---
 
@@ -42,7 +42,7 @@ frontend/
 │   ├── admin/              # Platform admin pages (22 pages)
 │   ├── api/                # API routes (if any)
 │   ├── auth/               # Auth callback handler
-│   ├── dashboard/          # Client dashboard pages (11 pages)
+│   ├── dashboard/          # Client dashboard pages (12 pages)
 │   ├── onboarding/         # Onboarding flow (4 pages)
 │   ├── logo-showcase/      # Logo showcase page
 │   ├── globals.css         # Global styles
@@ -50,18 +50,18 @@ frontend/
 │   ├── page.tsx            # Landing page
 │   └── providers.tsx       # React Query + Auth providers
 │
-├── components/             # React components (61 total)
-│   ├── admin/              # Admin-specific components (8)
-│   ├── campaigns/          # Campaign components
-│   ├── communication/      # Communication viewers
-│   ├── dashboard/          # Dashboard widgets (4)
-│   ├── generated/          # Generated components (v0)
-│   ├── landing/            # Landing page components (6)
+├── components/             # React components (74 total)
+│   ├── admin/              # Admin-specific components (7)
+│   ├── campaigns/          # Campaign components (8)
+│   ├── communication/      # Communication viewers (1)
+│   ├── dashboard/          # Dashboard widgets (9)
+│   ├── generated/          # Generated components (v0) (3)
+│   ├── landing/            # Landing page components (7)
 │   ├── layout/             # Layout components (4)
-│   ├── leads/              # Lead-specific components
+│   ├── leads/              # Lead-specific components (1)
 │   ├── marketing/          # Marketing components (3)
 │   ├── onboarding/         # Onboarding components (4)
-│   └── ui/                 # Shadcn/ui primitives (24+)
+│   └── ui/                 # Shadcn/ui primitives (25)
 │
 ├── hooks/                  # Custom React hooks (12)
 ├── lib/                    # Utilities + API client
@@ -77,7 +77,7 @@ frontend/
 
 ## Code Locations
 
-### Pages (42 Total)
+### Pages (43 Total)
 
 | Route | File | Purpose |
 |-------|------|---------|
@@ -92,8 +92,9 @@ frontend/
 | `/about` | `app/(marketing)/about/page.tsx` | About page |
 | `/how-it-works` | `app/(marketing)/how-it-works/page.tsx` | Product explanation |
 | `/pricing` | `app/(marketing)/pricing/page.tsx` | Pricing tiers |
-| **Dashboard (11)** | | |
+| **Dashboard (12)** | | |
 | `/dashboard` | `app/dashboard/page.tsx` | Main dashboard |
+| `/dashboard/archive` | `app/dashboard/archive/page.tsx` | Content archive (sent emails, SMS, LinkedIn, voice) |
 | `/dashboard/campaigns` | `app/dashboard/campaigns/page.tsx` | Campaign list |
 | `/dashboard/campaigns/new` | `app/dashboard/campaigns/new/page.tsx` | Create campaign |
 | `/dashboard/campaigns/[id]` | `app/dashboard/campaigns/[id]/page.tsx` | Campaign detail |
@@ -131,19 +132,22 @@ frontend/
 | `/onboarding/manual-entry` | `app/onboarding/manual-entry/page.tsx` | Manual ICP entry |
 | `/onboarding/skip` | `app/onboarding/skip/page.tsx` | Skip onboarding |
 
-### Components (61 Total)
+### Components (74 Total)
 
 | Category | Count | Components |
 |----------|-------|------------|
-| **UI Primitives** | 24 | button, input, label, card, badge, avatar, dropdown-menu, toaster, toast, select, table, tabs, progress, dialog, switch, separator, skeleton, textarea, loading-skeleton, error-state, empty-state, tooltip, collapsible, alert-dialog |
-| **Admin** | 8 | AdminSidebar, AdminHeader, KPICard, AlertBanner, SystemStatusIndicator, LiveActivityFeed, ClientHealthIndicator |
-| **Dashboard** | 4 | ActivityTicker, CapacityGauge, CoPilotView, meetings-widget |
-| **Landing** | 6 | HeroSection, TypingDemo, HowItWorksTabs, HowItWorksCarousel, DashboardDemo, ActivityFeed, SocialProofBar |
+| **UI Primitives** | 25 | button, input, label, card, badge, avatar, dropdown-menu, toaster, toast, select, table, tabs, progress, dialog, switch, separator, skeleton, textarea, loading-skeleton, error-state, empty-state, tooltip, collapsible, alert-dialog, slider |
+| **Admin** | 7 | AdminSidebar, AdminHeader, KPICard, AlertBanner, SystemStatusIndicator, LiveActivityFeed, ClientHealthIndicator |
+| **Dashboard** | 9 | ActivityTicker, CapacityGauge, CoPilotView, meetings-widget, EmergencyPauseButton, LiveActivityFeed, BestOfShowcase, HeroMetricsCard, OnTrackIndicator |
+| **Campaigns** | 8 | permission-mode-selector, PrioritySlider, CampaignPriorityPanel, CampaignPriorityCard, CampaignAllocationManager, SequenceBuilder, CampaignMetricsPanel, CampaignTabs |
+| **Landing** | 7 | HeroSection, TypingDemo, HowItWorksTabs, HowItWorksCarousel, DashboardDemo, ActivityFeed, SocialProofBar |
 | **Layout** | 4 | dashboard-layout, header, sidebar, credits-badge |
 | **Onboarding** | 4 | LinkedInCredentialForm, LinkedInTwoFactor, LinkedInConnecting, LinkedInSuccess |
 | **Marketing** | 3 | waitlist-form, floating-founding-spots, founding-spots |
 | **Generated** | 3 | agency-os-hero, ai-email-writer, how-it-works-section |
-| **Other** | 5 | permission-mode-selector, icp-progress-banner, icp-review-modal, ALSScorecard, TranscriptViewer |
+| **Communication** | 1 | TranscriptViewer |
+| **Leads** | 1 | ALSScorecard |
+| **Other** | 2 | icp-progress-banner, icp-review-modal |
 
 ### Hooks (12 Total)
 

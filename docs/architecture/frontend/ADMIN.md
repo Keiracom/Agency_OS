@@ -2,13 +2,13 @@
 
 **Purpose:** Platform administration dashboard for system monitoring, client management, and operations.
 **Status:** IMPLEMENTED
-**Last Updated:** 2026-01-22
+**Last Updated:** 2026-01-23
 
 ---
 
 ## Overview
 
-The Admin Panel provides platform administrators with tools to monitor system health, manage clients, track costs, and handle compliance. It consists of a FastAPI backend (`admin.py`) with 23+ endpoints and a Next.js frontend with 21 pages.
+The Admin Panel provides platform administrators with tools to monitor system health, manage clients, track costs, and handle compliance. It consists of a FastAPI backend (`admin.py`) with 20 endpoints and a Next.js frontend with 20 pages.
 
 **Key Capabilities:**
 - Real-time system health monitoring
@@ -29,7 +29,7 @@ The Admin Panel provides platform administrators with tools to monitor system he
 
 | Component | File | Purpose |
 |-----------|------|---------|
-| Admin Routes | `src/api/routes/admin.py` | 23+ endpoints for admin operations |
+| Admin Routes | `src/api/routes/admin.py` | 20 endpoints for admin operations |
 | Auth Dependency | `src/api/dependencies.py` | `get_admin_context`, `require_platform_admin` |
 | Current User Model | `src/api/dependencies.py` | `CurrentUser`, `AdminContext` classes |
 
@@ -44,7 +44,7 @@ The Admin Panel provides platform administrators with tools to monitor system he
 | Admin Hooks | `frontend/hooks/use-admin.ts` | React Query hooks for API |
 | Admin API | `frontend/lib/api/admin.ts` | API client functions |
 
-### Frontend Pages (21 total)
+### Frontend Pages (20 total)
 
 | Page | File | Purpose |
 |------|------|---------|
@@ -58,6 +58,7 @@ The Admin Panel provides platform administrators with tools to monitor system he
 | Replies | `app/admin/replies/page.tsx` | Reply inbox (admin view) |
 | AI Spend | `app/admin/costs/ai/page.tsx` | AI cost breakdown by agent/client |
 | Channel Costs | `app/admin/costs/channels/page.tsx` | SMS, Voice, Email costs |
+| Costs Overview | `app/admin/costs/page.tsx` | Costs summary dashboard |
 | System Status | `app/admin/system/page.tsx` | Service health dashboard |
 | Errors | `app/admin/system/errors/page.tsx` | Error tracking (Sentry) |
 | Queues | `app/admin/system/queues/page.tsx` | Prefect queue status |

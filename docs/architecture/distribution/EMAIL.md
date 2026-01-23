@@ -560,8 +560,10 @@ Domains in warning/critical status are re-evaluated daily:
 - [x] Domain capacity tracking
 - [x] Health-based limit reduction
 - [x] Persona model implemented
-- [ ] Signature generation (not yet wired)
-- [ ] Display name format "{First} from {Company}" (pending integration)
+- [x] Signature generation (Gap Fix #20: email_signature_service.py)
+- [x] Display name format "{First} from {Company}" (Gap Fix #20 + #21)
+- [x] Display name validation (Gap Fix #21: validate_display_name())
+- [x] RFC 5322 From header formatting (Gap Fix #21: format_from_header())
 
 ---
 

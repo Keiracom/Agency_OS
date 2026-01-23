@@ -1,6 +1,6 @@
 # File Structure — Agency OS
 
-**Last Updated:** January 22, 2026
+**Last Updated:** January 23, 2026
 
 ---
 
@@ -37,7 +37,7 @@ C:\AI\Agency_OS\
 ├── skills/
 │   ├── SKILL_INDEX.md
 │   └── [category folders]
-├── src/                          # Backend source (176+ files)
+├── src/                          # Backend source (204 files)
 ├── frontend/                     # Next.js frontend
 ├── supabase/                     # Database migrations
 ├── tests/                        # Test suite
@@ -56,7 +56,7 @@ C:\AI\Agency_OS\
 
 ## Source Structure (`src/`)
 
-### Layer 1: Models (20 files)
+### Layer 1: Models (23 files)
 
 ```
 src/models/
@@ -66,6 +66,7 @@ src/models/
 ├── client.py                 # Client organizations
 ├── membership.py             # User-client relationships
 ├── campaign.py               # Campaigns, sequences, templates
+├── campaign_suggestion.py    # AI campaign suggestions
 ├── lead.py                   # Leads with SDK fields
 ├── lead_pool.py              # Platform lead repository
 ├── activity.py               # Outreach activities
@@ -79,7 +80,9 @@ src/models/
 ├── social_profile.py         # Social profiles
 ├── lead_social_post.py       # Social posts
 ├── url_validation.py         # URL validation results
-└── sdk_usage_log.py          # SDK cost tracking
+├── sdk_usage_log.py          # SDK cost tracking
+├── digest_log.py             # Digest delivery tracking
+└── icp_refinement_log.py     # ICP refinement history
 ```
 
 ### Layer 2: Integrations (22 files)
@@ -171,7 +174,7 @@ src/detectors/
 └── weight_optimizer.py       # ALS weight optimization
 ```
 
-### Layer 3: Services (22 files)
+### Layer 3: Services (32 files)
 
 ```
 src/services/
@@ -189,6 +192,7 @@ src/services/
 ├── domain_health_service.py  # Domain reputation
 ├── domain_capacity_service.py # Send capacity
 ├── email_events_service.py   # Open/click tracking
+├── email_signature_service.py # Email signature management
 ├── thread_service.py         # Email threading
 │
 ├── # Reply & Conversation
@@ -204,25 +208,40 @@ src/services/
 │
 ├── # LinkedIn
 ├── linkedin_connection_service.py
+├── linkedin_health_service.py   # LinkedIn account health monitoring
+├── linkedin_warmup_service.py   # LinkedIn account warmup logic
+│
+├── # Content & Digest
+├── content_qa_service.py     # Content quality assurance
+├── digest_service.py         # Daily/weekly digest generation
+│
+├── # Intelligence
+├── who_refinement_service.py # ICP refinement based on conversions
+├── response_timing_service.py # Optimal response timing calculation
 │
 ├── # Resources
 ├── resource_assignment_service.py
 ├── sequence_generator_service.py
 ├── timezone_service.py
 │
+├── # Voice & Phone
+├── phone_provisioning_service.py # Phone number provisioning
+├── recording_cleanup_service.py  # Voice recording cleanup
+├── voice_retry_service.py        # Voice call retry logic
+│
 ├── # Cost Control
 ├── send_limiter.py           # AI spend limiter
 └── sdk_usage_service.py      # SDK cost tracking
 ```
 
-### Layer 4: Orchestration (19 files)
+### Layer 4: Orchestration (32 files)
 
 ```
 src/orchestration/
 ├── __init__.py
 ├── worker.py                 # Prefect worker entry
 │
-├── flows/                    # Prefect flows (15 files)
+├── flows/                    # Prefect flows (23 files)
 │   ├── __init__.py
 │   ├── onboarding_flow.py    # ICP extraction
 │   ├── post_onboarding_flow.py # Resource assignment
@@ -237,7 +256,15 @@ src/orchestration/
 │   ├── pattern_learning_flow.py # CIS learning
 │   ├── pattern_backfill_flow.py # Historical patterns
 │   ├── intelligence_flow.py  # Hot lead research
-│   └── credit_reset_flow.py  # Monthly credit reset
+│   ├── credit_reset_flow.py  # Monthly credit reset
+│   ├── campaign_evolution_flow.py # Campaign self-evolution
+│   ├── monthly_replenishment_flow.py # Monthly lead pool refill
+│   ├── daily_pacing_flow.py  # Daily send pacing
+│   ├── daily_digest_flow.py  # Daily activity digest
+│   ├── linkedin_health_flow.py # LinkedIn account health checks
+│   ├── crm_sync_flow.py      # CRM data synchronization
+│   ├── dncr_rewash_flow.py   # DNCR re-validation
+│   └── recording_cleanup_flow.py # Voice recording cleanup
 │
 ├── tasks/                    # Reusable tasks (5 files)
 │   ├── __init__.py
@@ -251,20 +278,61 @@ src/orchestration/
     └── scheduled_jobs.py     # Cron schedules
 ```
 
-### SDK Agents (7 files)
+### Agents (37 files)
 
 ```
-src/agents/sdk_agents/
-├── __init__.py               # Public exports
-├── sdk_eligibility.py        # Gate functions
-├── sdk_tools.py              # Web search/fetch tools
-├── enrichment_agent.py       # Deep research agent
-├── email_agent.py            # Personalized email agent
-├── voice_kb_agent.py         # Voice knowledge base
-└── icp_agent.py              # ICP extraction agent
+src/agents/
+├── __init__.py
+├── base_agent.py             # Base agent class
+│
+├── # Root-level agents
+├── cmo_agent.py              # CMO-level campaign strategy
+├── content_agent.py          # Content generation orchestrator
+├── reply_agent.py            # Reply classification & handling
+├── campaign_generation_agent.py # AI campaign generation
+├── icp_discovery_agent.py    # ICP discovery from website
+│
+├── # Campaign Evolution (5 files)
+├── campaign_evolution/
+│   ├── __init__.py
+│   ├── campaign_orchestrator_agent.py # Coordinates evolution agents
+│   ├── who_analyzer_agent.py    # Analyzes target audience fit
+│   ├── what_analyzer_agent.py   # Analyzes messaging effectiveness
+│   └── how_analyzer_agent.py    # Analyzes channel performance
+│
+├── # SDK Agents (7 files)
+├── sdk_agents/
+│   ├── __init__.py           # Public exports
+│   ├── sdk_eligibility.py    # Gate functions
+│   ├── sdk_tools.py          # Web search/fetch tools
+│   ├── enrichment_agent.py   # Deep research agent
+│   ├── email_agent.py        # Personalized email agent
+│   ├── voice_kb_agent.py     # Voice knowledge base
+│   └── icp_agent.py          # ICP extraction agent
+│
+└── # Skills (18 files)
+    skills/
+    ├── __init__.py
+    ├── base_skill.py             # Base skill class
+    ├── als_weight_suggester.py   # ALS weight optimization
+    ├── campaign_splitter.py      # Split campaign by segment
+    ├── company_size_estimator.py # Estimate company size
+    ├── icp_deriver.py            # Derive ICP from data
+    ├── industry_classifier.py    # Classify industries
+    ├── industry_researcher.py    # Research industry trends
+    ├── messaging_generator.py    # Generate messaging
+    ├── portfolio_extractor.py    # Extract portfolio items
+    ├── portfolio_fallback.py     # Fallback portfolio logic
+    ├── research_skills.py        # Research utilities
+    ├── sequence_builder.py       # Build outreach sequences
+    ├── service_extractor.py      # Extract services
+    ├── social_enricher.py        # Enrich social data
+    ├── social_profile_discovery.py # Discover social profiles
+    ├── value_prop_extractor.py   # Extract value props
+    └── website_parser.py         # Parse website content
 ```
 
-### API Routes (17 files)
+### API Routes (21 files)
 
 ```
 src/api/
@@ -289,16 +357,41 @@ src/api/
     ├── customers.py          # Customer data
     ├── webhooks.py           # Inbound webhooks
     ├── webhooks_outbound.py  # Outbound webhook config
-    └── campaign_generation.py # AI campaign generation
+    ├── campaign_generation.py # AI campaign generation
+    └── digest.py             # Daily/weekly digest endpoints
 ```
 
-### Config (2 files)
+### Config (3 files)
 
 ```
 src/config/
 ├── __init__.py
 ├── settings.py               # Pydantic settings
 └── tiers.py                  # Tier definitions
+```
+
+### Intelligence (2 files)
+
+```
+src/intelligence/
+├── __init__.py
+└── platform_priors.py        # Platform-wide ALS priors
+```
+
+### Utils (2 files)
+
+```
+src/utils/
+├── __init__.py
+└── encryption.py             # Encryption utilities
+```
+
+### Root Files (2 files)
+
+```
+src/
+├── __init__.py
+└── exceptions.py             # Custom exceptions
 ```
 
 ---
@@ -410,15 +503,19 @@ frontend/
 
 | Area | Files |
 |------|-------|
-| Models | 20 |
+| Models | 23 |
 | Integrations | 22 |
 | Engines | 20 |
 | Detectors | 8 |
-| Services | 22 |
-| Orchestration | 19 |
-| SDK Agents | 7 |
-| API Routes | 17 |
-| **Total src/** | **135+** |
+| Services | 32 |
+| Orchestration | 32 |
+| Agents | 37 |
+| API Routes | 21 |
+| Config | 3 |
+| Intelligence | 2 |
+| Utils | 2 |
+| Root (src/) | 2 |
+| **Total src/** | **204** |
 | Frontend pages | 42 |
 | Frontend components | 61 |
 | Migrations | 41 |

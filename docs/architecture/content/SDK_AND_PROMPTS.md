@@ -216,6 +216,72 @@ async def build_full_lead_context(
 
 Same as above but for `lead_pool` table (richer Apollo data).
 
+---
+
+## Priority Weighting System
+
+Smart Prompts now include a **priority weighting system** to ensure the AI uses the most valuable personalization data first.
+
+### Priority Levels
+
+| Priority | Weight | Usage | Fields |
+|----------|--------|-------|--------|
+| **HIGH (3)** | ★ markers | MUST use in personalization | Recent funding, hiring, new_in_role, pain points, icebreakers, objections |
+| **MEDIUM (2)** | Standard | SHOULD use for context | Title, seniority, industry, company size, tech stack |
+| **LOW (1)** | Background | MAY use if space | Name, location, founded year, revenue, description |
+
+### Key Functions
+
+```python
+# Extract HIGH priority fields with values
+high_fields = extract_high_priority_fields(context)
+# Returns: [(field_path, description, value), ...]
+
+# Generate guidance text for the prompt
+guidance = generate_priority_guidance(context)
+# Returns: "Use at least ONE high-priority field..."
+
+# Format context with priority sections and ★ markers
+formatted = format_lead_context_for_prompt(context)
+# Returns: "### HIGH PRIORITY\n★ **Recently Funded:** Yes..."
+```
+
+### Output Example
+
+```
+### HIGH PRIORITY (use in personalization)
+★ **Recently Funded:** Yes (Series B), 2025-11-15
+★ **Currently Hiring:** Yes
+★ **Pain Points:** scaling issues, manual processes
+
+### MEDIUM PRIORITY (context)
+**Title:** VP of Engineering
+**Industry:** SaaS
+**Size:** 250 employees
+
+### LOW PRIORITY (background)
+**Name:** John Smith
+**Company:** Acme Corp
+```
+
+### Field Priority Configuration
+
+Located in `src/engines/smart_prompts.py`:
+
+```python
+FIELD_PRIORITIES: dict[str, tuple[FieldPriority, str]] = {
+    # HIGH - time-sensitive, high-personalization value
+    "signals.recently_funded": (FieldPriority.HIGH, "Recent funding is a strong opener"),
+    "signals.is_hiring": (FieldPriority.HIGH, "Hiring indicates growth"),
+    "signals.new_in_role": (FieldPriority.HIGH, "New roles mean new initiatives"),
+    "research.pain_points": (FieldPriority.HIGH, "Direct personalization hooks"),
+    "research.icebreakers": (FieldPriority.HIGH, "Pre-researched starters"),
+    # ... etc
+}
+```
+
+---
+
 ### build_client_proof_points()
 
 ```python

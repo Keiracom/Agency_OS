@@ -40,6 +40,8 @@ from src.models.client_persona import ClientPersona, PERSONA_ALLOCATIONS
 from src.models.linkedin_seat import LinkedInSeat, LinkedInSeatStatus, LINKEDIN_WARMUP_SCHEDULE
 from src.models.linkedin_connection import LinkedInConnection, LinkedInConnectionStatus
 from src.models.campaign_suggestion import CampaignSuggestion, CampaignSuggestionHistory, SuggestionType, SuggestionStatus
+from src.models.icp_refinement_log import IcpRefinementLog
+from src.models.digest_log import DigestLog
 
 __all__ = [
     # Base
@@ -99,4 +101,8 @@ __all__ = [
     "CampaignSuggestionHistory",
     "SuggestionType",
     "SuggestionStatus",
+    # ICP Refinement (Phase 19)
+    "IcpRefinementLog",
+    # Digest (Phase H, Item 44)
+    "DigestLog",
 ]

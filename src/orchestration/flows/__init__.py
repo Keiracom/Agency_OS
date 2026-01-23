@@ -37,6 +37,10 @@ from src.orchestration.flows.stale_lead_refresh_flow import (
     daily_outreach_prep_flow,
     refresh_stale_leads_flow,
 )
+from src.orchestration.flows.daily_digest_flow import (
+    daily_digest_flow,
+    send_client_digest_flow,
+)
 
 __all__ = [
     # Core flows
@@ -56,4 +60,7 @@ __all__ = [
     # SDK Architecture Phase 3: Data Freshness
     "refresh_stale_leads_flow",
     "daily_outreach_prep_flow",
+    # Phase H, Item 44: Daily Digest
+    "daily_digest_flow",
+    "send_client_digest_flow",
 ]

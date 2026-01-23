@@ -501,6 +501,90 @@ class EmailEngine(OutreachEngine):
             return text[:max_length] + "..."
         return text
 
+    async def send_transactional(
+        self,
+        to_email: str,
+        subject: str,
+        html_body: str,
+        from_name: str = "Agency OS",
+        from_email: str | None = None,
+        text_body: str | None = None,
+        reply_to: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Send a transactional email (not cold outreach).
+
+        Use for digest emails, notifications, alerts, etc.
+        Does NOT count against cold outreach rate limits.
+        Does NOT require lead_id or campaign_id.
+
+        Phase H, Item 44: Added for daily digest emails.
+
+        Args:
+            to_email: Recipient email address
+            subject: Email subject line
+            html_body: HTML email content
+            from_name: Sender display name
+            from_email: Sender email (defaults to system email)
+            text_body: Plain text fallback
+            reply_to: Reply-to address
+
+        Returns:
+            Dict with success status and message_id or error
+        """
+        # Default from email
+        if not from_email:
+            from_email = getattr(settings, "SYSTEM_EMAIL", "noreply@agencyxos.ai")
+
+        # TEST_MODE: Redirect to test recipient
+        original_email = to_email
+        if settings.TEST_MODE:
+            to_email = settings.TEST_EMAIL_RECIPIENT
+            logger.info(f"TEST_MODE: Redirecting transactional email {original_email} → {to_email}")
+
+        try:
+            # Send via Salesforge
+            # Format from_email with name if provided
+            formatted_from = f"{from_name} <{from_email}>" if from_name else from_email
+
+            result = await self.salesforge.send_email(
+                from_email=formatted_from,
+                to_email=to_email,
+                subject=subject,
+                html_body=html_body,
+                text_body=text_body,
+                reply_to=reply_to,
+            )
+
+            if result.get("success"):
+                logger.info(
+                    f"Transactional email sent to {to_email}: "
+                    f"message_id={result.get('message_id')}"
+                )
+                return {
+                    "success": True,
+                    "message_id": result.get("message_id"),
+                    "to_email": to_email,
+                }
+            else:
+                logger.error(
+                    f"Failed to send transactional email to {to_email}: "
+                    f"{result.get('error')}"
+                )
+                return {
+                    "success": False,
+                    "error": result.get("error", "Unknown error"),
+                    "to_email": to_email,
+                }
+
+        except Exception as e:
+            logger.error(f"Exception sending transactional email to {to_email}: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "to_email": to_email,
+            }
+
 
 # Singleton instance
 _email_engine: EmailEngine | None = None

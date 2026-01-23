@@ -30,11 +30,14 @@ from sqlalchemy import text
 from src.engines.base import BaseEngine, EngineResult
 from src.engines.smart_prompts import (
     SMART_EMAIL_PROMPT,
+    SAFE_FALLBACK_TEMPLATE,
+    FACT_CHECK_PROMPT,
     build_full_lead_context,
     build_full_pool_lead_context,
     build_client_proof_points,
     format_lead_context_for_prompt,
     format_proof_points_for_prompt,
+    generate_priority_guidance,
 )
 from src.exceptions import AISpendLimitError, ValidationError
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
@@ -206,17 +209,28 @@ class ContentEngine(BaseEngine):
 {f"**Value Prop:** {getattr(campaign, 'value_proposition', '')}" if hasattr(campaign, 'value_proposition') and campaign.value_proposition else ""}
 {f"**Template Guidance:** {template}" if template else ""}"""
 
+            # Generate priority guidance for the prompt
+            priority_guidance_str = generate_priority_guidance(lead_context)
+
             # Use Smart Email Prompt
             prompt = SMART_EMAIL_PROMPT.format(
                 lead_context=lead_context_str,
                 proof_points=proof_points_str,
                 campaign_context=campaign_context,
+                priority_guidance=priority_guidance_str,
             )
 
-            # System prompt for email generation
+            # System prompt for email generation (Item 41: Conservative instructions)
             system = """You are an expert B2B sales copywriter. Generate cold emails that feel personal and human.
-Never use generic phrases. Always reference something specific about the lead.
-Return valid JSON only."""
+
+CRITICAL RULES:
+1. ONLY reference facts explicitly provided in the lead context
+2. NEVER assume or invent details about the lead's company, tech stack, or achievements
+3. NEVER claim the lead uses specific products/tools unless explicitly listed
+4. When data is missing, use general language that can't be wrong
+5. It's better to be vague than to state something false
+
+Return valid JSON only with "subject" and "body" keys."""
 
             # Generate content via AI
             result = await self.anthropic.complete(
@@ -237,37 +251,166 @@ Return valid JSON only."""
                     content = content.split("```")[1].split("```")[0]
 
                 generated = json.loads(content.strip())
+                subject = generated.get("subject", "")
+                body = generated.get("body", "")
+                generation_cost = result["cost_aud"]
+                total_cost = generation_cost
 
+                # ============================================
+                # ITEM 40: FACT-CHECK GATE
+                # ============================================
+                # Verify generated content against source data
+                fact_check = await self._fact_check_content(
+                    subject=subject,
+                    body=body,
+                    lead_context=lead_context,
+                )
+                total_cost += fact_check.get("cost_aud", 0)
+
+                # If fact-check fails with HIGH risk, use safe fallback immediately
+                if fact_check["verdict"] == "FAIL" and fact_check.get("risk_level") == "HIGH":
+                    logger.warning(
+                        f"Fact-check HIGH risk for lead {lead_id}: {fact_check.get('unsupported_claims', [])}"
+                    )
+                    fallback = self._generate_safe_fallback(lead_context, campaign.name)
+                    return EngineResult.ok(
+                        data={
+                            "subject": fallback["subject"],
+                            "body": fallback["body"],
+                            "lead_id": str(lead_id),
+                            "campaign_id": str(campaign_id),
+                            "personalization_used": ["first_name", "company"],
+                        },
+                        metadata={
+                            "cost_aud": total_cost,
+                            "tone": tone,
+                            "safe_fallback": True,
+                            "fact_check_failed": True,
+                            "unsupported_claims": fact_check.get("unsupported_claims", []),
+                        },
+                    )
+
+                # If fact-check fails with MEDIUM risk, regenerate once
+                if fact_check["verdict"] == "FAIL" and fact_check.get("risk_level") == "MEDIUM":
+                    logger.info(f"Fact-check MEDIUM risk, regenerating for lead {lead_id}")
+
+                    # Add warning to prompt about specific issues
+                    retry_prompt = prompt + f"""
+
+## WARNING: Previous attempt had unsupported claims
+The following claims were NOT in the source data - do NOT include them:
+{chr(10).join(f'- {claim}' for claim in fact_check.get('unsupported_claims', []))}
+
+Generate a new email that ONLY uses verified facts from the lead context."""
+
+                    retry_result = await self.anthropic.complete(
+                        prompt=retry_prompt,
+                        system=system,
+                        max_tokens=800,
+                        temperature=0.5,  # Lower temp for safer output
+                    )
+                    total_cost += retry_result["cost_aud"]
+
+                    # Parse retry result with error handling (G2 fix)
+                    try:
+                        retry_content = retry_result["content"]
+                        if "```json" in retry_content:
+                            retry_content = retry_content.split("```json")[1].split("```")[0]
+                        elif "```" in retry_content:
+                            retry_content = retry_content.split("```")[1].split("```")[0]
+
+                        retry_generated = json.loads(retry_content.strip())
+                        subject = retry_generated.get("subject", "")
+                        body = retry_generated.get("body", "")
+                    except (json.JSONDecodeError, IndexError) as e:
+                        # Retry JSON parsing failed - use safe fallback
+                        logger.warning(f"Retry JSON parse failed for lead {lead_id}: {e}")
+                        fallback = self._generate_safe_fallback(lead_context, campaign.name)
+                        return EngineResult.ok(
+                            data={
+                                "subject": fallback["subject"],
+                                "body": fallback["body"],
+                                "lead_id": str(lead_id),
+                                "campaign_id": str(campaign_id),
+                                "personalization_used": ["first_name", "company"],
+                            },
+                            metadata={
+                                "cost_aud": total_cost,
+                                "tone": tone,
+                                "safe_fallback": True,
+                                "fact_check_retried": True,
+                                "retry_json_parse_failed": True,
+                            },
+                        )
+
+                    # Second fact-check
+                    retry_fact_check = await self._fact_check_content(
+                        subject=subject,
+                        body=body,
+                        lead_context=lead_context,
+                    )
+                    total_cost += retry_fact_check.get("cost_aud", 0)
+
+                    # If still failing, use safe fallback
+                    if retry_fact_check["verdict"] == "FAIL":
+                        logger.warning(
+                            f"Fact-check failed twice for lead {lead_id}, using safe fallback"
+                        )
+                        fallback = self._generate_safe_fallback(lead_context, campaign.name)
+                        return EngineResult.ok(
+                            data={
+                                "subject": fallback["subject"],
+                                "body": fallback["body"],
+                                "lead_id": str(lead_id),
+                                "campaign_id": str(campaign_id),
+                                "personalization_used": ["first_name", "company"],
+                            },
+                            metadata={
+                                "cost_aud": total_cost,
+                                "tone": tone,
+                                "safe_fallback": True,
+                                "fact_check_retried": True,
+                                "fact_check_failed": True,
+                            },
+                        )
+
+                # Fact-check passed (or LOW risk) - return generated content
                 return EngineResult.ok(
                     data={
-                        "subject": generated.get("subject", ""),
-                        "body": generated.get("body", ""),
+                        "subject": subject,
+                        "body": body,
                         "lead_id": str(lead_id),
                         "campaign_id": str(campaign_id),
                         "personalization_used": self._extract_personalization_fields(lead_context),
                     },
                     metadata={
-                        "cost_aud": result["cost_aud"],
+                        "cost_aud": total_cost,
                         "input_tokens": result["input_tokens"],
                         "output_tokens": result["output_tokens"],
                         "tone": tone,
                         "smart_prompt": True,
                         "has_proof_points": proof_points.get("available", False),
+                        "fact_check_verdict": fact_check["verdict"],
+                        "fact_check_risk": fact_check.get("risk_level", "LOW"),
                     },
                 )
             except json.JSONDecodeError:
-                # Fallback: use raw content as body
+                # Fallback: use safe fallback instead of raw content
+                logger.warning(f"JSON parse failed for lead {lead_id}, using safe fallback")
+                fallback = self._generate_safe_fallback(lead_context, campaign.name)
                 return EngineResult.ok(
                     data={
-                        "subject": "Personalized message",
-                        "body": result["content"],
+                        "subject": fallback["subject"],
+                        "body": fallback["body"],
                         "lead_id": str(lead_id),
                         "campaign_id": str(campaign_id),
+                        "personalization_used": ["first_name", "company"],
                     },
                     metadata={
                         "cost_aud": result["cost_aud"],
                         "tone": tone,
-                        "fallback": True,
+                        "safe_fallback": True,
+                        "json_parse_failed": True,
                     },
                 )
 
@@ -317,6 +460,149 @@ Return valid JSON only."""
             fields.append("deep_research")
 
         return fields
+
+    # ============================================
+    # ITEM 40: FACT-CHECK GATE
+    # ============================================
+
+    async def _fact_check_content(
+        self,
+        subject: str,
+        body: str,
+        lead_context: dict[str, Any],
+    ) -> dict[str, Any]:
+        """
+        Verify generated email content against source data.
+
+        Uses Claude to check that all claims in the email are supported
+        by the provided lead context. Prevents hallucination.
+
+        Args:
+            subject: Generated email subject
+            body: Generated email body
+            lead_context: Source data used for generation
+
+        Returns:
+            Dict with:
+                - verdict: "PASS" or "FAIL"
+                - unsupported_claims: List of claims not in source data
+                - risk_level: "LOW", "MEDIUM", or "HIGH"
+                - cost_aud: Cost of fact-check call
+
+        Cost: ~$0.01 per check (using smaller context)
+        """
+        try:
+            # Format source data for fact-check prompt
+            source_data = format_lead_context_for_prompt(lead_context)
+
+            prompt = FACT_CHECK_PROMPT.format(
+                source_data=source_data,
+                subject=subject,
+                body=body,
+            )
+
+            system = """You are a strict fact-checker. Return valid JSON only.
+Be conservative - if you're unsure whether a claim is supported, mark it as unsupported."""
+
+            # Use lower temperature for more consistent fact-checking
+            result = await self.anthropic.complete(
+                prompt=prompt,
+                system=system,
+                max_tokens=500,
+                temperature=0.3,
+            )
+
+            # Parse JSON from response
+            import json
+            content = result["content"]
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0]
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0]
+
+            fact_check_result = json.loads(content.strip())
+            fact_check_result["cost_aud"] = result.get("cost_aud", 0)
+
+            logger.info(
+                f"Fact-check result: {fact_check_result['verdict']}, "
+                f"risk: {fact_check_result.get('risk_level', 'unknown')}, "
+                f"claims: {len(fact_check_result.get('unsupported_claims', []))}"
+            )
+
+            return fact_check_result
+
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse fact-check response: {e}")
+            # Conservative default: fail if we can't parse
+            # Note: result is always defined here since API call completes before JSON parsing
+            return {
+                "verdict": "FAIL",
+                "unsupported_claims": ["Unable to verify - parsing error"],
+                "risk_level": "MEDIUM",
+                "cost_aud": result.get("cost_aud", 0),
+            }
+        except Exception as e:
+            logger.error(f"Fact-check failed: {e}")
+            # On error, pass through but log (API call may have failed)
+            return {
+                "verdict": "PASS",
+                "unsupported_claims": [],
+                "risk_level": "LOW",
+                "error": str(e),
+                "cost_aud": 0,
+            }
+
+    # ============================================
+    # ITEM 42: SAFE FALLBACK TEMPLATE
+    # ============================================
+
+    def _generate_safe_fallback(
+        self,
+        lead_context: dict[str, Any],
+        campaign_name: str,
+        sender_name: str = "The Team",
+    ) -> dict[str, str]:
+        """
+        Generate a brand-safe fallback email with NO specific claims.
+
+        Used when:
+        - Fact-check fails twice
+        - AI returns risky/hallucinated content
+        - Content QA flags issues
+
+        Args:
+            lead_context: Lead context dict
+            campaign_name: Campaign name for generic value prop
+            sender_name: Sender name for signature
+
+        Returns:
+            Dict with "subject" and "body" keys
+        """
+        person = lead_context.get("person", {})
+        company = lead_context.get("company", {})
+
+        first_name = person.get("first_name", "there")
+        company_name = company.get("name", "your company")
+
+        # Generic value prop - no specific claims
+        value_prop_generic = "streamline their outreach and book more meetings"
+
+        body = SAFE_FALLBACK_TEMPLATE.format(
+            first_name=first_name,
+            company=company_name,
+            value_prop_generic=value_prop_generic,
+            sender_name=sender_name,
+        )
+
+        # Safe subject line - only uses verified first name
+        subject = f"{first_name}, quick question"
+
+        logger.info(f"Generated safe fallback email for {company_name}")
+
+        return {
+            "subject": subject,
+            "body": body,
+        }
 
     # ============================================
     # DEPRECATED: generate_email_with_sdk
@@ -861,17 +1147,28 @@ Return as JSON with: {{"opening": "...", "value_prop": "...", "cta": "..."}}"""
 **Tone:** {tone}
 {f"**Template Guidance:** {template}" if template else ""}"""
 
+            # Generate priority guidance for the prompt
+            priority_guidance_str = generate_priority_guidance(lead_context)
+
             # Use Smart Email Prompt
             prompt = SMART_EMAIL_PROMPT.format(
                 lead_context=lead_context_str,
                 proof_points=proof_points_str,
                 campaign_context=campaign_context,
+                priority_guidance=priority_guidance_str,
             )
 
-            # System prompt
+            # System prompt (Item 41: Conservative instructions)
             system = """You are an expert B2B sales copywriter. Generate cold emails that feel personal and human.
-Never use generic phrases. Always reference something specific about the lead.
-Return valid JSON only."""
+
+CRITICAL RULES:
+1. ONLY reference facts explicitly provided in the lead context
+2. NEVER assume or invent details about the lead's company, tech stack, or achievements
+3. NEVER claim the lead uses specific products/tools unless explicitly listed
+4. When data is missing, use general language that can't be wrong
+5. It's better to be vague than to state something false
+
+Return valid JSON only with "subject" and "body" keys."""
 
             # Generate content via AI
             result = await self.anthropic.complete(
@@ -891,38 +1188,163 @@ Return valid JSON only."""
                     content = content.split("```")[1].split("```")[0]
 
                 generated = json.loads(content.strip())
+                subject = generated.get("subject", "")
+                body = generated.get("body", "")
+                generation_cost = result["cost_aud"]
+                total_cost = generation_cost
 
+                # ============================================
+                # ITEM 40: FACT-CHECK GATE (Pool Leads)
+                # ============================================
+                fact_check = await self._fact_check_content(
+                    subject=subject,
+                    body=body,
+                    lead_context=lead_context,
+                )
+                total_cost += fact_check.get("cost_aud", 0)
+
+                # HIGH risk = immediate safe fallback
+                if fact_check["verdict"] == "FAIL" and fact_check.get("risk_level") == "HIGH":
+                    logger.warning(
+                        f"Fact-check HIGH risk for pool lead {lead_pool_id}: {fact_check.get('unsupported_claims', [])}"
+                    )
+                    fallback = self._generate_safe_fallback(lead_context, campaign_name)
+                    return EngineResult.ok(
+                        data={
+                            "subject": fallback["subject"],
+                            "body": fallback["body"],
+                            "lead_pool_id": str(lead_pool_id),
+                            "campaign_name": campaign_name,
+                            "personalization_used": ["first_name", "company"],
+                        },
+                        metadata={
+                            "cost_aud": total_cost,
+                            "tone": tone,
+                            "source": "lead_pool",
+                            "safe_fallback": True,
+                            "fact_check_failed": True,
+                        },
+                    )
+
+                # MEDIUM risk = regenerate once
+                if fact_check["verdict"] == "FAIL" and fact_check.get("risk_level") == "MEDIUM":
+                    logger.info(f"Fact-check MEDIUM risk, regenerating for pool lead {lead_pool_id}")
+
+                    retry_prompt = prompt + f"""
+
+## WARNING: Previous attempt had unsupported claims
+The following claims were NOT in the source data - do NOT include them:
+{chr(10).join(f'- {claim}' for claim in fact_check.get('unsupported_claims', []))}
+
+Generate a new email that ONLY uses verified facts from the lead context."""
+
+                    retry_result = await self.anthropic.complete(
+                        prompt=retry_prompt,
+                        system=system,
+                        max_tokens=800,
+                        temperature=0.5,
+                    )
+                    total_cost += retry_result["cost_aud"]
+
+                    # Parse retry result with error handling (G2 fix)
+                    try:
+                        retry_content = retry_result["content"]
+                        if "```json" in retry_content:
+                            retry_content = retry_content.split("```json")[1].split("```")[0]
+                        elif "```" in retry_content:
+                            retry_content = retry_content.split("```")[1].split("```")[0]
+
+                        retry_generated = json.loads(retry_content.strip())
+                        subject = retry_generated.get("subject", "")
+                        body = retry_generated.get("body", "")
+                    except (json.JSONDecodeError, IndexError) as e:
+                        # Retry JSON parsing failed - use safe fallback
+                        logger.warning(f"Retry JSON parse failed for pool lead {lead_pool_id}: {e}")
+                        fallback = self._generate_safe_fallback(lead_context, campaign_name)
+                        return EngineResult.ok(
+                            data={
+                                "subject": fallback["subject"],
+                                "body": fallback["body"],
+                                "lead_pool_id": str(lead_pool_id),
+                                "campaign_name": campaign_name,
+                                "personalization_used": ["first_name", "company"],
+                            },
+                            metadata={
+                                "cost_aud": total_cost,
+                                "tone": tone,
+                                "source": "lead_pool",
+                                "safe_fallback": True,
+                                "fact_check_retried": True,
+                                "retry_json_parse_failed": True,
+                            },
+                        )
+
+                    retry_fact_check = await self._fact_check_content(
+                        subject=subject,
+                        body=body,
+                        lead_context=lead_context,
+                    )
+                    total_cost += retry_fact_check.get("cost_aud", 0)
+
+                    if retry_fact_check["verdict"] == "FAIL":
+                        logger.warning(f"Fact-check failed twice for pool lead {lead_pool_id}")
+                        fallback = self._generate_safe_fallback(lead_context, campaign_name)
+                        return EngineResult.ok(
+                            data={
+                                "subject": fallback["subject"],
+                                "body": fallback["body"],
+                                "lead_pool_id": str(lead_pool_id),
+                                "campaign_name": campaign_name,
+                                "personalization_used": ["first_name", "company"],
+                            },
+                            metadata={
+                                "cost_aud": total_cost,
+                                "tone": tone,
+                                "source": "lead_pool",
+                                "safe_fallback": True,
+                                "fact_check_retried": True,
+                                "fact_check_failed": True,
+                            },
+                        )
+
+                # Fact-check passed
                 return EngineResult.ok(
                     data={
-                        "subject": generated.get("subject", ""),
-                        "body": generated.get("body", ""),
+                        "subject": subject,
+                        "body": body,
                         "lead_pool_id": str(lead_pool_id),
                         "campaign_name": campaign_name,
                         "personalization_used": self._extract_personalization_fields(lead_context),
                     },
                     metadata={
-                        "cost_aud": result["cost_aud"],
+                        "cost_aud": total_cost,
                         "input_tokens": result["input_tokens"],
                         "output_tokens": result["output_tokens"],
                         "tone": tone,
                         "source": "lead_pool",
                         "smart_prompt": True,
                         "has_proof_points": proof_points.get("available", False),
+                        "fact_check_verdict": fact_check["verdict"],
+                        "fact_check_risk": fact_check.get("risk_level", "LOW"),
                     },
                 )
             except json.JSONDecodeError:
+                logger.warning(f"JSON parse failed for pool lead {lead_pool_id}")
+                fallback = self._generate_safe_fallback(lead_context, campaign_name)
                 return EngineResult.ok(
                     data={
-                        "subject": "Personalized message",
-                        "body": result["content"],
+                        "subject": fallback["subject"],
+                        "body": fallback["body"],
                         "lead_pool_id": str(lead_pool_id),
                         "campaign_name": campaign_name,
+                        "personalization_used": ["first_name", "company"],
                     },
                     metadata={
                         "cost_aud": result["cost_aud"],
                         "tone": tone,
-                        "fallback": True,
                         "source": "lead_pool",
+                        "safe_fallback": True,
+                        "json_parse_failed": True,
                     },
                 )
 
@@ -1320,6 +1742,19 @@ def get_content_engine() -> ContentEngine:
 # [x] generate_sms_for_pool for pool leads
 # [x] generate_linkedin_for_pool for pool leads
 # [x] generate_voice_for_pool for pool leads
+# ============================================
+# PHASE H: CONTENT SAFETY (Items 40-42)
+# ============================================
+# [x] Item 40: _fact_check_content() - verifies claims against source data
+# [x] Item 41: Conservative system prompts - ONLY verified facts
+# [x] Item 42: _generate_safe_fallback() - brand-safe template
+# [x] Fact-check integrated into generate_email()
+# [x] Fact-check integrated into generate_email_for_pool()
+# [x] HIGH risk = immediate safe fallback
+# [x] MEDIUM risk = regenerate once, then fallback
+# [x] LOW risk = pass through
+# [x] Cost tracking includes fact-check costs
+# [x] Metadata includes fact_check_verdict and fact_check_risk
 # [x] _get_pool_lead helper for pool data fetch
 # [x] Icebreaker hook integration for personalization
 # [x] All pool methods use campaign_name instead of campaign_id

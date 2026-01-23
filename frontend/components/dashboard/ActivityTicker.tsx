@@ -11,7 +11,7 @@
  * - SMS delivered
  */
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import {
   Mail,
   MessageSquare,
@@ -44,6 +44,7 @@ interface Activity {
 }
 
 interface ActivityTickerProps {
+  /** Real activities from API. If undefined/empty, shows demo data with indicator */
   activities?: Activity[];
   speed?: "slow" | "normal" | "fast";
   direction?: "up" | "down";
@@ -172,15 +173,24 @@ const formatTimestamp = (date: Date): string => {
 };
 
 export function ActivityTicker({
-  activities = mockActivities,
+  activities,
   speed = "normal",
   direction = "up",
   showTimestamp = true,
   maxVisible = 6,
 }: ActivityTickerProps) {
-  const [displayActivities, setDisplayActivities] = useState<Activity[]>(activities);
+  // Determine if we're using demo data (no activities provided or empty array)
+  const isDemo = !activities || activities.length === 0;
+  const effectiveActivities = isDemo ? mockActivities : activities;
+
+  const [displayActivities, setDisplayActivities] = useState<Activity[]>(effectiveActivities);
   const [isPaused, setIsPaused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Update displayActivities when activities prop changes
+  useEffect(() => {
+    setDisplayActivities(effectiveActivities);
+  }, [activities, isDemo]);
 
   // Rotate activities for continuous scrolling effect
   useEffect(() => {
@@ -214,16 +224,29 @@ export function ActivityTicker({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-[#1a1a1f]">
         <div className="flex items-center gap-2">
-          <div className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
-          </div>
-          <span className="text-xs font-medium text-white uppercase tracking-wider">
-            Live Activity
-          </span>
+          {isDemo ? (
+            <>
+              <div className="relative flex h-2 w-2">
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500" />
+              </div>
+              <span className="text-xs font-medium text-yellow-400 uppercase tracking-wider">
+                Demo Mode
+              </span>
+            </>
+          ) : (
+            <>
+              <div className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              </div>
+              <span className="text-xs font-medium text-white uppercase tracking-wider">
+                Live Activity
+              </span>
+            </>
+          )}
         </div>
         <span className="text-[10px] text-gray-500">
-          {activities.length} events
+          {effectiveActivities.length} events{isDemo ? " (sample)" : ""}
         </span>
       </div>
 

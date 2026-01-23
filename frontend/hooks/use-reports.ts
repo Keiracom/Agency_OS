@@ -11,12 +11,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useClient } from "./use-client";
 import {
   getDashboardStats,
+  getDashboardMetrics,
   getActivityFeed,
   getCampaignPerformance,
   getChannelMetrics,
   getALSDistribution,
   getDailyActivity,
+  getContentArchive,
+  getBestOfShowcase,
 } from "@/lib/api/reports";
+import type { ContentArchiveFilters } from "@/lib/api/types";
 
 /**
  * Hook to fetch dashboard statistics
@@ -122,5 +126,52 @@ export function useDailyActivity(params?: {
       }),
     enabled: !!clientId,
     staleTime: 60 * 1000, // 1 minute
+  });
+}
+
+/**
+ * Hook to fetch content archive (paginated, filterable)
+ */
+export function useContentArchive(filters?: ContentArchiveFilters) {
+  const { clientId } = useClient();
+
+  return useQuery({
+    queryKey: ["content-archive", clientId, filters],
+    queryFn: () => getContentArchive(clientId!, filters),
+    enabled: !!clientId,
+    staleTime: 30 * 1000, // 30 seconds
+    refetchOnWindowFocus: false, // Don't refetch on focus (user is browsing)
+  });
+}
+
+/**
+ * Hook to fetch Best Of showcase (high-performing content)
+ */
+export function useBestOfShowcase(params?: { limit?: number; period_days?: number }) {
+  const { clientId } = useClient();
+
+  return useQuery({
+    queryKey: ["best-of-showcase", clientId, params],
+    queryFn: () => getBestOfShowcase(clientId!, params),
+    enabled: !!clientId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - content doesn't change often
+  });
+}
+
+/**
+ * Hook to fetch outcome-focused dashboard metrics
+ *
+ * Returns hero metrics (meetings, show rate), comparison data,
+ * activity proof, and per-campaign summaries.
+ */
+export function useDashboardMetrics() {
+  const { clientId } = useClient();
+
+  return useQuery({
+    queryKey: ["dashboard-metrics", clientId],
+    queryFn: () => getDashboardMetrics(clientId!),
+    enabled: !!clientId,
+    staleTime: 60 * 1000, // 1 minute - metrics should be relatively fresh
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
   });
 }

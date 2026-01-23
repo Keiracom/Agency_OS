@@ -42,6 +42,11 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.sdk_agents import should_use_sdk_email, should_use_sdk_voice_kb
+from src.services.content_qa_service import (
+    validate_email_content,
+    validate_sms_content,
+    validate_linkedin_content,
+)
 from src.engines.allocator import get_allocator_engine
 from src.engines.content import get_content_engine
 from src.engines.email import get_email_engine
@@ -238,6 +243,12 @@ async def jit_validate_outreach_task(
         if client.credits_remaining <= 0:
             raise ValueError(f"Client has no credits remaining")
 
+        # Phase H, Item 43: Client emergency pause check
+        if client.paused_at is not None:
+            raise ValueError(
+                f"Client has emergency pause active since {client.paused_at.isoformat()}"
+            )
+
         # Validate campaign
         stmt_campaign = select(Campaign).where(
             and_(
@@ -253,6 +264,12 @@ async def jit_validate_outreach_task(
 
         if campaign.status != CampaignStatus.ACTIVE:
             raise ValueError(f"Campaign status is {campaign.status.value}")
+
+        # Phase H, Item 43: Campaign pause check
+        if campaign.paused_at is not None:
+            raise ValueError(
+                f"Campaign is paused since {campaign.paused_at.isoformat()}"
+            )
 
         # Validate lead
         stmt_lead = select(Lead).where(
@@ -380,6 +397,26 @@ async def send_email_outreach_task(
                 "error": f"Content generation failed: {content_result.error}",
             }
 
+        # Phase 22: Content QA validation before send
+        qa_result = validate_email_content(
+            subject=content_result.data.get("subject", ""),
+            body=content_result.data.get("body", ""),
+            lead_first_name=lead.first_name,
+            lead_company=lead.company,
+        )
+
+        if not qa_result.passed:
+            logger.warning(
+                f"Email QA failed for lead {lead_id}: {qa_result.error_messages}"
+            )
+            return {
+                "lead_id": lead_id,
+                "channel": "email",
+                "success": False,
+                "error": f"Content QA failed: {'; '.join(qa_result.error_messages)}",
+                "qa_issues": qa_result.to_dict(),
+            }
+
         # Send email
         send_result = await email_engine.send_email(
             db=db,
@@ -459,6 +496,24 @@ async def send_linkedin_outreach_task(
                 "channel": "linkedin",
                 "success": False,
                 "error": f"Content generation failed: {content_result.error}",
+            }
+
+        # Phase 22: Content QA validation before send
+        qa_result = validate_linkedin_content(
+            message=content_result.data.get("message", ""),
+            message_type="connection",
+        )
+
+        if not qa_result.passed:
+            logger.warning(
+                f"LinkedIn QA failed for lead {lead_id}: {qa_result.error_messages}"
+            )
+            return {
+                "lead_id": lead_id,
+                "channel": "linkedin",
+                "success": False,
+                "error": f"Content QA failed: {'; '.join(qa_result.error_messages)}",
+                "qa_issues": qa_result.to_dict(),
             }
 
         # Send connection request via Unipile (migrated from HeyReach)
@@ -555,6 +610,23 @@ async def send_sms_outreach_task(
                 "channel": "sms",
                 "success": False,
                 "error": f"Content generation failed: {content_result.error}",
+            }
+
+        # Phase 22: Content QA validation before send
+        qa_result = validate_sms_content(
+            message=content_result.data.get("message", ""),
+        )
+
+        if not qa_result.passed:
+            logger.warning(
+                f"SMS QA failed for lead {lead_id}: {qa_result.error_messages}"
+            )
+            return {
+                "lead_id": lead_id,
+                "channel": "sms",
+                "success": False,
+                "error": f"Content QA failed: {'; '.join(qa_result.error_messages)}",
+                "qa_issues": qa_result.to_dict(),
             }
 
         # Send SMS

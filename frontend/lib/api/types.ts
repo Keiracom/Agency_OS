@@ -192,9 +192,150 @@ export interface Activity {
   details?: string;
   timestamp?: string;
 
+  // Client activity feed fields (from /clients/{id}/activities)
+  lead_name?: string | null;
+  lead_email?: string | null;
+  lead_company?: string | null;
+  campaign_name?: string | null;
+
   // Joined data (optional)
   lead?: Lead;
   campaign?: Campaign;
+}
+
+// ============================================
+// Content Archive (Phase H - Item 46)
+// ============================================
+
+export interface ArchiveContentItem {
+  id: UUID;
+  channel: string;
+  action: string;
+  timestamp: string;
+  // Lead context
+  lead_id: UUID;
+  lead_name: string | null;
+  lead_email: string | null;
+  lead_company: string | null;
+  // Campaign context
+  campaign_id: UUID;
+  campaign_name: string | null;
+  // Content
+  subject: string | null;
+  content_preview: string | null;
+  full_message_body: string | null;
+  links_included: string[] | null;
+  personalization_fields_used: string[] | null;
+  // Template/AI info
+  template_id: UUID | null;
+  ai_model_used: string | null;
+  // Engagement metrics
+  email_opened: boolean;
+  email_open_count: number;
+  email_clicked: boolean;
+  email_click_count: number;
+  // Sequence context
+  sequence_step: number | null;
+  touch_number: number | null;
+}
+
+export interface ContentArchiveResponse {
+  items: ArchiveContentItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  has_more: boolean;
+}
+
+export interface ContentArchiveFilters {
+  page?: number;
+  page_size?: number;
+  channel?: string;
+  action?: string;
+  campaign_id?: string;
+  search?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+// ============================================
+// Best Of Showcase (Phase H - Item 47)
+// ============================================
+
+export interface BestOfContentItem {
+  id: UUID;
+  channel: string;
+  timestamp: string;
+  // Lead context
+  lead_name: string | null;
+  lead_email: string | null;
+  lead_company: string | null;
+  // Campaign context
+  campaign_name: string | null;
+  // Content
+  subject: string | null;
+  content_preview: string | null;
+  full_message_body: string | null;
+  // Performance metrics
+  email_open_count: number;
+  email_click_count: number;
+  got_reply: boolean;
+  got_conversion: boolean;
+  // Why it's "best"
+  performance_reason: string;
+  performance_score: number;
+}
+
+export interface BestOfShowcaseResponse {
+  items: BestOfContentItem[];
+  total_high_performers: number;
+  period_days: number;
+}
+
+// ============================================
+// Dashboard Metrics (Outcome-Focused)
+// ============================================
+
+export type OnTrackStatus = "ahead" | "on_track" | "behind";
+
+export interface DashboardOutcomes {
+  meetings_booked: number;
+  show_rate: number;
+  meetings_showed: number;
+  deals_created: number;
+  status: OnTrackStatus;
+}
+
+export interface DashboardComparison {
+  meetings_vs_last_month: number;
+  meetings_vs_last_month_pct: number;
+  tier_target_low: number;
+  tier_target_high: number;
+}
+
+export interface DashboardActivityMetrics {
+  prospects_in_pipeline: number;
+  active_sequences: number;
+  replies_this_month: number;
+  reply_rate: number;
+}
+
+export interface DashboardCampaignSummary {
+  id: UUID;
+  name: string;
+  priority_pct: number;
+  meetings_booked: number;
+  reply_rate: number;
+  show_rate: number;
+}
+
+export interface DashboardMetricsResponse {
+  period: string;
+  outcomes: DashboardOutcomes;
+  comparison: DashboardComparison;
+  activity: DashboardActivityMetrics;
+  campaigns: DashboardCampaignSummary[];
 }
 
 // ============================================

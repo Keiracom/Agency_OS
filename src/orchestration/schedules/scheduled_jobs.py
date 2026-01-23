@@ -259,6 +259,30 @@ def get_crm_sync_schedule() -> IntervalSchedule:
     )
 
 
+# ============================================
+# Phase H, Item 44: Daily Digest Schedule
+# ============================================
+
+
+def get_daily_digest_schedule() -> CronSchedule:
+    """
+    Daily digest email at 7 AM AEST.
+
+    Sends digest of previous day's outreach activity to clients.
+    Each client can configure their own send hour in digest_send_hour field.
+    This schedule runs the flow which then processes clients configured for 7 AM.
+
+    Phase H, Item 44: Client transparency - daily content summary.
+
+    Returns:
+        CronSchedule: Daily at 7 AM AEST
+    """
+    return CronSchedule(
+        cron="0 7 * * *",  # 7 AM daily
+        timezone="Australia/Sydney",
+    )
+
+
 # Schedule registry for deployment configuration
 SCHEDULE_REGISTRY: Dict[str, Any] = {
     "enrichment": {
@@ -389,6 +413,16 @@ SCHEDULE_REGISTRY: Dict[str, Any] = {
         "tags": ["crm", "sync", "safety-net", "blind-conversions"],
         "parameters": {
             "since_hours": 24,  # Look back 24 hours for safety
+        },
+    },
+    # Phase H, Item 44: Daily Digest Email
+    "daily_digest": {
+        "schedule": get_daily_digest_schedule(),
+        "description": "Daily digest email at 7 AM AEST - summary of previous day's outreach",
+        "work_queue": "agency-os-queue",
+        "tags": ["digest", "daily", "client-transparency", "email"],
+        "parameters": {
+            "target_hour": 7,  # Process clients configured for 7 AM send time
         },
     },
 }

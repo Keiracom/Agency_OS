@@ -3,6 +3,7 @@
  * PURPOSE: Main dashboard layout wrapper
  * PHASE: 8 (Frontend)
  * TASK: FE-004
+ * UPDATED: Phase H Item 43 - Added pause status support
  */
 
 import { Sidebar } from "./sidebar";
@@ -16,9 +17,13 @@ interface DashboardLayoutProps {
     avatarUrl?: string;
   };
   client?: {
+    id: string;
     name: string;
     tier: string;
     creditsRemaining: number;
+    // Phase H, Item 43: Emergency pause status
+    pausedAt?: string | null;
+    pauseReason?: string | null;
   };
 }
 

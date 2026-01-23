@@ -3,10 +3,12 @@
  * PURPOSE: Dashboard header with user menu
  * PHASE: 8 (Frontend)
  * TASK: FE-004
+ * UPDATED: Phase H Item 43 - Added EmergencyPauseButton
  */
 
 "use client";
 
+import { useState } from "react";
 import { Bell, Search, LogOut, User, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +26,7 @@ import { createBrowserClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { getInitials, getAvatarColor } from "@/lib/utils";
 import { CreditsBadge } from "./credits-badge";
+import { EmergencyPauseButton } from "@/components/dashboard/EmergencyPauseButton";
 
 interface HeaderProps {
   user?: {
@@ -32,15 +35,22 @@ interface HeaderProps {
     avatarUrl?: string;
   };
   client?: {
+    id: string;
     name: string;
     tier: string;
     creditsRemaining: number;
+    // Phase H, Item 43: Emergency pause status
+    pausedAt?: string | null;
+    pauseReason?: string | null;
   };
 }
 
 export function Header({ user, client }: HeaderProps) {
   const router = useRouter();
   const supabase = createBrowserClient();
+
+  // Phase H, Item 43: Track pause state locally for immediate UI updates
+  const [isPaused, setIsPaused] = useState(!!client?.pausedAt);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -65,6 +75,17 @@ export function Header({ user, client }: HeaderProps) {
 
       {/* Right side */}
       <div className="flex items-center gap-4">
+        {/* Phase H, Item 43: Emergency Pause Button */}
+        {client?.id && (
+          <EmergencyPauseButton
+            clientId={client.id}
+            isPaused={isPaused}
+            pausedAt={client.pausedAt}
+            pauseReason={client.pauseReason}
+            onPauseChange={setIsPaused}
+          />
+        )}
+
         {/* Credits Badge */}
         <div className="hidden md:block">
           <CreditsBadge />

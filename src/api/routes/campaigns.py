@@ -19,10 +19,14 @@ from datetime import date, datetime, time
 from typing import Annotated, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
+import logging
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from src.api.dependencies import (
     ClientContext,
@@ -38,6 +42,7 @@ from src.exceptions import (
 )
 from src.models.base import CampaignStatus, ChannelType, PermissionMode
 from src.models.campaign import Campaign, CampaignResource, CampaignSequence
+from src.models.client import Client
 
 router = APIRouter(tags=["campaigns"])
 
@@ -753,7 +758,11 @@ async def pause_campaign(
             field="status",
         )
 
+    # G1 Fix: Set pause tracking fields
     campaign.status = CampaignStatus.PAUSED
+    campaign.paused_at = datetime.utcnow()
+    campaign.paused_by_user_id = ctx.user_id
+
     await db.flush()
     await db.refresh(campaign)
 
@@ -761,6 +770,179 @@ async def pause_campaign(
     response.reply_rate = campaign.reply_rate
     response.conversion_rate = campaign.conversion_rate
     return response
+
+
+# ============================================
+# Phase H, Item 43: Emergency Pause Endpoints
+# ============================================
+
+
+class EmergencyPauseRequest(BaseModel):
+    """Request body for emergency pause."""
+    reason: Optional[str] = Field(None, max_length=500)
+
+
+class EmergencyPauseResponse(BaseModel):
+    """Response for emergency pause operations."""
+    paused: bool
+    paused_at: Optional[datetime] = None
+    pause_reason: Optional[str] = None
+    campaigns_affected: int = 0
+
+
+@router.post(
+    "/clients/{client_id}/pause-all",
+    response_model=EmergencyPauseResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def emergency_pause_all(
+    client_id: UUID,
+    request: EmergencyPauseRequest,
+    ctx: Annotated[ClientContext, Depends(get_current_client)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> EmergencyPauseResponse:
+    """
+    Emergency pause ALL outreach for a client.
+
+    This is the "big red button" that immediately stops all automated
+    outreach. The JIT validation in outreach_flow.py checks this field
+    and blocks any sends while paused.
+
+    Args:
+        client_id: Client UUID
+        request: Pause reason (optional)
+        ctx: Client context (auth)
+        db: Database session
+
+    Returns:
+        EmergencyPauseResponse with pause status and campaigns affected
+    """
+    # Get client
+    stmt = select(Client).where(
+        and_(
+            Client.id == client_id,
+            Client.deleted_at.is_(None),
+        )
+    )
+    result = await db.execute(stmt)
+    client = result.scalar_one_or_none()
+
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    # Already paused?
+    if client.paused_at is not None:
+        return EmergencyPauseResponse(
+            paused=True,
+            paused_at=client.paused_at,
+            pause_reason=client.pause_reason,
+            campaigns_affected=0,
+        )
+
+    # Set emergency pause
+    now = datetime.utcnow()
+    client.paused_at = now
+    client.pause_reason = request.reason
+    client.paused_by_user_id = ctx.user_id
+
+    # Also pause all active campaigns for this client
+    stmt_campaigns = (
+        select(Campaign)
+        .where(
+            and_(
+                Campaign.client_id == client_id,
+                Campaign.status == CampaignStatus.ACTIVE,
+                Campaign.deleted_at.is_(None),
+            )
+        )
+    )
+    result = await db.execute(stmt_campaigns)
+    active_campaigns = result.scalars().all()
+
+    campaigns_affected = 0
+    for campaign in active_campaigns:
+        campaign.status = CampaignStatus.PAUSED
+        campaign.paused_at = now
+        campaign.pause_reason = f"Emergency pause: {request.reason or 'No reason given'}"
+        campaign.paused_by_user_id = ctx.user_id
+        campaigns_affected += 1
+
+    await db.flush()
+
+    logger.info(
+        f"Emergency pause activated for client {client_id}, "
+        f"{campaigns_affected} campaigns paused"
+    )
+
+    return EmergencyPauseResponse(
+        paused=True,
+        paused_at=now,
+        pause_reason=request.reason,
+        campaigns_affected=campaigns_affected,
+    )
+
+
+@router.post(
+    "/clients/{client_id}/resume-all",
+    response_model=EmergencyPauseResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def resume_all_outreach(
+    client_id: UUID,
+    ctx: Annotated[ClientContext, Depends(get_current_client)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> EmergencyPauseResponse:
+    """
+    Resume all outreach after emergency pause.
+
+    Clears the client-level pause. Campaigns remain paused and must
+    be individually reactivated if desired.
+
+    Args:
+        client_id: Client UUID
+        ctx: Client context (auth)
+        db: Database session
+
+    Returns:
+        EmergencyPauseResponse with resume confirmation
+    """
+    # Get client
+    stmt = select(Client).where(
+        and_(
+            Client.id == client_id,
+            Client.deleted_at.is_(None),
+        )
+    )
+    result = await db.execute(stmt)
+    client = result.scalar_one_or_none()
+
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    # Not paused?
+    if client.paused_at is None:
+        return EmergencyPauseResponse(
+            paused=False,
+            paused_at=None,
+            pause_reason=None,
+            campaigns_affected=0,
+        )
+
+    # Clear emergency pause
+    client.paused_at = None
+    client.pause_reason = None
+    client.paused_by_user_id = None
+
+    await db.flush()
+
+    logger.info(f"Emergency pause cleared for client {client_id}")
+
+    return EmergencyPauseResponse(
+        paused=False,
+        paused_at=None,
+        pause_reason=None,
+        campaigns_affected=0,
+    )
 
 
 # ============================================

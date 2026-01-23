@@ -25,8 +25,9 @@ from sqlalchemy import (
     String,
     Text,
     Time,
+    TIMESTAMP,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, ENUM, UUID as PGUUID
+from sqlalchemy.dialects.postgresql import ARRAY, ENUM, UUID as UUID_DB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import (
@@ -64,13 +65,13 @@ class Campaign(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
 
     # Foreign keys
     client_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
+        UUID_DB(as_uuid=True),
         ForeignKey("clients.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     created_by: Mapped[Optional[UUID]] = mapped_column(
-        PGUUID(as_uuid=True),
+        UUID_DB(as_uuid=True),
         ForeignKey("users.id"),
         nullable=True,
     )
@@ -82,6 +83,18 @@ class Campaign(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         ENUM(CampaignStatus, name="campaign_status", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         default=CampaignStatus.DRAFT,
+    )
+
+    # Pause tracking (Phase H, Item 43)
+    paused_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+    )
+    pause_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    paused_by_user_id: Mapped[Optional[UUID]] = mapped_column(
+        UUID_DB(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=True,
     )
 
     # Campaign type and lead allocation (Phase 37)
@@ -303,7 +316,7 @@ class CampaignResource(Base, UUIDMixin, TimestampMixin):
 
     # Foreign keys
     campaign_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
+        UUID_DB(as_uuid=True),
         ForeignKey("campaigns.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -361,7 +374,7 @@ class CampaignSequence(Base, UUIDMixin, TimestampMixin):
 
     # Foreign keys
     campaign_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
+        UUID_DB(as_uuid=True),
         ForeignKey("campaigns.id", ondelete="CASCADE"),
         nullable=False,
         index=True,

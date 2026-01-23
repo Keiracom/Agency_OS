@@ -1,7 +1,7 @@
 # PROGRESS.md — Agency OS Roadmap & Status
 
-**Last Updated:** January 20, 2026
-**Current Phase:** 21 (E2E Testing)
+**Last Updated:** January 23, 2026
+**Current Phase:** 21 (E2E Testing) + Phase H (Client Transparency)
 **Next Milestone:** Complete E2E journeys J1-J6 live
 
 ---
@@ -31,6 +31,7 @@
 | 22 | Marketing Automation | 📋 | `docs/phases/PHASE_22_MARKETING_AUTO.md` |
 | 23 | Platform Intelligence | 📋 | `docs/phases/PHASE_23_PLATFORM_INTEL.md` |
 | 24 | CIS Data Architecture | ✅ | `docs/phases/PHASE_24_LEAD_POOL.md` |
+| H | Client Transparency | 🟡 | `docs/architecture/TODO.md` (Items 40-47) |
 
 **Legend:** ✅ Complete | 🟡 In Progress | 📋 Planned | 🔴 Blocked
 
@@ -268,6 +269,68 @@ PREFECT_API_URL=https://prefect-server-production-f9b1.up.railway.app/api
 
 ---
 
+## PHASE H STATUS (Client Transparency) 🟡
+
+**Goal:** Prevent AI hallucination in outreach, give clients visibility and control
+
+### Content Safety (Items 40-42) ✅
+
+| Item | Description | Status | Notes |
+|------|-------------|--------|-------|
+| 40 | Claude fact-check gate | ✅ | `_fact_check_content()` in content.py |
+| 41 | Conservative prompt | ✅ | SMART_EMAIL_PROMPT updated with "VERIFIED FACTS ONLY" |
+| 42 | Safe fallback template | ✅ | `SAFE_FALLBACK_TEMPLATE` + `_generate_safe_fallback()` |
+
+**Implementation:**
+- Fact-check gate verifies all claims against source data
+- Risk levels: HIGH → immediate fallback, MEDIUM → retry once, LOW → pass
+- Safe fallback template uses generic language with no specific claims
+- Updated prompts in `src/engines/smart_prompts.py`
+
+### Emergency Pause (Item 43) ✅
+
+| Item | Description | Status | Notes |
+|------|-------------|--------|-------|
+| 43 | Emergency pause button | ✅ | Client & campaign level pause |
+
+**Implementation:**
+- Migration 050: Added `paused_at`, `pause_reason`, `paused_by_user_id` to campaigns and clients
+- JIT validation in `outreach_flow.py` blocks outreach when paused
+- API endpoints: `/clients/{id}/pause-all`, `/clients/{id}/resume-all`
+- Frontend: `EmergencyPauseButton.tsx` in dashboard header
+
+**Files Changed:**
+- `supabase/migrations/050_emergency_pause.sql`
+- `src/models/campaign.py`, `src/models/client.py`
+- `src/orchestration/flows/outreach_flow.py`
+- `src/api/routes/campaigns.py`
+- `frontend/components/dashboard/EmergencyPauseButton.tsx`
+- `frontend/components/layout/header.tsx`
+- `frontend/app/dashboard/layout.tsx`
+
+### Daily Digest Email (Item 44) ✅
+
+| Item | Description | Status | Notes |
+|------|-------------|--------|-------|
+| 44 | Daily digest email | ✅ | DigestService + daily_digest_flow + migration 051 |
+
+**Implementation:**
+- Migration 051: digest preferences on clients + digest_logs table
+- DigestService: metrics aggregation, HTML template, recipient management
+- daily_digest_flow: 7 AM AEST schedule, processes all eligible clients
+- send_transactional(): New email engine method for non-outreach emails
+- API: GET/PATCH /digest/settings, GET /digest/preview, GET /digest/history
+
+### Remaining Items (45-47) 🔴
+
+| Item | Description | Priority | Status |
+|------|-------------|----------|--------|
+| 45 | Live activity feed | P2 | 🔴 Not Started |
+| 46 | Content archive | P2 | 🔴 Not Started |
+| 47 | Best of showcase | P3 | 🔴 Not Started |
+
+---
+
 ## AUTOMATED DISTRIBUTION (Phase 25)
 
 **Principle:** Agency OS is AUTOMATED. Users configure WHAT, system controls HOW.
@@ -343,6 +406,14 @@ Before first paying customer:
 ## RECENT SESSIONS
 
 > Full history: `docs/progress/SESSION_LOG.md`
+
+### Jan 23, 2026
+- Phase H (Client Transparency) Items 40-44 implemented
+- Content safety: fact-check gate, conservative prompts, safe fallback templates
+- Emergency pause: client/campaign level pause with JIT validation
+- Frontend EmergencyPauseButton integrated in dashboard header
+- Migration 050 for pause tracking fields
+- Daily Digest Email: DigestService, daily_digest_flow, migration 051, 4 API endpoints
 
 ### Jan 11, 2026
 - Replaced Resend with Salesforge as primary email provider

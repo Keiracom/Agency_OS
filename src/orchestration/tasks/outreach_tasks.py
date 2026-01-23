@@ -33,6 +33,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.sdk_agents import should_use_sdk_voice_kb
+from src.services.content_qa_service import validate_voice_script
 from src.engines.content import ContentEngine
 from src.engines.email import EmailEngine
 from src.engines.linkedin import LinkedInEngine
@@ -516,6 +517,21 @@ async def send_voice_task(
                 logger.info(f"SDK voice KB generated for lead {lead_id}, script enhanced")
             else:
                 logger.warning(f"SDK voice KB failed for {lead_id}, using standard script")
+
+        # === PHASE 22: CONTENT QA VALIDATION ===
+        qa_result = validate_voice_script(
+            script=enhanced_script,
+            lead_first_name=lead.first_name,
+        )
+
+        if not qa_result.passed:
+            logger.warning(
+                f"Voice QA failed for lead {lead_id}: {qa_result.error_messages}"
+            )
+            raise ValidationError(
+                message=f"Content QA failed: {'; '.join(qa_result.error_messages)}",
+                field="voice_script",
+            )
 
         # === INITIATE VOICE CALL ===
         logger.info(f"Initiating voice call to lead {lead_id} (campaign {campaign.id}, SDK: {sdk_used})")

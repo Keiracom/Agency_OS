@@ -16,8 +16,8 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import Integer, String, Text, JSON
-from sqlalchemy.dialects.postgresql import ARRAY, ENUM
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, JSON, TIMESTAMP
+from sqlalchemy.dialects.postgresql import ARRAY, ENUM, UUID as UUID_DB, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import (
@@ -33,6 +33,7 @@ from src.models.base import (
 if TYPE_CHECKING:
     from src.models.campaign import Campaign
     from src.models.client_persona import ClientPersona
+    from src.models.digest_log import DigestLog
     from src.models.lead import Lead
     from src.models.lead_pool import LeadPool
     from src.models.linkedin_credential import LinkedInCredential
@@ -73,6 +74,50 @@ class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         default=1250,
     )
     credits_reset_at: Mapped[Optional[datetime]] = mapped_column(
+        nullable=True,
+    )
+
+    # Emergency pause (Phase H, Item 43)
+    # When paused_at is set, ALL outreach for this client stops
+    paused_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+    )
+    pause_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    paused_by_user_id: Mapped[Optional[UUID]] = mapped_column(
+        UUID_DB(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=True,
+    )
+
+    # Digest preferences (Phase H, Item 44)
+    digest_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+    )
+    digest_frequency: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        default="daily",
+    )
+    digest_send_hour: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=7,
+    )
+    digest_timezone: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        default="Australia/Sydney",
+    )
+    digest_recipients: Mapped[Optional[list]] = mapped_column(
+        JSONB,
+        nullable=True,
+        default=list,
+    )
+    last_digest_sent_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
         nullable=True,
     )
 
@@ -169,6 +214,11 @@ class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     )
     campaign_suggestions: Mapped[list["CampaignSuggestion"]] = relationship(
         "CampaignSuggestion",
+        back_populates="client",
+        lazy="selectin",
+    )
+    digest_logs: Mapped[list["DigestLog"]] = relationship(
+        "DigestLog",
         back_populates="client",
         lazy="selectin",
     )

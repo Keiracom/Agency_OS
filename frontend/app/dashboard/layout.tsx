@@ -47,14 +47,35 @@ export default async function DashboardRootLayout({
     avatarUrl: user.user_metadata?.avatar_url,
   };
 
-  const clientData = activeMembership?.client ? {
+  // Fetch client data including credits and pause status (Phase H, Item 43)
+  let creditsRemaining = 0;
+  let pausedAt: string | null = null;
+  let pauseReason: string | null = null;
+
+  if (activeMembership?.client?.id) {
+    const { data: clientData } = await supabase
+      .from("clients")
+      .select("credits_remaining, paused_at, pause_reason")
+      .eq("id", activeMembership.client.id)
+      .single() as { data: { credits_remaining: number; paused_at: string | null; pause_reason: string | null } | null };
+
+    creditsRemaining = clientData?.credits_remaining ?? 0;
+    pausedAt = clientData?.paused_at ?? null;
+    pauseReason = clientData?.pause_reason ?? null;
+  }
+
+  const clientDataForLayout = activeMembership?.client ? {
+    id: activeMembership.client.id,
     name: activeMembership.client.name,
     tier: activeMembership.client.tier,
-    creditsRemaining: 1250, // Would come from client data
+    creditsRemaining: creditsRemaining,
+    // Phase H, Item 43: Emergency pause status
+    pausedAt: pausedAt,
+    pauseReason: pauseReason,
   } : undefined;
 
   return (
-    <DashboardLayout user={userData} client={clientData}>
+    <DashboardLayout user={userData} client={clientDataForLayout}>
       {children}
     </DashboardLayout>
   );

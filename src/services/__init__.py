@@ -46,6 +46,15 @@ Phase E additions:
 
 Phase 16 additions (Reply Handling):
 - ResponseTimingService: Calculate response delays and schedule reply sending
+
+Phase 19 additions (ICP Refinement from CIS):
+- WhoRefinementService: Apply WHO conversion patterns to refine Apollo search criteria
+
+Phase 22 additions (Content QA):
+- ContentQAService: Pre-send content quality validation (placeholders, length, spam)
+
+Phase H additions (Client Transparency):
+- DigestService: Daily digest email generation and delivery (Item 44)
 """
 from src.services.buyer_signal_service import BuyerSignalService, BuyerSignal, BuyerScoreBoost
 from src.services.domain_health_service import (
@@ -104,6 +113,24 @@ from src.services.response_timing_service import (
     OUTSIDE_HOURS_DELAY_MIN,
     OUTSIDE_HOURS_DELAY_MAX,
 )
+from src.services.who_refinement_service import (
+    WhoRefinementService,
+    get_who_refined_criteria,
+    MIN_CONFIDENCE_THRESHOLD,
+)
+from src.services.content_qa_service import (
+    ContentQAService,
+    QAResult,
+    QAStatus,
+    QAIssue,
+    ContentChannel,
+    get_content_qa_service,
+    validate_email_content,
+    validate_sms_content,
+    validate_linkedin_content,
+    validate_voice_script,
+)
+from src.services.digest_service import DigestService
 
 __all__ = [
     "LeadPoolService",
@@ -168,4 +195,21 @@ __all__ = [
     "BUSINESS_HOURS_DELAY_MAX",
     "OUTSIDE_HOURS_DELAY_MIN",
     "OUTSIDE_HOURS_DELAY_MAX",
+    # Phase 19 - ICP Refinement from CIS
+    "WhoRefinementService",
+    "get_who_refined_criteria",
+    "MIN_CONFIDENCE_THRESHOLD",
+    # Phase 22 - Content QA
+    "ContentQAService",
+    "QAResult",
+    "QAStatus",
+    "QAIssue",
+    "ContentChannel",
+    "get_content_qa_service",
+    "validate_email_content",
+    "validate_sms_content",
+    "validate_linkedin_content",
+    "validate_voice_script",
+    # Phase H - Daily Digest
+    "DigestService",
 ]

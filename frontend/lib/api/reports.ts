@@ -8,12 +8,16 @@
 import api from "./index";
 import type {
   DashboardStats,
+  DashboardMetricsResponse,
   CampaignPerformance,
   ChannelMetrics,
   ALSDistribution,
   Activity,
   DailyActivity,
   ALSTier,
+  ContentArchiveResponse,
+  ContentArchiveFilters,
+  BestOfShowcaseResponse,
 } from "./types";
 
 // ============================================
@@ -84,22 +88,45 @@ interface BackendDailyActivity {
 // ============================================
 
 /**
+ * Backend response for client endpoint (includes credits_remaining)
+ */
+interface BackendClientResponse {
+  id: string;
+  name: string;
+  tier: string;
+  subscription_status: string;
+  credits_remaining: number;
+  // ... other fields
+}
+
+/**
  * Get dashboard statistics for a client
  */
 export async function getDashboardStats(clientId: string): Promise<DashboardStats> {
   try {
-    const response = await api.get<BackendClientMetrics>(`/api/v1/reports/clients/${clientId}`);
+    // Fetch both metrics and client data in parallel for credits_remaining
+    const [metricsResponse, clientResponse] = await Promise.all([
+      api.get<BackendClientMetrics>(`/api/v1/reports/clients/${clientId}`),
+      api.get<BackendClientResponse>(`/api/v1/clients/${clientId}`).catch(() => null),
+    ]);
+
+    // Get credits from client endpoint (where it actually lives)
+    const creditsRemaining = clientResponse?.credits_remaining ?? 0;
 
     // Transform BackendClientMetrics → DashboardStats
+    // NOTE: leads_contacted should ideally count distinct leads with at least one
+    // "sent" activity. Currently using total_leads as proxy since backend reporter
+    // engine doesn't track contacted separately. Backend work needed to add
+    // leads_contacted to ClientMetricsResponse or calculate from activities.
     return {
-      total_leads: response.total_leads ?? 0,
-      leads_contacted: response.total_leads ?? 0, // TODO: wire to backend - needs separate field
-      leads_replied: response.total_replies ?? 0,
-      leads_converted: response.total_conversions ?? 0,
-      active_campaigns: response.active_campaigns ?? 0,
-      credits_remaining: 2250, // TODO: wire to backend - needs client credits endpoint
-      reply_rate: response.overall_reply_rate ?? 0,
-      conversion_rate: response.overall_conversion_rate ?? 0,
+      total_leads: metricsResponse.total_leads ?? 0,
+      leads_contacted: metricsResponse.total_leads ?? 0, // TODO: Backend needs leads_contacted field - count distinct leads with sent activities
+      leads_replied: metricsResponse.total_replies ?? 0,
+      leads_converted: metricsResponse.total_conversions ?? 0,
+      active_campaigns: metricsResponse.active_campaigns ?? 0,
+      credits_remaining: creditsRemaining,
+      reply_rate: metricsResponse.overall_reply_rate ?? 0,
+      conversion_rate: metricsResponse.overall_conversion_rate ?? 0,
     };
   } catch (error) {
     console.error("[getDashboardStats] Failed to fetch dashboard stats:", error);
@@ -117,18 +144,114 @@ export async function getDashboardStats(clientId: string): Promise<DashboardStat
   }
 }
 
+// ============================================
+// Client Activities Response Types
+// ============================================
+
+interface BackendClientActivityItem {
+  id: string;
+  channel: string;
+  action: string;
+  timestamp: string;
+  lead_name: string | null;
+  lead_email: string | null;
+  lead_company: string | null;
+  campaign_name: string | null;
+  subject: string | null;
+  content_preview: string | null;
+  intent: string | null;
+}
+
+interface BackendClientActivitiesResponse {
+  items: BackendClientActivityItem[];
+  total: number;
+  has_more: boolean;
+}
+
 /**
- * Get recent activity feed
+ * Get recent activity feed for a client
  */
 export async function getActivityFeed(
   clientId: string,
-  params?: { limit?: number }
+  params?: { limit?: number; offset?: number; channel?: string; action?: string }
 ): Promise<Activity[]> {
-  // TODO: wire to backend - endpoint /api/v1/clients/{client_id}/activities does not exist yet
-  console.warn("[getActivityFeed] Endpoint not implemented, returning empty array");
-  void clientId; // Acknowledge unused param
-  void params;
-  return [];
+  try {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set("limit", params.limit.toString());
+    if (params?.offset) searchParams.set("offset", params.offset.toString());
+    if (params?.channel) searchParams.set("channel", params.channel);
+    if (params?.action) searchParams.set("action", params.action);
+
+    const queryString = searchParams.toString();
+    const url = `/api/v1/reports/clients/${clientId}/activities${queryString ? `?${queryString}` : ""}`;
+
+    const response = await api.get<BackendClientActivitiesResponse>(url);
+
+    // Transform backend response to Activity type
+    return response.items.map((item): Activity => ({
+      id: item.id,
+      client_id: clientId,
+      campaign_id: "", // Not returned by this endpoint
+      lead_id: "", // Not returned by this endpoint
+      channel: item.channel as Activity["channel"],
+      action: item.action,
+      provider_message_id: null,
+      metadata: {},
+      created_at: item.timestamp,
+      timestamp: item.timestamp,
+      subject: item.subject,
+      content_preview: item.content_preview,
+      intent: item.intent,
+      lead_name: item.lead_name,
+      lead_email: item.lead_email,
+      lead_company: item.lead_company,
+      campaign_name: item.campaign_name,
+    }));
+  } catch (error) {
+    console.error("[getActivityFeed] Failed to fetch activity feed:", error);
+    return [];
+  }
+}
+
+// ============================================
+// Content Archive API (Phase H - Item 46)
+// ============================================
+
+/**
+ * Get paginated content archive for a client
+ */
+export async function getContentArchive(
+  clientId: string,
+  filters?: ContentArchiveFilters
+): Promise<ContentArchiveResponse> {
+  try {
+    const searchParams = new URLSearchParams();
+
+    if (filters?.page) searchParams.set("page", filters.page.toString());
+    if (filters?.page_size) searchParams.set("page_size", filters.page_size.toString());
+    if (filters?.channel) searchParams.set("channel", filters.channel);
+    if (filters?.action) searchParams.set("action", filters.action);
+    if (filters?.campaign_id) searchParams.set("campaign_id", filters.campaign_id);
+    if (filters?.search) searchParams.set("search", filters.search);
+    if (filters?.start_date) searchParams.set("start_date", filters.start_date);
+    if (filters?.end_date) searchParams.set("end_date", filters.end_date);
+
+    const queryString = searchParams.toString();
+    const url = `/api/v1/reports/clients/${clientId}/archive/content${queryString ? `?${queryString}` : ""}`;
+
+    const response = await api.get<ContentArchiveResponse>(url);
+    return response;
+  } catch (error) {
+    console.error("[getContentArchive] Failed to fetch content archive:", error);
+    return {
+      items: [],
+      total: 0,
+      page: 1,
+      page_size: 20,
+      total_pages: 0,
+      has_more: false,
+    };
+  }
 }
 
 /**
@@ -223,5 +346,85 @@ export async function getDailyActivity(
   } catch (error) {
     console.error("[getDailyActivity] Failed to fetch daily activity:", error);
     return [];
+  }
+}
+
+// ============================================
+// Best Of Showcase API (Phase H - Item 47)
+// ============================================
+
+/**
+ * Get high-performing content for Best Of showcase
+ */
+export async function getBestOfShowcase(
+  clientId: string,
+  params?: { limit?: number; period_days?: number }
+): Promise<BestOfShowcaseResponse> {
+  try {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set("limit", params.limit.toString());
+    if (params?.period_days) searchParams.set("period_days", params.period_days.toString());
+
+    const queryString = searchParams.toString();
+    const url = `/api/v1/reports/clients/${clientId}/best-of${queryString ? `?${queryString}` : ""}`;
+
+    const response = await api.get<BestOfShowcaseResponse>(url);
+    return response;
+  } catch (error) {
+    console.error("[getBestOfShowcase] Failed to fetch best of showcase:", error);
+    return {
+      items: [],
+      total_high_performers: 0,
+      period_days: 30,
+    };
+  }
+}
+
+// ============================================
+// Dashboard Metrics API (Outcome-Focused)
+// ============================================
+
+/**
+ * Get outcome-focused dashboard metrics for a client
+ *
+ * Returns hero metrics (meetings, show rate), comparison data,
+ * activity proof, and per-campaign summaries.
+ *
+ * NOTE: This endpoint intentionally excludes commodity metrics.
+ */
+export async function getDashboardMetrics(
+  clientId: string
+): Promise<DashboardMetricsResponse> {
+  try {
+    const response = await api.get<DashboardMetricsResponse>(
+      `/api/v1/reports/clients/${clientId}/dashboard-metrics`
+    );
+    return response;
+  } catch (error) {
+    console.error("[getDashboardMetrics] Failed to fetch dashboard metrics:", error);
+    // Return safe defaults on error
+    return {
+      period: new Date().toISOString().slice(0, 7), // "YYYY-MM"
+      outcomes: {
+        meetings_booked: 0,
+        show_rate: 0,
+        meetings_showed: 0,
+        deals_created: 0,
+        status: "on_track",
+      },
+      comparison: {
+        meetings_vs_last_month: 0,
+        meetings_vs_last_month_pct: 0,
+        tier_target_low: 5,
+        tier_target_high: 15,
+      },
+      activity: {
+        prospects_in_pipeline: 0,
+        active_sequences: 0,
+        replies_this_month: 0,
+        reply_rate: 0,
+      },
+      campaigns: [],
+    };
   }
 }

@@ -16,6 +16,15 @@
 | [AUTOMATION_DEFAULTS.md](AUTOMATION_DEFAULTS.md) | Default sequences, timing | ✅ Complete |
 | [REPLY_HANDLING.md](REPLY_HANDLING.md) | Intent classification, responses | 🟡 Spec only |
 
+### Client Transparency (Phase H)
+
+| Feature | Purpose | Status |
+|---------|---------|--------|
+| Daily Digest | Email summary of outreach activity | ✅ Implemented |
+| Live Activity Feed | Real-time outreach stream | 🔴 Pending |
+| Content Archive | Searchable sent content | 🔴 Pending |
+| Best Of Showcase | High-performing examples | 🔴 Pending |
+
 ---
 
 ## Flow Sequence

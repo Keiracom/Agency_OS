@@ -1,0 +1,93 @@
+Category,Line Item,Unit,Current Model Qty,Current Unit Cost (AUD),Current Total (AUD),SDK Model Qty,SDK Unit Cost (AUD),SDK Total (AUD),Notes,Source
+,,,,,,,,,,
+HEADER,VELOCITY TIER - 2250 LEADS/MONTH,,,,,,,,All costs AUD - Worst Case Conservative,
+,,,,,,,,,,
+DATA ENRICHMENT,Hunter.io (Cold/Cool 65%),per lead,1463,0.036,52.65,1463,0.036,52.65,Tier 1 waterfall - $0.023 USD × 1.55,https://hunter.io/pricing
+DATA ENRICHMENT,Clay Waterfall (Warm 25%),per lead,563,0.39,219.38,563,0.39,219.38,8 credits × $0.077/credit worst case,https://www.clay.com/pricing
+DATA ENRICHMENT,Clay Waterfall (Hot 10%),per lead,225,0.77,173.25,225,0.77,173.25,15 credits × $0.077/credit worst case,https://www.clay.com/pricing
+DATA ENRICHMENT,Apollo Fallback (10% of leads),per lead,225,0.31,69.75,225,0.31,69.75,$0.20 USD × 1.55 - mobile numbers,https://docs.apollo.io/docs/api-pricing
+DATA ENRICHMENT,Apify LinkedIn Scrape,per 1000 profiles,2.25,4.65,10.46,2.25,4.65,10.46,$3 USD per 1000 × 1.55,https://apify.com/supreme_coder/linkedin-profile-scraper
+DATA ENRICHMENT,SUBTOTAL,,,,"525.50",,,,"525.50",,
+,,,,,,,,,,
+SDK BRAIN - ENRICHMENT,Claude API - Hot Lead Deep Research (15% cap),per lead,0,0,0,338,1.21,408.58,"$0.78 USD × 1.55 - 2000 tokens in, 3000 out avg",https://www.anthropic.com/pricing
+SDK BRAIN - ENRICHMENT,SUBTOTAL,,,,0,,,408.58,,
+,,,,,,,,,,
+EMAIL INFRASTRUCTURE,Salesforge Pro Plan,per month,1,74.40,74.40,1,74.40,74.40,$48 USD × 1.55,https://www.salesforge.ai/pricing
+EMAIL INFRASTRUCTURE,Mailforge Mailboxes (5 mailboxes),per mailbox,5,6.20,31.00,5,6.20,31.00,$4 USD × 1.55 worst case,https://www.mailforge.ai/pricing
+EMAIL INFRASTRUCTURE,Warmforge Warmup (5 mailboxes),per mailbox,5,18.60,93.00,5,18.60,93.00,$12 USD × 1.55 worst case,https://www.salesforge.ai/directory/sales-tools/warmforge
+EMAIL INFRASTRUCTURE,Domain Costs (5 domains),per domain,5,2.00,10.00,5,2.00,10.00,Approx domain cost,Estimate
+EMAIL INFRASTRUCTURE,SUBTOTAL,,,,"208.40",,,,"208.40",,
+,,,,,,,,,,
+SDK BRAIN - EMAIL,Claude API - Email Writing (Hot leads),per email,0,0,0,338,0.25,84.38,"$0.16 USD × 1.55 - personalized emails for hot",https://www.anthropic.com/pricing
+SDK BRAIN - EMAIL,Claude API - Response Classification,per reply,0,0,0,169,0.12,20.81,"$0.08 USD × 1.55 - 7.5% reply rate on 2250",https://www.anthropic.com/pricing
+SDK BRAIN - EMAIL,Claude API - Objection Handling,per objection,0,0,0,51,0.25,12.66,"$0.16 USD × 1.55 - 30% of replies are objections",https://www.anthropic.com/pricing
+SDK BRAIN - EMAIL,SUBTOTAL,,,,0,,,117.85,,
+,,,,,,,,,,
+LINKEDIN AUTOMATION,Unipile Base Plan (up to 10 accounts),per month,1,83.79,83.79,1,83.79,83.79,€49 × 1.71 AUD/EUR,https://www.unipile.com/pricing-api/
+LINKEDIN AUTOMATION,Unipile Additional Accounts (if >10),per account,0,8.55,0,0,8.55,0,€5 × 1.71 - not needed for 3 accounts,https://www.unipile.com/pricing-api/
+LINKEDIN AUTOMATION,SUBTOTAL,,,,"83.79",,,,"83.79",,
+,,,,,,,,,,
+SMS (HOT LEADS ONLY - ALS 85+),ClickSend SMS Australia,per message,338,0.072,24.34,338,0.072,24.34,Hot leads capped at 15% = 338,https://www.clicksend.com/au/pricing/au/
+SMS (HOT LEADS ONLY - ALS 85+),DNCR Compliance Check,per check,338,0.01,3.38,338,0.01,3.38,Estimate for DNCR API,Estimate
+SMS (HOT LEADS ONLY - ALS 85+),SUBTOTAL,,,,"27.72",,,,"27.72",,
+,,,,,,,,,,
+VOICE AI (WARM + HOT - ALS 60+),Vapi Platform Fee,per minute,844,0.08,67.52,844,0.08,67.52,$0.05 USD × 1.55,https://vapi.ai/pricing
+VOICE AI (WARM + HOT - ALS 60+),Deepgram STT (via Vapi),per minute,844,0.02,14.04,844,0.02,14.04,$0.01 USD × 1.55 worst case,https://vapi.ai/blog/elevenlabs-vs-openai
+VOICE AI (WARM + HOT - ALS 60+),ElevenLabs TTS,per minute,844,0.08,67.52,844,0.08,67.52,~400 chars/min × $0.20/1000 × 1.55,https://elevenlabs.io/pricing/api
+VOICE AI (WARM + HOT - ALS 60+),OpenAI GPT-4o (conversation),per minute,844,0.12,101.28,844,0.12,101.28,"~500 tokens/min, $0.08 USD × 1.55",https://openai.com/api/pricing/
+VOICE AI (WARM + HOT - ALS 60+),Twilio Telephony AU,per minute,844,0.05,42.20,844,0.05,42.20,$0.03 USD × 1.55,https://www.twilio.com/en-us/voice/pricing
+VOICE AI (WARM + HOT - ALS 60+),SUBTOTAL,,,,"292.56",,,,"292.56",,
+,,,,,,,,,,
+SDK BRAIN - VOICE,Claude API - Voice KB Generation (Hot only),per call,0,0,0,338,1.79,605.19,$1.16 USD × 1.55 - personalized call prep,https://www.anthropic.com/pricing
+SDK BRAIN - VOICE,SUBTOTAL,,,,0,,,605.19,,
+,,,,,,,,,,
+DIRECT MAIL (HOT LEADS - ALS 85+),ClickSend Postcards AU,per postcard,338,0.98,331.24,338,0.98,331.24,15% Hot cap = 338 postcards,https://www.clicksend.com/au/pricing/au/
+DIRECT MAIL (HOT LEADS - ALS 85+),SUBTOTAL,,,,"331.24",,,,"331.24",,
+,,,,,,,,,,
+INFRASTRUCTURE,Supabase Pro,per month,1,60.45,60.45,1,60.45,60.45,$39 USD × 1.55,https://supabase.com/pricing
+INFRASTRUCTURE,Vercel Pro,per month,1,48.05,48.05,1,48.05,48.05,$31 USD × 1.55,https://vercel.com/pricing
+INFRASTRUCTURE,Railway (3 services),per month,1,93.00,93.00,1,93.00,93.00,$60 USD × 1.55 estimate,https://railway.app/pricing
+INFRASTRUCTURE,Upstash Redis,per month,1,24.80,24.80,1,24.80,24.80,$16 USD × 1.55,https://upstash.com/pricing
+INFRASTRUCTURE,Sentry Team,per month,1,62.00,62.00,1,62.00,62.00,$40 USD × 1.55,https://sentry.io/pricing/
+INFRASTRUCTURE,Cloudflare R2 Storage,per month,1,12.40,12.40,1,12.40,12.40,$8 USD × 1.55,https://www.cloudflare.com/plans/developer-platform/
+INFRASTRUCTURE,SUBTOTAL,,,,"300.70",,,,"300.70",,
+,,,,,,,,,,
+ANTHROPIC AI (NON-SDK),Claude API - ICP Extraction,per client,0.5,4.65,2.33,0.5,4.65,2.33,$3 USD × 1.55 - amortized across clients,https://www.anthropic.com/pricing
+ANTHROPIC AI (NON-SDK),Claude API - Content Generation,per campaign,2,1.55,3.10,2,1.55,3.10,$1 USD × 1.55 - 2 campaigns avg,https://www.anthropic.com/pricing
+ANTHROPIC AI (NON-SDK),SUBTOTAL,,,,"5.43",,,,"5.43",,
+,,,,,,,,,,
+SUMMARY,,,,,,,,,,,
+SUMMARY,Data Enrichment,,,,"525.50",,,,"525.50",,
+SUMMARY,SDK Brain - Enrichment,,,,0,,,408.58,,
+SUMMARY,Email Infrastructure,,,,"208.40",,,,"208.40",,
+SUMMARY,SDK Brain - Email,,,,0,,,117.85,,
+SUMMARY,LinkedIn Automation,,,,"83.79",,,,"83.79",,
+SUMMARY,SMS,,,,"27.72",,,,"27.72",,
+SUMMARY,Voice AI,,,,"292.56",,,,"292.56",,
+SUMMARY,SDK Brain - Voice,,,,0,,,605.19,,
+SUMMARY,Direct Mail,,,,"331.24",,,,"331.24",,
+SUMMARY,Infrastructure,,,,"300.70",,,,"300.70",,
+SUMMARY,Anthropic AI (Non-SDK),,,,"5.43",,,,"5.43",,
+SUMMARY,,,,,,,,,,,
+TOTALS,TOTAL MONTHLY COGS,,,,"1775.34",,,,"2906.95",,
+TOTALS,SDK BRAIN ADDITIONAL COST,,,,0,,,1131.62,,
+TOTALS,,,,,,,,,,,
+REVENUE,Monthly Revenue (Velocity),,,,5000.00,,,5000.00,,
+REVENUE,,,,,,,,,,,
+MARGIN,Gross Profit,,,,"3224.66",,,,"2093.05",,
+MARGIN,Gross Margin %,,,,"64.49%",,,,"41.86%",,
+MARGIN,Margin Delta,,,,,,,,"-22.63%",,
+,,,,,,,,,,
+NOTES,Exchange Rates Used:,,,,,,,,,,
+NOTES,USD to AUD: 1.55,,,,,,,,,,
+NOTES,EUR to AUD: 1.71,,,,,,,,,,
+NOTES,,,,,,,,,,,
+NOTES,Assumptions - Worst Case:,,,,,,,,,,
+NOTES,"1. Hot leads capped at 15% (338 leads)",,,,,,,,,,
+NOTES,"2. Warm leads at 30% (675 leads)",,,,,,,,,,
+NOTES,"3. Clay credits at highest tier ($0.077/credit)",,,,,,,,,,
+NOTES,"4. SDK Brain used for ALL Hot leads",,,,,,,,,,
+NOTES,"5. Voice calls: 1 call per Warm+Hot lead (1013 calls) at 2.5min avg = 844 minutes",,,,,,,,,,
+NOTES,"6. Email reply rate: 7.5% = 169 replies",,,,,,,,,,
+NOTES,"7. Objection rate: 30% of replies = 51 objections",,,,,,,,,,
+NOTES,"8. Voice KB generation for Hot leads only (338 calls)",,,,,,,,,,

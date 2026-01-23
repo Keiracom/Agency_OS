@@ -34,6 +34,7 @@ interface TranscriptData {
 }
 
 interface TranscriptViewerProps {
+  /** Real transcript from API. If undefined, shows demo data with indicator */
   transcript?: TranscriptData;
 }
 
@@ -175,17 +176,32 @@ const getOutcomeConfig = (outcome: TranscriptData["outcome"]) => {
   }
 };
 
-export function TranscriptViewer({ transcript = mockTranscript }: TranscriptViewerProps) {
-  const statusConfig = useMemo(() => getStatusConfig(transcript.status), [transcript.status]);
+export function TranscriptViewer({ transcript }: TranscriptViewerProps) {
+  // Determine if we're using demo data
+  const isDemo = !transcript;
+  const effectiveTranscript = transcript ?? mockTranscript;
+
+  const statusConfig = useMemo(() => getStatusConfig(effectiveTranscript.status), [effectiveTranscript.status]);
   const outcomeConfig = useMemo(
-    () => (transcript.outcome ? getOutcomeConfig(transcript.outcome) : null),
-    [transcript.outcome]
+    () => (effectiveTranscript.outcome ? getOutcomeConfig(effectiveTranscript.outcome) : null),
+    [effectiveTranscript.outcome]
   );
 
   const StatusIcon = statusConfig.icon;
 
   return (
     <Card className="bg-[#1a1a1f] border-white/10">
+      {/* Demo Mode Banner */}
+      {isDemo && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-yellow-500/10 border-b border-yellow-500/30">
+          <div className="h-2 w-2 rounded-full bg-yellow-500" />
+          <span className="text-xs font-medium text-yellow-400 uppercase tracking-wider">
+            Demo Transcript
+          </span>
+          <span className="text-xs text-yellow-500/70">- Sample data for preview</span>
+        </div>
+      )}
+
       {/* Header */}
       <CardHeader className="border-b border-white/10 pb-4">
         <div className="flex items-start justify-between">
@@ -195,11 +211,11 @@ export function TranscriptViewer({ transcript = mockTranscript }: TranscriptView
               Voice AI Transcript
             </CardTitle>
             <div className="flex items-center gap-2 text-sm text-gray-400">
-              <span className="font-medium text-white">{transcript.leadName}</span>
+              <span className="font-medium text-white">{effectiveTranscript.leadName}</span>
               <span>-</span>
-              <span>{transcript.leadCompany}</span>
+              <span>{effectiveTranscript.leadCompany}</span>
             </div>
-            <p className="text-xs text-gray-500">{transcript.phoneNumber}</p>
+            <p className="text-xs text-gray-500">{effectiveTranscript.phoneNumber}</p>
           </div>
           <div className="flex flex-col items-end gap-2">
             <Badge className={statusConfig.color}>
@@ -216,11 +232,11 @@ export function TranscriptViewer({ transcript = mockTranscript }: TranscriptView
         <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
           <div className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            {formatTime(transcript.startTime)}
+            {formatTime(effectiveTranscript.startTime)}
           </div>
-          {transcript.duration && (
+          {effectiveTranscript.duration && (
             <div className="flex items-center gap-1">
-              Duration: {formatDuration(transcript.duration)}
+              Duration: {formatDuration(effectiveTranscript.duration)}
             </div>
           )}
         </div>
@@ -228,7 +244,7 @@ export function TranscriptViewer({ transcript = mockTranscript }: TranscriptView
 
       {/* Messages */}
       <CardContent className="pt-4 space-y-4 max-h-[500px] overflow-y-auto">
-        {transcript.messages.map((message) => (
+        {effectiveTranscript.messages.map((message) => (
           <div
             key={message.id}
             className={`flex gap-3 ${

@@ -26,6 +26,7 @@ import {
   Target,
   Sparkles
 } from "lucide-react";
+import { useClient } from "@/hooks/use-client";
 
 // Types
 interface ICPProfile {
@@ -47,20 +48,17 @@ interface ICPProfile {
   updated_at: string;
 }
 
-// Mock client ID - would come from auth context
-const CLIENT_ID = "mock-client-id";
-
-// API functions
-async function fetchICP(): Promise<ICPProfile> {
-  const response = await fetch(`/api/v1/clients/${CLIENT_ID}/icp`);
+// API functions that take clientId as parameter
+async function fetchICP(clientId: string): Promise<ICPProfile> {
+  const response = await fetch(`/api/v1/clients/${clientId}/icp`);
   if (!response.ok) {
     throw new Error("Failed to fetch ICP profile");
   }
   return response.json();
 }
 
-async function updateICP(data: Partial<ICPProfile>): Promise<ICPProfile> {
-  const response = await fetch(`/api/v1/clients/${CLIENT_ID}/icp`, {
+async function updateICP(clientId: string, data: Partial<ICPProfile>): Promise<ICPProfile> {
+  const response = await fetch(`/api/v1/clients/${clientId}/icp`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -71,8 +69,8 @@ async function updateICP(data: Partial<ICPProfile>): Promise<ICPProfile> {
   return response.json();
 }
 
-async function reanalyzeWebsite(): Promise<{ task_id: string }> {
-  const response = await fetch(`/api/v1/clients/${CLIENT_ID}/icp/reanalyze`, {
+async function reanalyzeWebsite(clientId: string): Promise<{ task_id: string }> {
+  const response = await fetch(`/api/v1/clients/${clientId}/icp/reanalyze`, {
     method: "POST",
   });
   if (!response.ok) {
@@ -84,6 +82,7 @@ async function reanalyzeWebsite(): Promise<{ task_id: string }> {
 export default function ICPSettingsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { clientId, isLoading: clientLoading } = useClient();
 
   // Form state
   const [industries, setIndustries] = useState("");
@@ -97,10 +96,11 @@ export default function ICPSettingsPage() {
   const [painPoints, setPainPoints] = useState("");
   const [valueProps, setValueProps] = useState("");
 
-  // Fetch ICP data
+  // Fetch ICP data (enabled only when clientId is available)
   const { data: icp, isLoading, error } = useQuery({
-    queryKey: ["icp", CLIENT_ID],
-    queryFn: fetchICP,
+    queryKey: ["icp", clientId],
+    queryFn: () => fetchICP(clientId!),
+    enabled: !!clientId,
   });
 
   // Update form when data loads
@@ -121,9 +121,9 @@ export default function ICPSettingsPage() {
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: updateICP,
+    mutationFn: (data: Partial<ICPProfile>) => updateICP(clientId!, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["icp", CLIENT_ID] });
+      queryClient.invalidateQueries({ queryKey: ["icp", clientId] });
       toast({
         title: "ICP Updated",
         description: "Your Ideal Customer Profile has been saved successfully.",
@@ -140,13 +140,13 @@ export default function ICPSettingsPage() {
 
   // Re-analyze mutation
   const reanalyzeMutation = useMutation({
-    mutationFn: reanalyzeWebsite,
-    onSuccess: (data) => {
+    mutationFn: () => reanalyzeWebsite(clientId!),
+    onSuccess: () => {
       toast({
         title: "Re-analysis Started",
         description: "We're analyzing your website again. This may take a few minutes.",
       });
-      // Could poll for status using data.task_id
+      // Could poll for status using task_id from response
     },
     onError: (error: Error) => {
       toast({
@@ -189,6 +189,34 @@ export default function ICPSettingsPage() {
       value_propositions: parseLines(valueProps),
     });
   };
+
+  // Show loading state while client context loads
+  if (clientLoading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Show error if no client found
+  if (!clientId) {
+    return (
+      <div className="space-y-6 max-w-4xl">
+        <Link href="/dashboard/settings">
+          <Button variant="ghost" className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Settings
+          </Button>
+        </Link>
+        <Card className="border-destructive">
+          <CardContent className="p-6">
+            <p className="text-destructive">Unable to load client context. Please try again.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (error) {
     return (

@@ -2,7 +2,7 @@
 
 **Purpose:** Design documentation, UI specifications, and visual guidelines for Agency OS frontend.
 
-**Tool:** [Onlook](https://onlook.com) for visual React component editing.
+**Tool:** [v0.dev](https://v0.dev) for AI-powered UI generation + Claude Code for integration.
 
 ---
 
@@ -15,7 +15,7 @@ frontend/design/
 │   ├── OVERVIEW.md        # Goals, principles, terminology
 │   ├── campaigns.md       # Campaign allocation UI
 │   ├── metrics.md         # Metrics display decisions
-│   └── mockups/           # Onlook exports, screenshots
+│   └── mockups/           # Screenshots, v0 exports
 └── tokens/                # Design tokens (future)
     ├── colors.md
     ├── typography.md
@@ -37,10 +37,12 @@ See `dashboard/OVERVIEW.md` for the active redesign initiative.
 
 ## Design-to-Code Workflow
 
-1. **Spec** - Document in `design/` folder
-2. **Visual Edit** - Use Onlook on `components/`
-3. **Review** - Screenshot to `mockups/`
-4. **Ship** - Commit component changes
+1. **Spec** - Document requirements in `design/` folder
+2. **Generate** - Use v0.dev API to create visual mockups
+3. **Integrate** - Claude Code wires up APIs, auth, data
+4. **Review** - Run locally, screenshot feedback
+5. **Iterate** - Adjust until vision matches
+6. **Ship** - Commit component changes
 
 ---
 

@@ -113,6 +113,43 @@ export async function pauseCampaign(
   );
 }
 
+// ============================================
+// Phase H, Item 43: Emergency Pause
+// ============================================
+
+export interface EmergencyPauseResponse {
+  paused: boolean;
+  paused_at: string | null;
+  pause_reason: string | null;
+  campaigns_affected: number;
+}
+
+/**
+ * Emergency pause ALL outreach for a client
+ * This is the "big red button" that immediately stops all automated outreach
+ */
+export async function emergencyPauseAll(
+  clientId: string,
+  reason?: string
+): Promise<EmergencyPauseResponse> {
+  return api.post<EmergencyPauseResponse>(
+    `/api/v1/clients/${clientId}/pause-all`,
+    { reason }
+  );
+}
+
+/**
+ * Resume all outreach after emergency pause
+ * Clears client-level pause. Campaigns remain paused and must be individually reactivated.
+ */
+export async function resumeAllOutreach(
+  clientId: string
+): Promise<EmergencyPauseResponse> {
+  return api.post<EmergencyPauseResponse>(
+    `/api/v1/clients/${clientId}/resume-all`
+  );
+}
+
 /**
  * Delete campaign (soft delete)
  */

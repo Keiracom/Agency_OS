@@ -48,6 +48,7 @@ from src.services.sdk_usage_service import log_sdk_usage
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
 from src.integrations.apollo import ApolloClient, get_apollo_client
 from src.integrations.apify import ApifyClient, get_apify_client
+from src.services.who_refinement_service import get_who_refined_criteria
 from src.integrations.clay import ClayClient, get_clay_client
 from src.integrations.redis import enrichment_cache
 from src.models.base import LeadStatus
@@ -1005,32 +1006,65 @@ class ScoutEngine(BaseEngine):
 
         This is used to proactively fill the pool with matching leads.
 
+        Phase 19: When client_id is provided, WHO conversion patterns are
+        automatically applied to refine the search criteria. This improves
+        lead quality based on what's actually converting for this client.
+
         Args:
             db: Database session
             icp_criteria: ICP matching criteria
             limit: Maximum leads to add
             client_id: Optional client ID to filter suppressed leads (Phase 24F)
+                       and apply WHO refinements (Phase 19)
 
         Returns:
             EngineResult with population summary
         """
-        # Search Apollo with pool-compatible format
+        # Phase 19: Apply WHO pattern refinements if client_id provided
+        # This merges learned conversion patterns with the base ICP criteria
+        search_criteria = icp_criteria
+        who_refinements_applied = False
+
+        if client_id:
+            try:
+                search_criteria = await get_who_refined_criteria(
+                    db=db,
+                    client_id=client_id,
+                    base_criteria=icp_criteria,
+                )
+                who_refinements_applied = search_criteria != icp_criteria
+                if who_refinements_applied:
+                    logger.info(
+                        f"WHO refinements applied for client {client_id}: "
+                        f"titles={search_criteria.get('titles', [])[:3]}, "
+                        f"industries={search_criteria.get('industries', [])[:3]}"
+                    )
+            except Exception as e:
+                # Log but don't fail - fall back to base criteria
+                logger.warning(f"WHO refinement failed for client {client_id}: {e}")
+                search_criteria = icp_criteria
+
+        # Search Apollo with pool-compatible format (using refined criteria)
         try:
             leads = await self.apollo.search_people_for_pool(
-                domain=icp_criteria.get("domain"),
-                titles=icp_criteria.get("titles"),
-                seniorities=icp_criteria.get("seniorities"),
-                industries=icp_criteria.get("industries"),
-                employee_min=icp_criteria.get("employee_min"),
-                employee_max=icp_criteria.get("employee_max"),
-                countries=icp_criteria.get("countries"),
+                domain=search_criteria.get("domain"),
+                titles=search_criteria.get("titles"),
+                seniorities=search_criteria.get("seniorities"),
+                industries=search_criteria.get("industries"),
+                employee_min=search_criteria.get("employee_min"),
+                employee_max=search_criteria.get("employee_max"),
+                countries=search_criteria.get("countries"),
                 limit=limit,
             )
 
             if not leads:
                 return EngineResult.ok(
                     data={"added": 0, "skipped": 0, "suppressed": 0, "total": 0},
-                    metadata={"criteria": icp_criteria},
+                    metadata={
+                        "criteria": search_criteria,
+                        "base_criteria": icp_criteria,
+                        "who_refinements_applied": who_refinements_applied,
+                    },
                 )
 
             added = 0
@@ -1073,8 +1107,13 @@ class ScoutEngine(BaseEngine):
                     "skipped": skipped,
                     "suppressed": suppressed,
                     "total": len(leads),
+                    "who_refinements_applied": who_refinements_applied,
                 },
-                metadata={"criteria": icp_criteria},
+                metadata={
+                    "criteria": search_criteria,
+                    "base_criteria": icp_criteria,
+                    "who_refinements_applied": who_refinements_applied,
+                },
             )
 
         except Exception as e:

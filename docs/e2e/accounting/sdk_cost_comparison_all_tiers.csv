@@ -1,0 +1,65 @@
+Tier,Leads/Month,Hot Leads (15% cap),Warm Leads (30%),Monthly Revenue (AUD),Current COGS (AUD),SDK COGS (AUD),SDK Additional (AUD),Current Margin %,SDK Margin %,Margin Delta
+Ignition,1250,188,375,2500,988.52,1620.26,631.74,60.46%,35.19%,-25.27%
+Velocity,2250,338,675,5000,1775.34,2906.95,1131.62,64.49%,41.86%,-22.63%
+Dominance,4500,675,1350,7500,3548.17,5812.08,2263.91,52.69%,22.51%,-30.18%
+
+Category,Ignition Current,Ignition SDK,Velocity Current,Velocity SDK,Dominance Current,Dominance SDK,Unit,Notes
+Data Enrichment,292.50,292.50,525.50,525.50,1049.73,1049.73,AUD,Hunter + Clay + Apollo waterfall
+SDK Brain - Enrichment,0,227.27,0,408.58,0,817.16,AUD,$1.21/Hot lead × Hot leads
+Email Infrastructure,208.40,208.40,208.40,208.40,208.40,208.40,AUD,Salesforge + Mailforge + Warmforge
+SDK Brain - Email,0,65.52,0,117.85,0,235.69,AUD,Writing + Classification + Objection
+LinkedIn (Unipile),83.79,83.79,83.79,83.79,83.79,83.79,AUD,Base plan covers up to 10 accounts
+SMS (ClickSend),15.40,15.40,27.72,27.72,55.44,55.44,AUD,$0.072/msg × Hot leads
+Voice AI (Full Stack),162.99,162.99,292.56,292.56,584.30,584.30,AUD,Vapi + Deepgram + ElevenLabs + GPT-4o + Twilio
+SDK Brain - Voice,0,336.55,0,605.19,0,1210.39,AUD,$1.79/call × Hot leads (voice KB)
+Direct Mail (ClickSend),184.24,184.24,331.24,331.24,661.50,661.50,AUD,$0.98/postcard × Hot leads
+Infrastructure,300.70,300.70,300.70,300.70,300.70,300.70,AUD,Supabase + Vercel + Railway + Redis + Sentry
+Anthropic AI (Non-SDK),5.43,5.43,5.43,5.43,5.43,5.43,AUD,ICP + Content Gen (amortized)
+TOTAL COGS,988.52,1620.26,1775.34,2906.95,3548.17,5812.08,AUD,
+
+SDK BRAIN COST BREAKDOWN,Per Unit (AUD),Ignition Units,Ignition Cost,Velocity Units,Velocity Cost,Dominance Units,Dominance Cost,Description
+Hot Lead Deep Research,1.21,188,227.27,338,408.58,675,817.16,Claude API - waterfall research per Hot lead
+Email Writing (Hot),0.16,188,29.67,338,53.37,675,106.74,Claude API - personalized email per Hot lead
+Response Classification,0.08,94,7.51,169,13.52,338,27.04,Claude API - 7.5% reply rate × total leads
+Objection Handling,0.16,28,4.48,51,8.05,101,16.09,Claude API - 30% of replies are objections
+Voice KB Generation,1.16,188,218.68,338,393.32,675,786.51,Claude API - call prep per Hot lead
+SDK BRAIN TOTAL,,,,631.74,,1131.62,,2263.91
+
+SOURCES,URL,Last Verified,Category
+Anthropic Claude Pricing,https://www.anthropic.com/pricing,Jan 2026,AI
+Unipile API Pricing,https://www.unipile.com/pricing-api/,Jan 2026,LinkedIn
+Salesforge Pricing,https://www.salesforge.ai/pricing,Jan 2026,Email
+Mailforge Pricing,https://www.mailforge.ai/pricing,Jan 2026,Email
+ClickSend AU Pricing,https://www.clicksend.com/au/pricing/au/,Jan 2026,SMS + Direct Mail
+Vapi Pricing,https://vapi.ai/pricing,Jan 2026,Voice AI
+ElevenLabs API Pricing,https://elevenlabs.io/pricing/api,Jan 2026,TTS
+OpenAI Pricing,https://openai.com/api/pricing/,Jan 2026,LLM
+Clay Pricing,https://www.clay.com/pricing,Jan 2026,Enrichment
+Apollo API Pricing,https://docs.apollo.io/docs/api-pricing,Jan 2026,Enrichment
+Hunter.io Pricing,https://hunter.io/pricing,Jan 2026,Enrichment
+Apify LinkedIn Scraper,https://apify.com/supreme_coder/linkedin-profile-scraper,Jan 2026,Scraping
+Supabase Pricing,https://supabase.com/pricing,Jan 2026,Database
+Vercel Pricing,https://vercel.com/pricing,Jan 2026,Frontend
+Railway Pricing,https://railway.app/pricing,Jan 2026,Backend
+Upstash Pricing,https://upstash.com/pricing,Jan 2026,Redis
+Sentry Pricing,https://sentry.io/pricing/,Jan 2026,Monitoring
+
+EXCHANGE RATES,Rate,Source
+USD to AUD,1.55,Conservative estimate
+EUR to AUD,1.71,Conservative estimate
+
+WORST CASE ASSUMPTIONS,Value,Rationale
+Hot Lead Cap,15%,Prevents ALS inflation from driving COGS
+Warm Lead Cap,30%,Additional buffer
+Clay Credits,0.077/credit,Highest tier pricing
+SDK Brain on ALL Hot leads,100%,No selective usage
+Voice calls per Warm+Hot,1 call each,Maximum voice utilization
+Email reply rate,7.5%,Conservative with SDK personalization
+Objection rate,30% of replies,Industry average
+Voice call duration,2.5 min avg,Industry average
+
+WARNING,
+"Current model uses Unipile (migrated from HeyReach) - significantly cheaper",
+"SDK Brain costs are ADDITIONAL to current costs - not replacement",
+"Margin drop is 22-30% depending on tier",
+"At these margins (22-42%) profitability is questionable for Dominance tier",

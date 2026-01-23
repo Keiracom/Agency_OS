@@ -242,7 +242,7 @@ For gaps and implementation status, see `../TODO.md`.
 | ~~ICP refinement from CIS~~ | `flows/MONTHLY_LIFECYCLE.md` | **FIXED** | WhoRefinementService, migration 049, scout.py integration |
 | ~~DNCR wiring~~ | `distribution/SMS.md` | **FIXED** | Batch wash at enrichment + cached check at send + quarterly re-wash |
 | ~~LinkedIn seat warmup~~ | `distribution/LINKEDIN.md` | **FIXED** | Warmup service + health service + daily flow created |
-| ~~Reply handling~~ | `flows/REPLY_HANDLING.md` | **PARTIAL** | Migration 046 + 10 intents + response timing. Remaining: SMS/LinkedIn webhooks |
+| ~~Reply handling~~ | `flows/REPLY_HANDLING.md` | **FIXED** | Migration 046 + 10 intents + response timing + ClickSend/Unipile webhooks |
 | ~~Two-way CRM sync~~ | `flows/MEETINGS_CRM.md` | **FIXED** | Webhook receivers + polling flow + blind meeting capture |
 | ~~Frontend hardcoded values~~ | `process/FRONTEND.md` | **FIXED** | credits_remaining wired, demo mode indicators added |
 | ~~Content QA check~~ | `flows/OUTREACH.md` | **FIXED** | ContentQAService validates placeholders, length, spam for all channels |
@@ -481,6 +481,7 @@ All 13 pre-existing architecture files have been verified against codebase (Phas
 | **P1: Safe fallback template (Item 42)** | 2026-01-23 | `SAFE_FALLBACK_TEMPLATE` + `_generate_safe_fallback()` for brand-safe emails when fact-check fails |
 | **P1: Emergency Pause Button (Item 43)** | 2026-01-23 | Migration 050, client/campaign pause fields, JIT validation in outreach_flow.py, API endpoints, EmergencyPauseButton.tsx |
 | **P1: Daily Digest Email (Item 44)** | 2026-01-23 | Migration 051, DigestService, daily_digest_flow, send_transactional(), 4 API endpoints, 7 AM AEST schedule |
+| **P2: Complete reply handling webhooks** | 2026-01-23 | ClickSend SMS webhooks (inbound + status), Unipile polling migration (HeyReach→Unipile), `is_sender` fix |
 
 ---
 
@@ -510,7 +511,7 @@ All 13 pre-existing architecture files have been verified against codebase (Phas
 13. [x] P2: Wire DNCR check before SMS send — **DONE** (batch wash at enrichment, cached check at send, quarterly re-wash flow)
 14. [x] P2: Implement LinkedIn seat warmup service — **DONE** (warmup service, health service, daily health flow)
 15. [x] P2: Implement daily pacing flow — **DONE** (`daily_pacing_flow.py`, 7 AM AEST schedule, >120%/<50% alerts)
-16. [x] P2: Implement reply handling code — **DONE** (migration 046, 10 intents, response timing service, remaining: SMS/LinkedIn webhooks)
+16. [x] P2: Implement reply handling code — **DONE** (migration 046, 10 intents, response timing, ClickSend webhooks, Unipile polling)
 17. [x] P2: Implement monthly replenishment flow — **DONE** (`monthly_replenishment_flow.py`, gap calculation, campaign assignment, credit_reset trigger)
 18. [x] P2: Implement campaign evolution agents — **DONE** (WHO/WHAT/HOW analyzers, orchestrator, campaign_suggestions table, Prefect flow)
 19. [x] P2: Implement ICP refinement from CIS — **DONE** (WhoRefinementService, icp_refinement_log model, migration 049, scout.py integration)

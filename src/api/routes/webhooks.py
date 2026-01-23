@@ -1,8 +1,8 @@
 """
 FILE: src/api/routes/webhooks.py
-PURPOSE: Inbound webhook routes for Postmark, Twilio, Unipile, Vapi, and Email Providers
+PURPOSE: Inbound webhook routes for Postmark, Twilio, ClickSend, Unipile, Vapi, and Email Providers
 PHASE: 7 (API Routes), Phase 17 (Vapi Voice), Phase 24C (Email Engagement), Unipile Migration
-TASK: API-006, CRED-007, ENGAGE-002
+TASK: API-006, CRED-007, ENGAGE-002, P2-REPLY-WEBHOOKS
 DEPENDENCIES:
   - src/engines/closer.py
   - src/engines/voice.py
@@ -641,6 +641,169 @@ async def twilio_status_webhook(
             "status": "processed",
             "message_sid": message_sid,
             "message_status": message_status,
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+        }
+
+
+# ============================================
+# ClickSend Webhooks (SMS - Primary for Australia)
+# ============================================
+
+
+@router.post("/clicksend/inbound")
+async def clicksend_inbound_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Handle inbound SMS replies from ClickSend.
+
+    Webhook-first architecture (Rule 20). This is the primary method
+    for processing SMS replies in Australia.
+
+    Args:
+        request: FastAPI request
+        db: Database session
+
+    Returns:
+        Success response
+    """
+    try:
+        payload = await request.json()
+
+        # Parse webhook payload using ClickSend parser
+        from src.integrations.clicksend import get_clicksend_client
+        clicksend = get_clicksend_client()
+        parsed = clicksend.parse_inbound_sms(payload)
+
+        # Find lead by phone number
+        from_number = parsed["from_number"]
+        if not from_number:
+            return {"status": "ignored", "reason": "no_phone_number"}
+
+        lead = await find_lead_by_phone(db, from_number)
+        if not lead:
+            return {"status": "ignored", "reason": "lead_not_found"}
+
+        # Check for duplicate processing
+        message_id = parsed["message_id"]
+        if message_id and await check_duplicate_activity(db, lead.id, message_id):
+            return {"status": "ignored", "reason": "already_processed"}
+
+        # Extract message content
+        message = parsed["body"]
+        if not message:
+            return {"status": "ignored", "reason": "empty_message"}
+
+        # Process reply via Closer engine
+        closer = get_closer_engine()
+        result = await closer.process_reply(
+            db=db,
+            lead_id=lead.id,
+            message=message,
+            channel=ChannelType.SMS,
+            provider_message_id=message_id,
+            metadata={
+                "from_number": from_number,
+                "to_number": parsed["to_number"],
+                "timestamp": parsed["timestamp"],
+                "custom_string": parsed["custom_string"],
+                "provider": "clicksend",
+            },
+        )
+
+        if not result.success:
+            raise WebhookError(
+                url="/webhooks/clicksend/inbound",
+                message=f"Reply processing failed: {result.error}",
+            )
+
+        return {
+            "status": "processed",
+            "lead_id": str(lead.id),
+            "intent": result.data["intent"],
+            "confidence": result.data["confidence"],
+        }
+
+    except Exception as e:
+        # Return 200 to prevent ClickSend retries
+        return {
+            "status": "error",
+            "error": str(e),
+        }
+
+
+@router.post("/clicksend/status")
+async def clicksend_status_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Handle SMS delivery status updates from ClickSend.
+
+    Args:
+        request: FastAPI request
+        db: Database session
+
+    Returns:
+        Success response
+    """
+    try:
+        payload = await request.json()
+
+        # Parse status webhook
+        from src.integrations.clicksend import get_clicksend_client
+        clicksend = get_clicksend_client()
+        parsed = clicksend.parse_sms_webhook(payload)
+
+        # Find existing activity by message ID
+        message_id = parsed["message_id"]
+        if not message_id:
+            return {"status": "ignored", "reason": "no_message_id"}
+
+        stmt = (
+            select(Activity)
+            .where(Activity.provider_message_id == message_id)
+        )
+        result = await db.execute(stmt)
+        activity = result.scalar_one_or_none()
+
+        if not activity:
+            return {"status": "ignored", "reason": "activity_not_found"}
+
+        # Update activity with delivery status
+        status = parsed["status"]
+        activity.provider_status = status
+
+        # If delivered, create a new activity
+        if status in ("Delivered", "SUCCESS"):
+            delivered_activity = Activity(
+                client_id=activity.client_id,
+                campaign_id=activity.campaign_id,
+                lead_id=activity.lead_id,
+                channel=ChannelType.SMS,
+                action="delivered",
+                provider_message_id=message_id,
+                provider="clicksend",
+                provider_status=status,
+            )
+            db.add(delivered_activity)
+
+        # If failed, log the error
+        if status in ("Failed", "FAILED", "Undelivered"):
+            activity.metadata["status_code"] = parsed.get("status_code")
+
+        await db.commit()
+
+        return {
+            "status": "processed",
+            "message_id": message_id,
+            "delivery_status": status,
         }
 
     except Exception as e:
@@ -1903,3 +2066,9 @@ async def _handle_calcom_webhook(db, payload: dict, meeting_service) -> dict:
 # [x] POST /webhooks/unipile/account - Account connection webhooks
 # [x] POST /webhooks/unipile/message - LinkedIn message/reply webhooks
 # [x] POST /webhooks/heyreach/inbound - Legacy redirect (backwards compat)
+#
+# ClickSend SMS (Primary for Australia):
+# [x] POST /webhooks/clicksend/inbound - Inbound SMS reply handling
+# [x] POST /webhooks/clicksend/status - SMS delivery status tracking
+# [x] Uses ClickSend parser methods (parse_inbound_sms, parse_sms_webhook)
+# [x] Processes via Closer engine for intent classification

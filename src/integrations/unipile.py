@@ -462,6 +462,7 @@ class UnipileClient:
                 "sender_name": m.get("sender", {}).get("name"),
                 "text": m.get("text"),
                 "created_at": m.get("created_at"),
+                "is_sender": m.get("is_sender", False),  # True if we sent this message
             }
             for m in result.get("items", [])
         ]

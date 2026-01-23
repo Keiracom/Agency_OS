@@ -7,7 +7,7 @@ DEPENDENCIES:
   - src/integrations/supabase.py
   - src/integrations/postmark.py
   - src/integrations/twilio.py
-  - src/integrations/heyreach.py
+  - src/integrations/unipile.py
   - src/engines/closer.py
   - src/models/lead.py
   - src/models/activity.py
@@ -28,10 +28,10 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.closer import get_closer_engine
-from src.integrations.heyreach import get_heyreach_client
 from src.integrations.postmark import get_postmark_client
 from src.integrations.supabase import get_db_session
 from src.integrations.twilio import get_twilio_client
+from src.integrations.unipile import get_unipile_client
 from src.models.activity import Activity
 from src.models.base import ChannelType
 from src.models.lead import Lead
@@ -159,6 +159,7 @@ async def poll_linkedin_replies_task(since_hours: int = 6) -> dict[str, Any]:
     Poll for LinkedIn replies that might have been missed by webhooks.
 
     This is a safety net - webhooks are the primary mechanism (Rule 20).
+    Uses Unipile API to poll for new messages across connected accounts.
 
     Args:
         since_hours: How many hours back to check
@@ -166,27 +167,54 @@ async def poll_linkedin_replies_task(since_hours: int = 6) -> dict[str, Any]:
     Returns:
         Dict with replies found
     """
-    heyreach_client = get_heyreach_client()
+    unipile_client = get_unipile_client()
 
     try:
-        # Poll conversations from HeyReach
-        replies = await heyreach_client.get_conversations(limit=100)
+        # Get all connected LinkedIn accounts
+        accounts = await unipile_client.get_accounts()
 
         # Filter to recent messages
         since_time = datetime.utcnow() - timedelta(hours=since_hours)
         recent_replies = []
 
-        for conversation in replies:
-            last_message_time = conversation.get("last_message_at")
-            if last_message_time and datetime.fromisoformat(last_message_time) > since_time:
-                # Check if last message is from prospect (not from us)
-                if conversation.get("last_message_from") == "prospect":
+        for account in accounts:
+            # Only poll active LinkedIn accounts
+            if account.get("status") != "connected":
+                continue
+            if account.get("provider") not in ("linkedin", "LINKEDIN"):
+                continue
+
+            account_id = account.get("account_id")
+            if not account_id:
+                continue
+
+            try:
+                # Get new messages for this account since cutoff
+                messages = await unipile_client.get_new_messages(
+                    account_id=account_id,
+                    since=since_time,
+                )
+
+                for msg in messages:
+                    # Skip messages we sent (is_sender would be True)
+                    # Only process inbound messages from prospects
+                    if msg.get("is_sender", False):
+                        continue
+
                     recent_replies.append({
-                        "conversation_id": conversation.get("id"),
-                        "linkedin_url": conversation.get("prospect_url"),
-                        "message": conversation.get("last_message_text"),
-                        "received_at": last_message_time,
+                        "conversation_id": msg.get("chat_id"),
+                        "message_id": msg.get("message_id"),
+                        "linkedin_url": msg.get("sender_id"),  # Unipile uses sender_id
+                        "message": msg.get("text"),
+                        "received_at": msg.get("created_at"),
+                        "sender_name": msg.get("sender_name"),
                     })
+
+            except Exception as account_error:
+                logger.warning(
+                    f"Failed to poll LinkedIn account {account_id}: {account_error}"
+                )
+                continue
 
         logger.info(f"Polled {len(recent_replies)} LinkedIn replies from last {since_hours} hours")
 
@@ -470,7 +498,7 @@ async def reply_recovery_flow(since_hours: int = 6) -> dict[str, Any]:
     linkedin_processed = 0
     for reply in linkedin_replies["replies"]:
         try:
-            # Find lead
+            # Find lead by LinkedIn URL (sender_id from Unipile)
             lead_result = await find_lead_by_contact_task(
                 linkedin_url=reply["linkedin_url"]
             )
@@ -478,15 +506,18 @@ async def reply_recovery_flow(since_hours: int = 6) -> dict[str, Any]:
                 logger.warning(f"Lead not found for LinkedIn {reply['linkedin_url']}")
                 continue
 
+            # Use message_id for deduplication (more specific than conversation_id)
+            provider_msg_id = reply.get("message_id") or reply.get("conversation_id")
+
             # Check if already processed
             check_result = await check_if_reply_processed_task(
                 lead_id=lead_result["lead_id"],
-                provider_message_id=reply["conversation_id"],
+                provider_message_id=provider_msg_id,
                 channel="linkedin",
             )
             if check_result["already_processed"]:
                 logger.debug(
-                    f"LinkedIn reply {reply['conversation_id']} already processed"
+                    f"LinkedIn reply {provider_msg_id} already processed"
                 )
                 continue
 
@@ -495,7 +526,12 @@ async def reply_recovery_flow(since_hours: int = 6) -> dict[str, Any]:
                 lead_id=lead_result["lead_id"],
                 message=reply["message"],
                 channel="linkedin",
-                provider_message_id=reply["conversation_id"],
+                provider_message_id=provider_msg_id,
+                metadata={
+                    "sender_name": reply.get("sender_name"),
+                    "conversation_id": reply.get("conversation_id"),
+                    "provider": "unipile",
+                },
             )
             if process_result["success"]:
                 linkedin_processed += 1

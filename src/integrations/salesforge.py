@@ -16,6 +16,7 @@ API Reference:
 - Auth: X-API-KEY header
 """
 
+import contextlib
 import logging
 from typing import Any
 
@@ -92,10 +93,8 @@ class SalesforgeClient:
             return response.json()
         except httpx.HTTPStatusError as e:
             error_body = {}
-            try:
+            with contextlib.suppress(Exception):
                 error_body = e.response.json()
-            except Exception:
-                pass
 
             sentry_sdk.set_context("salesforge_error", {
                 "status_code": e.response.status_code,

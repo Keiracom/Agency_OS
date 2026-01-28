@@ -183,7 +183,7 @@ Identify all services, categorize them, and determine which are primary services
     async def execute(
         self,
         input_data: Input,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
     ) -> SkillResult[Output]:
         """
         Execute service extraction.

@@ -15,8 +15,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+from collections.abc import Callable, Coroutine
 from html import unescape
-from typing import Any, Callable, Coroutine
+from typing import Any
 
 import httpx
 

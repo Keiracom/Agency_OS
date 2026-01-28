@@ -27,12 +27,11 @@ WHEN USED:
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
 from src.agents.skills.base_skill import BaseSkill, SkillRegistry, SkillResult
-from src.agents.skills.portfolio_extractor import PortfolioCompany
 
 if TYPE_CHECKING:
     from src.integrations.anthropic import AnthropicClient
@@ -69,7 +68,7 @@ class PortfolioFallbackSkill(BaseSkill["PortfolioFallbackSkill.Input", "Portfoli
         """Input for portfolio fallback extraction."""
 
         company_name: str = Field(description="Agency name (to exclude from results)")
-        apollo_description: Optional[str] = Field(
+        apollo_description: str | None = Field(
             default=None,
             description="Apollo company description (may mention clients)"
         )
@@ -77,7 +76,7 @@ class PortfolioFallbackSkill(BaseSkill["PortfolioFallbackSkill.Input", "Portfoli
             default_factory=list,
             description="Apollo keywords/tags"
         )
-        linkedin_description: Optional[str] = Field(
+        linkedin_description: str | None = Field(
             default=None,
             description="LinkedIn company description (may mention clients)"
         )
@@ -242,7 +241,7 @@ Return empty array [] if no specific clients found."""
     async def execute(
         self,
         input_data: Input,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
     ) -> SkillResult[Output]:
         """
         Execute portfolio fallback extraction.

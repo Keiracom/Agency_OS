@@ -6,7 +6,6 @@ Imports: exceptions only
 Consumers: url_validator.py, icp_scraper.py, orchestration
 """
 
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -22,7 +21,7 @@ class URLValidationResult(BaseModel):
     valid: bool = Field(
         description="Whether the URL is valid and reachable"
     )
-    canonical_url: Optional[str] = Field(
+    canonical_url: str | None = Field(
         default=None,
         description="The final URL after following redirects"
     )
@@ -34,15 +33,15 @@ class URLValidationResult(BaseModel):
         default_factory=list,
         description="List of URLs in the redirect chain"
     )
-    error: Optional[str] = Field(
+    error: str | None = Field(
         default=None,
         description="Error message if validation failed"
     )
-    error_type: Optional[str] = Field(
+    error_type: str | None = Field(
         default=None,
         description="Type of error (dns_failure, timeout, ssl_error, parked_domain, invalid_format)"
     )
-    status_code: Optional[int] = Field(
+    status_code: int | None = Field(
         default=None,
         description="HTTP status code from the final response"
     )
@@ -50,7 +49,7 @@ class URLValidationResult(BaseModel):
         default=False,
         description="Whether the domain appears to be parked or for sale"
     )
-    domain: Optional[str] = Field(
+    domain: str | None = Field(
         default=None,
         description="Extracted domain from the URL"
     )

@@ -312,7 +312,7 @@ GENERATION PARAMETERS:
     async def execute(
         self,
         input_data: Input,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
     ) -> SkillResult[Output]:
         """
         Execute the skill to generate messaging content.

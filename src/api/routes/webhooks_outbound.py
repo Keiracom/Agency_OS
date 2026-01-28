@@ -25,7 +25,7 @@ This module handles outbound webhook delivery to client endpoints:
 import hashlib
 import hmac
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -36,7 +36,6 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config.settings import settings
-from src.exceptions import ValidationError
 from src.integrations.supabase import get_db
 from src.models.base import WebhookEventType
 

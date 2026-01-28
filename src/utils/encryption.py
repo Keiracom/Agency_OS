@@ -9,15 +9,13 @@ Provides secure encryption/decryption for sensitive credentials
 like LinkedIn passwords using Fernet symmetric encryption (AES-128-CBC + HMAC).
 """
 
-from typing import Optional
 
 from cryptography.fernet import Fernet, InvalidToken
 
 from src.config.settings import settings
 
-
 # Module-level Fernet instance (lazy initialized)
-_fernet: Optional[Fernet] = None
+_fernet: Fernet | None = None
 
 
 def _get_fernet() -> Fernet:

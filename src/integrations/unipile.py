@@ -13,8 +13,8 @@ Key differences from HeyReach:
 - SOC 2 compliant
 """
 
-from typing import Any
 from datetime import datetime, timedelta
+from typing import Any
 
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -609,7 +609,7 @@ class UnipileClient:
         Returns:
             Dict with withdrawal result
         """
-        result = await self._request(
+        await self._request(
             "DELETE",
             f"/linkedin/invitations/{invitation_id}",
             params={"account_id": account_id},

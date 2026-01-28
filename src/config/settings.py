@@ -34,7 +34,7 @@ class Settings(BaseSettings):
         alias="environment"
     )
     debug: bool = False
-    
+
     # === CORS ===
     ALLOWED_ORIGINS: list[str] = Field(
         default=["http://localhost:3000", "http://localhost:8000"],

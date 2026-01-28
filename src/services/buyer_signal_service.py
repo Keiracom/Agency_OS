@@ -17,7 +17,6 @@ CONSUMERS: Scorer Engine, Content Engine
 from __future__ import annotations
 
 import logging
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -37,12 +36,12 @@ class BuyerSignal(BaseModel):
 
     id: UUID
     domain: str
-    company_name: Optional[str] = None
-    industry: Optional[str] = None
-    employee_count_range: Optional[str] = None
+    company_name: str | None = None
+    industry: str | None = None
+    employee_count_range: str | None = None
     times_bought: int = 1
-    total_value: Optional[float] = None
-    avg_deal_value: Optional[float] = None
+    total_value: float | None = None
+    avg_deal_value: float | None = None
     services_bought: list[str] = []
     buyer_score: int = 50
 
@@ -51,8 +50,8 @@ class BuyerScoreBoost(BaseModel):
     """Score boost calculation result."""
 
     boost_points: int = 0
-    reason: Optional[str] = None
-    signal: Optional[BuyerSignal] = None
+    reason: str | None = None
+    signal: BuyerSignal | None = None
 
 
 # ============================================================================
@@ -78,7 +77,7 @@ class BuyerSignalService:
     # SIGNAL LOOKUP
     # =========================================================================
 
-    async def get_buyer_signal(self, domain: str) -> Optional[BuyerSignal]:
+    async def get_buyer_signal(self, domain: str) -> BuyerSignal | None:
         """
         Check if this company is a known buyer.
         Returns signal data for scoring boost.
@@ -117,7 +116,7 @@ class BuyerSignalService:
             buyer_score=row.buyer_score,
         )
 
-    async def get_buyer_signal_from_email(self, email: str) -> Optional[BuyerSignal]:
+    async def get_buyer_signal_from_email(self, email: str) -> BuyerSignal | None:
         """
         Get buyer signal from email address.
 
@@ -180,7 +179,7 @@ class BuyerSignalService:
     async def get_buyer_signals_batch(
         self,
         domains: list[str],
-    ) -> dict[str, Optional[BuyerSignal]]:
+    ) -> dict[str, BuyerSignal | None]:
         """
         Get buyer signals for multiple domains at once.
         More efficient for bulk scoring.
@@ -205,7 +204,7 @@ class BuyerSignalService:
             {"domains": [d.lower() for d in domains]},
         )
 
-        signals: dict[str, Optional[BuyerSignal]] = {d.lower(): None for d in domains}
+        signals: dict[str, BuyerSignal | None] = {d.lower(): None for d in domains}
 
         for row in result.fetchall():
             signals[row.domain] = BuyerSignal(
@@ -294,7 +293,7 @@ class BuyerSignalService:
     # UTILITY
     # =========================================================================
 
-    def _extract_domain(self, email: str) -> Optional[str]:
+    def _extract_domain(self, email: str) -> str | None:
         """Extract domain from email address."""
         if not email or "@" not in email:
             return None

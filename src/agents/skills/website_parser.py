@@ -219,7 +219,7 @@ IMPORTANT:
         """Build the prompt for website parsing."""
         page_list = ""
         if input_data.page_urls:
-            page_list = f"\n\nPages included:\n" + "\n".join(
+            page_list = "\n\nPages included:\n" + "\n".join(
                 f"- {url}" for url in input_data.page_urls
             )
 
@@ -241,7 +241,7 @@ Extract all relevant information following the guidelines. Return valid JSON."""
     async def execute(
         self,
         input_data: Input,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
     ) -> SkillResult[Output]:
         """
         Execute website parsing.

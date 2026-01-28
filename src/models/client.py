@@ -22,8 +22,9 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, JSON, TIMESTAMP
-from sqlalchemy.dialects.postgresql import ARRAY, ENUM, UUID as UUID_DB, JSONB
+from sqlalchemy import JSON, TIMESTAMP, Boolean, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import ARRAY, ENUM, JSONB
+from sqlalchemy.dialects.postgresql import UUID as UUID_DB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import (
@@ -80,18 +81,18 @@ class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         nullable=False,
         default=1250,
     )
-    credits_reset_at: Mapped[Optional[datetime]] = mapped_column(
+    credits_reset_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
     )
 
     # Emergency pause (Phase H, Item 43)
     # When paused_at is set, ALL outreach for this client stops
-    paused_at: Mapped[Optional[datetime]] = mapped_column(
+    paused_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True),
         nullable=True,
     )
-    pause_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    paused_by_user_id: Mapped[Optional[UUID]] = mapped_column(
+    pause_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    paused_by_user_id: Mapped[UUID | None] = mapped_column(
         UUID_DB(as_uuid=True),
         ForeignKey("users.id"),
         nullable=True,
@@ -118,63 +119,63 @@ class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         nullable=False,
         default="Australia/Sydney",
     )
-    digest_recipients: Mapped[Optional[list]] = mapped_column(
+    digest_recipients: Mapped[list | None] = mapped_column(
         JSONB,
         nullable=True,
         default=list,
     )
-    last_digest_sent_at: Mapped[Optional[datetime]] = mapped_column(
+    last_digest_sent_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True),
         nullable=True,
     )
 
     # Default settings
-    default_permission_mode: Mapped[Optional[PermissionMode]] = mapped_column(
+    default_permission_mode: Mapped[PermissionMode | None] = mapped_column(
         ENUM(PermissionMode, name="permission_mode", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=True,
         default=PermissionMode.CO_PILOT,
     )
 
     # Stripe integration
-    stripe_customer_id: Mapped[Optional[str]] = mapped_column(
+    stripe_customer_id: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
     )
-    stripe_subscription_id: Mapped[Optional[str]] = mapped_column(
+    stripe_subscription_id: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
     )
 
     # Company info (from onboarding)
-    website_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    company_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    services_offered: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
-    years_in_business: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    team_size: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    value_proposition: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    default_offer: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    website_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    company_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    services_offered: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
+    years_in_business: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    team_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    value_proposition: Mapped[str | None] = mapped_column(Text, nullable=True)
+    default_offer: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # ICP fields (from onboarding)
-    icp_industries: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
-    icp_company_sizes: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
-    icp_revenue_range: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    icp_locations: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
-    icp_titles: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
-    icp_pain_points: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
-    icp_keywords: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
-    icp_exclusions: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
+    icp_industries: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
+    icp_company_sizes: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
+    icp_revenue_range: Mapped[str | None] = mapped_column(Text, nullable=True)
+    icp_locations: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
+    icp_titles: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
+    icp_pain_points: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
+    icp_keywords: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
+    icp_exclusions: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
 
     # ALS weights (customized scoring)
-    als_weights: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    als_weights: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # Branding (for signatures, personalization)
-    branding: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=dict)
+    branding: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=dict)
 
     # ICP extraction tracking
-    icp_extracted_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
-    icp_extraction_source: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    icp_confirmed_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
-    icp_extraction_job_id: Mapped[Optional[UUID]] = mapped_column(nullable=True)
+    icp_extracted_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    icp_extraction_source: Mapped[str | None] = mapped_column(Text, nullable=True)
+    icp_confirmed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    icp_extraction_job_id: Mapped[UUID | None] = mapped_column(nullable=True)
 
     # Relationships
     memberships: Mapped[list["Membership"]] = relationship(

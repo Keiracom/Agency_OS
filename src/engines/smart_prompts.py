@@ -18,6 +18,7 @@ for generating highly personalized content using ALL available data from:
 The key insight: We already paid to enrich this data. Use it.
 """
 
+import logging
 from datetime import datetime, timedelta
 from enum import IntEnum
 from typing import Any
@@ -25,8 +26,6 @@ from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-
-import logging
 
 logger = logging.getLogger(__name__)
 

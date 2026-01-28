@@ -301,7 +301,7 @@ Based on this ICP, suggest custom ALS weights that will optimize lead scoring fo
     async def execute(
         self,
         input_data: Input,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
     ) -> SkillResult[Output]:
         """
         Execute ALS weight suggestion.

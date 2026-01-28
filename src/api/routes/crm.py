@@ -25,13 +25,12 @@ ENDPOINTS:
 
 import secrets
 from datetime import datetime
-from typing import Any, Literal, Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import (
@@ -39,13 +38,9 @@ from src.api.dependencies import (
     get_current_user_from_token,
     get_db_session,
 )
-from src.config.settings import settings
 from src.services.crm_push_service import (
     CRMConfig,
-    CRMPipeline,
     CRMPushService,
-    CRMStage,
-    CRMUser,
 )
 
 router = APIRouter(prefix="/crm", tags=["crm"])
@@ -59,34 +54,34 @@ router = APIRouter(prefix="/crm", tags=["crm"])
 class CRMConfigResponse(BaseModel):
     """CRM configuration response."""
 
-    id: Optional[UUID] = None
+    id: UUID | None = None
     client_id: UUID
-    crm_type: Optional[str] = None
+    crm_type: str | None = None
     is_active: bool = False
     connection_status: str = "disconnected"
-    connected_at: Optional[datetime] = None
-    pipeline_id: Optional[str] = None
-    pipeline_name: Optional[str] = None
-    stage_id: Optional[str] = None
-    stage_name: Optional[str] = None
-    owner_id: Optional[str] = None
-    owner_name: Optional[str] = None
-    owner_email: Optional[str] = None
-    last_successful_push_at: Optional[datetime] = None
-    last_error: Optional[str] = None
-    last_error_at: Optional[datetime] = None
+    connected_at: datetime | None = None
+    pipeline_id: str | None = None
+    pipeline_name: str | None = None
+    stage_id: str | None = None
+    stage_name: str | None = None
+    owner_id: str | None = None
+    owner_name: str | None = None
+    owner_email: str | None = None
+    last_successful_push_at: datetime | None = None
+    last_error: str | None = None
+    last_error_at: datetime | None = None
 
 
 class CRMConfigUpdateRequest(BaseModel):
     """Request to update CRM configuration."""
 
-    pipeline_id: Optional[str] = Field(None, description="Pipeline ID")
-    pipeline_name: Optional[str] = Field(None, description="Pipeline display name")
-    stage_id: Optional[str] = Field(None, description="Stage ID for new deals")
-    stage_name: Optional[str] = Field(None, description="Stage display name")
-    owner_id: Optional[str] = Field(None, description="Owner user ID")
-    owner_name: Optional[str] = Field(None, description="Owner display name")
-    owner_email: Optional[str] = Field(None, description="Owner email")
+    pipeline_id: str | None = Field(None, description="Pipeline ID")
+    pipeline_name: str | None = Field(None, description="Pipeline display name")
+    stage_id: str | None = Field(None, description="Stage ID for new deals")
+    stage_name: str | None = Field(None, description="Stage display name")
+    owner_id: str | None = Field(None, description="Owner user ID")
+    owner_name: str | None = Field(None, description="Owner display name")
+    owner_email: str | None = Field(None, description="Owner email")
 
 
 class HubSpotOAuthResponse(BaseModel):
@@ -107,7 +102,7 @@ class TestConnectionResponse(BaseModel):
 
     success: bool
     message: str
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class PipelineResponse(BaseModel):
@@ -123,7 +118,7 @@ class StageResponse(BaseModel):
 
     id: str
     name: str
-    probability: Optional[float] = None
+    probability: float | None = None
 
 
 class UserResponse(BaseModel):
@@ -131,7 +126,7 @@ class UserResponse(BaseModel):
 
     id: str
     name: str
-    email: Optional[str] = None
+    email: str | None = None
 
 
 class CRMPushLogResponse(BaseModel):
@@ -140,12 +135,12 @@ class CRMPushLogResponse(BaseModel):
     id: UUID
     operation: str
     status: str
-    lead_id: Optional[UUID] = None
-    meeting_id: Optional[UUID] = None
-    crm_contact_id: Optional[str] = None
-    crm_deal_id: Optional[str] = None
-    error_message: Optional[str] = None
-    duration_ms: Optional[int] = None
+    lead_id: UUID | None = None
+    meeting_id: UUID | None = None
+    crm_contact_id: str | None = None
+    crm_deal_id: str | None = None
+    error_message: str | None = None
+    duration_ms: int | None = None
     created_at: datetime
 
 
@@ -338,7 +333,7 @@ async def hubspot_oauth_callback(
         )
 
     client_id = UUID(state_data["client_id"])
-    user_id = UUID(state_data["user_id"])
+    UUID(state_data["user_id"])
 
     # Exchange code for tokens
     crm_service = CRMPushService(db)

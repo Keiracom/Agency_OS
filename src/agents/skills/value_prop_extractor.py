@@ -191,7 +191,7 @@ Focus on identifying what makes this agency unique. Return valid JSON."""
     async def execute(
         self,
         input_data: Input,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
     ) -> SkillResult[Output]:
         """
         Execute value proposition extraction.

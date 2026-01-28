@@ -23,20 +23,16 @@ RULES APPLIED:
   - Pydantic AI for type-safe validation
 """
 
-from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
-from pydantic_ai import RunContext
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.agents.base_agent import AgentDependencies, AgentResult, BaseAgent
-from src.models.base import CampaignStatus, ChannelType, LeadStatus
+from src.agents.base_agent import AgentResult, BaseAgent
 from src.models.campaign import Campaign
 from src.models.lead import Lead
-
 
 # ============================================
 # Output Models for Structured Responses

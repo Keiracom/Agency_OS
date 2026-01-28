@@ -12,12 +12,11 @@ RULES APPLIED:
   - Rule 7: Prefect for orchestration
 """
 
-from datetime import date, datetime, timedelta
-from typing import Optional
-from uuid import UUID
 import logging
+from datetime import date, timedelta
+from uuid import UUID
 
-from prefect import flow, task, get_run_logger
+from prefect import flow, get_run_logger, task
 from prefect.runtime import flow_run
 
 from src.config.database import get_db_session
@@ -90,7 +89,7 @@ async def get_digest_data_task(client_id: str, digest_date: date) -> dict:
 
 
 @task(name="render_digest_html", retries=1)
-async def render_digest_html_task(digest_data: dict) -> Optional[str]:
+async def render_digest_html_task(digest_data: dict) -> str | None:
     """
     Render digest data as HTML email.
 
@@ -339,7 +338,7 @@ async def send_client_digest_flow(client_id: str, client_name: str, digest_date:
 @flow(name="daily_digest_flow", log_prints=True)
 async def daily_digest_flow(
     target_hour: int = 7,
-    digest_date: Optional[date] = None,
+    digest_date: date | None = None,
 ) -> dict:
     """
     Main daily digest flow - sends digests to all eligible clients.

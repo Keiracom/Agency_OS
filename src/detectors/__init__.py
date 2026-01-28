@@ -14,12 +14,12 @@ RULES APPLIED:
 """
 
 from src.detectors.base import BaseDetector
-from src.detectors.who_detector import WhoDetector
+from src.detectors.funnel_detector import FunnelDetector
+from src.detectors.how_detector import HowDetector
+from src.detectors.weight_optimizer import WeightOptimizer, optimize_client_weights
 from src.detectors.what_detector import WhatDetector
 from src.detectors.when_detector import WhenDetector
-from src.detectors.how_detector import HowDetector
-from src.detectors.funnel_detector import FunnelDetector
-from src.detectors.weight_optimizer import WeightOptimizer, optimize_client_weights
+from src.detectors.who_detector import WhoDetector
 
 __all__ = [
     # Base

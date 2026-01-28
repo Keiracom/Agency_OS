@@ -39,23 +39,14 @@ from uuid import UUID
 from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
 from sqlalchemy import and_, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.agents.sdk_agents import should_use_sdk_email, should_use_sdk_voice_kb
-from src.services.content_qa_service import (
-    validate_email_content,
-    validate_sms_content,
-    validate_linkedin_content,
-)
+from src.agents.sdk_agents import should_use_sdk_email
 from src.engines.allocator import get_allocator_engine
 from src.engines.content import get_content_engine
 from src.engines.email import get_email_engine
 from src.engines.linkedin import get_linkedin_engine
-from src.engines.mail import get_mail_engine
 from src.engines.sms import get_sms_engine
-from src.engines.voice import get_voice_engine
 from src.integrations.supabase import get_db_session
-from src.models.activity import Activity
 from src.models.base import (
     CampaignStatus,
     ChannelType,
@@ -66,6 +57,11 @@ from src.models.base import (
 from src.models.campaign import Campaign
 from src.models.client import Client
 from src.models.lead import Lead
+from src.services.content_qa_service import (
+    validate_email_content,
+    validate_linkedin_content,
+    validate_sms_content,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -241,7 +237,7 @@ async def jit_validate_outreach_task(
             )
 
         if client.credits_remaining <= 0:
-            raise ValueError(f"Client has no credits remaining")
+            raise ValueError("Client has no credits remaining")
 
         # Phase H, Item 43: Client emergency pause check
         if client.paused_at is not None:

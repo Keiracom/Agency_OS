@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
@@ -54,11 +54,11 @@ class ExtractedClient(BaseModel):
 class SocialTextContent(BaseModel):
     """Text content collected from social profiles."""
 
-    linkedin_description: Optional[str] = None
+    linkedin_description: str | None = None
     linkedin_specialties: list[str] = Field(default_factory=list)
-    instagram_bio: Optional[str] = None
-    facebook_about: Optional[str] = None
-    google_category: Optional[str] = None
+    instagram_bio: str | None = None
+    facebook_about: str | None = None
+    google_category: str | None = None
 
 
 class SocialClientExtractorSkill(BaseSkill["SocialClientExtractorSkill.Input", "SocialClientExtractorSkill.Output"]):
@@ -83,14 +83,14 @@ class SocialClientExtractorSkill(BaseSkill["SocialClientExtractorSkill.Input", "
 
         company_name: str = Field(description="Agency name")
         # Option 1: Provide pre-scraped text content (avoids re-scraping)
-        linkedin_description: Optional[str] = Field(default=None, description="Pre-scraped LinkedIn description")
+        linkedin_description: str | None = Field(default=None, description="Pre-scraped LinkedIn description")
         linkedin_specialties: list[str] = Field(default_factory=list, description="Pre-scraped LinkedIn specialties")
-        instagram_bio: Optional[str] = Field(default=None, description="Pre-scraped Instagram bio")
-        facebook_about: Optional[str] = Field(default=None, description="Pre-scraped Facebook about")
+        instagram_bio: str | None = Field(default=None, description="Pre-scraped Instagram bio")
+        facebook_about: str | None = Field(default=None, description="Pre-scraped Facebook about")
         # Option 2: Provide URLs to scrape (only used if pre-scraped content not provided)
-        linkedin_url: Optional[str] = Field(default=None, description="LinkedIn company URL (fallback)")
-        instagram_url: Optional[str] = Field(default=None, description="Instagram profile URL (fallback)")
-        facebook_url: Optional[str] = Field(default=None, description="Facebook page URL (fallback)")
+        linkedin_url: str | None = Field(default=None, description="LinkedIn company URL (fallback)")
+        instagram_url: str | None = Field(default=None, description="Instagram profile URL (fallback)")
+        facebook_url: str | None = Field(default=None, description="Facebook page URL (fallback)")
         location: str = Field(default="Australia", description="Location for Google Business search")
         existing_portfolio: list[str] = Field(
             default_factory=list,
@@ -147,7 +147,7 @@ Be conservative - only extract names that clearly appear to be clients, not just
     async def execute(
         self,
         input_data: Input,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
     ) -> SkillResult[Output]:
         """
         Execute social client extraction.

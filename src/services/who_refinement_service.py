@@ -32,7 +32,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, insert, select, update
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.conversion_patterns import ConversionPattern
@@ -305,7 +305,7 @@ class WhoRefinementService:
             }
 
         # Reorder base industries: high-lift first, then others
-        base_lower_map = {i.lower().strip(): i for i in base_industries}
+        {i.lower().strip(): i for i in base_industries}
         high_lift_lower = {i.lower().strip() for i in high_lift}
 
         # Split base into high-lift and others

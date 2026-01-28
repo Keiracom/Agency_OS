@@ -16,12 +16,12 @@ CONSUMERS: orchestration, API routes
 
 from __future__ import annotations
 
+import contextlib
 import csv
 import io
 import logging
-from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, BinaryIO, Optional
+from typing import Any
 from uuid import UUID
 
 import httpx
@@ -29,7 +29,6 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.config.settings import settings
 from src.services.crm_push_service import CRMConfig, CRMPushService
 
 logger = logging.getLogger(__name__)
@@ -49,16 +48,16 @@ class CustomerData(BaseModel):
     """Customer data for import."""
 
     company_name: str
-    domain: Optional[str] = None
-    industry: Optional[str] = None
-    employee_count_range: Optional[str] = None
-    contact_email: Optional[str] = None
-    contact_name: Optional[str] = None
-    contact_title: Optional[str] = None
+    domain: str | None = None
+    industry: str | None = None
+    employee_count_range: str | None = None
+    contact_email: str | None = None
+    contact_name: str | None = None
+    contact_title: str | None = None
     status: str = "active"
-    customer_since: Optional[datetime] = None
-    deal_value: Optional[float] = None
-    crm_id: Optional[str] = None
+    customer_since: datetime | None = None
+    deal_value: float | None = None
+    crm_id: str | None = None
 
 
 class ImportResult(BaseModel):
@@ -74,12 +73,12 @@ class ImportResult(BaseModel):
 class ColumnMapping(BaseModel):
     """CSV column mapping configuration."""
 
-    company_name: Optional[str] = None
-    domain: Optional[str] = None
-    email: Optional[str] = None  # Used to extract domain
-    contact_name: Optional[str] = None
-    industry: Optional[str] = None
-    deal_value: Optional[str] = None
+    company_name: str | None = None
+    domain: str | None = None
+    email: str | None = None  # Used to extract domain
+    contact_name: str | None = None
+    industry: str | None = None
+    deal_value: str | None = None
 
 
 # ============================================================================
@@ -450,10 +449,8 @@ class CustomerImportService:
                         if value_str:
                             # Remove currency symbols and commas
                             value_str = value_str.replace("$", "").replace(",", "").replace(" ", "")
-                            try:
+                            with contextlib.suppress(ValueError):
                                 deal_value = float(value_str)
-                            except ValueError:
-                                pass
 
                     customer = CustomerData(
                         company_name=company_name,
@@ -542,7 +539,7 @@ class CustomerImportService:
         client_id: UUID,
         customer: CustomerData,
         source: str,
-        domain: Optional[str],
+        domain: str | None,
     ) -> UUID:
         """Upsert customer record."""
         result = await self.db.execute(
@@ -593,7 +590,7 @@ class CustomerImportService:
         domain: str,
         reason: str,
         source: str,
-        customer_id: Optional[UUID] = None,
+        customer_id: UUID | None = None,
     ):
         """Add domain to suppression list."""
         await self.db.execute(
@@ -615,7 +612,7 @@ class CustomerImportService:
         )
         await self.db.commit()
 
-    async def _get_client_service_type(self, client_id: UUID) -> Optional[str]:
+    async def _get_client_service_type(self, client_id: UUID) -> str | None:
         """Get client's primary service type for buyer signals."""
         result = await self.db.execute(
             text("SELECT primary_service FROM clients WHERE id = :client_id"),
@@ -631,7 +628,7 @@ class CustomerImportService:
     async def list_customers(
         self,
         client_id: UUID,
-        status: Optional[str] = None,
+        status: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[dict[str, Any]]:
@@ -699,10 +696,10 @@ class CustomerImportService:
         self,
         client_id: UUID,
         customer_id: UUID,
-        can_use_as_reference: Optional[bool] = None,
-        case_study_url: Optional[str] = None,
-        testimonial: Optional[str] = None,
-        logo_approved: Optional[bool] = None,
+        can_use_as_reference: bool | None = None,
+        case_study_url: str | None = None,
+        testimonial: str | None = None,
+        logo_approved: bool | None = None,
     ) -> dict[str, Any]:
         """Update social proof settings for a customer."""
         result = await self.db.execute(
@@ -751,7 +748,7 @@ class CustomerImportService:
     # UTILITY
     # =========================================================================
 
-    def _extract_domain(self, email: str) -> Optional[str]:
+    def _extract_domain(self, email: str) -> str | None:
         """Extract domain from email address."""
         if not email or "@" not in email:
             return None

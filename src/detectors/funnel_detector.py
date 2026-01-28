@@ -19,7 +19,6 @@ This detector analyzes downstream outcomes to learn:
 - Which channels drive the most revenue (attribution patterns)
 """
 
-from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 

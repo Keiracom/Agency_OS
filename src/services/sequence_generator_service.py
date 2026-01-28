@@ -13,14 +13,12 @@ This service:
 4. No AI API call - deterministic logic only
 """
 
-from typing import Optional
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.base import ChannelType
 from src.models.campaign import CampaignSequence
-
 
 # Default sequence template per spec
 DEFAULT_SEQUENCE = [
@@ -213,7 +211,7 @@ class SequenceGeneratorService:
 
 
 # Singleton instance
-_sequence_generator_service: Optional[SequenceGeneratorService] = None
+_sequence_generator_service: SequenceGeneratorService | None = None
 
 
 def get_sequence_generator_service() -> SequenceGeneratorService:

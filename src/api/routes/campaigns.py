@@ -15,15 +15,14 @@ RULES APPLIED:
   - Channel allocation must sum to 100
 """
 
-from datetime import date, datetime, time
-from typing import Annotated, List, Optional
-from uuid import UUID
-
 import logging
+from datetime import date, datetime, time
+from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, field_validator, model_validator
-from sqlalchemy import and_, desc, func, select
+from sqlalchemy import and_, desc, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -38,6 +37,8 @@ from src.api.dependencies import (
 from src.exceptions import (
     ResourceDeletedError,
     ResourceNotFoundError,
+)
+from src.exceptions import (
     ValidationError as AgencyValidationError,
 )
 from src.models.base import CampaignStatus, ChannelType, PermissionMode
@@ -56,16 +57,16 @@ class CampaignCreate(BaseModel):
     """Schema for creating a campaign."""
 
     name: str = Field(..., min_length=1, max_length=255, description="Campaign name")
-    description: Optional[str] = Field(None, description="Campaign description")
-    permission_mode: Optional[PermissionMode] = Field(
+    description: str | None = Field(None, description="Campaign description")
+    permission_mode: PermissionMode | None = Field(
         None, description="Permission mode (overrides client default)"
     )
 
     # Target settings
-    target_industries: Optional[List[str]] = Field(None, description="Target industries")
-    target_titles: Optional[List[str]] = Field(None, description="Target job titles")
-    target_company_sizes: Optional[List[str]] = Field(None, description="Target company sizes")
-    target_locations: Optional[List[str]] = Field(None, description="Target locations")
+    target_industries: list[str] | None = Field(None, description="Target industries")
+    target_titles: list[str] | None = Field(None, description="Target job titles")
+    target_company_sizes: list[str] | None = Field(None, description="Target company sizes")
+    target_locations: list[str] | None = Field(None, description="Target locations")
 
     # Channel allocation (must sum to 100)
     allocation_email: int = Field(100, ge=0, le=100, description="Email allocation %")
@@ -75,15 +76,15 @@ class CampaignCreate(BaseModel):
     allocation_mail: int = Field(0, ge=0, le=100, description="Direct mail allocation %")
 
     # Scheduling
-    start_date: Optional[date] = Field(None, description="Campaign start date")
-    end_date: Optional[date] = Field(None, description="Campaign end date")
+    start_date: date | None = Field(None, description="Campaign start date")
+    end_date: date | None = Field(None, description="Campaign end date")
     daily_limit: int = Field(50, ge=1, le=500, description="Daily outreach limit")
     timezone: str = Field("Australia/Sydney", description="Campaign timezone")
 
     # Working hours
     work_hours_start: time = Field(time(9, 0), description="Work hours start (24h)")
     work_hours_end: time = Field(time(17, 0), description="Work hours end (24h)")
-    work_days: List[int] = Field([1, 2, 3, 4, 5], description="Work days (1=Mon, 7=Sun)")
+    work_days: list[int] = Field([1, 2, 3, 4, 5], description="Work days (1=Mon, 7=Sun)")
 
     # Sequence settings
     sequence_steps: int = Field(5, ge=1, le=20, description="Number of sequence steps")
@@ -105,7 +106,7 @@ class CampaignCreate(BaseModel):
 
     @field_validator("work_days")
     @classmethod
-    def validate_work_days(cls, v: List[int]) -> List[int]:
+    def validate_work_days(cls, v: list[int]) -> list[int]:
         """Validate work days are valid."""
         for day in v:
             if day < 1 or day > 7:
@@ -116,37 +117,37 @@ class CampaignCreate(BaseModel):
 class CampaignUpdate(BaseModel):
     """Schema for updating a campaign."""
 
-    name: Optional[str] = Field(None, min_length=1, max_length=255)
-    description: Optional[str] = None
-    permission_mode: Optional[PermissionMode] = None
+    name: str | None = Field(None, min_length=1, max_length=255)
+    description: str | None = None
+    permission_mode: PermissionMode | None = None
 
     # Target settings
-    target_industries: Optional[List[str]] = None
-    target_titles: Optional[List[str]] = None
-    target_company_sizes: Optional[List[str]] = None
-    target_locations: Optional[List[str]] = None
+    target_industries: list[str] | None = None
+    target_titles: list[str] | None = None
+    target_company_sizes: list[str] | None = None
+    target_locations: list[str] | None = None
 
     # Channel allocation (must sum to 100 if any are set)
-    allocation_email: Optional[int] = Field(None, ge=0, le=100)
-    allocation_sms: Optional[int] = Field(None, ge=0, le=100)
-    allocation_linkedin: Optional[int] = Field(None, ge=0, le=100)
-    allocation_voice: Optional[int] = Field(None, ge=0, le=100)
-    allocation_mail: Optional[int] = Field(None, ge=0, le=100)
+    allocation_email: int | None = Field(None, ge=0, le=100)
+    allocation_sms: int | None = Field(None, ge=0, le=100)
+    allocation_linkedin: int | None = Field(None, ge=0, le=100)
+    allocation_voice: int | None = Field(None, ge=0, le=100)
+    allocation_mail: int | None = Field(None, ge=0, le=100)
 
     # Scheduling
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
-    daily_limit: Optional[int] = Field(None, ge=1, le=500)
-    timezone: Optional[str] = None
+    start_date: date | None = None
+    end_date: date | None = None
+    daily_limit: int | None = Field(None, ge=1, le=500)
+    timezone: str | None = None
 
     # Working hours
-    work_hours_start: Optional[time] = None
-    work_hours_end: Optional[time] = None
-    work_days: Optional[List[int]] = None
+    work_hours_start: time | None = None
+    work_hours_end: time | None = None
+    work_days: list[int] | None = None
 
     # Sequence settings
-    sequence_steps: Optional[int] = Field(None, ge=1, le=20)
-    sequence_delay_days: Optional[int] = Field(None, ge=1, le=30)
+    sequence_steps: int | None = Field(None, ge=1, le=20)
+    sequence_delay_days: int | None = Field(None, ge=1, le=30)
 
 
 class CampaignStatusUpdate(BaseModel):
@@ -160,21 +161,21 @@ class CampaignResponse(BaseModel):
 
     id: UUID
     client_id: UUID
-    created_by: Optional[UUID] = None
+    created_by: UUID | None = None
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     status: CampaignStatus
-    permission_mode: Optional[PermissionMode] = None
+    permission_mode: PermissionMode | None = None
 
     # Priority allocation (Phase I Dashboard)
     lead_allocation_pct: int = Field(default=50, description="Lead allocation percentage (10-80%)")
     is_ai_suggested: bool = Field(default=False, description="Whether campaign was AI-suggested")
 
     # Target settings
-    target_industries: Optional[List[str]] = None
-    target_titles: Optional[List[str]] = None
-    target_company_sizes: Optional[List[str]] = None
-    target_locations: Optional[List[str]] = None
+    target_industries: list[str] | None = None
+    target_titles: list[str] | None = None
+    target_company_sizes: list[str] | None = None
+    target_locations: list[str] | None = None
 
     # Channel allocation
     allocation_email: int
@@ -184,13 +185,13 @@ class CampaignResponse(BaseModel):
     allocation_mail: int
 
     # Scheduling
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
+    start_date: date | None = None
+    end_date: date | None = None
     daily_limit: int
     timezone: str
     work_hours_start: time
     work_hours_end: time
-    work_days: List[int]
+    work_days: list[int]
 
     # Sequence settings
     sequence_steps: int
@@ -215,7 +216,7 @@ class CampaignResponse(BaseModel):
     # Timestamps
     created_at: datetime
     updated_at: datetime
-    deleted_at: Optional[datetime] = None
+    deleted_at: datetime | None = None
 
     class Config:
         from_attributes = True
@@ -224,7 +225,7 @@ class CampaignResponse(BaseModel):
 class CampaignListResponse(BaseModel):
     """Schema for paginated campaign list."""
 
-    campaigns: List[CampaignResponse] = Field(..., description="List of campaigns")
+    campaigns: list[CampaignResponse] = Field(..., description="List of campaigns")
     total: int = Field(..., description="Total count")
     page: int = Field(..., description="Current page")
     page_size: int = Field(..., description="Page size")
@@ -237,7 +238,7 @@ class SequenceStepCreate(BaseModel):
     step_number: int = Field(..., ge=1, le=20, description="Step number")
     channel: ChannelType = Field(..., description="Channel for this step")
     delay_days: int = Field(3, ge=0, le=30, description="Days to wait before this step")
-    subject_template: Optional[str] = Field(None, description="Subject template (email only)")
+    subject_template: str | None = Field(None, description="Subject template (email only)")
     body_template: str = Field(..., min_length=1, description="Body template")
     skip_if_replied: bool = Field(True, description="Skip if lead replied")
     skip_if_bounced: bool = Field(True, description="Skip if lead bounced")
@@ -246,12 +247,12 @@ class SequenceStepCreate(BaseModel):
 class SequenceStepUpdate(BaseModel):
     """Schema for updating a sequence step (Phase I, Item 56)."""
 
-    channel: Optional[ChannelType] = Field(None, description="Channel for this step")
-    delay_days: Optional[int] = Field(None, ge=0, le=30, description="Days to wait before this step")
-    subject_template: Optional[str] = Field(None, description="Subject template (email only)")
-    body_template: Optional[str] = Field(None, min_length=1, description="Body template")
-    skip_if_replied: Optional[bool] = Field(None, description="Skip if lead replied")
-    skip_if_bounced: Optional[bool] = Field(None, description="Skip if lead bounced")
+    channel: ChannelType | None = Field(None, description="Channel for this step")
+    delay_days: int | None = Field(None, ge=0, le=30, description="Days to wait before this step")
+    subject_template: str | None = Field(None, description="Subject template (email only)")
+    body_template: str | None = Field(None, min_length=1, description="Body template")
+    skip_if_replied: bool | None = Field(None, description="Skip if lead replied")
+    skip_if_bounced: bool | None = Field(None, description="Skip if lead bounced")
 
 
 class SequenceStepResponse(BaseModel):
@@ -262,13 +263,13 @@ class SequenceStepResponse(BaseModel):
     step_number: int
     channel: ChannelType
     delay_days: int
-    subject_template: Optional[str] = None
+    subject_template: str | None = None
     body_template: str
     skip_if_replied: bool
     skip_if_bounced: bool
     # Phase E additions
-    purpose: Optional[str] = None
-    skip_if: Optional[str] = None
+    purpose: str | None = None
+    skip_if: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -281,7 +282,7 @@ class ResourceCreate(BaseModel):
 
     channel: ChannelType = Field(..., description="Channel type")
     resource_id: str = Field(..., description="Resource ID (email domain, LinkedIn seat, etc)")
-    resource_name: Optional[str] = Field(None, description="Friendly name")
+    resource_name: str | None = Field(None, description="Friendly name")
     daily_limit: int = Field(..., ge=1, description="Daily send limit")
     is_warmed: bool = Field(False, description="Is resource warmed up")
 
@@ -293,11 +294,11 @@ class ResourceResponse(BaseModel):
     campaign_id: UUID
     channel: ChannelType
     resource_id: str
-    resource_name: Optional[str] = None
+    resource_name: str | None = None
     daily_limit: int
     daily_used: int
     remaining: int
-    last_used_at: Optional[datetime] = None
+    last_used_at: datetime | None = None
     last_reset_at: datetime
     is_active: bool
     is_warmed: bool
@@ -462,8 +463,8 @@ async def list_campaigns(
     db: Annotated[AsyncSession, Depends(get_db_session)],
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Page size"),
-    status_filter: Optional[CampaignStatus] = Query(None, alias="status", description="Filter by status"),
-    search: Optional[str] = Query(None, description="Search by name"),
+    status_filter: CampaignStatus | None = Query(None, alias="status", description="Filter by status"),
+    search: str | None = Query(None, description="Search by name"),
 ) -> CampaignListResponse:
     """
     List campaigns with pagination and filters.
@@ -870,14 +871,14 @@ async def pause_campaign(
 
 class EmergencyPauseRequest(BaseModel):
     """Request body for emergency pause."""
-    reason: Optional[str] = Field(None, max_length=500)
+    reason: str | None = Field(None, max_length=500)
 
 
 class EmergencyPauseResponse(BaseModel):
     """Response for emergency pause operations."""
     paused: bool
-    paused_at: Optional[datetime] = None
-    pause_reason: Optional[str] = None
+    paused_at: datetime | None = None
+    pause_reason: str | None = None
     campaigns_affected: int = 0
 
 
@@ -1043,7 +1044,7 @@ async def resume_all_outreach(
 
 @router.get(
     "/clients/{client_id}/campaigns/{campaign_id}/sequences",
-    response_model=List[SequenceStepResponse],
+    response_model=list[SequenceStepResponse],
     status_code=status.HTTP_200_OK,
 )
 async def list_sequences(
@@ -1051,7 +1052,7 @@ async def list_sequences(
     campaign_id: UUID,
     ctx: Annotated[ClientContext, Depends(get_current_client)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
-) -> List[SequenceStepResponse]:
+) -> list[SequenceStepResponse]:
     """
     List campaign sequence steps.
 
@@ -1251,7 +1252,7 @@ async def delete_sequence(
 
 @router.get(
     "/clients/{client_id}/campaigns/{campaign_id}/resources",
-    response_model=List[ResourceResponse],
+    response_model=list[ResourceResponse],
     status_code=status.HTTP_200_OK,
 )
 async def list_resources(
@@ -1259,8 +1260,8 @@ async def list_resources(
     campaign_id: UUID,
     ctx: Annotated[ClientContext, Depends(get_current_client)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
-    channel: Optional[ChannelType] = Query(None, description="Filter by channel"),
-) -> List[ResourceResponse]:
+    channel: ChannelType | None = Query(None, description="Filter by channel"),
+) -> list[ResourceResponse]:
     """
     List campaign resources.
 
@@ -1461,10 +1462,11 @@ async def enrich_campaign_leads(
         Accepted response with processing status
     """
     # Verify campaign exists
-    campaign = await get_campaign_or_404(campaign_id, client_id, db)
+    await get_campaign_or_404(campaign_id, client_id, db)
 
     # Trigger Prefect flow for enrichment
     import logging
+
     from prefect.deployments import run_deployment
 
     logger = logging.getLogger(__name__)
@@ -1529,8 +1531,9 @@ async def _run_campaign_enrichment(client_id: UUID, campaign_id: UUID, count: in
         )
 
         # Update campaign total_leads counter
-        from src.integrations.supabase import get_db_session
         from sqlalchemy import text
+
+        from src.integrations.supabase import get_db_session
         async with get_db_session() as db:
             await db.execute(
                 text("""
@@ -1568,10 +1571,10 @@ class CampaignSuggestionItem(BaseModel):
 
     name: str = Field(..., description="Suggested campaign name")
     description: str = Field(..., description="Campaign description")
-    target_industries: List[str] = Field(..., description="Target industries")
-    target_titles: List[str] = Field(..., description="Target job titles")
-    target_company_sizes: List[str] = Field(..., description="Target company sizes")
-    target_locations: List[str] = Field(..., description="Target locations")
+    target_industries: list[str] = Field(..., description="Target industries")
+    target_titles: list[str] = Field(..., description="Target job titles")
+    target_company_sizes: list[str] = Field(..., description="Target company sizes")
+    target_locations: list[str] = Field(..., description="Target locations")
     lead_allocation_pct: int = Field(..., ge=0, le=100, description="Lead allocation percentage")
     ai_reasoning: str = Field(..., description="AI reasoning for this suggestion")
     priority: int = Field(..., ge=1, description="Priority (1 = highest)")
@@ -1584,14 +1587,14 @@ class CampaignSuggestionsResponse(BaseModel):
     tier: str = Field(..., description="Client tier name")
     ai_campaign_slots: int = Field(..., description="Max AI campaign slots for tier")
     custom_campaign_slots: int = Field(..., description="Max custom campaign slots for tier")
-    suggestions: List[CampaignSuggestionItem] = Field(..., description="AI-suggested campaigns")
+    suggestions: list[CampaignSuggestionItem] = Field(..., description="AI-suggested campaigns")
     generated_at: str = Field(..., description="ISO timestamp of generation")
 
 
 class CreateCampaignsFromSuggestionsRequest(BaseModel):
     """Schema for creating campaigns from suggestions."""
 
-    suggestion_indices: Optional[List[int]] = Field(
+    suggestion_indices: list[int] | None = Field(
         None,
         description="Indices of suggestions to create (0-based). If None, creates all."
     )
@@ -1607,7 +1610,7 @@ class CreateCampaignsFromSuggestionsResponse(BaseModel):
     client_id: str = Field(..., description="Client UUID")
     campaigns_created: int = Field(..., description="Number of campaigns created")
     total_allocation: int = Field(..., description="Total lead allocation percentage")
-    campaigns: List[dict] = Field(..., description="Created campaign details")
+    campaigns: list[dict] = Field(..., description="Created campaign details")
 
 
 @router.get(
@@ -1755,7 +1758,7 @@ class CampaignAllocation(BaseModel):
 class AllocateCampaignsRequest(BaseModel):
     """Request to allocate priority across campaigns."""
 
-    allocations: List[CampaignAllocation] = Field(
+    allocations: list[CampaignAllocation] = Field(
         ..., min_length=1, description="Campaign allocations"
     )
 
@@ -1773,7 +1776,7 @@ class AllocateCampaignsResponse(BaseModel):
 
     status: str = Field(..., description="Processing status")
     message: str = Field(..., description="Status message")
-    allocations: List[dict] = Field(..., description="Updated allocations")
+    allocations: list[dict] = Field(..., description="Updated allocations")
 
 
 @router.post(
@@ -1867,7 +1870,7 @@ async def allocate_campaigns(
 
 def _trigger_pool_population_if_needed(
     client_id: UUID,
-    campaign_ids: List[UUID],
+    campaign_ids: list[UUID],
 ) -> None:
     """
     Background task to trigger pool population flow.

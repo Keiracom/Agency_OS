@@ -33,10 +33,9 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import EngineResult, OutreachEngine
-from src.exceptions import ValidationError
 from src.integrations.clicksend import ClickSendClient, get_clicksend_client
 from src.models.activity import Activity
-from src.models.base import ChannelType, LeadStatus
+from src.models.base import ChannelType
 from src.models.lead import Lead
 
 
@@ -121,7 +120,7 @@ class MailEngine(OutreachEngine):
             )
 
         # Get campaign for context
-        campaign = await self.get_campaign_by_id(db, campaign_id)
+        await self.get_campaign_by_id(db, campaign_id)
 
         # Extract options
         mail_type = kwargs.get("mail_type", "letter")

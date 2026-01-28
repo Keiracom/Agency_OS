@@ -29,20 +29,18 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, select, text, update
+from sqlalchemy import and_, select, text
 
 logger = logging.getLogger(__name__)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import BaseEngine, EngineResult
-from src.exceptions import ValidationError
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
 from src.models.activity import Activity
 from src.models.base import ChannelType, IntentType, LeadStatus
 from src.models.lead import Lead
 from src.services.reply_analyzer import ReplyAnalyzer
 from src.services.thread_service import ThreadService
-
 
 # Intent type mapping from string to enum
 INTENT_MAP = {
@@ -325,7 +323,7 @@ class CloserEngine(BaseEngine):
         """
         try:
             # Get lead to validate
-            lead = await self.get_lead_by_id(db, lead_id)
+            await self.get_lead_by_id(db, lead_id)
 
             # Get reply activities
             stmt = (

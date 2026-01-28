@@ -206,7 +206,6 @@ class ClickSendClient:
         Returns:
             List of send results
         """
-        from src.exceptions import DNCRError
 
         sms_messages = []
         skipped = []

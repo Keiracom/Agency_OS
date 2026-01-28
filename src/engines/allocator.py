@@ -31,17 +31,16 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, func, select, update
+from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import BaseEngine, EngineResult
 from src.exceptions import ResourceRateLimitError
 from src.integrations.redis import rate_limiter
-from src.models.base import ChannelType, LeadStatus
-from src.models.campaign import Campaign, CampaignResource
+from src.models.base import ChannelType
+from src.models.campaign import CampaignResource
 from src.models.conversion_patterns import ConversionPattern
 from src.models.lead import Lead
-
 
 # ============================================
 # Rate Limit Constants (Rule 17)
@@ -156,7 +155,7 @@ class AllocatorEngine(BaseEngine):
                 and_(
                     CampaignResource.campaign_id == campaign_id,
                     CampaignResource.channel == channel,
-                    CampaignResource.is_active == True,
+                    CampaignResource.is_active,
                 )
             )
             .order_by(CampaignResource.last_used_at.asc().nullsfirst())
@@ -414,7 +413,7 @@ class AllocatorEngine(BaseEngine):
             .where(
                 and_(
                     CampaignResource.campaign_id == campaign_id,
-                    CampaignResource.is_active == True,
+                    CampaignResource.is_active,
                 )
             )
             .order_by(CampaignResource.last_used_at.asc().nullsfirst())

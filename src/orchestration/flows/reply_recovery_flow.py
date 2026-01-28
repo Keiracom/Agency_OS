@@ -25,7 +25,6 @@ from uuid import UUID
 
 from prefect import flow, task
 from sqlalchemy import and_, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.closer import get_closer_engine
 from src.integrations.postmark import get_postmark_client

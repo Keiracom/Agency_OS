@@ -13,16 +13,16 @@ RULES APPLIED:
   - Readiness vs liveness separation for Kubernetes-style orchestration
 """
 
+from typing import Literal
+
 import httpx
 from fastapi import APIRouter, status
-from sqlalchemy import text
 from pydantic import BaseModel
-from typing import Literal
+from sqlalchemy import text
 
 from src.config.settings import settings
 from src.integrations.redis import get_redis
 from src.integrations.supabase import get_db_session as get_async_session
-
 
 # ============================================
 # Response Models

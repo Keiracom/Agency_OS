@@ -26,14 +26,13 @@ Phase D additions:
 """
 
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.lead import Lead
-
 
 # Australian state-level timezone mapping (per EMAIL_DISTRIBUTION.md spec)
 # CEO Decision 2026-01-20: State-level granularity for Australia
@@ -245,12 +244,11 @@ def lookup_timezone_from_location(
     country_lower = country.lower().strip()
 
     # For US leads, try to get more precise timezone from state
-    if country_lower in ("united states", "us", "usa"):
-        if state:
-            state_lower = state.lower().strip()
-            tz_name = US_STATE_TIMEZONE_MAP.get(state_lower)
-            if tz_name:
-                return tz_name, get_timezone_offset(tz_name)
+    if country_lower in ("united states", "us", "usa") and state:
+        state_lower = state.lower().strip()
+        tz_name = US_STATE_TIMEZONE_MAP.get(state_lower)
+        if tz_name:
+            return tz_name, get_timezone_offset(tz_name)
 
     # For Australian leads, use state-level timezone (per spec)
     if country_lower in ("australia", "au", "aus"):
@@ -426,7 +424,7 @@ class TimezoneService:
         try:
             import zoneinfo
             tz = zoneinfo.ZoneInfo(lead_timezone)
-            utc = utc_time or datetime.now(timezone.utc)
+            utc = utc_time or datetime.now(UTC)
             return utc.astimezone(tz)
         except Exception:
             return None
@@ -512,7 +510,7 @@ class TimezoneService:
             target += timedelta(days=1)
 
         # Return as UTC for scheduling
-        return target.astimezone(timezone.utc)
+        return target.astimezone(UTC)
 
     def is_in_email_send_window(
         self,

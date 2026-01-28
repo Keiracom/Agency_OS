@@ -14,10 +14,9 @@ TIER 3 of Scraper Waterfall:
 
 from __future__ import annotations
 
-import asyncio
 import logging
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import Any
 
 from src.config.settings import settings
 
@@ -52,7 +51,7 @@ class CamoufoxScrapeResult:
     page_count: int = 0
     tier_used: int = 3
     needs_fallback: bool = False
-    failure_reason: Optional[str] = None
+    failure_reason: str | None = None
 
     @property
     def success(self) -> bool:
@@ -74,10 +73,10 @@ class CamoufoxScraper:
 
     def __init__(
         self,
-        proxy_host: Optional[str] = None,
-        proxy_port: Optional[int] = None,
-        proxy_username: Optional[str] = None,
-        proxy_password: Optional[str] = None,
+        proxy_host: str | None = None,
+        proxy_port: int | None = None,
+        proxy_username: str | None = None,
+        proxy_password: str | None = None,
     ):
         """
         Initialize Camoufox scraper with optional proxy configuration.
@@ -95,7 +94,7 @@ class CamoufoxScraper:
 
         self._proxy_config = self._build_proxy_config()
 
-    def _build_proxy_config(self) -> Optional[dict[str, Any]]:
+    def _build_proxy_config(self) -> dict[str, Any] | None:
         """Build proxy configuration dict for Camoufox."""
         if not self.proxy_host or not self.proxy_port:
             return None
@@ -213,7 +212,7 @@ class CamoufoxScraper:
                         needs_fallback=False,
                     )
 
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.warning(f"Camoufox timeout for {url}")
                     return CamoufoxScrapeResult(
                         url=url,
@@ -308,7 +307,7 @@ class CamoufoxScraper:
 
 
 # Singleton instance
-_camoufox_scraper: Optional[CamoufoxScraper] = None
+_camoufox_scraper: CamoufoxScraper | None = None
 
 
 def get_camoufox_scraper() -> CamoufoxScraper:

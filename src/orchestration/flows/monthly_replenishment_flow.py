@@ -23,11 +23,10 @@ from uuid import UUID
 from prefect import flow, task
 from prefect.deployments import run_deployment
 from sqlalchemy import and_, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config.tiers import get_leads_for_tier
 from src.integrations.supabase import get_db_session
-from src.models.base import CampaignStatus, LeadStatus, SubscriptionStatus
+from src.models.base import CampaignStatus, LeadStatus
 from src.models.campaign import Campaign
 from src.models.client import Client
 from src.models.lead import Lead

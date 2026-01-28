@@ -28,7 +28,7 @@ Triggered when:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, Field
 
@@ -491,7 +491,7 @@ Extract ONLY what's in the analysis. If something is missing, use empty arrays."
                 messaging_angles=data.get("messaging_angles", [])[:3],
             )
 
-        except (json.JSONDecodeError, KeyError) as e:
+        except (json.JSONDecodeError, KeyError):
             # Fallback: return minimal output
             return IndustryResearcherOutput(
                 industry=industry,

@@ -23,11 +23,10 @@ from uuid import UUID
 from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
 from sqlalchemy import and_, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.scout import get_scout_engine
 from src.integrations.supabase import get_db_session
-from src.models.base import LeadStatus, SubscriptionStatus
+from src.models.base import SubscriptionStatus
 from src.models.client import Client
 from src.models.lead import Lead
 

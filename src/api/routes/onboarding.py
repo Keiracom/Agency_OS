@@ -19,12 +19,12 @@ ENDPOINTS:
 """
 
 from datetime import datetime
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from pydantic import BaseModel, Field, HttpUrl
-from sqlalchemy import and_, select, text, update
+from pydantic import BaseModel, Field
+from sqlalchemy import and_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import (
@@ -34,11 +34,8 @@ from src.api.dependencies import (
     get_current_user_from_token,
     get_db_session,
     require_admin,
-    require_member,
 )
-from src.exceptions import ResourceNotFoundError
 from src.models.membership import Membership
-
 
 router = APIRouter(tags=["onboarding"])
 
@@ -72,13 +69,13 @@ class ExtractionStatus(BaseModel):
 
     job_id: UUID = Field(description="Extraction job ID")
     status: str = Field(description="Job status")
-    current_step: Optional[str] = Field(None, description="Current step")
+    current_step: str | None = Field(None, description="Current step")
     completed_steps: int = Field(0, description="Completed steps")
     total_steps: int = Field(8, description="Total steps")
     progress_percent: float = Field(0.0, description="Progress percentage")
-    started_at: Optional[datetime] = Field(None, description="Start time")
-    completed_at: Optional[datetime] = Field(None, description="Completion time")
-    error_message: Optional[str] = Field(None, description="Error if failed")
+    started_at: datetime | None = Field(None, description="Start time")
+    completed_at: datetime | None = Field(None, description="Completion time")
+    error_message: str | None = Field(None, description="Error if failed")
 
 
 class ICPProfileResponse(BaseModel):
@@ -99,9 +96,9 @@ class ICPProfileResponse(BaseModel):
     differentiators: list[str] = Field(default_factory=list)
 
     # Company info
-    team_size: Optional[int] = Field(None)
+    team_size: int | None = Field(None)
     size_range: str = Field(default="small")
-    years_in_business: Optional[int] = Field(None)
+    years_in_business: int | None = Field(None)
 
     # Portfolio
     portfolio_companies: list[str] = Field(default_factory=list)
@@ -132,36 +129,36 @@ class ICPProfileResponse(BaseModel):
     # Metadata
     pattern_description: str = Field(default="")
     confidence: float = Field(default=0.0)
-    extracted_at: Optional[datetime] = Field(None)
-    confirmed_at: Optional[datetime] = Field(None)
+    extracted_at: datetime | None = Field(None)
+    confirmed_at: datetime | None = Field(None)
 
 
 class ICPUpdateRequest(BaseModel):
     """Request to update ICP profile."""
 
     # Agency info (optional updates)
-    company_description: Optional[str] = Field(None)
-    services_offered: Optional[list[str]] = Field(None)
-    value_proposition: Optional[str] = Field(None)
-    default_offer: Optional[str] = Field(None)
+    company_description: str | None = Field(None)
+    services_offered: list[str] | None = Field(None)
+    value_proposition: str | None = Field(None)
+    default_offer: str | None = Field(None)
 
     # ICP targeting
-    icp_industries: Optional[list[str]] = Field(None)
-    icp_company_sizes: Optional[list[str]] = Field(None)
-    icp_revenue_range: Optional[str] = Field(None)
-    icp_locations: Optional[list[str]] = Field(None)
-    icp_titles: Optional[list[str]] = Field(None)
-    icp_pain_points: Optional[list[str]] = Field(None)
+    icp_industries: list[str] | None = Field(None)
+    icp_company_sizes: list[str] | None = Field(None)
+    icp_revenue_range: str | None = Field(None)
+    icp_locations: list[str] | None = Field(None)
+    icp_titles: list[str] | None = Field(None)
+    icp_pain_points: list[str] | None = Field(None)
 
     # ALS weights
-    als_weights: Optional[dict[str, int]] = Field(None)
+    als_weights: dict[str, int] | None = Field(None)
 
 
 class ConfirmICPRequest(BaseModel):
     """Request to confirm extracted ICP."""
 
     job_id: UUID = Field(description="Extraction job ID to confirm")
-    adjustments: Optional[ICPUpdateRequest] = Field(
+    adjustments: ICPUpdateRequest | None = Field(
         None, description="Optional adjustments to apply"
     )
 
@@ -244,6 +241,7 @@ async def analyze_website(
 
     # Trigger Prefect flow for ICP extraction
     import logging
+
     from prefect.deployments import run_deployment
 
     await run_deployment(
@@ -590,7 +588,7 @@ async def confirm_icp(
 
     # Build SQL update with explicit JSONB casts for asyncpg compatibility
     set_parts = []
-    for k in update_fields.keys():
+    for k in update_fields:
         if k in jsonb_fields:
             set_parts.append(f"{k} = CAST(:{k} AS jsonb)")
         else:
@@ -614,6 +612,7 @@ async def confirm_icp(
     # 3. Lead sourcing from Apollo
     # 4. Lead-to-campaign assignment
     import logging
+
     from prefect.deployments import run_deployment
 
     logger = logging.getLogger(__name__)
@@ -736,7 +735,7 @@ async def update_client_icp(
     updates["updated_at"] = datetime.utcnow()
 
     # Build SQL update
-    set_clauses = ", ".join([f"{k} = :{k}" for k in updates.keys()])
+    set_clauses = ", ".join([f"{k} = :{k}" for k in updates])
     await db.execute(
         text(f"""
         UPDATE clients

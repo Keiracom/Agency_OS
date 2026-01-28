@@ -13,8 +13,9 @@ RULES APPLIED:
 
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from datetime import datetime, timedelta
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from datetime import datetime
+from typing import Any, TypeVar
 from uuid import UUID
 
 from sqlalchemy import select

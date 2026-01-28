@@ -26,8 +26,8 @@ from prefect.task_runners import ConcurrentTaskRunner
 
 from src.integrations.supabase import get_db_session
 from src.services.recording_cleanup_service import (
-    RecordingCleanupService,
     RECORDING_RETENTION_DAYS,
+    RecordingCleanupService,
 )
 
 logger = logging.getLogger(__name__)

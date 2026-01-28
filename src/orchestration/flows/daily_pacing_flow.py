@@ -16,19 +16,18 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import datetime, date
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
 from prefect import flow, task
-from sqlalchemy import and_, select, func
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import and_, func, select
 
-from src.config.tiers import get_tier_config, TIER_CONFIG
+from src.config.tiers import get_tier_config
 from src.integrations.supabase import get_db_session
+from src.models.activity import Activity
 from src.models.base import SubscriptionStatus
 from src.models.client import Client
-from src.models.activity import Activity
 
 logger = logging.getLogger(__name__)
 

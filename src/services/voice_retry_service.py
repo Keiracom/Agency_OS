@@ -13,7 +13,7 @@ Blueprint requirement:
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import and_, func, select, update
@@ -178,7 +178,7 @@ class VoiceRetryService:
 
     async def get_pending_retries(
         self,
-        client_id: Optional[UUID] = None,
+        client_id: UUID | None = None,
         limit: int = 100,
     ) -> list[dict]:
         """
@@ -330,7 +330,7 @@ class VoiceRetryService:
 
 
 # Singleton instance holder
-_voice_retry_service: Optional[VoiceRetryService] = None
+_voice_retry_service: VoiceRetryService | None = None
 
 
 def get_voice_retry_service(db: AsyncSession) -> VoiceRetryService:

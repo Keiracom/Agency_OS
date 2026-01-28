@@ -17,7 +17,7 @@ Serper provides Google Search API access for:
 - Market validation
 """
 
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 from pydantic import BaseModel, Field
@@ -339,7 +339,7 @@ class SerperClient:
 
             # Extract pain points from snippets
             for result in response.organic:
-                snippet = result.snippet.lower()
+                result.snippet.lower()
                 # Simple extraction - in production, use AI to parse
                 pain_points.add(result.snippet[:200])
 

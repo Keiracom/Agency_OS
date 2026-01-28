@@ -23,9 +23,9 @@ from uuid import UUID
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.linkedin_seat import LinkedInSeat, LinkedInSeatStatus
-from src.models.linkedin_connection import LinkedInConnection, LinkedInConnectionStatus
 from src.integrations.unipile import get_unipile_client
+from src.models.linkedin_connection import LinkedInConnection, LinkedInConnectionStatus
+from src.models.linkedin_seat import LinkedInSeat, LinkedInSeatStatus
 
 logger = logging.getLogger(__name__)
 

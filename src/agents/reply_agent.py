@@ -22,20 +22,16 @@ RULES APPLIED:
   - Rule 15: AI spend limiter via base agent
 """
 
-from datetime import datetime
 from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
-from pydantic_ai import Agent
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.agents.base_agent import AgentContext, AgentDependencies, AgentResult, BaseAgent
+from src.agents.base_agent import AgentResult, BaseAgent
 from src.models.activity import Activity
-from src.models.base import ChannelType, IntentType
 from src.models.lead import Lead
-
 
 # ============================================
 # PYDANTIC OUTPUT MODELS

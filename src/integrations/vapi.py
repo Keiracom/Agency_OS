@@ -21,8 +21,8 @@ Orchestrates voice calls using:
 API Docs: https://docs.vapi.ai/
 """
 
+
 import httpx
-from typing import Optional, Any
 from pydantic import BaseModel, Field
 
 from src.config.settings import settings
@@ -54,10 +54,10 @@ class VapiCallResult(BaseModel):
     call_id: str
     status: str
     duration_seconds: float = 0
-    transcript: Optional[str] = None
-    recording_url: Optional[str] = None
-    cost: Optional[float] = None
-    ended_reason: Optional[str] = None
+    transcript: str | None = None
+    recording_url: str | None = None
+    cost: float | None = None
+    ended_reason: str | None = None
 
 
 class VapiClient:
@@ -75,7 +75,7 @@ class VapiClient:
 
     BASE_URL = "https://api.vapi.ai"
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         self.api_key = api_key or settings.vapi_api_key
         if not self.api_key:
             raise IntegrationError("VAPI_API_KEY not configured")
@@ -207,8 +207,8 @@ class VapiClient:
     async def list_calls(
         self,
         limit: int = 100,
-        created_at_gt: Optional[str] = None,
-        assistant_id: Optional[str] = None
+        created_at_gt: str | None = None,
+        assistant_id: str | None = None
     ) -> list[dict]:
         """List recent calls with optional filtering."""
         params: dict[str, int | str] = {"limit": limit}
@@ -300,7 +300,7 @@ class VapiClient:
             # This ensures 90-day compliance even if Vapi API fails
             return True
 
-    def _extract_call_id_from_url(self, recording_url: str) -> Optional[str]:
+    def _extract_call_id_from_url(self, recording_url: str) -> str | None:
         """
         Extract call ID from a Vapi recording URL.
 

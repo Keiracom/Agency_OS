@@ -14,13 +14,12 @@ This agent uses Claude with tools to:
 from __future__ import annotations
 
 import logging
-from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from src.integrations.sdk_brain import SDKBrain, SDKBrainResult, create_sdk_brain
 from src.agents.sdk_agents.sdk_tools import ICP_TOOLS
+from src.integrations.sdk_brain import SDKBrain, SDKBrainResult, create_sdk_brain
 
 logger = logging.getLogger(__name__)
 

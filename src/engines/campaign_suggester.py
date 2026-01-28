@@ -34,7 +34,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.config.tiers import get_tier_config, get_campaign_slots
+from src.config.tiers import get_campaign_slots
 from src.engines.base import BaseEngine, EngineResult
 from src.integrations.anthropic import get_anthropic_client
 from src.models.client import Client
@@ -348,6 +348,7 @@ class CampaignSuggesterEngine(BaseEngine):
             EngineResult with created campaign IDs
         """
         from sqlalchemy import text
+
         from src.models.campaign import CampaignType
 
         created_campaigns = []

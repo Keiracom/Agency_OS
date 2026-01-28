@@ -245,7 +245,7 @@ async def poll_pipedrive_deals(
 
     try:
         # Calculate timestamp for filtering
-        since_time = (datetime.utcnow() - timedelta(hours=since_hours)).isoformat()
+        (datetime.utcnow() - timedelta(hours=since_hours)).isoformat()
 
         # Pipedrive deals API
         async with httpx.AsyncClient() as client:
@@ -367,8 +367,9 @@ async def poll_close_opportunities(
     Returns:
         Sync result summary
     """
-    import httpx
     import base64
+
+    import httpx
 
     synced = 0
     errors = 0

@@ -24,7 +24,6 @@ from uuid import UUID
 
 from prefect import flow, task
 from sqlalchemy import and_, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.campaign_evolution import (
     generate_campaign_suggestions,
@@ -41,7 +40,6 @@ from src.models.campaign import Campaign
 from src.models.campaign_suggestion import (
     CampaignSuggestion,
     SuggestionStatus,
-    SuggestionType,
 )
 from src.models.client import Client
 

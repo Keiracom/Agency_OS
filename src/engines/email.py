@@ -57,23 +57,22 @@ from src.engines.base import EngineResult, OutreachEngine
 
 logger = logging.getLogger(__name__)
 from src.engines.content_utils import build_content_snapshot
-from src.exceptions import ResourceRateLimitError, ValidationError
+from src.exceptions import ResourceRateLimitError
 from src.integrations.redis import rate_limiter
 from src.integrations.salesforge import SalesforgeClient, get_salesforge_client
 from src.models.activity import Activity
 from src.models.base import ChannelType
 from src.models.lead import Lead
 from src.services.email_signature_service import (
-    get_signature_for_persona,
-    get_signature_for_client,
-    get_display_name_for_persona,
     append_signature_to_body,
     # Gap Fix #21: Display name formatting and validation
     format_display_name,
-    validate_display_name,
     format_from_header,
+    get_display_name_for_persona,
+    get_signature_for_client,
+    get_signature_for_persona,
+    validate_display_name,
 )
-
 
 # Rate limit (Rule 17)
 EMAIL_DAILY_LIMIT_PER_DOMAIN = 50

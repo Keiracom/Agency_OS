@@ -210,7 +210,7 @@ Return valid JSON:
         services_text = ""
         if input_data.services:
             services_list = [f"- {s.name} ({s.category})" for s in input_data.services]
-            services_text = f"\nSERVICES OFFERED:\n" + "\n".join(services_list)
+            services_text = "\nSERVICES OFFERED:\n" + "\n".join(services_list)
 
         # Format portfolio with industry hints
         portfolio_text = ""
@@ -219,12 +219,12 @@ Return valid JSON:
             for c in input_data.portfolio_companies:
                 industry = f" [{c.industry_hint}]" if c.industry_hint else ""
                 portfolio_list.append(f"- {c.company_name}{industry} ({c.source})")
-            portfolio_text = f"\nPORTFOLIO COMPANIES:\n" + "\n".join(portfolio_list)
+            portfolio_text = "\nPORTFOLIO COMPANIES:\n" + "\n".join(portfolio_list)
 
         # Format hints
         hints_text = ""
         if input_data.target_audience_hints:
-            hints_text = f"\nTARGET AUDIENCE HINTS:\n- " + "\n- ".join(input_data.target_audience_hints)
+            hints_text = "\nTARGET AUDIENCE HINTS:\n- " + "\n- ".join(input_data.target_audience_hints)
 
         context = f"Agency: {input_data.company_name}\n" if input_data.company_name else ""
 
@@ -238,7 +238,7 @@ Determine which industries this agency targets and why. Return valid JSON."""
     async def execute(
         self,
         input_data: Input,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
     ) -> SkillResult[Output]:
         """
         Execute industry classification.

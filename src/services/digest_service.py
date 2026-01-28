@@ -19,12 +19,12 @@ RULES APPLIED:
   - Rule 13: AI spend limiter awareness
 """
 
-from datetime import date, datetime, timedelta
-from typing import Any, Optional
-from uuid import UUID
 import logging
+from datetime import date, datetime
+from typing import Any
+from uuid import UUID
 
-from sqlalchemy import select, func, and_
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.activity import Activity
@@ -510,7 +510,7 @@ class DigestService:
         metrics_snapshot: dict,
         content_summary: dict,
         status: str = "sent",
-        error_message: Optional[str] = None,
+        error_message: str | None = None,
     ) -> DigestLog:
         """
         Log a digest send attempt.

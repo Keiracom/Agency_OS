@@ -15,15 +15,14 @@ Key Changes from HeyReach:
 
 import logging
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config.settings import settings
-from src.models.linkedin_credential import LinkedInCredential
 from src.integrations.unipile import get_unipile_client
+from src.models.linkedin_credential import LinkedInCredential
 
 logger = logging.getLogger(__name__)
 
@@ -251,7 +250,7 @@ class LinkedInConnectionService:
         self,
         db: AsyncSession,
         client_id: UUID,
-    ) -> Optional[LinkedInCredential]:
+    ) -> LinkedInCredential | None:
         """
         Get LinkedIn credential for client.
 
@@ -353,7 +352,7 @@ class LinkedInConnectionService:
         self,
         db: AsyncSession,
         client_id: UUID,
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Get Unipile account ID for a connected client.
 

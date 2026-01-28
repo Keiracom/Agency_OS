@@ -24,15 +24,13 @@ RULES APPLIED:
   - Voice recording 90-day retention policy
 """
 
-from datetime import time
-from typing import Dict, Any
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from prefect.client.schemas.schedules import (
     CronSchedule,
     IntervalSchedule,
 )
-
 
 # Australia/Sydney timezone for all schedules
 AEST = ZoneInfo("Australia/Sydney")
@@ -314,7 +312,7 @@ def get_recording_cleanup_schedule() -> CronSchedule:
 
 
 # Schedule registry for deployment configuration
-SCHEDULE_REGISTRY: Dict[str, Any] = {
+SCHEDULE_REGISTRY: dict[str, Any] = {
     "enrichment": {
         "schedule": get_enrichment_schedule(),
         "description": "Daily enrichment safety net at 2 AM AEST",
@@ -469,7 +467,7 @@ SCHEDULE_REGISTRY: Dict[str, Any] = {
 }
 
 
-def get_schedule_config(schedule_name: str) -> Dict[str, Any]:
+def get_schedule_config(schedule_name: str) -> dict[str, Any]:
     """
     Get configuration for a specific schedule.
 
@@ -491,7 +489,7 @@ def get_schedule_config(schedule_name: str) -> Dict[str, Any]:
     return SCHEDULE_REGISTRY[schedule_name]
 
 
-def list_all_schedules() -> Dict[str, str]:
+def list_all_schedules() -> dict[str, str]:
     """
     List all available schedules with descriptions.
 

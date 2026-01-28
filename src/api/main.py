@@ -18,19 +18,17 @@ import logging
 import time
 from contextlib import asynccontextmanager
 from typing import Any
-from uuid import UUID
 
 import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.starlette import StarletteIntegration
-from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
-
 from fastapi import FastAPI, Request, status
-from sqlalchemy import text
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
+from sqlalchemy import text
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.config.settings import settings
@@ -39,12 +37,13 @@ from src.exceptions import (
     AISpendLimitError,
     AuthenticationError,
     AuthorizationError,
-    ResourceNotFoundError,
     RateLimitError,
+    ResourceNotFoundError,
     ValidationError,
 )
 from src.integrations.redis import close_redis, get_redis
-from src.integrations.supabase import cleanup as close_db, get_db_session as get_async_session
+from src.integrations.supabase import cleanup as close_db
+from src.integrations.supabase import get_db_session as get_async_session
 
 # ============================================
 # Sentry Error Tracking
@@ -387,18 +386,18 @@ from src.api.routes.campaign_generation import router as campaign_generation_rou
 from src.api.routes.campaigns import router as campaigns_router
 from src.api.routes.crm import router as crm_router
 from src.api.routes.customers import router as customers_router
+from src.api.routes.digest import router as digest_router
 from src.api.routes.health import router as health_router
 from src.api.routes.leads import router as leads_router
+from src.api.routes.linkedin import router as linkedin_router
 from src.api.routes.meetings import router as meetings_router
 from src.api.routes.onboarding import router as onboarding_router
 from src.api.routes.patterns import router as patterns_router
+from src.api.routes.pool import router as pool_router
 from src.api.routes.replies import router as replies_router
 from src.api.routes.reports import router as reports_router
 from src.api.routes.webhooks import router as webhooks_router
 from src.api.routes.webhooks_outbound import router as webhooks_outbound_router
-from src.api.routes.linkedin import router as linkedin_router
-from src.api.routes.pool import router as pool_router
-from src.api.routes.digest import router as digest_router
 
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(campaigns_router, prefix="/api/v1")

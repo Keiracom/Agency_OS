@@ -189,7 +189,7 @@ Return the complete split plan as JSON."""
     async def execute(
         self,
         input_data: Input,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
     ) -> SkillResult[Output]:
         """
         Execute the skill to split campaigns.
@@ -304,7 +304,7 @@ Return the complete split plan as JSON."""
             # Proportional adjustment
             ratio = target_total / current_total
             allocated = 0
-            for i, campaign in enumerate(output.campaigns[:-1]):
+            for _i, campaign in enumerate(output.campaigns[:-1]):
                 new_allocation = int(campaign.lead_allocation * ratio)
                 campaign.lead_allocation = new_allocation
                 allocated += new_allocation

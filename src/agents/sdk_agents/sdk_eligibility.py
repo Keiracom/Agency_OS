@@ -95,11 +95,7 @@ def calculate_data_completeness(lead_data: dict[str, Any]) -> float:
         value = lead_data.get(field)
         if value:
             # Check for non-empty values
-            if isinstance(value, str) and value.strip():
-                earned_weight += weight
-            elif isinstance(value, (list, dict)) and len(value) > 0:
-                earned_weight += weight
-            elif isinstance(value, (int, float, bool)):
+            if isinstance(value, str) and value.strip() or isinstance(value, (list, dict)) and len(value) > 0 or isinstance(value, (int, float, bool)):
                 earned_weight += weight
 
     completeness = earned_weight / total_weight if total_weight > 0 else 0.0

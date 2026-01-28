@@ -27,29 +27,27 @@ PHASE 24A CHANGES:
   - Pool methods work with dict data instead of Lead model
 """
 
+import logging
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import BaseEngine, EngineResult
 from src.engines.smart_prompts import (
-    SMART_EMAIL_PROMPT,
-    SAFE_FALLBACK_TEMPLATE,
     FACT_CHECK_PROMPT,
+    SAFE_FALLBACK_TEMPLATE,
+    SMART_EMAIL_PROMPT,
+    build_client_proof_points,
     build_full_lead_context,
     build_full_pool_lead_context,
-    build_client_proof_points,
     format_lead_context_for_prompt,
     format_proof_points_for_prompt,
     generate_priority_guidance,
 )
 from src.exceptions import AISpendLimitError, ValidationError
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
-from src.models.base import ChannelType
-
-import logging
 
 logger = logging.getLogger(__name__)
 

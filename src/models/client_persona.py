@@ -7,11 +7,12 @@ Consumers: services, engines, orchestration
 Spec: docs/architecture/distribution/EMAIL_DISTRIBUTION.md (ED-008)
 """
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import Boolean, String, Text, ForeignKey
-from sqlalchemy.dialects.postgresql import ARRAY, UUID as PGUUID
+from sqlalchemy import Boolean, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import (
@@ -57,45 +58,45 @@ class ClientPersona(Base, UUIDMixin, TimestampMixin):
         String(100),
         nullable=False,
     )
-    title: Mapped[Optional[str]] = mapped_column(
+    title: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
     )
-    email: Mapped[Optional[str]] = mapped_column(
+    email: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
     )
-    phone: Mapped[Optional[str]] = mapped_column(
+    phone: Mapped[str | None] = mapped_column(
         String(50),
         nullable=True,
     )
 
     # Display settings
-    display_name: Mapped[Optional[str]] = mapped_column(
+    display_name: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
     )
-    photo_url: Mapped[Optional[str]] = mapped_column(
+    photo_url: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
-    calendar_link: Mapped[Optional[str]] = mapped_column(
+    calendar_link: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
 
     # Channel assignments (resource IDs)
-    assigned_mailbox_ids: Mapped[Optional[list[UUID]]] = mapped_column(
+    assigned_mailbox_ids: Mapped[list[UUID] | None] = mapped_column(
         ARRAY(PGUUID(as_uuid=True)),
         default=list,
         nullable=True,
     )
-    assigned_phone_ids: Mapped[Optional[list[UUID]]] = mapped_column(
+    assigned_phone_ids: Mapped[list[UUID] | None] = mapped_column(
         ARRAY(PGUUID(as_uuid=True)),
         default=list,
         nullable=True,
     )
-    assigned_linkedin_seat_ids: Mapped[Optional[list[UUID]]] = mapped_column(
+    assigned_linkedin_seat_ids: Mapped[list[UUID] | None] = mapped_column(
         ARRAY(PGUUID(as_uuid=True)),
         default=list,
         nullable=True,

@@ -19,12 +19,10 @@ This service manages the platform-wide lead pool where all leads
 are stored with full enrichment data before being assigned to clients.
 """
 
-from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, func, or_, select, text, update
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.exceptions import NotFoundError, ValidationError
@@ -190,10 +188,7 @@ class LeadPoolService:
                 update_fields.append(f"{field} = :{field}")
                 value = lead_data[field]
                 # Handle special types
-                if isinstance(value, dict):
-                    import json
-                    params[field] = json.dumps(value)
-                elif isinstance(value, list):
+                if isinstance(value, (dict, list)):
                     import json
                     params[field] = json.dumps(value)
                 else:

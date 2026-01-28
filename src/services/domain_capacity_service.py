@@ -14,20 +14,18 @@ This service:
 """
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import func, select, and_
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.activity import Activity
 from src.models.resource_pool import (
     ClientResource,
+    HealthStatus,
     ResourcePool,
     ResourceType,
-    HealthStatus,
 )
-
 
 # Response buffer: 10% of capacity reserved for reply-to-reply emails
 RESPONSE_BUFFER_PERCENT = 0.10
@@ -251,7 +249,7 @@ class DomainCapacityService:
         self,
         db: AsyncSession,
         client_id: UUID,
-    ) -> Optional[DomainCapacityResult]:
+    ) -> DomainCapacityResult | None:
         """
         Select the best domain for sending.
 
@@ -304,7 +302,7 @@ class DomainCapacityService:
 
 
 # Singleton instance
-_domain_capacity_service: Optional[DomainCapacityService] = None
+_domain_capacity_service: DomainCapacityService | None = None
 
 
 def get_domain_capacity_service() -> DomainCapacityService:

@@ -49,23 +49,21 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config.settings import settings
 from src.engines.base import EngineResult, OutreachEngine
 
 logger = logging.getLogger(__name__)
 from src.engines.content_utils import build_linkedin_snapshot
-from src.exceptions import ResourceRateLimitError, ValidationError
-from src.integrations.unipile import UnipileClient, get_unipile_client
+from src.exceptions import ResourceRateLimitError
 from src.integrations.redis import rate_limiter
+from src.integrations.unipile import UnipileClient, get_unipile_client
 from src.models.activity import Activity
 from src.models.base import ChannelType
 from src.models.lead import Lead
 from src.models.linkedin_connection import LinkedInConnection
-
 
 # Rate limit (Rule 17) - Now configurable via settings
 # Unipile allows higher limits (80-100/day) but we default to conservative
@@ -300,7 +298,7 @@ class LinkedInEngine(OutreachEngine):
 
         # Get lead
         lead = await self.get_lead_by_id(db, lead_id)
-        campaign = await self.get_campaign_by_id(db, campaign_id)
+        await self.get_campaign_by_id(db, campaign_id)
 
         # Validate LinkedIn URL
         if not lead.linkedin_url:

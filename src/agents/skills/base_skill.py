@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, ValidationError
 
 from src.exceptions import AgencyOSError
 
@@ -262,7 +262,7 @@ class BaseSkill(ABC, Generic[InputT, OutputT]):
 
         try:
             content = content.strip()
-            
+
             # Log raw response for debugging
             logger.info(f"Raw AI response (len={len(content)}): {content[:300]}...")
 
@@ -303,7 +303,7 @@ class BaseSkill(ABC, Generic[InputT, OutputT]):
                     content = content[:json_end]
 
             content = content.strip()
-            
+
             if not content:
                 raise SkillError(
                     skill_name=self.name,
@@ -343,7 +343,7 @@ class BaseSkill(ABC, Generic[InputT, OutputT]):
     async def execute(
         self,
         input_data: InputT,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
     ) -> SkillResult[OutputT]:
         """
         Execute the skill and return structured output.
@@ -362,7 +362,7 @@ class BaseSkill(ABC, Generic[InputT, OutputT]):
     async def run(
         self,
         data: dict[str, Any] | InputT,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
     ) -> SkillResult[OutputT]:
         """
         Validate input and execute the skill.
@@ -399,7 +399,7 @@ class BaseSkill(ABC, Generic[InputT, OutputT]):
 
     async def _call_ai(
         self,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
         prompt: str,
         system: str | None = None,
     ) -> tuple[dict[str, Any], int, float]:

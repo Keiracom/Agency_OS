@@ -23,7 +23,6 @@ from uuid import UUID
 
 from prefect import task
 from sqlalchemy import and_, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.scout import ScoutEngine
 from src.exceptions import EnrichmentError, ValidationError
@@ -189,7 +188,7 @@ async def enrich_batch_task(
     Raises:
         ValidationError: If batch validation fails
     """
-    async with get_db_session() as db:
+    async with get_db_session():
         results = []
         clay_count = 0
         successful = 0

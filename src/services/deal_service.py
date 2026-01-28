@@ -28,7 +28,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.exceptions import NotFoundError, ValidationError
 
-
 # Valid deal stages
 DEAL_STAGES = [
     "qualification",

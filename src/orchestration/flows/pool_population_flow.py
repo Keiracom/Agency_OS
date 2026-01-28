@@ -329,7 +329,7 @@ async def populate_pool_from_portfolio_task(
 
         # Apply WHO refinement to improve targeting based on conversion patterns
         refined_criteria = await get_who_refined_criteria(db, client_id, base_criteria)
-        logger.info(f"Tier 1: Applied WHO refinement to search criteria")
+        logger.info("Tier 1: Applied WHO refinement to search criteria")
 
         # Search Apollo by industries (not by domain)
         try:
@@ -459,7 +459,7 @@ async def populate_pool_from_industries_task(
 
         # Apply WHO refinement to improve targeting based on conversion patterns
         apollo_criteria = await get_who_refined_criteria(db, client_id, base_criteria)
-        logger.info(f"Tier 2: Applied WHO refinement to search criteria")
+        logger.info("Tier 2: Applied WHO refinement to search criteria")
 
         logger.info(
             f"Tier 2: Searching Apollo by portfolio industries: {apollo_criteria.get('industries', portfolio_industries)}"
@@ -529,7 +529,7 @@ async def populate_pool_from_apollo_task(
 
         # Apply WHO refinement to improve targeting based on conversion patterns
         apollo_criteria = await get_who_refined_criteria(db, client_id, base_criteria)
-        logger.info(f"Tier 3: Applied WHO refinement to search criteria")
+        logger.info("Tier 3: Applied WHO refinement to search criteria")
 
         logger.info(
             f"Populating pool for client {client_id} with criteria: "
@@ -630,7 +630,7 @@ async def pool_population_flow(
     # (Search by industry, EXCLUDE portfolio domains)
     # ============================================
     if portfolio_data["has_portfolio"] and remaining > 0:
-        logger.info(f"=== TIER 1: Portfolio Lookalike Search ===")
+        logger.info("=== TIER 1: Portfolio Lookalike Search ===")
         tier1_result = await populate_pool_from_portfolio_task(
             client_id=client_id,
             enriched_portfolio=portfolio_data["enriched_portfolio"],
@@ -649,7 +649,7 @@ async def pool_population_flow(
     # TIER 2: Portfolio Industries Search
     # ============================================
     if portfolio_data["portfolio_industries"] and remaining > 0:
-        logger.info(f"=== TIER 2: Portfolio Industries Search ===")
+        logger.info("=== TIER 2: Portfolio Industries Search ===")
         tier2_result = await populate_pool_from_industries_task(
             client_id=client_id,
             portfolio_industries=portfolio_data["portfolio_industries"],
@@ -668,7 +668,7 @@ async def pool_population_flow(
     # TIER 3: Generic ICP Search (Fallback)
     # ============================================
     if remaining > 0:
-        logger.info(f"=== TIER 3: Generic ICP Search (Fallback) ===")
+        logger.info("=== TIER 3: Generic ICP Search (Fallback) ===")
         icp_criteria = {
             "icp_industries": client_data["icp_industries"],
             "icp_titles": client_data["icp_titles"],

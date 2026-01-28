@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import Boolean, String, Text, ForeignKey
+from sqlalchemy import Boolean, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import (
@@ -57,13 +57,13 @@ class LinkedInConnection(Base, UUIDMixin):
         ForeignKey("linkedin_seats.id", ondelete="CASCADE"),
         nullable=False,
     )
-    campaign_id: Mapped[Optional[UUID]] = mapped_column(
+    campaign_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("campaigns.id"),
         nullable=True,
     )
 
     # Request tracking
-    unipile_request_id: Mapped[Optional[str]] = mapped_column(
+    unipile_request_id: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
     )
@@ -79,7 +79,7 @@ class LinkedInConnection(Base, UUIDMixin):
         default=False,
         nullable=False,
     )
-    note_content: Mapped[Optional[str]] = mapped_column(
+    note_content: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
@@ -89,18 +89,18 @@ class LinkedInConnection(Base, UUIDMixin):
         default=datetime.utcnow,
         nullable=False,
     )
-    profile_viewed_at: Mapped[Optional[datetime]] = mapped_column(
+    profile_viewed_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
     )
-    responded_at: Mapped[Optional[datetime]] = mapped_column(
+    responded_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
     )
 
     # Follow-up tracking (3-5 days after accept)
-    follow_up_scheduled_for: Mapped[Optional[datetime]] = mapped_column(
+    follow_up_scheduled_for: Mapped[datetime | None] = mapped_column(
         nullable=True,
     )
-    follow_up_sent_at: Mapped[Optional[datetime]] = mapped_column(
+    follow_up_sent_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
     )
 

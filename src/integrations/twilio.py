@@ -15,8 +15,8 @@ RULES APPLIED:
 import asyncio
 from typing import Any
 
-from twilio.rest import Client as TwilioBaseClient
 from twilio.base.exceptions import TwilioRestException
+from twilio.rest import Client as TwilioBaseClient
 
 from src.config.settings import settings
 from src.exceptions import APIError, DNCRError, IntegrationError

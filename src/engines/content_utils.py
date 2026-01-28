@@ -18,10 +18,9 @@ RULES APPLIED:
 
 import re
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from src.models.lead import Lead
-
 
 # =============================================================================
 # VOCABULARIES (must match WHAT Detector keywords)
@@ -115,7 +114,7 @@ def extract_pain_points(text: str) -> list[str]:
     return found
 
 
-def extract_cta(text: str) -> Optional[str]:
+def extract_cta(text: str) -> str | None:
     """
     Extract call-to-action phrase from text.
 
@@ -213,11 +212,11 @@ def detect_personalization(text: str, lead: Lead) -> dict[str, bool]:
 def build_content_snapshot(
     body: str,
     lead: Lead,
-    subject: Optional[str] = None,
+    subject: str | None = None,
     touch_number: int = 1,
-    sequence_id: Optional[str] = None,
+    sequence_id: str | None = None,
     channel: str = "email",
-    template_id: Optional[str] = None,
+    template_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Build a complete content snapshot for activity recording.
@@ -283,7 +282,7 @@ def build_sms_snapshot(
     message: str,
     lead: Lead,
     touch_number: int = 1,
-    sequence_id: Optional[str] = None,
+    sequence_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Build content snapshot for SMS messages.
@@ -317,9 +316,9 @@ def build_linkedin_snapshot(
     message: str,
     lead: Lead,
     message_type: str = "message",
-    connection_note: Optional[str] = None,
+    connection_note: str | None = None,
     touch_number: int = 1,
-    sequence_id: Optional[str] = None,
+    sequence_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Build content snapshot for LinkedIn messages.
@@ -358,13 +357,13 @@ def build_linkedin_snapshot(
 
 def build_voice_snapshot(
     lead: Lead,
-    script_id: Optional[str] = None,
-    script_content: Optional[str] = None,
+    script_id: str | None = None,
+    script_content: str | None = None,
     outcome: str = "connected",
     duration_seconds: int = 0,
-    notes: Optional[str] = None,
+    notes: str | None = None,
     touch_number: int = 1,
-    sequence_id: Optional[str] = None,
+    sequence_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Build content snapshot for voice calls.

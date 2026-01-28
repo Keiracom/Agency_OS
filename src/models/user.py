@@ -11,7 +11,7 @@ RULES APPLIED:
   - Rule 12: No imports from engines/integrations/orchestration
 """
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import Boolean, String, Text
@@ -46,11 +46,11 @@ class User(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    full_name: Mapped[Optional[str]] = mapped_column(
+    full_name: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
-    avatar_url: Mapped[Optional[str]] = mapped_column(
+    avatar_url: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )

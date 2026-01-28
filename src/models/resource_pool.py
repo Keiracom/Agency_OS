@@ -14,10 +14,10 @@ Phase D additions:
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import Integer, Numeric, String, Text, ForeignKey
+from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import ENUM, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -134,7 +134,7 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
         nullable=False,
         unique=True,
     )
-    resource_name: Mapped[Optional[str]] = mapped_column(
+    resource_name: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
@@ -159,10 +159,10 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
     )
 
     # Warmup tracking (for email domains)
-    warmup_started_at: Mapped[Optional[datetime]] = mapped_column(
+    warmup_started_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
     )
-    warmup_completed_at: Mapped[Optional[datetime]] = mapped_column(
+    warmup_completed_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
     )
     reputation_score: Mapped[int] = mapped_column(
@@ -172,15 +172,15 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
     )
 
     # Provider metadata
-    provider: Mapped[Optional[str]] = mapped_column(
+    provider: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
-    provider_id: Mapped[Optional[str]] = mapped_column(
+    provider_id: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
-    provider_metadata: Mapped[Optional[dict]] = mapped_column(
+    provider_metadata: Mapped[dict | None] = mapped_column(
         JSONB,
         default=dict,
         nullable=True,
@@ -205,12 +205,12 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
     )
 
     # Calculated rates (updated by domain_health_service)
-    bounce_rate: Mapped[Optional[Decimal]] = mapped_column(
+    bounce_rate: Mapped[Decimal | None] = mapped_column(
         Numeric(5, 4),
         default=0,
         nullable=True,
     )
-    complaint_rate: Mapped[Optional[Decimal]] = mapped_column(
+    complaint_rate: Mapped[Decimal | None] = mapped_column(
         Numeric(6, 5),
         default=0,
         nullable=True,
@@ -225,13 +225,13 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
 
     # Daily limit override (for health-based reduction)
     # NULL = use default warmup-based limit
-    daily_limit_override: Mapped[Optional[int]] = mapped_column(
+    daily_limit_override: Mapped[int | None] = mapped_column(
         Integer,
         nullable=True,
     )
 
     # Last health check timestamp
-    health_checked_at: Mapped[Optional[datetime]] = mapped_column(
+    health_checked_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
     )
 
@@ -389,7 +389,7 @@ class ClientResource(Base, UUIDMixin, TimestampMixin):
         default=datetime.utcnow,
         nullable=False,
     )
-    released_at: Mapped[Optional[datetime]] = mapped_column(
+    released_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
     )
 
@@ -399,7 +399,7 @@ class ClientResource(Base, UUIDMixin, TimestampMixin):
         default=0,
         nullable=False,
     )
-    last_used_at: Mapped[Optional[datetime]] = mapped_column(
+    last_used_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
     )
 

@@ -159,7 +159,7 @@ class HowDetector(BaseDetector):
         leads_data = []
         for lead in leads:
             acts = lead_activities.get(lead.id, [])
-            channels_used = list(set(a.channel.value for a in acts if a.channel))
+            channels_used = list({a.channel.value for a in acts if a.channel})
             sequence = [a.channel.value for a in acts if a.channel]
 
             leads_data.append({

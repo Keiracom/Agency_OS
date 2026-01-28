@@ -12,8 +12,8 @@ RULES APPLIED:
   - Rule 19: Connection pool limits (pool_size=5, max_overflow=10)
 """
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
@@ -23,11 +23,10 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.pool import NullPool
-from supabase import Client, create_client
 
 from src.config.settings import settings
 from src.exceptions import IntegrationError
-
+from supabase import Client, create_client
 
 # ============================================
 # SQLAlchemy Async Engine (for ORM operations)

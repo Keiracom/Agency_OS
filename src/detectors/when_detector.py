@@ -32,7 +32,6 @@ from src.detectors.base import BaseDetector
 from src.models.activity import Activity
 from src.models.conversion_patterns import ConversionPattern
 
-
 DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 
@@ -253,7 +252,7 @@ class WhenDetector(BaseDetector):
         # Calculate gaps for converting sequences
         gap_data: dict[str, list[int]] = defaultdict(list)
 
-        for lead_id, lead_acts in lead_activities.items():
+        for _lead_id, lead_acts in lead_activities.items():
             # Sort by time
             lead_acts.sort(key=lambda a: a.created_at)
 

@@ -39,7 +39,6 @@ from src.detectors.base import BaseDetector
 from src.models.activity import Activity
 from src.models.conversion_patterns import ConversionPattern
 
-
 # Angle detection patterns
 ANGLE_PATTERNS = {
     "roi_focused": ["roi", "return", "revenue", "profit", "save", "increase", "boost"],

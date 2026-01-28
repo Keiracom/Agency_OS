@@ -11,7 +11,6 @@ from __future__ import annotations
 import logging
 import re
 import socket
-from typing import Optional
 from urllib.parse import urlparse
 
 import httpx
@@ -139,7 +138,7 @@ class URLValidator:
                 domain=domain,
             )
 
-    def _normalize_url(self, url: str) -> tuple[str, Optional[str]]:
+    def _normalize_url(self, url: str) -> tuple[str, str | None]:
         """
         Normalize URL format - add https:// if missing.
 
@@ -190,14 +189,14 @@ class URLValidator:
         try:
             socket.inet_aton(ip_str)
             return True
-        except socket.error:
+        except OSError:
             try:
                 socket.inet_pton(socket.AF_INET6, ip_str)
                 return True
-            except socket.error:
+            except OSError:
                 return False
 
-    def _extract_domain(self, url: str) -> Optional[str]:
+    def _extract_domain(self, url: str) -> str | None:
         """Extract domain from URL."""
         try:
             if not url.startswith(("http://", "https://")):
@@ -453,15 +452,11 @@ class URLValidator:
             "this domain is for sale",
         ]
 
-        for pattern in high_confidence_patterns:
-            if pattern in content_lower:
-                return True
-
-        return False
+        return any(pattern in content_lower for pattern in high_confidence_patterns)
 
 
 # Singleton instance for convenience
-_validator: Optional[URLValidator] = None
+_validator: URLValidator | None = None
 
 
 def get_url_validator(timeout: float = DEFAULT_TIMEOUT) -> URLValidator:

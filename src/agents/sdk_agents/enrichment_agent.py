@@ -12,7 +12,6 @@ to gather current, specific information for hyper-personalization.
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass, field
 from typing import Any
@@ -20,8 +19,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from src.integrations.sdk_brain import SDKBrain, SDKBrainResult, create_sdk_brain
 from src.agents.sdk_agents.sdk_tools import ENRICHMENT_TOOLS
+from src.integrations.sdk_brain import SDKBrainResult, create_sdk_brain
 
 logger = logging.getLogger(__name__)
 

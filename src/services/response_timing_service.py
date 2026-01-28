@@ -16,10 +16,9 @@ RULES APPLIED:
   - Rule 14: Soft deletes only
 """
 
-import random
 import logging
+import random
 from datetime import datetime, timedelta
-from typing import Optional
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
@@ -118,7 +117,7 @@ class ResponseTimingService:
         client_id: UUID,
         channel: str,
         content: str,
-        lead_timezone: Optional[str] = None,
+        lead_timezone: str | None = None,
     ) -> dict:
         """
         Schedule a response to be sent after appropriate delay.
@@ -168,7 +167,7 @@ class ResponseTimingService:
         Returns:
             List of pending response records ready to send
         """
-        from sqlalchemy import select, and_, text
+        from sqlalchemy import text
 
         now = datetime.utcnow()
 

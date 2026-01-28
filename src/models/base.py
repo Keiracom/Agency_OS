@@ -18,7 +18,6 @@ RULES APPLIED:
 """
 
 from datetime import datetime
-from typing import Any
 from uuid import UUID
 
 from sqlalchemy import DateTime, func

@@ -27,8 +27,7 @@ from uuid import UUID
 
 from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
-from sqlalchemy import and_, func, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import and_, select, update
 
 from src.agents.sdk_agents import should_use_sdk_enrichment
 from src.config.tiers import get_available_channels_enum
@@ -38,7 +37,6 @@ from src.engines.scout import get_scout_engine
 from src.integrations.supabase import get_db_session
 from src.models.base import (
     CampaignStatus,
-    ChannelType,
     LeadStatus,
     SubscriptionStatus,
 )
@@ -107,7 +105,7 @@ async def get_leads_needing_enrichment_task(
         leads_by_client: dict[str, list[str]] = {}
         client_credits: dict[str, int] = {}
 
-        for lead_id, client_id_val, campaign_id, credits in rows:
+        for lead_id, client_id_val, _campaign_id, credits in rows:
             client_key = str(client_id_val)
             if client_key not in leads_by_client:
                 leads_by_client[client_key] = []
@@ -200,7 +198,7 @@ async def dncr_batch_check_task(lead_ids: list[str]) -> dict[str, Any]:
                 Lead.id.in_(lead_uuids),
                 Lead.phone.isnot(None),
                 Lead.phone.startswith("+61"),  # Australian numbers only
-                Lead.dncr_checked == False,  # Not already checked
+                not Lead.dncr_checked,  # Not already checked
             )
         )
         result = await db.execute(stmt)
@@ -229,7 +227,7 @@ async def dncr_batch_check_task(lead_ids: list[str]) -> dict[str, Any]:
         # Update lead records
         on_dncr_count = 0
         clean_count = 0
-        now = datetime.utcnow()
+        datetime.utcnow()
 
         for phone, is_on_dncr in dncr_results.items():
             if phone in phone_to_lead:

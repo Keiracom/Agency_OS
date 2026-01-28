@@ -9,11 +9,12 @@ Consumers: sdk_brain, engines, api
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base
@@ -21,8 +22,6 @@ from src.models.base import Base
 if TYPE_CHECKING:
     from src.models.client import Client
     from src.models.lead import Lead
-    from src.models.campaign import Campaign
-    from src.models.user import User
 
 
 class SDKUsageLog(Base):
@@ -117,8 +116,8 @@ class SDKUsageLog(Base):
     )
 
     # Relationships
-    client: Mapped["Client"] = relationship(back_populates="sdk_usage_logs")
-    lead: Mapped["Lead | None"] = relationship(back_populates="sdk_usage_logs")
+    client: Mapped[Client] = relationship(back_populates="sdk_usage_logs")
+    lead: Mapped[Lead | None] = relationship(back_populates="sdk_usage_logs")
 
     def __repr__(self) -> str:
         return f"<SDKUsageLog {self.agent_type} ${self.cost_aud:.4f}>"

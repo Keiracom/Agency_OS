@@ -27,7 +27,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.base import LeadStatus
 from src.models.lead import Lead
 
-
 # Default ALS weights (from blueprint)
 DEFAULT_WEIGHTS = {
     "data_quality": 0.20,

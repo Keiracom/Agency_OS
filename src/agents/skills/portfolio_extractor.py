@@ -134,7 +134,7 @@ def _extract_portfolio_sections(raw_html: str, max_chars: int = 100000) -> str:
         try:
             matches = re.findall(pattern, raw_html)
             if matches:
-                unique_matches = list(set(m.strip() for m in matches if len(m.strip()) > 2))[:30]
+                unique_matches = list({m.strip() for m in matches if len(m.strip()) > 2})[:30]
                 if unique_matches:
                     sections.append(f"[MENTIONED_COMPANIES]\n{', '.join(unique_matches)}\n")
         except re.error:
@@ -410,7 +410,7 @@ Identify all clients, case studies, and testimonials. Return valid JSON."""
     async def execute(
         self,
         input_data: Input,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
     ) -> SkillResult[Output]:
         """
         Execute portfolio extraction.

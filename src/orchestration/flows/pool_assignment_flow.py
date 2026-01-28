@@ -29,14 +29,13 @@ from uuid import UUID
 from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
 from sqlalchemy import and_, select, text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.scorer import get_scorer_engine
 from src.integrations.supabase import get_db_session
-from src.orchestration.flows.lead_enrichment_flow import lead_enrichment_flow
-from src.models.base import CampaignStatus, SubscriptionStatus
+from src.models.base import SubscriptionStatus
 from src.models.campaign import Campaign
 from src.models.client import Client
+from src.orchestration.flows.lead_enrichment_flow import lead_enrichment_flow
 from src.services.jit_validator import JITValidator
 from src.services.lead_allocator_service import LeadAllocatorService
 from src.services.lead_pool_service import LeadPoolService

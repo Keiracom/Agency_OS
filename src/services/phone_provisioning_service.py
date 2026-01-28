@@ -19,24 +19,22 @@ Handles:
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config.settings import settings
-from src.exceptions import IntegrationError, APIError
-from src.models.resource_pool import (
-    ResourcePool,
-    ClientResource,
-    ResourceType,
-    ResourceStatus,
-)
-from src.models.campaign import CampaignResource
+from src.exceptions import APIError, IntegrationError
 from src.models.base import ChannelType
-
+from src.models.campaign import CampaignResource
+from src.models.resource_pool import (
+    ClientResource,
+    ResourcePool,
+    ResourceStatus,
+    ResourceType,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +114,7 @@ class PhoneProvisioningService:
     async def search_available_numbers(
         self,
         country: str = "AU",
-        area_code: Optional[str] = None,
+        area_code: str | None = None,
         limit: int = 5,
     ) -> list[dict]:
         """
@@ -176,8 +174,8 @@ class PhoneProvisioningService:
         self,
         db: AsyncSession,
         phone_number: str,
-        client_id: Optional[UUID] = None,
-        friendly_name: Optional[str] = None,
+        client_id: UUID | None = None,
+        friendly_name: str | None = None,
     ) -> ResourcePool:
         """
         Purchase and provision a phone number from Twilio.
@@ -309,7 +307,7 @@ class PhoneProvisioningService:
                 and_(
                     CampaignResource.campaign_id == campaign_id,
                     CampaignResource.channel == ChannelType.VOICE,
-                    CampaignResource.is_active == True,
+                    CampaignResource.is_active,
                 )
             )
             campaign_result = await db.execute(campaign_stmt)
@@ -522,8 +520,8 @@ class PhoneProvisioningService:
         self,
         db: AsyncSession,
         resource_pool_id: UUID,
-        voice_webhook: Optional[str] = None,
-        sms_webhook: Optional[str] = None,
+        voice_webhook: str | None = None,
+        sms_webhook: str | None = None,
     ) -> bool:
         """
         Update webhook URLs for a phone number in Twilio.

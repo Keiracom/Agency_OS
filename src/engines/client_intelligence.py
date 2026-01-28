@@ -16,9 +16,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.exceptions import EngineError
-from src.integrations.apify import ApifyClient, get_apify_client
 from src.integrations.anthropic import get_anthropic_client
+from src.integrations.apify import ApifyClient, get_apify_client
 from src.models.client import Client
 from src.models.client_intelligence import ClientIntelligence
 
@@ -529,7 +528,7 @@ Return ONLY valid JSON, no markdown."""
 
         # Website data
         if "website" in result.data:
-            web = result.data["website"]
+            result.data["website"]
             # Extract from pages - would need AI processing for structured data
             intel.website_scraped_at = now
 

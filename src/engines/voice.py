@@ -42,35 +42,31 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config.settings import settings
 from src.engines.base import EngineResult, OutreachEngine
 from src.services.voice_retry_service import (
-    VoiceRetryService,
-    RETRYABLE_OUTCOMES,
     MAX_RETRIES,
+    RETRYABLE_OUTCOMES,
+    VoiceRetryService,
 )
 
 logger = logging.getLogger(__name__)
 from src.engines.content_utils import build_voice_snapshot
-from src.exceptions import DNCRError, ValidationError
-from src.integrations.dncr import get_dncr_client
-from src.integrations.vapi import (
-    VapiClient,
-    VapiAssistantConfig,
-    VapiCallRequest,
-    VapiCallResult,
-    get_vapi_client,
-)
 from src.engines.smart_prompts import (
     SMART_VOICE_KB_PROMPT,
-    build_full_lead_context,
     build_client_proof_points,
+    build_full_lead_context,
     format_lead_context_for_prompt,
     format_proof_points_for_prompt,
 )
 from src.integrations.anthropic import get_anthropic_client
+from src.integrations.dncr import get_dncr_client
+from src.integrations.vapi import (
+    VapiAssistantConfig,
+    VapiCallRequest,
+    VapiClient,
+    get_vapi_client,
+)
 from src.models.activity import Activity
 from src.models.base import ChannelType, LeadStatus
 from src.models.lead import Lead
-from src.models.campaign import Campaign
-
 
 # ============================================
 # BUSINESS HOURS CONSTANTS (Per VOICE.md spec)
@@ -444,7 +440,7 @@ class VoiceEngine(OutreachEngine):
             logger.info(f"TEST_MODE: Redirecting voice call {original_phone} → {lead.phone}")
 
         # Get campaign for context
-        campaign = await self.get_campaign_by_id(db, campaign_id)
+        await self.get_campaign_by_id(db, campaign_id)
 
         # Extract options
         assistant_id = kwargs.get("assistant_id")
@@ -1079,7 +1075,7 @@ Be specific and actionable. Return valid JSON only."""
                     if key != "custom_objections" and value:
                         obj_text.append(f'- "{key.replace("_", " ").title()}": {value}')
             if obj_text:
-                enhancements.append(f"OBJECTION RESPONSES:\n" + "\n".join(obj_text[:4]))
+                enhancements.append("OBJECTION RESPONSES:\n" + "\n".join(obj_text[:4]))
 
         # Add topics to avoid
         if kb_data.get("do_not_mention"):

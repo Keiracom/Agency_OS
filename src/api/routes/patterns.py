@@ -24,7 +24,7 @@ API Endpoints:
 """
 
 from datetime import datetime
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
@@ -82,8 +82,8 @@ class ChannelRecommendation(BaseModel):
     multi_channel_recommended: bool
     multi_channel_lift: float
     winning_sequences: list[dict[str, Any]]
-    confidence: Optional[float] = None
-    sample_size: Optional[int] = None
+    confidence: float | None = None
+    sample_size: int | None = None
     source: str
 
 
@@ -94,9 +94,9 @@ class TimingRecommendation(BaseModel):
     best_days: list[str]
     best_hours: list[int]
     optimal_gaps: dict[str, int]
-    peak_converting_touch: Optional[str] = None
-    confidence: Optional[float] = None
-    sample_size: Optional[int] = None
+    peak_converting_touch: str | None = None
+    confidence: float | None = None
+    sample_size: int | None = None
     source: str
 
 
@@ -105,8 +105,8 @@ class WeightsResponse(BaseModel):
 
     weights: dict[str, float]
     source: str
-    sample_count: Optional[int] = None
-    updated_at: Optional[datetime] = None
+    sample_count: int | None = None
+    updated_at: datetime | None = None
 
 
 class PatternTriggerRequest(BaseModel):
@@ -123,7 +123,7 @@ class PatternTriggerResponse(BaseModel):
 
     status: str
     message: str
-    task_id: Optional[str] = None
+    task_id: str | None = None
 
 
 # ============================================
@@ -241,7 +241,7 @@ async def get_pattern(
 async def get_channel_recommendations(
     db: Annotated[AsyncSession, Depends(get_db_session)],
     client: Annotated[ClientContext, Depends(get_current_client)],
-    tier: Optional[str] = Query(
+    tier: str | None = Query(
         default=None,
         description="ALS tier for tier-specific recommendations",
     ),
@@ -365,7 +365,7 @@ async def get_weights(
 async def get_pattern_history(
     db: Annotated[AsyncSession, Depends(get_db_session)],
     client: Annotated[ClientContext, Depends(get_current_client)],
-    pattern_type: Optional[str] = Query(
+    pattern_type: str | None = Query(
         default=None,
         description="Filter by pattern type",
     ),
@@ -426,9 +426,6 @@ async def trigger_pattern_learning(
 
     This runs in the background and may take several minutes.
     """
-    from src.orchestration.flows.pattern_learning_flow import (
-        single_client_pattern_learning_flow,
-    )
 
     # Check if patterns already exist and are valid
     if not request.force:
@@ -454,6 +451,7 @@ async def trigger_pattern_learning(
 
     # Trigger Prefect flow for pattern learning
     import logging
+
     from prefect.deployments import run_deployment
 
     logger = logging.getLogger(__name__)

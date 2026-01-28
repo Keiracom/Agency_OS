@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
@@ -74,9 +74,9 @@ class SocialProfileDiscoverySkill(BaseSkill["SocialProfileDiscoverySkill.Input",
     class Output(BaseModel):
         """Output from social profile discovery."""
 
-        linkedin_url: Optional[str] = Field(default=None, description="LinkedIn company page URL")
-        instagram_url: Optional[str] = Field(default=None, description="Instagram profile URL")
-        facebook_url: Optional[str] = Field(default=None, description="Facebook page URL")
+        linkedin_url: str | None = Field(default=None, description="LinkedIn company page URL")
+        instagram_url: str | None = Field(default=None, description="Instagram profile URL")
+        facebook_url: str | None = Field(default=None, description="Facebook page URL")
         profiles_found: int = Field(default=0, description="Number of profiles discovered")
         search_queries_used: list[str] = Field(default_factory=list, description="Search queries executed")
 
@@ -96,7 +96,7 @@ class SocialProfileDiscoverySkill(BaseSkill["SocialProfileDiscoverySkill.Input",
     async def execute(
         self,
         input_data: Input,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
     ) -> SkillResult[Output]:
         """
         Execute social profile discovery via Google search.
@@ -111,7 +111,6 @@ class SocialProfileDiscoverySkill(BaseSkill["SocialProfileDiscoverySkill.Input",
         from src.integrations.apify import get_apify_client
 
         company_name = input_data.company_name
-        domain = input_data.website_domain
 
         logger.info(f"Discovering social profiles for: {company_name}")
 
@@ -204,11 +203,7 @@ class SocialProfileDiscoverySkill(BaseSkill["SocialProfileDiscoverySkill.Input",
 
         # Check if any significant word appears in URL
         significant_words = [w for w in words if len(w) > 3]
-        for word in significant_words:
-            if word in url_lower:
-                return True
-
-        return False
+        return any(word in url_lower for word in significant_words)
 
 
 # Register skill

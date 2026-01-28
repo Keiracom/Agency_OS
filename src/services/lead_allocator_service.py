@@ -25,14 +25,13 @@ to individual clients. It ensures exclusive assignment (one lead = one client)
 and fair distribution based on ICP criteria.
 """
 
-from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.exceptions import NotFoundError, ValidationError
+from src.exceptions import ValidationError
 
 
 class LeadAllocatorService:

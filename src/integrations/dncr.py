@@ -21,6 +21,7 @@ Features:
 - Graceful fallback if API unavailable
 """
 
+import contextlib
 import hashlib
 import logging
 from typing import Any
@@ -124,10 +125,8 @@ class DNCRClient:
             return response.json()
         except httpx.HTTPStatusError as e:
             error_body = {}
-            try:
+            with contextlib.suppress(Exception):
                 error_body = e.response.json()
-            except Exception:
-                pass
 
             sentry_sdk.set_context("dncr_error", {
                 "status_code": e.response.status_code,
@@ -303,7 +302,7 @@ class DNCRClient:
             {"+61412345678": True, "+61498765432": False, ...}
         """
         if not self._enabled:
-            return {phone: False for phone in phones}
+            return dict.fromkeys(phones, False)
 
         results = {}
         uncached_phones = []

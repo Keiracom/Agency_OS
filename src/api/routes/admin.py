@@ -14,7 +14,6 @@ RULES APPLIED:
 
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Any, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -24,10 +23,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import (
     AdminContext,
-    CurrentUser,
     get_admin_context,
     get_db_session,
-    require_platform_admin,
 )
 from src.exceptions import ResourceNotFoundError
 from src.models.activity import Activity
@@ -63,8 +60,8 @@ class ServiceStatus(BaseModel):
 
     name: str
     status: str = Field(..., description="healthy, degraded, or down")
-    latency_ms: Optional[float] = None
-    message: Optional[str] = None
+    latency_ms: float | None = None
+    message: str | None = None
 
 
 class SystemStatusResponse(BaseModel):
@@ -82,7 +79,7 @@ class Alert(BaseModel):
     severity: str = Field(..., description="critical, warning, or info")
     message: str
     timestamp: datetime
-    link: Optional[str] = None
+    link: str | None = None
     dismissible: bool = True
 
 
@@ -94,7 +91,7 @@ class ActivityItem(BaseModel):
     action: str
     details: str
     timestamp: datetime
-    channel: Optional[str] = None
+    channel: str | None = None
 
 
 class ClientListItem(BaseModel):
@@ -107,7 +104,7 @@ class ClientListItem(BaseModel):
     mrr: Decimal
     campaigns_count: int
     leads_count: int
-    last_activity: Optional[datetime]
+    last_activity: datetime | None
     health_score: int
 
 
@@ -129,7 +126,7 @@ class ClientDetail(BaseModel):
     subscription_status: str
     credits_remaining: int
     default_permission_mode: str
-    stripe_customer_id: Optional[str]
+    stripe_customer_id: str | None
     created_at: datetime
     updated_at: datetime
     health_score: int
@@ -174,9 +171,9 @@ class SuppressionEntry(BaseModel):
     id: UUID
     email: str
     reason: str
-    source: Optional[str]
-    added_by_email: Optional[str]
-    notes: Optional[str]
+    source: str | None
+    added_by_email: str | None
+    notes: str | None
     created_at: datetime
 
 
@@ -194,7 +191,7 @@ class AddSuppressionRequest(BaseModel):
 
     email: str = Field(..., description="Email to suppress")
     reason: str = Field(..., description="Reason: unsubscribe, bounce, spam, manual")
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 # ============================================================================
@@ -212,7 +209,7 @@ async def get_admin_stats(
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     yesterday_start = today_start - timedelta(days=1)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    last_month_start = (month_start - timedelta(days=1)).replace(day=1)
+    (month_start - timedelta(days=1)).replace(day=1)
 
     # MRR calculation (tier-based pricing)
     tier_pricing = {"ignition": Decimal("199"), "velocity": Decimal("499"), "dominance": Decimal("999")}
@@ -264,8 +261,8 @@ async def get_admin_stats(
     leads_change = ((leads_today - leads_yesterday) / leads_yesterday) * 100 if leads_yesterday else 0
 
     # AI spend from Redis (real data)
-    from src.integrations.redis import ai_spend_tracker
     from src.config.settings import settings
+    from src.integrations.redis import ai_spend_tracker
 
     try:
         ai_spend_float = await ai_spend_tracker.get_spend()
@@ -452,9 +449,7 @@ async def get_system_status(
 
     # Determine overall status
     statuses = [s.status for s in services]
-    if "down" in statuses:
-        overall = "degraded"
-    elif "degraded" in statuses:
+    if "down" in statuses or "degraded" in statuses:
         overall = "degraded"
     else:
         overall = "healthy"
@@ -477,9 +472,9 @@ async def list_all_clients(
     db: AsyncSession = Depends(get_db_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    status_filter: Optional[str] = Query(None, alias="status"),
-    tier_filter: Optional[str] = Query(None, alias="tier"),
-    search: Optional[str] = None,
+    status_filter: str | None = Query(None, alias="status"),
+    tier_filter: str | None = Query(None, alias="tier"),
+    search: str | None = None,
 ):
     """Get all clients with health scores and metrics."""
     tier_pricing = {"ignition": Decimal("199"), "velocity": Decimal("499"), "dominance": Decimal("999")}
@@ -706,17 +701,17 @@ async def get_ai_spend(
     Real-time spend comes from Redis via ai_spend_tracker.
     Agent/client breakdown requires ai_usage_logs table (not yet implemented).
     """
-    from src.integrations.redis import ai_spend_tracker
     from src.config.settings import settings
+    from src.integrations.redis import ai_spend_tracker
 
     # Get real today's spend from Redis
     try:
         today_spend_float = await ai_spend_tracker.get_spend()
         today_spend = Decimal(str(round(today_spend_float, 2)))
-        remaining = await ai_spend_tracker.get_remaining()
+        await ai_spend_tracker.get_remaining()
     except Exception:
         today_spend = Decimal("0.00")
-        remaining = Decimal(str(settings.anthropic_daily_spend_limit))
+        Decimal(str(settings.anthropic_daily_spend_limit))
 
     today_limit = Decimal(str(settings.anthropic_daily_spend_limit))
     today_percentage = float((today_spend / today_limit) * 100) if today_limit > 0 else 0.0
@@ -829,8 +824,8 @@ async def get_suppression_list(
     db: AsyncSession = Depends(get_db_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    reason_filter: Optional[str] = Query(None, alias="reason"),
-    search: Optional[str] = None,
+    reason_filter: str | None = Query(None, alias="reason"),
+    search: str | None = None,
 ):
     """Get global suppression list."""
     # Query from global_suppression_list table
@@ -950,7 +945,7 @@ async def get_all_campaigns(
     db: AsyncSession = Depends(get_db_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    status_filter: Optional[str] = Query(None, alias="status"),
+    status_filter: str | None = Query(None, alias="status"),
 ):
     """Get all campaigns across all clients."""
     conditions = [Campaign.deleted_at.is_(None)]
@@ -1002,7 +997,7 @@ async def get_all_leads(
     db: AsyncSession = Depends(get_db_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    tier_filter: Optional[str] = Query(None, alias="tier"),
+    tier_filter: str | None = Query(None, alias="tier"),
 ):
     """Get all leads across all clients."""
     conditions = [Lead.deleted_at.is_(None)]
@@ -1064,7 +1059,7 @@ class PoolStats(BaseModel):
     bounced: int
     unsubscribed: int
     utilization_rate: float
-    avg_als_score: Optional[float] = None
+    avg_als_score: float | None = None
 
 
 class PoolLeadItem(BaseModel):
@@ -1072,14 +1067,14 @@ class PoolLeadItem(BaseModel):
 
     id: UUID
     email: str
-    first_name: Optional[str]
-    last_name: Optional[str]
-    company_name: Optional[str]
-    title: Optional[str]
+    first_name: str | None
+    last_name: str | None
+    company_name: str | None
+    title: str | None
     pool_status: str
-    email_status: Optional[str]
-    als_score: Optional[int]
-    als_tier: Optional[str]
+    email_status: str | None
+    als_score: int | None
+    als_tier: str | None
     created_at: datetime
 
 
@@ -1097,21 +1092,21 @@ class PoolLeadDetail(BaseModel):
 
     id: UUID
     email: str
-    email_status: Optional[str]
-    first_name: Optional[str]
-    last_name: Optional[str]
-    title: Optional[str]
-    seniority: Optional[str]
-    company_name: Optional[str]
-    company_domain: Optional[str]
-    company_industry: Optional[str]
-    company_employee_count: Optional[int]
-    company_country: Optional[str]
-    linkedin_url: Optional[str]
-    phone: Optional[str]
+    email_status: str | None
+    first_name: str | None
+    last_name: str | None
+    title: str | None
+    seniority: str | None
+    company_name: str | None
+    company_domain: str | None
+    company_industry: str | None
+    company_employee_count: int | None
+    company_country: str | None
+    linkedin_url: str | None
+    phone: str | None
     pool_status: str
-    als_score: Optional[int]
-    als_tier: Optional[str]
+    als_score: int | None
+    als_tier: str | None
     is_bounced: bool
     is_unsubscribed: bool
     created_at: datetime
@@ -1145,7 +1140,7 @@ class ManualAssignRequest(BaseModel):
 
     lead_pool_ids: list[UUID] = Field(..., description="Pool lead IDs to assign")
     client_id: UUID = Field(..., description="Client to assign to")
-    campaign_id: Optional[UUID] = None
+    campaign_id: UUID | None = None
 
 
 class ReleaseLeadRequest(BaseModel):
@@ -1199,9 +1194,9 @@ async def get_pool_leads(
     db: AsyncSession = Depends(get_db_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    status_filter: Optional[str] = Query(None, alias="status"),
-    tier_filter: Optional[str] = Query(None, alias="tier"),
-    search: Optional[str] = None,
+    status_filter: str | None = Query(None, alias="status"),
+    tier_filter: str | None = Query(None, alias="tier"),
+    search: str | None = None,
 ):
     """Get paginated list of pool leads."""
     conditions = []
@@ -1340,8 +1335,8 @@ async def get_pool_assignments(
     db: AsyncSession = Depends(get_db_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    client_id: Optional[UUID] = None,
-    status_filter: Optional[str] = Query(None, alias="status"),
+    client_id: UUID | None = None,
+    status_filter: str | None = Query(None, alias="status"),
 ):
     """Get paginated list of pool assignments."""
     conditions = []
@@ -1409,7 +1404,7 @@ async def manual_assign_leads(
     """Manually assign pool leads to a client."""
     from src.services.lead_allocator_service import LeadAllocatorService
 
-    allocator = LeadAllocatorService(db)
+    LeadAllocatorService(db)
     assigned_count = 0
     errors = []
 

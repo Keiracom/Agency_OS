@@ -42,7 +42,7 @@ PHASE 24A+ CHANGES (LinkedIn Enrichment):
 """
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
@@ -56,7 +56,6 @@ from src.models.base import ChannelType, LeadStatus
 from src.models.client import Client
 from src.models.conversion_patterns import ConversionPattern
 from src.models.lead import Lead
-
 
 # ============================================
 # ALS Scoring Constants
@@ -1615,8 +1614,9 @@ class ScorerEngine(BaseEngine):
             score_data: Scoring results
             assignment_id: Deprecated, kept for backward compatibility
         """
-        from sqlalchemy import text
         import json
+
+        from sqlalchemy import text
 
         # Update the lead_pool record directly
         query = text("""

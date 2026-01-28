@@ -20,12 +20,10 @@ import sys
 from typing import Any
 
 import sentry_sdk
-from sentry_sdk.integrations.asyncio import AsyncioIntegration
-
 from prefect import get_client
-from sqlalchemy import text
 from prefect.agent import PrefectAgent
-from prefect.settings import PREFECT_API_URL
+from sentry_sdk.integrations.asyncio import AsyncioIntegration
+from sqlalchemy import text
 
 from src.config.settings import settings
 
@@ -44,7 +42,8 @@ if settings.sentry_dsn:
         attach_stacktrace=True,
     )
 from src.integrations.redis import close_redis, get_redis
-from src.integrations.supabase import cleanup as close_db, get_db_session as get_async_session
+from src.integrations.supabase import cleanup as close_db
+from src.integrations.supabase import get_db_session as get_async_session
 
 # Configure logging
 logging.basicConfig(
@@ -132,7 +131,6 @@ class AgencyOSWorker:
         try:
             async with get_client() as client:
                 # Create or get work queue
-                work_queue_name = settings.prefect_work_queue
 
                 # Start processing
                 while self._running and not self._shutdown_event.is_set():

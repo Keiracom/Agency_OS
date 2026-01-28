@@ -8,19 +8,18 @@ IMPORTS: services
 """
 
 import logging
-from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import get_current_user_from_token, get_db_session
 from src.services import (
-    CustomerImportService,
-    SuppressionService,
     BuyerSignalService,
     ColumnMapping,
+    CustomerImportService,
+    SuppressionService,
 )
 
 logger = logging.getLogger(__name__)
@@ -35,41 +34,41 @@ router = APIRouter(prefix="/customers", tags=["customers"])
 class CRMImportRequest(BaseModel):
     """Request to import customers from CRM."""
     crm_type: str = Field(..., description="CRM type: hubspot, pipedrive, or close")
-    api_key: Optional[str] = Field(None, description="API key for the CRM (not needed for HubSpot OAuth)")
+    api_key: str | None = Field(None, description="API key for the CRM (not needed for HubSpot OAuth)")
     days_back: int = Field(365, description="Import closed-won deals from last N days")
 
 
 class CSVImportRequest(BaseModel):
     """Request schema for CSV import form data."""
     domain_column: str = Field("domain", description="Column name for domain")
-    email_column: Optional[str] = Field(None, description="Column name for email")
-    company_name_column: Optional[str] = Field(None, description="Column name for company")
+    email_column: str | None = Field(None, description="Column name for email")
+    company_name_column: str | None = Field(None, description="Column name for company")
     source: str = Field("csv_import", description="Import source label")
 
 
 class SuppressionAddRequest(BaseModel):
     """Request to add to suppression list."""
-    domain: Optional[str] = Field(None, description="Domain to suppress")
-    email: Optional[str] = Field(None, description="Email to suppress")
-    company_name: Optional[str] = Field(None, description="Company name")
+    domain: str | None = Field(None, description="Domain to suppress")
+    email: str | None = Field(None, description="Email to suppress")
+    company_name: str | None = Field(None, description="Company name")
     reason: str = Field("manual", description="Reason: existing_customer, competitor, manual, etc.")
-    notes: Optional[str] = Field(None, description="Additional notes")
+    notes: str | None = Field(None, description="Additional notes")
 
 
 class SuppressionCheckRequest(BaseModel):
     """Request to check suppression status."""
-    email: Optional[str] = Field(None, description="Email to check")
-    domain: Optional[str] = Field(None, description="Domain to check")
+    email: str | None = Field(None, description="Email to check")
+    domain: str | None = Field(None, description="Domain to check")
 
 
 class CustomerResponse(BaseModel):
     """Customer response model."""
     id: UUID
-    company_name: Optional[str]
-    domain: Optional[str]
-    contact_email: Optional[str]
-    deal_value: Optional[float]
-    closed_at: Optional[str]
+    company_name: str | None
+    domain: str | None
+    contact_email: str | None
+    deal_value: float | None
+    closed_at: str | None
     source: str
     auto_suppressed: bool
 
@@ -77,13 +76,13 @@ class CustomerResponse(BaseModel):
 class SuppressionResponse(BaseModel):
     """Suppression entry response model."""
     id: UUID
-    domain: Optional[str]
-    email: Optional[str]
-    company_name: Optional[str]
+    domain: str | None
+    email: str | None
+    company_name: str | None
     reason: str
     source: str
-    notes: Optional[str]
-    expires_at: Optional[str]
+    notes: str | None
+    expires_at: str | None
     created_at: str
 
 
@@ -99,8 +98,8 @@ class ImportResultResponse(BaseModel):
 class SuppressionCheckResponse(BaseModel):
     """Suppression check response."""
     suppressed: bool
-    reason: Optional[str] = None
-    details: Optional[str] = None
+    reason: str | None = None
+    details: str | None = None
 
 
 # ============================================================================
@@ -153,8 +152,8 @@ async def import_from_crm(
 async def import_from_csv(
     file: UploadFile = File(...),
     domain_column: str = Form("domain"),
-    email_column: Optional[str] = Form(None),
-    company_name_column: Optional[str] = Form(None),
+    email_column: str | None = Form(None),
+    company_name_column: str | None = Form(None),
     source: str = Form("csv_import"),
     db: AsyncSession = Depends(get_db_session),
     current_user: dict = Depends(get_current_user_from_token),
@@ -209,7 +208,7 @@ async def import_from_csv(
 
 @router.get("", response_model=list[CustomerResponse])
 async def list_customers(
-    source: Optional[str] = Query(None, description="Filter by import source"),
+    source: str | None = Query(None, description="Filter by import source"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db_session),
@@ -336,7 +335,7 @@ async def add_suppression(
     service = SuppressionService(db)
 
     try:
-        suppression_id = await service.add_suppression(
+        await service.add_suppression(
             client_id=client_id,
             domain=request.domain,
             email=request.email,
@@ -372,7 +371,7 @@ async def add_suppression(
 
 @router.get("/suppression", response_model=list[SuppressionResponse])
 async def list_suppressions(
-    reason: Optional[str] = Query(None, description="Filter by reason"),
+    reason: str | None = Query(None, description="Filter by reason"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db_session),

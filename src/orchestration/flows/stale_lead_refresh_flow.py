@@ -22,7 +22,6 @@ DATA FRESHNESS STRATEGY:
 import logging
 from datetime import datetime, timedelta
 from typing import Any
-from uuid import UUID
 
 from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner

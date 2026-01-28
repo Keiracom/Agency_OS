@@ -25,15 +25,13 @@ The KB includes:
 
 from __future__ import annotations
 
-import json
 import logging
-from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from src.integrations.sdk_brain import SDKBrain, SDKBrainResult, create_sdk_brain
+from src.integrations.sdk_brain import SDKBrainResult, create_sdk_brain
 
 logger = logging.getLogger(__name__)
 
@@ -396,17 +394,17 @@ async def run_sdk_voice_kb(
                         news_item += f" ({n['date']})"
                     news_items.append(news_item)
             if news_items:
-                enrichment_parts.append(f"RECENT NEWS:\n  - " + "\n  - ".join(news_items))
+                enrichment_parts.append("RECENT NEWS:\n  - " + "\n  - ".join(news_items))
 
         # Pain points
         if enrichment_data.get("pain_points"):
             pains = enrichment_data["pain_points"][:4]
-            enrichment_parts.append(f"IDENTIFIED PAIN POINTS:\n  - " + "\n  - ".join(pains))
+            enrichment_parts.append("IDENTIFIED PAIN POINTS:\n  - " + "\n  - ".join(pains))
 
         # Personalization hooks
         if enrichment_data.get("personalization_hooks"):
             hooks = enrichment_data["personalization_hooks"][:4]
-            enrichment_parts.append(f"PERSONALIZATION HOOKS:\n  - " + "\n  - ".join(hooks))
+            enrichment_parts.append("PERSONALIZATION HOOKS:\n  - " + "\n  - ".join(hooks))
 
         # Competitor intel
         if enrichment_data.get("competitor_intel"):
@@ -422,7 +420,7 @@ async def run_sdk_voice_kb(
         # Conversation starters
         if enrichment_data.get("conversation_starters"):
             starters = enrichment_data["conversation_starters"][:3]
-            enrichment_parts.append(f"CONVERSATION STARTERS:\n  - " + "\n  - ".join(starters))
+            enrichment_parts.append("CONVERSATION STARTERS:\n  - " + "\n  - ".join(starters))
 
         if enrichment_parts:
             enrichment_section = "\n\n".join(enrichment_parts)
@@ -641,7 +639,7 @@ def get_basic_voice_kb(lead_data: dict[str, Any]) -> dict[str, Any]:
     """
     first_name = lead_data.get("first_name", "there")
     company = lead_data.get("company_name") or lead_data.get("company", "your company")
-    title = lead_data.get("title", "")
+    lead_data.get("title", "")
 
     return {
         "pronunciation": {

@@ -40,26 +40,25 @@ from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, select, text, update
+from sqlalchemy import text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-from src.engines.base import BaseEngine, EngineResult
-from src.exceptions import EngineError, ValidationError
-from src.agents.skills.research_skills import DeepResearchSkill
-from src.agents.sdk_agents.sdk_eligibility import should_use_sdk_enrichment
 from src.agents.sdk_agents.enrichment_agent import run_sdk_enrichment
-from src.services.sdk_usage_service import log_sdk_usage
+from src.agents.sdk_agents.sdk_eligibility import should_use_sdk_enrichment
+from src.agents.skills.research_skills import DeepResearchSkill
+from src.engines.base import BaseEngine, EngineResult
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
-from src.integrations.apollo import ApolloClient, get_apollo_client
 from src.integrations.apify import ApifyClient, get_apify_client
-from src.services.who_refinement_service import get_who_refined_criteria
+from src.integrations.apollo import ApolloClient, get_apollo_client
 from src.integrations.clay import ClayClient, get_clay_client
 from src.integrations.redis import enrichment_cache
 from src.models.base import LeadStatus
 from src.models.lead import Lead
 from src.models.lead_social_post import LeadSocialPost
+from src.services.sdk_usage_service import log_sdk_usage
+from src.services.who_refinement_service import get_who_refined_criteria
 
 # Sentry for error tracking
 try:
@@ -481,7 +480,7 @@ class ScoutEngine(BaseEngine):
             }
 
             logger.info(
-                f"Running SDK enrichment for Hot lead",
+                "Running SDK enrichment for Hot lead",
                 extra={
                     "lead_id": str(lead.id),
                     "signals": signals,
@@ -494,7 +493,7 @@ class ScoutEngine(BaseEngine):
 
             if result.success and result.data:
                 logger.info(
-                    f"SDK enrichment succeeded",
+                    "SDK enrichment succeeded",
                     extra={
                         "lead_id": str(lead.id),
                         "cost_aud": result.cost_aud,
@@ -517,7 +516,7 @@ class ScoutEngine(BaseEngine):
                 }
             else:
                 logger.warning(
-                    f"SDK enrichment failed",
+                    "SDK enrichment failed",
                     extra={
                         "lead_id": str(lead.id),
                         "error": result.error,
@@ -583,7 +582,7 @@ class ScoutEngine(BaseEngine):
 
         if sdk_eligible:
             logger.info(
-                f"Lead qualifies for SDK enrichment",
+                "Lead qualifies for SDK enrichment",
                 extra={
                     "lead_id": str(lead_id),
                     "als_score": effective_als_score,
@@ -713,11 +712,7 @@ class ScoutEngine(BaseEngine):
             return False
 
         # Check required fields
-        for field in REQUIRED_FIELDS:
-            if not data.get(field):
-                return False
-
-        return True
+        return all(data.get(field) for field in REQUIRED_FIELDS)
 
     def _merge_enrichment(
         self,

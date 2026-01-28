@@ -13,7 +13,6 @@ Blueprint requirement (VOICE.md):
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import and_, select, update
@@ -220,7 +219,7 @@ class RecordingCleanupService:
             or extra_data.get("compliance_hold", False)
         )
 
-    def _get_recording_url(self, activity: Activity) -> Optional[str]:
+    def _get_recording_url(self, activity: Activity) -> str | None:
         """
         Extract recording URL from activity metadata.
 
@@ -361,7 +360,7 @@ class RecordingCleanupService:
 
 
 # Singleton instance holder
-_recording_cleanup_service: Optional[RecordingCleanupService] = None
+_recording_cleanup_service: RecordingCleanupService | None = None
 
 
 def get_recording_cleanup_service(db: AsyncSession) -> RecordingCleanupService:

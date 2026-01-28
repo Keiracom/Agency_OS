@@ -8,16 +8,16 @@ Consumers: engines, orchestration
 
 from datetime import datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import DECIMAL, Integer, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.base import Base, SoftDeleteMixin, TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
-    from src.models.client import Client
+    pass
 
 
 class ClientIntelligence(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
@@ -41,121 +41,121 @@ class ClientIntelligence(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     )
 
     # === WEBSITE DATA ===
-    website_tagline: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    website_value_prop: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    website_services: Mapped[Optional[list[dict[str, Any]]]] = mapped_column(
+    website_tagline: Mapped[str | None] = mapped_column(Text, nullable=True)
+    website_value_prop: Mapped[str | None] = mapped_column(Text, nullable=True)
+    website_services: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSONB, nullable=True, default=list
     )  # [{name, description}]
-    website_case_studies: Mapped[Optional[list[dict[str, Any]]]] = mapped_column(
+    website_case_studies: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSONB, nullable=True, default=list
     )  # [{title, client_name, industry, result_metrics, summary}]
-    website_testimonials: Mapped[Optional[list[dict[str, Any]]]] = mapped_column(
+    website_testimonials: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSONB, nullable=True, default=list
     )  # [{quote, author, title, company}]
-    website_team_bios: Mapped[Optional[list[dict[str, Any]]]] = mapped_column(
+    website_team_bios: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSONB, nullable=True, default=list
     )  # [{name, title, linkedin_url, bio}]
-    website_blog_topics: Mapped[Optional[list[str]]] = mapped_column(
+    website_blog_topics: Mapped[list[str] | None] = mapped_column(
         ARRAY(Text), nullable=True
     )
-    website_scraped_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    website_scraped_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     # === LINKEDIN COMPANY ===
-    linkedin_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    linkedin_follower_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    linkedin_employee_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    linkedin_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    linkedin_specialties: Mapped[Optional[list[str]]] = mapped_column(
+    linkedin_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    linkedin_follower_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    linkedin_employee_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    linkedin_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    linkedin_specialties: Mapped[list[str] | None] = mapped_column(
         ARRAY(Text), nullable=True
     )
-    linkedin_recent_posts: Mapped[Optional[list[dict[str, Any]]]] = mapped_column(
+    linkedin_recent_posts: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSONB, nullable=True, default=list
     )  # [{text, date, engagement}]
-    linkedin_scraped_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    linkedin_scraped_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     # === TWITTER/X ===
-    twitter_handle: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    twitter_follower_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    twitter_bio: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    twitter_recent_posts: Mapped[Optional[list[dict[str, Any]]]] = mapped_column(
+    twitter_handle: Mapped[str | None] = mapped_column(Text, nullable=True)
+    twitter_follower_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    twitter_bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    twitter_recent_posts: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSONB, nullable=True, default=list
     )  # [{text, date, likes, retweets}]
-    twitter_topics: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
-    twitter_scraped_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    twitter_topics: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
+    twitter_scraped_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     # === FACEBOOK ===
-    facebook_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    facebook_follower_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    facebook_about: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    facebook_recent_posts: Mapped[Optional[list[dict[str, Any]]]] = mapped_column(
+    facebook_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    facebook_follower_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    facebook_about: Mapped[str | None] = mapped_column(Text, nullable=True)
+    facebook_recent_posts: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSONB, nullable=True, default=list
     )
-    facebook_scraped_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    facebook_scraped_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     # === INSTAGRAM ===
-    instagram_handle: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    instagram_follower_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    instagram_bio: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    instagram_recent_posts: Mapped[Optional[list[dict[str, Any]]]] = mapped_column(
+    instagram_handle: Mapped[str | None] = mapped_column(Text, nullable=True)
+    instagram_follower_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    instagram_bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    instagram_recent_posts: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSONB, nullable=True, default=list
     )  # [{caption, date, likes}]
-    instagram_scraped_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    instagram_scraped_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     # === REVIEW PLATFORMS ===
     # G2
-    g2_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    g2_rating: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(2, 1), nullable=True)
-    g2_review_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    g2_top_reviews: Mapped[Optional[list[dict[str, Any]]]] = mapped_column(
+    g2_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    g2_rating: Mapped[Decimal | None] = mapped_column(DECIMAL(2, 1), nullable=True)
+    g2_review_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    g2_top_reviews: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSONB, nullable=True, default=list
     )  # [{rating, title, pros, cons, reviewer}]
-    g2_ai_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    g2_scraped_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    g2_ai_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    g2_scraped_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     # Capterra
-    capterra_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    capterra_rating: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(2, 1), nullable=True)
-    capterra_review_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    capterra_top_reviews: Mapped[Optional[list[dict[str, Any]]]] = mapped_column(
+    capterra_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    capterra_rating: Mapped[Decimal | None] = mapped_column(DECIMAL(2, 1), nullable=True)
+    capterra_review_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    capterra_top_reviews: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSONB, nullable=True, default=list
     )
-    capterra_scraped_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    capterra_scraped_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     # Trustpilot
-    trustpilot_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    trustpilot_rating: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(2, 1), nullable=True)
-    trustpilot_review_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    trustpilot_top_reviews: Mapped[Optional[list[dict[str, Any]]]] = mapped_column(
+    trustpilot_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    trustpilot_rating: Mapped[Decimal | None] = mapped_column(DECIMAL(2, 1), nullable=True)
+    trustpilot_review_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    trustpilot_top_reviews: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSONB, nullable=True, default=list
     )
-    trustpilot_scraped_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    trustpilot_scraped_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     # Google Business
-    google_business_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    google_rating: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(2, 1), nullable=True)
-    google_review_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    google_top_reviews: Mapped[Optional[list[dict[str, Any]]]] = mapped_column(
+    google_business_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    google_rating: Mapped[Decimal | None] = mapped_column(DECIMAL(2, 1), nullable=True)
+    google_review_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    google_top_reviews: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSONB, nullable=True, default=list
     )
-    google_scraped_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    google_scraped_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     # === EXTRACTED PROOF POINTS ===
-    proof_metrics: Mapped[Optional[list[dict[str, Any]]]] = mapped_column(
+    proof_metrics: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSONB, nullable=True, default=list
     )  # [{metric, context, source}]
-    proof_clients: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
-    proof_industries: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
-    common_pain_points: Mapped[Optional[list[str]]] = mapped_column(
+    proof_clients: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
+    proof_industries: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
+    common_pain_points: Mapped[list[str] | None] = mapped_column(
         ARRAY(Text), nullable=True
     )
-    differentiators: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), nullable=True)
+    differentiators: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
 
     # === SCRAPING METADATA ===
-    total_scrape_cost_aud: Mapped[Optional[Decimal]] = mapped_column(
+    total_scrape_cost_aud: Mapped[Decimal | None] = mapped_column(
         DECIMAL(10, 4), nullable=True, default=Decimal("0")
     )
-    last_full_scrape_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
-    scrape_errors: Mapped[Optional[list[dict[str, Any]]]] = mapped_column(
+    last_full_scrape_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    scrape_errors: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSONB, nullable=True, default=list
     )  # [{source, error, timestamp}]
 

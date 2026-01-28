@@ -262,7 +262,7 @@ Return the complete sequence as JSON."""
     async def execute(
         self,
         input_data: Input,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
     ) -> SkillResult[Output]:
         """
         Execute the skill to build a campaign sequence.

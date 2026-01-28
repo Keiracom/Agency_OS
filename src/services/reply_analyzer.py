@@ -30,9 +30,6 @@ from uuid import UUID
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.exceptions import ValidationError
-
-
 # Objection keywords for rule-based fallback
 OBJECTION_PATTERNS = {
     "timing": [
@@ -301,7 +298,7 @@ Return ONLY valid JSON, no other text."""
             return "unclear"
 
         # Check for objection patterns
-        for objection_type, patterns in OBJECTION_PATTERNS.items():
+        for _objection_type, patterns in OBJECTION_PATTERNS.items():
             if any(p in content for p in patterns):
                 return "objection"
 
@@ -340,7 +337,7 @@ Return ONLY valid JSON, no other text."""
             "most", "other", "some", "such", "no", "not", "only", "same",
             "so", "than", "too", "very", "just", "also", "now", "here",
             "there", "up", "down", "out", "about", "over", "again", "hi",
-            "hello", "hey", "thanks", "thank", "please", "yes", "no"
+            "hello", "hey", "thanks", "thank", "please", "yes"
         }
 
         words = re.findall(r'\b[a-z]+\b', content)

@@ -17,7 +17,7 @@ import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from src.config.settings import settings
-from src.exceptions import APIError, IntegrationError, ResourceRateLimitError
+from src.exceptions import APIError, IntegrationError
 
 
 class HeyReachClient:
@@ -424,7 +424,7 @@ class HeyReachClient:
         Returns:
             Dict with success status
         """
-        result = await self._request("DELETE", f"/senders/{sender_id}")
+        await self._request("DELETE", f"/senders/{sender_id}")
         return {
             "success": True,
             "sender_id": sender_id,

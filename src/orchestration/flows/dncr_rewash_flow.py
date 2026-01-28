@@ -29,8 +29,7 @@ from uuid import UUID
 
 from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
-from sqlalchemy import and_, or_, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import and_, or_, select
 
 from src.integrations.supabase import get_db_session
 from src.models.lead import Lead
@@ -61,7 +60,7 @@ async def get_leads_needing_dncr_rewash_task(
         Dict with lead info for re-washing
     """
     async with get_db_session() as db:
-        stale_cutoff = datetime.utcnow() - timedelta(days=stale_days)
+        datetime.utcnow() - timedelta(days=stale_days)
 
         # Query leads with Australian phones that have stale DNCR checks
         # We check both Lead and LeadPool tables
@@ -71,7 +70,7 @@ async def get_leads_needing_dncr_rewash_task(
                 and_(
                     Lead.phone.isnot(None),
                     Lead.phone.startswith("+61"),  # Australian numbers
-                    Lead.dncr_checked == True,  # Previously checked
+                    Lead.dncr_checked,  # Previously checked
                     Lead.deleted_at.is_(None),  # Not deleted
                     # Note: Lead model doesn't have dncr_checked_at
                     # We re-check all previously checked Australian numbers
@@ -126,7 +125,7 @@ async def get_pool_leads_needing_dncr_rewash_task(
                 and_(
                     LeadPool.phone.isnot(None),
                     LeadPool.phone.startswith("+61"),  # Australian numbers
-                    LeadPool.dncr_checked == True,  # Previously checked
+                    LeadPool.dncr_checked,  # Previously checked
                     LeadPool.deleted_at.is_(None),  # Not deleted
                     # Stale check: checked before cutoff date
                     or_(

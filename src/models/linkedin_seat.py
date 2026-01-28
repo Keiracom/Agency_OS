@@ -12,7 +12,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import Integer, String, Text, ForeignKey, Numeric
+from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import (
@@ -67,31 +67,31 @@ class LinkedInSeat(Base, UUIDMixin, TimestampMixin):
         ForeignKey("clients.id", ondelete="CASCADE"),
         nullable=False,
     )
-    resource_id: Mapped[Optional[UUID]] = mapped_column(
+    resource_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("client_resources.id"),
         nullable=True,
     )
-    persona_id: Mapped[Optional[UUID]] = mapped_column(
+    persona_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("client_personas.id"),
         nullable=True,
     )
 
     # Provider connection (internal, not exposed to client)
-    unipile_account_id: Mapped[Optional[str]] = mapped_column(
+    unipile_account_id: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
     )
 
     # Account info (from provider, displayed to client)
-    account_email: Mapped[Optional[str]] = mapped_column(
+    account_email: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
     )
-    account_name: Mapped[Optional[str]] = mapped_column(
+    account_name: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
     )
-    profile_url: Mapped[Optional[str]] = mapped_column(
+    profile_url: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
@@ -104,31 +104,31 @@ class LinkedInSeat(Base, UUIDMixin, TimestampMixin):
     )
 
     # Connection flow (for 2FA handling)
-    pending_connection_id: Mapped[Optional[str]] = mapped_column(
+    pending_connection_id: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
     )
 
     # Warmup tracking
-    activated_at: Mapped[Optional[datetime]] = mapped_column(
+    activated_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
     )
-    warmup_completed_at: Mapped[Optional[datetime]] = mapped_column(
+    warmup_completed_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
     )
 
     # Capacity override (health-based reduction)
-    daily_limit_override: Mapped[Optional[int]] = mapped_column(
+    daily_limit_override: Mapped[int | None] = mapped_column(
         Integer,
         nullable=True,
     )
 
     # Health metrics
-    accept_rate_7d: Mapped[Optional[Decimal]] = mapped_column(
+    accept_rate_7d: Mapped[Decimal | None] = mapped_column(
         Numeric(5, 4),
         nullable=True,
     )
-    accept_rate_30d: Mapped[Optional[Decimal]] = mapped_column(
+    accept_rate_30d: Mapped[Decimal | None] = mapped_column(
         Numeric(5, 4),
         nullable=True,
     )
@@ -139,10 +139,10 @@ class LinkedInSeat(Base, UUIDMixin, TimestampMixin):
     )
 
     # Restriction tracking
-    restricted_at: Mapped[Optional[datetime]] = mapped_column(
+    restricted_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
     )
-    restricted_reason: Mapped[Optional[str]] = mapped_column(
+    restricted_reason: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
@@ -225,7 +225,7 @@ class LinkedInSeat(Base, UUIDMixin, TimestampMixin):
         unipile_account_id: str,
         account_email: str,
         account_name: str,
-        profile_url: Optional[str] = None,
+        profile_url: str | None = None,
     ) -> None:
         """Mark seat as connected and start warmup."""
         self.unipile_account_id = unipile_account_id

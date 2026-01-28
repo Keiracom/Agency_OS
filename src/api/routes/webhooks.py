@@ -21,34 +21,33 @@ RULES APPLIED:
   - Rule 20: Webhook-first architecture
 """
 
-import hmac
 import hashlib
+import hmac
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Request, HTTPException, status, Depends
-from sqlalchemy import select, and_
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.dependencies import get_db_session
 from src.config.settings import settings
 from src.engines.closer import get_closer_engine
-from src.exceptions import ResourceNotFoundError, WebhookError
+from src.engines.voice import get_voice_engine
+from src.exceptions import WebhookError
 from src.integrations.postmark import get_postmark_client
-from src.api.dependencies import get_db_session
 from src.integrations.twilio import get_twilio_client
 from src.integrations.unipile import get_unipile_client
-from src.engines.voice import get_voice_engine
+from src.models.activity import Activity
 from src.models.base import ChannelType
 from src.models.lead import Lead
-from src.models.activity import Activity
 from src.services.email_events_service import (
     EmailEventsService,
-    parse_smartlead_webhook,
-    parse_salesforge_webhook,
     parse_resend_webhook,
+    parse_salesforge_webhook,
+    parse_smartlead_webhook,
 )
 from src.services.linkedin_connection_service import linkedin_connection_service
-
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 

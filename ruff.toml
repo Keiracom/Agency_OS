@@ -1,6 +1,22 @@
 # Ruff configuration for Agency OS
 # https://docs.astral.sh/ruff/configuration/
 
+# Top-level settings
+line-length = 100
+target-version = "py311"
+
+# Exclude these directories
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "node_modules",
+    ".mypy_cache",
+    ".pytest_cache",
+    "frontend",
+]
+
 [lint]
 # Enable these rule sets
 select = [
@@ -17,8 +33,11 @@ select = [
 # Ignore these specific rules
 ignore = [
     "E501",   # line too long (handled by formatter)
+    "E402",   # module import not at top (needed for circular import avoidance)
+    "E741",   # ambiguous variable name (sometimes intentional)
     "B008",   # function call in default argument (needed for FastAPI Depends)
     "B904",   # raise without from (sometimes intentional)
+    "SIM102", # collapsible if (readability preference)
     "SIM108", # ternary operator (readability preference)
 ]
 
@@ -37,20 +56,3 @@ unfixable = []
 quote-style = "double"
 # Indent with spaces
 indent-style = "space"
-# Line length
-line-length = 100
-
-# Target Python 3.11
-target-version = "py311"
-
-# Exclude these directories
-exclude = [
-    ".git",
-    ".venv",
-    "venv",
-    "__pycache__",
-    "node_modules",
-    ".mypy_cache",
-    ".pytest_cache",
-    "frontend",
-]

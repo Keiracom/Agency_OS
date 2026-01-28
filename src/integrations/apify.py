@@ -17,7 +17,7 @@ WATERFALL ARCHITECTURE (Phase 19):
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from apify_client import ApifyClient as BaseApifyClient
 from apify_client.clients import ActorClient
@@ -79,8 +79,8 @@ class ScrapeResult:
     title: str = ""
     tier_used: int = 0  # 0=validation, 1=cheerio, 2=playwright, 3=camoufox, 4=manual
     needs_fallback: bool = False
-    failure_reason: Optional[str] = None
-    manual_fallback_url: Optional[str] = None
+    failure_reason: str | None = None
+    manual_fallback_url: str | None = None
 
     @property
     def success(self) -> bool:
@@ -484,8 +484,8 @@ class ApifyClient:
         Returns:
             Canonical URL after following redirects
         """
+
         import httpx
-        from urllib.parse import urlparse
 
         try:
             # Use HEAD request with redirect following to find canonical URL
@@ -520,7 +520,7 @@ class ApifyClient:
         Returns:
             List of seed URL objects for Apify
         """
-        from urllib.parse import urljoin, urlparse
+        from urllib.parse import urljoin
 
         # Canonicalize base URL first (ICP-FIX-006)
         # This handles www/non-www redirects (e.g., dilate.com.au → www.dilate.com.au)
@@ -617,7 +617,7 @@ class ApifyClient:
                 failure_reason=f"Playwright scrape error: {str(e)}",
             )
 
-    def validate_scrape_content(self, html: str) -> tuple[bool, Optional[str]]:
+    def validate_scrape_content(self, html: str) -> tuple[bool, str | None]:
         """
         Validate scraped content (SCR-003).
 

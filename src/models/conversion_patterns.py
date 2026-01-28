@@ -18,16 +18,15 @@ RULES APPLIED:
 """
 
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from sqlalchemy import Float, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import ENUM, JSONB
+from sqlalchemy import Float, ForeignKey, Integer, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import (
     Base,
-    PatternType,
     TimestampMixin,
     UUIDMixin,
 )

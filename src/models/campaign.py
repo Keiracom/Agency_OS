@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
 from sqlalchemy import (
+    TIMESTAMP,
     Boolean,
     CheckConstraint,
     Date,
@@ -31,9 +32,9 @@ from sqlalchemy import (
     String,
     Text,
     Time,
-    TIMESTAMP,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, ENUM, UUID as UUID_DB
+from sqlalchemy.dialects.postgresql import ARRAY, ENUM
+from sqlalchemy.dialects.postgresql import UUID as UUID_DB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import (
@@ -78,7 +79,7 @@ class Campaign(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         nullable=False,
         index=True,
     )
-    created_by: Mapped[Optional[UUID]] = mapped_column(
+    created_by: Mapped[UUID | None] = mapped_column(
         UUID_DB(as_uuid=True),
         ForeignKey("users.id"),
         nullable=True,
@@ -86,7 +87,7 @@ class Campaign(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
 
     # Basic info
     name: Mapped[str] = mapped_column(Text, nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[CampaignStatus] = mapped_column(
         ENUM(CampaignStatus, name="campaign_status", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
@@ -94,12 +95,12 @@ class Campaign(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     )
 
     # Pause tracking (Phase H, Item 43)
-    paused_at: Mapped[Optional[datetime]] = mapped_column(
+    paused_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True),
         nullable=True,
     )
-    pause_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    paused_by_user_id: Mapped[Optional[UUID]] = mapped_column(
+    pause_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    paused_by_user_id: Mapped[UUID | None] = mapped_column(
         UUID_DB(as_uuid=True),
         ForeignKey("users.id"),
         nullable=True,
@@ -121,31 +122,31 @@ class Campaign(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         nullable=False,
         default=0,  # Calculated from pct × client's total leads
     )
-    ai_suggestion_reason: Mapped[Optional[str]] = mapped_column(
+    ai_suggestion_reason: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,  # Why AI suggested this campaign (if ai_suggested)
     )
 
     # Permission mode (overrides client default)
-    permission_mode: Mapped[Optional[PermissionMode]] = mapped_column(
+    permission_mode: Mapped[PermissionMode | None] = mapped_column(
         ENUM(PermissionMode, name="permission_mode", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=True,
     )
 
     # Target settings
-    target_industries: Mapped[Optional[list[str]]] = mapped_column(
+    target_industries: Mapped[list[str] | None] = mapped_column(
         ARRAY(Text),
         nullable=True,
     )
-    target_titles: Mapped[Optional[list[str]]] = mapped_column(
+    target_titles: Mapped[list[str] | None] = mapped_column(
         ARRAY(Text),
         nullable=True,
     )
-    target_company_sizes: Mapped[Optional[list[str]]] = mapped_column(
+    target_company_sizes: Mapped[list[str] | None] = mapped_column(
         ARRAY(Text),
         nullable=True,
     )
-    target_locations: Mapped[Optional[list[str]]] = mapped_column(
+    target_locations: Mapped[list[str] | None] = mapped_column(
         ARRAY(Text),
         nullable=True,
     )
@@ -178,8 +179,8 @@ class Campaign(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     )
 
     # Scheduling
-    start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     daily_limit: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
@@ -336,7 +337,7 @@ class CampaignResource(Base, UUIDMixin, TimestampMixin):
     )
 
     # Source client resource for auto-inheritance tracking
-    client_resource_id: Mapped[Optional[UUID]] = mapped_column(
+    client_resource_id: Mapped[UUID | None] = mapped_column(
         UUID_DB(as_uuid=True),
         ForeignKey("client_resources.id", ondelete="SET NULL"),
         nullable=True,
@@ -349,12 +350,12 @@ class CampaignResource(Base, UUIDMixin, TimestampMixin):
         nullable=False,
     )
     resource_id: Mapped[str] = mapped_column(Text, nullable=False)
-    resource_name: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    resource_name: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Rate limit tracking (resource-level, Rule 17)
     daily_limit: Mapped[int] = mapped_column(Integer, nullable=False)
     daily_used: Mapped[int] = mapped_column(Integer, default=0)
-    last_used_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(nullable=True)
     last_reset_at: Mapped[datetime] = mapped_column(
         nullable=False,
         default=datetime.utcnow,
@@ -414,7 +415,7 @@ class CampaignSequence(Base, UUIDMixin, TimestampMixin):
     delay_days: Mapped[int] = mapped_column(Integer, default=3)
 
     # Templates
-    subject_template: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    subject_template: Mapped[str | None] = mapped_column(Text, nullable=True)
     body_template: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Conditional logic
@@ -422,11 +423,11 @@ class CampaignSequence(Base, UUIDMixin, TimestampMixin):
     skip_if_bounced: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Phase E: Additional sequence metadata
-    purpose: Mapped[Optional[str]] = mapped_column(
+    purpose: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )  # intro, connect, value_add, pattern_interrupt, breakup, discovery
-    skip_if: Mapped[Optional[str]] = mapped_column(
+    skip_if: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )  # phone_missing, linkedin_url_missing, address_missing

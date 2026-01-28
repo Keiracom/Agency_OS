@@ -13,7 +13,6 @@ ENDPOINTS:
 NOTE: No more email/password or 2FA endpoints! Unipile hosted auth handles all of that.
 """
 
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -59,16 +58,16 @@ class LinkedInStatusResponse(BaseModel):
         ...,
         description="Connection status: not_connected, pending, connected, failed, disconnected, credentials_required",
     )
-    auth_method: Optional[str] = Field(
+    auth_method: str | None = Field(
         default="hosted",
         description="Authentication method (hosted = Unipile hosted auth)",
     )
-    profile_url: Optional[str] = Field(None, description="LinkedIn profile URL")
-    profile_name: Optional[str] = Field(None, description="LinkedIn display name")
-    headline: Optional[str] = Field(None, description="LinkedIn headline")
-    connection_count: Optional[int] = Field(None, description="Number of LinkedIn connections")
-    connected_at: Optional[str] = Field(None, description="ISO timestamp when connected")
-    error: Optional[str] = Field(None, description="Error message if failed")
+    profile_url: str | None = Field(None, description="LinkedIn profile URL")
+    profile_name: str | None = Field(None, description="LinkedIn display name")
+    headline: str | None = Field(None, description="LinkedIn headline")
+    connection_count: int | None = Field(None, description="Number of LinkedIn connections")
+    connected_at: str | None = Field(None, description="ISO timestamp when connected")
+    error: str | None = Field(None, description="Error message if failed")
 
 
 class LinkedInDisconnectResponse(BaseModel):
@@ -93,6 +92,7 @@ async def get_client_id_from_user(
     In the future, this could be based on a selected context.
     """
     from sqlalchemy import select
+
     from src.models.membership import Membership
 
     stmt = select(Membership.client_id).where(

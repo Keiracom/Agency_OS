@@ -218,7 +218,7 @@ Provide your best estimate with supporting evidence. Return valid JSON."""
     async def execute(
         self,
         input_data: Input,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
     ) -> SkillResult[Output]:
         """
         Execute company size estimation.

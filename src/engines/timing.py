@@ -235,7 +235,7 @@ class TimingEngine:
 
         schedule = [start_time]
 
-        for i in range(1, count):
+        for _i in range(1, count):
             delay = self.get_delay_seconds()
             next_time = schedule[-1] + timedelta(seconds=delay)
 

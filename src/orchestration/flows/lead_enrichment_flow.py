@@ -32,14 +32,11 @@ from sqlalchemy import text
 
 from src.agents.sdk_agents import (
     should_use_sdk_enrichment,
-    should_use_sdk_email,
-    should_use_sdk_voice_kb,
 )
-from src.agents.sdk_agents.enrichment_agent import run_sdk_enrichment
 from src.agents.sdk_agents.email_agent import run_sdk_email
+from src.agents.sdk_agents.enrichment_agent import run_sdk_enrichment
 from src.agents.sdk_agents.voice_kb_agent import run_sdk_voice_kb
 from src.agents.skills.research_skills import PersonalizationAnalysisSkill
-from src.models.client_intelligence import ClientIntelligence
 from src.engines.scorer import get_scorer_engine
 from src.engines.scout import get_scout_engine
 from src.integrations.anthropic import get_anthropic_client

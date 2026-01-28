@@ -52,13 +52,12 @@ from src.engines.base import EngineResult, OutreachEngine
 
 logger = logging.getLogger(__name__)
 from src.engines.content_utils import build_sms_snapshot
-from src.exceptions import DNCRError, ResourceRateLimitError, ValidationError
-from src.integrations.redis import rate_limiter
+from src.exceptions import DNCRError, ResourceRateLimitError
 from src.integrations.clicksend import ClickSendClient, get_clicksend_client
+from src.integrations.redis import rate_limiter
 from src.models.activity import Activity
 from src.models.base import ChannelType
 from src.models.lead import Lead
-
 
 # Rate limit (Rule 17)
 SMS_DAILY_LIMIT_PER_NUMBER = 100
@@ -141,7 +140,7 @@ class SMSEngine(OutreachEngine):
 
         # Get lead
         lead = await self.get_lead_by_id(db, lead_id)
-        campaign = await self.get_campaign_by_id(db, campaign_id)
+        await self.get_campaign_by_id(db, campaign_id)
 
         # Validate phone number
         if not lead.phone:

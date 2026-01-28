@@ -20,7 +20,6 @@ from uuid import UUID
 
 from prefect import task
 from sqlalchemy import and_, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.scorer import ScorerEngine
 from src.exceptions import ValidationError

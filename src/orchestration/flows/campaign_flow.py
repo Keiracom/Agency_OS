@@ -23,9 +23,7 @@ from uuid import UUID
 
 from prefect import flow, task
 from sqlalchemy import and_, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.engines.scout import get_scout_engine
 from src.integrations.supabase import get_db_session
 from src.models.base import CampaignStatus, LeadStatus, SubscriptionStatus
 from src.models.campaign import Campaign

@@ -41,21 +41,18 @@ import logging
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 from uuid import UUID
 
-from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 import httpx
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import BaseEngine, EngineResult
 from src.engines.url_validator import URLValidator, get_url_validator
-from src.exceptions import EngineError, ValidationError
 from src.integrations.anthropic import get_anthropic_client
-from src.integrations.apify import get_apify_client, ScrapeResult
+from src.integrations.apify import ScrapeResult, get_apify_client
 from src.integrations.apollo import get_apollo_client
 from src.integrations.camoufox_scraper import (
     CamoufoxScraper,
@@ -98,12 +95,12 @@ class ScrapedPage:
 class SocialLinks:
     """Social media URLs extracted from website (ICP-SOC-001)."""
 
-    linkedin: Optional[str] = None
-    instagram: Optional[str] = None
-    facebook: Optional[str] = None
-    twitter: Optional[str] = None
-    youtube: Optional[str] = None
-    tiktok: Optional[str] = None
+    linkedin: str | None = None
+    instagram: str | None = None
+    facebook: str | None = None
+    twitter: str | None = None
+    youtube: str | None = None
+    tiktok: str | None = None
 
 
 @dataclass
@@ -119,11 +116,11 @@ class ScrapedWebsite:
     # Waterfall tracking (Phase 19)
     tier_used: int = 0  # 0=validation, 1=cheerio, 2=playwright, 3=camoufox, 4=manual
     needs_fallback: bool = False
-    failure_reason: Optional[str] = None
-    manual_fallback_url: Optional[str] = None
-    canonical_url: Optional[str] = None  # URL after redirects
+    failure_reason: str | None = None
+    manual_fallback_url: str | None = None
+    canonical_url: str | None = None  # URL after redirects
     # Social media links (ICP-SOC-001)
-    social_links: Optional[SocialLinks] = None
+    social_links: SocialLinks | None = None
 
 
 @dataclass
@@ -174,12 +171,12 @@ class ICPScraperEngine(BaseEngine):
 
     def __init__(
         self,
-        apify_client: "ApifyClient | None" = None,
-        apollo_client: "ApolloClient | None" = None,
-        clay_client: "ClayClient | None" = None,
-        anthropic_client: "AnthropicClient | None" = None,
-        url_validator: "URLValidator | None" = None,
-        camoufox_scraper: "CamoufoxScraper | None" = None,
+        apify_client: ApifyClient | None = None,
+        apollo_client: ApolloClient | None = None,
+        clay_client: ClayClient | None = None,
+        anthropic_client: AnthropicClient | None = None,
+        url_validator: URLValidator | None = None,
+        camoufox_scraper: CamoufoxScraper | None = None,
     ):
         """
         Initialize with optional client overrides for testing.
@@ -205,28 +202,28 @@ class ICPScraperEngine(BaseEngine):
         return "icp_scraper"
 
     @property
-    def apify(self) -> "ApifyClient":
+    def apify(self) -> ApifyClient:
         """Get Apify client."""
         if self._apify is None:
             self._apify = get_apify_client()
         return self._apify
 
     @property
-    def apollo(self) -> "ApolloClient":
+    def apollo(self) -> ApolloClient:
         """Get Apollo client."""
         if self._apollo is None:
             self._apollo = get_apollo_client()
         return self._apollo
 
     @property
-    def clay(self) -> "ClayClient":
+    def clay(self) -> ClayClient:
         """Get Clay client."""
         if self._clay is None:
             self._clay = get_clay_client()
         return self._clay
 
     @property
-    def anthropic(self) -> "AnthropicClient":
+    def anthropic(self) -> AnthropicClient:
         """Get Anthropic client."""
         if self._anthropic is None:
             self._anthropic = get_anthropic_client()
@@ -510,7 +507,7 @@ class ICPScraperEngine(BaseEngine):
                     except Exception as camoufox_error:
                         logger.error(f"Tier 3 (Camoufox) exception for {url}: {camoufox_error}")
                 else:
-                    logger.info(f"Tier 3 (Camoufox) skipped - not enabled or not available")
+                    logger.info("Tier 3 (Camoufox) skipped - not enabled or not available")
 
                 # ===== TIER 4: Manual Fallback =====
                 # All automated tiers failed, return with manual fallback flag

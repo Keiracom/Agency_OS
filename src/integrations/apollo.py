@@ -17,7 +17,7 @@ PHASE 24A CHANGES:
   - Added timezone inference from location
 """
 
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 import sentry_sdk
@@ -25,7 +25,6 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from src.config.settings import settings
 from src.exceptions import APIError, IntegrationError, ValidationError
-from src.integrations.sentry_utils import track_integration_call, add_breadcrumb
 
 
 class ApolloClient:

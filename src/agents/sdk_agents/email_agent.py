@@ -19,15 +19,13 @@ Key features:
 
 from __future__ import annotations
 
-import json
 import logging
-from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from src.integrations.sdk_brain import SDKBrain, SDKBrainResult, create_sdk_brain
+from src.integrations.sdk_brain import SDKBrainResult, create_sdk_brain
 
 logger = logging.getLogger(__name__)
 
@@ -144,7 +142,7 @@ async def run_sdk_email(
     # Build context from lead data
     first_name = lead_data.get("first_name", "")
     last_name = lead_data.get("last_name", "")
-    name = f"{first_name} {last_name}".strip() or "there"
+    f"{first_name} {last_name}".strip() or "there"
     company = lead_data.get("company_name") or lead_data.get("organization_name") or lead_data.get("company", "")
     title = lead_data.get("title", "")
     industry = lead_data.get("company_industry") or lead_data.get("organization_industry", "")

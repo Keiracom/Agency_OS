@@ -25,23 +25,20 @@ from uuid import UUID
 
 from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
-from sqlalchemy import text, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 
-from src.agents.icp_discovery_agent import ICPExtractionResult, get_icp_discovery_agent
-from src.integrations.supabase import get_db_session
+from src.agents.icp_discovery_agent import get_icp_discovery_agent
 from src.config.settings import get_settings
 from src.engines.client_intelligence import (
-    ClientIntelligenceEngine,
     ScrapeConfig,
     get_client_intelligence_engine,
 )
+from src.integrations.supabase import get_db_session
+from src.models.resource_pool import ResourceType
 from src.services.resource_assignment_service import (
     assign_resources_to_client,
-    get_pool_stats,
     check_buffer_and_alert,
 )
-from src.models.resource_pool import ResourceType
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +92,7 @@ async def update_job_status_task(
         if status in ("completed", "failed"):
             updates["completed_at"] = datetime.utcnow()
 
-        set_clauses = ", ".join([f"{k} = :{k}" for k in updates.keys()])
+        set_clauses = ", ".join([f"{k} = :{k}" for k in updates])
         await db.execute(
             text(f"""
             UPDATE icp_extraction_jobs
@@ -248,7 +245,7 @@ async def enhance_icp_with_sdk_task(
         )
 
         # Import SDK components
-        from src.agents.sdk_agents.icp_agent import ICPInput, extract_icp
+        from src.agents.sdk_agents.icp_agent import extract_icp
 
         # Prepare website content from basic result profile
         profile = basic_result.get("profile", {})
@@ -677,7 +674,7 @@ async def icp_onboarding_flow(
         )
 
         # Step 4: Save result
-        saved = await save_extraction_result_task(
+        await save_extraction_result_task(
             job_id=job_id,
             client_id=client_id,
             result=extraction_result,

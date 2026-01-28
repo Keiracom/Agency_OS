@@ -12,8 +12,6 @@ RULES APPLIED:
   - Rule 20: Webhook-first architecture
 """
 
-import hashlib
-import hmac
 from typing import Any
 
 import httpx

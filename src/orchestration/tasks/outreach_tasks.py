@@ -33,7 +33,6 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.sdk_agents import should_use_sdk_voice_kb
-from src.services.content_qa_service import validate_voice_script
 from src.engines.content import ContentEngine
 from src.engines.email import EmailEngine
 from src.engines.linkedin import LinkedInEngine
@@ -53,6 +52,7 @@ from src.models.base import (
 from src.models.campaign import Campaign
 from src.models.client import Client
 from src.models.lead import Lead
+from src.services.content_qa_service import validate_voice_script
 
 logger = logging.getLogger(__name__)
 

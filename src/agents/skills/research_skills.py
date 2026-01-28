@@ -18,7 +18,6 @@ RULES APPLIED:
   - Rule 12: No imports from engines
 """
 
-from datetime import date, datetime
 from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field
@@ -167,13 +166,13 @@ Return JSON with this structure:
                 profile_data = profiles[0]
                 # Extract posts if available in profile data
                 raw_posts = profile_data.get("posts", []) or profile_data.get("activity", [])
-                for i, post in enumerate(raw_posts[:input_data.max_posts]):
+                for _i, post in enumerate(raw_posts[:input_data.max_posts]):
                     posts.append({
                         "content": post.get("text") or post.get("content", ""),
                         "date": post.get("date") or post.get("posted_date"),
                         "engagement": post.get("likes", 0) + post.get("comments", 0),
                     })
-        except Exception as e:
+        except Exception:
             # Log but continue - we can still generate based on profile info
             pass
 
@@ -237,8 +236,8 @@ Return JSON with this structure:
     ) -> str:
         """Build prompt for Claude analysis."""
         prompt_parts = [
-            f"Analyze this LinkedIn profile and generate an icebreaker hook.\n",
-            f"\n## Target Person",
+            "Analyze this LinkedIn profile and generate an icebreaker hook.\n",
+            "\n## Target Person",
             f"- Name: {input_data.first_name} {input_data.last_name}".strip(),
             f"- Company: {input_data.company}" if input_data.company else "",
             f"- Title: {input_data.title}" if input_data.title else "",
@@ -246,7 +245,7 @@ Return JSON with this structure:
 
         if profile_data:
             prompt_parts.extend([
-                f"\n## Profile Data",
+                "\n## Profile Data",
                 f"- Headline: {profile_data.get('title', profile_data.get('headline', 'N/A'))}",
                 f"- Location: {profile_data.get('location', 'N/A')}",
                 f"- Connections: {profile_data.get('connections', 'N/A')}",
@@ -451,7 +450,7 @@ Return ONLY valid JSON matching the output schema."""
         """Build prompt for Claude analysis."""
         parts = [
             "Analyze this lead for personalized outreach.\n",
-            f"\n## Lead Profile",
+            "\n## Lead Profile",
             f"- Name: {input_data.first_name} {input_data.last_name}",
             f"- Title: {input_data.title}" if input_data.title else "",
             f"- Company: {input_data.company_name}" if input_data.company_name else "",

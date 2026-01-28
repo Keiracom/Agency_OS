@@ -14,19 +14,18 @@ This service:
 """
 
 from datetime import datetime, timedelta
-from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import func, select, and_
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.activity import Activity
 from src.models.resource_pool import (
+    HEALTH_DAILY_LIMITS,
+    HEALTH_THRESHOLDS,
+    HealthStatus,
     ResourcePool,
     ResourceType,
-    HealthStatus,
-    HEALTH_THRESHOLDS,
-    HEALTH_DAILY_LIMITS,
 )
 
 
@@ -310,7 +309,7 @@ class DomainHealthService:
 
 
 # Singleton instance
-_domain_health_service: Optional[DomainHealthService] = None
+_domain_health_service: DomainHealthService | None = None
 
 
 def get_domain_health_service() -> DomainHealthService:

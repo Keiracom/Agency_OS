@@ -28,7 +28,6 @@ RULES APPLIED:
 
 from typing import Any
 
-
 # =============================================================================
 # PLATFORM PRIORS - INDUSTRY BENCHMARK DERIVED
 # =============================================================================
@@ -50,7 +49,7 @@ PLATFORM_PRIORS: dict[str, Any] = {
         "timing": 0.20,         # Increased from 0.15 - intent matters
         "risk": 0.10,           # Reduced from 0.15 - fewer false negatives
     },
-    
+
     # -------------------------------------------------------------------------
     # Timing Patterns
     # -------------------------------------------------------------------------
@@ -77,7 +76,7 @@ PLATFORM_PRIORS: dict[str, Any] = {
             "Sunday": 0.40,
         },
     },
-    
+
     # -------------------------------------------------------------------------
     # Content Patterns
     # -------------------------------------------------------------------------
@@ -97,7 +96,7 @@ PLATFORM_PRIORS: dict[str, Any] = {
         "mutual_connection_lift": 1.35,         # 35% improvement
         "industry_specific_lift": 1.20,         # 20% improvement
     },
-    
+
     # -------------------------------------------------------------------------
     # Channel Patterns
     # -------------------------------------------------------------------------
@@ -121,7 +120,7 @@ PLATFORM_PRIORS: dict[str, Any] = {
             "any_to_followup": 4,
         },
     },
-    
+
     # -------------------------------------------------------------------------
     # Funnel Conversion Benchmarks
     # -------------------------------------------------------------------------
@@ -135,7 +134,7 @@ PLATFORM_PRIORS: dict[str, Any] = {
         "mql_to_sql": 0.13,                     # 13% MQL → SQL (biggest drop)
         "sql_to_opportunity": 0.45,             # 30-59% SQL → Opp
         "opportunity_to_close": 0.26,           # 22-30% Opp → Customer
-        
+
         # Outbound-specific (cold email/LinkedIn)
         "cold_email_open_rate": 0.25,           # 25% open rate
         "cold_email_reply_rate": 0.02,          # 2% reply rate
@@ -145,7 +144,7 @@ PLATFORM_PRIORS: dict[str, Any] = {
         "cold_call_connect_rate": 0.08,         # 8% answer rate
         "cold_call_meeting_rate": 0.15,         # 15% of connects → meeting
     },
-    
+
     # -------------------------------------------------------------------------
     # Authority/Title Conversion Patterns
     # -------------------------------------------------------------------------
@@ -168,7 +167,7 @@ PLATFORM_PRIORS: dict[str, Any] = {
             "Specialist": 0.60,
         },
     },
-    
+
     # -------------------------------------------------------------------------
     # Company Size Patterns
     # -------------------------------------------------------------------------
@@ -189,7 +188,7 @@ PLATFORM_PRIORS: dict[str, Any] = {
             "500+": 0.50,     # Very long cycle
         },
     },
-    
+
     # -------------------------------------------------------------------------
     # Metadata
     # -------------------------------------------------------------------------
@@ -239,35 +238,35 @@ def get_channel_patterns() -> dict[str, Any]:
 def get_authority_lift(title: str) -> float:
     """
     Get conversion lift factor for a job title.
-    
+
     Args:
         title: Job title to look up
-        
+
     Returns:
         Lift factor (1.0 = baseline, >1 = better, <1 = worse)
     """
     title_patterns = PLATFORM_PRIORS["authority_patterns"]["title_conversion_lift"]
     title_lower = title.lower()
-    
+
     for pattern, lift in title_patterns.items():
         if pattern.lower() in title_lower:
             return lift
-    
+
     return 1.0  # Default baseline
 
 
 def get_size_lift(employee_count: int) -> float:
     """
     Get conversion lift factor for company size.
-    
+
     Args:
         employee_count: Number of employees
-        
+
     Returns:
         Lift factor (1.0 = baseline, >1 = better, <1 = worse)
     """
     size_patterns = PLATFORM_PRIORS["company_size_patterns"]["size_conversion_lift"]
-    
+
     if employee_count < 5:
         return size_patterns["1-4"]
     elif employee_count <= 10:
@@ -289,10 +288,10 @@ def get_size_lift(employee_count: int) -> float:
 def get_day_lift(day_name: str) -> float:
     """
     Get conversion lift factor for day of week.
-    
+
     Args:
         day_name: Day name (e.g., "Monday", "Tuesday")
-        
+
     Returns:
         Lift factor (1.0 = baseline)
     """
@@ -303,19 +302,19 @@ def get_day_lift(day_name: str) -> float:
 def is_optimal_send_time(day_name: str, hour: int) -> bool:
     """
     Check if a day/hour combination is optimal for sending.
-    
+
     Args:
         day_name: Day name (e.g., "Tuesday")
         hour: Hour in 24h format (0-23)
-        
+
     Returns:
         True if optimal send time
     """
     timing = PLATFORM_PRIORS["timing_patterns"]
-    
+
     is_best_day = day_name in timing["best_days"]
     is_best_hour = hour in timing["best_hours"]
-    
+
     return is_best_day and is_best_hour
 
 

@@ -302,7 +302,7 @@ Identify patterns across industries, sizes, locations, and signals. Return valid
     async def execute(
         self,
         input_data: Input,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
     ) -> SkillResult[Output]:
         """
         Execute ICP derivation.

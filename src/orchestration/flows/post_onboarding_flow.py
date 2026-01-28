@@ -24,14 +24,12 @@ It performs:
 """
 
 import logging
-from datetime import datetime
 from typing import Any
 from uuid import UUID
 
 from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.integrations.supabase import get_db_session
 

@@ -33,32 +33,28 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.agents.base_agent import AgentContext, AgentResult, BaseAgent
-from src.agents.skills.als_weight_suggester import ALSWeights, ALSWeightSuggesterSkill
-from src.agents.skills.base_skill import SkillRegistry, SkillResult
+from src.agents.base_agent import BaseAgent
+from src.agents.skills.als_weight_suggester import ALSWeightSuggesterSkill
+from src.agents.skills.base_skill import SkillResult
 from src.agents.skills.company_size_estimator import (
     CompanySizeEstimatorSkill,
-    LinkedInData,
 )
-from src.agents.skills.icp_deriver import DerivedICP, EnrichedCompany, ICPDeriverSkill
+from src.agents.skills.icp_deriver import EnrichedCompany, ICPDeriverSkill
 from src.agents.skills.industry_classifier import IndustryClassifierSkill, IndustryMatch
 from src.agents.skills.portfolio_extractor import (
     PortfolioCompany,
     PortfolioExtractorSkill,
 )
 from src.agents.skills.portfolio_fallback import (
-    FallbackPortfolioCompany,
     PortfolioFallbackSkill,
 )
 from src.agents.skills.service_extractor import ServiceExtractorSkill, ServiceInfo
 from src.agents.skills.social_enricher import SocialClientExtractorSkill
 from src.agents.skills.social_profile_discovery import SocialProfileDiscoverySkill
 from src.agents.skills.value_prop_extractor import ValuePropExtractorSkill
-from src.agents.skills.website_parser import PageContent, WebsiteParserSkill
+from src.agents.skills.website_parser import WebsiteParserSkill
 from src.engines.icp_scraper import (
-    EnrichedPortfolioCompany,
     ICPScraperEngine,
-    ScrapedWebsite,
     get_icp_scraper_engine,
 )
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
@@ -424,7 +420,7 @@ class ICPDiscoveryAgent(BaseAgent):
         google_results: list[dict] = []
 
         # Tier F1: Apollo agency lookup
-        logger.info(f"Tier F1: Looking up agency in Apollo...")
+        logger.info("Tier F1: Looking up agency in Apollo...")
         apollo_result = await self.scraper.get_agency_apollo_data(
             company_name=company_name,
             domain=website_domain,
@@ -440,7 +436,7 @@ class ICPDiscoveryAgent(BaseAgent):
 
         # Tier F2: Social profile discovery (only if we don't have social links)
         if not collected_social_links or not social_profiles or not social_profiles.has_profiles:
-            logger.info(f"Tier F2: Discovering social profiles via Google...")
+            logger.info("Tier F2: Discovering social profiles via Google...")
             social_discovery_result = await self.use_skill(
                 "discover_social_profiles",
                 company_name=company_name,
@@ -476,7 +472,7 @@ class ICPDiscoveryAgent(BaseAgent):
             linkedin_specialties = updated_social_profiles.linkedin.specialties or []
 
         # Tier F3: Google client search
-        logger.info(f"Tier F3: Searching Google for client mentions...")
+        logger.info("Tier F3: Searching Google for client mentions...")
         try:
             search_queries = [
                 f'"{company_name}" clients case study',

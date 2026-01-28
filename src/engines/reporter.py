@@ -21,7 +21,7 @@ RULES APPLIED:
   - Rule 14: Soft delete checks in queries
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -30,7 +30,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import BaseEngine, EngineResult
 from src.models.activity import Activity
-from src.models.base import ChannelType
 from src.models.campaign import Campaign
 from src.models.lead import Lead
 

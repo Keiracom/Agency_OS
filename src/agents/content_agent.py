@@ -27,16 +27,14 @@ from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
-from pydantic_ai import Agent
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.base_agent import AgentContext, AgentResult, BaseAgent
 from src.engines.content import ContentEngine, get_content_engine
-from src.exceptions import AISpendLimitError, NotFoundError, ValidationError
+from src.exceptions import AISpendLimitError
 from src.models.campaign import Campaign
 from src.models.lead import Lead
-
 
 # ============================================
 # PYDANTIC OUTPUT MODELS

@@ -15,11 +15,10 @@ RULES APPLIED:
   - Rule 14: Soft delete checks (deleted_at IS NULL)
 """
 
-from datetime import datetime
-from typing import Annotated, Optional
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException
 from jose import JWTError, jwt
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, select
@@ -33,12 +32,11 @@ from src.exceptions import (
     ResourceDeletedError,
     ResourceNotFoundError,
 )
-from src.integrations.supabase import get_db, get_supabase_service_client
+from src.integrations.supabase import get_db
 from src.models.base import MembershipRole
 from src.models.client import Client
 from src.models.membership import Membership
 from src.models.user import User
-
 
 # ============================================
 # Pydantic Models
@@ -50,7 +48,7 @@ class CurrentUser(BaseModel):
 
     id: UUID = Field(..., description="User UUID from Supabase Auth")
     email: str = Field(..., description="User email address")
-    full_name: Optional[str] = Field(None, description="User full name")
+    full_name: str | None = Field(None, description="User full name")
     is_platform_admin: bool = Field(False, description="Platform admin flag")
 
     class Config:
@@ -122,7 +120,7 @@ async def get_db_session() -> AsyncSession:
 
 
 async def get_current_user_from_token(
-    authorization: Annotated[Optional[str], Header()] = None,
+    authorization: Annotated[str | None, Header()] = None,
     db: AsyncSession = Depends(get_db_session),
 ) -> CurrentUser:
     """
@@ -192,9 +190,9 @@ async def get_current_user_from_token(
 
 
 async def get_optional_user(
-    authorization: Annotated[Optional[str], Header()] = None,
+    authorization: Annotated[str | None, Header()] = None,
     db: AsyncSession = Depends(get_db_session),
-) -> Optional[CurrentUser]:
+) -> CurrentUser | None:
     """
     Extract user from token if present (for optional auth endpoints).
 
@@ -220,7 +218,7 @@ async def get_optional_user(
 
 
 async def verify_api_key(
-    x_api_key: Annotated[Optional[str], Header()] = None,
+    x_api_key: Annotated[str | None, Header()] = None,
 ) -> bool:
     """
     Verify API key for webhook endpoints.

@@ -13,7 +13,6 @@ RULES APPLIED:
 """
 
 import logging
-from typing import Any, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
@@ -73,6 +72,7 @@ async def run_pool_population(client_id: UUID, limit: int):
         limit: Max leads to add
     """
     import traceback
+
     from src.orchestration.flows.pool_population_flow import pool_population_flow
 
     try:

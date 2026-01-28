@@ -20,13 +20,13 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.linkedin_seat import (
+    LINKEDIN_WARMUP_SCHEDULE,
     LinkedInSeat,
     LinkedInSeatStatus,
-    LINKEDIN_WARMUP_SCHEDULE,
 )
 
 logger = logging.getLogger(__name__)
@@ -204,7 +204,7 @@ class LinkedInWarmupService:
 
         # Determine warmup phase
         phase = None
-        for start, end, limit in LINKEDIN_WARMUP_SCHEDULE:
+        for start, end, _limit in LINKEDIN_WARMUP_SCHEDULE:
             if start <= days_active <= end:
                 phase = f"days_{start}_{end}"
                 break

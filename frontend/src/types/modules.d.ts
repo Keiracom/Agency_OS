@@ -23,6 +23,7 @@ declare module '@tabler/icons-react' {
   export const IconWorld: IconComponent;
   export const IconCommand: IconComponent;
   export const IconCaretRightFilled: IconComponent;
+  export const IconCaretLeftFilled: IconComponent;
   export const IconCaretDownFilled: IconComponent;
   export const IconCaretUpFilled: IconComponent;
   export const IconDotsVertical: IconComponent;

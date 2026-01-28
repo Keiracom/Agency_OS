@@ -65,70 +65,45 @@ class DerivedICP(BaseModel):
 
     # Industry targeting
     icp_industries: list[str] = Field(
-        default_factory=list,
-        description="Target industries (top 3-5)"
+        default_factory=list, description="Target industries (top 3-5)"
     )
-    industry_pattern: str = Field(
-        default="",
-        description="Description of industry pattern"
-    )
+    industry_pattern: str = Field(default="", description="Description of industry pattern")
 
     # Company size targeting
     icp_company_sizes: list[str] = Field(
-        default_factory=list,
-        description="Target company sizes (ranges)"
+        default_factory=list, description="Target company sizes (ranges)"
     )
-    size_pattern: str = Field(
-        default="",
-        description="Description of size pattern"
-    )
+    size_pattern: str = Field(default="", description="Description of size pattern")
 
     # Revenue targeting
-    icp_revenue_ranges: list[str] = Field(
-        default_factory=list,
-        description="Target revenue ranges"
-    )
+    icp_revenue_ranges: list[str] = Field(default_factory=list, description="Target revenue ranges")
 
     # Geographic targeting
-    icp_locations: list[str] = Field(
-        default_factory=list,
-        description="Target locations/regions"
-    )
-    location_pattern: str = Field(
-        default="",
-        description="Description of geographic focus"
-    )
+    icp_locations: list[str] = Field(default_factory=list, description="Target locations/regions")
+    location_pattern: str = Field(default="", description="Description of geographic focus")
 
     # Technology/signals
     icp_technologies: list[str] = Field(
-        default_factory=list,
-        description="Common technologies among clients"
+        default_factory=list, description="Common technologies among clients"
     )
     icp_signals: list[str] = Field(
-        default_factory=list,
-        description="Buying signals (hiring, growth, etc.)"
+        default_factory=list, description="Buying signals (hiring, growth, etc.)"
     )
 
     # Decision maker targeting
-    icp_titles: list[str] = Field(
-        default_factory=list,
-        description="Target job titles"
-    )
+    icp_titles: list[str] = Field(default_factory=list, description="Target job titles")
 
     # Pain points/needs
     icp_pain_points: list[str] = Field(
-        default_factory=list,
-        description="Common pain points addressed"
+        default_factory=list, description="Common pain points addressed"
     )
 
     # Overall pattern
     pattern_description: str = Field(
-        default="",
-        description="1-2 sentence description of ideal customer"
+        default="", description="1-2 sentence description of ideal customer"
     )
     pattern_confidence: float = Field(
-        default=0.0,
-        description="Confidence in derived pattern (0.0-1.0)"
+        default=0.0, description="Confidence in derived pattern (0.0-1.0)"
     )
 
 
@@ -156,34 +131,24 @@ class ICPDeriverSkill(BaseSkill["ICPDeriverSkill.Input", "ICPDeriverSkill.Output
             description="Enriched portfolio companies"
         )
         classified_industries: list[IndustryMatch] = Field(
-            default_factory=list,
-            description="Pre-classified industries"
+            default_factory=list, description="Pre-classified industries"
         )
         services_offered: list[str] = Field(
-            default_factory=list,
-            description="Agency services for context"
+            default_factory=list, description="Agency services for context"
         )
         value_proposition: str = Field(
-            default="",
-            description="Agency value proposition for context"
+            default="", description="Agency value proposition for context"
         )
-        company_name: str = Field(
-            default="",
-            description="Agency name"
-        )
+        company_name: str = Field(default="", description="Agency name")
 
     class Output(BaseModel):
         """Output from ICP derivation."""
 
         icp: DerivedICP = Field(description="Derived ICP profile")
         sample_size: int = Field(default=0, description="Number of companies analyzed")
-        data_quality: str = Field(
-            default="low",
-            description="Data quality: high, medium, low"
-        )
+        data_quality: str = Field(default="low", description="Data quality: high, medium, low")
         recommendations: list[str] = Field(
-            default_factory=list,
-            description="Recommendations for targeting"
+            default_factory=list, description="Recommendations for targeting"
         )
 
     system_prompt = """You are an ICP strategist deriving ideal customer profiles from portfolio data.
@@ -269,13 +234,13 @@ Return valid JSON:
         for c in input_data.enriched_portfolio:
             company_info = f"""
 - {c.company_name}
-  Industry: {c.industry or 'Unknown'}
-  Employees: {c.employee_count or c.employee_range or 'Unknown'}
-  Revenue: {c.annual_revenue or 'Unknown'}
-  Location: {c.location or c.country or 'Unknown'}
-  Founded: {c.founded_year or 'Unknown'}
-  Technologies: {', '.join(c.technologies[:5]) if c.technologies else 'Unknown'}
-  Hiring: {c.is_hiring if c.is_hiring is not None else 'Unknown'}
+  Industry: {c.industry or "Unknown"}
+  Employees: {c.employee_count or c.employee_range or "Unknown"}
+  Revenue: {c.annual_revenue or "Unknown"}
+  Location: {c.location or c.country or "Unknown"}
+  Founded: {c.founded_year or "Unknown"}
+  Technologies: {", ".join(c.technologies[:5]) if c.technologies else "Unknown"}
+  Hiring: {c.is_hiring if c.is_hiring is not None else "Unknown"}
   Source: {c.source}"""
             companies_text.append(company_info)
 
@@ -283,11 +248,13 @@ Return valid JSON:
         industry_text = ""
         if input_data.classified_industries:
             primary = [i.industry for i in input_data.classified_industries if i.is_primary]
-            secondary = [i.industry for i in input_data.classified_industries if not i.is_primary][:3]
+            secondary = [i.industry for i in input_data.classified_industries if not i.is_primary][
+                :3
+            ]
             industry_text = f"""
 PRE-CLASSIFIED INDUSTRIES:
-Primary: {', '.join(primary)}
-Secondary: {', '.join(secondary)}
+Primary: {", ".join(primary)}
+Secondary: {", ".join(secondary)}
 """
 
         return f"""{context}
@@ -295,14 +262,14 @@ Secondary: {', '.join(secondary)}
 Analyze these portfolio companies to derive ICP:
 
 ENRICHED PORTFOLIO ({len(input_data.enriched_portfolio)} companies):
-{''.join(companies_text)}
+{"".join(companies_text)}
 
 Identify patterns across industries, sizes, locations, and signals. Return valid JSON."""
 
     async def execute(
         self,
         input_data: Input,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
     ) -> SkillResult[Output]:
         """
         Execute ICP derivation.

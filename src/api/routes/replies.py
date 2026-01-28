@@ -15,14 +15,13 @@ RULES APPLIED:
 """
 
 from datetime import datetime
-from typing import Annotated, List, Optional
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, desc, func, select, update
+from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from src.api.dependencies import (
     ClientContext,
@@ -46,11 +45,12 @@ router = APIRouter(tags=["replies"])
 
 class LeadSummary(BaseModel):
     """Summary lead info for reply list."""
+
     id: UUID
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+    first_name: str | None = None
+    last_name: str | None = None
     email: str
-    company: Optional[str] = None
+    company: str | None = None
 
     class Config:
         from_attributes = True
@@ -58,19 +58,20 @@ class LeadSummary(BaseModel):
 
 class ReplyResponse(BaseModel):
     """Schema for a reply."""
+
     id: UUID
     lead_id: UUID
-    lead: Optional[LeadSummary] = None
+    lead: LeadSummary | None = None
     campaign_id: UUID
-    campaign_name: Optional[str] = None
+    campaign_name: str | None = None
     channel: ChannelType
-    intent: Optional[IntentType] = None
-    intent_confidence: Optional[float] = None
-    content: Optional[str] = None
-    subject: Optional[str] = None
+    intent: IntentType | None = None
+    intent_confidence: float | None = None
+    content: str | None = None
+    subject: str | None = None
     received_at: datetime
     handled: bool = False
-    handled_at: Optional[datetime] = None
+    handled_at: datetime | None = None
 
     class Config:
         from_attributes = True
@@ -78,7 +79,8 @@ class ReplyResponse(BaseModel):
 
 class ReplyListResponse(BaseModel):
     """Schema for paginated reply list."""
-    items: List[ReplyResponse] = Field(..., description="List of replies")
+
+    items: list[ReplyResponse] = Field(..., description="List of replies")
     total: int = Field(..., description="Total count")
     page: int = Field(..., description="Current page")
     page_size: int = Field(..., description="Page size")
@@ -87,6 +89,7 @@ class ReplyListResponse(BaseModel):
 
 class ReplyHandledUpdate(BaseModel):
     """Schema for marking reply as handled."""
+
     handled: bool = Field(..., description="Whether the reply is handled")
 
 
@@ -106,10 +109,10 @@ async def list_replies(
     db: Annotated[AsyncSession, Depends(get_db_session)],
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Page size"),
-    intent: Optional[IntentType] = Query(None, description="Filter by intent"),
-    channel: Optional[ChannelType] = Query(None, description="Filter by channel"),
-    handled: Optional[bool] = Query(None, description="Filter by handled status"),
-    campaign_id: Optional[UUID] = Query(None, description="Filter by campaign"),
+    intent: IntentType | None = Query(None, description="Filter by intent"),
+    channel: ChannelType | None = Query(None, description="Filter by channel"),
+    handled: bool | None = Query(None, description="Filter by handled status"),
+    campaign_id: UUID | None = Query(None, description="Filter by campaign"),
 ) -> ReplyListResponse:
     """
     List replies with pagination and filters.
@@ -117,13 +120,10 @@ async def list_replies(
     Replies are activities with action='replied'.
     """
     # Build query for replies
-    stmt = (
-        select(Activity)
-        .where(
-            and_(
-                Activity.client_id == client_id,
-                Activity.action == "replied",
-            )
+    stmt = select(Activity).where(
+        and_(
+            Activity.client_id == client_id,
+            Activity.action == "replied",
         )
     )
 

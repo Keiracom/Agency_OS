@@ -24,7 +24,6 @@ from uuid import UUID
 
 from prefect import flow, task
 from sqlalchemy import and_, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.campaign_evolution import (
     generate_campaign_suggestions,
@@ -41,7 +40,6 @@ from src.models.campaign import Campaign
 from src.models.campaign_suggestion import (
     CampaignSuggestion,
     SuggestionStatus,
-    SuggestionType,
 )
 from src.models.client import Client
 
@@ -111,8 +109,7 @@ async def check_evolution_eligibility_task(client_id: UUID) -> dict[str, Any]:
         from src.models.conversion_patterns import ConversionPattern
 
         pattern_result = await db.execute(
-            select(ConversionPattern)
-            .where(
+            select(ConversionPattern).where(
                 and_(
                     ConversionPattern.client_id == client_id,
                     ConversionPattern.valid_until > datetime.utcnow(),
@@ -165,8 +162,7 @@ async def fetch_cis_patterns_task(client_id: UUID) -> dict[str, dict[str, Any]]:
         from src.models.conversion_patterns import ConversionPattern
 
         result = await db.execute(
-            select(ConversionPattern)
-            .where(
+            select(ConversionPattern).where(
                 and_(
                     ConversionPattern.client_id == client_id,
                     ConversionPattern.valid_until > datetime.utcnow(),
@@ -210,10 +206,12 @@ async def fetch_current_campaigns_task(client_id: UUID) -> list[dict[str, Any]]:
                 and_(
                     Campaign.client_id == client_id,
                     Campaign.deleted_at.is_(None),
-                    Campaign.status.in_([
-                        CampaignStatus.ACTIVE,
-                        CampaignStatus.PAUSED,
-                    ]),
+                    Campaign.status.in_(
+                        [
+                            CampaignStatus.ACTIVE,
+                            CampaignStatus.PAUSED,
+                        ]
+                    ),
                 )
             )
             .order_by(Campaign.created_at.desc())
@@ -230,16 +228,18 @@ async def fetch_current_campaigns_task(client_id: UUID) -> list[dict[str, Any]]:
             reply_rate = (reply_count / lead_count * 100) if lead_count > 0 else 0
             conversion_rate = (conversion_count / lead_count * 100) if lead_count > 0 else 0
 
-            campaign_data.append({
-                "id": str(c.id),
-                "name": c.name,
-                "status": c.status.value if c.status else "unknown",
-                "lead_count": lead_count,
-                "reply_rate": round(reply_rate, 2),
-                "conversion_rate": round(conversion_rate, 2),
-                "lead_allocation_pct": c.lead_allocation_pct or 0,
-                "created_at": c.created_at.isoformat() if c.created_at else None,
-            })
+            campaign_data.append(
+                {
+                    "id": str(c.id),
+                    "name": c.name,
+                    "status": c.status.value if c.status else "unknown",
+                    "lead_count": lead_count,
+                    "reply_rate": round(reply_rate, 2),
+                    "conversion_rate": round(conversion_rate, 2),
+                    "lead_allocation_pct": c.lead_allocation_pct or 0,
+                    "created_at": c.created_at.isoformat() if c.created_at else None,
+                }
+            )
 
         logger.info(f"Fetched {len(campaign_data)} campaigns for client {client_id}")
         return campaign_data
@@ -313,10 +313,7 @@ async def run_analyzers_task(
 
     # Aggregate campaign metrics
     total_leads = sum(c.get("lead_count", 0) for c in campaigns)
-    total_replies = sum(
-        c.get("lead_count", 0) * c.get("reply_rate", 0) / 100
-        for c in campaigns
-    )
+    total_replies = sum(c.get("lead_count", 0) * c.get("reply_rate", 0) / 100 for c in campaigns)
     campaign_metrics = {
         "leads_contacted": total_leads,
         "reply_rate": round(total_replies / total_leads * 100, 2) if total_leads > 0 else 0,
@@ -434,11 +431,13 @@ async def run_orchestrator_task(
         Orchestrator output or None if failed
     """
     # Need at least 2 successful analyzer outputs
-    successful_analyzers = sum([
-        1 if analyzer_results.get("who") else 0,
-        1 if analyzer_results.get("what") else 0,
-        1 if analyzer_results.get("how") else 0,
-    ])
+    successful_analyzers = sum(
+        [
+            1 if analyzer_results.get("who") else 0,
+            1 if analyzer_results.get("what") else 0,
+            1 if analyzer_results.get("how") else 0,
+        ]
+    )
 
     if successful_analyzers < 2:
         logger.warning(
@@ -447,9 +446,18 @@ async def run_orchestrator_task(
         return None
 
     # Use empty dict for missing analyzers
-    who_analysis = analyzer_results.get("who") or {"summary": "No WHO analysis available", "confidence": 0}
-    what_analysis = analyzer_results.get("what") or {"summary": "No WHAT analysis available", "confidence": 0}
-    how_analysis = analyzer_results.get("how") or {"summary": "No HOW analysis available", "confidence": 0}
+    who_analysis = analyzer_results.get("who") or {
+        "summary": "No WHO analysis available",
+        "confidence": 0,
+    }
+    what_analysis = analyzer_results.get("what") or {
+        "summary": "No WHAT analysis available",
+        "confidence": 0,
+    }
+    how_analysis = analyzer_results.get("how") or {
+        "summary": "No HOW analysis available",
+        "confidence": 0,
+    }
 
     result = await generate_campaign_suggestions(
         who_analysis=who_analysis,
@@ -595,8 +603,7 @@ async def campaign_evolution_flow(
         eligibility = await check_evolution_eligibility_task(client_id)
         if not eligibility.get("eligible"):
             logger.info(
-                f"Client {client_id} not eligible for evolution: "
-                f"{eligibility.get('reason')}"
+                f"Client {client_id} not eligible for evolution: {eligibility.get('reason')}"
             )
             return {
                 "success": False,
@@ -675,13 +682,14 @@ async def batch_campaign_evolution_flow() -> dict[str, Any]:
     async with get_db_session() as db:
         # Get all active clients
         result = await db.execute(
-            select(Client.id)
-            .where(
+            select(Client.id).where(
                 and_(
-                    Client.subscription_status.in_([
-                        SubscriptionStatus.ACTIVE,
-                        SubscriptionStatus.TRIALING,
-                    ]),
+                    Client.subscription_status.in_(
+                        [
+                            SubscriptionStatus.ACTIVE,
+                            SubscriptionStatus.TRIALING,
+                        ]
+                    ),
                     Client.deleted_at.is_(None),
                 )
             )
@@ -703,11 +711,13 @@ async def batch_campaign_evolution_flow() -> dict[str, Any]:
         except Exception as e:
             logger.error(f"Campaign evolution failed for client {client_id}: {e}")
             failed += 1
-            results.append({
-                "client_id": str(client_id),
-                "success": False,
-                "error": str(e),
-            })
+            results.append(
+                {
+                    "client_id": str(client_id),
+                    "success": False,
+                    "error": str(e),
+                }
+            )
 
     total_suggestions = sum(r.get("suggestions_generated", 0) for r in results)
 

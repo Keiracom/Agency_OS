@@ -17,7 +17,7 @@ PHASE 24A CHANGES:
   - Added timezone inference from location
 """
 
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 import sentry_sdk
@@ -25,7 +25,6 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from src.config.settings import settings
 from src.exceptions import APIError, IntegrationError, ValidationError
-from src.integrations.sentry_utils import track_integration_call, add_breadcrumb
 
 
 class ApolloClient:
@@ -93,11 +92,14 @@ class ApolloClient:
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
-            sentry_sdk.set_context("apollo_request", {
-                "endpoint": endpoint,
-                "method": method,
-                "status_code": e.response.status_code,
-            })
+            sentry_sdk.set_context(
+                "apollo_request",
+                {
+                    "endpoint": endpoint,
+                    "method": method,
+                    "status_code": e.response.status_code,
+                },
+            )
             sentry_sdk.capture_exception(e)
             raise APIError(
                 service="apollo",
@@ -106,10 +108,13 @@ class ApolloClient:
                 message=f"Apollo API error: {e.response.status_code}",
             )
         except httpx.RequestError as e:
-            sentry_sdk.set_context("apollo_request", {
-                "endpoint": endpoint,
-                "method": method,
-            })
+            sentry_sdk.set_context(
+                "apollo_request",
+                {
+                    "endpoint": endpoint,
+                    "method": method,
+                },
+            )
             sentry_sdk.capture_exception(e)
             raise IntegrationError(
                 service="apollo",
@@ -230,6 +235,7 @@ class ApolloClient:
         except Exception as e:
             # Log but don't fail - search may not be available on all plans
             import logging
+
             logging.warning(f"Apollo organization search failed for {company_name}: {e}")
             return []
 
@@ -318,9 +324,7 @@ class ApolloClient:
             # (organization_industry_tag_ids requires numeric Apollo IDs)
             data["q_organization_keyword_tags"] = industries
         if employee_min and employee_max:
-            data["organization_num_employees_ranges"] = [
-                f"{employee_min},{employee_max}"
-            ]
+            data["organization_num_employees_ranges"] = [f"{employee_min},{employee_max}"]
         if countries:
             data["person_locations"] = countries
 
@@ -334,6 +338,7 @@ class ApolloClient:
         # Step 2: Enrich each person to get full data
         # Apollo /people/match requires name + org or email or linkedin
         import logging
+
         logger = logging.getLogger(__name__)
 
         enriched_people = []
@@ -343,7 +348,9 @@ class ApolloClient:
             try:
                 # Skip people without emails in Apollo's database
                 if not preview.get("has_email"):
-                    logger.debug(f"[Apollo] Skipping {preview.get('first_name')} - no email in Apollo")
+                    logger.debug(
+                        f"[Apollo] Skipping {preview.get('first_name')} - no email in Apollo"
+                    )
                     continue
 
                 # Extract person ID from preview - this is the key for email retrieval
@@ -515,21 +522,21 @@ class ApolloClient:
         employment_history = []
         current_role_start_date = None
         for job in person.get("employment_history", []):
-            employment_history.append({
-                "company": job.get("organization_name"),
-                "title": job.get("title"),
-                "start_date": job.get("start_date"),
-                "end_date": job.get("end_date"),
-                "is_current": job.get("current", False),
-            })
+            employment_history.append(
+                {
+                    "company": job.get("organization_name"),
+                    "title": job.get("title"),
+                    "start_date": job.get("start_date"),
+                    "end_date": job.get("end_date"),
+                    "is_current": job.get("current", False),
+                }
+            )
             if job.get("current") and not current_role_start_date:
                 current_role_start_date = job.get("start_date")
 
         # Infer timezone from country (basic mapping)
         timezone = self._infer_timezone(
-            person.get("country"),
-            person.get("state"),
-            person.get("city")
+            person.get("country"), person.get("state"), person.get("city")
         )
 
         return {
@@ -537,13 +544,11 @@ class ApolloClient:
             "found": True,
             "confidence": confidence,
             "enrichment_source": "apollo",
-
             # ===== IDENTIFIERS =====
             "apollo_id": person.get("id"),
             "email": person.get("email"),
             "email_status": person.get("email_status", "unknown"),  # CRITICAL
             "linkedin_url": person.get("linkedin_url"),
-
             # ===== PERSON DATA =====
             "first_name": person.get("first_name"),
             "last_name": person.get("last_name"),
@@ -554,20 +559,16 @@ class ApolloClient:
             "twitter_url": person.get("twitter_url"),
             "phone": phone,
             "personal_email": personal_email,
-
             # Person Location
             "city": person.get("city"),
             "state": person.get("state"),
             "country": person.get("country"),
             "timezone": timezone,
-
             # Departments
             "departments": person.get("departments", []),
-
             # Employment History
             "employment_history": employment_history if employment_history else None,
             "current_role_start_date": current_role_start_date,
-
             # ===== ORGANISATION DATA =====
             "company_name": org.get("name"),
             "company_domain": org.get("primary_domain"),
@@ -575,7 +576,6 @@ class ApolloClient:
             "company_linkedin_url": org.get("linkedin_url"),
             "company_description": org.get("short_description"),
             "company_logo_url": org.get("logo_url"),
-
             # Company Firmographics
             "company_industry": org.get("industry"),
             "company_sub_industry": org.get("sub_industry"),
@@ -587,7 +587,6 @@ class ApolloClient:
             "company_city": org.get("city"),
             "company_state": org.get("state"),
             "company_postal_code": org.get("postal_code"),
-
             # Company Signals
             "company_is_hiring": org.get("is_hiring"),
             "company_latest_funding_stage": org.get("latest_funding_stage"),
@@ -595,7 +594,6 @@ class ApolloClient:
             "company_total_funding": org.get("total_funding"),
             "company_technologies": org.get("technologies", []),
             "company_keywords": org.get("keywords", []),
-
             # Raw data for reference
             "enrichment_data": {
                 "apollo_person_id": person.get("id"),
@@ -606,10 +604,7 @@ class ApolloClient:
         }
 
     def _infer_timezone(
-        self,
-        country: str | None,
-        state: str | None,
-        city: str | None
+        self, country: str | None, state: str | None, city: str | None
     ) -> str | None:
         """
         Infer timezone from location data.

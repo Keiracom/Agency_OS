@@ -121,12 +121,14 @@ class HowDetector(BaseDetector):
         leads_stmt = select(Lead).where(
             and_(
                 Lead.client_id == client_id,
-                Lead.status.in_([
-                    LeadStatus.CONVERTED,
-                    LeadStatus.BOUNCED,
-                    LeadStatus.OPT_OUT,
-                    LeadStatus.NURTURING,
-                ]),
+                Lead.status.in_(
+                    [
+                        LeadStatus.CONVERTED,
+                        LeadStatus.BOUNCED,
+                        LeadStatus.OPT_OUT,
+                        LeadStatus.NURTURING,
+                    ]
+                ),
                 Lead.created_at >= cutoff,
                 Lead.deleted_at.is_(None),
             )
@@ -140,12 +142,18 @@ class HowDetector(BaseDetector):
         if not lead_ids:
             return []
 
-        activities_stmt = select(Activity).where(
-            and_(
-                Activity.lead_id.in_(lead_ids),
-                Activity.action.in_(["sent", "email_sent", "sms_sent", "linkedin_sent", "voice_completed"]),
+        activities_stmt = (
+            select(Activity)
+            .where(
+                and_(
+                    Activity.lead_id.in_(lead_ids),
+                    Activity.action.in_(
+                        ["sent", "email_sent", "sms_sent", "linkedin_sent", "voice_completed"]
+                    ),
+                )
             )
-        ).order_by(Activity.lead_id, Activity.created_at)
+            .order_by(Activity.lead_id, Activity.created_at)
+        )
 
         activities_result = await db.execute(activities_stmt)
         activities = list(activities_result.scalars().all())
@@ -159,18 +167,20 @@ class HowDetector(BaseDetector):
         leads_data = []
         for lead in leads:
             acts = lead_activities.get(lead.id, [])
-            channels_used = list(set(a.channel.value for a in acts if a.channel))
+            channels_used = list({a.channel.value for a in acts if a.channel})
             sequence = [a.channel.value for a in acts if a.channel]
 
-            leads_data.append({
-                "lead_id": lead.id,
-                "converted": lead.status == LeadStatus.CONVERTED,
-                "als_tier": lead.als_tier,
-                "als_score": lead.als_score,
-                "channels_used": channels_used,
-                "channel_sequence": sequence[:6],  # First 6 touches
-                "touch_count": len(acts),
-            })
+            leads_data.append(
+                {
+                    "lead_id": lead.id,
+                    "converted": lead.status == LeadStatus.CONVERTED,
+                    "als_tier": lead.als_tier,
+                    "als_score": lead.als_score,
+                    "channels_used": channels_used,
+                    "channel_sequence": sequence[:6],  # First 6 touches
+                    "touch_count": len(acts),
+                }
+            )
 
         return leads_data
 
@@ -180,9 +190,7 @@ class HowDetector(BaseDetector):
         baseline_rate: float,
     ) -> list[dict[str, Any]]:
         """Analyze effectiveness of each channel."""
-        channel_stats: dict[str, dict[str, int]] = defaultdict(
-            lambda: {"total": 0, "converted": 0}
-        )
+        channel_stats: dict[str, dict[str, int]] = defaultdict(lambda: {"total": 0, "converted": 0})
 
         for lead in leads_data:
             for channel in lead["channels_used"]:
@@ -197,12 +205,14 @@ class HowDetector(BaseDetector):
             rate = stats["converted"] / stats["total"]
             lift = self.calculate_lift(rate, baseline_rate)
 
-            results.append({
-                "channel": channel,
-                "conversion_rate": round(rate, 4),
-                "sample": stats["total"],
-                "lift": round(lift, 2),
-            })
+            results.append(
+                {
+                    "channel": channel,
+                    "conversion_rate": round(rate, 4),
+                    "sample": stats["total"],
+                    "lift": round(lift, 2),
+                }
+            )
 
         results.sort(key=lambda x: x["conversion_rate"], reverse=True)
         return results
@@ -234,11 +244,13 @@ class HowDetector(BaseDetector):
                 continue
             rate = stats["converted"] / stats["total"]
             if rate > baseline_rate:
-                winning.append({
-                    "sequence": seq,
-                    "conversion_rate": round(rate, 4),
-                    "sample": stats["total"],
-                })
+                winning.append(
+                    {
+                        "sequence": seq,
+                        "conversion_rate": round(rate, 4),
+                        "sample": stats["total"],
+                    }
+                )
 
         winning.sort(key=lambda x: x["conversion_rate"], reverse=True)
         return {"winning_sequences": winning[:5]}
@@ -267,11 +279,13 @@ class HowDetector(BaseDetector):
                 if stats["total"] < 3:
                     continue
                 rate = stats["converted"] / stats["total"]
-                tier_results.append({
-                    "channel": channel,
-                    "conversion_rate": round(rate, 4),
-                    "sample": stats["total"],
-                })
+                tier_results.append(
+                    {
+                        "channel": channel,
+                        "conversion_rate": round(rate, 4),
+                        "sample": stats["total"],
+                    }
+                )
             tier_results.sort(key=lambda x: x["conversion_rate"], reverse=True)
             result[tier] = tier_results[:3]
 
@@ -298,12 +312,10 @@ class HowDetector(BaseDetector):
                     multi_stats["converted"] += 1
 
         single_rate = (
-            single_stats["converted"] / single_stats["total"]
-            if single_stats["total"] > 0 else 0
+            single_stats["converted"] / single_stats["total"] if single_stats["total"] > 0 else 0
         )
         multi_rate = (
-            multi_stats["converted"] / multi_stats["total"]
-            if multi_stats["total"] > 0 else 0
+            multi_stats["converted"] / multi_stats["total"] if multi_stats["total"] > 0 else 0
         )
 
         lift = multi_rate / single_rate if single_rate > 0 else 1.0
@@ -390,50 +402,47 @@ class HowDetector(BaseDetector):
             converted = row.converted or 0
 
             # Calculate conversion rates by engagement type
-            open_conversion_rate = (
-                row.opened_and_converted / opened * 100 if opened > 0 else 0
-            )
+            open_conversion_rate = row.opened_and_converted / opened * 100 if opened > 0 else 0
             no_open_conversion_rate = (
-                row.not_opened_but_converted / (total - opened) * 100
-                if (total - opened) > 0 else 0
+                row.not_opened_but_converted / (total - opened) * 100 if (total - opened) > 0 else 0
             )
-            click_conversion_rate = (
-                row.clicked_and_converted / clicked * 100 if clicked > 0 else 0
-            )
+            click_conversion_rate = row.clicked_and_converted / clicked * 100 if clicked > 0 else 0
 
             # Calculate lift from engagement
             baseline_conversion = converted / total * 100 if total > 0 else 0
-            open_lift = open_conversion_rate / baseline_conversion if baseline_conversion > 0 else 1.0
-            click_lift = click_conversion_rate / baseline_conversion if baseline_conversion > 0 else 1.0
+            open_lift = (
+                open_conversion_rate / baseline_conversion if baseline_conversion > 0 else 1.0
+            )
+            click_lift = (
+                click_conversion_rate / baseline_conversion if baseline_conversion > 0 else 1.0
+            )
 
             return {
                 "sample_size": total,
                 "open_rate": round(opened / total * 100, 2),
                 "click_rate": round(clicked / total * 100, 2),
-                "click_to_open_rate": round(row.clicked_after_open / opened * 100, 2) if opened > 0 else 0,
-
+                "click_to_open_rate": round(row.clicked_after_open / opened * 100, 2)
+                if opened > 0
+                else 0,
                 # Conversion correlation
                 "conversion_rate_if_opened": round(open_conversion_rate, 2),
                 "conversion_rate_if_not_opened": round(no_open_conversion_rate, 2),
                 "conversion_rate_if_clicked": round(click_conversion_rate, 2),
-
                 # Lift calculations
                 "open_conversion_lift": round(open_lift, 2),
                 "click_conversion_lift": round(click_lift, 2),
-
                 # Engagement depth insights
                 "avg_opens_converted": round(float(row.avg_opens_converted or 0), 1),
                 "avg_opens_not_converted": round(float(row.avg_opens_not_converted or 0), 1),
-
                 # Timing insights
                 "avg_time_to_open_converted": round(float(row.avg_convert_open_time or 0), 0),
                 "avg_time_to_click_converted": round(float(row.avg_convert_click_time or 0), 0),
-
                 # Recommendations
                 "insights": self._generate_engagement_insights(
-                    open_lift, click_lift,
+                    open_lift,
+                    click_lift,
                     float(row.avg_opens_converted or 0),
-                    float(row.avg_opens_not_converted or 0)
+                    float(row.avg_opens_not_converted or 0),
                 ),
             }
 
@@ -451,17 +460,27 @@ class HowDetector(BaseDetector):
         insights = []
 
         if open_lift > 1.5:
-            insights.append("Email opens strongly predict conversion - focus on subject line optimization")
+            insights.append(
+                "Email opens strongly predict conversion - focus on subject line optimization"
+            )
         elif open_lift < 0.8:
-            insights.append("Opens don't correlate with conversion - consider testing different CTAs")
+            insights.append(
+                "Opens don't correlate with conversion - consider testing different CTAs"
+            )
 
         if click_lift > 2.0:
-            insights.append("Link clicks are a strong conversion signal - include clear CTAs in every email")
+            insights.append(
+                "Link clicks are a strong conversion signal - include clear CTAs in every email"
+            )
         elif click_lift > 1.0:
-            insights.append("Clicks moderately predict conversion - A/B test different link placements")
+            insights.append(
+                "Clicks moderately predict conversion - A/B test different link placements"
+            )
 
         if avg_opens_converted > avg_opens_not_converted * 1.5:
-            insights.append("Converting leads open emails multiple times - consider follow-up sequences for re-openers")
+            insights.append(
+                "Converting leads open emails multiple times - consider follow-up sequences for re-openers"
+            )
 
         if not insights:
             insights.append("Collect more engagement data for actionable insights")

@@ -29,11 +29,10 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal
-from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from src.agents.base_agent import AgentContext, BaseAgent
+from src.agents.base_agent import BaseAgent
 from src.agents.skills.base_skill import SkillResult
 from src.agents.skills.campaign_splitter import (
     CampaignPlan,
@@ -291,7 +290,9 @@ class CampaignGenerationAgent(BaseAgent):
 
                 # Collect messaging
                 messaging_dict: dict[str, GeneratedMessaging] = {}
-                for msg_result, touch in zip(messaging_results, sequence_data.touches):
+                for msg_result, touch in zip(
+                    messaging_results, sequence_data.touches, strict=False
+                ):
                     if msg_result.success and msg_result.data:
                         messaging_dict[touch.messaging_key] = GeneratedMessaging(
                             messaging_key=touch.messaging_key,
@@ -338,18 +339,14 @@ class CampaignGenerationAgent(BaseAgent):
             result.total_tokens = total_tokens
             result.total_cost_aud = total_cost
             result.completed_at = datetime.utcnow()
-            result.duration_seconds = (
-                result.completed_at - result.started_at
-            ).total_seconds()
+            result.duration_seconds = (result.completed_at - result.started_at).total_seconds()
 
             return result
 
         except Exception as e:
             result.error = str(e)
             result.completed_at = datetime.utcnow()
-            result.duration_seconds = (
-                result.completed_at - result.started_at
-            ).total_seconds()
+            result.duration_seconds = (result.completed_at - result.started_at).total_seconds()
             return result
 
     async def _generate_touch_messaging(

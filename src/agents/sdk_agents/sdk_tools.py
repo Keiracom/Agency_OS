@@ -15,8 +15,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+from collections.abc import Callable, Coroutine
 from html import unescape
-from typing import Any, Callable, Coroutine
+from typing import Any
 
 import httpx
 
@@ -38,17 +39,17 @@ WEB_SEARCH_TOOL = {
         "properties": {
             "query": {
                 "type": "string",
-                "description": "Search query. Be specific - include company names, topics, timeframes when relevant."
+                "description": "Search query. Be specific - include company names, topics, timeframes when relevant.",
             },
             "num_results": {
                 "type": "integer",
                 "description": "Number of results to return (1-10). Default is 5.",
                 "default": 5,
                 "minimum": 1,
-                "maximum": 10
-            }
-        }
-    }
+                "maximum": 10,
+            },
+        },
+    },
 }
 
 WEB_FETCH_TOOL = {
@@ -58,12 +59,9 @@ WEB_FETCH_TOOL = {
         "type": "object",
         "required": ["url"],
         "properties": {
-            "url": {
-                "type": "string",
-                "description": "Full URL to fetch (must include https://)"
-            }
-        }
-    }
+            "url": {"type": "string", "description": "Full URL to fetch (must include https://)"}
+        },
+    },
 }
 
 LINKEDIN_POSTS_TOOL = {
@@ -75,17 +73,17 @@ LINKEDIN_POSTS_TOOL = {
         "properties": {
             "linkedin_url": {
                 "type": "string",
-                "description": "LinkedIn profile URL (e.g., https://linkedin.com/in/username)"
+                "description": "LinkedIn profile URL (e.g., https://linkedin.com/in/username)",
             },
             "max_posts": {
                 "type": "integer",
                 "description": "Maximum number of posts to return (1-10). Default is 5.",
                 "default": 5,
                 "minimum": 1,
-                "maximum": 10
-            }
-        }
-    }
+                "maximum": 10,
+            },
+        },
+    },
 }
 
 # All available tools
@@ -129,14 +127,11 @@ async def web_search(
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
                 "https://google.serper.dev/search",
-                headers={
-                    "X-API-KEY": api_key,
-                    "Content-Type": "application/json"
-                },
+                headers={"X-API-KEY": api_key, "Content-Type": "application/json"},
                 json={
                     "q": query,
                     "num": num_results,
-                }
+                },
             )
             response.raise_for_status()
             data = response.json()
@@ -191,9 +186,7 @@ async def web_fetch(
         async with httpx.AsyncClient(
             timeout=10.0,
             follow_redirects=True,
-            headers={
-                "User-Agent": "Mozilla/5.0 (compatible; AgencyOS/1.0; +https://agencyos.com)"
-            }
+            headers={"User-Agent": "Mozilla/5.0 (compatible; AgencyOS/1.0; +https://agencyos.com)"},
         ) as client:
             response = await client.get(url)
             response.raise_for_status()
@@ -228,30 +221,30 @@ async def web_fetch(
 def _html_to_text(html: str) -> str:
     """Convert HTML to clean text."""
     # Remove scripts and styles
-    html = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
-    html = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
-    html = re.sub(r'<noscript[^>]*>.*?</noscript>', '', html, flags=re.DOTALL | re.IGNORECASE)
+    html = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE)
+    html = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL | re.IGNORECASE)
+    html = re.sub(r"<noscript[^>]*>.*?</noscript>", "", html, flags=re.DOTALL | re.IGNORECASE)
 
     # Remove HTML comments
-    html = re.sub(r'<!--.*?-->', '', html, flags=re.DOTALL)
+    html = re.sub(r"<!--.*?-->", "", html, flags=re.DOTALL)
 
     # Convert common elements to text equivalents
-    html = re.sub(r'<br\s*/?>', '\n', html, flags=re.IGNORECASE)
-    html = re.sub(r'<p[^>]*>', '\n\n', html, flags=re.IGNORECASE)
-    html = re.sub(r'</p>', '', html, flags=re.IGNORECASE)
-    html = re.sub(r'<h[1-6][^>]*>', '\n\n## ', html, flags=re.IGNORECASE)
-    html = re.sub(r'</h[1-6]>', '\n', html, flags=re.IGNORECASE)
-    html = re.sub(r'<li[^>]*>', '\n- ', html, flags=re.IGNORECASE)
+    html = re.sub(r"<br\s*/?>", "\n", html, flags=re.IGNORECASE)
+    html = re.sub(r"<p[^>]*>", "\n\n", html, flags=re.IGNORECASE)
+    html = re.sub(r"</p>", "", html, flags=re.IGNORECASE)
+    html = re.sub(r"<h[1-6][^>]*>", "\n\n## ", html, flags=re.IGNORECASE)
+    html = re.sub(r"</h[1-6]>", "\n", html, flags=re.IGNORECASE)
+    html = re.sub(r"<li[^>]*>", "\n- ", html, flags=re.IGNORECASE)
 
     # Remove remaining tags
-    html = re.sub(r'<[^>]+>', ' ', html)
+    html = re.sub(r"<[^>]+>", " ", html)
 
     # Decode HTML entities
     text = unescape(html)
 
     # Clean whitespace
-    text = re.sub(r'[ \t]+', ' ', text)
-    text = re.sub(r'\n\s*\n', '\n\n', text)
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n\s*\n", "\n\n", text)
     text = text.strip()
 
     return text
@@ -295,7 +288,7 @@ async def linkedin_posts(
                 json={
                     "profileUrls": [linkedin_url],
                     "maxPosts": max_posts,
-                }
+                },
             )
             run_response.raise_for_status()
             run_data = run_response.json()
@@ -306,7 +299,7 @@ async def linkedin_posts(
                 await asyncio.sleep(1)
                 status_response = await client.get(
                     f"https://api.apify.com/v2/actor-runs/{run_id}",
-                    headers={"Authorization": f"Bearer {token}"}
+                    headers={"Authorization": f"Bearer {token}"},
                 )
                 status_data = status_response.json()
                 status = status_data["data"]["status"]
@@ -320,7 +313,7 @@ async def linkedin_posts(
             dataset_id = status_data["data"]["defaultDatasetId"]
             results_response = await client.get(
                 f"https://api.apify.com/v2/datasets/{dataset_id}/items",
-                headers={"Authorization": f"Bearer {token}"}
+                headers={"Authorization": f"Bearer {token}"},
             )
             posts = results_response.json()
 
@@ -336,9 +329,7 @@ async def linkedin_posts(
             comments = post.get("numComments", 0)
 
             formatted.append(
-                f"**Post ({date})**\n"
-                f"{text}\n"
-                f"Engagement: {likes} likes, {comments} comments"
+                f"**Post ({date})**\n{text}\nEngagement: {likes} likes, {comments} comments"
             )
 
         return "\n\n---\n\n".join(formatted)

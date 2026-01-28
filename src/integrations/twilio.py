@@ -15,8 +15,8 @@ RULES APPLIED:
 import asyncio
 from typing import Any
 
-from twilio.rest import Client as TwilioBaseClient
 from twilio.base.exceptions import TwilioRestException
+from twilio.rest import Client as TwilioBaseClient
 
 from src.config.settings import settings
 from src.exceptions import APIError, DNCRError, IntegrationError
@@ -181,9 +181,7 @@ class TwilioClient:
         """
         try:
             # Wrap sync Twilio call in thread to avoid blocking event loop
-            message = await asyncio.to_thread(
-                self._client.messages(message_sid).fetch
-            )
+            message = await asyncio.to_thread(self._client.messages(message_sid).fetch)
             return {
                 "sid": message.sid,
                 "from": message.from_,
@@ -225,8 +223,12 @@ class TwilioClient:
                 "carrier": {
                     "name": lookup.carrier.get("name") if lookup.carrier else None,
                     "type": lookup.carrier.get("type") if lookup.carrier else None,
-                } if lookup.carrier else None,
-                "caller_name": lookup.caller_name.get("caller_name") if lookup.caller_name else None,
+                }
+                if lookup.carrier
+                else None,
+                "caller_name": lookup.caller_name.get("caller_name")
+                if lookup.caller_name
+                else None,
             }
         except TwilioRestException as e:
             raise APIError(

@@ -22,7 +22,6 @@ API Docs: https://docs.vapi.ai/
 """
 
 import httpx
-from typing import Optional, Any
 from pydantic import BaseModel, Field
 
 from src.config.settings import settings
@@ -31,6 +30,7 @@ from src.exceptions import IntegrationError
 
 class VapiAssistantConfig(BaseModel):
     """Configuration for a Vapi voice assistant."""
+
     name: str
     first_message: str
     system_prompt: str
@@ -43,6 +43,7 @@ class VapiAssistantConfig(BaseModel):
 
 class VapiCallRequest(BaseModel):
     """Request to initiate an outbound call."""
+
     assistant_id: str
     phone_number: str  # E.164 format (+61412345678)
     customer_name: str
@@ -51,13 +52,14 @@ class VapiCallRequest(BaseModel):
 
 class VapiCallResult(BaseModel):
     """Result from a Vapi call."""
+
     call_id: str
     status: str
     duration_seconds: float = 0
-    transcript: Optional[str] = None
-    recording_url: Optional[str] = None
-    cost: Optional[float] = None
-    ended_reason: Optional[str] = None
+    transcript: str | None = None
+    recording_url: str | None = None
+    cost: float | None = None
+    ended_reason: str | None = None
 
 
 class VapiClient:
@@ -75,13 +77,13 @@ class VapiClient:
 
     BASE_URL = "https://api.vapi.ai"
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         self.api_key = api_key or settings.vapi_api_key
         if not self.api_key:
             raise IntegrationError("VAPI_API_KEY not configured")
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
     async def create_assistant(self, config: VapiAssistantConfig) -> dict:
@@ -98,24 +100,22 @@ class VapiClient:
                 "provider": "anthropic",
                 "model": config.model,
                 "temperature": config.temperature,
-                "systemPrompt": config.system_prompt
+                "systemPrompt": config.system_prompt,
             },
             "voice": {
                 "provider": "11labs",
                 "voiceId": config.voice_id,
                 "stability": 0.5,
-                "similarityBoost": 0.75
+                "similarityBoost": 0.75,
             },
             "maxDurationSeconds": config.max_duration_seconds,
             "endCallFunctionEnabled": True,
-            "recordingEnabled": True
+            "recordingEnabled": True,
         }
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                f"{self.BASE_URL}/assistant",
-                json=payload,
-                headers=self.headers
+                f"{self.BASE_URL}/assistant", json=payload, headers=self.headers
             )
             if response.status_code != 201:
                 raise IntegrationError(f"Vapi create_assistant failed: {response.text}")
@@ -125,8 +125,7 @@ class VapiClient:
         """Get assistant details by ID."""
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
-                f"{self.BASE_URL}/assistant/{assistant_id}",
-                headers=self.headers
+                f"{self.BASE_URL}/assistant/{assistant_id}", headers=self.headers
             )
             if response.status_code != 200:
                 raise IntegrationError(f"Vapi get_assistant failed: {response.text}")
@@ -136,9 +135,7 @@ class VapiClient:
         """Update an existing assistant."""
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.patch(
-                f"{self.BASE_URL}/assistant/{assistant_id}",
-                json=updates,
-                headers=self.headers
+                f"{self.BASE_URL}/assistant/{assistant_id}", json=updates, headers=self.headers
             )
             if response.status_code != 200:
                 raise IntegrationError(f"Vapi update_assistant failed: {response.text}")
@@ -148,8 +145,7 @@ class VapiClient:
         """Delete an assistant."""
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.delete(
-                f"{self.BASE_URL}/assistant/{assistant_id}",
-                headers=self.headers
+                f"{self.BASE_URL}/assistant/{assistant_id}", headers=self.headers
             )
             return response.status_code == 200
 
@@ -166,18 +162,13 @@ class VapiClient:
         payload = {
             "assistantId": request.assistant_id,
             "phoneNumberId": settings.vapi_phone_number_id,
-            "customer": {
-                "number": request.phone_number,
-                "name": request.customer_name
-            },
-            "metadata": request.metadata
+            "customer": {"number": request.phone_number, "name": request.customer_name},
+            "metadata": request.metadata,
         }
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                f"{self.BASE_URL}/call/phone",
-                json=payload,
-                headers=self.headers
+                f"{self.BASE_URL}/call/phone", json=payload, headers=self.headers
             )
             if response.status_code != 201:
                 raise IntegrationError(f"Vapi start_outbound_call failed: {response.text}")
@@ -186,10 +177,7 @@ class VapiClient:
     async def get_call(self, call_id: str) -> VapiCallResult:
         """Get call details and transcript."""
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(
-                f"{self.BASE_URL}/call/{call_id}",
-                headers=self.headers
-            )
+            response = await client.get(f"{self.BASE_URL}/call/{call_id}", headers=self.headers)
             if response.status_code != 200:
                 raise IntegrationError(f"Vapi get_call failed: {response.text}")
             data = response.json()
@@ -201,14 +189,11 @@ class VapiClient:
                 transcript=data.get("transcript"),
                 recording_url=data.get("recordingUrl"),
                 cost=data.get("cost"),
-                ended_reason=data.get("endedReason")
+                ended_reason=data.get("endedReason"),
             )
 
     async def list_calls(
-        self,
-        limit: int = 100,
-        created_at_gt: Optional[str] = None,
-        assistant_id: Optional[str] = None
+        self, limit: int = 100, created_at_gt: str | None = None, assistant_id: str | None = None
     ) -> list[dict]:
         """List recent calls with optional filtering."""
         params: dict[str, int | str] = {"limit": limit}
@@ -219,9 +204,7 @@ class VapiClient:
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
-                f"{self.BASE_URL}/call",
-                params=params,
-                headers=self.headers
+                f"{self.BASE_URL}/call", params=params, headers=self.headers
             )
             if response.status_code != 200:
                 raise IntegrationError(f"Vapi list_calls failed: {response.text}")
@@ -231,8 +214,7 @@ class VapiClient:
         """Force end an active call."""
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                f"{self.BASE_URL}/call/{call_id}/end",
-                headers=self.headers
+                f"{self.BASE_URL}/call/{call_id}/end", headers=self.headers
             )
             if response.status_code != 200:
                 raise IntegrationError(f"Vapi end_call failed: {response.text}")
@@ -257,6 +239,7 @@ class VapiClient:
             access. Vapi recordings may have their own retention policies.
         """
         import logging
+
         logger = logging.getLogger(__name__)
 
         try:
@@ -275,8 +258,7 @@ class VapiClient:
             # to mark it as deleted in our system
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.delete(
-                    f"{self.BASE_URL}/call/{call_id}/recording",
-                    headers=self.headers
+                    f"{self.BASE_URL}/call/{call_id}/recording", headers=self.headers
                 )
 
                 if response.status_code in (200, 204):
@@ -284,7 +266,9 @@ class VapiClient:
                     return True
                 elif response.status_code == 404:
                     # Recording already deleted or doesn't exist
-                    logger.info(f"Vapi recording for call {call_id} not found (already deleted or expired)")
+                    logger.info(
+                        f"Vapi recording for call {call_id} not found (already deleted or expired)"
+                    )
                     return True
                 else:
                     logger.warning(
@@ -300,7 +284,7 @@ class VapiClient:
             # This ensures 90-day compliance even if Vapi API fails
             return True
 
-    def _extract_call_id_from_url(self, recording_url: str) -> Optional[str]:
+    def _extract_call_id_from_url(self, recording_url: str) -> str | None:
         """
         Extract call ID from a Vapi recording URL.
 

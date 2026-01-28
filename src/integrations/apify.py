@@ -17,7 +17,7 @@ WATERFALL ARCHITECTURE (Phase 19):
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from apify_client import ApifyClient as BaseApifyClient
 from apify_client.clients import ActorClient
@@ -79,13 +79,17 @@ class ScrapeResult:
     title: str = ""
     tier_used: int = 0  # 0=validation, 1=cheerio, 2=playwright, 3=camoufox, 4=manual
     needs_fallback: bool = False
-    failure_reason: Optional[str] = None
-    manual_fallback_url: Optional[str] = None
+    failure_reason: str | None = None
+    manual_fallback_url: str | None = None
 
     @property
     def success(self) -> bool:
         """Check if scrape was successful."""
-        return self.page_count > 0 and len(self.raw_html) >= MIN_CONTENT_LENGTH and not self.needs_fallback
+        return (
+            self.page_count > 0
+            and len(self.raw_html) >= MIN_CONTENT_LENGTH
+            and not self.needs_fallback
+        )
 
     def has_valid_content(self) -> bool:
         """Check if the scraped content is valid (not blocked/empty)."""
@@ -95,8 +99,7 @@ class ScrapeResult:
         # Check for blocked content indicators
         html_lower = self.raw_html.lower()
         blocked_count = sum(
-            1 for indicator in BLOCKED_CONTENT_INDICATORS
-            if indicator in html_lower
+            1 for indicator in BLOCKED_CONTENT_INDICATORS if indicator in html_lower
         )
 
         # If multiple blocked indicators found, likely blocked
@@ -260,10 +263,7 @@ class ApifyClient:
             items = list(dataset.iterate_items())
 
             # Check if we got valid content
-            has_content = any(
-                item.get("html") or item.get("text")
-                for item in items
-            )
+            has_content = any(item.get("html") or item.get("text") for item in items)
 
             # If playwright failed, try cheerio as fallback
             if not has_content and use_javascript:
@@ -298,6 +298,7 @@ class ApifyClient:
             True if portfolio indicators found
         """
         import re
+
         if not html or len(html) < 1000:
             return False
 
@@ -305,14 +306,14 @@ class ApifyClient:
 
         # Check for portfolio indicators
         portfolio_patterns = [
-            r'case.?study',
-            r'client.?logo',
-            r'testimonial',
-            r'our.?work',
-            r'portfolio',
-            r'success.?stor',
+            r"case.?study",
+            r"client.?logo",
+            r"testimonial",
+            r"our.?work",
+            r"portfolio",
+            r"success.?stor",
             r'"company_name"',  # JSON data
-            r'client.?name',
+            r"client.?name",
         ]
 
         match_count = 0
@@ -321,12 +322,16 @@ class ApifyClient:
                 match_count += 1
 
         # Also check for company name patterns (capital letters followed by company-like words)
-        company_pattern = r'[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*(?:\s+(?:Pty|Ltd|Inc|Corp|Co\.|Group))?'
+        company_pattern = (
+            r"[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*(?:\s+(?:Pty|Ltd|Inc|Corp|Co\.|Group))?"
+        )
         company_matches = re.findall(company_pattern, html)
 
         has_indicators = match_count >= 2 or len(company_matches) >= 5
 
-        logger.debug(f"Portfolio indicators: {match_count} patterns, {len(company_matches)} company names, has_indicators={has_indicators}")
+        logger.debug(
+            f"Portfolio indicators: {match_count} patterns, {len(company_matches)} company names, has_indicators={has_indicators}"
+        )
         return has_indicators
 
     async def scrape_website_with_waterfall(
@@ -366,23 +371,33 @@ class ApifyClient:
         if cheerio_result.has_valid_content():
             # Check if Cheerio got portfolio content or just basic pages
             if self._has_portfolio_indicators(cheerio_result.raw_html):
-                logger.info(f"Tier 1 success with portfolio data for {url}: {cheerio_result.page_count} pages, {len(cheerio_result.raw_html)} chars")
+                logger.info(
+                    f"Tier 1 success with portfolio data for {url}: {cheerio_result.page_count} pages, {len(cheerio_result.raw_html)} chars"
+                )
                 return cheerio_result
             else:
-                logger.info(f"Tier 1 got content but NO portfolio indicators for {url} - trying Playwright for JS rendering")
+                logger.info(
+                    f"Tier 1 got content but NO portfolio indicators for {url} - trying Playwright for JS rendering"
+                )
                 # Fall through to Playwright for JS-rendered portfolio pages
         else:
-            logger.debug(f"Tier 1 failed for {url}: {cheerio_result.failure_reason or 'empty/blocked content'}")
+            logger.debug(
+                f"Tier 1 failed for {url}: {cheerio_result.failure_reason or 'empty/blocked content'}"
+            )
 
         # Tier 2: Fall back to Playwright (JS rendering)
         logger.debug(f"Tier 2: Attempting Playwright scrape for {url}")
         result = await self._scrape_playwright(url, max_pages)
 
         if result.has_valid_content():
-            logger.info(f"Tier 2 success for {url}: {result.page_count} pages, {len(result.raw_html)} chars")
+            logger.info(
+                f"Tier 2 success for {url}: {result.page_count} pages, {len(result.raw_html)} chars"
+            )
             return result
 
-        logger.warning(f"Tier 2 failed for {url}: {result.failure_reason or 'empty/blocked content'}")
+        logger.warning(
+            f"Tier 2 failed for {url}: {result.failure_reason or 'empty/blocked content'}"
+        )
 
         # Both tiers failed - needs fallback to Tier 3 (Camoufox) or Tier 4 (Manual)
         return ScrapeResult(
@@ -438,10 +453,7 @@ class ApifyClient:
             items = list(dataset.iterate_items())
 
             # Combine all HTML content
-            raw_html = "\n".join(
-                item.get("html", "") or item.get("text", "")
-                for item in items
-            )
+            raw_html = "\n".join(item.get("html", "") or item.get("text", "") for item in items)
 
             # Get title from first page
             title = items[0].get("title", "") if items else ""
@@ -484,15 +496,18 @@ class ApifyClient:
         Returns:
             Canonical URL after following redirects
         """
+
         import httpx
-        from urllib.parse import urlparse
 
         try:
             # Use HEAD request with redirect following to find canonical URL
             with httpx.Client(follow_redirects=True, timeout=10.0) as client:
-                response = client.head(url, headers={
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-                })
+                response = client.head(
+                    url,
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                    },
+                )
                 canonical_url = str(response.url)
 
                 if canonical_url != url:
@@ -520,7 +535,7 @@ class ApifyClient:
         Returns:
             List of seed URL objects for Apify
         """
-        from urllib.parse import urljoin, urlparse
+        from urllib.parse import urljoin
 
         # Canonicalize base URL first (ICP-FIX-006)
         # This handles www/non-www redirects (e.g., dilate.com.au → www.dilate.com.au)
@@ -538,7 +553,9 @@ class ApifyClient:
             full_url = urljoin(canonical_base, path.lstrip("/"))
             seed_urls.append({"url": full_url})
 
-        logger.debug(f"Built {len(seed_urls)} seed URLs for {canonical_base} (original: {base_url})")
+        logger.debug(
+            f"Built {len(seed_urls)} seed URLs for {canonical_base} (original: {base_url})"
+        )
         return seed_urls
 
     async def _scrape_playwright(
@@ -587,10 +604,7 @@ class ApifyClient:
             items = list(dataset.iterate_items())
 
             # Combine all HTML content
-            raw_html = "\n".join(
-                item.get("html", "") or item.get("text", "")
-                for item in items
-            )
+            raw_html = "\n".join(item.get("html", "") or item.get("text", "") for item in items)
 
             # Get title from first page
             title = items[0].get("title", "") if items else ""
@@ -617,7 +631,7 @@ class ApifyClient:
                 failure_reason=f"Playwright scrape error: {str(e)}",
             )
 
-    def validate_scrape_content(self, html: str) -> tuple[bool, Optional[str]]:
+    def validate_scrape_content(self, html: str) -> tuple[bool, str | None]:
         """
         Validate scraped content (SCR-003).
 
@@ -638,8 +652,7 @@ class ApifyClient:
         # Check for blocked content indicators
         html_lower = html.lower()
         matched_indicators = [
-            indicator for indicator in BLOCKED_CONTENT_INDICATORS
-            if indicator in html_lower
+            indicator for indicator in BLOCKED_CONTENT_INDICATORS if indicator in html_lower
         ]
 
         if len(matched_indicators) >= 2:
@@ -673,11 +686,13 @@ class ApifyClient:
         contacts = []
         for result in results:
             if "linkedin.com/in/" in result.get("url", ""):
-                contacts.append({
-                    "linkedin_url": result["url"],
-                    "title": result.get("title", ""),
-                    "snippet": result.get("description", ""),
-                })
+                contacts.append(
+                    {
+                        "linkedin_url": result["url"],
+                        "title": result.get("title", ""),
+                        "snippet": result.get("description", ""),
+                    }
+                )
 
         return contacts
 
@@ -724,11 +739,13 @@ class ApifyClient:
         recent_posts = []
         for post in activity[:5]:  # Top 5 posts
             if isinstance(post, dict):
-                recent_posts.append({
-                    "text": post.get("text", ""),
-                    "reactions": post.get("reactions", 0),
-                    "comments": post.get("comments", 0),
-                })
+                recent_posts.append(
+                    {
+                        "text": post.get("text", ""),
+                        "reactions": post.get("reactions", 0),
+                        "comments": post.get("comments", 0),
+                    }
+                )
             elif isinstance(post, str):
                 recent_posts.append({"text": post})
 
@@ -770,6 +787,7 @@ class ApifyClient:
             description, industry, headquarters
         """
         import logging
+
         logger = logging.getLogger(__name__)
         logger.info(f"Scraping LinkedIn company: {linkedin_url}")
 
@@ -849,6 +867,7 @@ class ApifyClient:
             bio, is_verified
         """
         import logging
+
         logger = logging.getLogger(__name__)
         logger.info(f"Scraping Instagram profile: {instagram_url}")
 
@@ -906,6 +925,7 @@ class ApifyClient:
             rating, review_count
         """
         import logging
+
         logger = logging.getLogger(__name__)
         logger.info(f"Scraping Facebook page: {facebook_url}")
 
@@ -965,6 +985,7 @@ class ApifyClient:
             phone, website
         """
         import logging
+
         logger = logging.getLogger(__name__)
         logger.info(f"Scraping Google Business: {business_name} in {location}")
 
@@ -1053,12 +1074,14 @@ class ApifyClient:
             # Build tweet list
             tweets = []
             for item in items[:max_tweets]:
-                tweets.append({
-                    "text": item.get("text"),
-                    "date": item.get("createdAt"),
-                    "likes": item.get("likeCount", 0),
-                    "retweets": item.get("retweetCount", 0),
-                })
+                tweets.append(
+                    {
+                        "text": item.get("text"),
+                        "date": item.get("createdAt"),
+                        "likes": item.get("likeCount", 0),
+                        "retweets": item.get("retweetCount", 0),
+                    }
+                )
 
             return {
                 "found": True,
@@ -1122,13 +1145,15 @@ class ApifyClient:
             # Build reviews list
             reviews = []
             for item in items[:max_reviews]:
-                reviews.append({
-                    "rating": item.get("rating"),
-                    "title": item.get("title"),
-                    "text": item.get("text"),
-                    "author": item.get("author", {}).get("name"),
-                    "date": item.get("date"),
-                })
+                reviews.append(
+                    {
+                        "rating": item.get("rating"),
+                        "title": item.get("title"),
+                        "text": item.get("text"),
+                        "author": item.get("author", {}).get("name"),
+                        "date": item.get("date"),
+                    }
+                )
 
             return {
                 "found": True,
@@ -1182,15 +1207,17 @@ class ApifyClient:
             reviews = []
             for item in items:
                 if item.get("reviewText"):
-                    reviews.append({
-                        "rating": item.get("rating"),
-                        "title": item.get("title"),
-                        "pros": item.get("pros"),
-                        "cons": item.get("cons"),
-                        "text": item.get("reviewText"),
-                        "reviewer": item.get("reviewer", {}).get("name"),
-                        "date": item.get("date"),
-                    })
+                    reviews.append(
+                        {
+                            "rating": item.get("rating"),
+                            "title": item.get("title"),
+                            "pros": item.get("pros"),
+                            "cons": item.get("cons"),
+                            "text": item.get("reviewText"),
+                            "reviewer": item.get("reviewer", {}).get("name"),
+                            "date": item.get("date"),
+                        }
+                    )
 
             return {
                 "found": True,
@@ -1245,15 +1272,17 @@ class ApifyClient:
             reviews = []
             for item in items:
                 if item.get("reviewText"):
-                    reviews.append({
-                        "rating": item.get("overallRating"),
-                        "title": item.get("title"),
-                        "pros": item.get("pros"),
-                        "cons": item.get("cons"),
-                        "text": item.get("reviewText"),
-                        "reviewer": item.get("reviewer"),
-                        "date": item.get("date"),
-                    })
+                    reviews.append(
+                        {
+                            "rating": item.get("overallRating"),
+                            "title": item.get("title"),
+                            "pros": item.get("pros"),
+                            "cons": item.get("cons"),
+                            "text": item.get("reviewText"),
+                            "reviewer": item.get("reviewer"),
+                            "date": item.get("date"),
+                        }
+                    )
 
             return {
                 "found": True,
@@ -1314,13 +1343,15 @@ class ApifyClient:
             # Build reviews list
             reviews = []
             for item in items:
-                reviews.append({
-                    "rating": item.get("stars"),
-                    "text": item.get("text"),
-                    "author": item.get("name"),
-                    "date": item.get("publishedAtDate"),
-                    "likes": item.get("likesCount", 0),
-                })
+                reviews.append(
+                    {
+                        "rating": item.get("stars"),
+                        "text": item.get("text"),
+                        "author": item.get("name"),
+                        "date": item.get("publishedAtDate"),
+                        "likes": item.get("likesCount", 0),
+                    }
+                )
 
             # Get place info from reviews
             place_info = items[0] if items else {}

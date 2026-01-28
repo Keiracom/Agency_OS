@@ -136,16 +136,14 @@ async def validate_client_for_population_task(client_id: UUID) -> dict[str, Any]
             SubscriptionStatus.ACTIVE,
             SubscriptionStatus.TRIALING,
         ]:
-            raise ValueError(
-                f"Client subscription is {client.subscription_status.value}"
-            )
+            raise ValueError(f"Client subscription is {client.subscription_status.value}")
 
         # Get ICP fields from client (set during onboarding)
         # These are TEXT[] columns on the clients table
-        icp_industries = getattr(client, 'icp_industries', None) or []
-        icp_company_sizes = getattr(client, 'icp_company_sizes', None) or []
-        icp_locations = getattr(client, 'icp_locations', None) or []
-        icp_titles = getattr(client, 'icp_titles', None) or []
+        icp_industries = getattr(client, "icp_industries", None) or []
+        icp_company_sizes = getattr(client, "icp_company_sizes", None) or []
+        icp_locations = getattr(client, "icp_locations", None) or []
+        icp_titles = getattr(client, "icp_titles", None) or []
 
         # Check if ICP is configured
         has_icp = any([icp_industries, icp_titles, icp_locations])
@@ -192,7 +190,7 @@ async def get_enriched_portfolio_task(client_id: UUID) -> dict[str, Any]:
                 ORDER BY created_at DESC
                 LIMIT 1
             """),
-            {"client_id": str(client_id)}
+            {"client_id": str(client_id)},
         )
         row = result.fetchone()
 
@@ -329,14 +327,16 @@ async def populate_pool_from_portfolio_task(
 
         # Apply WHO refinement to improve targeting based on conversion patterns
         refined_criteria = await get_who_refined_criteria(db, client_id, base_criteria)
-        logger.info(f"Tier 1: Applied WHO refinement to search criteria")
+        logger.info("Tier 1: Applied WHO refinement to search criteria")
 
         # Search Apollo by industries (not by domain)
         try:
             leads = await apollo.search_people_for_pool(
                 industries=refined_criteria.get("industries", list(portfolio_industries)),
                 titles=refined_criteria.get("titles", icp_titles),
-                seniorities=refined_criteria.get("seniorities", ["director", "vp", "c_suite", "owner", "founder", "manager"]),
+                seniorities=refined_criteria.get(
+                    "seniorities", ["director", "vp", "c_suite", "owner", "founder", "manager"]
+                ),
                 countries=refined_criteria.get("countries", icp_locations or ["Australia"]),
                 employee_min=refined_criteria.get("employee_min", employee_min),
                 employee_max=refined_criteria.get("employee_max", employee_max),
@@ -383,9 +383,7 @@ async def populate_pool_from_portfolio_task(
                     total_added += 1
 
             else:
-                logger.info(
-                    f"Tier 1: No leads found for industries {list(portfolio_industries)}"
-                )
+                logger.info(f"Tier 1: No leads found for industries {list(portfolio_industries)}")
 
         except Exception as e:
             logger.warning(f"Tier 1: Error searching industries {portfolio_industries}: {e}")
@@ -459,7 +457,7 @@ async def populate_pool_from_industries_task(
 
         # Apply WHO refinement to improve targeting based on conversion patterns
         apollo_criteria = await get_who_refined_criteria(db, client_id, base_criteria)
-        logger.info(f"Tier 2: Applied WHO refinement to search criteria")
+        logger.info("Tier 2: Applied WHO refinement to search criteria")
 
         logger.info(
             f"Tier 2: Searching Apollo by portfolio industries: {apollo_criteria.get('industries', portfolio_industries)}"
@@ -473,9 +471,7 @@ async def populate_pool_from_industries_task(
         )
 
         if result.success:
-            logger.info(
-                f"Tier 2 (Industries) complete: {result.data['added']} added"
-            )
+            logger.info(f"Tier 2 (Industries) complete: {result.data['added']} added")
             return {
                 "success": True,
                 "tier": 2,
@@ -529,7 +525,7 @@ async def populate_pool_from_apollo_task(
 
         # Apply WHO refinement to improve targeting based on conversion patterns
         apollo_criteria = await get_who_refined_criteria(db, client_id, base_criteria)
-        logger.info(f"Tier 3: Applied WHO refinement to search criteria")
+        logger.info("Tier 3: Applied WHO refinement to search criteria")
 
         logger.info(
             f"Populating pool for client {client_id} with criteria: "
@@ -630,7 +626,7 @@ async def pool_population_flow(
     # (Search by industry, EXCLUDE portfolio domains)
     # ============================================
     if portfolio_data["has_portfolio"] and remaining > 0:
-        logger.info(f"=== TIER 1: Portfolio Lookalike Search ===")
+        logger.info("=== TIER 1: Portfolio Lookalike Search ===")
         tier1_result = await populate_pool_from_portfolio_task(
             client_id=client_id,
             enriched_portfolio=portfolio_data["enriched_portfolio"],
@@ -649,7 +645,7 @@ async def pool_population_flow(
     # TIER 2: Portfolio Industries Search
     # ============================================
     if portfolio_data["portfolio_industries"] and remaining > 0:
-        logger.info(f"=== TIER 2: Portfolio Industries Search ===")
+        logger.info("=== TIER 2: Portfolio Industries Search ===")
         tier2_result = await populate_pool_from_industries_task(
             client_id=client_id,
             portfolio_industries=portfolio_data["portfolio_industries"],
@@ -668,7 +664,7 @@ async def pool_population_flow(
     # TIER 3: Generic ICP Search (Fallback)
     # ============================================
     if remaining > 0:
-        logger.info(f"=== TIER 3: Generic ICP Search (Fallback) ===")
+        logger.info("=== TIER 3: Generic ICP Search (Fallback) ===")
         icp_criteria = {
             "icp_industries": client_data["icp_industries"],
             "icp_titles": client_data["icp_titles"],
@@ -706,7 +702,7 @@ async def pool_population_flow(
     }
 
     if total_added > 0:
-        tier_breakdown = {r.get('tier', '?'): r.get('added', 0) for r in tier_results}
+        tier_breakdown = {r.get("tier", "?"): r.get("added", 0) for r in tier_results}
         logger.info(
             f"Pool population completed: {total_added} leads added "
             f"for client {client_data['client_name']} "
@@ -757,11 +753,13 @@ async def pool_population_batch_flow(
             total_added += result.get("leads_added", 0)
         except Exception as e:
             logger.error(f"Failed to populate pool for client {client_id}: {e}")
-            results.append({
-                "client_id": str(client_id),
-                "success": False,
-                "error": str(e),
-            })
+            results.append(
+                {
+                    "client_id": str(client_id),
+                    "success": False,
+                    "error": str(e),
+                }
+            )
 
     return {
         "clients_processed": len(client_ids),

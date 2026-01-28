@@ -12,7 +12,6 @@ to gather current, specific information for hyper-personalization.
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass, field
 from typing import Any
@@ -20,8 +19,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from src.integrations.sdk_brain import SDKBrain, SDKBrainResult, create_sdk_brain
 from src.agents.sdk_agents.sdk_tools import ENRICHMENT_TOOLS
+from src.integrations.sdk_brain import SDKBrainResult, create_sdk_brain
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class FundingInfo(BaseModel):
     """Recent funding information."""
+
     amount: str | None = Field(default=None, description="Funding amount (e.g., '$18M')")
     date: str | None = Field(default=None, description="Funding date (YYYY-MM-DD)")
     investors: list[str] = Field(default_factory=list, description="Investor names")
@@ -41,6 +41,7 @@ class FundingInfo(BaseModel):
 
 class HiringInfo(BaseModel):
     """Company hiring information."""
+
     total_open_roles: int = Field(default=0, description="Total open positions")
     sales_roles: int = Field(default=0, description="Sales/SDR positions open")
     key_positions: list[str] = Field(default_factory=list, description="Notable positions hiring")
@@ -48,6 +49,7 @@ class HiringInfo(BaseModel):
 
 class NewsItem(BaseModel):
     """Recent news item."""
+
     headline: str = Field(description="News headline")
     date: str | None = Field(default=None, description="Publication date")
     source: str | None = Field(default=None, description="Source publication")
@@ -55,19 +57,29 @@ class NewsItem(BaseModel):
 
 class CompetitorIntel(BaseModel):
     """Competitor intelligence."""
+
     main_competitors: list[str] = Field(default_factory=list, description="Main competitor names")
-    positioning: str | None = Field(default=None, description="How company positions vs competitors")
+    positioning: str | None = Field(
+        default=None, description="How company positions vs competitors"
+    )
 
 
 class EnrichmentOutput(BaseModel):
     """Complete enrichment output from SDK agent."""
+
     funding: FundingInfo | None = Field(default=None, description="Recent funding details")
     hiring: HiringInfo | None = Field(default=None, description="Current hiring data")
     recent_news: list[NewsItem] = Field(default_factory=list, description="Recent news items")
     pain_points: list[str] = Field(default_factory=list, description="Identified pain points")
-    personalization_hooks: list[str] = Field(default_factory=list, description="Personalization hooks to use")
-    competitor_intel: CompetitorIntel | None = Field(default=None, description="Competitor intelligence")
-    conversation_starters: list[str] = Field(default_factory=list, description="Conversation starters")
+    personalization_hooks: list[str] = Field(
+        default_factory=list, description="Personalization hooks to use"
+    )
+    competitor_intel: CompetitorIntel | None = Field(
+        default=None, description="Competitor intelligence"
+    )
+    conversation_starters: list[str] = Field(
+        default_factory=list, description="Conversation starters"
+    )
 
 
 # ============================================
@@ -145,6 +157,7 @@ IMPORTANT:
 @dataclass
 class EnrichmentAgentResult:
     """Result from enrichment agent run."""
+
     success: bool
     data: EnrichmentOutput | None = None
     raw_data: dict[str, Any] | None = None
@@ -178,7 +191,11 @@ async def run_sdk_enrichment(
     name = f"{first_name} {last_name}".strip() or "Unknown"
     title = lead_data.get("title", "")
     linkedin_url = lead_data.get("linkedin_url", "")
-    domain = lead_data.get("company_domain") or lead_data.get("organization_domain") or lead_data.get("domain", "")
+    domain = (
+        lead_data.get("company_domain")
+        or lead_data.get("organization_domain")
+        or lead_data.get("domain", "")
+    )
 
     # Build context with existing data
     existing_data = []
@@ -189,24 +206,30 @@ async def run_sdk_enrichment(
     if lead_data.get("linkedin_recent_posts"):
         existing_data.append(f"Recent posts: {lead_data['linkedin_recent_posts'][:300]}")
     if lead_data.get("company_industry") or lead_data.get("organization_industry"):
-        existing_data.append(f"Industry: {lead_data.get('company_industry') or lead_data.get('organization_industry')}")
+        existing_data.append(
+            f"Industry: {lead_data.get('company_industry') or lead_data.get('organization_industry')}"
+        )
     if lead_data.get("company_employee_count") or lead_data.get("organization_employee_count"):
-        existing_data.append(f"Company size: {lead_data.get('company_employee_count') or lead_data.get('organization_employee_count')} employees")
+        existing_data.append(
+            f"Company size: {lead_data.get('company_employee_count') or lead_data.get('organization_employee_count')} employees"
+        )
 
-    existing_section = "\n".join(f"- {d}" for d in existing_data) if existing_data else "None available"
+    existing_section = (
+        "\n".join(f"- {d}" for d in existing_data) if existing_data else "None available"
+    )
 
     user_prompt = f"""Research this company and contact for B2B outreach:
 
 CONTACT:
 - Name: {name}
 - Title: {title}
-- LinkedIn: {linkedin_url if linkedin_url else 'Not available'}
+- LinkedIn: {linkedin_url if linkedin_url else "Not available"}
 
 COMPANY:
 - Name: {company}
-- Domain: {domain if domain else 'Not available'}
-- Industry: {lead_data.get('company_industry') or lead_data.get('organization_industry') or 'Unknown'}
-- Size: {lead_data.get('company_employee_count') or lead_data.get('organization_employee_count') or 'Unknown'} employees
+- Domain: {domain if domain else "Not available"}
+- Industry: {lead_data.get("company_industry") or lead_data.get("organization_industry") or "Unknown"}
+- Size: {lead_data.get("company_employee_count") or lead_data.get("organization_employee_count") or "Unknown"} employees
 
 EXISTING DATA (from our enrichment):
 {existing_section}
@@ -240,7 +263,7 @@ Return structured JSON with your findings. Be specific - use actual data you fin
                 "cost_aud": result.cost_aud,
                 "turns": result.turns_used,
                 "tool_calls": len(result.tool_calls),
-            }
+            },
         )
     else:
         logger.warning(f"SDK enrichment failed for {name} at {company}: {result.error}")

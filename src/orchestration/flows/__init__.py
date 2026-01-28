@@ -17,6 +17,10 @@ RULES APPLIED:
 """
 
 from src.orchestration.flows.campaign_flow import campaign_activation_flow
+from src.orchestration.flows.daily_digest_flow import (
+    daily_digest_flow,
+    send_client_digest_flow,
+)
 from src.orchestration.flows.enrichment_flow import daily_enrichment_flow
 from src.orchestration.flows.outreach_flow import hourly_outreach_flow as outreach_flow
 from src.orchestration.flows.pattern_backfill_flow import (
@@ -36,10 +40,6 @@ from src.orchestration.flows.reply_recovery_flow import reply_recovery_flow
 from src.orchestration.flows.stale_lead_refresh_flow import (
     daily_outreach_prep_flow,
     refresh_stale_leads_flow,
-)
-from src.orchestration.flows.daily_digest_flow import (
-    daily_digest_flow,
-    send_client_digest_flow,
 )
 
 __all__ = [

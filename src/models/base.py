@@ -18,7 +18,6 @@ RULES APPLIED:
 """
 
 from datetime import datetime
-from typing import Any
 from uuid import UUID
 
 from sqlalchemy import DateTime, func
@@ -38,6 +37,7 @@ class Base(DeclarativeBase):
     def __tablename__(cls) -> str:
         """Generate table name from class name (snake_case + plural)."""
         import re
+
         name = re.sub(r"(?<!^)(?=[A-Z])", "_", cls.__name__).lower()
         # Simple pluralization
         if name.endswith("y"):
@@ -108,6 +108,7 @@ def generate_uuid_v7() -> UUID:
     Uses Python's stdlib uuid.uuid4() for random UUIDs.
     """
     import uuid
+
     return uuid.uuid4()
 
 
@@ -120,6 +121,7 @@ from enum import Enum
 
 class TierType(str, Enum):
     """Subscription tier types."""
+
     IGNITION = "ignition"
     VELOCITY = "velocity"
     DOMINANCE = "dominance"
@@ -127,6 +129,7 @@ class TierType(str, Enum):
 
 class SubscriptionStatus(str, Enum):
     """Subscription status values."""
+
     TRIALING = "trialing"
     ACTIVE = "active"
     PAST_DUE = "past_due"
@@ -136,6 +139,7 @@ class SubscriptionStatus(str, Enum):
 
 class MembershipRole(str, Enum):
     """Team membership roles."""
+
     OWNER = "owner"
     ADMIN = "admin"
     MEMBER = "member"
@@ -144,6 +148,7 @@ class MembershipRole(str, Enum):
 
 class PermissionMode(str, Enum):
     """Automation permission modes."""
+
     AUTOPILOT = "autopilot"
     CO_PILOT = "co_pilot"
     MANUAL = "manual"
@@ -151,6 +156,7 @@ class PermissionMode(str, Enum):
 
 class CampaignStatus(str, Enum):
     """Campaign lifecycle status."""
+
     DRAFT = "draft"
     ACTIVE = "active"
     PAUSED = "paused"
@@ -159,6 +165,7 @@ class CampaignStatus(str, Enum):
 
 class LeadStatus(str, Enum):
     """Lead lifecycle status."""
+
     NEW = "new"
     ENRICHED = "enriched"
     SCORED = "scored"
@@ -170,6 +177,7 @@ class LeadStatus(str, Enum):
 
 class ChannelType(str, Enum):
     """Outreach channel types."""
+
     EMAIL = "email"
     SMS = "sms"
     LINKEDIN = "linkedin"
@@ -179,6 +187,7 @@ class ChannelType(str, Enum):
 
 class IntentType(str, Enum):
     """Reply intent classification."""
+
     MEETING_REQUEST = "meeting_request"
     INTERESTED = "interested"
     QUESTION = "question"
@@ -193,6 +202,7 @@ class IntentType(str, Enum):
 
 class WebhookEventType(str, Enum):
     """Webhook event types."""
+
     LEAD_CREATED = "lead.created"
     LEAD_ENRICHED = "lead.enriched"
     LEAD_SCORED = "lead.scored"
@@ -206,6 +216,7 @@ class WebhookEventType(str, Enum):
 
 class AuditAction(str, Enum):
     """Audit action types."""
+
     CREATE = "create"
     UPDATE = "update"
     DELETE = "delete"
@@ -219,10 +230,11 @@ class AuditAction(str, Enum):
 
 class PatternType(str, Enum):
     """Conversion intelligence pattern types."""
-    WHO = "who"      # Lead attribute patterns
-    WHAT = "what"    # Content patterns
-    WHEN = "when"    # Timing patterns
-    HOW = "how"      # Channel sequence patterns
+
+    WHO = "who"  # Lead attribute patterns
+    WHAT = "what"  # Content patterns
+    WHEN = "when"  # Timing patterns
+    HOW = "how"  # Channel sequence patterns
 
 
 # ============================================

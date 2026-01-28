@@ -11,7 +11,6 @@ from __future__ import annotations
 import logging
 import re
 import socket
-from typing import Optional
 from urllib.parse import urlparse
 
 import httpx
@@ -139,7 +138,7 @@ class URLValidator:
                 domain=domain,
             )
 
-    def _normalize_url(self, url: str) -> tuple[str, Optional[str]]:
+    def _normalize_url(self, url: str) -> tuple[str, str | None]:
         """
         Normalize URL format - add https:// if missing.
 
@@ -169,7 +168,10 @@ class URLValidator:
             domain_without_port = domain.split(":")[0]
 
             # Check for valid domain pattern
-            if not re.match(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$", domain_without_port):
+            if not re.match(
+                r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$",
+                domain_without_port,
+            ):
                 # Allow IP addresses
                 if not self._is_valid_ip(domain_without_port):
                     return "", f"Invalid domain format: {domain}"
@@ -190,14 +192,14 @@ class URLValidator:
         try:
             socket.inet_aton(ip_str)
             return True
-        except socket.error:
+        except OSError:
             try:
                 socket.inet_pton(socket.AF_INET6, ip_str)
                 return True
-            except socket.error:
+            except OSError:
                 return False
 
-    def _extract_domain(self, url: str) -> Optional[str]:
+    def _extract_domain(self, url: str) -> str | None:
         """Extract domain from URL."""
         try:
             if not url.startswith(("http://", "https://")):
@@ -221,10 +223,10 @@ class URLValidator:
         try:
             # Run DNS lookup in thread pool to avoid blocking
             import asyncio
+
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
-                None,
-                lambda: socket.getaddrinfo(domain, None, socket.AF_UNSPEC)
+                None, lambda: socket.getaddrinfo(domain, None, socket.AF_UNSPEC)
             )
             return True
         except socket.gaierror:
@@ -435,10 +437,7 @@ class URLValidator:
         content_lower = content.lower()
 
         # Count matching indicators
-        matches = sum(
-            1 for indicator in PARKED_CONTENT_INDICATORS
-            if indicator in content_lower
-        )
+        matches = sum(1 for indicator in PARKED_CONTENT_INDICATORS if indicator in content_lower)
 
         # If multiple indicators match, likely parked
         if matches >= 2:
@@ -453,15 +452,11 @@ class URLValidator:
             "this domain is for sale",
         ]
 
-        for pattern in high_confidence_patterns:
-            if pattern in content_lower:
-                return True
-
-        return False
+        return any(pattern in content_lower for pattern in high_confidence_patterns)
 
 
 # Singleton instance for convenience
-_validator: Optional[URLValidator] = None
+_validator: URLValidator | None = None
 
 
 def get_url_validator(timeout: float = DEFAULT_TIMEOUT) -> URLValidator:

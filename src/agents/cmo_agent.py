@@ -23,20 +23,16 @@ RULES APPLIED:
   - Pydantic AI for type-safe validation
 """
 
-from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
-from pydantic_ai import RunContext
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.agents.base_agent import AgentDependencies, AgentResult, BaseAgent
-from src.models.base import CampaignStatus, ChannelType, LeadStatus
+from src.agents.base_agent import AgentResult, BaseAgent
 from src.models.campaign import Campaign
 from src.models.lead import Lead
-
 
 # ============================================
 # Output Models for Structured Responses
@@ -294,10 +290,10 @@ Provide specific reasoning and actionable suggestions."""
         lead_profile = f"""
 Lead: {lead.full_name}
 Email: {lead.email}
-Phone: {lead.phone or 'N/A'}
-LinkedIn: {lead.linkedin_url or 'N/A'}
-Title: {lead.title or 'N/A'}
-Company: {lead.company or 'N/A'}
+Phone: {lead.phone or "N/A"}
+LinkedIn: {lead.linkedin_url or "N/A"}
+Title: {lead.title or "N/A"}
+Company: {lead.company or "N/A"}
 
 ALS Score: {lead.als_score}
 ALS Tier: {lead.als_tier or lead.get_als_tier()}
@@ -309,13 +305,13 @@ Component Scores:
 - Risk: {lead.als_risk}/15
 
 Organization:
-- Industry: {lead.organization_industry or 'N/A'}
-- Size: {lead.organization_employee_count or 'N/A'} employees
+- Industry: {lead.organization_industry or "N/A"}
+- Size: {lead.organization_employee_count or "N/A"} employees
 - Hiring: {lead.organization_is_hiring or False}
-- Recent Funding: {lead.organization_latest_funding_date or 'N/A'}
+- Recent Funding: {lead.organization_latest_funding_date or "N/A"}
 
 Engagement:
-- Last Contacted: {lead.last_contacted_at or 'Never'}
+- Last Contacted: {lead.last_contacted_at or "Never"}
 - Reply Count: {lead.reply_count}
 - Current Step: {lead.current_sequence_step}
 """
@@ -427,15 +423,17 @@ Consider ALS score, tier, engagement history, and sequence position."""
             # Build prioritized list
             prioritized = []
             for lead in leads:
-                prioritized.append({
-                    "lead_id": str(lead.id),
-                    "name": lead.full_name,
-                    "company": lead.company,
-                    "als_score": lead.als_score,
-                    "als_tier": lead.get_als_tier(),
-                    "current_step": lead.current_sequence_step,
-                    "reply_count": lead.reply_count,
-                })
+                prioritized.append(
+                    {
+                        "lead_id": str(lead.id),
+                        "name": lead.full_name,
+                        "company": lead.company,
+                        "als_score": lead.als_score,
+                        "als_tier": lead.get_als_tier(),
+                        "current_step": lead.current_sequence_step,
+                        "reply_count": lead.reply_count,
+                    }
+                )
 
             # Run agent
             result = await agent.run(prompt)
@@ -513,9 +511,9 @@ Current Sequence:
 - Default Delay: {campaign.sequence_delay_days} days
 
 Engagement History:
-- Last Contacted: {lead.last_contacted_at or 'Never'}
-- Last Replied: {lead.last_replied_at or 'Never'}
-- Last Opened: {lead.last_opened_at or 'Never'}
+- Last Contacted: {lead.last_contacted_at or "Never"}
+- Last Replied: {lead.last_replied_at or "Never"}
+- Last Opened: {lead.last_opened_at or "Never"}
 - Reply Count: {lead.reply_count}
 - Bounce Count: {lead.bounce_count}
 

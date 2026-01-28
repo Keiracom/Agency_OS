@@ -20,13 +20,13 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.linkedin_seat import (
+    LINKEDIN_WARMUP_SCHEDULE,
     LinkedInSeat,
     LinkedInSeatStatus,
-    LINKEDIN_WARMUP_SCHEDULE,
 )
 
 logger = logging.getLogger(__name__)
@@ -61,9 +61,7 @@ class LinkedInWarmupService:
         Returns:
             List of seats in warmup
         """
-        stmt = select(LinkedInSeat).where(
-            LinkedInSeat.status == LinkedInSeatStatus.WARMUP
-        )
+        stmt = select(LinkedInSeat).where(LinkedInSeat.status == LinkedInSeatStatus.WARMUP)
 
         if client_id:
             stmt = stmt.where(LinkedInSeat.client_id == client_id)
@@ -204,7 +202,7 @@ class LinkedInWarmupService:
 
         # Determine warmup phase
         phase = None
-        for start, end, limit in LINKEDIN_WARMUP_SCHEDULE:
+        for start, end, _limit in LINKEDIN_WARMUP_SCHEDULE:
             if start <= days_active <= end:
                 phase = f"days_{start}_{end}"
                 break
@@ -216,18 +214,13 @@ class LinkedInWarmupService:
             "days_active": days_active,
             "warmup_complete": seat.status == LinkedInSeatStatus.ACTIVE,
             "warmup_completed_at": (
-                seat.warmup_completed_at.isoformat()
-                if seat.warmup_completed_at
-                else None
+                seat.warmup_completed_at.isoformat() if seat.warmup_completed_at else None
             ),
             "current_phase": phase,
             "daily_limit": current_limit,
             "max_limit": 20,
             "days_until_full_capacity": max(0, WARMUP_COMPLETE_DAY - days_active),
-            "schedule": [
-                {"days": f"{s}-{e}", "limit": l}
-                for s, e, l in LINKEDIN_WARMUP_SCHEDULE
-            ],
+            "schedule": [{"days": f"{s}-{e}", "limit": l} for s, e, l in LINKEDIN_WARMUP_SCHEDULE],
         }
 
     async def reset_warmup(

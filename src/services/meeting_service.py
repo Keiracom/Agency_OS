@@ -21,7 +21,7 @@ Also pushes meetings to client's CRM when booked (Phase 24E-CRM).
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -149,22 +149,25 @@ class MeetingService:
             RETURNING *
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "lead_id": lead_id,
-            "campaign_id": campaign_id,
-            "scheduled_at": scheduled_at,
-            "duration_minutes": duration_minutes,
-            "meeting_type": meeting_type,
-            "booked_by": booked_by,
-            "booking_method": booking_method,
-            "meeting_link": meeting_link,
-            "calendar_event_id": calendar_event_id,
-            "converting_activity_id": converting_activity_id,
-            "converting_channel": converting_channel,
-            "touches_before_booking": touches_before,
-            "days_to_booking": days_to_booking,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "lead_id": lead_id,
+                "campaign_id": campaign_id,
+                "scheduled_at": scheduled_at,
+                "duration_minutes": duration_minutes,
+                "meeting_type": meeting_type,
+                "booked_by": booked_by,
+                "booking_method": booking_method,
+                "meeting_link": meeting_link,
+                "calendar_event_id": calendar_event_id,
+                "converting_activity_id": converting_activity_id,
+                "converting_channel": converting_channel,
+                "touches_before_booking": touches_before,
+                "days_to_booking": days_to_booking,
+            },
+        )
 
         row = result.fetchone()
         await self.session.commit()
@@ -180,7 +183,7 @@ class MeetingService:
                     updated_at = NOW()
                 WHERE id = :lead_id
             """),
-            {"meeting_id": row.id, "lead_id": lead_id}
+            {"meeting_id": row.id, "lead_id": lead_id},
         )
         await self.session.commit()
 
@@ -242,10 +245,13 @@ class MeetingService:
                 WHERE client_id = :client_id
                 AND external_deal_id = :external_deal_id
             """)
-            existing_result = await self.session.execute(existing_query, {
-                "client_id": client_id,
-                "external_deal_id": external_deal_id,
-            })
+            existing_result = await self.session.execute(
+                existing_query,
+                {
+                    "client_id": client_id,
+                    "external_deal_id": external_deal_id,
+                },
+            )
             existing = existing_result.fetchone()
             if existing:
                 logger.info(f"Blind meeting already exists for external deal {external_deal_id}")
@@ -268,14 +274,17 @@ class MeetingService:
             RETURNING *
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "lead_id": lead_id,
-            "deal_id": deal_id,
-            "source": source,
-            "notes": notes,
-            "external_deal_id": external_deal_id,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "lead_id": lead_id,
+                "deal_id": deal_id,
+                "source": source,
+                "notes": notes,
+                "external_deal_id": external_deal_id,
+            },
+        )
 
         row = result.fetchone()
         await self.session.commit()
@@ -301,7 +310,7 @@ class MeetingService:
                         updated_at = NOW()
                     WHERE id = :lead_id
                 """),
-                {"meeting_id": row.id, "lead_id": lead_id}
+                {"meeting_id": row.id, "lead_id": lead_id},
             )
             await self.session.commit()
 
@@ -351,9 +360,12 @@ class MeetingService:
             WHERE calendar_event_id = :calendar_event_id
         """)
 
-        result = await self.session.execute(query, {
-            "calendar_event_id": calendar_event_id,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "calendar_event_id": calendar_event_id,
+            },
+        )
         row = result.fetchone()
 
         if not row:
@@ -459,12 +471,15 @@ class MeetingService:
             RETURNING *
         """)
 
-        result = await self.session.execute(query, {
-            "meeting_id": meeting_id,
-            "showed_up": showed_up,
-            "confirmed_by": confirmed_by,
-            "no_show_reason": no_show_reason,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "meeting_id": meeting_id,
+                "showed_up": showed_up,
+                "confirmed_by": confirmed_by,
+                "no_show_reason": no_show_reason,
+            },
+        )
 
         row = result.fetchone()
         await self.session.commit()
@@ -526,13 +541,16 @@ class MeetingService:
             RETURNING *
         """)
 
-        result = await self.session.execute(query, {
-            "meeting_id": meeting_id,
-            "outcome": outcome,
-            "meeting_notes": meeting_notes,
-            "next_steps": next_steps,
-            "showed_up": showed_up,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "meeting_id": meeting_id,
+                "outcome": outcome,
+                "meeting_notes": meeting_notes,
+                "next_steps": next_steps,
+                "showed_up": showed_up,
+            },
+        )
 
         row = result.fetchone()
         await self.session.commit()
@@ -542,6 +560,7 @@ class MeetingService:
         # Create deal if requested
         if create_deal and outcome == "good":
             from src.services.deal_service import DealService
+
             deal_service = DealService(self.session)
             deal = await deal_service.create(
                 client_id=meeting["client_id"],
@@ -560,7 +579,7 @@ class MeetingService:
                     SET deal_created = TRUE, deal_id = :deal_id
                     WHERE id = :meeting_id
                 """),
-                {"deal_id": deal["id"], "meeting_id": meeting_id}
+                {"deal_id": deal["id"], "meeting_id": meeting_id},
             )
             await self.session.commit()
 
@@ -704,11 +723,14 @@ class MeetingService:
             RETURNING *
         """)
 
-        result = await self.session.execute(query, {
-            "meeting_id": meeting_id,
-            "new_scheduled_at": new_scheduled_at,
-            "reason": reason,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "meeting_id": meeting_id,
+                "new_scheduled_at": new_scheduled_at,
+                "reason": reason,
+            },
+        )
 
         row = result.fetchone()
         await self.session.commit()
@@ -744,10 +766,13 @@ class MeetingService:
             RETURNING *
         """)
 
-        result = await self.session.execute(query, {
-            "meeting_id": meeting_id,
-            "reason": reason,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "meeting_id": meeting_id,
+                "reason": reason,
+            },
+        )
 
         row = result.fetchone()
         await self.session.commit()
@@ -784,11 +809,14 @@ class MeetingService:
             LIMIT :limit
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "days": days,
-            "limit": limit,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "days": days,
+                "limit": limit,
+            },
+        )
         rows = result.fetchall()
 
         return [dict(row._mapping) for row in rows]
@@ -821,10 +849,13 @@ class MeetingService:
             ORDER BY m.scheduled_at ASC
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "hours_before": hours_before,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "hours_before": hours_before,
+            },
+        )
         rows = result.fetchall()
 
         return [dict(row._mapping) for row in rows]
@@ -848,10 +879,13 @@ class MeetingService:
             SELECT * FROM get_show_rate_analysis(:client_id, :days)
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "days": days,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "days": days,
+            },
+        )
         rows = result.fetchall()
 
         return {row.metric: float(row.value) if row.value else 0 for row in rows}
@@ -892,10 +926,13 @@ class MeetingService:
             SELECT * FROM meeting_stats
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "days": days,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "days": days,
+            },
+        )
         row = result.fetchone()
 
         if not row:
@@ -922,7 +959,9 @@ class MeetingService:
             },
             "avg_touches_before_booking": round(row.avg_touches, 1) if row.avg_touches else 0,
             "avg_days_to_booking": round(row.avg_days_to_book, 1) if row.avg_days_to_book else 0,
-            "good_outcome_rate": round(row.good_outcomes / row.completed * 100, 1) if row.completed else 0,
+            "good_outcome_rate": round(row.good_outcomes / row.completed * 100, 1)
+            if row.completed
+            else 0,
         }
 
 

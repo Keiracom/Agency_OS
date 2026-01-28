@@ -12,12 +12,11 @@ RULES APPLIED:
   - Rule 7: Prefect for orchestration
 """
 
-from datetime import date, datetime, timedelta
-from typing import Optional
-from uuid import UUID
 import logging
+from datetime import date, timedelta
+from uuid import UUID
 
-from prefect import flow, task, get_run_logger
+from prefect import flow, get_run_logger, task
 from prefect.runtime import flow_run
 
 from src.config.database import get_db_session
@@ -44,10 +43,7 @@ async def get_clients_for_digest_task(target_hour: int = 7) -> list[dict]:
         service = DigestService(db)
         clients = await service.get_clients_for_digest(target_hour=target_hour)
 
-        result = [
-            {"id": str(client.id), "name": client.name}
-            for client in clients
-        ]
+        result = [{"id": str(client.id), "name": client.name} for client in clients]
 
         log.info(f"Found {len(result)} clients for digest at hour {target_hour}")
         return result
@@ -71,9 +67,7 @@ async def get_digest_data_task(client_id: str, digest_date: date) -> dict:
         service = DigestService(db)
 
         # Check if already sent
-        already_sent = await service.check_already_sent(
-            UUID(client_id), digest_date
-        )
+        already_sent = await service.check_already_sent(UUID(client_id), digest_date)
         if already_sent:
             log.info(f"Digest already sent for client {client_id} on {digest_date}")
             return {"skipped": True, "reason": "already_sent"}
@@ -90,7 +84,7 @@ async def get_digest_data_task(client_id: str, digest_date: date) -> dict:
 
 
 @task(name="render_digest_html", retries=1)
-async def render_digest_html_task(digest_data: dict) -> Optional[str]:
+async def render_digest_html_task(digest_data: dict) -> str | None:
     """
     Render digest data as HTML email.
 
@@ -109,10 +103,7 @@ async def render_digest_html_task(digest_data: dict) -> Optional[str]:
         # Get dashboard URL from settings
         dashboard_url = getattr(settings, "FRONTEND_URL", "https://app.agencyos.ai")
 
-        html = service.render_digest_html(
-            digest_data,
-            dashboard_url=f"{dashboard_url}/dashboard"
-        )
+        html = service.render_digest_html(digest_data, dashboard_url=f"{dashboard_url}/dashboard")
 
         return html
 
@@ -169,10 +160,7 @@ async def send_digest_email_task(
     if settings.TEST_MODE:
         original_recipients = recipients
         recipients = [settings.TEST_EMAIL_RECIPIENT]
-        log.info(
-            f"TEST_MODE: Redirecting digest from {original_recipients} "
-            f"to {recipients}"
-        )
+        log.info(f"TEST_MODE: Redirecting digest from {original_recipients} to {recipients}")
 
     try:
         # Import email engine
@@ -339,7 +327,7 @@ async def send_client_digest_flow(client_id: str, client_name: str, digest_date:
 @flow(name="daily_digest_flow", log_prints=True)
 async def daily_digest_flow(
     target_hour: int = 7,
-    digest_date: Optional[date] = None,
+    digest_date: date | None = None,
 ) -> dict:
     """
     Main daily digest flow - sends digests to all eligible clients.
@@ -400,12 +388,14 @@ async def daily_digest_flow(
 
         except Exception as e:
             log.error(f"Error processing digest for client {client['name']}: {e}")
-            results.append({
-                "client_id": client["id"],
-                "client_name": client["name"],
-                "status": "error",
-                "error": str(e),
-            })
+            results.append(
+                {
+                    "client_id": client["id"],
+                    "client_name": client["name"],
+                    "status": "error",
+                    "error": str(e),
+                }
+            )
             failed_count += 1
 
     log.info(

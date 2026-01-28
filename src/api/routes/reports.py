@@ -17,14 +17,16 @@ RULES APPLIED:
 """
 
 from datetime import date, datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies import CurrentUser, get_current_user_from_token, get_db_session as get_async_session
+from src.api.dependencies import CurrentUser, get_current_user_from_token
+from src.api.dependencies import get_db_session as get_async_session
 from src.engines.reporter import get_reporter_engine
 
 # FIXED by fixer-agent: added auth imports from dependencies.py
@@ -41,6 +43,7 @@ router = APIRouter(
 
 class ChannelMetrics(BaseModel):
     """Metrics breakdown by channel."""
+
     sent: int = 0
     delivered: int = 0
     opened: int = 0
@@ -55,6 +58,7 @@ class ChannelMetrics(BaseModel):
 
 class CampaignMetricsResponse(BaseModel):
     """Response model for campaign metrics."""
+
     campaign_id: UUID
     campaign_name: str
     status: str
@@ -68,12 +72,13 @@ class CampaignMetricsResponse(BaseModel):
     overall_reply_rate: float = 0.0
     overall_conversion_rate: float = 0.0
     meetings_booked: int = 0
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
+    start_date: date | None = None
+    end_date: date | None = None
 
 
 class CampaignSummary(BaseModel):
     """Summary of a single campaign for client metrics."""
+
     campaign_id: UUID
     campaign_name: str
     status: str
@@ -86,6 +91,7 @@ class CampaignSummary(BaseModel):
 
 class ClientMetricsResponse(BaseModel):
     """Response model for client metrics."""
+
     client_id: UUID
     client_name: str
     total_campaigns: int = 0
@@ -97,30 +103,33 @@ class ClientMetricsResponse(BaseModel):
     overall_conversion_rate: float = 0.0
     campaigns: list[CampaignSummary] = Field(default_factory=list)
     channel_performance: dict[str, ChannelMetrics] = Field(default_factory=dict)
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
+    start_date: date | None = None
+    end_date: date | None = None
 
 
 class TierDistribution(BaseModel):
     """Distribution data for a single ALS tier."""
+
     count: int = 0
     percentage: float = 0.0
 
 
 class ALSDistributionResponse(BaseModel):
     """Response model for ALS tier distribution."""
+
     hot: TierDistribution = Field(default_factory=TierDistribution)
     warm: TierDistribution = Field(default_factory=TierDistribution)
     cool: TierDistribution = Field(default_factory=TierDistribution)
     cold: TierDistribution = Field(default_factory=TierDistribution)
     dead: TierDistribution = Field(default_factory=TierDistribution)
     total: int = 0
-    campaign_id: Optional[UUID] = None
-    client_id: Optional[UUID] = None
+    campaign_id: UUID | None = None
+    client_id: UUID | None = None
 
 
 class ActivityItem(BaseModel):
     """Single activity in engagement timeline."""
+
     id: UUID
     channel: str
     action: str
@@ -130,25 +139,27 @@ class ActivityItem(BaseModel):
 
 class LeadEngagementResponse(BaseModel):
     """Response model for lead engagement metrics."""
+
     lead_id: UUID
-    email: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    company: Optional[str] = None
-    als_score: Optional[int] = None
-    als_tier: Optional[str] = None
+    email: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    company: str | None = None
+    als_score: int | None = None
+    als_tier: str | None = None
     open_count: int = 0
     click_count: int = 0
     reply_count: int = 0
     is_engaged: bool = False
-    last_contacted: Optional[datetime] = None
-    last_replied: Optional[datetime] = None
+    last_contacted: datetime | None = None
+    last_replied: datetime | None = None
     channels_used: list[str] = Field(default_factory=list)
     timeline: list[ActivityItem] = Field(default_factory=list)
 
 
 class DailyMetrics(BaseModel):
     """Metrics for a single day."""
+
     date: date
     sent: int = 0
     delivered: int = 0
@@ -161,8 +172,9 @@ class DailyMetrics(BaseModel):
 
 class DailyActivityResponse(BaseModel):
     """Response model for daily activity summary."""
-    campaign_id: Optional[UUID] = None
-    client_id: Optional[UUID] = None
+
+    campaign_id: UUID | None = None
+    client_id: UUID | None = None
     start_date: date
     end_date: date
     days: list[DailyMetrics] = Field(default_factory=list)
@@ -470,21 +482,23 @@ async def get_daily_activity(
 
 class ClientActivityItem(BaseModel):
     """Single activity item for client feed."""
+
     id: UUID
     channel: str
     action: str
     timestamp: datetime
-    lead_name: Optional[str] = None
-    lead_email: Optional[str] = None
-    lead_company: Optional[str] = None
-    campaign_name: Optional[str] = None
-    subject: Optional[str] = None
-    content_preview: Optional[str] = None
-    intent: Optional[str] = None
+    lead_name: str | None = None
+    lead_email: str | None = None
+    lead_company: str | None = None
+    campaign_name: str | None = None
+    subject: str | None = None
+    content_preview: str | None = None
+    intent: str | None = None
 
 
 class ClientActivitiesResponse(BaseModel):
     """Paginated activity feed response."""
+
     items: list[ClientActivityItem] = Field(default_factory=list)
     total: int = 0
     has_more: bool = False
@@ -495,8 +509,12 @@ async def get_client_activities(
     client_id: UUID,
     limit: int = Query(20, ge=1, le=100, description="Number of activities to return"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
-    channel: Optional[str] = Query(None, description="Filter by channel (email, sms, linkedin, voice, mail)"),
-    action: Optional[str] = Query(None, description="Filter by action (sent, opened, clicked, replied, bounced)"),
+    channel: str | None = Query(
+        None, description="Filter by channel (email, sms, linkedin, voice, mail)"
+    ),
+    action: str | None = Query(
+        None, description="Filter by action (sent, opened, clicked, replied, bounced)"
+    ),
     db: AsyncSession = Depends(get_async_session),
     current_user: CurrentUser = Depends(get_current_user_from_token),
 ) -> ClientActivitiesResponse:
@@ -523,7 +541,6 @@ async def get_client_activities(
         403: Unauthorized access to client
     """
     from sqlalchemy import and_, func, select
-    from sqlalchemy.orm import selectinload
 
     from src.models.activity import Activity
     from src.models.campaign import Campaign
@@ -583,7 +600,9 @@ async def get_client_activities(
         items.append(
             ClientActivityItem(
                 id=activity.id,
-                channel=activity.channel.value if hasattr(activity.channel, 'value') else str(activity.channel),
+                channel=activity.channel.value
+                if hasattr(activity.channel, "value")
+                else str(activity.channel),
                 action=activity.action,
                 timestamp=activity.created_at,
                 lead_name=lead_name,
@@ -592,7 +611,9 @@ async def get_client_activities(
                 campaign_name=campaign.name,
                 subject=activity.subject,
                 content_preview=activity.content_preview,
-                intent=activity.intent.value if activity.intent and hasattr(activity.intent, 'value') else None,
+                intent=activity.intent.value
+                if activity.intent and hasattr(activity.intent, "value")
+                else None,
             )
         )
 
@@ -610,39 +631,41 @@ async def get_client_activities(
 
 class ArchiveContentItem(BaseModel):
     """Single content item for archive view."""
+
     id: UUID
     channel: str
     action: str
     timestamp: datetime
     # Lead context
     lead_id: UUID
-    lead_name: Optional[str] = None
-    lead_email: Optional[str] = None
-    lead_company: Optional[str] = None
+    lead_name: str | None = None
+    lead_email: str | None = None
+    lead_company: str | None = None
     # Campaign context
     campaign_id: UUID
-    campaign_name: Optional[str] = None
+    campaign_name: str | None = None
     # Content
-    subject: Optional[str] = None
-    content_preview: Optional[str] = None
-    full_message_body: Optional[str] = None
-    links_included: Optional[list[str]] = None
-    personalization_fields_used: Optional[list[str]] = None
+    subject: str | None = None
+    content_preview: str | None = None
+    full_message_body: str | None = None
+    links_included: list[str] | None = None
+    personalization_fields_used: list[str] | None = None
     # Template/AI info
-    template_id: Optional[UUID] = None
-    ai_model_used: Optional[str] = None
+    template_id: UUID | None = None
+    ai_model_used: str | None = None
     # Engagement metrics
     email_opened: bool = False
     email_open_count: int = 0
     email_clicked: bool = False
     email_click_count: int = 0
     # Sequence context
-    sequence_step: Optional[int] = None
-    touch_number: Optional[int] = None
+    sequence_step: int | None = None
+    touch_number: int | None = None
 
 
 class ContentArchiveResponse(BaseModel):
     """Paginated content archive response."""
+
     items: list[ArchiveContentItem] = Field(default_factory=list)
     total: int = 0
     page: int = 1
@@ -656,12 +679,14 @@ async def get_content_archive(
     client_id: UUID,
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
-    channel: Optional[str] = Query(None, description="Filter by channel (email, sms, linkedin, voice, mail)"),
-    action: Optional[str] = Query(None, description="Filter by action (default: sent only)"),
-    campaign_id: Optional[UUID] = Query(None, description="Filter by campaign"),
-    search: Optional[str] = Query(None, description="Search in subject and content"),
-    start_date: Optional[date] = Query(None, description="Filter from date (YYYY-MM-DD)"),
-    end_date: Optional[date] = Query(None, description="Filter to date (YYYY-MM-DD)"),
+    channel: str | None = Query(
+        None, description="Filter by channel (email, sms, linkedin, voice, mail)"
+    ),
+    action: str | None = Query(None, description="Filter by action (default: sent only)"),
+    campaign_id: UUID | None = Query(None, description="Filter by campaign"),
+    search: str | None = Query(None, description="Search in subject and content"),
+    start_date: date | None = Query(None, description="Filter from date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="Filter to date (YYYY-MM-DD)"),
     db: AsyncSession = Depends(get_async_session),
     current_user: CurrentUser = Depends(get_current_user_from_token),
 ) -> ContentArchiveResponse:
@@ -730,10 +755,14 @@ async def get_content_archive(
         base_conditions.append(Activity.campaign_id == campaign_id)
 
     if start_date:
-        base_conditions.append(Activity.created_at >= datetime.combine(start_date, datetime.min.time()))
+        base_conditions.append(
+            Activity.created_at >= datetime.combine(start_date, datetime.min.time())
+        )
 
     if end_date:
-        base_conditions.append(Activity.created_at <= datetime.combine(end_date, datetime.max.time()))
+        base_conditions.append(
+            Activity.created_at <= datetime.combine(end_date, datetime.max.time())
+        )
 
     if search:
         search_term = f"%{search}%"
@@ -777,7 +806,9 @@ async def get_content_archive(
         items.append(
             ArchiveContentItem(
                 id=activity.id,
-                channel=activity.channel.value if hasattr(activity.channel, 'value') else str(activity.channel),
+                channel=activity.channel.value
+                if hasattr(activity.channel, "value")
+                else str(activity.channel),
                 action=activity.action,
                 timestamp=activity.created_at,
                 # Lead context
@@ -825,19 +856,20 @@ async def get_content_archive(
 
 class BestOfContentItem(BaseModel):
     """High-performing content item for Best Of showcase."""
+
     id: UUID
     channel: str
     timestamp: datetime
     # Lead context
-    lead_name: Optional[str] = None
-    lead_email: Optional[str] = None
-    lead_company: Optional[str] = None
+    lead_name: str | None = None
+    lead_email: str | None = None
+    lead_company: str | None = None
     # Campaign context
-    campaign_name: Optional[str] = None
+    campaign_name: str | None = None
     # Content
-    subject: Optional[str] = None
-    content_preview: Optional[str] = None
-    full_message_body: Optional[str] = None
+    subject: str | None = None
+    content_preview: str | None = None
+    full_message_body: str | None = None
     # Performance metrics
     email_open_count: int = 0
     email_click_count: int = 0
@@ -850,6 +882,7 @@ class BestOfContentItem(BaseModel):
 
 class BestOfShowcaseResponse(BaseModel):
     """Response for Best Of showcase."""
+
     items: list[BestOfContentItem] = Field(default_factory=list)
     total_high_performers: int = 0
     period_days: int = 30
@@ -882,7 +915,7 @@ async def get_best_of_showcase(
     Returns:
         Top performing content with performance metrics and reasons
     """
-    from sqlalchemy import and_, case, func, select, or_
+    from sqlalchemy import and_, case, func, or_, select
 
     from src.models.activity import Activity
     from src.models.campaign import Campaign
@@ -918,17 +951,16 @@ async def get_best_of_showcase(
 
     # Only include content with some engagement
     engagement_conditions = or_(
-        Activity.email_opened == True,
-        Activity.email_clicked == True,
+        Activity.email_opened,
+        Activity.email_clicked,
     )
 
     # Calculate performance score:
     # - Reply indicator: check if there's a reply activity for this lead/campaign combo
     # - Clicks: 50 points
     # - Opens: 10 points per open (max 30)
-    performance_score = (
-        case((Activity.email_clicked == True, 50), else_=0) +
-        func.least(Activity.email_open_count * 10, 30)
+    performance_score = case((Activity.email_clicked, 50), else_=0) + func.least(
+        Activity.email_open_count * 10, 30
     )
 
     # Query for engaged content
@@ -1004,7 +1036,9 @@ async def get_best_of_showcase(
         if got_reply:
             reasons.append("Got reply")
         if activity.email_clicked:
-            reasons.append(f"{activity.email_click_count} click{'s' if activity.email_click_count != 1 else ''}")
+            reasons.append(
+                f"{activity.email_click_count} click{'s' if activity.email_click_count != 1 else ''}"
+            )
         if activity.email_opened and activity.email_open_count > 1:
             reasons.append(f"Opened {activity.email_open_count}x")
         elif activity.email_opened:
@@ -1013,7 +1047,9 @@ async def get_best_of_showcase(
         items.append(
             BestOfContentItem(
                 id=activity.id,
-                channel=activity.channel.value if hasattr(activity.channel, 'value') else str(activity.channel),
+                channel=activity.channel.value
+                if hasattr(activity.channel, "value")
+                else str(activity.channel),
                 timestamp=activity.created_at,
                 lead_name=lead_name,
                 lead_email=lead.email,
@@ -1055,13 +1091,14 @@ async def get_best_of_showcase(
 
 class PoolAnalytics(BaseModel):
     """Pool analytics response model."""
+
     total_leads: int = 0
     available: int = 0
     assigned: int = 0
     converted: int = 0
     bounced: int = 0
     utilization_rate: float = 0.0
-    avg_als_score: Optional[float] = None
+    avg_als_score: float | None = None
     tier_distribution: dict[str, int] = Field(default_factory=dict)
     industry_distribution: dict[str, int] = Field(default_factory=dict)
     email_status_distribution: dict[str, int] = Field(default_factory=dict)
@@ -1069,6 +1106,7 @@ class PoolAnalytics(BaseModel):
 
 class AssignmentAnalytics(BaseModel):
     """Assignment analytics response model."""
+
     total_assignments: int = 0
     active: int = 0
     converted: int = 0
@@ -1349,8 +1387,12 @@ async def get_client_pool_analytics(
         "released": stats.released,
         "total_touches": stats.total_touches,
         "replied": stats.replied,
-        "reply_rate": round(stats.replied / stats.total_assigned * 100, 2) if stats.total_assigned > 0 else 0,
-        "conversion_rate": round(stats.converted / stats.total_assigned * 100, 2) if stats.total_assigned > 0 else 0,
+        "reply_rate": round(stats.replied / stats.total_assigned * 100, 2)
+        if stats.total_assigned > 0
+        else 0,
+        "conversion_rate": round(stats.converted / stats.total_assigned * 100, 2)
+        if stats.total_assigned > 0
+        else 0,
         "tier_distribution": {
             "hot": stats.hot_leads or 0,
             "warm": stats.warm_leads or 0,
@@ -1368,6 +1410,7 @@ async def get_client_pool_analytics(
 
 class DashboardOutcomes(BaseModel):
     """Outcome metrics for dashboard hero section."""
+
     meetings_booked: int = 0
     show_rate: float = 0.0  # Percentage
     meetings_showed: int = 0
@@ -1377,6 +1420,7 @@ class DashboardOutcomes(BaseModel):
 
 class DashboardComparison(BaseModel):
     """Comparison metrics vs last month and tier targets."""
+
     meetings_vs_last_month: int = 0
     meetings_vs_last_month_pct: float = 0.0
     tier_target_low: int = 0
@@ -1385,6 +1429,7 @@ class DashboardComparison(BaseModel):
 
 class DashboardActivity(BaseModel):
     """Activity metrics for proof of work."""
+
     prospects_in_pipeline: int = 0
     active_sequences: int = 0
     replies_this_month: int = 0
@@ -1393,6 +1438,7 @@ class DashboardActivity(BaseModel):
 
 class DashboardCampaignSummary(BaseModel):
     """Campaign summary for dashboard."""
+
     id: UUID
     name: str
     priority_pct: int = 0
@@ -1403,6 +1449,7 @@ class DashboardCampaignSummary(BaseModel):
 
 class DashboardMetricsResponse(BaseModel):
     """Full dashboard metrics response - outcome-focused, no commodity metrics."""
+
     period: str  # e.g., "2026-01"
     outcomes: DashboardOutcomes
     comparison: DashboardComparison
@@ -1412,8 +1459,8 @@ class DashboardMetricsResponse(BaseModel):
 
 # Tier meeting targets based on pricing/documentation
 TIER_MEETING_TARGETS: dict[str, tuple[int, int]] = {
-    "ignition": (5, 15),    # Range: 5-15, target: 10
-    "velocity": (15, 35),   # Range: 15-35, target: 25
+    "ignition": (5, 15),  # Range: 5-15, target: 10
+    "velocity": (15, 35),  # Range: 15-35, target: 25
     "dominance": (40, 80),  # Range: 40-80, target: 60
 }
 
@@ -1471,11 +1518,13 @@ async def get_dashboard_metrics(
     Returns:
         DashboardMetricsResponse with outcomes, comparisons, activity, campaigns
     """
-    from sqlalchemy import text
     from calendar import monthrange
+
+    from sqlalchemy import text
 
     # Get client to check tier
     from src.models import Client
+
     stmt = select(Client).where(
         and_(
             Client.id == client_id,
@@ -1518,10 +1567,13 @@ async def get_dashboard_metrics(
         WHERE client_id = :client_id
           AND booked_at >= :month_start
     """)
-    result = await db.execute(meetings_query, {
-        "client_id": str(client_id),
-        "month_start": current_month_start,
-    })
+    result = await db.execute(
+        meetings_query,
+        {
+            "client_id": str(client_id),
+            "month_start": current_month_start,
+        },
+    )
     meetings_row = result.fetchone()
 
     meetings_booked = meetings_row.meetings_booked if meetings_row else 0
@@ -1550,16 +1602,21 @@ async def get_dashboard_metrics(
           AND booked_at >= :month_start
           AND booked_at <= :month_end
     """)
-    result = await db.execute(last_month_query, {
-        "client_id": str(client_id),
-        "month_start": last_month_start,
-        "month_end": last_month_end,
-    })
+    result = await db.execute(
+        last_month_query,
+        {
+            "client_id": str(client_id),
+            "month_start": last_month_start,
+            "month_end": last_month_end,
+        },
+    )
     last_month_row = result.fetchone()
     last_month_meetings = last_month_row.meetings_booked if last_month_row else 0
 
     meetings_diff = meetings_booked - last_month_meetings
-    meetings_pct = round((meetings_diff / last_month_meetings * 100), 0) if last_month_meetings > 0 else 0.0
+    meetings_pct = (
+        round((meetings_diff / last_month_meetings * 100), 0) if last_month_meetings > 0 else 0.0
+    )
 
     tier_low, tier_high = TIER_MEETING_TARGETS.get((client.tier or "ignition").lower(), (5, 15))
 
@@ -1580,10 +1637,13 @@ async def get_dashboard_metrics(
         WHERE l.client_id = :client_id
           AND l.deleted_at IS NULL
     """)
-    result = await db.execute(activity_query, {
-        "client_id": str(client_id),
-        "month_start": current_month_start,
-    })
+    result = await db.execute(
+        activity_query,
+        {
+            "client_id": str(client_id),
+            "month_start": current_month_start,
+        },
+    )
     activity_row = result.fetchone()
 
     prospects_in_pipeline = activity_row.prospects_in_pipeline if activity_row else 0
@@ -1597,13 +1657,18 @@ async def get_dashboard_metrics(
     # 4. CAMPAIGNS - Per-campaign summary
     # ========================================
     from src.models import Campaign
-    campaigns_stmt = select(Campaign).where(
-        and_(
-            Campaign.client_id == client_id,
-            Campaign.deleted_at.is_(None),
-            Campaign.status.in_(["active", "paused"]),
+
+    campaigns_stmt = (
+        select(Campaign)
+        .where(
+            and_(
+                Campaign.client_id == client_id,
+                Campaign.deleted_at.is_(None),
+                Campaign.status.in_(["active", "paused"]),
+            )
         )
-    ).order_by(Campaign.created_at.desc())
+        .order_by(Campaign.created_at.desc())
+    )
     result = await db.execute(campaigns_stmt)
     campaigns = result.scalars().all()
 
@@ -1619,10 +1684,13 @@ async def get_dashboard_metrics(
             WHERE campaign_id = :campaign_id
               AND booked_at >= :month_start
         """)
-        result = await db.execute(camp_meetings_query, {
-            "campaign_id": str(campaign.id),
-            "month_start": current_month_start,
-        })
+        result = await db.execute(
+            camp_meetings_query,
+            {
+                "campaign_id": str(campaign.id),
+                "month_start": current_month_start,
+            },
+        )
         camp_row = result.fetchone()
 
         camp_meetings = camp_row.meetings_booked if camp_row else 0
@@ -1634,24 +1702,28 @@ async def get_dashboard_metrics(
         camp_reply_rate = campaign.reply_rate if campaign.reply_rate else 0.0
 
         # Calculate priority percentage (equal distribution if no allocation set)
-        total_allocation = sum([
-            campaign.allocation_email or 0,
-            campaign.allocation_sms or 0,
-            campaign.allocation_linkedin or 0,
-            campaign.allocation_voice or 0,
-            campaign.allocation_mail or 0,
-        ])
+        sum(
+            [
+                campaign.allocation_email or 0,
+                campaign.allocation_sms or 0,
+                campaign.allocation_linkedin or 0,
+                campaign.allocation_voice or 0,
+                campaign.allocation_mail or 0,
+            ]
+        )
         # Default to equal distribution among active campaigns
         priority_pct = 100 // len(campaigns) if campaigns else 0
 
-        campaign_summaries.append(DashboardCampaignSummary(
-            id=campaign.id,
-            name=campaign.name,
-            priority_pct=priority_pct,
-            meetings_booked=camp_meetings,
-            reply_rate=round(camp_reply_rate, 1),
-            show_rate=camp_show_rate,
-        ))
+        campaign_summaries.append(
+            DashboardCampaignSummary(
+                id=campaign.id,
+                name=campaign.name,
+                priority_pct=priority_pct,
+                meetings_booked=camp_meetings,
+                reply_rate=round(camp_reply_rate, 1),
+                show_rate=camp_show_rate,
+            )
+        )
 
     return DashboardMetricsResponse(
         period=period_str,
@@ -1685,6 +1757,7 @@ async def get_dashboard_metrics(
 
 class CampaignPerformanceItem(BaseModel):
     """Performance metrics for a single campaign."""
+
     campaign_id: UUID
     campaign_name: str
     status: str
@@ -1698,10 +1771,11 @@ class CampaignPerformanceItem(BaseModel):
 
 class CampaignPerformanceListResponse(BaseModel):
     """Response for campaign performance list endpoint."""
+
     client_id: UUID
     campaigns: list[CampaignPerformanceItem] = Field(default_factory=list)
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
+    start_date: date | None = None
+    end_date: date | None = None
 
 
 @router.get(
@@ -1741,7 +1815,7 @@ async def get_client_campaigns_performance(
         404: Client not found
         403: Unauthorized access to client
     """
-    from sqlalchemy import and_, func, select, distinct
+    from sqlalchemy import and_, distinct, func, select
 
     from src.models.activity import Activity
     from src.models.campaign import Campaign
@@ -1771,12 +1845,16 @@ async def get_client_campaigns_performance(
         start_date = end_date - timedelta(days=30)
 
     # Get all campaigns for client (not deleted)
-    campaigns_stmt = select(Campaign).where(
-        and_(
-            Campaign.client_id == client_id,
-            Campaign.deleted_at.is_(None),
+    campaigns_stmt = (
+        select(Campaign)
+        .where(
+            and_(
+                Campaign.client_id == client_id,
+                Campaign.deleted_at.is_(None),
+            )
         )
-    ).order_by(Campaign.created_at.desc())
+        .order_by(Campaign.created_at.desc())
+    )
     campaigns_result = await db.execute(campaigns_stmt)
     campaigns = campaigns_result.scalars().all()
 
@@ -1838,7 +1916,9 @@ async def get_client_campaigns_performance(
             CampaignPerformanceItem(
                 campaign_id=campaign.id,
                 campaign_name=campaign.name,
-                status=campaign.status.value if hasattr(campaign.status, 'value') else str(campaign.status),
+                status=campaign.status.value
+                if hasattr(campaign.status, "value")
+                else str(campaign.status),
                 total_leads=total_leads,
                 contacted=contacted,
                 replied=replied,

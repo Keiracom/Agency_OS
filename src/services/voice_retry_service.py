@@ -13,7 +13,7 @@ Blueprint requirement:
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import and_, func, select, update
@@ -156,7 +156,7 @@ class VoiceRetryService:
                     **existing_extra,
                     "voice_retry_at": retry_at.isoformat(),
                     "voice_retry_outcome": outcome,
-                }
+                },
             )
         )
         await self.db.execute(update_stmt)
@@ -178,7 +178,7 @@ class VoiceRetryService:
 
     async def get_pending_retries(
         self,
-        client_id: Optional[UUID] = None,
+        client_id: UUID | None = None,
         limit: int = 100,
     ) -> list[dict]:
         """
@@ -221,14 +221,16 @@ class VoiceRetryService:
                 if retry_at <= now:
                     # Check if retry already processed
                     if not activity.extra_data.get("voice_retry_processed"):
-                        pending.append({
-                            "activity_id": str(activity.id),
-                            "lead_id": str(activity.lead_id),
-                            "campaign_id": str(activity.campaign_id),
-                            "client_id": str(activity.client_id),
-                            "retry_at": retry_at,
-                            "outcome": activity.extra_data.get("voice_retry_outcome"),
-                        })
+                        pending.append(
+                            {
+                                "activity_id": str(activity.id),
+                                "lead_id": str(activity.lead_id),
+                                "campaign_id": str(activity.campaign_id),
+                                "client_id": str(activity.client_id),
+                                "retry_at": retry_at,
+                                "outcome": activity.extra_data.get("voice_retry_outcome"),
+                            }
+                        )
 
         return pending
 
@@ -253,9 +255,7 @@ class VoiceRetryService:
             extra_data["voice_retry_processed_at"] = datetime.utcnow().isoformat()
 
             update_stmt = (
-                update(Activity)
-                .where(Activity.id == activity_id)
-                .values(extra_data=extra_data)
+                update(Activity).where(Activity.id == activity_id).values(extra_data=extra_data)
             )
             await self.db.execute(update_stmt)
             await self.db.commit()
@@ -330,7 +330,7 @@ class VoiceRetryService:
 
 
 # Singleton instance holder
-_voice_retry_service: Optional[VoiceRetryService] = None
+_voice_retry_service: VoiceRetryService | None = None
 
 
 def get_voice_retry_service(db: AsyncSession) -> VoiceRetryService:

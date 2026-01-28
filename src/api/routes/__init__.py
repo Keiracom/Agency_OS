@@ -28,14 +28,14 @@ from src.api.routes.crm import router as crm_router
 from src.api.routes.customers import router as customers_router
 from src.api.routes.health import router as health_router
 from src.api.routes.leads import router as leads_router
+from src.api.routes.linkedin import router as linkedin_router
 from src.api.routes.meetings import router as meetings_router
 from src.api.routes.patterns import router as patterns_router
+from src.api.routes.pool import router as pool_router
 from src.api.routes.replies import router as replies_router
 from src.api.routes.reports import router as reports_router
 from src.api.routes.webhooks import router as webhooks_router
 from src.api.routes.webhooks_outbound import router as webhooks_outbound_router
-from src.api.routes.linkedin import router as linkedin_router
-from src.api.routes.pool import router as pool_router
 
 __all__ = [
     "health_router",

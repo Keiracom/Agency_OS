@@ -26,7 +26,7 @@ PHASE 24D CHANGES:
 """
 
 from datetime import date, datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import (
@@ -39,7 +39,8 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, ENUM, JSONB, UUID as PGUUID
+from sqlalchemy.dialects.postgresql import ARRAY, ENUM, JSONB
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import (
@@ -82,104 +83,119 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
 
     # Contact information
     email: Mapped[str] = mapped_column(Text, nullable=False)
-    phone: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    first_name: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    last_name: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    title: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    company: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    linkedin_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    domain: Mapped[Optional[str]] = mapped_column(Text, nullable=True, index=True)
+    phone: Mapped[str | None] = mapped_column(Text, nullable=True)
+    first_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    company: Mapped[str | None] = mapped_column(Text, nullable=True)
+    linkedin_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    domain: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
 
     # === ALS Score Components (100 points max) ===
-    als_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    als_tier: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    als_data_quality: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # Max 20
-    als_authority: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # Max 25
-    als_company_fit: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # Max 25
-    als_timing: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # Max 15
-    als_risk: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # Max 15
+    als_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    als_tier: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    als_data_quality: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Max 20
+    als_authority: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Max 25
+    als_company_fit: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Max 25
+    als_timing: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Max 15
+    als_risk: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Max 15
 
     # === Organization Data ===
-    organization_industry: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    organization_employee_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    organization_country: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    organization_founded_year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    organization_is_hiring: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
-    organization_latest_funding_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    organization_website: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    organization_linkedin_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    organization_industry: Mapped[str | None] = mapped_column(Text, nullable=True)
+    organization_employee_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    organization_country: Mapped[str | None] = mapped_column(Text, nullable=True)
+    organization_founded_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    organization_is_hiring: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    organization_latest_funding_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    organization_website: Mapped[str | None] = mapped_column(Text, nullable=True)
+    organization_linkedin_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # === Person Data ===
-    employment_start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    personal_email: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    seniority_level: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    employment_start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    personal_email: Mapped[str | None] = mapped_column(Text, nullable=True)
+    seniority_level: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # === Status & Tracking ===
     status: Mapped[LeadStatus] = mapped_column(
-        ENUM(LeadStatus, name="lead_status", create_type=False, values_callable=lambda x: [e.value for e in x]),
+        ENUM(
+            LeadStatus,
+            name="lead_status",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         nullable=False,
         default=LeadStatus.NEW,
     )
     current_sequence_step: Mapped[int] = mapped_column(Integer, default=0)
-    next_outreach_at: Mapped[Optional[datetime]] = mapped_column(nullable=True, index=True)
+    next_outreach_at: Mapped[datetime | None] = mapped_column(nullable=True, index=True)
 
     # === Enrichment Metadata ===
-    enrichment_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    enrichment_confidence: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    enrichment_version: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    enriched_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    enrichment_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    enrichment_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    enrichment_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    enriched_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     # === Deep Research (Phase 21) ===
     deep_research_data: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=True)
-    deep_research_run_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    deep_research_run_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     # === SDK Enrichment (Hot Leads - ALS 85+) ===
-    sdk_enrichment: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
-    sdk_signals: Mapped[Optional[list]] = mapped_column(ARRAY(Text), nullable=True)
-    sdk_cost_aud: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    sdk_enriched_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
-    sdk_voice_kb: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
-    sdk_email_content: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    sdk_enrichment: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    sdk_signals: Mapped[list | None] = mapped_column(ARRAY(Text), nullable=True)
+    sdk_cost_aud: Mapped[float | None] = mapped_column(Float, nullable=True)
+    sdk_enriched_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    sdk_voice_kb: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    sdk_email_content: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # === Compliance ===
     dncr_checked: Mapped[bool] = mapped_column(Boolean, default=False)
-    dncr_result: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
-    email_verified: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
-    phone_verified: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    dncr_result: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    email_verified: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    phone_verified: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
     # === Engagement Tracking ===
-    last_contacted_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
-    last_replied_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
-    last_opened_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
-    last_clicked_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    last_contacted_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    last_replied_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    last_opened_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    last_clicked_at: Mapped[datetime | None] = mapped_column(nullable=True)
     reply_count: Mapped[int] = mapped_column(Integer, default=0)
     bounce_count: Mapped[int] = mapped_column(Integer, default=0)
 
     # === Phase 24D: Rejection Tracking ===
     # Note: rejection_reason is a PostgreSQL ENUM type created in migration 027
-    rejection_reason: Mapped[Optional[str]] = mapped_column(
+    rejection_reason: Mapped[str | None] = mapped_column(
         ENUM(
-            'timing_not_now', 'budget_constraints', 'using_competitor',
-            'not_decision_maker', 'no_need', 'bad_experience', 'too_busy',
-            'not_interested_generic', 'do_not_contact', 'wrong_contact',
-            'company_policy', 'other',
-            name='rejection_reason_type',
+            "timing_not_now",
+            "budget_constraints",
+            "using_competitor",
+            "not_decision_maker",
+            "no_need",
+            "bad_experience",
+            "too_busy",
+            "not_interested_generic",
+            "do_not_contact",
+            "wrong_contact",
+            "company_policy",
+            "other",
+            name="rejection_reason_type",
             create_constraint=False,  # Type already exists in DB
         ),
-        nullable=True
+        nullable=True,
     )
-    rejection_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    rejection_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
-    objections_raised: Mapped[Optional[list]] = mapped_column(ARRAY(Text), nullable=True)
+    rejection_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rejection_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    objections_raised: Mapped[list | None] = mapped_column(ARRAY(Text), nullable=True)
 
     # === Phase 24C: Timezone Tracking (from location data) ===
-    timezone: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    timezone_offset: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # UTC offset in minutes
+    timezone: Mapped[str | None] = mapped_column(Text, nullable=True)
+    timezone_offset: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )  # UTC offset in minutes
 
     # === Assigned Resources ===
-    assigned_email_resource: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    assigned_linkedin_seat: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    assigned_phone_resource: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    assigned_email_resource: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assigned_linkedin_seat: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assigned_phone_resource: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
     client: Mapped["Client"] = relationship("Client", back_populates="leads")
@@ -191,9 +207,7 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     )
 
     # Constraints - compound uniqueness per client
-    __table_args__ = (
-        UniqueConstraint("client_id", "email", name="unique_lead_per_client"),
-    )
+    __table_args__ = (UniqueConstraint("client_id", "email", name="unique_lead_per_client"),)
 
     def __repr__(self) -> str:
         return f"<Lead(id={self.id}, email='{self.email}', als_score={self.als_score})>"
@@ -212,12 +226,14 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     @property
     def is_scorable(self) -> bool:
         """Check if lead has enough data for scoring."""
-        return all([
-            self.email,
-            self.first_name,
-            self.last_name,
-            self.company,
-        ])
+        return all(
+            [
+                self.email,
+                self.first_name,
+                self.last_name,
+                self.company,
+            ]
+        )
 
     @property
     def is_contactable(self) -> bool:
@@ -258,8 +274,8 @@ class GlobalSuppression(Base, UUIDMixin):
 
     email: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
-    source: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    added_by: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)
+    added_by: Mapped[str | None] = mapped_column(Text, nullable=True)
     extra_data: Mapped[dict] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         nullable=False,
@@ -287,7 +303,7 @@ class ClientSuppression(Base, UUIDMixin):
     )
     email: Mapped[str] = mapped_column(Text, nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
-    added_by: Mapped[Optional[UUID]] = mapped_column(
+    added_by: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("users.id"),
         nullable=True,
@@ -297,9 +313,7 @@ class ClientSuppression(Base, UUIDMixin):
         default=datetime.utcnow,
     )
 
-    __table_args__ = (
-        UniqueConstraint("client_id", "email", name="unique_client_suppression"),
-    )
+    __table_args__ = (UniqueConstraint("client_id", "email", name="unique_client_suppression"),)
 
     def __repr__(self) -> str:
         return f"<ClientSuppression(client_id={self.client_id}, email='{self.email}')>"
@@ -314,7 +328,7 @@ class DomainSuppression(Base, UUIDMixin):
 
     domain: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
-    added_by: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    added_by: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         nullable=False,
         default=datetime.utcnow,

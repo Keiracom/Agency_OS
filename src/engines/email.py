@@ -57,23 +57,22 @@ from src.engines.base import EngineResult, OutreachEngine
 
 logger = logging.getLogger(__name__)
 from src.engines.content_utils import build_content_snapshot
-from src.exceptions import ResourceRateLimitError, ValidationError
+from src.exceptions import ResourceRateLimitError
 from src.integrations.redis import rate_limiter
 from src.integrations.salesforge import SalesforgeClient, get_salesforge_client
 from src.models.activity import Activity
 from src.models.base import ChannelType
 from src.models.lead import Lead
 from src.services.email_signature_service import (
-    get_signature_for_persona,
-    get_signature_for_client,
-    get_display_name_for_persona,
     append_signature_to_body,
     # Gap Fix #21: Display name formatting and validation
     format_display_name,
-    validate_display_name,
     format_from_header,
+    get_display_name_for_persona,
+    get_signature_for_client,
+    get_signature_for_persona,
+    validate_display_name,
 )
-
 
 # Rate limit (Rule 17)
 EMAIL_DAILY_LIMIT_PER_DOMAIN = 50
@@ -384,11 +383,13 @@ class EmailEngine(OutreachEngine):
 
             if not all([lead_id, campaign_id, content]):
                 results["failed"] += 1
-                results["emails"].append({
-                    "lead_id": str(lead_id) if lead_id else None,
-                    "status": "failed",
-                    "reason": "Missing required fields",
-                })
+                results["emails"].append(
+                    {
+                        "lead_id": str(lead_id) if lead_id else None,
+                        "status": "failed",
+                        "reason": "Missing required fields",
+                    }
+                )
                 continue
 
             result = await self.validate_and_send(
@@ -401,11 +402,13 @@ class EmailEngine(OutreachEngine):
 
             if result.success:
                 results["sent"] += 1
-                results["emails"].append({
-                    "lead_id": str(lead_id),
-                    "status": "sent",
-                    "message_id": result.data.get("message_id"),
-                })
+                results["emails"].append(
+                    {
+                        "lead_id": str(lead_id),
+                        "status": "sent",
+                        "message_id": result.data.get("message_id"),
+                    }
+                )
             else:
                 # Check if rate limited
                 if "rate limit" in result.error.lower():
@@ -413,11 +416,13 @@ class EmailEngine(OutreachEngine):
                 else:
                     results["failed"] += 1
 
-                results["emails"].append({
-                    "lead_id": str(lead_id),
-                    "status": "failed",
-                    "reason": result.error,
-                })
+                results["emails"].append(
+                    {
+                        "lead_id": str(lead_id),
+                        "status": "failed",
+                        "reason": result.error,
+                    }
+                )
 
         return EngineResult.ok(
             data=results,
@@ -516,7 +521,8 @@ class EmailEngine(OutreachEngine):
         if html_content:
             # Strip HTML for analysis
             import re
-            text_content = re.sub(r'<[^>]+>', '', html_content).strip()
+
+            text_content = re.sub(r"<[^>]+>", "", html_content).strip()
             snapshot = build_content_snapshot(
                 body=text_content,
                 lead=lead,
@@ -539,6 +545,7 @@ class EmailEngine(OutreachEngine):
         links_included = None
         if html_content:
             import re
+
             # Extract URLs from href attributes
             href_pattern = r'href=["\']([^"\']+)["\']'
             links_included = list(set(re.findall(href_pattern, html_content)))
@@ -587,7 +594,8 @@ class EmailEngine(OutreachEngine):
         """Get preview of email content (strip HTML)."""
         # Simple HTML stripping - in production, use a proper HTML parser
         import re
-        text = re.sub(r'<[^>]+>', '', html_content)
+
+        text = re.sub(r"<[^>]+>", "", html_content)
         text = text.strip()
         if len(text) > max_length:
             return text[:max_length] + "..."
@@ -640,7 +648,9 @@ class EmailEngine(OutreachEngine):
             if from_name:
                 is_valid, reason = validate_display_name(from_name)
                 if not is_valid:
-                    logger.warning(f"Invalid from_name '{from_name}': {reason}, using as-is for transactional")
+                    logger.warning(
+                        f"Invalid from_name '{from_name}': {reason}, using as-is for transactional"
+                    )
                 formatted_from = f'"{from_name}" <{from_email}>'
             else:
                 formatted_from = from_email
@@ -656,8 +666,7 @@ class EmailEngine(OutreachEngine):
 
             if result.get("success"):
                 logger.info(
-                    f"Transactional email sent to {to_email}: "
-                    f"message_id={result.get('message_id')}"
+                    f"Transactional email sent to {to_email}: message_id={result.get('message_id')}"
                 )
                 return {
                     "success": True,
@@ -666,8 +675,7 @@ class EmailEngine(OutreachEngine):
                 }
             else:
                 logger.error(
-                    f"Failed to send transactional email to {to_email}: "
-                    f"{result.get('error')}"
+                    f"Failed to send transactional email to {to_email}: {result.get('error')}"
                 )
                 return {
                     "success": False,

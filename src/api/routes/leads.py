@@ -17,14 +17,13 @@ RULES APPLIED:
 """
 
 from datetime import datetime
-from typing import Annotated, List, Optional
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import and_, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from src.api.dependencies import (
     ClientContext,
@@ -35,6 +34,8 @@ from src.api.dependencies import (
 from src.exceptions import (
     ResourceDeletedError,
     ResourceNotFoundError,
+)
+from src.exceptions import (
     ValidationError as AgencyValidationError,
 )
 from src.models.activity import Activity
@@ -59,13 +60,13 @@ class LeadCreate(BaseModel):
 
     campaign_id: UUID = Field(..., description="Campaign ID")
     email: str = Field(..., description="Lead email address")
-    phone: Optional[str] = Field(None, description="Phone number")
-    first_name: Optional[str] = Field(None, description="First name")
-    last_name: Optional[str] = Field(None, description="Last name")
-    title: Optional[str] = Field(None, description="Job title")
-    company: Optional[str] = Field(None, description="Company name")
-    linkedin_url: Optional[str] = Field(None, description="LinkedIn profile URL")
-    domain: Optional[str] = Field(None, description="Company domain")
+    phone: str | None = Field(None, description="Phone number")
+    first_name: str | None = Field(None, description="First name")
+    last_name: str | None = Field(None, description="Last name")
+    title: str | None = Field(None, description="Job title")
+    company: str | None = Field(None, description="Company name")
+    linkedin_url: str | None = Field(None, description="LinkedIn profile URL")
+    domain: str | None = Field(None, description="Company domain")
 
     @field_validator("email")
     @classmethod
@@ -80,11 +81,13 @@ class LeadBulkCreate(BaseModel):
     """Schema for bulk lead creation."""
 
     campaign_id: UUID = Field(..., description="Campaign ID")
-    leads: List[LeadCreate] = Field(..., description="List of leads to create", min_length=1, max_length=1000)
+    leads: list[LeadCreate] = Field(
+        ..., description="List of leads to create", min_length=1, max_length=1000
+    )
 
     @field_validator("leads")
     @classmethod
-    def validate_leads_count(cls, v: List[LeadCreate]) -> List[LeadCreate]:
+    def validate_leads_count(cls, v: list[LeadCreate]) -> list[LeadCreate]:
         """Validate leads count is within limits."""
         if len(v) > 1000:
             raise ValueError("Maximum 1000 leads per bulk request")
@@ -94,15 +97,15 @@ class LeadBulkCreate(BaseModel):
 class LeadUpdate(BaseModel):
     """Schema for updating a lead."""
 
-    email: Optional[str] = Field(None, description="Lead email address")
-    phone: Optional[str] = Field(None, description="Phone number")
-    first_name: Optional[str] = Field(None, description="First name")
-    last_name: Optional[str] = Field(None, description="Last name")
-    title: Optional[str] = Field(None, description="Job title")
-    company: Optional[str] = Field(None, description="Company name")
-    linkedin_url: Optional[str] = Field(None, description="LinkedIn profile URL")
-    domain: Optional[str] = Field(None, description="Company domain")
-    status: Optional[LeadStatus] = Field(None, description="Lead status")
+    email: str | None = Field(None, description="Lead email address")
+    phone: str | None = Field(None, description="Phone number")
+    first_name: str | None = Field(None, description="First name")
+    last_name: str | None = Field(None, description="Last name")
+    title: str | None = Field(None, description="Job title")
+    company: str | None = Field(None, description="Company name")
+    linkedin_url: str | None = Field(None, description="LinkedIn profile URL")
+    domain: str | None = Field(None, description="Company domain")
+    status: LeadStatus | None = Field(None, description="Lead status")
 
 
 class LeadResponse(BaseModel):
@@ -112,33 +115,33 @@ class LeadResponse(BaseModel):
     client_id: UUID
     campaign_id: UUID
     email: str
-    phone: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    title: Optional[str] = None
-    company: Optional[str] = None
-    linkedin_url: Optional[str] = None
-    domain: Optional[str] = None
+    phone: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    title: str | None = None
+    company: str | None = None
+    linkedin_url: str | None = None
+    domain: str | None = None
 
     # ALS Score
-    als_score: Optional[int] = None
-    als_tier: Optional[str] = None
-    als_data_quality: Optional[int] = None
-    als_authority: Optional[int] = None
-    als_company_fit: Optional[int] = None
-    als_timing: Optional[int] = None
-    als_risk: Optional[int] = None
+    als_score: int | None = None
+    als_tier: str | None = None
+    als_data_quality: int | None = None
+    als_authority: int | None = None
+    als_company_fit: int | None = None
+    als_timing: int | None = None
+    als_risk: int | None = None
 
     # Status
     status: LeadStatus
-    enrichment_source: Optional[str] = None
-    enrichment_confidence: Optional[float] = None
+    enrichment_source: str | None = None
+    enrichment_confidence: float | None = None
     dncr_checked: bool = False
 
     # Timestamps
     created_at: datetime
     updated_at: datetime
-    deleted_at: Optional[datetime] = None
+    deleted_at: datetime | None = None
 
     class Config:
         from_attributes = True
@@ -147,7 +150,7 @@ class LeadResponse(BaseModel):
 class LeadListResponse(BaseModel):
     """Schema for paginated lead list."""
 
-    leads: List[LeadResponse] = Field(..., description="List of leads")
+    leads: list[LeadResponse] = Field(..., description="List of leads")
     total: int = Field(..., description="Total count of leads")
     page: int = Field(..., description="Current page")
     page_size: int = Field(..., description="Page size")
@@ -166,12 +169,12 @@ class ActivityResponse(BaseModel):
     id: UUID
     channel: str
     action: str
-    sequence_step: Optional[int] = None
-    subject: Optional[str] = None
-    content_preview: Optional[str] = None
-    provider: Optional[str] = None
-    intent: Optional[str] = None
-    intent_confidence: Optional[float] = None
+    sequence_step: int | None = None
+    subject: str | None = None
+    content_preview: str | None = None
+    provider: str | None = None
+    intent: str | None = None
+    intent_confidence: float | None = None
     created_at: datetime
 
     class Config:
@@ -182,7 +185,7 @@ class LeadActivitiesResponse(BaseModel):
     """Schema for lead activity timeline."""
 
     lead_id: UUID
-    activities: List[ActivityResponse] = Field(..., description="Activity timeline")
+    activities: list[ActivityResponse] = Field(..., description="Activity timeline")
     total: int = Field(..., description="Total activity count")
 
 
@@ -190,15 +193,17 @@ class DeepResearchResponse(BaseModel):
     """Schema for deep research data response."""
 
     lead_id: UUID
-    status: str = Field(..., description="Research status: not_started, in_progress, complete, failed")
-    icebreaker_hook: Optional[str] = Field(None, description="AI-generated icebreaker")
-    profile_summary: Optional[str] = Field(None, description="LinkedIn profile summary")
-    recent_activity: Optional[str] = Field(None, description="Recent activity summary")
+    status: str = Field(
+        ..., description="Research status: not_started, in_progress, complete, failed"
+    )
+    icebreaker_hook: str | None = Field(None, description="AI-generated icebreaker")
+    profile_summary: str | None = Field(None, description="LinkedIn profile summary")
+    recent_activity: str | None = Field(None, description="Recent activity summary")
     posts_found: int = Field(0, description="Number of LinkedIn posts found")
-    confidence: Optional[float] = Field(None, description="Research confidence score")
-    run_at: Optional[datetime] = Field(None, description="When research was run")
-    social_posts: List[dict] = Field(default_factory=list, description="LinkedIn posts")
-    error: Optional[str] = Field(None, description="Error message if failed")
+    confidence: float | None = Field(None, description="Research confidence score")
+    run_at: datetime | None = Field(None, description="When research was run")
+    social_posts: list[dict] = Field(default_factory=list, description="LinkedIn posts")
+    error: str | None = Field(None, description="Error message if failed")
 
 
 class DeepResearchTriggerResponse(BaseModel):
@@ -207,8 +212,8 @@ class DeepResearchTriggerResponse(BaseModel):
     lead_id: UUID
     status: str = Field(..., description="Trigger status: queued, already_complete, not_eligible")
     message: str = Field(..., description="Status message")
-    als_score: Optional[int] = Field(None, description="Lead's ALS score")
-    als_tier: Optional[str] = Field(None, description="Lead's ALS tier")
+    als_score: int | None = Field(None, description="Lead's ALS score")
+    als_tier: str | None = Field(None, description="Lead's ALS tier")
 
 
 # ============================================
@@ -326,10 +331,12 @@ async def list_leads(
     db: Annotated[AsyncSession, Depends(get_db_session)],
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Page size"),
-    campaign_id: Optional[UUID] = Query(None, description="Filter by campaign ID"),
-    tier: Optional[str] = Query(None, description="Filter by ALS tier (hot, warm, cool, cold, dead)"),
-    status_filter: Optional[LeadStatus] = Query(None, alias="status", description="Filter by lead status"),
-    search: Optional[str] = Query(None, description="Search by email, name, or company"),
+    campaign_id: UUID | None = Query(None, description="Filter by campaign ID"),
+    tier: str | None = Query(None, description="Filter by ALS tier (hot, warm, cool, cold, dead)"),
+    status_filter: LeadStatus | None = Query(
+        None, alias="status", description="Filter by lead status"
+    ),
+    search: str | None = Query(None, description="Search by email, name, or company"),
 ) -> LeadListResponse:
     """
     List leads with pagination and filters.
@@ -702,7 +709,7 @@ async def enrich_leads_bulk(
     client_id: UUID,
     ctx: Annotated[ClientContext, Depends(require_member)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
-    campaign_id: Optional[UUID] = Query(None, description="Filter by campaign"),
+    campaign_id: UUID | None = Query(None, description="Filter by campaign"),
     force: bool = Query(False, description="Force re-enrichment"),
 ) -> dict:
     """
@@ -719,10 +726,14 @@ async def enrich_leads_bulk(
         Bulk enrichment job info
     """
     # Build query for leads needing enrichment
-    stmt = select(func.count()).select_from(Lead).where(
-        and_(
-            Lead.client_id == client_id,
-            Lead.deleted_at.is_(None),
+    stmt = (
+        select(func.count())
+        .select_from(Lead)
+        .where(
+            and_(
+                Lead.client_id == client_id,
+                Lead.deleted_at.is_(None),
+            )
         )
     )
 
@@ -951,7 +962,7 @@ async def trigger_lead_research(
             als_score=lead.als_score,
             als_tier=lead.als_tier,
         )
-    except Exception as e:
+    except Exception:
         # Fallback: run inline if Prefect deployment not available
         from src.engines.scout import get_scout_engine
 
@@ -1048,10 +1059,14 @@ async def score_lead(
                 timeout=0,
             )
             response["deep_research_triggered"] = True
-            response["message"] = f"Lead scored as {als_tier.upper()} ({als_score}). Deep research queued."
+            response["message"] = (
+                f"Lead scored as {als_tier.upper()} ({als_score}). Deep research queued."
+            )
         except Exception:
             # Prefect not available - skip auto-trigger
-            response["message"] = f"Lead scored as {als_tier.upper()} ({als_score}). Manual research trigger available."
+            response["message"] = (
+                f"Lead scored as {als_tier.upper()} ({als_score}). Manual research trigger available."
+            )
     else:
         response["message"] = f"Lead scored as {als_tier.upper()} ({als_score})."
 

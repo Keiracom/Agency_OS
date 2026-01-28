@@ -34,7 +34,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.config.tiers import get_tier_config, get_campaign_slots
+from src.config.tiers import get_campaign_slots
 from src.engines.base import BaseEngine, EngineResult
 from src.integrations.anthropic import get_anthropic_client
 from src.models.client import Client
@@ -45,6 +45,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CampaignSuggestion:
     """A suggested campaign from ICP analysis."""
+
     name: str
     description: str
     target_industries: list[str]
@@ -162,7 +163,7 @@ class CampaignSuggesterEngine(BaseEngine):
             )
 
         # Get tier limits
-        tier_name = client.tier.value if hasattr(client.tier, 'value') else str(client.tier)
+        tier_name = client.tier.value if hasattr(client.tier, "value") else str(client.tier)
         try:
             ai_slots, custom_slots = get_campaign_slots(tier_name)
         except ValueError:
@@ -199,9 +200,7 @@ class CampaignSuggesterEngine(BaseEngine):
             "generated_at": datetime.utcnow().isoformat(),
         }
 
-        logger.info(
-            f"Generated {len(suggestions)} campaign suggestions for client {client_id}"
-        )
+        logger.info(f"Generated {len(suggestions)} campaign suggestions for client {client_id}")
 
         return EngineResult.ok(
             data=result,
@@ -293,7 +292,7 @@ class CampaignSuggesterEngine(BaseEngine):
             suggestions = []
             for i, item in enumerate(data[:expected_count]):
                 suggestion = CampaignSuggestion(
-                    name=item.get("name", f"Campaign {i+1}"),
+                    name=item.get("name", f"Campaign {i + 1}"),
                     description=item.get("description", ""),
                     target_industries=item.get("target_industries", []),
                     target_titles=item.get("target_titles", []),
@@ -348,6 +347,7 @@ class CampaignSuggesterEngine(BaseEngine):
             EngineResult with created campaign IDs
         """
         from sqlalchemy import text
+
         from src.models.campaign import CampaignType
 
         created_campaigns = []
@@ -392,22 +392,22 @@ class CampaignSuggesterEngine(BaseEngine):
                     "titles": suggestion.get("target_titles", []),
                     "company_sizes": suggestion.get("target_company_sizes", []),
                     "locations": suggestion.get("target_locations", []),
-                }
+                },
             )
 
             row = result.fetchone()
             if row:
-                created_campaigns.append({
-                    "campaign_id": str(row.id),
-                    "name": row.name,
-                    "allocation_pct": allocation,
-                })
+                created_campaigns.append(
+                    {
+                        "campaign_id": str(row.id),
+                        "name": row.name,
+                        "allocation_pct": allocation,
+                    }
+                )
 
         await db.commit()
 
-        logger.info(
-            f"Created {len(created_campaigns)} AI campaigns for client {client_id}"
-        )
+        logger.info(f"Created {len(created_campaigns)} AI campaigns for client {client_id}")
 
         return EngineResult.ok(
             data={

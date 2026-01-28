@@ -18,6 +18,7 @@ for generating highly personalized content using ALL available data from:
 The key insight: We already paid to enrich this data. Use it.
 """
 
+import logging
 from datetime import datetime, timedelta
 from enum import IntEnum
 from typing import Any
@@ -26,8 +27,6 @@ from uuid import UUID
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import logging
-
 logger = logging.getLogger(__name__)
 
 
@@ -35,18 +34,23 @@ logger = logging.getLogger(__name__)
 # PRIORITY WEIGHTING SYSTEM
 # ============================================
 
+
 class FieldPriority(IntEnum):
     """Priority levels for lead data fields in content generation."""
-    HIGH = 3    # MUST use - time-sensitive, high-personalization value
+
+    HIGH = 3  # MUST use - time-sensitive, high-personalization value
     MEDIUM = 2  # SHOULD use - relevance context
-    LOW = 1     # MAY use - background info
+    LOW = 1  # MAY use - background info
 
 
 # Field priority configuration
 # Maps field paths to priority levels and descriptions
 FIELD_PRIORITIES: dict[str, tuple[FieldPriority, str]] = {
     # HIGH PRIORITY - Time-sensitive signals and deep personalization
-    "signals.recently_funded": (FieldPriority.HIGH, "Recent funding is a strong conversation opener"),
+    "signals.recently_funded": (
+        FieldPriority.HIGH,
+        "Recent funding is a strong conversation opener",
+    ),
     "signals.is_hiring": (FieldPriority.HIGH, "Hiring indicates growth/budget availability"),
     "signals.new_in_role": (FieldPriority.HIGH, "New roles mean new initiatives/budget"),
     "research.pain_points": (FieldPriority.HIGH, "Direct personalization hooks"),
@@ -56,7 +60,6 @@ FIELD_PRIORITIES: dict[str, tuple[FieldPriority, str]] = {
     "sdk_research.recent_activity": (FieldPriority.HIGH, "Recent public activity to reference"),
     "engagement.previous_objections": (FieldPriority.HIGH, "Must address in follow-ups"),
     "engagement.reply_intent": (FieldPriority.HIGH, "Context from previous replies"),
-
     # MEDIUM PRIORITY - Relevance context
     "person.title": (FieldPriority.MEDIUM, "Affects messaging tone and pitch angle"),
     "person.seniority": (FieldPriority.MEDIUM, "Affects formality and decision-maker angle"),
@@ -67,7 +70,6 @@ FIELD_PRIORITIES: dict[str, tuple[FieldPriority, str]] = {
     "signals.technologies": (FieldPriority.MEDIUM, "Tech stack for relevance matching"),
     "signals.keywords": (FieldPriority.MEDIUM, "Business keywords for relevance"),
     "score.als_score": (FieldPriority.MEDIUM, "Indicates lead quality/fit"),
-
     # LOW PRIORITY - Background context (use if space allows)
     "person.full_name": (FieldPriority.LOW, "Basic personalization"),
     "person.location": (FieldPriority.LOW, "Geographic context"),
@@ -215,6 +217,7 @@ Return JSON with the structure above.
 # CONTEXT BUILDERS
 # ============================================
 
+
 async def build_full_lead_context(
     db: AsyncSession,
     lead_id: UUID,
@@ -317,7 +320,9 @@ async def build_full_lead_context(
         "signals": {
             "is_hiring": row.organization_is_hiring,
             "recently_funded": _is_recently_funded(row.organization_latest_funding_date),
-            "funding_date": str(row.organization_latest_funding_date) if row.organization_latest_funding_date else None,
+            "funding_date": str(row.organization_latest_funding_date)
+            if row.organization_latest_funding_date
+            else None,
             "new_in_role": _is_new_in_role(row.employment_start_date),
         },
         "score": {
@@ -425,10 +430,13 @@ async def build_full_pool_lead_context(
         WHERE lp.id = :lead_pool_id
     """)
 
-    result = await db.execute(query, {
-        "lead_pool_id": str(lead_pool_id),
-        "client_id": str(client_id) if client_id else None,
-    })
+    result = await db.execute(
+        query,
+        {
+            "lead_pool_id": str(lead_pool_id),
+            "client_id": str(client_id) if client_id else None,
+        },
+    )
     row = result.fetchone()
 
     if not row:
@@ -469,7 +477,9 @@ async def build_full_pool_lead_context(
             "is_hiring": row.company_is_hiring,
             "funding_stage": row.company_latest_funding_stage,
             "recently_funded": _is_recently_funded(row.company_latest_funding_date),
-            "funding_date": str(row.company_latest_funding_date) if row.company_latest_funding_date else None,
+            "funding_date": str(row.company_latest_funding_date)
+            if row.company_latest_funding_date
+            else None,
             "total_funding": row.company_total_funding,
             "technologies": row.company_technologies or [],
             "keywords": row.company_keywords or [],
@@ -575,9 +585,15 @@ async def build_client_proof_points(
     if row.g2_rating and row.g2_review_count:
         ratings["g2"] = {"rating": float(row.g2_rating), "reviews": row.g2_review_count}
     if row.capterra_rating and row.capterra_review_count:
-        ratings["capterra"] = {"rating": float(row.capterra_rating), "reviews": row.capterra_review_count}
+        ratings["capterra"] = {
+            "rating": float(row.capterra_rating),
+            "reviews": row.capterra_review_count,
+        }
     if row.trustpilot_rating and row.trustpilot_review_count:
-        ratings["trustpilot"] = {"rating": float(row.trustpilot_rating), "reviews": row.trustpilot_review_count}
+        ratings["trustpilot"] = {
+            "rating": float(row.trustpilot_rating),
+            "reviews": row.trustpilot_review_count,
+        }
     if row.google_rating and row.google_review_count:
         ratings["google"] = {"rating": float(row.google_rating), "reviews": row.google_review_count}
 
@@ -647,7 +663,9 @@ def format_proof_points_for_prompt(proof_points: dict[str, Any]) -> str:
     if ratings:
         rating_strs = []
         for platform, data in ratings.items():
-            rating_strs.append(f"{platform.upper()}: {data['rating']}/5 ({data['reviews']} reviews)")
+            rating_strs.append(
+                f"{platform.upper()}: {data['rating']}/5 ({data['reviews']} reviews)"
+            )
         lines.append(f"\n**Ratings:** {'; '.join(rating_strs)}")
 
     # Testimonials
@@ -678,6 +696,7 @@ def format_proof_points_for_prompt(proof_points: dict[str, Any]) -> str:
 # ============================================
 # HELPER FUNCTIONS
 # ============================================
+
 
 def _calculate_tenure_months(start_date) -> int:
     """Calculate months since start date."""
@@ -771,6 +790,7 @@ def _has_value(value: Any) -> bool:
 # PRIORITY WEIGHTING FUNCTIONS
 # ============================================
 
+
 def extract_high_priority_fields(context: dict[str, Any]) -> list[tuple[str, str, Any]]:
     """
     Extract fields with HIGH priority that have non-empty values.
@@ -814,11 +834,13 @@ def generate_priority_guidance(context: dict[str, Any]) -> str:
     high_priority = extract_high_priority_fields(context)
 
     if not high_priority:
-        return "No high-priority personalization fields available. Focus on industry/title relevance."
+        return (
+            "No high-priority personalization fields available. Focus on industry/title relevance."
+        )
 
     lines = [
         "The following HIGH PRIORITY fields are available and MUST be used for personalization:",
-        ""
+        "",
     ]
 
     for field_path, description, value in high_priority:
@@ -927,7 +949,11 @@ def format_lead_context_for_prompt(context: dict[str, Any]) -> str:
         medium_lines.append(f"**Seniority:** {person['seniority']}")
     if person.get("linkedin_headline"):
         medium_lines.append(f"**LinkedIn Headline:** {person['linkedin_headline']}")
-    if person.get("tenure_months") and person["tenure_months"] > 0 and not signals.get("new_in_role"):
+    if (
+        person.get("tenure_months")
+        and person["tenure_months"] > 0
+        and not signals.get("new_in_role")
+    ):
         # Only show tenure here if NOT new in role (already shown in HIGH)
         medium_lines.append(f"**Role Tenure:** {person['tenure_months']} months")
 
@@ -950,7 +976,9 @@ def format_lead_context_for_prompt(context: dict[str, Any]) -> str:
     # Score - MEDIUM priority
     score = context.get("score", {})
     if score.get("als_score"):
-        medium_lines.append(f"**ALS Score:** {score['als_score']} ({score.get('als_tier', 'unknown')} tier)")
+        medium_lines.append(
+            f"**ALS Score:** {score['als_score']} ({score.get('als_tier', 'unknown')} tier)"
+        )
 
     # --- LOW PRIORITY FIELDS ---
 

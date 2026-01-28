@@ -18,10 +18,9 @@ RULES APPLIED:
 
 import re
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from src.models.lead import Lead
-
 
 # =============================================================================
 # VOCABULARIES (must match WHAT Detector keywords)
@@ -29,36 +28,93 @@ from src.models.lead import Lead
 
 PAIN_POINT_KEYWORDS: dict[str, list[str]] = {
     "leads": [
-        "leads", "pipeline", "prospects", "opportunities",
-        "qualified", "mql", "sql", "inbound", "lead gen",
+        "leads",
+        "pipeline",
+        "prospects",
+        "opportunities",
+        "qualified",
+        "mql",
+        "sql",
+        "inbound",
+        "lead gen",
     ],
     "revenue": [
-        "revenue", "sales", "growth", "roi", "profit",
-        "income", "deals", "closed", "won", "booking",
+        "revenue",
+        "sales",
+        "growth",
+        "roi",
+        "profit",
+        "income",
+        "deals",
+        "closed",
+        "won",
+        "booking",
     ],
     "time": [
-        "time", "hours", "manual", "automate", "efficiency",
-        "busy", "bandwidth", "overwhelmed", "tedious", "repetitive",
+        "time",
+        "hours",
+        "manual",
+        "automate",
+        "efficiency",
+        "busy",
+        "bandwidth",
+        "overwhelmed",
+        "tedious",
+        "repetitive",
     ],
     "scaling": [
-        "scale", "scaling", "growth", "capacity", "bandwidth",
-        "hire", "team", "expand", "growing", "bottleneck",
+        "scale",
+        "scaling",
+        "growth",
+        "capacity",
+        "bandwidth",
+        "hire",
+        "team",
+        "expand",
+        "growing",
+        "bottleneck",
     ],
     "competition": [
-        "competitors", "competition", "market share", "behind",
-        "catching up", "losing", "threat", "outpace",
+        "competitors",
+        "competition",
+        "market share",
+        "behind",
+        "catching up",
+        "losing",
+        "threat",
+        "outpace",
     ],
     "cost": [
-        "cost", "expensive", "budget", "waste", "spending",
-        "save", "afford", "price", "investment", "roi",
+        "cost",
+        "expensive",
+        "budget",
+        "waste",
+        "spending",
+        "save",
+        "afford",
+        "price",
+        "investment",
+        "roi",
     ],
     "quality": [
-        "quality", "results", "performance", "outcomes",
-        "better", "improve", "consistent", "reliable",
+        "quality",
+        "results",
+        "performance",
+        "outcomes",
+        "better",
+        "improve",
+        "consistent",
+        "reliable",
     ],
     "clients": [
-        "clients", "customers", "retention", "churn",
-        "satisfaction", "referrals", "testimonials", "reviews",
+        "clients",
+        "customers",
+        "retention",
+        "churn",
+        "satisfaction",
+        "referrals",
+        "testimonials",
+        "reviews",
     ],
 }
 
@@ -86,6 +142,7 @@ CTA_PATTERNS: list[str] = [
 # =============================================================================
 # EXTRACTION FUNCTIONS
 # =============================================================================
+
 
 def extract_pain_points(text: str) -> list[str]:
     """
@@ -115,7 +172,7 @@ def extract_pain_points(text: str) -> list[str]:
     return found
 
 
-def extract_cta(text: str) -> Optional[str]:
+def extract_cta(text: str) -> str | None:
     """
     Extract call-to-action phrase from text.
 
@@ -213,11 +270,11 @@ def detect_personalization(text: str, lead: Lead) -> dict[str, bool]:
 def build_content_snapshot(
     body: str,
     lead: Lead,
-    subject: Optional[str] = None,
+    subject: str | None = None,
     touch_number: int = 1,
-    sequence_id: Optional[str] = None,
+    sequence_id: str | None = None,
     channel: str = "email",
-    template_id: Optional[str] = None,
+    template_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Build a complete content snapshot for activity recording.
@@ -249,22 +306,17 @@ def build_content_snapshot(
         "body": body,
         "channel": channel,
         "template_id": template_id,
-
         # Metrics
         "word_count": len(body.split()) if body else 0,
         "char_count": len(body) if body else 0,
-
         # Extracted features
         "pain_points_used": pain_points,
         "cta_used": cta,
-
         # Personalization flags
         **personalization,
-
         # Sequence context
         "touch_number": touch_number,
         "sequence_id": sequence_id,
-
         # Timing (for WHEN Detector)
         "sent_at": now.isoformat(),
         "day_of_week": now.weekday(),  # 0=Monday, 6=Sunday
@@ -283,7 +335,7 @@ def build_sms_snapshot(
     message: str,
     lead: Lead,
     touch_number: int = 1,
-    sequence_id: Optional[str] = None,
+    sequence_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Build content snapshot for SMS messages.
@@ -317,9 +369,9 @@ def build_linkedin_snapshot(
     message: str,
     lead: Lead,
     message_type: str = "message",
-    connection_note: Optional[str] = None,
+    connection_note: str | None = None,
     touch_number: int = 1,
-    sequence_id: Optional[str] = None,
+    sequence_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Build content snapshot for LinkedIn messages.
@@ -358,13 +410,13 @@ def build_linkedin_snapshot(
 
 def build_voice_snapshot(
     lead: Lead,
-    script_id: Optional[str] = None,
-    script_content: Optional[str] = None,
+    script_id: str | None = None,
+    script_content: str | None = None,
     outcome: str = "connected",
     duration_seconds: int = 0,
-    notes: Optional[str] = None,
+    notes: str | None = None,
     touch_number: int = 1,
-    sequence_id: Optional[str] = None,
+    sequence_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Build content snapshot for voice calls.

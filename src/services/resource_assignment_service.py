@@ -9,20 +9,19 @@ Spec: docs/architecture/distribution/RESOURCE_POOL.md
 
 import logging
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select, update, func, and_
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.resource_pool import (
-    ResourcePool,
-    ClientResource,
-    ResourceType,
-    ResourceStatus,
-    TIER_ALLOCATIONS,
-)
 from src.models.base import TierType
+from src.models.resource_pool import (
+    TIER_ALLOCATIONS,
+    ClientResource,
+    ResourcePool,
+    ResourceStatus,
+    ResourceType,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -220,7 +219,7 @@ async def release_client_resources(
 async def get_client_resources(
     db: AsyncSession,
     client_id: UUID,
-    resource_type: Optional[ResourceType] = None,
+    resource_type: ResourceType | None = None,
     active_only: bool = True,
 ) -> list[ClientResource]:
     """
@@ -235,11 +234,7 @@ async def get_client_resources(
     Returns:
         List of ClientResource objects with ResourcePool loaded
     """
-    stmt = (
-        select(ClientResource)
-        .join(ResourcePool)
-        .where(ClientResource.client_id == client_id)
-    )
+    stmt = select(ClientResource).join(ResourcePool).where(ClientResource.client_id == client_id)
 
     if active_only:
         stmt = stmt.where(ClientResource.released_at.is_(None))
@@ -286,7 +281,7 @@ async def get_client_resource_values(
 
 async def get_pool_stats(
     db: AsyncSession,
-    resource_type: Optional[ResourceType] = None,
+    resource_type: ResourceType | None = None,
 ) -> dict:
     """
     Get pool statistics.
@@ -304,9 +299,7 @@ async def get_pool_stats(
 
     for rt in types_to_check:
         # Total resources
-        total_stmt = select(func.count()).where(
-            ResourcePool.resource_type == rt
-        )
+        total_stmt = select(func.count()).where(ResourcePool.resource_type == rt)
         total = (await db.execute(total_stmt)).scalar() or 0
 
         # Available resources
@@ -394,7 +387,9 @@ async def check_buffer_and_alert(
 
         return {
             "resource_type": resource_type.value,
-            "status": "warning" if actual_buffer >= (allocated * BUFFER_CRITICAL_PCT / 100) else "critical",
+            "status": "warning"
+            if actual_buffer >= (allocated * BUFFER_CRITICAL_PCT / 100)
+            else "critical",
             "message": f"Buffer below {BUFFER_WARNING_PCT}%: have {actual_buffer}, need {required_buffer}",
             "allocated": allocated,
             "available": available,
@@ -423,11 +418,11 @@ async def add_resource_to_pool(
     db: AsyncSession,
     resource_type: ResourceType,
     resource_value: str,
-    provider: Optional[str] = None,
-    provider_id: Optional[str] = None,
+    provider: str | None = None,
+    provider_id: str | None = None,
     status: ResourceStatus = ResourceStatus.AVAILABLE,
     warmup_completed: bool = False,
-    resource_name: Optional[str] = None,
+    resource_name: str | None = None,
     max_clients: int = 1,
     reputation_score: int = 50,
 ) -> ResourcePool:
@@ -478,7 +473,7 @@ async def add_resource_to_pool(
 async def retire_resource(
     db: AsyncSession,
     resource_id: UUID,
-    reason: Optional[str] = None,
+    reason: str | None = None,
 ) -> bool:
     """
     Retire a resource (remove from allocation pool).

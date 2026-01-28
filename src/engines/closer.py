@@ -29,20 +29,18 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, select, text, update
+from sqlalchemy import and_, select, text
 
 logger = logging.getLogger(__name__)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import BaseEngine, EngineResult
-from src.exceptions import ValidationError
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
 from src.models.activity import Activity
 from src.models.base import ChannelType, IntentType, LeadStatus
 from src.models.lead import Lead
 from src.services.reply_analyzer import ReplyAnalyzer
 from src.services.thread_service import ThreadService
-
 
 # Intent type mapping from string to enum
 INTENT_MAP = {
@@ -325,7 +323,7 @@ class CloserEngine(BaseEngine):
         """
         try:
             # Get lead to validate
-            lead = await self.get_lead_by_id(db, lead_id)
+            await self.get_lead_by_id(db, lead_id)
 
             # Get reply activities
             stmt = (
@@ -531,8 +529,7 @@ class CloserEngine(BaseEngine):
                 lead.status = LeadStatus.ENRICHED
                 actions.append("stopped_sequence")
             logger.warning(
-                f"ADMIN ALERT: Angry/complaint reply from lead {lead.id} - "
-                f"requires manual review"
+                f"ADMIN ALERT: Angry/complaint reply from lead {lead.id} - requires manual review"
             )
             actions.append("admin_review_required")
             # Store admin review flag in lead metadata
@@ -544,9 +541,7 @@ class CloserEngine(BaseEngine):
 
         # Phase 24D: Track objection in lead history
         if reply_analysis and reply_analysis.get("objection_type"):
-            await self._add_objection_to_history(
-                db, lead, reply_analysis["objection_type"]
-            )
+            await self._add_objection_to_history(db, lead, reply_analysis["objection_type"])
             actions.append("tracked_objection")
 
         await db.commit()
@@ -588,10 +583,13 @@ class CloserEngine(BaseEngine):
             WHERE id = :lead_id
         """)
 
-        await db.execute(query, {
-            "reason": rejection_reason,
-            "lead_id": lead.id,
-        })
+        await db.execute(
+            query,
+            {
+                "reason": rejection_reason,
+                "lead_id": lead.id,
+            },
+        )
 
     async def _add_objection_to_history(
         self,
@@ -616,10 +614,13 @@ class CloserEngine(BaseEngine):
             WHERE id = :lead_id
         """)
 
-        await db.execute(query, {
-            "objection": objection_type,
-            "lead_id": lead.id,
-        })
+        await db.execute(
+            query,
+            {
+                "objection": objection_type,
+                "lead_id": lead.id,
+            },
+        )
 
     async def _update_thread_outcome(
         self,

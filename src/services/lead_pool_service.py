@@ -19,12 +19,10 @@ This service manages the platform-wide lead pool where all leads
 are stored with full enrichment data before being assigned to clients.
 """
 
-from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, func, or_, select, text, update
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.exceptions import NotFoundError, ValidationError
@@ -139,20 +137,13 @@ class LeadPoolService:
         # Prepare data with defaults
         params = self._prepare_insert_params(lead_data)
 
-        result = await self.session.execute(
-            text(query),
-            params
-        )
+        result = await self.session.execute(text(query), params)
         row = result.fetchone()
         await self.session.commit()
 
         return self._row_to_dict(row)
 
-    async def update(
-        self,
-        lead_pool_id: UUID,
-        lead_data: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def update(self, lead_pool_id: UUID, lead_data: dict[str, Any]) -> dict[str, Any]:
         """
         Update an existing lead in the pool.
 
@@ -168,21 +159,48 @@ class LeadPoolService:
         params = {"id": str(lead_pool_id)}
 
         updatable_fields = [
-            "first_name", "last_name", "title", "seniority",
-            "linkedin_headline", "photo_url", "twitter_url",
-            "phone", "personal_email", "linkedin_url",
-            "city", "state", "country", "timezone",
-            "departments", "employment_history", "current_role_start_date",
-            "company_name", "company_domain", "company_website",
-            "company_linkedin_url", "company_description", "company_logo_url",
-            "company_industry", "company_sub_industry",
-            "company_employee_count", "company_revenue", "company_revenue_range",
-            "company_founded_year", "company_country", "company_city",
-            "company_state", "company_postal_code",
-            "company_is_hiring", "company_latest_funding_stage",
-            "company_latest_funding_date", "company_total_funding",
-            "company_technologies", "company_keywords",
-            "email_status", "enrichment_confidence", "enrichment_data",
+            "first_name",
+            "last_name",
+            "title",
+            "seniority",
+            "linkedin_headline",
+            "photo_url",
+            "twitter_url",
+            "phone",
+            "personal_email",
+            "linkedin_url",
+            "city",
+            "state",
+            "country",
+            "timezone",
+            "departments",
+            "employment_history",
+            "current_role_start_date",
+            "company_name",
+            "company_domain",
+            "company_website",
+            "company_linkedin_url",
+            "company_description",
+            "company_logo_url",
+            "company_industry",
+            "company_sub_industry",
+            "company_employee_count",
+            "company_revenue",
+            "company_revenue_range",
+            "company_founded_year",
+            "company_country",
+            "company_city",
+            "company_state",
+            "company_postal_code",
+            "company_is_hiring",
+            "company_latest_funding_stage",
+            "company_latest_funding_date",
+            "company_total_funding",
+            "company_technologies",
+            "company_keywords",
+            "email_status",
+            "enrichment_confidence",
+            "enrichment_data",
         ]
 
         for field in updatable_fields:
@@ -190,11 +208,9 @@ class LeadPoolService:
                 update_fields.append(f"{field} = :{field}")
                 value = lead_data[field]
                 # Handle special types
-                if isinstance(value, dict):
+                if isinstance(value, (dict, list)):
                     import json
-                    params[field] = json.dumps(value)
-                elif isinstance(value, list):
-                    import json
+
                     params[field] = json.dumps(value)
                 else:
                     params[field] = value
@@ -238,10 +254,7 @@ class LeadPoolService:
             SELECT * FROM lead_pool
             WHERE id = :id
         """
-        result = await self.session.execute(
-            text(query),
-            {"id": str(lead_pool_id)}
-        )
+        result = await self.session.execute(text(query), {"id": str(lead_pool_id)})
         row = result.fetchone()
         return self._row_to_dict(row) if row else None
 
@@ -259,10 +272,7 @@ class LeadPoolService:
             SELECT * FROM lead_pool
             WHERE email = :email
         """
-        result = await self.session.execute(
-            text(query),
-            {"email": email.lower().strip()}
-        )
+        result = await self.session.execute(text(query), {"email": email.lower().strip()})
         row = result.fetchone()
         return self._row_to_dict(row) if row else None
 
@@ -280,10 +290,7 @@ class LeadPoolService:
             SELECT * FROM lead_pool
             WHERE apollo_id = :apollo_id
         """
-        result = await self.session.execute(
-            text(query),
-            {"apollo_id": apollo_id}
-        )
+        result = await self.session.execute(text(query), {"apollo_id": apollo_id})
         row = result.fetchone()
         return self._row_to_dict(row) if row else None
 
@@ -360,11 +367,7 @@ class LeadPoolService:
 
         return [self._row_to_dict(row) for row in rows]
 
-    async def mark_bounced(
-        self,
-        lead_pool_id: UUID,
-        reason: str | None = None
-    ) -> bool:
+    async def mark_bounced(self, lead_pool_id: UUID, reason: str | None = None) -> bool:
         """
         Mark a lead as bounced globally.
 
@@ -389,19 +392,14 @@ class LeadPoolService:
         """
 
         result = await self.session.execute(
-            text(query),
-            {"id": str(lead_pool_id), "reason": reason}
+            text(query), {"id": str(lead_pool_id), "reason": reason}
         )
         row = result.fetchone()
         await self.session.commit()
 
         return row is not None
 
-    async def mark_unsubscribed(
-        self,
-        lead_pool_id: UUID,
-        reason: str | None = None
-    ) -> bool:
+    async def mark_unsubscribed(self, lead_pool_id: UUID, reason: str | None = None) -> bool:
         """
         Mark a lead as unsubscribed globally.
 
@@ -426,8 +424,7 @@ class LeadPoolService:
         """
 
         result = await self.session.execute(
-            text(query),
-            {"id": str(lead_pool_id), "reason": reason}
+            text(query), {"id": str(lead_pool_id), "reason": reason}
         )
         row = result.fetchone()
         await self.session.commit()
@@ -465,10 +462,7 @@ class LeadPoolService:
 
         return dict(row._mapping)
 
-    async def bulk_create(
-        self,
-        leads: list[dict[str, Any]]
-    ) -> tuple[int, int]:
+    async def bulk_create(self, leads: list[dict[str, Any]]) -> tuple[int, int]:
         """
         Bulk create leads in the pool.
 
@@ -525,7 +519,9 @@ class LeadPoolService:
             "country": lead_data.get("country"),
             "timezone": lead_data.get("timezone"),
             "departments": lead_data.get("departments", []),
-            "employment_history": json.dumps(lead_data.get("employment_history")) if lead_data.get("employment_history") else None,
+            "employment_history": json.dumps(lead_data.get("employment_history"))
+            if lead_data.get("employment_history")
+            else None,
             "current_role_start_date": lead_data.get("current_role_start_date"),
             "company_name": lead_data.get("company_name"),
             "company_domain": lead_data.get("company_domain"),
@@ -551,8 +547,11 @@ class LeadPoolService:
             "company_keywords": lead_data.get("company_keywords", []),
             "email_status": email_status,
             "enrichment_source": lead_data.get("enrichment_source", "apollo"),
-            "enrichment_confidence": lead_data.get("confidence") or lead_data.get("enrichment_confidence"),
-            "enrichment_data": json.dumps(lead_data.get("enrichment_data")) if lead_data.get("enrichment_data") else None,
+            "enrichment_confidence": lead_data.get("confidence")
+            or lead_data.get("enrichment_confidence"),
+            "enrichment_data": json.dumps(lead_data.get("enrichment_data"))
+            if lead_data.get("enrichment_data")
+            else None,
         }
 
     def _row_to_dict(self, row: Any) -> dict[str, Any]:

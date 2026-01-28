@@ -23,9 +23,7 @@ from uuid import UUID
 
 from prefect import flow, task
 from sqlalchemy import and_, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.engines.scout import get_scout_engine
 from src.integrations.supabase import get_db_session
 from src.models.base import CampaignStatus, LeadStatus, SubscriptionStatus
 from src.models.campaign import Campaign
@@ -266,9 +264,7 @@ async def trigger_enrichment_task(lead_ids: list[str], campaign_id: str) -> dict
 
         queued_count = result.rowcount
 
-        logger.info(
-            f"Queued {queued_count} leads for enrichment in campaign {campaign_id}"
-        )
+        logger.info(f"Queued {queued_count} leads for enrichment in campaign {campaign_id}")
 
         return {
             "campaign_id": campaign_id,

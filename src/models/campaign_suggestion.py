@@ -9,7 +9,7 @@ Phase: Phase D - Item 18
 
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import (
@@ -32,6 +32,7 @@ from src.models.base import Base, SoftDeleteMixin, TimestampMixin, UUIDMixin
 
 class SuggestionType(str, Enum):
     """Types of campaign suggestions."""
+
     CREATE_CAMPAIGN = "create_campaign"
     PAUSE_CAMPAIGN = "pause_campaign"
     ADJUST_ALLOCATION = "adjust_allocation"
@@ -43,6 +44,7 @@ class SuggestionType(str, Enum):
 
 class SuggestionStatus(str, Enum):
     """Suggestion lifecycle status."""
+
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
@@ -67,7 +69,7 @@ class CampaignSuggestion(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         nullable=False,
         index=True,
     )
-    campaign_id: Mapped[Optional[UUID]] = mapped_column(
+    campaign_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("campaigns.id", ondelete="SET NULL"),
         nullable=True,  # NULL for create_campaign suggestions
@@ -115,17 +117,17 @@ class CampaignSuggestion(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         nullable=False,
         default=list,
     )
-    pattern_snapshot: Mapped[Optional[dict[str, Any]]] = mapped_column(
+    pattern_snapshot: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB,
         nullable=True,
     )
 
     # Metrics
-    current_metrics: Mapped[Optional[dict[str, Any]]] = mapped_column(
+    current_metrics: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB,
         nullable=True,
     )
-    projected_improvement: Mapped[Optional[dict[str, Any]]] = mapped_column(
+    projected_improvement: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB,
         nullable=True,
     )
@@ -136,15 +138,15 @@ class CampaignSuggestion(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         nullable=False,
         server_default=text("NOW()"),
     )
-    reviewed_at: Mapped[Optional[datetime]] = mapped_column(
+    reviewed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
-    reviewed_by: Mapped[Optional[UUID]] = mapped_column(
+    reviewed_by: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         nullable=True,
     )
-    applied_at: Mapped[Optional[datetime]] = mapped_column(
+    applied_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
@@ -155,8 +157,8 @@ class CampaignSuggestion(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     )
 
     # Client feedback
-    client_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    rejection_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    client_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
     client = relationship("Client", back_populates="campaign_suggestions")
@@ -233,13 +235,13 @@ class CampaignSuggestionHistory(Base, UUIDMixin):
         nullable=False,
         index=True,
     )
-    old_status: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    old_status: Mapped[str | None] = mapped_column(Text, nullable=True)
     new_status: Mapped[str] = mapped_column(Text, nullable=False)
-    changed_by: Mapped[Optional[UUID]] = mapped_column(
+    changed_by: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         nullable=True,
     )
-    change_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    change_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     changed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

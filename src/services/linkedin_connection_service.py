@@ -15,15 +15,14 @@ Key Changes from HeyReach:
 
 import logging
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config.settings import settings
-from src.models.linkedin_credential import LinkedInCredential
 from src.integrations.unipile import get_unipile_client
+from src.models.linkedin_credential import LinkedInCredential
 
 logger = logging.getLogger(__name__)
 
@@ -94,8 +93,14 @@ class LinkedInConnectionService:
         await db.refresh(credential)
 
         # Determine redirect URLs based on environment
-        frontend_url = settings.ALLOWED_ORIGINS[0] if settings.ALLOWED_ORIGINS else "http://localhost:3000"
-        api_url = "https://agency-os-production.up.railway.app" if settings.is_production else "http://localhost:8000"
+        frontend_url = (
+            settings.ALLOWED_ORIGINS[0] if settings.ALLOWED_ORIGINS else "http://localhost:3000"
+        )
+        api_url = (
+            "https://agency-os-production.up.railway.app"
+            if settings.is_production
+            else "http://localhost:8000"
+        )
 
         try:
             # Generate hosted auth URL from Unipile
@@ -206,7 +211,9 @@ class LinkedInConnectionService:
                 }
 
         elif status in ("CREATION_FAILED", "DISCONNECTED"):
-            credential.connection_status = "failed" if status == "CREATION_FAILED" else "disconnected"
+            credential.connection_status = (
+                "failed" if status == "CREATION_FAILED" else "disconnected"
+            )
             credential.last_error = payload.get("error") or payload.get("reason") or status
             credential.last_error_at = datetime.utcnow()
             await db.commit()
@@ -251,7 +258,7 @@ class LinkedInConnectionService:
         self,
         db: AsyncSession,
         client_id: UUID,
-    ) -> Optional[LinkedInCredential]:
+    ) -> LinkedInCredential | None:
         """
         Get LinkedIn credential for client.
 
@@ -262,9 +269,7 @@ class LinkedInConnectionService:
         Returns:
             LinkedInCredential or None
         """
-        stmt = select(LinkedInCredential).where(
-            LinkedInCredential.client_id == client_id
-        )
+        stmt = select(LinkedInCredential).where(LinkedInCredential.client_id == client_id)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -296,15 +301,9 @@ class LinkedInConnectionService:
             "headline": credential.linkedin_headline,
             "connection_count": credential.linkedin_connection_count,
             "connected_at": (
-                credential.connected_at.isoformat()
-                if credential.connected_at
-                else None
+                credential.connected_at.isoformat() if credential.connected_at else None
             ),
-            "error": (
-                credential.last_error
-                if credential.connection_status == "failed"
-                else None
-            ),
+            "error": (credential.last_error if credential.connection_status == "failed" else None),
         }
 
     async def disconnect(
@@ -353,7 +352,7 @@ class LinkedInConnectionService:
         self,
         db: AsyncSession,
         client_id: UUID,
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Get Unipile account ID for a connected client.
 

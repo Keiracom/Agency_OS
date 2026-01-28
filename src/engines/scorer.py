@@ -42,7 +42,7 @@ PHASE 24A+ CHANGES (LinkedIn Enrichment):
 """
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
@@ -56,7 +56,6 @@ from src.models.base import ChannelType, LeadStatus
 from src.models.client import Client
 from src.models.conversion_patterns import ConversionPattern
 from src.models.lead import Lead
-
 
 # ============================================
 # ALS Scoring Constants
@@ -113,20 +112,20 @@ MAX_BUYER_BOOST = 15
 
 # Phase 24A+: LinkedIn enrichment signals (max 10 points boost)
 MAX_LINKEDIN_BOOST = 10
-LINKEDIN_PERSON_POSTS_BOOST = 3      # Has recent posts (engaged)
-LINKEDIN_COMPANY_POSTS_BOOST = 2     # Company is active
+LINKEDIN_PERSON_POSTS_BOOST = 3  # Has recent posts (engaged)
+LINKEDIN_COMPANY_POSTS_BOOST = 2  # Company is active
 LINKEDIN_HIGH_CONNECTIONS_BOOST = 2  # 500+ connections (influential)
-LINKEDIN_HIGH_FOLLOWERS_BOOST = 2    # Company 1000+ followers
-LINKEDIN_RECENT_ACTIVITY_BOOST = 1   # Posted in last 30 days
+LINKEDIN_HIGH_FOLLOWERS_BOOST = 2  # Company 1000+ followers
+LINKEDIN_RECENT_ACTIVITY_BOOST = 1  # Posted in last 30 days
 
 # Default component weights (Phase 16)
 # These are used when no learned weights are available
 DEFAULT_WEIGHTS = {
     "data_quality": 0.20,  # 20 points -> 20%
-    "authority": 0.25,     # 25 points -> 25%
-    "company_fit": 0.25,   # 25 points -> 25%
-    "timing": 0.15,        # 15 points -> 15%
-    "risk": 0.15,          # 15 points -> 15%
+    "authority": 0.25,  # 25 points -> 25%
+    "company_fit": 0.25,  # 25 points -> 25%
+    "timing": 0.15,  # 15 points -> 15%
+    "risk": 0.15,  # 15 points -> 15%
 }
 
 # Bad titles to penalize
@@ -217,18 +216,15 @@ class ScorerEngine(BaseEngine):
         # Phase 16: Normalize to 0-100 scale for each component
         # (multiply by factor to get 0-100 range)
         normalized = {
-            "data_quality": raw_data_quality * 5,      # 0-20 -> 0-100
-            "authority": raw_authority * 4,            # 0-25 -> 0-100
-            "company_fit": raw_company_fit * 4,        # 0-25 -> 0-100
-            "timing": raw_timing * 6.67,               # 0-15 -> 0-100
-            "risk": raw_risk * 6.67,                   # 0-15 -> 0-100
+            "data_quality": raw_data_quality * 5,  # 0-20 -> 0-100
+            "authority": raw_authority * 4,  # 0-25 -> 0-100
+            "company_fit": raw_company_fit * 4,  # 0-25 -> 0-100
+            "timing": raw_timing * 6.67,  # 0-15 -> 0-100
+            "risk": raw_risk * 6.67,  # 0-15 -> 0-100
         }
 
         # Phase 16: Calculate weighted score
-        weighted_score = sum(
-            normalized[comp] * weights.get(comp, 0.2)
-            for comp in normalized
-        )
+        weighted_score = sum(normalized[comp] * weights.get(comp, 0.2) for comp in normalized)
 
         # Phase 24F: Apply buyer signal boost
         buyer_boost = await self._get_buyer_boost(db, lead.domain)
@@ -331,24 +327,30 @@ class ScorerEngine(BaseEngine):
                     score = result.data["als_score"]
                     total_score += score
                     results["tier_distribution"][tier] += 1
-                    results["scored_leads"].append({
-                        "lead_id": str(lead_id),
-                        "score": score,
-                        "tier": tier,
-                    })
+                    results["scored_leads"].append(
+                        {
+                            "lead_id": str(lead_id),
+                            "score": score,
+                            "tier": tier,
+                        }
+                    )
                 else:
                     results["failures"] += 1
-                    results["failed_leads"].append({
-                        "lead_id": str(lead_id),
-                        "error": result.error,
-                    })
+                    results["failed_leads"].append(
+                        {
+                            "lead_id": str(lead_id),
+                            "error": result.error,
+                        }
+                    )
 
             except Exception as e:
                 results["failures"] += 1
-                results["failed_leads"].append({
-                    "lead_id": str(lead_id),
-                    "error": str(e),
-                })
+                results["failed_leads"].append(
+                    {
+                        "lead_id": str(lead_id),
+                        "error": str(e),
+                    }
+                )
 
         # Calculate average
         if results["scored"] > 0:
@@ -358,8 +360,7 @@ class ScorerEngine(BaseEngine):
             data=results,
             metadata={
                 "batch_size": len(lead_ids),
-                "success_rate": results["scored"] / results["total"]
-                if results["total"] > 0 else 0,
+                "success_rate": results["scored"] / results["total"] if results["total"] > 0 else 0,
             },
         )
 
@@ -454,7 +455,16 @@ class ScorerEngine(BaseEngine):
             country = lead.organization_country.lower()
             if country in ["australia", "au", "aus"]:
                 score += SCORE_COUNTRY_AUSTRALIA
-            elif country in ["new zealand", "nz", "united states", "us", "usa", "united kingdom", "uk", "gb"]:
+            elif country in [
+                "new zealand",
+                "nz",
+                "united states",
+                "us",
+                "usa",
+                "united kingdom",
+                "uk",
+                "gb",
+            ]:
                 score += 4  # Partial credit for English-speaking countries
 
         return min(25, score)
@@ -738,6 +748,7 @@ class ScorerEngine(BaseEngine):
             enrichment_data = row.enrichment_data
             if isinstance(enrichment_data, str):
                 import json
+
                 enrichment_data = json.loads(enrichment_data)
 
             # Parse person LinkedIn data from enrichment_data
@@ -919,17 +930,16 @@ class ScorerEngine(BaseEngine):
 
         # Normalize to 0-100 scale
         normalized = {
-            "data_quality": raw_data_quality * 5,      # 0-20 -> 0-100
-            "authority": raw_authority * 4,            # 0-25 -> 0-100
-            "company_fit": raw_company_fit * 4,        # 0-25 -> 0-100
-            "timing": raw_timing * 6.67,               # 0-15 -> 0-100
-            "risk": raw_risk * 6.67,                   # 0-15 -> 0-100
+            "data_quality": raw_data_quality * 5,  # 0-20 -> 0-100
+            "authority": raw_authority * 4,  # 0-25 -> 0-100
+            "company_fit": raw_company_fit * 4,  # 0-25 -> 0-100
+            "timing": raw_timing * 6.67,  # 0-15 -> 0-100
+            "risk": raw_risk * 6.67,  # 0-15 -> 0-100
         }
 
         # Calculate weighted score (using default weights for pool)
         weighted_score = sum(
-            normalized[comp] * DEFAULT_WEIGHTS.get(comp, 0.2)
-            for comp in normalized
+            normalized[comp] * DEFAULT_WEIGHTS.get(comp, 0.2) for comp in normalized
         )
 
         # Phase 24F: Apply buyer signal boost
@@ -1034,24 +1044,30 @@ class ScorerEngine(BaseEngine):
                     score = result.data["als_score"]
                     total_score += score
                     results["tier_distribution"][tier] += 1
-                    results["scored_leads"].append({
-                        "lead_pool_id": str(pool_id),
-                        "score": score,
-                        "tier": tier,
-                    })
+                    results["scored_leads"].append(
+                        {
+                            "lead_pool_id": str(pool_id),
+                            "score": score,
+                            "tier": tier,
+                        }
+                    )
                 else:
                     results["failures"] += 1
-                    results["failed_leads"].append({
-                        "lead_pool_id": str(pool_id),
-                        "error": result.error,
-                    })
+                    results["failed_leads"].append(
+                        {
+                            "lead_pool_id": str(pool_id),
+                            "error": result.error,
+                        }
+                    )
 
             except Exception as e:
                 results["failures"] += 1
-                results["failed_leads"].append({
-                    "lead_pool_id": str(pool_id),
-                    "error": str(e),
-                })
+                results["failed_leads"].append(
+                    {
+                        "lead_pool_id": str(pool_id),
+                        "error": str(e),
+                    }
+                )
 
         if results["scored"] > 0:
             results["average_score"] = total_score / results["scored"]
@@ -1060,8 +1076,7 @@ class ScorerEngine(BaseEngine):
             data=results,
             metadata={
                 "batch_size": len(lead_pool_ids),
-                "success_rate": results["scored"] / results["total"]
-                if results["total"] > 0 else 0,
+                "success_rate": results["scored"] / results["total"] if results["total"] > 0 else 0,
                 "source": "lead_pool",
             },
         )
@@ -1134,24 +1149,30 @@ class ScorerEngine(BaseEngine):
                     score = result.data["als_score"]
                     total_score += score
                     results["tier_distribution"][tier] += 1
-                    results["scored_leads"].append({
-                        "assignment_id": str(assignment_id),
-                        "score": score,
-                        "tier": tier,
-                    })
+                    results["scored_leads"].append(
+                        {
+                            "assignment_id": str(assignment_id),
+                            "score": score,
+                            "tier": tier,
+                        }
+                    )
                 else:
                     results["failures"] += 1
-                    results["failed_leads"].append({
-                        "assignment_id": str(assignment_id),
-                        "error": result.error,
-                    })
+                    results["failed_leads"].append(
+                        {
+                            "assignment_id": str(assignment_id),
+                            "error": result.error,
+                        }
+                    )
 
             except Exception as e:
                 results["failures"] += 1
-                results["failed_leads"].append({
-                    "assignment_id": str(assignment_id),
-                    "error": str(e),
-                })
+                results["failed_leads"].append(
+                    {
+                        "assignment_id": str(assignment_id),
+                        "error": str(e),
+                    }
+                )
 
         if results["scored"] > 0:
             results["average_score"] = total_score / results["scored"]
@@ -1160,8 +1181,7 @@ class ScorerEngine(BaseEngine):
             data=results,
             metadata={
                 "batch_size": len(assignment_ids),
-                "success_rate": results["scored"] / results["total"]
-                if results["total"] > 0 else 0,
+                "success_rate": results["scored"] / results["total"] if results["total"] > 0 else 0,
                 "client_id": str(client_id),
                 "weights_source": weights_source,
             },
@@ -1225,10 +1245,7 @@ class ScorerEngine(BaseEngine):
         }
 
         # Calculate weighted score using client's weights
-        weighted_score = sum(
-            normalized[comp] * weights.get(comp, 0.2)
-            for comp in normalized
-        )
+        weighted_score = sum(normalized[comp] * weights.get(comp, 0.2) for comp in normalized)
 
         # Apply buyer signal boost
         company_domain = assignment_data.get("company_domain")
@@ -1373,7 +1390,7 @@ class ScorerEngine(BaseEngine):
                 "als_tier": score_data["als_tier"],
                 "als_components": json.dumps(score_data.get("als_components", {})),
                 "als_weights_used": json.dumps(score_data.get("als_weights_used", {})),
-            }
+            },
         )
         await db.commit()
 
@@ -1615,8 +1632,9 @@ class ScorerEngine(BaseEngine):
             score_data: Scoring results
             assignment_id: Deprecated, kept for backward compatibility
         """
-        from sqlalchemy import text
         import json
+
+        from sqlalchemy import text
 
         # Update the lead_pool record directly
         query = text("""
@@ -1635,7 +1653,7 @@ class ScorerEngine(BaseEngine):
                 "als_score": score_data["als_score"],
                 "als_tier": score_data["als_tier"],
                 "als_components": json.dumps(score_data.get("als_components", {})),
-            }
+            },
         )
 
         await db.commit()

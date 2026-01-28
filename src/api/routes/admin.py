@@ -14,7 +14,6 @@ RULES APPLIED:
 
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Any, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -24,10 +23,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import (
     AdminContext,
-    CurrentUser,
     get_admin_context,
     get_db_session,
-    require_platform_admin,
 )
 from src.exceptions import ResourceNotFoundError
 from src.models.activity import Activity
@@ -63,8 +60,8 @@ class ServiceStatus(BaseModel):
 
     name: str
     status: str = Field(..., description="healthy, degraded, or down")
-    latency_ms: Optional[float] = None
-    message: Optional[str] = None
+    latency_ms: float | None = None
+    message: str | None = None
 
 
 class SystemStatusResponse(BaseModel):
@@ -82,7 +79,7 @@ class Alert(BaseModel):
     severity: str = Field(..., description="critical, warning, or info")
     message: str
     timestamp: datetime
-    link: Optional[str] = None
+    link: str | None = None
     dismissible: bool = True
 
 
@@ -94,7 +91,7 @@ class ActivityItem(BaseModel):
     action: str
     details: str
     timestamp: datetime
-    channel: Optional[str] = None
+    channel: str | None = None
 
 
 class ClientListItem(BaseModel):
@@ -107,7 +104,7 @@ class ClientListItem(BaseModel):
     mrr: Decimal
     campaigns_count: int
     leads_count: int
-    last_activity: Optional[datetime]
+    last_activity: datetime | None
     health_score: int
 
 
@@ -129,7 +126,7 @@ class ClientDetail(BaseModel):
     subscription_status: str
     credits_remaining: int
     default_permission_mode: str
-    stripe_customer_id: Optional[str]
+    stripe_customer_id: str | None
     created_at: datetime
     updated_at: datetime
     health_score: int
@@ -174,9 +171,9 @@ class SuppressionEntry(BaseModel):
     id: UUID
     email: str
     reason: str
-    source: Optional[str]
-    added_by_email: Optional[str]
-    notes: Optional[str]
+    source: str | None
+    added_by_email: str | None
+    notes: str | None
     created_at: datetime
 
 
@@ -194,7 +191,7 @@ class AddSuppressionRequest(BaseModel):
 
     email: str = Field(..., description="Email to suppress")
     reason: str = Field(..., description="Reason: unsubscribe, bounce, spam, manual")
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 # ============================================================================
@@ -212,18 +209,26 @@ async def get_admin_stats(
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     yesterday_start = today_start - timedelta(days=1)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    last_month_start = (month_start - timedelta(days=1)).replace(day=1)
+    (month_start - timedelta(days=1)).replace(day=1)
 
     # MRR calculation (tier-based pricing)
-    tier_pricing = {"ignition": Decimal("199"), "velocity": Decimal("499"), "dominance": Decimal("999")}
+    tier_pricing = {
+        "ignition": Decimal("199"),
+        "velocity": Decimal("499"),
+        "dominance": Decimal("999"),
+    }
 
     # Active clients with MRR
-    stmt = select(Client.tier, func.count(Client.id)).where(
-        and_(
-            Client.subscription_status == "active",
-            Client.deleted_at.is_(None),
+    stmt = (
+        select(Client.tier, func.count(Client.id))
+        .where(
+            and_(
+                Client.subscription_status == "active",
+                Client.deleted_at.is_(None),
+            )
         )
-    ).group_by(Client.tier)
+        .group_by(Client.tier)
+    )
     result = await db.execute(stmt)
     tier_counts = dict(result.fetchall())
 
@@ -261,11 +266,13 @@ async def get_admin_stats(
     result = await db.execute(stmt)
     leads_yesterday = result.scalar() or 1  # Avoid division by zero
 
-    leads_change = ((leads_today - leads_yesterday) / leads_yesterday) * 100 if leads_yesterday else 0
+    leads_change = (
+        ((leads_today - leads_yesterday) / leads_yesterday) * 100 if leads_yesterday else 0
+    )
 
     # AI spend from Redis (real data)
-    from src.integrations.redis import ai_spend_tracker
     from src.config.settings import settings
+    from src.integrations.redis import ai_spend_tracker
 
     try:
         ai_spend_float = await ai_spend_tracker.get_spend()
@@ -452,9 +459,7 @@ async def get_system_status(
 
     # Determine overall status
     statuses = [s.status for s in services]
-    if "down" in statuses:
-        overall = "degraded"
-    elif "degraded" in statuses:
+    if "down" in statuses or "degraded" in statuses:
         overall = "degraded"
     else:
         overall = "healthy"
@@ -477,12 +482,16 @@ async def list_all_clients(
     db: AsyncSession = Depends(get_db_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    status_filter: Optional[str] = Query(None, alias="status"),
-    tier_filter: Optional[str] = Query(None, alias="tier"),
-    search: Optional[str] = None,
+    status_filter: str | None = Query(None, alias="status"),
+    tier_filter: str | None = Query(None, alias="tier"),
+    search: str | None = None,
 ):
     """Get all clients with health scores and metrics."""
-    tier_pricing = {"ignition": Decimal("199"), "velocity": Decimal("499"), "dominance": Decimal("999")}
+    tier_pricing = {
+        "ignition": Decimal("199"),
+        "velocity": Decimal("499"),
+        "dominance": Decimal("999"),
+    }
 
     # Base query
     conditions = [Client.deleted_at.is_(None)]
@@ -562,9 +571,13 @@ async def list_all_clients(
             ClientListItem(
                 id=client.id,
                 name=client.name,
-                tier=client.tier.value if hasattr(client.tier, 'value') else client.tier,
-                subscription_status=client.subscription_status.value if hasattr(client.subscription_status, 'value') else client.subscription_status,
-                mrr=tier_pricing.get(client.tier if isinstance(client.tier, str) else client.tier.value, Decimal("0")),
+                tier=client.tier.value if hasattr(client.tier, "value") else client.tier,
+                subscription_status=client.subscription_status.value
+                if hasattr(client.subscription_status, "value")
+                else client.subscription_status,
+                mrr=tier_pricing.get(
+                    client.tier if isinstance(client.tier, str) else client.tier.value, Decimal("0")
+                ),
                 campaigns_count=campaigns_count,
                 leads_count=leads_count,
                 last_activity=last_activity,
@@ -601,12 +614,17 @@ async def get_client_detail(
         raise ResourceNotFoundError(resource_type="Client", resource_id=str(client_id))
 
     # Get campaigns
-    stmt = select(Campaign).where(
-        and_(
-            Campaign.client_id == client_id,
-            Campaign.deleted_at.is_(None),
+    stmt = (
+        select(Campaign)
+        .where(
+            and_(
+                Campaign.client_id == client_id,
+                Campaign.deleted_at.is_(None),
+            )
         )
-    ).order_by(desc(Campaign.created_at)).limit(10)
+        .order_by(desc(Campaign.created_at))
+        .limit(10)
+    )
     result = await db.execute(stmt)
     campaigns = result.scalars().all()
 
@@ -614,7 +632,7 @@ async def get_client_detail(
         {
             "id": str(c.id),
             "name": c.name,
-            "status": c.status.value if hasattr(c.status, 'value') else c.status,
+            "status": c.status.value if hasattr(c.status, "value") else c.status,
             "leads_count": 0,  # Would count actual leads
         }
         for c in campaigns
@@ -639,7 +657,7 @@ async def get_client_detail(
             "id": str(user.id),
             "email": user.email,
             "full_name": user.full_name,
-            "role": membership.role.value if hasattr(membership.role, 'value') else membership.role,
+            "role": membership.role.value if hasattr(membership.role, "value") else membership.role,
         }
         for user, membership in members
     ]
@@ -670,16 +688,24 @@ async def get_client_detail(
     health_score = 50
     if len(campaigns) > 0:
         health_score += 20
-    if client.subscription_status.value in ("active", "trialing") if hasattr(client.subscription_status, 'value') else client.subscription_status in ("active", "trialing"):
+    if (
+        client.subscription_status.value in ("active", "trialing")
+        if hasattr(client.subscription_status, "value")
+        else client.subscription_status in ("active", "trialing")
+    ):
         health_score += 15
 
     return ClientDetail(
         id=client.id,
         name=client.name,
-        tier=client.tier.value if hasattr(client.tier, 'value') else client.tier,
-        subscription_status=client.subscription_status.value if hasattr(client.subscription_status, 'value') else client.subscription_status,
+        tier=client.tier.value if hasattr(client.tier, "value") else client.tier,
+        subscription_status=client.subscription_status.value
+        if hasattr(client.subscription_status, "value")
+        else client.subscription_status,
         credits_remaining=client.credits_remaining,
-        default_permission_mode=client.default_permission_mode.value if hasattr(client.default_permission_mode, 'value') else client.default_permission_mode,
+        default_permission_mode=client.default_permission_mode.value
+        if hasattr(client.default_permission_mode, "value")
+        else client.default_permission_mode,
         stripe_customer_id=client.stripe_customer_id,
         created_at=client.created_at,
         updated_at=client.updated_at,
@@ -706,17 +732,17 @@ async def get_ai_spend(
     Real-time spend comes from Redis via ai_spend_tracker.
     Agent/client breakdown requires ai_usage_logs table (not yet implemented).
     """
-    from src.integrations.redis import ai_spend_tracker
     from src.config.settings import settings
+    from src.integrations.redis import ai_spend_tracker
 
     # Get real today's spend from Redis
     try:
         today_spend_float = await ai_spend_tracker.get_spend()
         today_spend = Decimal(str(round(today_spend_float, 2)))
-        remaining = await ai_spend_tracker.get_remaining()
+        await ai_spend_tracker.get_remaining()
     except Exception:
         today_spend = Decimal("0.00")
-        remaining = Decimal(str(settings.anthropic_daily_spend_limit))
+        Decimal(str(settings.anthropic_daily_spend_limit))
 
     today_limit = Decimal(str(settings.anthropic_daily_spend_limit))
     today_percentage = float((today_spend / today_limit) * 100) if today_limit > 0 else 0.0
@@ -733,19 +759,25 @@ async def get_ai_spend(
             agent="content",
             spend_aud=Decimal(str(round(float(today_spend) * content_pct / 100, 2))),
             percentage=content_pct,
-            token_count=int(float(today_spend) * content_pct / 100 * 1000 / 0.015) if today_spend > 0 else 0,
+            token_count=int(float(today_spend) * content_pct / 100 * 1000 / 0.015)
+            if today_spend > 0
+            else 0,
         ),
         AISpendByAgent(
             agent="reply",
             spend_aud=Decimal(str(round(float(today_spend) * reply_pct / 100, 2))),
             percentage=reply_pct,
-            token_count=int(float(today_spend) * reply_pct / 100 * 1000 / 0.015) if today_spend > 0 else 0,
+            token_count=int(float(today_spend) * reply_pct / 100 * 1000 / 0.015)
+            if today_spend > 0
+            else 0,
         ),
         AISpendByAgent(
             agent="cmo",
             spend_aud=Decimal(str(round(float(today_spend) * cmo_pct / 100, 2))),
             percentage=cmo_pct,
-            token_count=int(float(today_spend) * cmo_pct / 100 * 1000 / 0.015) if today_spend > 0 else 0,
+            token_count=int(float(today_spend) * cmo_pct / 100 * 1000 / 0.015)
+            if today_spend > 0
+            else 0,
         ),
     ]
 
@@ -795,16 +827,22 @@ async def get_ai_spend(
             daily_trend.append({"date": date_str, "spend": float(today_limit) * 0.15 + i * 5})
 
     # Add today
-    daily_trend.append({
-        "date": datetime.utcnow().strftime("%Y-%m-%d"),
-        "spend": float(today_spend),
-    })
+    daily_trend.append(
+        {
+            "date": datetime.utcnow().strftime("%Y-%m-%d"),
+            "spend": float(today_spend),
+        }
+    )
 
     # Month to date (estimate based on today's spend)
     day_of_month = datetime.utcnow().day
     mtd_spend = today_spend * Decimal(str(day_of_month))  # Rough estimate
     days_in_month = 30
-    projected_mtd = (mtd_spend / Decimal(str(day_of_month))) * Decimal(str(days_in_month)) if day_of_month > 0 else Decimal("0")
+    projected_mtd = (
+        (mtd_spend / Decimal(str(day_of_month))) * Decimal(str(days_in_month))
+        if day_of_month > 0
+        else Decimal("0")
+    )
 
     return AISpendResponse(
         today_spend=today_spend,
@@ -829,8 +867,8 @@ async def get_suppression_list(
     db: AsyncSession = Depends(get_db_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    reason_filter: Optional[str] = Query(None, alias="reason"),
-    search: Optional[str] = None,
+    reason_filter: str | None = Query(None, alias="reason"),
+    search: str | None = None,
 ):
     """Get global suppression list."""
     # Query from global_suppression_list table
@@ -906,19 +944,30 @@ async def get_revenue_metrics(
     db: AsyncSession = Depends(get_db_session),
 ):
     """Get revenue dashboard metrics."""
-    tier_pricing = {"ignition": Decimal("199"), "velocity": Decimal("499"), "dominance": Decimal("999")}
+    tier_pricing = {
+        "ignition": Decimal("199"),
+        "velocity": Decimal("499"),
+        "dominance": Decimal("999"),
+    }
 
     # Get tier distribution
-    stmt = select(Client.tier, func.count(Client.id)).where(
-        and_(
-            Client.subscription_status == "active",
-            Client.deleted_at.is_(None),
+    stmt = (
+        select(Client.tier, func.count(Client.id))
+        .where(
+            and_(
+                Client.subscription_status == "active",
+                Client.deleted_at.is_(None),
+            )
         )
-    ).group_by(Client.tier)
+        .group_by(Client.tier)
+    )
     result = await db.execute(stmt)
     tier_counts = dict(result.fetchall())
 
-    mrr = sum(tier_pricing.get(tier if isinstance(tier, str) else tier.value, Decimal("0")) * count for tier, count in tier_counts.items())
+    mrr = sum(
+        tier_pricing.get(tier if isinstance(tier, str) else tier.value, Decimal("0")) * count
+        for tier, count in tier_counts.items()
+    )
     arr = mrr * 12
 
     return {
@@ -932,7 +981,10 @@ async def get_revenue_metrics(
         "by_tier": {
             tier if isinstance(tier, str) else tier.value: {
                 "count": count,
-                "mrr": float(tier_pricing.get(tier if isinstance(tier, str) else tier.value, Decimal("0")) * count),
+                "mrr": float(
+                    tier_pricing.get(tier if isinstance(tier, str) else tier.value, Decimal("0"))
+                    * count
+                ),
             }
             for tier, count in tier_counts.items()
         },
@@ -950,7 +1002,7 @@ async def get_all_campaigns(
     db: AsyncSession = Depends(get_db_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    status_filter: Optional[str] = Query(None, alias="status"),
+    status_filter: str | None = Query(None, alias="status"),
 ):
     """Get all campaigns across all clients."""
     conditions = [Campaign.deleted_at.is_(None)]
@@ -981,8 +1033,12 @@ async def get_all_campaigns(
             "name": campaign.name,
             "client_id": str(client.id),
             "client_name": client.name,
-            "status": campaign.status.value if hasattr(campaign.status, 'value') else campaign.status,
-            "permission_mode": campaign.permission_mode.value if hasattr(campaign.permission_mode, 'value') else campaign.permission_mode,
+            "status": campaign.status.value
+            if hasattr(campaign.status, "value")
+            else campaign.status,
+            "permission_mode": campaign.permission_mode.value
+            if hasattr(campaign.permission_mode, "value")
+            else campaign.permission_mode,
             "created_at": campaign.created_at.isoformat(),
         }
         for campaign, client in rows
@@ -1002,7 +1058,7 @@ async def get_all_leads(
     db: AsyncSession = Depends(get_db_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    tier_filter: Optional[str] = Query(None, alias="tier"),
+    tier_filter: str | None = Query(None, alias="tier"),
 ):
     """Get all leads across all clients."""
     conditions = [Lead.deleted_at.is_(None)]
@@ -1035,7 +1091,7 @@ async def get_all_leads(
             "client_name": client.name,
             "als_score": lead.als_score,
             "als_tier": lead.als_tier,
-            "status": lead.status.value if hasattr(lead.status, 'value') else lead.status,
+            "status": lead.status.value if hasattr(lead.status, "value") else lead.status,
             "created_at": lead.created_at.isoformat(),
         }
         for lead, client in rows
@@ -1064,7 +1120,7 @@ class PoolStats(BaseModel):
     bounced: int
     unsubscribed: int
     utilization_rate: float
-    avg_als_score: Optional[float] = None
+    avg_als_score: float | None = None
 
 
 class PoolLeadItem(BaseModel):
@@ -1072,14 +1128,14 @@ class PoolLeadItem(BaseModel):
 
     id: UUID
     email: str
-    first_name: Optional[str]
-    last_name: Optional[str]
-    company_name: Optional[str]
-    title: Optional[str]
+    first_name: str | None
+    last_name: str | None
+    company_name: str | None
+    title: str | None
     pool_status: str
-    email_status: Optional[str]
-    als_score: Optional[int]
-    als_tier: Optional[str]
+    email_status: str | None
+    als_score: int | None
+    als_tier: str | None
     created_at: datetime
 
 
@@ -1097,21 +1153,21 @@ class PoolLeadDetail(BaseModel):
 
     id: UUID
     email: str
-    email_status: Optional[str]
-    first_name: Optional[str]
-    last_name: Optional[str]
-    title: Optional[str]
-    seniority: Optional[str]
-    company_name: Optional[str]
-    company_domain: Optional[str]
-    company_industry: Optional[str]
-    company_employee_count: Optional[int]
-    company_country: Optional[str]
-    linkedin_url: Optional[str]
-    phone: Optional[str]
+    email_status: str | None
+    first_name: str | None
+    last_name: str | None
+    title: str | None
+    seniority: str | None
+    company_name: str | None
+    company_domain: str | None
+    company_industry: str | None
+    company_employee_count: int | None
+    company_country: str | None
+    linkedin_url: str | None
+    phone: str | None
     pool_status: str
-    als_score: Optional[int]
-    als_tier: Optional[str]
+    als_score: int | None
+    als_tier: str | None
     is_bounced: bool
     is_unsubscribed: bool
     created_at: datetime
@@ -1145,7 +1201,7 @@ class ManualAssignRequest(BaseModel):
 
     lead_pool_ids: list[UUID] = Field(..., description="Pool lead IDs to assign")
     client_id: UUID = Field(..., description="Client to assign to")
-    campaign_id: Optional[UUID] = None
+    campaign_id: UUID | None = None
 
 
 class ReleaseLeadRequest(BaseModel):
@@ -1199,9 +1255,9 @@ async def get_pool_leads(
     db: AsyncSession = Depends(get_db_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    status_filter: Optional[str] = Query(None, alias="status"),
-    tier_filter: Optional[str] = Query(None, alias="tier"),
-    search: Optional[str] = None,
+    status_filter: str | None = Query(None, alias="status"),
+    tier_filter: str | None = Query(None, alias="tier"),
+    search: str | None = None,
 ):
     """Get paginated list of pool leads."""
     conditions = []
@@ -1340,8 +1396,8 @@ async def get_pool_assignments(
     db: AsyncSession = Depends(get_db_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    client_id: Optional[UUID] = None,
-    status_filter: Optional[str] = Query(None, alias="status"),
+    client_id: UUID | None = None,
+    status_filter: str | None = Query(None, alias="status"),
 ):
     """Get paginated list of pool assignments."""
     conditions = []
@@ -1409,7 +1465,7 @@ async def manual_assign_leads(
     """Manually assign pool leads to a client."""
     from src.services.lead_allocator_service import LeadAllocatorService
 
-    allocator = LeadAllocatorService(db)
+    LeadAllocatorService(db)
     assigned_count = 0
     errors = []
 
@@ -1431,14 +1487,14 @@ async def manual_assign_leads(
                     "lead_pool_id": str(lead_pool_id),
                     "client_id": str(request.client_id),
                     "campaign_id": str(request.campaign_id) if request.campaign_id else None,
-                }
+                },
             )
             row = result.fetchone()
             if row:
                 # Update pool status
                 await db.execute(
                     text("UPDATE lead_pool SET pool_status = 'assigned' WHERE id = :id"),
-                    {"id": str(lead_pool_id)}
+                    {"id": str(lead_pool_id)},
                 )
                 assigned_count += 1
             else:
@@ -1478,7 +1534,9 @@ async def release_pool_leads(
             if success:
                 released_count += 1
             else:
-                errors.append({"assignment_id": str(assignment_id), "error": "Not found or already released"})
+                errors.append(
+                    {"assignment_id": str(assignment_id), "error": "Not found or already released"}
+                )
         except Exception as e:
             errors.append({"assignment_id": str(assignment_id), "error": str(e)})
 
@@ -1526,7 +1584,9 @@ async def get_pool_utilization(
                 "released": row.released,
                 "total_touches": row.total_touches,
                 "replied": row.replied,
-                "conversion_rate": round(row.converted / row.total_assigned * 100, 2) if row.total_assigned else 0,
+                "conversion_rate": round(row.converted / row.total_assigned * 100, 2)
+                if row.total_assigned
+                else 0,
             }
             for row in rows
         ]

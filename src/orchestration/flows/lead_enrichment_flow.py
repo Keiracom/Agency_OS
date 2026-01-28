@@ -32,14 +32,11 @@ from sqlalchemy import text
 
 from src.agents.sdk_agents import (
     should_use_sdk_enrichment,
-    should_use_sdk_email,
-    should_use_sdk_voice_kb,
 )
-from src.agents.sdk_agents.enrichment_agent import run_sdk_enrichment
 from src.agents.sdk_agents.email_agent import run_sdk_email
+from src.agents.sdk_agents.enrichment_agent import run_sdk_enrichment
 from src.agents.sdk_agents.voice_kb_agent import run_sdk_voice_kb
 from src.agents.skills.research_skills import PersonalizationAnalysisSkill
-from src.models.client_intelligence import ClientIntelligence
 from src.engines.scorer import get_scorer_engine
 from src.engines.scout import get_scout_engine
 from src.integrations.anthropic import get_anthropic_client
@@ -101,10 +98,22 @@ async def get_client_intelligence_for_sdk(client_id: str) -> dict[str, Any] | No
             "testimonials": row.website_testimonials or [],
             "case_studies": row.website_case_studies or [],
             "ratings": {
-                "g2": {"rating": float(row.g2_rating) if row.g2_rating else None, "count": row.g2_review_count},
-                "capterra": {"rating": float(row.capterra_rating) if row.capterra_rating else None, "count": row.capterra_review_count},
-                "trustpilot": {"rating": float(row.trustpilot_rating) if row.trustpilot_rating else None, "count": row.trustpilot_review_count},
-                "google": {"rating": float(row.google_rating) if row.google_rating else None, "count": row.google_review_count},
+                "g2": {
+                    "rating": float(row.g2_rating) if row.g2_rating else None,
+                    "count": row.g2_review_count,
+                },
+                "capterra": {
+                    "rating": float(row.capterra_rating) if row.capterra_rating else None,
+                    "count": row.capterra_review_count,
+                },
+                "trustpilot": {
+                    "rating": float(row.trustpilot_rating) if row.trustpilot_rating else None,
+                    "count": row.trustpilot_review_count,
+                },
+                "google": {
+                    "rating": float(row.google_rating) if row.google_rating else None,
+                    "count": row.google_review_count,
+                },
             },
         }
 
@@ -278,6 +287,7 @@ async def analyze_for_personalization_task(
         # Update assignment with personalization data
         async with get_db_session() as db:
             import json
+
             update_query = text("""
                 UPDATE lead_assignments
                 SET
@@ -292,20 +302,25 @@ async def analyze_for_personalization_task(
                 WHERE id = :assignment_id
             """)
 
-            await db.execute(update_query, {
-                "assignment_id": assignment_id,
-                "personalization_data": json.dumps({
+            await db.execute(
+                update_query,
+                {
+                    "assignment_id": assignment_id,
+                    "personalization_data": json.dumps(
+                        {
+                            "pain_points": output.pain_points,
+                            "personalization_angles": output.personalization_angles,
+                            "topics_to_avoid": output.topics_to_avoid,
+                            "common_ground": output.common_ground,
+                            "best_timing": output.best_timing,
+                        }
+                    ),
                     "pain_points": output.pain_points,
-                    "personalization_angles": output.personalization_angles,
-                    "topics_to_avoid": output.topics_to_avoid,
-                    "common_ground": output.common_ground,
-                    "best_timing": output.best_timing,
-                }),
-                "pain_points": output.pain_points,
-                "icebreaker_hooks": json.dumps(output.icebreaker_hooks),
-                "best_channel": output.best_channel,
-                "confidence": output.confidence,
-            })
+                    "icebreaker_hooks": json.dumps(output.icebreaker_hooks),
+                    "best_channel": output.best_channel,
+                    "confidence": output.confidence,
+                },
+            )
             await db.commit()
 
         return {
@@ -353,6 +368,7 @@ async def sdk_enrich_hot_assignment_task(
             # Store SDK enrichment in assignment
             async with get_db_session() as db:
                 import json
+
                 update_query = text("""
                     UPDATE lead_assignments
                     SET
@@ -364,12 +380,15 @@ async def sdk_enrich_hot_assignment_task(
                     WHERE id = :assignment_id
                 """)
 
-                await db.execute(update_query, {
-                    "assignment_id": assignment_id,
-                    "sdk_enrichment": json.dumps(result.parsed_data),
-                    "sdk_signals": signals,
-                    "sdk_cost": result.cost_aud or 0,
-                })
+                await db.execute(
+                    update_query,
+                    {
+                        "assignment_id": assignment_id,
+                        "sdk_enrichment": json.dumps(result.parsed_data),
+                        "sdk_signals": signals,
+                        "sdk_cost": result.cost_aud or 0,
+                    },
+                )
                 await db.commit()
 
             logger.info(
@@ -433,6 +452,7 @@ async def sdk_generate_email_for_assignment_task(
             # Store SDK email in assignment
             async with get_db_session() as db:
                 import json
+
                 update_query = text("""
                     UPDATE lead_assignments
                     SET
@@ -441,10 +461,13 @@ async def sdk_generate_email_for_assignment_task(
                     WHERE id = :assignment_id
                 """)
 
-                await db.execute(update_query, {
-                    "assignment_id": assignment_id,
-                    "sdk_email": json.dumps(result.parsed_data),
-                })
+                await db.execute(
+                    update_query,
+                    {
+                        "assignment_id": assignment_id,
+                        "sdk_email": json.dumps(result.parsed_data),
+                    },
+                )
                 await db.commit()
 
             logger.info(f"SDK email generated for {assignment_id}")
@@ -505,6 +528,7 @@ async def sdk_generate_voice_kb_for_assignment_task(
             # Store SDK voice KB in assignment
             async with get_db_session() as db:
                 import json
+
                 update_query = text("""
                     UPDATE lead_assignments
                     SET
@@ -513,10 +537,13 @@ async def sdk_generate_voice_kb_for_assignment_task(
                     WHERE id = :assignment_id
                 """)
 
-                await db.execute(update_query, {
-                    "assignment_id": assignment_id,
-                    "sdk_voice_kb": json.dumps(result.parsed_data),
-                })
+                await db.execute(
+                    update_query,
+                    {
+                        "assignment_id": assignment_id,
+                        "sdk_voice_kb": json.dumps(result.parsed_data),
+                    },
+                )
                 await db.commit()
 
             logger.info(f"SDK voice KB generated for {assignment_id}")
@@ -587,12 +614,16 @@ async def score_enriched_lead_task(
             """)
 
             import json
-            await db.execute(update_query, {
-                "assignment_id": assignment_id,
-                "als_score": result.data["als_score"],
-                "als_tier": result.data["als_tier"],
-                "als_components": json.dumps(result.data.get("als_components", {})),
-            })
+
+            await db.execute(
+                update_query,
+                {
+                    "assignment_id": assignment_id,
+                    "als_score": result.data["als_score"],
+                    "als_tier": result.data["als_tier"],
+                    "als_components": json.dumps(result.data.get("als_components", {})),
+                },
+            )
             await db.commit()
 
             linkedin_boost = result.data.get("linkedin_boost", 0)
@@ -650,9 +681,7 @@ async def lead_enrichment_flow(
     logger.info(f"Starting enrichment for assignment {assignment_id}")
 
     # Stage 1: Get assignment data
-    assignment_data = await get_assignment_for_enrichment_task(
-        assignment_id=assignment_id
-    )
+    assignment_data = await get_assignment_for_enrichment_task(assignment_id=assignment_id)
 
     # Update status to in_progress
     async with get_db_session() as db:
@@ -664,7 +693,7 @@ async def lead_enrichment_flow(
                     updated_at = NOW()
                 WHERE id = :assignment_id
             """),
-            {"assignment_id": assignment_id}
+            {"assignment_id": assignment_id},
         )
         await db.commit()
 
@@ -679,8 +708,12 @@ async def lead_enrichment_flow(
     analysis_result = await analyze_for_personalization_task(
         assignment_id=assignment_id,
         lead_data=assignment_data,
-        person_linkedin=linkedin_result.get("person_data") if linkedin_result.get("success") else None,
-        company_linkedin=linkedin_result.get("company_data") if linkedin_result.get("success") else None,
+        person_linkedin=linkedin_result.get("person_data")
+        if linkedin_result.get("success")
+        else None,
+        company_linkedin=linkedin_result.get("company_data")
+        if linkedin_result.get("success")
+        else None,
         agency_services=assignment_data.get("agency_description", ""),
     )
 
@@ -688,7 +721,9 @@ async def lead_enrichment_flow(
     scoring_result = await score_enriched_lead_task(
         assignment_id=assignment_id,
         lead_pool_id=assignment_data["lead_pool_id"],
-        target_industries=[assignment_data.get("company_industry")] if assignment_data.get("company_industry") else None,
+        target_industries=[assignment_data.get("company_industry")]
+        if assignment_data.get("company_industry")
+        else None,
     )
 
     # Stage 5: SDK processing for Hot leads (ALS 85+)
@@ -714,10 +749,12 @@ async def lead_enrichment_flow(
         }
 
         # Check if SDK enrichment should run (Hot + signals)
-        sdk_eligible, sdk_signals = should_use_sdk_enrichment({
-            "als_score": als_score,
-            "company_employee_count": assignment_data.get("company_employee_count"),
-        })
+        sdk_eligible, sdk_signals = should_use_sdk_enrichment(
+            {
+                "als_score": als_score,
+                "company_employee_count": assignment_data.get("company_employee_count"),
+            }
+        )
 
         if sdk_eligible and sdk_signals:
             # Stage 5a: SDK deep enrichment (for Hot leads with signals)
@@ -730,7 +767,11 @@ async def lead_enrichment_flow(
                 total_sdk_cost += sdk_enrichment_result.get("sdk_cost_aud", 0)
 
         # Stage 5b: SDK email generation (for ALL Hot leads)
-        sdk_enrichment_data = sdk_enrichment_result.get("sdk_enrichment") if sdk_enrichment_result and sdk_enrichment_result.get("success") else None
+        sdk_enrichment_data = (
+            sdk_enrichment_result.get("sdk_enrichment")
+            if sdk_enrichment_result and sdk_enrichment_result.get("success")
+            else None
+        )
         sdk_email_result = await sdk_generate_email_for_assignment_task(
             assignment_id=assignment_id,
             client_id=assignment_data["client_id"],
@@ -764,17 +805,27 @@ async def lead_enrichment_flow(
         "lead_name": f"{assignment_data.get('first_name', '')} {assignment_data.get('last_name', '')}".strip(),
         "company": assignment_data.get("company_name"),
         "linkedin_scraped": linkedin_result.get("success", False),
-        "person_posts_found": linkedin_result.get("person_data", {}).get("posts_count", 0) if linkedin_result.get("success") else 0,
-        "company_posts_found": linkedin_result.get("company_data", {}).get("posts_count", 0) if linkedin_result.get("success") else 0,
+        "person_posts_found": linkedin_result.get("person_data", {}).get("posts_count", 0)
+        if linkedin_result.get("success")
+        else 0,
+        "company_posts_found": linkedin_result.get("company_data", {}).get("posts_count", 0)
+        if linkedin_result.get("success")
+        else 0,
         "analysis_complete": analysis_result.get("success", False),
-        "pain_points_found": len(analysis_result.get("pain_points", [])) if analysis_result.get("success") else 0,
-        "best_channel": analysis_result.get("best_channel") if analysis_result.get("success") else None,
+        "pain_points_found": len(analysis_result.get("pain_points", []))
+        if analysis_result.get("success")
+        else 0,
+        "best_channel": analysis_result.get("best_channel")
+        if analysis_result.get("success")
+        else None,
         "als_score": scoring_result.get("als_score") if scoring_result.get("success") else None,
         "als_tier": scoring_result.get("als_tier") if scoring_result.get("success") else None,
         # SDK results
         "sdk_enriched": sdk_enrichment_result.get("success") if sdk_enrichment_result else False,
         "sdk_email_generated": sdk_email_result.get("success") if sdk_email_result else False,
-        "sdk_voice_kb_generated": sdk_voice_kb_result.get("success") if sdk_voice_kb_result else False,
+        "sdk_voice_kb_generated": sdk_voice_kb_result.get("success")
+        if sdk_voice_kb_result
+        else False,
         "sdk_total_cost_aud": total_sdk_cost,
         "completed_at": datetime.utcnow().isoformat(),
     }
@@ -815,11 +866,13 @@ async def batch_lead_enrichment_flow(
             results.append(result)
         except Exception as e:
             logger.error(f"Enrichment failed for {assignment_id}: {e}")
-            results.append({
-                "assignment_id": assignment_id,
-                "success": False,
-                "error": str(e),
-            })
+            results.append(
+                {
+                    "assignment_id": assignment_id,
+                    "success": False,
+                    "error": str(e),
+                }
+            )
 
     # Compile batch summary
     successful = [r for r in results if r.get("als_score") is not None]
@@ -835,7 +888,9 @@ async def batch_lead_enrichment_flow(
         "successful": len(successful),
         "failed": len(failed),
         "tier_distribution": tier_distribution,
-        "average_score": sum(r.get("als_score", 0) for r in successful) / len(successful) if successful else 0,
+        "average_score": sum(r.get("als_score", 0) for r in successful) / len(successful)
+        if successful
+        else 0,
         "completed_at": datetime.utcnow().isoformat(),
     }
 

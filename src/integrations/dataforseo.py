@@ -31,7 +31,7 @@ from src.exceptions import APIError, IntegrationError
 class DataForSEOClient:
     """
     DataForSEO API client for SEO metrics enrichment.
-    
+
     Used to enhance ALS (Agency Lead Score) with:
     - Domain Rank (authority) - from Backlinks API
     - Organic Traffic ETV (presence) - from Labs API
@@ -39,7 +39,7 @@ class DataForSEOClient:
     - Backlinks Count - from Backlinks API
     - Referring Domains - from Backlinks API
     - Spam Score - from Backlinks API
-    
+
     API Costs (verified Jan 2026):
     - Labs domain_rank_overview: $0.0101/request
     - Backlinks summary: $0.02003/request
@@ -55,13 +55,13 @@ class DataForSEOClient:
     ):
         self.login = login or settings.dataforseo_login
         self.password = password or settings.dataforseo_password
-        
+
         if not self.login or not self.password:
             raise IntegrationError(
                 service="dataforseo",
                 message="DataForSEO login and password are required",
             )
-        
+
         # Create Basic Auth header
         credentials = f"{self.login}:{self.password}"
         encoded = base64.b64encode(credentials.encode()).decode()
@@ -129,15 +129,15 @@ class DataForSEOClient:
     ) -> dict[str, Any]:
         """
         Get domain SEO metrics from DataForSEO Labs API.
-        
+
         Endpoint: /dataforseo_labs/google/domain_rank_overview/live
         Cost: $0.0101 per request
-        
+
         Args:
             domain: Target domain (e.g., "example.com.au")
             location_code: Country code (2036 = Australia)
             language_code: Language code
-            
+
         Returns:
             Dict with organic metrics:
             - organic_etv: Estimated Traffic Value
@@ -148,15 +148,17 @@ class DataForSEOClient:
             - estimated_paid_traffic_cost: Value in paid equivalent
         """
         clean_domain = self._clean_domain(domain)
-        
+
         if not clean_domain:
             return self._empty_labs_result()
 
-        data = [{
-            "target": clean_domain,
-            "location_code": location_code,
-            "language_code": language_code,
-        }]
+        data = [
+            {
+                "target": clean_domain,
+                "location_code": location_code,
+                "language_code": language_code,
+            }
+        ]
 
         response = await self._request(
             method="POST",
@@ -173,14 +175,14 @@ class DataForSEOClient:
     ) -> dict[str, Any]:
         """
         Get backlink metrics from DataForSEO Backlinks API.
-        
+
         Endpoint: /backlinks/summary/live
         Cost: $0.02003 per request
-        
+
         Args:
             domain: Target domain (e.g., "example.com.au")
             include_subdomains: Include subdomains in count
-            
+
         Returns:
             Dict with backlink metrics:
             - rank: Domain Rank (0-1000+ scale, higher = more authoritative)
@@ -191,14 +193,16 @@ class DataForSEOClient:
             - spam_score: Spam score (0-100, lower = better)
         """
         clean_domain = self._clean_domain(domain)
-        
+
         if not clean_domain:
             return self._empty_backlinks_result()
 
-        data = [{
-            "target": clean_domain,
-            "include_subdomains": include_subdomains,
-        }]
+        data = [
+            {
+                "target": clean_domain,
+                "include_subdomains": include_subdomains,
+            }
+        ]
 
         response = await self._request(
             method="POST",
@@ -216,14 +220,14 @@ class DataForSEOClient:
     ) -> dict[str, Any]:
         """
         Get comprehensive domain metrics from both Labs and Backlinks APIs.
-        
+
         Combined cost: ~$0.03 per request
-        
+
         Args:
             domain: Target domain
             location_code: Country code for Labs API
             language_code: Language code for Labs API
-            
+
         Returns:
             Combined dict with all metrics from both APIs
         """
@@ -233,12 +237,12 @@ class DataForSEOClient:
             location_code=location_code,
             language_code=language_code,
         )
-        
+
         backlinks_result = await self.get_backlinks_summary(
             domain=domain,
             include_subdomains=True,
         )
-        
+
         # Merge results
         return {
             # From Labs API
@@ -248,14 +252,12 @@ class DataForSEOClient:
             "organic_pos_2_3": labs_result.get("organic_pos_2_3"),
             "organic_pos_4_10": labs_result.get("organic_pos_4_10"),
             "estimated_paid_traffic_cost": labs_result.get("estimated_paid_traffic_cost"),
-            
             # From Backlinks API
             "domain_rank": backlinks_result.get("rank"),
             "backlinks": backlinks_result.get("backlinks"),
             "referring_domains": backlinks_result.get("referring_domains"),
             "referring_ips": backlinks_result.get("referring_ips"),
             "spam_score": backlinks_result.get("spam_score"),
-            
             # Meta
             "enriched_at": datetime.utcnow().isoformat(),
         }
@@ -263,7 +265,7 @@ class DataForSEOClient:
     async def health_check(self) -> dict[str, Any]:
         """
         Check API connectivity and account status.
-        
+
         Returns:
             Dict with status, balance, and any errors
         """
@@ -272,18 +274,20 @@ class DataForSEOClient:
                 method="GET",
                 endpoint="/appendix/user_data",
             )
-            
+
             if response.get("tasks") and len(response["tasks"]) > 0:
                 task = response["tasks"][0]
                 if task.get("result"):
-                    result = task["result"][0] if isinstance(task["result"], list) else task["result"]
+                    result = (
+                        task["result"][0] if isinstance(task["result"], list) else task["result"]
+                    )
                     money = result.get("money", {})
                     return {
                         "status": "healthy",
                         "balance": money.get("balance"),
                         "login": result.get("login"),
                     }
-            
+
             return {
                 "status": "healthy",
                 "message": "Connected but no user data returned",
@@ -299,22 +303,22 @@ class DataForSEOClient:
         """Clean domain for API request."""
         if not domain:
             return ""
-        
+
         domain = domain.lower().strip()
         domain = domain.replace("https://", "").replace("http://", "")
-        
+
         if domain.startswith("www."):
             domain = domain[4:]
-        
+
         domain = domain.split("/")[0]
         domain = domain.split(":")[0]
-        
+
         return domain
 
     def _parse_labs_response(self, response: dict) -> dict[str, Any]:
         """
         Parse Labs API domain_rank_overview response.
-        
+
         Response structure (verified Jan 2026):
         {
             "tasks": [{
@@ -339,7 +343,7 @@ class DataForSEOClient:
             return self._empty_labs_result()
 
         task = response["tasks"][0]
-        
+
         if task.get("status_code") != 20000:
             return self._empty_labs_result()
 
@@ -348,13 +352,13 @@ class DataForSEOClient:
 
         result = task["result"][0]
         items = result.get("items", [])
-        
+
         if not items:
             return self._empty_labs_result()
-        
+
         item = items[0]
         organic = item.get("metrics", {}).get("organic", {})
-        
+
         return {
             "organic_etv": organic.get("etv"),
             "organic_count": organic.get("count"),
@@ -368,7 +372,7 @@ class DataForSEOClient:
     def _parse_backlinks_response(self, response: dict) -> dict[str, Any]:
         """
         Parse Backlinks API summary response.
-        
+
         Response structure (verified Jan 2026):
         {
             "tasks": [{
@@ -387,7 +391,7 @@ class DataForSEOClient:
             return self._empty_backlinks_result()
 
         task = response["tasks"][0]
-        
+
         if task.get("status_code") != 20000:
             return self._empty_backlinks_result()
 
@@ -395,7 +399,7 @@ class DataForSEOClient:
             return self._empty_backlinks_result()
 
         result = task["result"][0]
-        
+
         return {
             "rank": result.get("rank"),
             "backlinks": result.get("backlinks"),
@@ -437,10 +441,10 @@ class DataForSEOClient:
     def score_domain_rank(self, domain_rank: int | None) -> int:
         """
         Score domain rank for ALS Company Fit component.
-        
+
         NOTE: DataForSEO Backlinks API returns rank on 0-1000+ scale
         (not 0-100 like Moz DA). Higher = more authoritative.
-        
+
         Scoring rubric (0-5 points):
         - 0-50: 0 points (new/invisible)
         - 51-150: 1 point (small local presence)
@@ -465,9 +469,9 @@ class DataForSEOClient:
     def score_organic_traffic(self, organic_etv: float | None) -> int:
         """
         Score organic traffic (ETV) for ALS Company Fit component.
-        
+
         ETV = Estimated Traffic Value (monthly)
-        
+
         Scoring rubric (0-5 points):
         - 0-50: 0 points (no presence)
         - 51-200: 1 point (minimal)
@@ -492,10 +496,10 @@ class DataForSEOClient:
     def score_seo_competence(self, metrics: dict[str, Any]) -> int:
         """
         Score overall SEO competence for marketing agencies.
-        
+
         Combines multiple signals to assess if agency
         "practices what they preach".
-        
+
         Scoring (0-5 points):
         - Has top 10 rankings: +2
         - Has position 1 rankings: +1
@@ -503,56 +507,56 @@ class DataForSEOClient:
         - Has 500+ referring domains: +1
         """
         score = 0
-        
+
         # Top 10 rankings (pos 1 + pos 2-3 + pos 4-10)
         pos_1 = metrics.get("organic_pos_1") or 0
         pos_2_3 = metrics.get("organic_pos_2_3") or 0
         pos_4_10 = metrics.get("organic_pos_4_10") or 0
         top_10_keywords = pos_1 + pos_2_3 + pos_4_10
-        
+
         if top_10_keywords > 0:
             score += 2
-        
+
         if pos_1 > 0:
             score += 1
-        
+
         keyword_count = metrics.get("organic_count") or 0
         if keyword_count >= 50:
             score += 1
-        
+
         referring_domains = metrics.get("referring_domains") or 0
         if referring_domains >= 500:
             score += 1
-        
+
         return min(score, 5)  # Cap at 5
 
     def calculate_risk_deductions(self, metrics: dict[str, Any]) -> int:
         """
         Calculate risk deductions based on DataForSEO metrics.
-        
+
         Deductions:
         - Domain Rank 0 or None: -5 (no web presence)
         - No organic traffic: -3 (doesn't practice what they preach)
         - High spam score (>50): -3 (low quality backlinks)
         """
         deductions = 0
-        
+
         domain_rank = metrics.get("domain_rank") or metrics.get("rank")
         organic_etv = metrics.get("organic_etv")
         spam_score = metrics.get("spam_score")
-        
+
         # No domain rank = suspicious for a marketing agency
         if domain_rank is None or domain_rank == 0:
             deductions -= 5
-        
+
         # No organic traffic = red flag for marketing agency
         if organic_etv is None or organic_etv == 0:
             deductions -= 3
-        
+
         # High spam score = low quality link building
         if spam_score is not None and spam_score > 50:
             deductions -= 3
-        
+
         return deductions
 
 

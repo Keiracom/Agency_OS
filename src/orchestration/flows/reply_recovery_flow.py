@@ -25,7 +25,6 @@ from uuid import UUID
 
 from prefect import flow, task
 from sqlalchemy import and_, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.closer import get_closer_engine
 from src.integrations.postmark import get_postmark_client
@@ -72,16 +71,23 @@ async def poll_email_replies_task(since_hours: int = 6) -> dict[str, Any]:
         recent_replies = []
         for reply in replies:
             received_at = reply.get("ReceivedAt")
-            if received_at and datetime.fromisoformat(received_at.replace("Z", "+00:00")) > since_time:
-                recent_replies.append({
-                    "message_id": reply.get("MessageID"),
-                    "from_email": reply.get("From"),
-                    "subject": reply.get("Subject"),
-                    "text_body": reply.get("TextBody"),
-                    "html_body": reply.get("HtmlBody"),
-                    "received_at": received_at,
-                    "in_reply_to": reply.get("Headers", [{}])[0].get("Value") if reply.get("Headers") else None,
-                })
+            if (
+                received_at
+                and datetime.fromisoformat(received_at.replace("Z", "+00:00")) > since_time
+            ):
+                recent_replies.append(
+                    {
+                        "message_id": reply.get("MessageID"),
+                        "from_email": reply.get("From"),
+                        "subject": reply.get("Subject"),
+                        "text_body": reply.get("TextBody"),
+                        "html_body": reply.get("HtmlBody"),
+                        "received_at": received_at,
+                        "in_reply_to": reply.get("Headers", [{}])[0].get("Value")
+                        if reply.get("Headers")
+                        else None,
+                    }
+                )
 
         logger.info(f"Polled {len(recent_replies)} email replies from last {since_hours} hours")
 
@@ -127,13 +133,15 @@ async def poll_sms_replies_task(since_hours: int = 6) -> dict[str, Any]:
 
         recent_replies = []
         for reply in replies:
-            recent_replies.append({
-                "message_sid": reply.get("sid"),
-                "from_phone": reply.get("from"),
-                "to_phone": reply.get("to"),
-                "body": reply.get("body"),
-                "date_sent": reply.get("date_sent"),
-            })
+            recent_replies.append(
+                {
+                    "message_sid": reply.get("sid"),
+                    "from_phone": reply.get("from"),
+                    "to_phone": reply.get("to"),
+                    "body": reply.get("body"),
+                    "date_sent": reply.get("date_sent"),
+                }
+            )
 
         logger.info(f"Polled {len(recent_replies)} SMS replies from last {since_hours} hours")
 
@@ -201,19 +209,19 @@ async def poll_linkedin_replies_task(since_hours: int = 6) -> dict[str, Any]:
                     if msg.get("is_sender", False):
                         continue
 
-                    recent_replies.append({
-                        "conversation_id": msg.get("chat_id"),
-                        "message_id": msg.get("message_id"),
-                        "linkedin_url": msg.get("sender_id"),  # Unipile uses sender_id
-                        "message": msg.get("text"),
-                        "received_at": msg.get("created_at"),
-                        "sender_name": msg.get("sender_name"),
-                    })
+                    recent_replies.append(
+                        {
+                            "conversation_id": msg.get("chat_id"),
+                            "message_id": msg.get("message_id"),
+                            "linkedin_url": msg.get("sender_id"),  # Unipile uses sender_id
+                            "message": msg.get("text"),
+                            "received_at": msg.get("created_at"),
+                            "sender_name": msg.get("sender_name"),
+                        }
+                    )
 
             except Exception as account_error:
-                logger.warning(
-                    f"Failed to poll LinkedIn account {account_id}: {account_error}"
-                )
+                logger.warning(f"Failed to poll LinkedIn account {account_id}: {account_error}")
                 continue
 
         logger.info(f"Polled {len(recent_replies)} LinkedIn replies from last {since_hours} hours")
@@ -298,14 +306,18 @@ async def check_if_reply_processed_task(
         Dict with whether reply was already processed
     """
     async with get_db_session() as db:
-        stmt = select(Activity.id).where(
-            and_(
-                Activity.lead_id == UUID(lead_id),
-                Activity.provider_message_id == provider_message_id,
-                Activity.channel == ChannelType(channel),
-                Activity.action == "reply_received",
+        stmt = (
+            select(Activity.id)
+            .where(
+                and_(
+                    Activity.lead_id == UUID(lead_id),
+                    Activity.provider_message_id == provider_message_id,
+                    Activity.channel == ChannelType(channel),
+                    Activity.action == "reply_received",
+                )
             )
-        ).limit(1)
+            .limit(1)
+        )
         result = await db.execute(stmt)
         activity = result.scalar_one_or_none()
 
@@ -398,9 +410,7 @@ async def reply_recovery_flow(since_hours: int = 6) -> dict[str, Any]:
     Returns:
         Dict with recovery summary
     """
-    logger.info(
-        f"Starting reply recovery flow (safety net for last {since_hours} hours)"
-    )
+    logger.info(f"Starting reply recovery flow (safety net for last {since_hours} hours)")
 
     # Step 1: Poll all channels
     email_replies = await poll_email_replies_task(since_hours=since_hours)
@@ -499,9 +509,7 @@ async def reply_recovery_flow(since_hours: int = 6) -> dict[str, Any]:
     for reply in linkedin_replies["replies"]:
         try:
             # Find lead by LinkedIn URL (sender_id from Unipile)
-            lead_result = await find_lead_by_contact_task(
-                linkedin_url=reply["linkedin_url"]
-            )
+            lead_result = await find_lead_by_contact_task(linkedin_url=reply["linkedin_url"])
             if not lead_result["found"]:
                 logger.warning(f"Lead not found for LinkedIn {reply['linkedin_url']}")
                 continue
@@ -516,9 +524,7 @@ async def reply_recovery_flow(since_hours: int = 6) -> dict[str, Any]:
                 channel="linkedin",
             )
             if check_result["already_processed"]:
-                logger.debug(
-                    f"LinkedIn reply {provider_msg_id} already processed"
-                )
+                logger.debug(f"LinkedIn reply {provider_msg_id} already processed")
                 continue
 
             # Process reply
@@ -554,8 +560,7 @@ async def reply_recovery_flow(since_hours: int = 6) -> dict[str, Any]:
     }
 
     logger.info(
-        f"Reply recovery flow completed: {total_processed} of {total_found} "
-        f"replies processed"
+        f"Reply recovery flow completed: {total_processed} of {total_found} replies processed"
     )
 
     return summary

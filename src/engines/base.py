@@ -27,9 +27,9 @@ from uuid import UUID
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.exceptions import EngineError, ResourceNotFoundError as NotFoundError, ValidationError
-from src.models.base import ChannelType, LeadStatus, SoftDeleteMixin
-
+from src.exceptions import ResourceNotFoundError as NotFoundError
+from src.exceptions import ValidationError
+from src.models.base import ChannelType, LeadStatus
 
 # Type variable for engine result types
 T = TypeVar("T")
@@ -167,8 +167,8 @@ class BaseEngine(ABC):
             NotFoundError: If campaign not found
             ValidationError: If campaign is not active
         """
-        from src.models.campaign import Campaign
         from src.models.base import CampaignStatus
+        from src.models.campaign import Campaign
 
         stmt = select(Campaign).where(
             and_(

@@ -16,6 +16,7 @@ API Reference:
 - Auth: X-API-KEY header
 """
 
+import contextlib
 import logging
 from typing import Any
 
@@ -92,16 +93,17 @@ class SalesforgeClient:
             return response.json()
         except httpx.HTTPStatusError as e:
             error_body = {}
-            try:
+            with contextlib.suppress(Exception):
                 error_body = e.response.json()
-            except Exception:
-                pass
 
-            sentry_sdk.set_context("salesforge_error", {
-                "status_code": e.response.status_code,
-                "response": error_body,
-                "endpoint": endpoint,
-            })
+            sentry_sdk.set_context(
+                "salesforge_error",
+                {
+                    "status_code": e.response.status_code,
+                    "response": error_body,
+                    "endpoint": endpoint,
+                },
+            )
             sentry_sdk.capture_exception(e)
 
             raise APIError(
@@ -210,11 +212,14 @@ class SalesforgeClient:
         except APIError:
             raise
         except Exception as e:
-            sentry_sdk.set_context("salesforge_email", {
-                "to": to_email,
-                "subject": subject[:50],
-                "from": from_email,
-            })
+            sentry_sdk.set_context(
+                "salesforge_email",
+                {
+                    "to": to_email,
+                    "subject": subject[:50],
+                    "from": from_email,
+                },
+            )
             sentry_sdk.capture_exception(e)
             raise APIError(
                 service="salesforge",
@@ -261,12 +266,14 @@ class SalesforgeClient:
                 )
                 results.append(result)
             except Exception as e:
-                results.append({
-                    "success": False,
-                    "error": str(e),
-                    "provider": "salesforge",
-                    "to_email": email["to_email"],
-                })
+                results.append(
+                    {
+                        "success": False,
+                        "error": str(e),
+                        "provider": "salesforge",
+                        "to_email": email["to_email"],
+                    }
+                )
 
         return results
 

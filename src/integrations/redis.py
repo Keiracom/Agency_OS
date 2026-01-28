@@ -17,12 +17,10 @@ import json
 from datetime import date, datetime
 from typing import Any
 
-import redis.asyncio as redis
 from redis.asyncio import ConnectionPool, Redis
 
 from src.config.settings import settings
-from src.exceptions import IntegrationError, RateLimitError, ResourceRateLimitError
-
+from src.exceptions import ResourceRateLimitError
 
 # ============================================
 # Redis Connection Pool

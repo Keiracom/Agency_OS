@@ -16,8 +16,9 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, String, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import ENUM, UUID as PGUUID
+from sqlalchemy import ForeignKey, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import ENUM
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import (
@@ -71,16 +72,16 @@ class Membership(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     )
 
     # Invitation tracking
-    invited_by: Mapped[Optional[UUID]] = mapped_column(
+    invited_by: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("users.id"),
         nullable=True,
     )
-    invited_email: Mapped[Optional[str]] = mapped_column(
+    invited_email: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
-    accepted_at: Mapped[Optional[datetime]] = mapped_column(
+    accepted_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
     )
 
@@ -100,9 +101,7 @@ class Membership(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     )
 
     # Unique constraint
-    __table_args__ = (
-        UniqueConstraint("user_id", "client_id", name="unique_membership"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "client_id", name="unique_membership"),)
 
     def __repr__(self) -> str:
         return f"<Membership(user_id={self.user_id}, client_id={self.client_id}, role={self.role.value})>"

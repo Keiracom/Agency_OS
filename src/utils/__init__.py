@@ -3,8 +3,8 @@ Utility modules for Agency OS.
 """
 
 from src.utils.encryption import (
-    encrypt_credential,
     decrypt_credential,
+    encrypt_credential,
     generate_encryption_key,
 )
 

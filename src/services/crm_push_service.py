@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 import time
 from datetime import datetime, timedelta
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 from urllib.parse import urlencode
 from uuid import UUID
 
@@ -47,11 +47,11 @@ class CRMPushResult(BaseModel):
 
     success: bool = False
     skipped: bool = False
-    reason: Optional[str] = None
-    crm_contact_id: Optional[str] = None
-    crm_deal_id: Optional[str] = None
-    crm_org_id: Optional[str] = None
-    error: Optional[str] = None
+    reason: str | None = None
+    crm_contact_id: str | None = None
+    crm_deal_id: str | None = None
+    crm_org_id: str | None = None
+    error: str | None = None
 
 
 class CRMConfig(BaseModel):
@@ -60,14 +60,14 @@ class CRMConfig(BaseModel):
     id: UUID
     client_id: UUID
     crm_type: Literal["hubspot", "pipedrive", "close"]
-    api_key: Optional[str] = None
-    oauth_access_token: Optional[str] = None
-    oauth_refresh_token: Optional[str] = None
-    oauth_expires_at: Optional[datetime] = None
-    hubspot_portal_id: Optional[str] = None
-    pipeline_id: Optional[str] = None
-    stage_id: Optional[str] = None
-    owner_id: Optional[str] = None
+    api_key: str | None = None
+    oauth_access_token: str | None = None
+    oauth_refresh_token: str | None = None
+    oauth_expires_at: datetime | None = None
+    hubspot_portal_id: str | None = None
+    pipeline_id: str | None = None
+    stage_id: str | None = None
+    owner_id: str | None = None
     is_active: bool = True
 
 
@@ -76,7 +76,7 @@ class CRMPipeline(BaseModel):
 
     id: str
     name: str
-    stages: list["CRMStage"] = []
+    stages: list[CRMStage] = []
 
 
 class CRMStage(BaseModel):
@@ -84,7 +84,7 @@ class CRMStage(BaseModel):
 
     id: str
     name: str
-    probability: Optional[float] = None
+    probability: float | None = None
 
 
 class CRMUser(BaseModel):
@@ -92,7 +92,7 @@ class CRMUser(BaseModel):
 
     id: str
     name: str
-    email: Optional[str] = None
+    email: str | None = None
 
 
 class LeadData(BaseModel):
@@ -100,25 +100,25 @@ class LeadData(BaseModel):
 
     id: UUID
     email: str
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    full_name: Optional[str] = None
-    phone: Optional[str] = None
-    title: Optional[str] = None
-    organization_name: Optional[str] = None
-    organization_website: Optional[str] = None
-    organization_industry: Optional[str] = None
-    linkedin_url: Optional[str] = None
+    first_name: str | None = None
+    last_name: str | None = None
+    full_name: str | None = None
+    phone: str | None = None
+    title: str | None = None
+    organization_name: str | None = None
+    organization_website: str | None = None
+    organization_industry: str | None = None
+    linkedin_url: str | None = None
 
 
 class MeetingData(BaseModel):
     """Meeting data for CRM push (simplified from full Meeting model)."""
 
     id: UUID
-    scheduled_at: Optional[datetime] = None
+    scheduled_at: datetime | None = None
     duration_minutes: int = 30
-    meeting_link: Optional[str] = None
-    notes: Optional[str] = None
+    meeting_link: str | None = None
+    notes: str | None = None
 
 
 # ============================================================================
@@ -150,7 +150,7 @@ class CRMPushService:
     # CONFIG MANAGEMENT
     # =========================================================================
 
-    async def get_config(self, client_id: UUID) -> Optional[CRMConfig]:
+    async def get_config(self, client_id: UUID) -> CRMConfig | None:
         """Get CRM config for a client."""
         result = await self.db.execute(
             """
@@ -250,17 +250,17 @@ class CRMPushService:
         client_id: UUID,
         operation: str,
         status: str,
-        lead_id: Optional[UUID] = None,
-        meeting_id: Optional[UUID] = None,
-        crm_contact_id: Optional[str] = None,
-        crm_deal_id: Optional[str] = None,
-        crm_org_id: Optional[str] = None,
-        request_payload: Optional[dict] = None,
-        response_payload: Optional[dict] = None,
-        error_code: Optional[str] = None,
-        error_message: Optional[str] = None,
-        duration_ms: Optional[int] = None,
-        crm_config_id: Optional[UUID] = None,
+        lead_id: UUID | None = None,
+        meeting_id: UUID | None = None,
+        crm_contact_id: str | None = None,
+        crm_deal_id: str | None = None,
+        crm_org_id: str | None = None,
+        request_payload: dict | None = None,
+        response_payload: dict | None = None,
+        error_code: str | None = None,
+        error_message: str | None = None,
+        duration_ms: int | None = None,
+        crm_config_id: UUID | None = None,
     ):
         """Log a CRM push operation."""
         import json
@@ -412,7 +412,7 @@ class CRMPushService:
         meeting: MeetingData,
         contact_id: str,
         deal_name: str,
-    ) -> tuple[str, Optional[str]]:
+    ) -> tuple[str, str | None]:
         """Create deal in CRM. Returns (deal_id, org_id)."""
         if config.crm_type == "hubspot":
             deal_id = await self._hubspot_create_deal(config, lead, meeting, contact_id, deal_name)
@@ -420,7 +420,9 @@ class CRMPushService:
         elif config.crm_type == "pipedrive":
             return await self._pipedrive_create_deal(config, lead, meeting, contact_id, deal_name)
         elif config.crm_type == "close":
-            deal_id = await self._close_create_opportunity(config, lead, meeting, contact_id, deal_name)
+            deal_id = await self._close_create_opportunity(
+                config, lead, meeting, contact_id, deal_name
+            )
             return deal_id, None
         else:
             raise ValueError(f"Unsupported CRM type: {config.crm_type}")
@@ -504,11 +506,7 @@ class CRMPushService:
         search_url = f"{HUBSPOT_API}/crm/v3/objects/contacts/search"
         search_body = {
             "filterGroups": [
-                {
-                    "filters": [
-                        {"propertyName": "email", "operator": "EQ", "value": lead.email}
-                    ]
-                }
+                {"filters": [{"propertyName": "email", "operator": "EQ", "value": lead.email}]}
             ],
             "limit": 1,
         }
@@ -634,7 +632,11 @@ class CRMPushService:
         response.raise_for_status()
 
         return [
-            CRMUser(id=u["id"], name=f"{u.get('firstName', '')} {u.get('lastName', '')}".strip(), email=u.get("email"))
+            CRMUser(
+                id=u["id"],
+                name=f"{u.get('firstName', '')} {u.get('lastName', '')}".strip(),
+                email=u.get("email"),
+            )
             for u in response.json().get("results", [])
         ]
 
@@ -660,7 +662,9 @@ class CRMPushService:
         # Create new person
         create_url = f"{PIPEDRIVE_API}/persons"
         create_body = {
-            "name": lead.full_name or f"{lead.first_name or ''} {lead.last_name or ''}".strip() or lead.email,
+            "name": lead.full_name
+            or f"{lead.first_name or ''} {lead.last_name or ''}".strip()
+            or lead.email,
             "email": [{"value": lead.email, "primary": True}],
         }
 
@@ -694,7 +698,7 @@ class CRMPushService:
         meeting: MeetingData,
         person_id: str,
         deal_name: str,
-    ) -> tuple[str, Optional[str]]:
+    ) -> tuple[str, str | None]:
         """Create Pipedrive deal. Returns (deal_id, org_id)."""
         org_id = None
 
@@ -720,7 +724,9 @@ class CRMPushService:
 
         # Add expected close date based on meeting
         if meeting.scheduled_at:
-            body["expected_close_date"] = (meeting.scheduled_at + timedelta(days=30)).strftime("%Y-%m-%d")
+            body["expected_close_date"] = (meeting.scheduled_at + timedelta(days=30)).strftime(
+                "%Y-%m-%d"
+            )
 
         response = await self.http.post(url, params={"api_token": config.api_key}, json=body)
         response.raise_for_status()
@@ -818,7 +824,8 @@ class CRMPushService:
             "name": lead.organization_name or lead.full_name or lead.email,
             "contacts": [
                 {
-                    "name": lead.full_name or f"{lead.first_name or ''} {lead.last_name or ''}".strip(),
+                    "name": lead.full_name
+                    or f"{lead.first_name or ''} {lead.last_name or ''}".strip(),
                     "emails": [{"email": lead.email, "type": "office"}],
                 }
             ],
@@ -912,7 +919,11 @@ class CRMPushService:
         response.raise_for_status()
 
         return [
-            CRMUser(id=u["id"], name=f"{u.get('first_name', '')} {u.get('last_name', '')}".strip(), email=u.get("email"))
+            CRMUser(
+                id=u["id"],
+                name=f"{u.get('first_name', '')} {u.get('last_name', '')}".strip(),
+                email=u.get("email"),
+            )
             for u in response.json().get("data", [])
         ]
 
@@ -920,7 +931,7 @@ class CRMPushService:
     # TEST CONNECTION
     # =========================================================================
 
-    async def test_connection(self, config: CRMConfig) -> tuple[bool, Optional[str]]:
+    async def test_connection(self, config: CRMConfig) -> tuple[bool, str | None]:
         """Test CRM connection. Returns (success, error_message)."""
         start_time = time.time()
 

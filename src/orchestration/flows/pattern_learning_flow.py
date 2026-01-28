@@ -30,14 +30,13 @@ from uuid import UUID
 
 from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
-from sqlalchemy import and_, delete, func, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import and_, func, select, update
 
 from src.detectors.funnel_detector import FunnelDetector
 from src.detectors.how_detector import HowDetector
+from src.detectors.weight_optimizer import WeightOptimizer
 from src.detectors.what_detector import WhatDetector
 from src.detectors.when_detector import WhenDetector
-from src.detectors.weight_optimizer import WeightOptimizer
 from src.detectors.who_detector import WhoDetector
 from src.integrations.supabase import get_db_session
 from src.models.base import LeadStatus, SubscriptionStatus
@@ -86,10 +85,12 @@ async def get_eligible_clients_task(min_conversions: int = MIN_CONVERSIONS) -> l
             .where(
                 and_(
                     Client.deleted_at.is_(None),
-                    Client.subscription_status.in_([
-                        SubscriptionStatus.ACTIVE,
-                        SubscriptionStatus.TRIALING,
-                    ]),
+                    Client.subscription_status.in_(
+                        [
+                            SubscriptionStatus.ACTIVE,
+                            SubscriptionStatus.TRIALING,
+                        ]
+                    ),
                     Lead.deleted_at.is_(None),
                     Lead.status == LeadStatus.CONVERTED,
                     Lead.updated_at >= cutoff,
@@ -133,9 +134,7 @@ async def archive_expired_patterns_task() -> dict[str, Any]:
         now = datetime.utcnow()
 
         # Find expired patterns
-        expired_stmt = select(ConversionPattern).where(
-            ConversionPattern.valid_until < now
-        )
+        expired_stmt = select(ConversionPattern).where(ConversionPattern.valid_until < now)
         result = await db.execute(expired_stmt)
         expired_patterns = list(result.scalars().all())
 

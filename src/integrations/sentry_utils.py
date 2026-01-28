@@ -8,7 +8,9 @@ DEPENDENCIES:
 """
 
 import functools
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
+
 import sentry_sdk
 
 from src.config.settings import settings
@@ -30,6 +32,7 @@ def track_integration_call(service: str) -> Callable[[F], F]:
         async def enrich_person(self, email: str) -> dict:
             ...
     """
+
     def decorator(func: F) -> F:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -39,20 +42,26 @@ def track_integration_call(service: str) -> Callable[[F], F]:
                     return result
                 except Exception as e:
                     # Add context before capturing
-                    sentry_sdk.set_context("integration", {
-                        "service": service,
-                        "function": func.__name__,
-                        "args_count": len(args),
-                        "kwargs_keys": list(kwargs.keys()),
-                    })
+                    sentry_sdk.set_context(
+                        "integration",
+                        {
+                            "service": service,
+                            "function": func.__name__,
+                            "args_count": len(args),
+                            "kwargs_keys": list(kwargs.keys()),
+                        },
+                    )
                     sentry_sdk.capture_exception(e)
                     raise
+
         return wrapper  # type: ignore
+
     return decorator
 
 
 def track_sync_integration_call(service: str) -> Callable[[F], F]:
     """Sync version of track_integration_call for non-async functions."""
+
     def decorator(func: F) -> F:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -61,13 +70,18 @@ def track_sync_integration_call(service: str) -> Callable[[F], F]:
                     result = func(*args, **kwargs)
                     return result
                 except Exception as e:
-                    sentry_sdk.set_context("integration", {
-                        "service": service,
-                        "function": func.__name__,
-                    })
+                    sentry_sdk.set_context(
+                        "integration",
+                        {
+                            "service": service,
+                            "function": func.__name__,
+                        },
+                    )
                     sentry_sdk.capture_exception(e)
                     raise
+
         return wrapper  # type: ignore
+
     return decorator
 
 
@@ -112,11 +126,13 @@ def capture_business_error(
 
 def set_user_context(user_id: str, email: str | None = None, client_id: str | None = None) -> None:
     """Set user context for all subsequent Sentry events in this request."""
-    sentry_sdk.set_user({
-        "id": user_id,
-        "email": email,
-        "client_id": client_id,
-    })
+    sentry_sdk.set_user(
+        {
+            "id": user_id,
+            "email": email,
+            "client_id": client_id,
+        }
+    )
 
 
 def add_breadcrumb(message: str, category: str = "info", data: dict | None = None) -> None:

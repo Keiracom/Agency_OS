@@ -12,8 +12,6 @@ RULES APPLIED:
   - Rule 20: Webhook-first architecture
 """
 
-import hashlib
-import hmac
 from typing import Any
 
 import httpx
@@ -112,7 +110,9 @@ class PostmarkClient:
             "message_id": payload.get("MessageID"),
             "from_email": payload.get("FromFull", {}).get("Email"),
             "from_name": payload.get("FromFull", {}).get("Name"),
-            "to_email": payload.get("ToFull", [{}])[0].get("Email") if payload.get("ToFull") else None,
+            "to_email": payload.get("ToFull", [{}])[0].get("Email")
+            if payload.get("ToFull")
+            else None,
             "subject": payload.get("Subject"),
             "text_body": payload.get("TextBody"),
             "html_body": payload.get("HtmlBody"),

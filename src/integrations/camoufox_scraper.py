@@ -14,10 +14,9 @@ TIER 3 of Scraper Waterfall:
 
 from __future__ import annotations
 
-import asyncio
 import logging
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import Any
 
 from src.config.settings import settings
 
@@ -52,7 +51,7 @@ class CamoufoxScrapeResult:
     page_count: int = 0
     tier_used: int = 3
     needs_fallback: bool = False
-    failure_reason: Optional[str] = None
+    failure_reason: str | None = None
 
     @property
     def success(self) -> bool:
@@ -74,10 +73,10 @@ class CamoufoxScraper:
 
     def __init__(
         self,
-        proxy_host: Optional[str] = None,
-        proxy_port: Optional[int] = None,
-        proxy_username: Optional[str] = None,
-        proxy_password: Optional[str] = None,
+        proxy_host: str | None = None,
+        proxy_port: int | None = None,
+        proxy_username: str | None = None,
+        proxy_password: str | None = None,
     ):
         """
         Initialize Camoufox scraper with optional proxy configuration.
@@ -88,14 +87,18 @@ class CamoufoxScraper:
             proxy_username: Proxy auth username
             proxy_password: Proxy auth password
         """
-        self.proxy_host = proxy_host or getattr(settings, 'residential_proxy_host', None)
-        self.proxy_port = proxy_port or getattr(settings, 'residential_proxy_port', None)
-        self.proxy_username = proxy_username or getattr(settings, 'residential_proxy_username', None)
-        self.proxy_password = proxy_password or getattr(settings, 'residential_proxy_password', None)
+        self.proxy_host = proxy_host or getattr(settings, "residential_proxy_host", None)
+        self.proxy_port = proxy_port or getattr(settings, "residential_proxy_port", None)
+        self.proxy_username = proxy_username or getattr(
+            settings, "residential_proxy_username", None
+        )
+        self.proxy_password = proxy_password or getattr(
+            settings, "residential_proxy_password", None
+        )
 
         self._proxy_config = self._build_proxy_config()
 
-    def _build_proxy_config(self) -> Optional[dict[str, Any]]:
+    def _build_proxy_config(self) -> dict[str, Any] | None:
         """Build proxy configuration dict for Camoufox."""
         if not self.proxy_host or not self.proxy_port:
             return None
@@ -213,7 +216,7 @@ class CamoufoxScraper:
                         needs_fallback=False,
                     )
 
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.warning(f"Camoufox timeout for {url}")
                     return CamoufoxScrapeResult(
                         url=url,
@@ -298,17 +301,14 @@ class CamoufoxScraper:
         html_lower = html.lower()
 
         # Count blocked indicators
-        matches = sum(
-            1 for indicator in BLOCKED_INDICATORS
-            if indicator in html_lower
-        )
+        matches = sum(1 for indicator in BLOCKED_INDICATORS if indicator in html_lower)
 
         # Multiple indicators = likely blocked
         return matches >= 2
 
 
 # Singleton instance
-_camoufox_scraper: Optional[CamoufoxScraper] = None
+_camoufox_scraper: CamoufoxScraper | None = None
 
 
 def get_camoufox_scraper() -> CamoufoxScraper:
@@ -328,6 +328,7 @@ def is_camoufox_available() -> bool:
     """
     try:
         import camoufox  # noqa: F401
+
         return True
     except ImportError:
         return False

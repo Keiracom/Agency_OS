@@ -12,36 +12,41 @@ RULES APPLIED:
 """
 
 # Agency OS - Models Package
-from src.models.base import Base, SoftDeleteMixin, TimestampMixin, PatternType
-from src.models.client import Client
-from src.models.user import User
-from src.models.membership import Membership
-from src.models.campaign import Campaign, CampaignResource, CampaignSequence, CampaignType
-from src.models.lead import Lead, GlobalSuppression, ClientSuppression, DomainSuppression
-from src.models.lead_pool import LeadPool, PoolStatus, EmailStatus
-from src.models.lead_social_post import LeadSocialPost
 from src.models.activity import Activity, ActivityStats
-from src.models.conversion_patterns import ConversionPattern, ConversionPatternHistory
-from src.models.url_validation import URLValidationResult
-from src.models.linkedin_credential import LinkedInCredential
-from src.models.sdk_usage_log import SDKUsageLog
-from src.models.client_intelligence import ClientIntelligence
-from src.models.resource_pool import (
-    ResourcePool,
-    ClientResource,
-    ResourceType,
-    ResourceStatus,
-    HealthStatus,
-    TIER_ALLOCATIONS,
-    HEALTH_THRESHOLDS,
-    HEALTH_DAILY_LIMITS,
+from src.models.base import Base, PatternType, SoftDeleteMixin, TimestampMixin
+from src.models.campaign import Campaign, CampaignResource, CampaignSequence, CampaignType
+from src.models.campaign_suggestion import (
+    CampaignSuggestion,
+    CampaignSuggestionHistory,
+    SuggestionStatus,
+    SuggestionType,
 )
-from src.models.client_persona import ClientPersona, PERSONA_ALLOCATIONS
-from src.models.linkedin_seat import LinkedInSeat, LinkedInSeatStatus, LINKEDIN_WARMUP_SCHEDULE
-from src.models.linkedin_connection import LinkedInConnection, LinkedInConnectionStatus
-from src.models.campaign_suggestion import CampaignSuggestion, CampaignSuggestionHistory, SuggestionType, SuggestionStatus
-from src.models.icp_refinement_log import IcpRefinementLog
+from src.models.client import Client
+from src.models.client_intelligence import ClientIntelligence
+from src.models.client_persona import PERSONA_ALLOCATIONS, ClientPersona
+from src.models.conversion_patterns import ConversionPattern, ConversionPatternHistory
 from src.models.digest_log import DigestLog
+from src.models.icp_refinement_log import IcpRefinementLog
+from src.models.lead import ClientSuppression, DomainSuppression, GlobalSuppression, Lead
+from src.models.lead_pool import EmailStatus, LeadPool, PoolStatus
+from src.models.lead_social_post import LeadSocialPost
+from src.models.linkedin_connection import LinkedInConnection, LinkedInConnectionStatus
+from src.models.linkedin_credential import LinkedInCredential
+from src.models.linkedin_seat import LINKEDIN_WARMUP_SCHEDULE, LinkedInSeat, LinkedInSeatStatus
+from src.models.membership import Membership
+from src.models.resource_pool import (
+    HEALTH_DAILY_LIMITS,
+    HEALTH_THRESHOLDS,
+    TIER_ALLOCATIONS,
+    ClientResource,
+    HealthStatus,
+    ResourcePool,
+    ResourceStatus,
+    ResourceType,
+)
+from src.models.sdk_usage_log import SDKUsageLog
+from src.models.url_validation import URLValidationResult
+from src.models.user import User
 
 __all__ = [
     # Base

@@ -10,17 +10,16 @@ DEPENDENCIES:
 """
 
 from datetime import date, timedelta
-from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select, and_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import (
-    get_db,
     get_current_user_client_id,
+    get_db,
 )
 from src.models.client import Client
 from src.models.digest_log import DigestLog
@@ -41,22 +40,18 @@ class DigestSettingsResponse(BaseModel):
     digest_frequency: str = Field(description="daily, weekly, or none")
     digest_send_hour: int = Field(ge=0, le=23, description="Hour of day (0-23)")
     digest_timezone: str
-    digest_recipients: List[str] = Field(default_factory=list)
-    last_digest_sent_at: Optional[str] = None
+    digest_recipients: list[str] = Field(default_factory=list)
+    last_digest_sent_at: str | None = None
 
 
 class DigestSettingsUpdate(BaseModel):
     """Request model for updating digest settings."""
 
-    digest_enabled: Optional[bool] = None
-    digest_frequency: Optional[str] = Field(
-        None, description="daily, weekly, or none"
-    )
-    digest_send_hour: Optional[int] = Field(
-        None, ge=0, le=23, description="Hour of day (0-23)"
-    )
-    digest_timezone: Optional[str] = None
-    digest_recipients: Optional[List[str]] = None
+    digest_enabled: bool | None = None
+    digest_frequency: str | None = Field(None, description="daily, weekly, or none")
+    digest_send_hour: int | None = Field(None, ge=0, le=23, description="Hour of day (0-23)")
+    digest_timezone: str | None = None
+    digest_recipients: list[str] | None = None
 
 
 class DigestPreviewResponse(BaseModel):
@@ -65,8 +60,8 @@ class DigestPreviewResponse(BaseModel):
     client_name: str
     digest_date: str
     metrics: dict
-    top_campaigns: List[dict]
-    content_samples: List[dict]
+    top_campaigns: list[dict]
+    content_samples: list[dict]
     html_preview: str
 
 
@@ -76,18 +71,18 @@ class DigestLogResponse(BaseModel):
     id: str
     digest_date: str
     digest_type: str
-    recipients: List[str]
+    recipients: list[str]
     status: str
-    sent_at: Optional[str]
+    sent_at: str | None
     metrics_snapshot: dict
-    opened_at: Optional[str]
-    clicked_at: Optional[str]
+    opened_at: str | None
+    clicked_at: str | None
 
 
 class DigestHistoryResponse(BaseModel):
     """Response model for digest history."""
 
-    digests: List[DigestLogResponse]
+    digests: list[DigestLogResponse]
     total: int
 
 
@@ -117,9 +112,7 @@ async def get_digest_settings(
         digest_timezone=client.digest_timezone,
         digest_recipients=client.digest_recipients or [],
         last_digest_sent_at=(
-            client.last_digest_sent_at.isoformat()
-            if client.last_digest_sent_at
-            else None
+            client.last_digest_sent_at.isoformat() if client.last_digest_sent_at else None
         ),
     )
 
@@ -174,16 +167,14 @@ async def update_digest_settings(
         digest_timezone=client.digest_timezone,
         digest_recipients=client.digest_recipients or [],
         last_digest_sent_at=(
-            client.last_digest_sent_at.isoformat()
-            if client.last_digest_sent_at
-            else None
+            client.last_digest_sent_at.isoformat() if client.last_digest_sent_at else None
         ),
     )
 
 
 @router.get("/preview", response_model=DigestPreviewResponse)
 async def preview_digest(
-    digest_date: Optional[date] = None,
+    digest_date: date | None = None,
     db: AsyncSession = Depends(get_db),
     client_id: UUID = Depends(get_current_user_client_id),
 ) -> DigestPreviewResponse:
@@ -244,9 +235,7 @@ async def get_digest_history(
     # Get total count
     from sqlalchemy import func
 
-    count_query = select(func.count(DigestLog.id)).where(
-        DigestLog.client_id == client_id
-    )
+    count_query = select(func.count(DigestLog.id)).where(DigestLog.client_id == client_id)
     count_result = await db.execute(count_query)
     total = count_result.scalar() or 0
 

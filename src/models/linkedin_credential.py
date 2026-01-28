@@ -9,7 +9,7 @@ Phase: 24H - LinkedIn Credential Connection
 """
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import ForeignKey, Integer, String, Text
@@ -62,52 +62,52 @@ class LinkedInCredential(Base, UUIDMixin, TimestampMixin):
     )
 
     # HeyReach integration
-    heyreach_sender_id: Mapped[Optional[str]] = mapped_column(
+    heyreach_sender_id: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
         doc="HeyReach sender ID after successful connection",
     )
-    heyreach_account_id: Mapped[Optional[str]] = mapped_column(
+    heyreach_account_id: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
         doc="HeyReach account ID",
     )
 
     # LinkedIn profile info (populated after connection)
-    linkedin_profile_url: Mapped[Optional[str]] = mapped_column(
+    linkedin_profile_url: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
         doc="LinkedIn profile URL",
     )
-    linkedin_profile_name: Mapped[Optional[str]] = mapped_column(
+    linkedin_profile_name: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
         doc="LinkedIn display name",
     )
-    linkedin_headline: Mapped[Optional[str]] = mapped_column(
+    linkedin_headline: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
         doc="LinkedIn headline",
     )
-    linkedin_connection_count: Mapped[Optional[int]] = mapped_column(
+    linkedin_connection_count: Mapped[int | None] = mapped_column(
         Integer,
         nullable=True,
         doc="Number of LinkedIn connections",
     )
 
     # 2FA handling
-    two_fa_method: Mapped[Optional[str]] = mapped_column(
+    two_fa_method: Mapped[str | None] = mapped_column(
         String(50),
         nullable=True,
         doc="2FA method: sms, email, authenticator",
     )
-    two_fa_requested_at: Mapped[Optional[datetime]] = mapped_column(
+    two_fa_requested_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
         doc="When 2FA was requested",
     )
 
     # Error tracking
-    last_error: Mapped[Optional[str]] = mapped_column(
+    last_error: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
         doc="Last error message",
@@ -118,17 +118,17 @@ class LinkedInCredential(Base, UUIDMixin, TimestampMixin):
         default=0,
         doc="Number of connection errors",
     )
-    last_error_at: Mapped[Optional[datetime]] = mapped_column(
+    last_error_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
         doc="When last error occurred",
     )
 
     # Connection timestamps
-    connected_at: Mapped[Optional[datetime]] = mapped_column(
+    connected_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
         doc="When connection was established",
     )
-    disconnected_at: Mapped[Optional[datetime]] = mapped_column(
+    disconnected_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
         doc="When account was disconnected",
     )

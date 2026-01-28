@@ -32,10 +32,8 @@ from pydantic_ai import Agent
 from pydantic_ai.models.anthropic import AnthropicModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.config.settings import settings
 from src.integrations.anthropic import get_anthropic_client
 from src.integrations.redis import ai_spend_tracker
-
 
 # Type variable for agent result data
 T = TypeVar("T")

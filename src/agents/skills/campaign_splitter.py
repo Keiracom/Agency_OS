@@ -37,16 +37,14 @@ class CampaignPlan(BaseModel):
     name: str = Field(..., description="Campaign name (e.g., 'Healthcare Outreach - February')")
     industry: str = Field(..., description="Target industry for this campaign")
     lead_allocation: int = Field(..., ge=0, description="Number of leads allocated")
-    icp_subset: dict[str, Any] = Field(
-        ..., description="Filtered ICP profile for this industry"
-    )
+    icp_subset: dict[str, Any] = Field(..., description="Filtered ICP profile for this industry")
     priority: int = Field(..., ge=1, description="Launch priority (1 = first)")
-    messaging_focus: str = Field(
-        "", description="Primary messaging angle for this industry"
-    )
+    messaging_focus: str = Field("", description="Primary messaging angle for this industry")
 
 
-class CampaignSplitterSkill(BaseSkill["CampaignSplitterSkill.Input", "CampaignSplitterSkill.Output"]):
+class CampaignSplitterSkill(
+    BaseSkill["CampaignSplitterSkill.Input", "CampaignSplitterSkill.Output"]
+):
     """
     Split multi-industry ICPs into separate campaign plans.
 
@@ -68,34 +66,29 @@ class CampaignSplitterSkill(BaseSkill["CampaignSplitterSkill.Input", "CampaignSp
     class Input(BaseModel):
         """Input for campaign splitting."""
 
-        icp_profile: dict[str, Any] = Field(
-            ..., description="Full ICPProfile as dictionary"
-        )
+        icp_profile: dict[str, Any] = Field(..., description="Full ICPProfile as dictionary")
         total_lead_budget: int = Field(
             ..., ge=1, description="Total leads to allocate across campaigns"
         )
         lead_distribution: dict[str, float] | None = Field(
-            None, description="Optional manual distribution (e.g., {'healthcare': 0.5, 'legal': 0.3})"
+            None,
+            description="Optional manual distribution (e.g., {'healthcare': 0.5, 'legal': 0.3})",
         )
 
     class Output(BaseModel):
         """Campaign split output."""
 
-        should_split: bool = Field(
-            ..., description="Whether the campaign should be split"
-        )
-        campaigns: list[CampaignPlan] = Field(
-            ..., description="List of campaign plans"
-        )
+        should_split: bool = Field(..., description="Whether the campaign should be split")
+        campaigns: list[CampaignPlan] = Field(..., description="List of campaign plans")
         total_leads: int = Field(..., description="Total leads allocated")
-        recommendation: str = Field(
-            ..., description="Strategic recommendation for launch"
-        )
+        recommendation: str = Field(..., description="Strategic recommendation for launch")
         launch_strategy: Literal["parallel", "sequential"] = Field(
             ..., description="Recommended launch approach"
         )
 
-    system_prompt: ClassVar[str] = """You are a campaign strategist. Given a multi-industry ICP, determine how to
+    system_prompt: ClassVar[
+        str
+    ] = """You are a campaign strategist. Given a multi-industry ICP, determine how to
 split into separate campaigns for maximum effectiveness.
 
 RULES:
@@ -167,16 +160,16 @@ Return JSON with this exact structure:
         return f"""Analyze this ICP and create campaign split plan.
 
 ICP PROFILE:
-- Industries: {', '.join(industries) if industries else 'Not specified'}
-- Titles: {', '.join(icp.get('icp_titles', [])) if icp.get('icp_titles') else 'Not specified'}
-- Pain Points: {', '.join(icp.get('icp_pain_points', [])) if icp.get('icp_pain_points') else 'Not specified'}
-- Locations: {', '.join(icp.get('icp_locations', [])) if icp.get('icp_locations') else 'Not specified'}
-- Company Sizes: {', '.join(icp.get('icp_company_sizes', [])) if icp.get('icp_company_sizes') else 'Not specified'}
+- Industries: {", ".join(industries) if industries else "Not specified"}
+- Titles: {", ".join(icp.get("icp_titles", [])) if icp.get("icp_titles") else "Not specified"}
+- Pain Points: {", ".join(icp.get("icp_pain_points", [])) if icp.get("icp_pain_points") else "Not specified"}
+- Locations: {", ".join(icp.get("icp_locations", [])) if icp.get("icp_locations") else "Not specified"}
+- Company Sizes: {", ".join(icp.get("icp_company_sizes", [])) if icp.get("icp_company_sizes") else "Not specified"}
 
 AGENCY INFO:
-- Name: {icp.get('company_name', 'Unknown')}
-- Services: {', '.join(icp.get('services_offered', [])) if icp.get('services_offered') else 'Not specified'}
-- Value Prop: {icp.get('value_proposition', 'Not specified')}
+- Name: {icp.get("company_name", "Unknown")}
+- Services: {", ".join(icp.get("services_offered", [])) if icp.get("services_offered") else "Not specified"}
+- Value Prop: {icp.get("value_proposition", "Not specified")}
 - Portfolio Companies: {len(portfolio)} total
 
 ALLOCATION PARAMS:
@@ -189,7 +182,7 @@ Return the complete split plan as JSON."""
     async def execute(
         self,
         input_data: Input,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
     ) -> SkillResult[Output]:
         """
         Execute the skill to split campaigns.
@@ -304,7 +297,7 @@ Return the complete split plan as JSON."""
             # Proportional adjustment
             ratio = target_total / current_total
             allocated = 0
-            for i, campaign in enumerate(output.campaigns[:-1]):
+            for _i, campaign in enumerate(output.campaigns[:-1]):
                 new_allocation = int(campaign.lead_allocation * ratio)
                 campaign.lead_allocation = new_allocation
                 allocated += new_allocation

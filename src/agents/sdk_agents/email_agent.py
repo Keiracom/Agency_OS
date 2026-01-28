@@ -19,15 +19,13 @@ Key features:
 
 from __future__ import annotations
 
-import json
 import logging
-from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from src.integrations.sdk_brain import SDKBrain, SDKBrainResult, create_sdk_brain
+from src.integrations.sdk_brain import SDKBrainResult, create_sdk_brain
 
 logger = logging.getLogger(__name__)
 
@@ -39,22 +37,23 @@ logger = logging.getLogger(__name__)
 
 class EmailOutput(BaseModel):
     """Generated email output."""
+
     subject: str = Field(description="Email subject line (max 50 characters)")
     body: str = Field(description="Email body (50-100 words)")
     personalization_used: list[str] = Field(
-        default_factory=list,
-        description="What personalization elements were used"
+        default_factory=list, description="What personalization elements were used"
     )
     estimated_word_count: int = Field(default=0, description="Estimated word count of body")
     tone: str = Field(default="professional", description="Tone used in the email")
     opening_type: str = Field(
         default="news_reference",
-        description="Type of opening: news_reference, hiring_mention, pain_point, mutual_connection"
+        description="Type of opening: news_reference, hiring_mention, pain_point, mutual_connection",
     )
 
 
 class EmailVariants(BaseModel):
     """Multiple email variants for A/B testing."""
+
     primary: EmailOutput = Field(description="Primary email version")
     variant_a: EmailOutput | None = Field(default=None, description="A/B test variant A")
     variant_b: EmailOutput | None = Field(default=None, description="A/B test variant B")
@@ -144,11 +143,17 @@ async def run_sdk_email(
     # Build context from lead data
     first_name = lead_data.get("first_name", "")
     last_name = lead_data.get("last_name", "")
-    name = f"{first_name} {last_name}".strip() or "there"
-    company = lead_data.get("company_name") or lead_data.get("organization_name") or lead_data.get("company", "")
+    f"{first_name} {last_name}".strip() or "there"
+    company = (
+        lead_data.get("company_name")
+        or lead_data.get("organization_name")
+        or lead_data.get("company", "")
+    )
     title = lead_data.get("title", "")
     industry = lead_data.get("company_industry") or lead_data.get("organization_industry", "")
-    employee_count = lead_data.get("company_employee_count") or lead_data.get("organization_employee_count", "")
+    employee_count = lead_data.get("company_employee_count") or lead_data.get(
+        "organization_employee_count", ""
+    )
 
     # Build enrichment context section
     enrichment_section = ""
@@ -216,10 +221,18 @@ async def run_sdk_email(
     if lead_data.get("linkedin_headline"):
         linkedin_parts.append(f"Headline: {lead_data['linkedin_headline']}")
     if lead_data.get("linkedin_about"):
-        about = lead_data["linkedin_about"][:300] + "..." if len(lead_data.get("linkedin_about", "")) > 300 else lead_data.get("linkedin_about", "")
+        about = (
+            lead_data["linkedin_about"][:300] + "..."
+            if len(lead_data.get("linkedin_about", "")) > 300
+            else lead_data.get("linkedin_about", "")
+        )
         linkedin_parts.append(f"About: {about}")
     if lead_data.get("linkedin_recent_posts"):
-        posts = lead_data["linkedin_recent_posts"][:500] + "..." if len(lead_data.get("linkedin_recent_posts", "")) > 500 else lead_data.get("linkedin_recent_posts", "")
+        posts = (
+            lead_data["linkedin_recent_posts"][:500] + "..."
+            if len(lead_data.get("linkedin_recent_posts", "")) > 500
+            else lead_data.get("linkedin_recent_posts", "")
+        )
         linkedin_parts.append(f"Recent posts: {posts}")
     if linkedin_parts:
         linkedin_section = "\n".join(linkedin_parts)
@@ -241,7 +254,7 @@ async def run_sdk_email(
         if campaign_parts:
             campaign_section = f"""
 CAMPAIGN CONTEXT:
-{chr(10).join(f'- {p}' for p in campaign_parts)}
+{chr(10).join(f"- {p}" for p in campaign_parts)}
 """
 
     # Client intelligence section (proof points for credibility)
@@ -275,7 +288,7 @@ CAMPAIGN CONTEXT:
             for t in testimonials:
                 if isinstance(t, dict) and t.get("quote"):
                     author = t.get("author", "Client")
-                    proof_parts.append(f"TESTIMONIAL: \"{t['quote'][:100]}...\" - {author}")
+                    proof_parts.append(f'TESTIMONIAL: "{t["quote"][:100]}..." - {author}')
 
         # Review ratings
         if client_intelligence.get("ratings"):
@@ -295,19 +308,23 @@ CAMPAIGN CONTEXT:
         if proof_parts:
             proof_section = f"""
 YOUR COMPANY'S PROOF POINTS (use 1-2 subtly in the email):
-{chr(10).join(f'- {p}' for p in proof_parts)}
+{chr(10).join(f"- {p}" for p in proof_parts)}
 """
 
     # Build the prompt
-    variants_instruction = """
+    variants_instruction = (
+        """
 Also generate 2 variants for A/B testing:
 - Variant A: Different subject line approach
 - Variant B: Different opening hook
 
 Return JSON with: {"primary": {...}, "variant_a": {...}, "variant_b": {...}}
-""" if generate_variants else """
+"""
+        if generate_variants
+        else """
 Return JSON with: {"subject": "...", "body": "...", "personalization_used": [...], "estimated_word_count": N, "tone": "...", "opening_type": "..."}
 """
+    )
 
     user_prompt = f"""Write a cold email to this prospect:
 
@@ -318,10 +335,10 @@ PROSPECT:
 - Industry: {industry}
 - Company size: {employee_count} employees
 
-RESEARCH FINDINGS:{enrichment_section if enrichment_section else ' None available - use LinkedIn data instead'}
+RESEARCH FINDINGS:{enrichment_section if enrichment_section else " None available - use LinkedIn data instead"}
 
 LINKEDIN DATA:
-{linkedin_section if linkedin_section else 'N/A'}
+{linkedin_section if linkedin_section else "N/A"}
 {campaign_section}{proof_section}
 INSTRUCTIONS:
 1. Use the research findings to personalize the email
@@ -353,7 +370,7 @@ INSTRUCTIONS:
             extra={
                 "cost_aud": result.cost_aud,
                 "turns": result.turns_used,
-            }
+            },
         )
     else:
         logger.warning(f"SDK email generation failed for {first_name} at {company}: {result.error}")
@@ -440,11 +457,26 @@ async def generate_email_sequence(
     sequence_length = min(max(sequence_length, 1), 5)  # Clamp to 1-5
 
     sequence_prompts = [
-        ("initial", "This is the FIRST email in a sequence. Focus on the strongest personalization hook from research."),
-        ("follow_up_1", "This is a FOLLOW-UP email. They haven't replied. Try a different angle - maybe focus on a different pain point or news item."),
-        ("follow_up_2", "This is the SECOND FOLLOW-UP. Be brief. Reference that you've reached out before. Try a completely different hook."),
-        ("value_add", "This is a VALUE-ADD email. Share something useful (insight, stat, resource) without asking for anything."),
-        ("break_up", "This is a BREAK-UP email. Final attempt. Be respectful, mention you won't follow up again. Light urgency but no pressure."),
+        (
+            "initial",
+            "This is the FIRST email in a sequence. Focus on the strongest personalization hook from research.",
+        ),
+        (
+            "follow_up_1",
+            "This is a FOLLOW-UP email. They haven't replied. Try a different angle - maybe focus on a different pain point or news item.",
+        ),
+        (
+            "follow_up_2",
+            "This is the SECOND FOLLOW-UP. Be brief. Reference that you've reached out before. Try a completely different hook.",
+        ),
+        (
+            "value_add",
+            "This is a VALUE-ADD email. Share something useful (insight, stat, resource) without asking for anything.",
+        ),
+        (
+            "break_up",
+            "This is a BREAK-UP email. Final attempt. Be respectful, mention you won't follow up again. Light urgency but no pressure.",
+        ),
     ]
 
     emails = []
@@ -469,14 +501,18 @@ async def generate_email_sequence(
         )
 
         if result.success and result.data:
-            email_data = result.data.model_dump() if isinstance(result.data, EmailOutput) else result.data
-            emails.append({
-                **email_data,
-                "sequence_position": i + 1,
-                "sequence_type": sequence_type,
-                "source": "sdk",
-                "cost_aud": result.cost_aud,
-            })
+            email_data = (
+                result.data.model_dump() if isinstance(result.data, EmailOutput) else result.data
+            )
+            emails.append(
+                {
+                    **email_data,
+                    "sequence_position": i + 1,
+                    "sequence_type": sequence_type,
+                    "source": "sdk",
+                    "cost_aud": result.cost_aud,
+                }
+            )
         else:
             # Log failure but continue with remaining emails
             logger.warning(f"Failed to generate email {i + 1} in sequence: {result.error}")

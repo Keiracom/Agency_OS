@@ -26,7 +26,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, func, select, text
+from sqlalchemy import and_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.detectors.base import BaseDetector
@@ -127,12 +127,14 @@ class WhoDetector(BaseDetector):
         stmt = select(Lead).where(
             and_(
                 Lead.client_id == client_id,
-                Lead.status.in_([
-                    LeadStatus.CONVERTED,
-                    LeadStatus.BOUNCED,
-                    LeadStatus.OPT_OUT,
-                    LeadStatus.NURTURING,  # Consider as non-conversion
-                ]),
+                Lead.status.in_(
+                    [
+                        LeadStatus.CONVERTED,
+                        LeadStatus.BOUNCED,
+                        LeadStatus.OPT_OUT,
+                        LeadStatus.NURTURING,  # Consider as non-conversion
+                    ]
+                ),
                 Lead.created_at >= cutoff,
                 Lead.deleted_at.is_(None),
             )
@@ -147,9 +149,7 @@ class WhoDetector(BaseDetector):
         baseline_rate: float,
     ) -> list[dict[str, Any]]:
         """Analyze conversion rates by job title."""
-        title_stats: dict[str, dict[str, int]] = defaultdict(
-            lambda: {"total": 0, "converted": 0}
-        )
+        title_stats: dict[str, dict[str, int]] = defaultdict(lambda: {"total": 0, "converted": 0})
 
         for lead in leads:
             title = self._normalize_title(lead.title)
@@ -169,12 +169,14 @@ class WhoDetector(BaseDetector):
             rate = stats["converted"] / stats["total"]
             lift = self.calculate_lift(rate, baseline_rate)
 
-            rankings.append({
-                "title": title,
-                "conversion_rate": round(rate, 4),
-                "sample": stats["total"],
-                "lift": round(lift, 2),
-            })
+            rankings.append(
+                {
+                    "title": title,
+                    "conversion_rate": round(rate, 4),
+                    "sample": stats["total"],
+                    "lift": round(lift, 2),
+                }
+            )
 
         # Sort by conversion rate descending
         rankings.sort(key=lambda x: x["conversion_rate"], reverse=True)
@@ -208,12 +210,14 @@ class WhoDetector(BaseDetector):
             rate = stats["converted"] / stats["total"]
             lift = self.calculate_lift(rate, baseline_rate)
 
-            rankings.append({
-                "industry": industry,
-                "conversion_rate": round(rate, 4),
-                "sample": stats["total"],
-                "lift": round(lift, 2),
-            })
+            rankings.append(
+                {
+                    "industry": industry,
+                    "conversion_rate": round(rate, 4),
+                    "sample": stats["total"],
+                    "lift": round(lift, 2),
+                }
+            )
 
         rankings.sort(key=lambda x: x["conversion_rate"], reverse=True)
 
@@ -263,11 +267,13 @@ class WhoDetector(BaseDetector):
                 continue
 
             rate = stats["converted"] / stats["total"]
-            distribution.append({
-                "range": range_name,
-                "conversion_rate": round(rate, 4),
-                "sample": stats["total"],
-            })
+            distribution.append(
+                {
+                    "range": range_name,
+                    "conversion_rate": round(rate, 4),
+                    "sample": stats["total"],
+                }
+            )
 
             if rate > best_rate:
                 best_rate = rate
@@ -319,9 +325,7 @@ class WhoDetector(BaseDetector):
         for signal, stats in signals.items():
             if stats["with"] >= 5:
                 rate = stats["with_converted"] / stats["with"]
-                result[f"{signal}_lift"] = round(
-                    self.calculate_lift(rate, baseline_rate), 2
-                )
+                result[f"{signal}_lift"] = round(self.calculate_lift(rate, baseline_rate), 2)
             else:
                 result[f"{signal}_lift"] = 1.0  # No lift if insufficient data
 
@@ -396,10 +400,12 @@ class WhoDetector(BaseDetector):
         by_industry = defaultdict(list)
         for row in industry_rows:
             if row.segment:
-                by_industry[row.segment].append({
-                    "objection": row.objection_type,
-                    "count": row.count,
-                })
+                by_industry[row.segment].append(
+                    {
+                        "objection": row.objection_type,
+                        "count": row.count,
+                    }
+                )
 
         # Analyze objections by company size
         size_query = text("""
@@ -426,10 +432,12 @@ class WhoDetector(BaseDetector):
 
         by_size = defaultdict(list)
         for row in size_rows:
-            by_size[row.segment].append({
-                "objection": row.objection_type,
-                "count": row.count,
-            })
+            by_size[row.segment].append(
+                {
+                    "objection": row.objection_type,
+                    "count": row.count,
+                }
+            )
 
         # Get overall objection distribution
         overall_query = text("""

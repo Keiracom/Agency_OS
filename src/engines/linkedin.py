@@ -49,23 +49,21 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config.settings import settings
 from src.engines.base import EngineResult, OutreachEngine
 
 logger = logging.getLogger(__name__)
 from src.engines.content_utils import build_linkedin_snapshot
-from src.exceptions import ResourceRateLimitError, ValidationError
-from src.integrations.unipile import UnipileClient, get_unipile_client
+from src.exceptions import ResourceRateLimitError
 from src.integrations.redis import rate_limiter
+from src.integrations.unipile import UnipileClient, get_unipile_client
 from src.models.activity import Activity
 from src.models.base import ChannelType
 from src.models.lead import Lead
 from src.models.linkedin_connection import LinkedInConnection
-
 
 # Rate limit (Rule 17) - Now configurable via settings
 # Unipile allows higher limits (80-100/day) but we default to conservative
@@ -115,7 +113,9 @@ class LinkedInEngine(OutreachEngine):
             return 0
         elif today == 5:  # Saturday
             reduced = base_limit // 2
-            logger.info(f"LinkedIn weekend reduction: Saturday - 50% quota ({reduced}/{base_limit})")
+            logger.info(
+                f"LinkedIn weekend reduction: Saturday - 50% quota ({reduced}/{base_limit})"
+            )
             return reduced
 
         return base_limit
@@ -203,8 +203,7 @@ class LinkedInEngine(OutreachEngine):
             # Fallback to Redis-only if Unipile API fails
             # This is conservative - we only know our automated sends
             logger.warning(
-                f"Failed to get Unipile activity for {account_id}, "
-                f"falling back to Redis only: {e}"
+                f"Failed to get Unipile activity for {account_id}, falling back to Redis only: {e}"
             )
             return {
                 "total": automated_count,
@@ -300,7 +299,7 @@ class LinkedInEngine(OutreachEngine):
 
         # Get lead
         lead = await self.get_lead_by_id(db, lead_id)
-        campaign = await self.get_campaign_by_id(db, campaign_id)
+        await self.get_campaign_by_id(db, campaign_id)
 
         # Validate LinkedIn URL
         if not lead.linkedin_url:
@@ -313,7 +312,9 @@ class LinkedInEngine(OutreachEngine):
         original_linkedin = lead.linkedin_url
         if settings.TEST_MODE:
             lead.linkedin_url = settings.TEST_LINKEDIN_RECIPIENT
-            logger.info(f"TEST_MODE: Redirecting LinkedIn {original_linkedin} → {lead.linkedin_url}")
+            logger.info(
+                f"TEST_MODE: Redirecting LinkedIn {original_linkedin} → {lead.linkedin_url}"
+            )
 
         # Get effective daily limit (with weekend reduction)
         effective_limit = self._get_effective_daily_limit()
@@ -337,7 +338,9 @@ class LinkedInEngine(OutreachEngine):
         if not quota["can_send"]:
             manual_info = ""
             if quota["used_manual"] > 0:
-                manual_info = f" ({quota['used_manual']} manual + {quota['used_automated']} automated)"
+                manual_info = (
+                    f" ({quota['used_manual']} manual + {quota['used_automated']} automated)"
+                )
 
             return EngineResult.fail(
                 error=f"LinkedIn daily limit ({effective_limit}/day) exceeded for account{manual_info}",
@@ -387,7 +390,9 @@ class LinkedInEngine(OutreachEngine):
                 activity_action = "message_sent"
 
             # Get message/request ID from Unipile response
-            provider_id = result.get("id") or result.get("message_id") or result.get("invitation_id")
+            provider_id = (
+                result.get("id") or result.get("message_id") or result.get("invitation_id")
+            )
 
             # Log activity with content snapshot (Phase 16) and template tracking (Phase 24B)
             await self._log_activity(
@@ -513,7 +518,8 @@ class LinkedInEngine(OutreachEngine):
                     "reason": "profile_view_delay",
                     "profile_viewed_at": delay_check["profile_viewed_at"].isoformat(),
                     "minutes_elapsed": delay_check["minutes_elapsed"],
-                    "minutes_remaining": PROFILE_VIEW_DELAY_MIN_MINUTES - delay_check["minutes_elapsed"],
+                    "minutes_remaining": PROFILE_VIEW_DELAY_MIN_MINUTES
+                    - delay_check["minutes_elapsed"],
                     "connect_available_at": delay_check["connect_available_at"].isoformat(),
                 },
                 metadata={
@@ -583,7 +589,8 @@ class LinkedInEngine(OutreachEngine):
                 "status": "waiting",
                 "profile_viewed_at": profile_viewed_at,
                 "minutes_elapsed": minutes_elapsed,
-                "connect_available_at": profile_viewed_at + timedelta(minutes=PROFILE_VIEW_DELAY_MIN_MINUTES),
+                "connect_available_at": profile_viewed_at
+                + timedelta(minutes=PROFILE_VIEW_DELAY_MIN_MINUTES),
             }
 
         # Delay satisfied
@@ -824,11 +831,13 @@ class LinkedInEngine(OutreachEngine):
 
             if not all([lead_id, campaign_id]):
                 results["failed"] += 1
-                results["actions"].append({
-                    "lead_id": str(lead_id) if lead_id else None,
-                    "status": "failed",
-                    "reason": "Missing required fields",
-                })
+                results["actions"].append(
+                    {
+                        "lead_id": str(lead_id) if lead_id else None,
+                        "status": "failed",
+                        "reason": "Missing required fields",
+                    }
+                )
                 continue
 
             result = await self.validate_and_send(
@@ -841,12 +850,14 @@ class LinkedInEngine(OutreachEngine):
 
             if result.success:
                 results["sent"] += 1
-                results["actions"].append({
-                    "lead_id": str(lead_id),
-                    "status": "sent",
-                    "provider_id": result.data.get("provider_id"),
-                    "action": result.data.get("action"),
-                })
+                results["actions"].append(
+                    {
+                        "lead_id": str(lead_id),
+                        "status": "sent",
+                        "provider_id": result.data.get("provider_id"),
+                        "action": result.data.get("action"),
+                    }
+                )
             else:
                 # Check if rate limited
                 if "rate limit" in result.error.lower():
@@ -854,11 +865,13 @@ class LinkedInEngine(OutreachEngine):
                 else:
                     results["failed"] += 1
 
-                results["actions"].append({
-                    "lead_id": str(lead_id),
-                    "status": "failed",
-                    "reason": result.error,
-                })
+                results["actions"].append(
+                    {
+                        "lead_id": str(lead_id),
+                        "status": "failed",
+                        "reason": result.error,
+                    }
+                )
 
         return EngineResult.ok(
             data=results,
@@ -1023,8 +1036,9 @@ class LinkedInEngine(OutreachEngine):
         links_included = None
         if full_body:
             import re
+
             # Extract URLs from LinkedIn message content
-            url_pattern = r'https?://[^\s]+'
+            url_pattern = r"https?://[^\s]+"
             links_included = list(set(re.findall(url_pattern, full_body)))
 
         activity = Activity(

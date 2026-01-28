@@ -12,7 +12,7 @@ RULES APPLIED:
 """
 
 from datetime import date, datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import Date, ForeignKey, Text
@@ -51,21 +51,21 @@ class LeadSocialPost(Base, UUIDMixin):
     )
 
     # Post content
-    post_content: Mapped[Optional[str]] = mapped_column(
+    post_content: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
         comment="Full text content of the post",
     )
 
     # Post date
-    post_date: Mapped[Optional[date]] = mapped_column(
+    post_date: Mapped[date | None] = mapped_column(
         Date,
         nullable=True,
         comment="Date the post was published",
     )
 
     # AI-generated icebreaker hook
-    summary_hook: Mapped[Optional[str]] = mapped_column(
+    summary_hook: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
         comment="AI-generated 1-sentence icebreaker from this post",

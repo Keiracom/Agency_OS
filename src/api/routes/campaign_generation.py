@@ -29,18 +29,16 @@ from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, select, update
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agents.campaign_generation_agent import (
-    CampaignGenerationAgent,
     CampaignGenerationResult,
     GeneratedCampaign,
     get_campaign_generation_agent,
 )
 from src.api.dependencies import (
     ClientContext,
-    get_current_client,
     get_db_session,
     require_member,
 )
@@ -337,7 +335,7 @@ async def generate_campaign(
         try:
             template_id = await save_campaign_template(db, ctx.client_id, campaign)
             template_ids.append(str(template_id))
-        except Exception as e:
+        except Exception:
             # Log but don't fail - template saving is secondary
             pass
 
@@ -371,7 +369,7 @@ async def list_templates(
     db: AsyncSession = Depends(get_db_session),
 ):
     """List campaign templates for the client."""
-    from sqlalchemy import func, text
+    from sqlalchemy import text
 
     # Build query
     base_query = """

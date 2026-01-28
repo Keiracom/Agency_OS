@@ -75,12 +75,15 @@ class ThreadService:
             RETURNING *
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "lead_id": lead_id,
-            "campaign_id": campaign_id,
-            "channel": channel,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "lead_id": lead_id,
+                "campaign_id": campaign_id,
+                "channel": channel,
+            },
+        )
 
         row = result.fetchone()
         await self.session.commit()
@@ -141,11 +144,14 @@ class ThreadService:
             LIMIT 1
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "lead_id": lead_id,
-            "channel": channel,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "lead_id": lead_id,
+                "channel": channel,
+            },
+        )
         row = result.fetchone()
 
         if row:
@@ -228,22 +234,25 @@ class ThreadService:
             RETURNING *
         """)
 
-        result = await self.session.execute(query, {
-            "thread_id": thread_id,
-            "activity_id": activity_id,
-            "reply_id": reply_id,
-            "direction": direction,
-            "content": content,
-            "content_preview": content[:200] if len(content) > 200 else content,
-            "sent_at": sent_at or datetime.utcnow(),
-            "position": next_position,
-            "sentiment": sentiment,
-            "sentiment_score": sentiment_score,
-            "intent": intent,
-            "objection_type": objection_type,
-            "question_extracted": question_extracted,
-            "topics_mentioned": topics_mentioned,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "thread_id": thread_id,
+                "activity_id": activity_id,
+                "reply_id": reply_id,
+                "direction": direction,
+                "content": content,
+                "content_preview": content[:200] if len(content) > 200 else content,
+                "sent_at": sent_at or datetime.utcnow(),
+                "position": next_position,
+                "sentiment": sentiment,
+                "sentiment_score": sentiment_score,
+                "intent": intent,
+                "objection_type": objection_type,
+                "question_extracted": question_extracted,
+                "topics_mentioned": topics_mentioned,
+            },
+        )
 
         row = result.fetchone()
         await self.session.commit()
@@ -278,10 +287,13 @@ class ThreadService:
             RETURNING *
         """)
 
-        result = await self.session.execute(query, {
-            "thread_id": thread_id,
-            "status": status,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "thread_id": thread_id,
+                "status": status,
+            },
+        )
 
         row = result.fetchone()
         if not row:
@@ -308,8 +320,13 @@ class ThreadService:
             Updated thread record
         """
         valid_outcomes = [
-            "converted", "rejected", "no_response", "ongoing",
-            "meeting_booked", "referral", "future_interest"
+            "converted",
+            "rejected",
+            "no_response",
+            "ongoing",
+            "meeting_booked",
+            "referral",
+            "future_interest",
         ]
         if outcome not in valid_outcomes:
             raise ValidationError(message=f"Invalid outcome. Must be one of: {valid_outcomes}")
@@ -330,12 +347,15 @@ class ThreadService:
             RETURNING *
         """)
 
-        result = await self.session.execute(query, {
-            "thread_id": thread_id,
-            "outcome": outcome,
-            "outcome_reason": outcome_reason,
-            "status": status,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "thread_id": thread_id,
+                "outcome": outcome,
+                "outcome_reason": outcome_reason,
+                "status": status,
+            },
+        )
 
         row = result.fetchone()
         if not row:
@@ -369,10 +389,13 @@ class ThreadService:
             RETURNING *
         """)
 
-        result = await self.session.execute(query, {
-            "thread_id": thread_id,
-            "reason": reason,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "thread_id": thread_id,
+                "reason": reason,
+            },
+        )
 
         row = result.fetchone()
         if not row:
@@ -403,10 +426,13 @@ class ThreadService:
             LIMIT :limit
         """)
 
-        result = await self.session.execute(query, {
-            "thread_id": thread_id,
-            "limit": limit,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "thread_id": thread_id,
+                "limit": limit,
+            },
+        )
 
         rows = result.fetchall()
         return [dict(row._mapping) for row in rows]
@@ -435,11 +461,14 @@ class ThreadService:
                 ORDER BY created_at DESC
                 LIMIT :limit
             """)
-            result = await self.session.execute(query, {
-                "lead_id": lead_id,
-                "client_id": client_id,
-                "limit": limit,
-            })
+            result = await self.session.execute(
+                query,
+                {
+                    "lead_id": lead_id,
+                    "client_id": client_id,
+                    "limit": limit,
+                },
+            )
         else:
             query = text("""
                 SELECT * FROM conversation_threads
@@ -447,10 +476,13 @@ class ThreadService:
                 ORDER BY created_at DESC
                 LIMIT :limit
             """)
-            result = await self.session.execute(query, {
-                "lead_id": lead_id,
-                "limit": limit,
-            })
+            result = await self.session.execute(
+                query,
+                {
+                    "lead_id": lead_id,
+                    "limit": limit,
+                },
+            )
 
         rows = result.fetchall()
         return [dict(row._mapping) for row in rows]
@@ -481,12 +513,15 @@ class ThreadService:
                 ORDER BY last_message_at DESC NULLS LAST
                 LIMIT :limit OFFSET :offset
             """)
-            result = await self.session.execute(query, {
-                "client_id": client_id,
-                "status": status,
-                "limit": limit,
-                "offset": offset,
-            })
+            result = await self.session.execute(
+                query,
+                {
+                    "client_id": client_id,
+                    "status": status,
+                    "limit": limit,
+                    "offset": offset,
+                },
+            )
         else:
             query = text("""
                 SELECT * FROM conversation_threads
@@ -494,11 +529,14 @@ class ThreadService:
                 ORDER BY last_message_at DESC NULLS LAST
                 LIMIT :limit OFFSET :offset
             """)
-            result = await self.session.execute(query, {
-                "client_id": client_id,
-                "limit": limit,
-                "offset": offset,
-            })
+            result = await self.session.execute(
+                query,
+                {
+                    "client_id": client_id,
+                    "limit": limit,
+                    "offset": offset,
+                },
+            )
 
         rows = result.fetchall()
         return [dict(row._mapping) for row in rows]
@@ -522,10 +560,13 @@ class ThreadService:
             SELECT * FROM get_conversation_analytics(:client_id, :days)
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "days": days,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "days": days,
+            },
+        )
 
         row = result.fetchone()
         if not row:
@@ -565,11 +606,14 @@ class ThreadService:
             SELECT * FROM get_common_questions(:client_id, :days, :limit)
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "days": days,
-            "limit": limit,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "days": days,
+                "limit": limit,
+            },
+        )
 
         rows = result.fetchall()
         return [dict(row._mapping) for row in rows]

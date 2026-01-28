@@ -32,7 +32,9 @@ if TYPE_CHECKING:
     from src.integrations.anthropic import AnthropicClient
 
 
-class ValuePropExtractorSkill(BaseSkill["ValuePropExtractorSkill.Input", "ValuePropExtractorSkill.Output"]):
+class ValuePropExtractorSkill(
+    BaseSkill["ValuePropExtractorSkill.Input", "ValuePropExtractorSkill.Output"]
+):
     """
     Extract agency's value proposition and key messaging.
 
@@ -53,48 +55,31 @@ class ValuePropExtractorSkill(BaseSkill["ValuePropExtractorSkill.Input", "ValueP
     class Input(BaseModel):
         """Input for value proposition extraction."""
 
-        pages: list[PageContent] = Field(
-            description="Parsed page content from website"
-        )
-        company_name: str = Field(
-            default="",
-            description="Company name for context"
-        )
-        services: list[str] = Field(
-            default_factory=list,
-            description="Known services for context"
-        )
+        pages: list[PageContent] = Field(description="Parsed page content from website")
+        company_name: str = Field(default="", description="Company name for context")
+        services: list[str] = Field(default_factory=list, description="Known services for context")
 
     class Output(BaseModel):
         """Output from value proposition extraction."""
 
-        value_proposition: str = Field(
-            description="Core value proposition (1-2 sentences)"
-        )
+        value_proposition: str = Field(description="Core value proposition (1-2 sentences)")
         taglines: list[str] = Field(
-            default_factory=list,
-            description="Taglines, slogans, and headlines"
+            default_factory=list, description="Taglines, slogans, and headlines"
         )
         differentiators: list[str] = Field(
-            default_factory=list,
-            description="Key differentiators and unique selling points"
+            default_factory=list, description="Key differentiators and unique selling points"
         )
         brand_promises: list[str] = Field(
-            default_factory=list,
-            description="Promises or guarantees made"
+            default_factory=list, description="Promises or guarantees made"
         )
         target_audience_hints: list[str] = Field(
-            default_factory=list,
-            description="Hints about who they target (from messaging)"
+            default_factory=list, description="Hints about who they target (from messaging)"
         )
         tone: str = Field(
             default="professional",
-            description="Brand tone: professional, friendly, bold, creative, technical, casual"
+            description="Brand tone: professional, friendly, bold, creative, technical, casual",
         )
-        confidence: float = Field(
-            default=0.0,
-            description="Confidence in extraction (0.0-1.0)"
-        )
+        confidence: float = Field(default=0.0, description="Confidence in extraction (0.0-1.0)")
 
     system_prompt = """You are a brand strategist analyzing marketing agency websites.
 Extract the value proposition and key messaging.
@@ -170,10 +155,10 @@ Return valid JSON:
             page_info = f"""
 PAGE: {page.page_type.upper()}
 Title: {page.title}
-Headings: {', '.join(page.headings)}
+Headings: {", ".join(page.headings)}
 Summary: {page.content_summary}
-Key Points: {', '.join(page.key_points)}
-CTAs: {', '.join(page.ctas)}
+Key Points: {", ".join(page.key_points)}
+CTAs: {", ".join(page.ctas)}
 """
             pages_text.append(page_info)
 
@@ -184,14 +169,14 @@ CTAs: {', '.join(page.ctas)}
         return f"""{context}
 Analyze the following website content and extract the value proposition and messaging:
 
-{'---'.join(pages_text)}
+{"---".join(pages_text)}
 
 Focus on identifying what makes this agency unique. Return valid JSON."""
 
     async def execute(
         self,
         input_data: Input,
-        anthropic: "AnthropicClient",
+        anthropic: AnthropicClient,
     ) -> SkillResult[Output]:
         """
         Execute value proposition extraction.

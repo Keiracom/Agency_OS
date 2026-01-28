@@ -17,9 +17,7 @@ CONSUMERS: JIT Validator, Scout Engine, API routes
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -38,21 +36,21 @@ class SuppressionResult(BaseModel):
     """Result of suppression check."""
 
     suppressed: bool = False
-    reason: Optional[str] = None
-    details: Optional[str] = None
+    reason: str | None = None
+    details: str | None = None
 
 
 class SuppressionEntry(BaseModel):
     """Suppression list entry."""
 
     id: UUID
-    domain: Optional[str]
-    email: Optional[str]
-    company_name: Optional[str]
+    domain: str | None
+    email: str | None
+    company_name: str | None
     reason: str
     source: str
-    notes: Optional[str]
-    expires_at: Optional[datetime]
+    notes: str | None
+    expires_at: datetime | None
     created_at: datetime
 
 
@@ -86,9 +84,9 @@ class SuppressionService:
     async def is_suppressed(
         self,
         client_id: UUID,
-        email: Optional[str] = None,
-        domain: Optional[str] = None,
-    ) -> Optional[SuppressionResult]:
+        email: str | None = None,
+        domain: str | None = None,
+    ) -> SuppressionResult | None:
         """
         Check if email/domain is suppressed for this client.
         Called by JIT validator before every send.
@@ -129,7 +127,7 @@ class SuppressionService:
         self,
         client_id: UUID,
         emails: list[str],
-    ) -> dict[str, Optional[SuppressionResult]]:
+    ) -> dict[str, SuppressionResult | None]:
         """
         Check suppression for multiple emails at once.
         More efficient for bulk filtering.
@@ -141,7 +139,7 @@ class SuppressionService:
         Returns:
             Dict mapping email to SuppressionResult (None if not suppressed)
         """
-        results: dict[str, Optional[SuppressionResult]] = {}
+        results: dict[str, SuppressionResult | None] = {}
 
         # Extract unique domains
         domains = set()
@@ -221,14 +219,14 @@ class SuppressionService:
     async def add_suppression(
         self,
         client_id: UUID,
-        domain: Optional[str] = None,
-        email: Optional[str] = None,
-        company_name: Optional[str] = None,
+        domain: str | None = None,
+        email: str | None = None,
+        company_name: str | None = None,
         reason: str = "manual",
         source: str = "manual",
-        notes: Optional[str] = None,
-        expires_at: Optional[datetime] = None,
-        customer_id: Optional[UUID] = None,
+        notes: str | None = None,
+        expires_at: datetime | None = None,
+        customer_id: UUID | None = None,
     ) -> UUID:
         """
         Add to suppression list.
@@ -281,15 +279,17 @@ class SuppressionService:
         if not row:
             raise ValueError(f"Failed to create suppression entry for client {client_id}")
 
-        logger.info(f"Added suppression for client {client_id}: domain={domain}, email={email}, reason={reason}")
+        logger.info(
+            f"Added suppression for client {client_id}: domain={domain}, email={email}, reason={reason}"
+        )
         return row.id
 
     async def remove_suppression(
         self,
         client_id: UUID,
-        suppression_id: Optional[UUID] = None,
-        domain: Optional[str] = None,
-        email: Optional[str] = None,
+        suppression_id: UUID | None = None,
+        domain: str | None = None,
+        email: str | None = None,
     ) -> bool:
         """
         Remove from suppression list.
@@ -349,7 +349,7 @@ class SuppressionService:
     async def list_suppressions(
         self,
         client_id: UUID,
-        reason: Optional[str] = None,
+        reason: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[SuppressionEntry]:
@@ -444,6 +444,7 @@ class SuppressionService:
         expires_at = None
         if bounce_type == "soft":
             from datetime import timedelta
+
             expires_at = datetime.utcnow() + timedelta(days=7)
 
         return await self.add_suppression(
@@ -460,7 +461,7 @@ class SuppressionService:
         self,
         client_id: UUID,
         email: str,
-        lead_id: Optional[UUID] = None,
+        lead_id: UUID | None = None,
     ) -> UUID:
         """
         Add suppression from unsubscribe request.
@@ -485,7 +486,7 @@ class SuppressionService:
     # UTILITY
     # =========================================================================
 
-    def _extract_domain(self, email: str) -> Optional[str]:
+    def _extract_domain(self, email: str) -> str | None:
         """Extract domain from email address."""
         if not email or "@" not in email:
             return None

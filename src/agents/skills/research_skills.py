@@ -18,7 +18,6 @@ RULES APPLIED:
   - Rule 12: No imports from engines
 """
 
-from datetime import date, datetime
 from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field
@@ -92,7 +91,9 @@ class DeepResearchSkill(BaseSkill):
             description="Summary of recent professional activity",
         )
 
-    system_prompt: ClassVar[str] = """You are a sales research assistant specializing in crafting personalized outreach.
+    system_prompt: ClassVar[
+        str
+    ] = """You are a sales research assistant specializing in crafting personalized outreach.
 
 Your task is to analyze LinkedIn posts and generate a compelling, natural-sounding icebreaker hook.
 
@@ -160,20 +161,20 @@ Return JSON with this structure:
 
         # Step 1: Scrape LinkedIn profile
         try:
-            profiles = await self.apify.scrape_linkedin_profiles(
-                [input_data.linkedin_url]
-            )
+            profiles = await self.apify.scrape_linkedin_profiles([input_data.linkedin_url])
             if profiles:
                 profile_data = profiles[0]
                 # Extract posts if available in profile data
                 raw_posts = profile_data.get("posts", []) or profile_data.get("activity", [])
-                for i, post in enumerate(raw_posts[:input_data.max_posts]):
-                    posts.append({
-                        "content": post.get("text") or post.get("content", ""),
-                        "date": post.get("date") or post.get("posted_date"),
-                        "engagement": post.get("likes", 0) + post.get("comments", 0),
-                    })
-        except Exception as e:
+                for _i, post in enumerate(raw_posts[: input_data.max_posts]):
+                    posts.append(
+                        {
+                            "content": post.get("text") or post.get("content", ""),
+                            "date": post.get("date") or post.get("posted_date"),
+                            "engagement": post.get("likes", 0) + post.get("comments", 0),
+                        }
+                    )
+        except Exception:
             # Log but continue - we can still generate based on profile info
             pass
 
@@ -186,12 +187,14 @@ Return JSON with this structure:
 
             if about or headline or experience:
                 # Create synthetic "activity" from profile info
-                posts.append({
-                    "content": f"Profile headline: {headline}. About: {about[:500] if about else 'N/A'}",
-                    "date": None,
-                    "engagement": 0,
-                    "type": "profile_summary",
-                })
+                posts.append(
+                    {
+                        "content": f"Profile headline: {headline}. About: {about[:500] if about else 'N/A'}",
+                        "date": None,
+                        "engagement": 0,
+                        "type": "profile_summary",
+                    }
+                )
 
         # Step 3: Generate icebreaker hook using Claude
         if posts or profile_data:
@@ -237,20 +240,22 @@ Return JSON with this structure:
     ) -> str:
         """Build prompt for Claude analysis."""
         prompt_parts = [
-            f"Analyze this LinkedIn profile and generate an icebreaker hook.\n",
-            f"\n## Target Person",
+            "Analyze this LinkedIn profile and generate an icebreaker hook.\n",
+            "\n## Target Person",
             f"- Name: {input_data.first_name} {input_data.last_name}".strip(),
             f"- Company: {input_data.company}" if input_data.company else "",
             f"- Title: {input_data.title}" if input_data.title else "",
         ]
 
         if profile_data:
-            prompt_parts.extend([
-                f"\n## Profile Data",
-                f"- Headline: {profile_data.get('title', profile_data.get('headline', 'N/A'))}",
-                f"- Location: {profile_data.get('location', 'N/A')}",
-                f"- Connections: {profile_data.get('connections', 'N/A')}",
-            ])
+            prompt_parts.extend(
+                [
+                    "\n## Profile Data",
+                    f"- Headline: {profile_data.get('title', profile_data.get('headline', 'N/A'))}",
+                    f"- Location: {profile_data.get('location', 'N/A')}",
+                    f"- Connections: {profile_data.get('connections', 'N/A')}",
+                ]
+            )
 
             about = profile_data.get("about", "")
             if about:
@@ -313,7 +318,9 @@ class PersonalizationAnalysisSkill(BaseSkill):
 
         # LinkedIn company data
         company_description: str = Field(default="", description="Company description")
-        company_specialties: list[str] = Field(default_factory=list, description="Company specialties")
+        company_specialties: list[str] = Field(
+            default_factory=list, description="Company specialties"
+        )
         company_posts: list[dict[str, Any]] = Field(
             default_factory=list,
             description="Company's recent LinkedIn posts",
@@ -358,7 +365,9 @@ class PersonalizationAnalysisSkill(BaseSkill):
             description="Confidence in the analysis (0-1)",
         )
 
-    system_prompt: ClassVar[str] = """You are a sales research analyst specializing in personalized B2B outreach.
+    system_prompt: ClassVar[
+        str
+    ] = """You are a sales research analyst specializing in personalized B2B outreach.
 
 Your task is to analyze LinkedIn data to create hyper-personalized outreach for 5 channels.
 
@@ -451,7 +460,7 @@ Return ONLY valid JSON matching the output schema."""
         """Build prompt for Claude analysis."""
         parts = [
             "Analyze this lead for personalized outreach.\n",
-            f"\n## Lead Profile",
+            "\n## Lead Profile",
             f"- Name: {input_data.first_name} {input_data.last_name}",
             f"- Title: {input_data.title}" if input_data.title else "",
             f"- Company: {input_data.company_name}" if input_data.company_name else "",
@@ -495,8 +504,7 @@ Return ONLY valid JSON matching the output schema."""
             parts.append(f"\n## What We Offer\n{input_data.agency_services}")
 
         parts.append(
-            "\n\nAnalyze this lead and generate personalized outreach data. "
-            "Return ONLY valid JSON."
+            "\n\nAnalyze this lead and generate personalized outreach data. Return ONLY valid JSON."
         )
 
         return "\n".join(filter(None, parts))

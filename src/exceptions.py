@@ -14,7 +14,9 @@ from typing import Any
 class AgencyOSError(Exception):
     """Base exception for all Agency OS errors."""
 
-    def __init__(self, message: str, code: str | None = None, details: dict[str, Any] | None = None):
+    def __init__(
+        self, message: str, code: str | None = None, details: dict[str, Any] | None = None
+    ):
         self.message = message
         self.code = code or "AGENCY_OS_ERROR"
         self.details = details or {}
@@ -37,7 +39,9 @@ class AgencyOSError(Exception):
 class AuthenticationError(AgencyOSError):
     """User is not authenticated."""
 
-    def __init__(self, message: str = "Authentication required", details: dict[str, Any] | None = None):
+    def __init__(
+        self, message: str = "Authentication required", details: dict[str, Any] | None = None
+    ):
         super().__init__(message, code="AUTHENTICATION_ERROR", details=details)
 
 
@@ -149,7 +153,9 @@ class EnrichmentValidationError(ValidationError):
         message: str | None = None,
         details: dict[str, Any] | None = None,
     ):
-        message = message or f"Enrichment confidence {confidence:.2f} below threshold {threshold:.2f}"
+        message = (
+            message or f"Enrichment confidence {confidence:.2f} below threshold {threshold:.2f}"
+        )
         details = details or {}
         details["confidence"] = confidence
         details["threshold"] = threshold

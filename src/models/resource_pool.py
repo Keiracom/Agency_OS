@@ -14,10 +14,10 @@ Phase D additions:
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import Integer, Numeric, String, Text, ForeignKey
+from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import ENUM, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -39,6 +39,7 @@ if TYPE_CHECKING:
 
 class ResourceType(str, Enum):
     """Resource types available in the pool."""
+
     EMAIL_DOMAIN = "email_domain"
     PHONE_NUMBER = "phone_number"
     LINKEDIN_SEAT = "linkedin_seat"
@@ -46,6 +47,7 @@ class ResourceType(str, Enum):
 
 class ResourceStatus(str, Enum):
     """Resource lifecycle status."""
+
     AVAILABLE = "available"
     ASSIGNED = "assigned"
     WARMING = "warming"
@@ -54,8 +56,9 @@ class ResourceStatus(str, Enum):
 
 class HealthStatus(str, Enum):
     """Domain health status based on bounce/complaint rates."""
-    GOOD = "good"          # <2% bounce, <0.05% complaint → 50/day
-    WARNING = "warning"    # 2-5% bounce, 0.05-0.1% complaint → 35/day
+
+    GOOD = "good"  # <2% bounce, <0.05% complaint → 50/day
+    WARNING = "warning"  # 2-5% bounce, 0.05-0.1% complaint → 35/day
     CRITICAL = "critical"  # >5% bounce, >0.1% complaint → 0/day (paused)
 
 
@@ -65,12 +68,12 @@ class HealthStatus(str, Enum):
 
 HEALTH_THRESHOLDS = {
     "bounce": {
-        "good": 0.02,      # <2%
-        "warning": 0.05,   # 2-5%
+        "good": 0.02,  # <2%
+        "warning": 0.05,  # 2-5%
         # >5% = critical
     },
     "complaint": {
-        "good": 0.0005,    # <0.05%
+        "good": 0.0005,  # <0.05%
         "warning": 0.001,  # 0.05-0.1%
         # >0.1% = critical
     },
@@ -126,7 +129,12 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
 
     # Resource identification
     resource_type: Mapped[ResourceType] = mapped_column(
-        ENUM(ResourceType, name="resource_type", create_type=False, values_callable=lambda x: [e.value for e in x]),
+        ENUM(
+            ResourceType,
+            name="resource_type",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         nullable=False,
     )
     resource_value: Mapped[str] = mapped_column(
@@ -134,7 +142,7 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
         nullable=False,
         unique=True,
     )
-    resource_name: Mapped[Optional[str]] = mapped_column(
+    resource_name: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
@@ -153,16 +161,21 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
 
     # Status
     status: Mapped[ResourceStatus] = mapped_column(
-        ENUM(ResourceStatus, name="resource_status", create_type=False, values_callable=lambda x: [e.value for e in x]),
+        ENUM(
+            ResourceStatus,
+            name="resource_status",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         default=ResourceStatus.AVAILABLE,
         nullable=False,
     )
 
     # Warmup tracking (for email domains)
-    warmup_started_at: Mapped[Optional[datetime]] = mapped_column(
+    warmup_started_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
     )
-    warmup_completed_at: Mapped[Optional[datetime]] = mapped_column(
+    warmup_completed_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
     )
     reputation_score: Mapped[int] = mapped_column(
@@ -172,15 +185,15 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
     )
 
     # Provider metadata
-    provider: Mapped[Optional[str]] = mapped_column(
+    provider: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
-    provider_id: Mapped[Optional[str]] = mapped_column(
+    provider_id: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
-    provider_metadata: Mapped[Optional[dict]] = mapped_column(
+    provider_metadata: Mapped[dict | None] = mapped_column(
         JSONB,
         default=dict,
         nullable=True,
@@ -205,12 +218,12 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
     )
 
     # Calculated rates (updated by domain_health_service)
-    bounce_rate: Mapped[Optional[Decimal]] = mapped_column(
+    bounce_rate: Mapped[Decimal | None] = mapped_column(
         Numeric(5, 4),
         default=0,
         nullable=True,
     )
-    complaint_rate: Mapped[Optional[Decimal]] = mapped_column(
+    complaint_rate: Mapped[Decimal | None] = mapped_column(
         Numeric(6, 5),
         default=0,
         nullable=True,
@@ -225,13 +238,13 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
 
     # Daily limit override (for health-based reduction)
     # NULL = use default warmup-based limit
-    daily_limit_override: Mapped[Optional[int]] = mapped_column(
+    daily_limit_override: Mapped[int | None] = mapped_column(
         Integer,
         nullable=True,
     )
 
     # Last health check timestamp
-    health_checked_at: Mapped[Optional[datetime]] = mapped_column(
+    health_checked_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
     )
 
@@ -289,10 +302,7 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
 
         # Check health status for fully warmed domains
         if self.warmup_completed_at:
-            return HEALTH_DAILY_LIMITS.get(
-                HealthStatus(self.health_status),
-                50
-            )
+            return HEALTH_DAILY_LIMITS.get(HealthStatus(self.health_status), 50)
 
         # Not started warmup
         if not self.warmup_started_at:
@@ -349,12 +359,16 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
         bounce_float = float(self.bounce_rate) if self.bounce_rate else 0
         complaint_float = float(self.complaint_rate) if self.complaint_rate else 0
 
-        if bounce_float > HEALTH_THRESHOLDS["bounce"]["warning"] or \
-           complaint_float > HEALTH_THRESHOLDS["complaint"]["warning"]:
+        if (
+            bounce_float > HEALTH_THRESHOLDS["bounce"]["warning"]
+            or complaint_float > HEALTH_THRESHOLDS["complaint"]["warning"]
+        ):
             self.health_status = HealthStatus.CRITICAL.value
             self.daily_limit_override = 0
-        elif bounce_float > HEALTH_THRESHOLDS["bounce"]["good"] or \
-             complaint_float > HEALTH_THRESHOLDS["complaint"]["good"]:
+        elif (
+            bounce_float > HEALTH_THRESHOLDS["bounce"]["good"]
+            or complaint_float > HEALTH_THRESHOLDS["complaint"]["good"]
+        ):
             self.health_status = HealthStatus.WARNING.value
             self.daily_limit_override = 35
         else:
@@ -389,7 +403,7 @@ class ClientResource(Base, UUIDMixin, TimestampMixin):
         default=datetime.utcnow,
         nullable=False,
     )
-    released_at: Mapped[Optional[datetime]] = mapped_column(
+    released_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
     )
 
@@ -399,7 +413,7 @@ class ClientResource(Base, UUIDMixin, TimestampMixin):
         default=0,
         nullable=False,
     )
-    last_used_at: Mapped[Optional[datetime]] = mapped_column(
+    last_used_at: Mapped[datetime | None] = mapped_column(
         nullable=True,
     )
 

@@ -25,23 +25,20 @@ from uuid import UUID
 
 from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
-from sqlalchemy import text, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 
-from src.agents.icp_discovery_agent import ICPExtractionResult, get_icp_discovery_agent
-from src.integrations.supabase import get_db_session
+from src.agents.icp_discovery_agent import get_icp_discovery_agent
 from src.config.settings import get_settings
 from src.engines.client_intelligence import (
-    ClientIntelligenceEngine,
     ScrapeConfig,
     get_client_intelligence_engine,
 )
+from src.integrations.supabase import get_db_session
+from src.models.resource_pool import ResourceType
 from src.services.resource_assignment_service import (
     assign_resources_to_client,
-    get_pool_stats,
     check_buffer_and_alert,
 )
-from src.models.resource_pool import ResourceType
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +92,7 @@ async def update_job_status_task(
         if status in ("completed", "failed"):
             updates["completed_at"] = datetime.utcnow()
 
-        set_clauses = ", ".join([f"{k} = :{k}" for k in updates.keys()])
+        set_clauses = ", ".join([f"{k} = :{k}" for k in updates])
         await db.execute(
             text(f"""
             UPDATE icp_extraction_jobs
@@ -248,7 +245,7 @@ async def enhance_icp_with_sdk_task(
         )
 
         # Import SDK components
-        from src.agents.sdk_agents.icp_agent import ICPInput, extract_icp
+        from src.agents.sdk_agents.icp_agent import extract_icp
 
         # Prepare website content from basic result profile
         profile = basic_result.get("profile", {})
@@ -297,15 +294,9 @@ async def enhance_icp_with_sdk_task(
 
             # Update with SDK-enhanced fields
             sdk_data = sdk_result.data
-            enhanced_profile["icp_industries"] = [
-                ind.name for ind in sdk_data.target_industries
-            ]
-            enhanced_profile["icp_titles"] = [
-                title.title for title in sdk_data.target_titles
-            ]
-            enhanced_profile["icp_pain_points"] = [
-                pp.pain_point for pp in sdk_data.pain_points
-            ]
+            enhanced_profile["icp_industries"] = [ind.name for ind in sdk_data.target_industries]
+            enhanced_profile["icp_titles"] = [title.title for title in sdk_data.target_titles]
+            enhanced_profile["icp_pain_points"] = [pp.pain_point for pp in sdk_data.pain_points]
             enhanced_profile["icp_company_sizes"] = [
                 f"{sdk_data.company_size_range.min_employees}-{sdk_data.company_size_range.max_employees}"
             ]
@@ -317,15 +308,15 @@ async def enhance_icp_with_sdk_task(
             enhanced_profile["sdk_confidence_score"] = sdk_data.confidence_score
             enhanced_profile["sdk_data_gaps"] = sdk_data.data_gaps
             enhanced_profile["sdk_buying_signals"] = [
-                {"signal": bs.signal, "urgency": bs.urgency}
-                for bs in sdk_data.buying_signals
+                {"signal": bs.signal, "urgency": bs.urgency} for bs in sdk_data.buying_signals
             ]
             enhanced_profile["sdk_sources_used"] = sdk_data.sources_used
 
             return {
                 "success": True,
                 "profile": enhanced_profile,
-                "tokens_used": basic_result.get("tokens_used", 0) + (sdk_result.input_tokens + sdk_result.output_tokens),
+                "tokens_used": basic_result.get("tokens_used", 0)
+                + (sdk_result.input_tokens + sdk_result.output_tokens),
                 "cost_aud": basic_result.get("cost_aud", 0.0) + sdk_result.cost_aud,
                 "duration_seconds": basic_result.get("duration_seconds", 0),
                 "sdk_enhanced": True,
@@ -677,7 +668,7 @@ async def icp_onboarding_flow(
         )
 
         # Step 4: Save result
-        saved = await save_extraction_result_task(
+        await save_extraction_result_task(
             job_id=job_id,
             client_id=client_id,
             result=extraction_result,
@@ -703,7 +694,8 @@ async def icp_onboarding_flow(
             "client_id": str(client_id),
             "website_url": website_url,
             "tokens_used": extraction_result.get("tokens_used", 0),
-            "cost_aud": extraction_result.get("cost_aud", 0.0) + intel_result.get("total_cost_aud", 0.0),
+            "cost_aud": extraction_result.get("cost_aud", 0.0)
+            + intel_result.get("total_cost_aud", 0.0),
             "duration_seconds": extraction_result.get("duration_seconds", 0),
             "sdk_enhanced": extraction_result.get("sdk_enhanced", False),
             "sdk_confidence": extraction_result.get("sdk_confidence"),
@@ -829,10 +821,7 @@ async def resource_assignment_flow(
             f"{result.get('total_resources')} resources assigned"
         )
     else:
-        logger.error(
-            f"Resource assignment failed for client {client_id}: "
-            f"{result.get('error')}"
-        )
+        logger.error(f"Resource assignment failed for client {client_id}: {result.get('error')}")
 
     return result
 

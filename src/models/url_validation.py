@@ -6,8 +6,6 @@ Imports: exceptions only
 Consumers: url_validator.py, icp_scraper.py, orchestration
 """
 
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 
@@ -19,41 +17,28 @@ class URLValidationResult(BaseModel):
     and detects parked/placeholder domains before scraping.
     """
 
-    valid: bool = Field(
-        description="Whether the URL is valid and reachable"
-    )
-    canonical_url: Optional[str] = Field(
-        default=None,
-        description="The final URL after following redirects"
+    valid: bool = Field(description="Whether the URL is valid and reachable")
+    canonical_url: str | None = Field(
+        default=None, description="The final URL after following redirects"
     )
     redirected: bool = Field(
-        default=False,
-        description="Whether the URL was redirected to a different location"
+        default=False, description="Whether the URL was redirected to a different location"
     )
     redirect_chain: list[str] = Field(
-        default_factory=list,
-        description="List of URLs in the redirect chain"
+        default_factory=list, description="List of URLs in the redirect chain"
     )
-    error: Optional[str] = Field(
+    error: str | None = Field(default=None, description="Error message if validation failed")
+    error_type: str | None = Field(
         default=None,
-        description="Error message if validation failed"
+        description="Type of error (dns_failure, timeout, ssl_error, parked_domain, invalid_format)",
     )
-    error_type: Optional[str] = Field(
-        default=None,
-        description="Type of error (dns_failure, timeout, ssl_error, parked_domain, invalid_format)"
-    )
-    status_code: Optional[int] = Field(
-        default=None,
-        description="HTTP status code from the final response"
+    status_code: int | None = Field(
+        default=None, description="HTTP status code from the final response"
     )
     is_parked: bool = Field(
-        default=False,
-        description="Whether the domain appears to be parked or for sale"
+        default=False, description="Whether the domain appears to be parked or for sale"
     )
-    domain: Optional[str] = Field(
-        default=None,
-        description="Extracted domain from the URL"
-    )
+    domain: str | None = Field(default=None, description="Extracted domain from the URL")
 
     model_config = {
         "json_schema_extra": {
@@ -67,7 +52,7 @@ class URLValidationResult(BaseModel):
                     "error_type": None,
                     "status_code": 200,
                     "is_parked": False,
-                    "domain": "example.com"
+                    "domain": "example.com",
                 },
                 {
                     "valid": False,
@@ -78,8 +63,8 @@ class URLValidationResult(BaseModel):
                     "error_type": "dns_failure",
                     "status_code": None,
                     "is_parked": False,
-                    "domain": "nonexistent-domain-12345.com"
-                }
+                    "domain": "nonexistent-domain-12345.com",
+                },
             ]
         }
     }

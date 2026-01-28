@@ -29,17 +29,23 @@ logger = logging.getLogger(__name__)
 class TargetingRefinement(BaseModel):
     """A specific targeting refinement suggestion."""
 
-    attribute: str = Field(description="The attribute to refine (title, industry, company_size, seniority)")
+    attribute: str = Field(
+        description="The attribute to refine (title, industry, company_size, seniority)"
+    )
     current_value: str = Field(description="Current targeting value or range")
     suggested_value: str = Field(description="Suggested new value or range")
     reason: str = Field(description="Why this change is recommended based on patterns")
-    expected_lift: float = Field(description="Expected conversion lift (e.g., 1.5 = 50% improvement)")
+    expected_lift: float = Field(
+        description="Expected conversion lift (e.g., 1.5 = 50% improvement)"
+    )
 
 
 class SegmentOpportunity(BaseModel):
     """An untapped segment opportunity."""
 
-    segment_name: str = Field(description="Name for this segment (e.g., 'Tech CTOs at Growth-Stage')")
+    segment_name: str = Field(
+        description="Name for this segment (e.g., 'Tech CTOs at Growth-Stage')"
+    )
     description: str = Field(description="Description of the segment")
     attributes: dict[str, str] = Field(description="Key attributes defining this segment")
     conversion_rate: float = Field(description="Observed conversion rate for this segment")
@@ -192,13 +198,19 @@ async def run_who_analyzer(
     if campaign_metrics:
         prompt_parts.append("\n## Current Campaign Performance\n")
         prompt_parts.append(f"- Reply Rate: {campaign_metrics.get('reply_rate', 'N/A')}%\n")
-        prompt_parts.append(f"- Conversion Rate: {campaign_metrics.get('conversion_rate', 'N/A')}%\n")
-        prompt_parts.append(f"- Leads Contacted: {campaign_metrics.get('leads_contacted', 'N/A')}\n")
+        prompt_parts.append(
+            f"- Conversion Rate: {campaign_metrics.get('conversion_rate', 'N/A')}%\n"
+        )
+        prompt_parts.append(
+            f"- Leads Contacted: {campaign_metrics.get('leads_contacted', 'N/A')}\n"
+        )
 
     # Business context
     if business_context:
         prompt_parts.append("\n## Business Context\n")
-        prompt_parts.append(f"- Value Proposition: {business_context.get('value_proposition', 'N/A')}\n")
+        prompt_parts.append(
+            f"- Value Proposition: {business_context.get('value_proposition', 'N/A')}\n"
+        )
         prompt_parts.append(f"- Target Market: {business_context.get('target_market', 'N/A')}\n")
 
     # Instructions

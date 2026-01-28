@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 class TierName(str, Enum):
     """Subscription tier names."""
+
     IGNITION = "ignition"
     VELOCITY = "velocity"
     DOMINANCE = "dominance"
@@ -26,15 +27,16 @@ class TierName(str, Enum):
 @dataclass(frozen=True)
 class TierConfig:
     """Configuration for a subscription tier."""
+
     name: TierName
-    price_aud: int              # Monthly price in AUD
-    founding_price_aud: int     # Founding member price (50% off)
-    leads_per_month: int        # Lead pool quota
-    max_campaigns: int          # Max active campaigns
-    ai_suggested_campaigns: int # AI-suggested campaign slots
-    custom_campaigns: int       # Custom campaign slots
-    linkedin_seats: int         # HeyReach seats
-    daily_outreach: int         # Max daily outreach actions
+    price_aud: int  # Monthly price in AUD
+    founding_price_aud: int  # Founding member price (50% off)
+    leads_per_month: int  # Lead pool quota
+    max_campaigns: int  # Max active campaigns
+    ai_suggested_campaigns: int  # AI-suggested campaign slots
+    custom_campaigns: int  # Custom campaign slots
+    linkedin_seats: int  # HeyReach seats
+    daily_outreach: int  # Max daily outreach actions
 
 
 # =============================================================================
@@ -133,11 +135,11 @@ def get_campaign_slots(tier_name: str) -> tuple[int, int]:
 # =============================================================================
 
 ALS_TIER_THRESHOLDS = {
-    "hot": 85,      # 85-100
-    "warm": 60,     # 60-84
-    "cool": 35,     # 35-59
-    "cold": 20,     # 20-34
-    "dead": 0,      # 0-19
+    "hot": 85,  # 85-100
+    "warm": 60,  # 60-84
+    "cool": 35,  # 35-59
+    "cold": 20,  # 20-34
+    "dead": 0,  # 0-19
 }
 
 CHANNEL_ACCESS_BY_ALS = {

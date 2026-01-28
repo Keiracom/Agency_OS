@@ -27,8 +27,7 @@ from uuid import UUID
 
 from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
-from sqlalchemy import and_, func, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import and_, select, update
 
 from src.agents.sdk_agents import should_use_sdk_enrichment
 from src.config.tiers import get_available_channels_enum
@@ -38,7 +37,6 @@ from src.engines.scout import get_scout_engine
 from src.integrations.supabase import get_db_session
 from src.models.base import (
     CampaignStatus,
-    ChannelType,
     LeadStatus,
     SubscriptionStatus,
 )
@@ -85,10 +83,12 @@ async def get_leads_needing_enrichment_task(
                     Campaign.deleted_at.is_(None),  # Soft delete check
                     Campaign.status == CampaignStatus.ACTIVE,
                     # JIT validation: client billing status
-                    Client.subscription_status.in_([
-                        SubscriptionStatus.ACTIVE,
-                        SubscriptionStatus.TRIALING,
-                    ]),
+                    Client.subscription_status.in_(
+                        [
+                            SubscriptionStatus.ACTIVE,
+                            SubscriptionStatus.TRIALING,
+                        ]
+                    ),
                     Client.credits_remaining > 0,
                 )
             )
@@ -107,7 +107,7 @@ async def get_leads_needing_enrichment_task(
         leads_by_client: dict[str, list[str]] = {}
         client_credits: dict[str, int] = {}
 
-        for lead_id, client_id_val, campaign_id, credits in rows:
+        for lead_id, client_id_val, _campaign_id, credits in rows:
             client_key = str(client_id_val)
             if client_key not in leads_by_client:
                 leads_by_client[client_key] = []
@@ -118,8 +118,7 @@ async def get_leads_needing_enrichment_task(
         total_leads = sum(len(leads) for leads in leads_by_client.values())
 
         logger.info(
-            f"Found {total_leads} leads needing enrichment across "
-            f"{len(leads_by_client)} clients"
+            f"Found {total_leads} leads needing enrichment across {len(leads_by_client)} clients"
         )
 
         return {
@@ -131,9 +130,7 @@ async def get_leads_needing_enrichment_task(
 
 
 @task(name="enrich_lead_batch", retries=3, retry_delay_seconds=10)
-async def enrich_lead_batch_task(
-    lead_ids: list[str], client_id: str
-) -> dict[str, Any]:
+async def enrich_lead_batch_task(lead_ids: list[str], client_id: str) -> dict[str, Any]:
     """
     Enrich a batch of leads for a single client.
 
@@ -200,7 +197,7 @@ async def dncr_batch_check_task(lead_ids: list[str]) -> dict[str, Any]:
                 Lead.id.in_(lead_uuids),
                 Lead.phone.isnot(None),
                 Lead.phone.startswith("+61"),  # Australian numbers only
-                Lead.dncr_checked == False,  # Not already checked
+                not Lead.dncr_checked,  # Not already checked
             )
         )
         result = await db.execute(stmt)
@@ -216,9 +213,7 @@ async def dncr_batch_check_task(lead_ids: list[str]) -> dict[str, Any]:
             }
 
         # Extract phone numbers
-        phone_to_lead: dict[str, Lead] = {
-            lead.phone: lead for lead in leads_to_check
-        }
+        phone_to_lead: dict[str, Lead] = {lead.phone: lead for lead in leads_to_check}
         phones = list(phone_to_lead.keys())
 
         logger.info(f"Checking {len(phones)} Australian phone numbers against DNCR")
@@ -229,7 +224,7 @@ async def dncr_batch_check_task(lead_ids: list[str]) -> dict[str, Any]:
         # Update lead records
         on_dncr_count = 0
         clean_count = 0
-        now = datetime.utcnow()
+        datetime.utcnow()
 
         for phone, is_on_dncr in dncr_results.items():
             if phone in phone_to_lead:
@@ -279,11 +274,9 @@ async def score_lead_task(lead_id: str) -> dict[str, Any]:
         result = await scorer_engine.calculate_als(db=db, lead_id=lead_uuid)
 
         if result.success:
-            als_score = result.data['als_score']
-            als_tier = result.data['als_tier']
-            logger.info(
-                f"Lead {lead_id} scored: {als_score} ({als_tier} tier)"
-            )
+            als_score = result.data["als_score"]
+            als_tier = result.data["als_tier"]
+            logger.info(f"Lead {lead_id} scored: {als_score} ({als_tier} tier)")
 
             # Check if Hot lead needs SDK enrichment
             # Fetch lead for signal check
@@ -299,7 +292,7 @@ async def score_lead_task(lead_id: str) -> dict[str, Any]:
                     "company_latest_funding_date": lead.organization_latest_funding_date,
                     "company_open_roles": 3 if lead.organization_is_hiring else 0,
                     "company_employee_count": lead.organization_employee_count,
-                    "source": getattr(lead, 'source', None),
+                    "source": getattr(lead, "source", None),
                 }
                 sdk_eligible, sdk_signals = should_use_sdk_enrichment(lead_data)
 
@@ -375,9 +368,7 @@ async def sdk_enrich_hot_lead_task(lead_id: str, signals: list[str]) -> dict[str
 
 
 @task(name="allocate_channels_for_lead", retries=2, retry_delay_seconds=5)
-async def allocate_channels_for_lead_task(
-    lead_id: str, als_tier: str
-) -> dict[str, Any]:
+async def allocate_channels_for_lead_task(lead_id: str, als_tier: str) -> dict[str, Any]:
     """
     Allocate channels for a scored lead based on tier.
 
@@ -425,9 +416,7 @@ async def allocate_channels_for_lead_task(
                 f"(tier: {als_tier})"
             )
         else:
-            logger.warning(
-                f"Channel allocation failed for lead {lead_id}: {result.error}"
-            )
+            logger.warning(f"Channel allocation failed for lead {lead_id}: {result.error}")
 
         return {
             "lead_id": lead_id,
@@ -438,9 +427,7 @@ async def allocate_channels_for_lead_task(
 
 
 @task(name="deduct_client_credits", retries=3, retry_delay_seconds=5)
-async def deduct_client_credits_task(
-    client_id: str, credits_to_deduct: int
-) -> dict[str, Any]:
+async def deduct_client_credits_task(client_id: str, credits_to_deduct: int) -> dict[str, Any]:
     """
     Deduct credits from client after successful enrichment.
 
@@ -528,15 +515,10 @@ async def daily_enrichment_flow(
     if isinstance(client_id, str):
         client_id = UUID(client_id)
 
-    logger.info(
-        f"Starting daily enrichment flow (batch_size={batch_size}, "
-        f"client_id={client_id})"
-    )
+    logger.info(f"Starting daily enrichment flow (batch_size={batch_size}, client_id={client_id})")
 
     # Step 1: Get leads needing enrichment (with JIT billing validation)
-    leads_data = await get_leads_needing_enrichment_task(
-        limit=batch_size, client_id=client_id
-    )
+    leads_data = await get_leads_needing_enrichment_task(limit=batch_size, client_id=client_id)
 
     if leads_data["total_leads"] == 0:
         logger.info("No leads needing enrichment")
@@ -551,9 +533,7 @@ async def daily_enrichment_flow(
     # Step 2: Enrich leads by client
     enrichment_results = []
     for client_id_str, lead_ids in leads_data["leads_by_client"].items():
-        result = await enrich_lead_batch_task(
-            lead_ids=lead_ids, client_id=client_id_str
-        )
+        result = await enrich_lead_batch_task(lead_ids=lead_ids, client_id=client_id_str)
         enrichment_results.append(result)
 
     # Collect successfully enriched leads
@@ -610,9 +590,8 @@ async def daily_enrichment_flow(
     for result in enrichment_results:
         if result["success"] and result["data"]:
             client_id_str = result["client_id"]
-            enriched_count = (
-                result["data"].get("tier1_success", 0)
-                + result["data"].get("tier2_success", 0)
+            enriched_count = result["data"].get("tier1_success", 0) + result["data"].get(
+                "tier2_success", 0
             )
             credits_by_client[client_id_str] = enriched_count
 
@@ -632,7 +611,9 @@ async def daily_enrichment_flow(
 
     # SDK enrichment stats
     total_sdk_enriched = sum(1 for r in sdk_enrichment_results if r.get("success"))
-    total_sdk_cost = sum(r.get("sdk_cost_aud", 0) for r in sdk_enrichment_results if r.get("success"))
+    total_sdk_cost = sum(
+        r.get("sdk_cost_aud", 0) for r in sdk_enrichment_results if r.get("success")
+    )
 
     summary = {
         "total_leads_processed": leads_data["total_leads"],

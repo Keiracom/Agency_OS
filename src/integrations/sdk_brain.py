@@ -15,13 +15,11 @@ This is the core wrapper around Claude's Agent SDK that provides:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, TypeVar
-from uuid import UUID
+from typing import Any, TypeVar
 
 from anthropic import Anthropic, AsyncAnthropic
 from pydantic import BaseModel
@@ -77,18 +75,18 @@ class SDKBrainResult:
 
 MODEL_PRICING = {
     "claude-sonnet-4-20250514": {
-        "input": 4.65,      # $3 USD × 1.55
-        "output": 23.25,    # $15 USD × 1.55
-        "cached": 0.465,    # 90% discount on cached
+        "input": 4.65,  # $3 USD × 1.55
+        "output": 23.25,  # $15 USD × 1.55
+        "cached": 0.465,  # 90% discount on cached
     },
     "claude-3-5-haiku-20241022": {
-        "input": 1.24,      # $0.80 USD × 1.55
-        "output": 6.20,     # $4 USD × 1.55
+        "input": 1.24,  # $0.80 USD × 1.55
+        "output": 6.20,  # $4 USD × 1.55
         "cached": 0.124,
     },
     "claude-opus-4-5-20251101": {
-        "input": 7.75,      # $5 USD × 1.55
-        "output": 38.75,    # $25 USD × 1.55
+        "input": 7.75,  # $5 USD × 1.55
+        "output": 38.75,  # $25 USD × 1.55
         "cached": 0.775,
     },
 }
@@ -329,10 +327,12 @@ class SDKBrain:
                         logger.warning(f"Output parsing failed: {e}")
                         # Try one more turn asking for proper format
                         messages.append({"role": "assistant", "content": response.content})
-                        messages.append({
-                            "role": "user",
-                            "content": f"Please format your response as valid JSON matching this schema:\n{output_schema.model_json_schema()}"
-                        })
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": f"Please format your response as valid JSON matching this schema:\n{output_schema.model_json_schema()}",
+                            }
+                        )
                         continue
 
             # Turn limit reached
@@ -368,25 +368,17 @@ class SDKBrain:
         """Build messages list with optional caching."""
         if context and cache_context and self.config.enable_caching:
             # Use cache_control for context
-            return [{
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": context,
-                        "cache_control": {"type": "ephemeral"}
-                    },
-                    {
-                        "type": "text",
-                        "text": prompt
-                    }
-                ]
-            }]
+            return [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": context, "cache_control": {"type": "ephemeral"}},
+                        {"type": "text", "text": prompt},
+                    ],
+                }
+            ]
         elif context:
-            return [{
-                "role": "user",
-                "content": f"{context}\n\n---\n\n{prompt}"
-            }]
+            return [{"role": "user", "content": f"{context}\n\n---\n\n{prompt}"}]
         else:
             return [{"role": "user", "content": prompt}]
 
@@ -421,28 +413,34 @@ class SDKBrain:
                 tool_input = block.input
 
                 # Track tool call
-                self._tool_calls.append({
-                    "tool": tool_name,
-                    "input": tool_input,
-                    "timestamp": datetime.now().isoformat(),
-                })
+                self._tool_calls.append(
+                    {
+                        "tool": tool_name,
+                        "input": tool_input,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                )
 
                 # Execute tool
                 try:
                     result = await self._run_tool(tool_name, tool_input)
-                    results.append({
-                        "type": "tool_result",
-                        "tool_use_id": block.id,
-                        "content": result,
-                    })
+                    results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": result,
+                        }
+                    )
                 except Exception as e:
                     logger.error(f"Tool execution error: {tool_name}: {e}")
-                    results.append({
-                        "type": "tool_result",
-                        "tool_use_id": block.id,
-                        "content": f"Error: {str(e)}",
-                        "is_error": True,
-                    })
+                    results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": f"Error: {str(e)}",
+                            "is_error": True,
+                        }
+                    )
 
         return results
 
@@ -543,10 +541,9 @@ class SDKSimpleClient:
 
         # Calculate cost
         pricing = MODEL_PRICING.get(self.model, MODEL_PRICING["claude-3-5-haiku-20241022"])
-        cost = (
-            (response.usage.input_tokens / 1_000_000) * pricing["input"]
-            + (response.usage.output_tokens / 1_000_000) * pricing["output"]
-        )
+        cost = (response.usage.input_tokens / 1_000_000) * pricing["input"] + (
+            response.usage.output_tokens / 1_000_000
+        ) * pricing["output"]
 
         # Track spend
         if self._spend_tracker:

@@ -16,13 +16,14 @@ NOTE: Meetings are derived from activities where intent='meeting_request'
 and lead status is 'converted', or from extra_data containing meeting info.
 """
 
+import contextlib
 from datetime import datetime
-from typing import Annotated, List, Optional
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, desc, func, or_, select
+from sqlalchemy import and_, desc, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import (
@@ -44,14 +45,15 @@ router = APIRouter(tags=["meetings"])
 
 class MeetingResponse(BaseModel):
     """Schema for a meeting."""
+
     id: UUID
     lead_id: UUID
     lead_name: str
-    lead_company: Optional[str] = None
-    scheduled_at: Optional[datetime] = None
+    lead_company: str | None = None
+    scheduled_at: datetime | None = None
     duration_minutes: int = 30
     meeting_type: str = "discovery"
-    calendar_link: Optional[str] = None
+    calendar_link: str | None = None
     status: str = "scheduled"
     created_at: datetime
 
@@ -61,7 +63,8 @@ class MeetingResponse(BaseModel):
 
 class MeetingListResponse(BaseModel):
     """Schema for meeting list."""
-    items: List[MeetingResponse] = Field(..., description="List of meetings")
+
+    items: list[MeetingResponse] = Field(..., description="List of meetings")
     total: int = Field(..., description="Total count")
 
 
@@ -112,7 +115,7 @@ async def list_meetings(
     activities = result.scalars().all()
 
     # Get leads for enrichment
-    lead_ids = list(set(a.lead_id for a in activities))
+    lead_ids = list({a.lead_id for a in activities})
     leads_map = {}
 
     if lead_ids:
@@ -137,14 +140,13 @@ async def list_meetings(
         scheduled_at = None
 
         if "scheduled_at" in extra:
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 scheduled_at = datetime.fromisoformat(extra["scheduled_at"])
-            except (ValueError, TypeError):
-                pass
 
         # If no scheduled_at, use activity created_at + 2 days as estimate
         if not scheduled_at:
             from datetime import timedelta
+
             scheduled_at = activity.created_at + timedelta(days=2)
 
         # Filter upcoming if requested

@@ -25,15 +25,13 @@ The KB includes:
 
 from __future__ import annotations
 
-import json
 import logging
-from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from src.integrations.sdk_brain import SDKBrain, SDKBrainResult, create_sdk_brain
+from src.integrations.sdk_brain import SDKBrainResult, create_sdk_brain
 
 logger = logging.getLogger(__name__)
 
@@ -45,16 +43,17 @@ logger = logging.getLogger(__name__)
 
 class PronunciationGuide(BaseModel):
     """Pronunciation guides for the voice AI."""
+
     contact_name: str = Field(description="Contact name with phonetic guide if unusual")
     company_name: str = Field(description="Company name with phonetic guide if unusual")
     industry_terms: list[str] = Field(
-        default_factory=list,
-        description="Industry-specific terms the voice AI should know"
+        default_factory=list, description="Industry-specific terms the voice AI should know"
     )
 
 
 class ObjectionResponse(BaseModel):
     """Response template for specific objection."""
+
     objection: str = Field(description="The objection type")
     response: str = Field(description="Suggested response")
     follow_up: str | None = Field(default=None, description="Follow-up if response doesn't work")
@@ -62,65 +61,62 @@ class ObjectionResponse(BaseModel):
 
 class ObjectionHandlers(BaseModel):
     """Objection handling templates - disarmingly honest persona."""
+
     not_interested: str = Field(
         default="Ha, I get that a lot. Honestly, most people aren't until something breaks. What would need to go wrong for you to care about this?",
-        description="Response when prospect says they're not interested"
+        description="Response when prospect says they're not interested",
     )
     no_budget: str = Field(
         default="Yeah, nobody has budget for stuff they don't need yet. I'm not trying to sell you today - just curious if lead gen is even a problem for you?",
-        description="Response for budget objections"
+        description="Response for budget objections",
     )
     bad_timing: str = Field(
         default="When is it ever good timing, right? Look, I'll be honest - is this a real 'not now' or a polite 'go away'? Either's fine.",
-        description="Response for timing objections"
+        description="Response for timing objections",
     )
     using_competitor: str = Field(
         default="Oh nice, who? I'm genuinely curious. We lose deals to them sometimes - what made you pick them?",
-        description="Response when using competitor"
+        description="Response when using competitor",
     )
     need_to_think: str = Field(
         default="Sure. But real talk - is that code for 'I'm not the right person' or do you actually want to bring this up?",
-        description="Response for 'need to think about it'"
+        description="Response for 'need to think about it'",
     )
     send_info: str = Field(
         default="I can, but let's be real - you'll never read it. What would I need to say right now for you to actually care?",
-        description="Response for 'just send me info'"
+        description="Response for 'just send me info'",
     )
     too_busy: str = Field(
         default="Same. I'll be quick and honest - if this isn't relevant in 30 seconds, tell me to piss off and I will.",
-        description="Response for 'too busy'"
+        description="Response for 'too busy'",
     )
     call_back_later: str = Field(
         default="I can, but we both know I'll catch you at another bad time. What's actually going on - is this just not a fit?",
-        description="Response for 'call me back later'"
+        description="Response for 'call me back later'",
     )
     how_did_you_get_my_number: str = Field(
         default="LinkedIn and your website. I know, it's weird getting cold called. I researched you though - not just dialing random numbers.",
-        description="Response for 'how did you get my number'"
+        description="Response for 'how did you get my number'",
     )
     custom_objections: list[ObjectionResponse] = Field(
-        default_factory=list,
-        description="Custom objection responses based on research"
+        default_factory=list, description="Custom objection responses based on research"
     )
 
 
 class CompetitorContext(BaseModel):
     """Competitor intelligence for the call."""
+
     likely_current_tools: str | None = Field(
-        default=None,
-        description="What tools they likely use based on job posts, tech stack"
+        default=None, description="What tools they likely use based on job posts, tech stack"
     )
     main_competitors: list[str] = Field(
-        default_factory=list,
-        description="Main competitors to be aware of"
+        default_factory=list, description="Main competitors to be aware of"
     )
     our_advantage: str | None = Field(
-        default=None,
-        description="Our key advantage vs their likely tools"
+        default=None, description="Our key advantage vs their likely tools"
     )
     avoid_mentioning: list[str] = Field(
-        default_factory=list,
-        description="Competitors to avoid bringing up first"
+        default_factory=list, description="Competitors to avoid bringing up first"
     )
 
 
@@ -135,68 +131,56 @@ class VoiceKBOutput(BaseModel):
         description="One paragraph summary of company, recent news, situation"
     )
     company_talking_points: list[str] = Field(
-        default_factory=list,
-        description="Key talking points about their company"
+        default_factory=list, description="Key talking points about their company"
     )
 
     # Opening strategies
-    opening_hooks: list[str] = Field(
-        description="Specific opening hooks to use based on research"
-    )
+    opening_hooks: list[str] = Field(description="Specific opening hooks to use based on research")
     recommended_opener: str | None = Field(
-        default=None,
-        description="Recommended opening line for this specific prospect"
+        default=None, description="Recommended opening line for this specific prospect"
     )
 
     # Pain point discussion
     pain_points: list[str] = Field(
-        default_factory=list,
-        description="Pain points to potentially discuss"
+        default_factory=list, description="Pain points to potentially discuss"
     )
     pain_point_questions: list[str] = Field(
-        default_factory=list,
-        description="Questions to ask about pain points"
+        default_factory=list, description="Questions to ask about pain points"
     )
 
     # Objection handling
-    objection_responses: ObjectionHandlers = Field(
-        description="Objection handling templates"
-    )
+    objection_responses: ObjectionHandlers = Field(description="Objection handling templates")
 
     # Topics and navigation
     do_not_mention: list[str] = Field(
-        default_factory=list,
-        description="Topics to avoid (with reasons)"
+        default_factory=list, description="Topics to avoid (with reasons)"
     )
     conversation_starters: list[str] = Field(
-        default_factory=list,
-        description="Conversation starters based on research"
+        default_factory=list, description="Conversation starters based on research"
     )
     transition_phrases: list[str] = Field(
-        default_factory=list,
-        description="Phrases to transition between topics"
+        default_factory=list, description="Phrases to transition between topics"
     )
 
     # Competitor intelligence
     competitor_intel: CompetitorContext | None = Field(
-        default=None,
-        description="Competitor intelligence"
+        default=None, description="Competitor intelligence"
     )
 
     # Meeting booking
     meeting_ask: str = Field(
         default="Would you be open to a 15-minute call this week to explore this further?",
-        description="How to ask for the meeting"
+        description="How to ask for the meeting",
     )
     calendar_link_mention: str = Field(
         default="I can send over a calendar link right after this call if that's easier.",
-        description="How to mention calendar booking"
+        description="How to mention calendar booking",
     )
 
     # Closing
     closing_summary: str = Field(
         default="Thanks for your time today. I'll send over a quick recap email.",
-        description="How to close the call"
+        description="How to close the call",
     )
 
 
@@ -345,10 +329,16 @@ async def run_sdk_voice_kb(
     first_name = lead_data.get("first_name", "")
     last_name = lead_data.get("last_name", "")
     name = f"{first_name} {last_name}".strip() or "Unknown"
-    company = lead_data.get("company_name") or lead_data.get("organization_name") or lead_data.get("company", "")
+    company = (
+        lead_data.get("company_name")
+        or lead_data.get("organization_name")
+        or lead_data.get("company", "")
+    )
     title = lead_data.get("title", "")
     industry = lead_data.get("company_industry") or lead_data.get("organization_industry", "")
-    employee_count = lead_data.get("company_employee_count") or lead_data.get("organization_employee_count", "")
+    employee_count = lead_data.get("company_employee_count") or lead_data.get(
+        "organization_employee_count", ""
+    )
     city = lead_data.get("company_city") or lead_data.get("organization_city", "")
     country = lead_data.get("company_country") or lead_data.get("organization_country", "")
     location = f"{city}, {country}" if city and country else (city or country or "")
@@ -396,17 +386,17 @@ async def run_sdk_voice_kb(
                         news_item += f" ({n['date']})"
                     news_items.append(news_item)
             if news_items:
-                enrichment_parts.append(f"RECENT NEWS:\n  - " + "\n  - ".join(news_items))
+                enrichment_parts.append("RECENT NEWS:\n  - " + "\n  - ".join(news_items))
 
         # Pain points
         if enrichment_data.get("pain_points"):
             pains = enrichment_data["pain_points"][:4]
-            enrichment_parts.append(f"IDENTIFIED PAIN POINTS:\n  - " + "\n  - ".join(pains))
+            enrichment_parts.append("IDENTIFIED PAIN POINTS:\n  - " + "\n  - ".join(pains))
 
         # Personalization hooks
         if enrichment_data.get("personalization_hooks"):
             hooks = enrichment_data["personalization_hooks"][:4]
-            enrichment_parts.append(f"PERSONALIZATION HOOKS:\n  - " + "\n  - ".join(hooks))
+            enrichment_parts.append("PERSONALIZATION HOOKS:\n  - " + "\n  - ".join(hooks))
 
         # Competitor intel
         if enrichment_data.get("competitor_intel"):
@@ -422,7 +412,7 @@ async def run_sdk_voice_kb(
         # Conversation starters
         if enrichment_data.get("conversation_starters"):
             starters = enrichment_data["conversation_starters"][:3]
-            enrichment_parts.append(f"CONVERSATION STARTERS:\n  - " + "\n  - ".join(starters))
+            enrichment_parts.append("CONVERSATION STARTERS:\n  - " + "\n  - ".join(starters))
 
         if enrichment_parts:
             enrichment_section = "\n\n".join(enrichment_parts)
@@ -497,9 +487,13 @@ OUR PRODUCT:
             testimonials = client_intelligence["testimonials"][:2]
             for t in testimonials:
                 if isinstance(t, dict) and t.get("quote"):
-                    quote = t["quote"][:80] + "..." if len(t.get("quote", "")) > 80 else t.get("quote", "")
+                    quote = (
+                        t["quote"][:80] + "..."
+                        if len(t.get("quote", "")) > 80
+                        else t.get("quote", "")
+                    )
                     author = t.get("author", "Client")
-                    proof_parts.append(f"TESTIMONIAL: \"{quote}\" - {author}")
+                    proof_parts.append(f'TESTIMONIAL: "{quote}" - {author}')
 
         # Review ratings
         if client_intelligence.get("ratings"):
@@ -519,7 +513,7 @@ OUR PRODUCT:
         if proof_parts:
             proof_section = f"""
 YOUR COMPANY'S PROOF POINTS (use these naturally if relevant):
-{chr(10).join(f'- {p}' for p in proof_parts)}
+{chr(10).join(f"- {p}" for p in proof_parts)}
 """
 
     user_prompt = f"""Build a voice knowledge base for calling this prospect:
@@ -533,7 +527,7 @@ PROSPECT:
 - Location: {location}
 
 LINKEDIN DATA:
-{linkedin_section if linkedin_section else 'N/A'}
+{linkedin_section if linkedin_section else "N/A"}
 
 RESEARCH FINDINGS:
 {enrichment_section}
@@ -569,7 +563,7 @@ Return JSON matching the schema."""
             extra={
                 "cost_aud": result.cost_aud,
                 "turns": result.turns_used,
-            }
+            },
         )
     else:
         logger.warning(f"SDK voice KB generation failed for {name} at {company}: {result.error}")
@@ -641,7 +635,7 @@ def get_basic_voice_kb(lead_data: dict[str, Any]) -> dict[str, Any]:
     """
     first_name = lead_data.get("first_name", "there")
     company = lead_data.get("company_name") or lead_data.get("company", "your company")
-    title = lead_data.get("title", "")
+    lead_data.get("title", "")
 
     return {
         "pronunciation": {

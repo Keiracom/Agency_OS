@@ -39,7 +39,6 @@ from src.detectors.base import BaseDetector
 from src.models.activity import Activity
 from src.models.conversion_patterns import ConversionPattern
 
-
 # Angle detection patterns
 ANGLE_PATTERNS = {
     "roi_focused": ["roi", "return", "revenue", "profit", "save", "increase", "boost"],
@@ -169,9 +168,7 @@ class WhatDetector(BaseDetector):
         baseline_rate: float,
     ) -> dict[str, Any]:
         """Analyze subject line patterns."""
-        pattern_stats: dict[str, dict[str, int]] = defaultdict(
-            lambda: {"total": 0, "converted": 0}
-        )
+        pattern_stats: dict[str, dict[str, int]] = defaultdict(lambda: {"total": 0, "converted": 0})
 
         for activity in activities:
             snapshot = activity.content_snapshot or {}
@@ -193,11 +190,13 @@ class WhatDetector(BaseDetector):
                 continue
             rate = stats["converted"] / stats["total"]
             if rate > baseline_rate:
-                winning.append({
-                    "pattern": pattern,
-                    "conversion_rate": round(rate, 4),
-                    "sample": stats["total"],
-                })
+                winning.append(
+                    {
+                        "pattern": pattern,
+                        "conversion_rate": round(rate, 4),
+                        "sample": stats["total"],
+                    }
+                )
 
         winning.sort(key=lambda x: x["conversion_rate"], reverse=True)
         return {"winning": winning[:5]}
@@ -208,9 +207,7 @@ class WhatDetector(BaseDetector):
         baseline_rate: float,
     ) -> dict[str, Any]:
         """Analyze pain point effectiveness."""
-        pain_stats: dict[str, dict[str, int]] = defaultdict(
-            lambda: {"total": 0, "converted": 0}
-        )
+        pain_stats: dict[str, dict[str, int]] = defaultdict(lambda: {"total": 0, "converted": 0})
 
         for activity in activities:
             snapshot = activity.content_snapshot or {}
@@ -255,9 +252,7 @@ class WhatDetector(BaseDetector):
         baseline_rate: float,
     ) -> dict[str, Any]:
         """Analyze CTA effectiveness."""
-        cta_stats: dict[str, dict[str, int]] = defaultdict(
-            lambda: {"total": 0, "converted": 0}
-        )
+        cta_stats: dict[str, dict[str, int]] = defaultdict(lambda: {"total": 0, "converted": 0})
 
         for activity in activities:
             snapshot = activity.content_snapshot or {}
@@ -274,11 +269,13 @@ class WhatDetector(BaseDetector):
             if stats["total"] < 5:
                 continue
             rate = stats["converted"] / stats["total"]
-            effective.append({
-                "cta": cta,
-                "conversion_rate": round(rate, 4),
-                "sample": stats["total"],
-            })
+            effective.append(
+                {
+                    "cta": cta,
+                    "conversion_rate": round(rate, 4),
+                    "sample": stats["total"],
+                }
+            )
 
         effective.sort(key=lambda x: x["conversion_rate"], reverse=True)
         return {"effective": effective[:5]}
@@ -289,9 +286,7 @@ class WhatDetector(BaseDetector):
         baseline_rate: float,
     ) -> dict[str, Any]:
         """Analyze message angle effectiveness."""
-        angle_stats: dict[str, dict[str, int]] = defaultdict(
-            lambda: {"total": 0, "converted": 0}
-        )
+        angle_stats: dict[str, dict[str, int]] = defaultdict(lambda: {"total": 0, "converted": 0})
 
         for activity in activities:
             snapshot = activity.content_snapshot or {}
@@ -308,11 +303,13 @@ class WhatDetector(BaseDetector):
             if stats["total"] < 5:
                 continue
             rate = stats["converted"] / stats["total"]
-            rankings.append({
-                "angle": angle,
-                "conversion_rate": round(rate, 4),
-                "sample": stats["total"],
-            })
+            rankings.append(
+                {
+                    "angle": angle,
+                    "conversion_rate": round(rate, 4),
+                    "sample": stats["total"],
+                }
+            )
 
         rankings.sort(key=lambda x: x["conversion_rate"], reverse=True)
         return {"rankings": rankings}
@@ -331,9 +328,7 @@ class WhatDetector(BaseDetector):
             word_count = snapshot.get("word_count", 0)
 
             if word_count > 0:
-                channel_lengths[channel].append(
-                    (word_count, activity.led_to_booking)
-                )
+                channel_lengths[channel].append((word_count, activity.led_to_booking))
 
         result = {}
         for channel, lengths in channel_lengths.items():
@@ -376,9 +371,7 @@ class WhatDetector(BaseDetector):
                 continue
 
             rate = sum(1 for a in with_element if a.led_to_booking) / len(with_element)
-            result[element.replace("has_", "")] = round(
-                self.calculate_lift(rate, baseline_rate), 2
-            )
+            result[element.replace("has_", "")] = round(self.calculate_lift(rate, baseline_rate), 2)
 
         return result
 
@@ -415,12 +408,14 @@ class WhatDetector(BaseDetector):
             if stats["total"] < 5:
                 continue
             rate = stats["converted"] / stats["total"]
-            rankings.append({
-                "template_id": template_id,
-                "conversion_rate": round(rate, 4),
-                "sample": stats["total"],
-                "lift": round(self.calculate_lift(rate, baseline_rate), 2),
-            })
+            rankings.append(
+                {
+                    "template_id": template_id,
+                    "conversion_rate": round(rate, 4),
+                    "sample": stats["total"],
+                    "lift": round(self.calculate_lift(rate, baseline_rate), 2),
+                }
+            )
 
         rankings.sort(key=lambda x: x["conversion_rate"], reverse=True)
         return {
@@ -467,16 +462,18 @@ class WhatDetector(BaseDetector):
             if len(variant_rates) >= 2:
                 best_variant = max(variant_rates, key=variant_rates.get)
                 worst_variant = min(variant_rates, key=variant_rates.get)
-                insights.append({
-                    "test_id": test_id,
-                    "best_variant": best_variant,
-                    "best_rate": round(variant_rates[best_variant], 4),
-                    "worst_variant": worst_variant,
-                    "worst_rate": round(variant_rates[worst_variant], 4),
-                    "lift_difference": round(
-                        variant_rates[best_variant] - variant_rates[worst_variant], 4
-                    ),
-                })
+                insights.append(
+                    {
+                        "test_id": test_id,
+                        "best_variant": best_variant,
+                        "best_rate": round(variant_rates[best_variant], 4),
+                        "worst_variant": worst_variant,
+                        "worst_rate": round(variant_rates[worst_variant], 4),
+                        "lift_difference": round(
+                            variant_rates[best_variant] - variant_rates[worst_variant], 4
+                        ),
+                    }
+                )
 
         return {
             "test_insights": insights,
@@ -518,8 +515,14 @@ class WhatDetector(BaseDetector):
                     without_links["converted"] += 1
 
         # Calculate rates
-        with_rate = with_links["converted"] / with_links["total"] if with_links["total"] >= 5 else None
-        without_rate = without_links["converted"] / without_links["total"] if without_links["total"] >= 5 else None
+        with_rate = (
+            with_links["converted"] / with_links["total"] if with_links["total"] >= 5 else None
+        )
+        without_rate = (
+            without_links["converted"] / without_links["total"]
+            if without_links["total"] >= 5
+            else None
+        )
 
         # Find optimal link count
         optimal_count = None
@@ -534,9 +537,13 @@ class WhatDetector(BaseDetector):
         return {
             "with_links_rate": round(with_rate, 4) if with_rate else None,
             "without_links_rate": round(without_rate, 4) if without_rate else None,
-            "links_lift": round(self.calculate_lift(with_rate, without_rate), 2) if with_rate and without_rate else None,
+            "links_lift": round(self.calculate_lift(with_rate, without_rate), 2)
+            if with_rate and without_rate
+            else None,
             "optimal_link_count": optimal_count,
-            "recommendation": "include_links" if (with_rate and without_rate and with_rate > without_rate) else "no_links",
+            "recommendation": "include_links"
+            if (with_rate and without_rate and with_rate > without_rate)
+            else "no_links",
         }
 
     def _analyze_ai_models(
@@ -549,12 +556,8 @@ class WhatDetector(BaseDetector):
 
         Phase 24B: Uses ai_model_used and prompt_version fields.
         """
-        model_stats: dict[str, dict[str, int]] = defaultdict(
-            lambda: {"total": 0, "converted": 0}
-        )
-        prompt_stats: dict[str, dict[str, int]] = defaultdict(
-            lambda: {"total": 0, "converted": 0}
-        )
+        model_stats: dict[str, dict[str, int]] = defaultdict(lambda: {"total": 0, "converted": 0})
+        prompt_stats: dict[str, dict[str, int]] = defaultdict(lambda: {"total": 0, "converted": 0})
 
         for activity in activities:
             ai_model = getattr(activity, "ai_model_used", None)
@@ -575,12 +578,14 @@ class WhatDetector(BaseDetector):
         for model, stats in model_stats.items():
             if stats["total"] >= 5:
                 rate = stats["converted"] / stats["total"]
-                model_rankings.append({
-                    "model": model,
-                    "conversion_rate": round(rate, 4),
-                    "sample": stats["total"],
-                    "lift": round(self.calculate_lift(rate, baseline_rate), 2),
-                })
+                model_rankings.append(
+                    {
+                        "model": model,
+                        "conversion_rate": round(rate, 4),
+                        "sample": stats["total"],
+                        "lift": round(self.calculate_lift(rate, baseline_rate), 2),
+                    }
+                )
         model_rankings.sort(key=lambda x: x["conversion_rate"], reverse=True)
 
         # Rank prompts
@@ -588,12 +593,14 @@ class WhatDetector(BaseDetector):
         for prompt, stats in prompt_stats.items():
             if stats["total"] >= 5:
                 rate = stats["converted"] / stats["total"]
-                prompt_rankings.append({
-                    "prompt_version": prompt,
-                    "conversion_rate": round(rate, 4),
-                    "sample": stats["total"],
-                    "lift": round(self.calculate_lift(rate, baseline_rate), 2),
-                })
+                prompt_rankings.append(
+                    {
+                        "prompt_version": prompt,
+                        "conversion_rate": round(rate, 4),
+                        "sample": stats["total"],
+                        "lift": round(self.calculate_lift(rate, baseline_rate), 2),
+                    }
+                )
         prompt_rankings.sort(key=lambda x: x["conversion_rate"], reverse=True)
 
         return {
@@ -617,10 +624,23 @@ class WhatDetector(BaseDetector):
             "optimal_length": {},
             "personalization_lift": {},
             # Phase 24B additions
-            "template_performance": {"top_templates": [], "bottom_templates": [], "total_templates_analyzed": 0},
+            "template_performance": {
+                "top_templates": [],
+                "bottom_templates": [],
+                "total_templates_analyzed": 0,
+            },
             "ab_test_insights": {"test_insights": [], "total_tests_analyzed": 0},
-            "link_effectiveness": {"with_links_rate": None, "without_links_rate": None, "recommendation": "unknown"},
-            "ai_model_performance": {"best_model": None, "model_rankings": [], "best_prompt": None, "prompt_rankings": []},
+            "link_effectiveness": {
+                "with_links_rate": None,
+                "without_links_rate": None,
+                "recommendation": "unknown",
+            },
+            "ai_model_performance": {
+                "best_model": None,
+                "model_rankings": [],
+                "best_prompt": None,
+                "prompt_rankings": [],
+            },
             "note": "Insufficient data for pattern detection.",
         }
 

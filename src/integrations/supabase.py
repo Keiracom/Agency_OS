@@ -12,8 +12,8 @@ RULES APPLIED:
   - Rule 19: Connection pool limits (pool_size=5, max_overflow=10)
 """
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
@@ -23,15 +23,15 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.pool import NullPool
-from supabase import Client, create_client
 
 from src.config.settings import settings
 from src.exceptions import IntegrationError
-
+from supabase import Client, create_client
 
 # ============================================
 # SQLAlchemy Async Engine (for ORM operations)
 # ============================================
+
 
 def create_database_engine() -> AsyncEngine:
     """
@@ -90,6 +90,7 @@ async def dispose_engine() -> None:
 # ============================================
 # Async Session Factory
 # ============================================
+
 
 def create_session_factory(engine: AsyncEngine | None = None) -> async_sessionmaker[AsyncSession]:
     """
@@ -218,6 +219,7 @@ def get_supabase_service_client() -> Client:
 # Health Check
 # ============================================
 
+
 async def check_database_health() -> dict:
     """
     Check database connection health.
@@ -246,6 +248,7 @@ async def check_database_health() -> dict:
 # ============================================
 # Cleanup
 # ============================================
+
 
 async def cleanup() -> None:
     """Cleanup all database connections."""

@@ -22,7 +22,6 @@ DATA FRESHNESS STRATEGY:
 import logging
 from datetime import datetime, timedelta
 from typing import Any
-from uuid import UUID
 
 from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
@@ -104,27 +103,32 @@ async def get_stale_leads_for_outreach_task(
             LIMIT :limit
         """)
 
-        result = await db.execute(query, {
-            "stale_cutoff": stale_cutoff,
-            "client_id": client_id,
-            "campaign_id": campaign_id,
-            "limit": limit,
-        })
+        result = await db.execute(
+            query,
+            {
+                "stale_cutoff": stale_cutoff,
+                "client_id": client_id,
+                "campaign_id": campaign_id,
+                "limit": limit,
+            },
+        )
         rows = result.fetchall()
 
         leads = []
         for row in rows:
-            leads.append({
-                "id": str(row.id),
-                "email": row.email,
-                "first_name": row.first_name,
-                "last_name": row.last_name,
-                "linkedin_url": row.linkedin_url,
-                "company_linkedin_url": row.company_linkedin_url,
-                "enriched_at": row.enriched_at.isoformat() if row.enriched_at else None,
-                "client_id": str(row.client_id) if row.client_id else None,
-                "campaign_id": str(row.campaign_id) if row.campaign_id else None,
-            })
+            leads.append(
+                {
+                    "id": str(row.id),
+                    "email": row.email,
+                    "first_name": row.first_name,
+                    "last_name": row.last_name,
+                    "linkedin_url": row.linkedin_url,
+                    "company_linkedin_url": row.company_linkedin_url,
+                    "enriched_at": row.enriched_at.isoformat() if row.enriched_at else None,
+                    "client_id": str(row.client_id) if row.client_id else None,
+                    "campaign_id": str(row.campaign_id) if row.campaign_id else None,
+                }
+            )
 
         logger.info(
             f"Found {len(leads)} stale leads "
@@ -178,6 +182,7 @@ async def refresh_lead_linkedin_data_task(
         if person_data or company_data:
             async with get_db_session() as db:
                 import json
+
                 update_fields = []
                 params = {"lead_id": lead_id}
 
@@ -217,7 +222,7 @@ async def refresh_lead_linkedin_data_task(
                 if update_fields:
                     query = text(f"""
                         UPDATE lead_pool
-                        SET {', '.join(update_fields)}
+                        SET {", ".join(update_fields)}
                         WHERE id = :lead_id::uuid
                     """)
                     await db.execute(query, params)
@@ -329,8 +334,7 @@ async def refresh_stale_leads_flow(
         Dict with refresh summary
     """
     logger.info(
-        f"Starting stale lead refresh flow "
-        f"(stale_days={stale_days}, max_leads={max_leads})"
+        f"Starting stale lead refresh flow (stale_days={stale_days}, max_leads={max_leads})"
     )
 
     # Step 1: Get stale leads

@@ -14,19 +14,18 @@ This service:
 """
 
 from datetime import datetime, timedelta
-from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import func, select, and_
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.activity import Activity
 from src.models.resource_pool import (
+    HEALTH_DAILY_LIMITS,
+    HEALTH_THRESHOLDS,
+    HealthStatus,
     ResourcePool,
     ResourceType,
-    HealthStatus,
-    HEALTH_THRESHOLDS,
-    HEALTH_DAILY_LIMITS,
 )
 
 
@@ -99,45 +98,36 @@ class DomainHealthService:
         thirty_days_ago = datetime.utcnow() - timedelta(days=30)
 
         # Get send count
-        sends_stmt = (
-            select(func.count(Activity.id))
-            .where(
-                and_(
-                    Activity.sender_domain == domain,
-                    Activity.action == "sent",
-                    Activity.channel == "email",
-                    Activity.created_at >= thirty_days_ago,
-                )
+        sends_stmt = select(func.count(Activity.id)).where(
+            and_(
+                Activity.sender_domain == domain,
+                Activity.action == "sent",
+                Activity.channel == "email",
+                Activity.created_at >= thirty_days_ago,
             )
         )
         sends_result = await db.execute(sends_stmt)
         sends_30d = sends_result.scalar() or 0
 
         # Get bounce count
-        bounces_stmt = (
-            select(func.count(Activity.id))
-            .where(
-                and_(
-                    Activity.sender_domain == domain,
-                    Activity.action == "bounced",
-                    Activity.channel == "email",
-                    Activity.created_at >= thirty_days_ago,
-                )
+        bounces_stmt = select(func.count(Activity.id)).where(
+            and_(
+                Activity.sender_domain == domain,
+                Activity.action == "bounced",
+                Activity.channel == "email",
+                Activity.created_at >= thirty_days_ago,
             )
         )
         bounces_result = await db.execute(bounces_stmt)
         bounces_30d = bounces_result.scalar() or 0
 
         # Get complaint count
-        complaints_stmt = (
-            select(func.count(Activity.id))
-            .where(
-                and_(
-                    Activity.sender_domain == domain,
-                    Activity.action == "complained",
-                    Activity.channel == "email",
-                    Activity.created_at >= thirty_days_ago,
-                )
+        complaints_stmt = select(func.count(Activity.id)).where(
+            and_(
+                Activity.sender_domain == domain,
+                Activity.action == "complained",
+                Activity.channel == "email",
+                Activity.created_at >= thirty_days_ago,
             )
         )
         complaints_result = await db.execute(complaints_stmt)
@@ -175,13 +165,17 @@ class DomainHealthService:
             Tuple of (HealthStatus, action_string)
         """
         # Critical: >5% bounce OR >0.1% complaint
-        if bounce_rate > HEALTH_THRESHOLDS["bounce"]["warning"] or \
-           complaint_rate > HEALTH_THRESHOLDS["complaint"]["warning"]:
+        if (
+            bounce_rate > HEALTH_THRESHOLDS["bounce"]["warning"]
+            or complaint_rate > HEALTH_THRESHOLDS["complaint"]["warning"]
+        ):
             return HealthStatus.CRITICAL, "pause"
 
         # Warning: 2-5% bounce OR 0.05-0.1% complaint
-        if bounce_rate > HEALTH_THRESHOLDS["bounce"]["good"] or \
-           complaint_rate > HEALTH_THRESHOLDS["complaint"]["good"]:
+        if (
+            bounce_rate > HEALTH_THRESHOLDS["bounce"]["good"]
+            or complaint_rate > HEALTH_THRESHOLDS["complaint"]["good"]
+        ):
             return HealthStatus.WARNING, "reduce_limit"
 
         # Good
@@ -237,17 +231,13 @@ class DomainHealthService:
             List of DomainHealthResult for all domains
         """
         # Get all email domains
-        stmt = select(ResourcePool).where(
-            ResourcePool.resource_type == ResourceType.EMAIL_DOMAIN
-        )
+        stmt = select(ResourcePool).where(ResourcePool.resource_type == ResourceType.EMAIL_DOMAIN)
         result = await db.execute(stmt)
         domains = result.scalars().all()
 
         results = []
         for domain in domains:
-            health_result = await self.check_domain_health(
-                db, domain.resource_value
-            )
+            health_result = await self.check_domain_health(db, domain.resource_value)
 
             # Update the resource
             domain.update_health_metrics(
@@ -278,10 +268,12 @@ class DomainHealthService:
         stmt = select(ResourcePool).where(
             and_(
                 ResourcePool.resource_type == ResourceType.EMAIL_DOMAIN,
-                ResourcePool.health_status.in_([
-                    HealthStatus.WARNING.value,
-                    HealthStatus.CRITICAL.value,
-                ]),
+                ResourcePool.health_status.in_(
+                    [
+                        HealthStatus.WARNING.value,
+                        HealthStatus.CRITICAL.value,
+                    ]
+                ),
             )
         )
         result = await db.execute(stmt)
@@ -310,7 +302,7 @@ class DomainHealthService:
 
 
 # Singleton instance
-_domain_health_service: Optional[DomainHealthService] = None
+_domain_health_service: DomainHealthService | None = None
 
 
 def get_domain_health_service() -> DomainHealthService:

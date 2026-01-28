@@ -79,12 +79,14 @@ async def get_crm_enabled_clients(db: AsyncSession) -> list[dict[str, Any]]:
             crms.append({"type": "close", "token": row.close_api_key})
 
         if crms:
-            clients.append({
-                "id": row.id,
-                "company_name": row.company_name,
-                "tier": row.tier,
-                "crm_configs": crms,
-            })
+            clients.append(
+                {
+                    "id": row.id,
+                    "company_name": row.company_name,
+                    "tier": row.tier,
+                    "crm_configs": crms,
+                }
+            )
 
     logger.info(f"Found {len(clients)} clients with CRM integrations")
     return clients
@@ -245,7 +247,7 @@ async def poll_pipedrive_deals(
 
     try:
         # Calculate timestamp for filtering
-        since_time = (datetime.utcnow() - timedelta(hours=since_hours)).isoformat()
+        (datetime.utcnow() - timedelta(hours=since_hours)).isoformat()
 
         # Pipedrive deals API
         async with httpx.AsyncClient() as client:
@@ -273,11 +275,15 @@ async def poll_pipedrive_deals(
             for deal in deals:
                 update_time = deal.get("update_time")
                 if update_time:
-                    deal_dt = datetime.fromisoformat(update_time.replace("Z", "+00:00").split("+")[0])
+                    deal_dt = datetime.fromisoformat(
+                        update_time.replace("Z", "+00:00").split("+")[0]
+                    )
                     if deal_dt >= since_dt:
                         recent_deals.append(deal)
 
-            logger.info(f"Pipedrive returned {len(recent_deals)} recent deals for client {client_id}")
+            logger.info(
+                f"Pipedrive returned {len(recent_deals)} recent deals for client {client_id}"
+            )
 
             # Process each deal
             from src.services.deal_service import DealService
@@ -367,8 +373,9 @@ async def poll_close_opportunities(
     Returns:
         Sync result summary
     """
-    import httpx
     import base64
+
+    import httpx
 
     synced = 0
     errors = 0
@@ -403,11 +410,15 @@ async def poll_close_opportunities(
             for opp in opportunities:
                 update_time = opp.get("date_updated")
                 if update_time:
-                    opp_dt = datetime.fromisoformat(update_time.replace("Z", "+00:00").split("+")[0])
+                    opp_dt = datetime.fromisoformat(
+                        update_time.replace("Z", "+00:00").split("+")[0]
+                    )
                     if opp_dt >= since_dt:
                         recent_opps.append(opp)
 
-            logger.info(f"Close returned {len(recent_opps)} recent opportunities for client {client_id}")
+            logger.info(
+                f"Close returned {len(recent_opps)} recent opportunities for client {client_id}"
+            )
 
             # Process each opportunity
             from src.services.deal_service import DealService
@@ -523,12 +534,15 @@ async def log_crm_sync_results(
                 f"Blind meetings: {result.get('blind_meetings', 0)}"
             )
 
-            await db.execute(query, {
-                "client_id": client_id,
-                "crm_source": result.get("crm", "unknown"),
-                "status": status,
-                "notes": notes,
-            })
+            await db.execute(
+                query,
+                {
+                    "client_id": client_id,
+                    "crm_source": result.get("crm", "unknown"),
+                    "status": status,
+                    "notes": notes,
+                },
+            )
 
             await db.commit()
 
@@ -616,13 +630,15 @@ async def crm_sync_flow(
 
                 except Exception as e:
                     logger.error(f"Error polling {crm_type} for client {client_uuid}: {e}")
-                    client_results.append({
-                        "crm": crm_type,
-                        "synced": 0,
-                        "errors": 1,
-                        "blind_meetings": 0,
-                        "error": str(e),
-                    })
+                    client_results.append(
+                        {
+                            "crm": crm_type,
+                            "synced": 0,
+                            "errors": 1,
+                            "blind_meetings": 0,
+                            "error": str(e),
+                        }
+                    )
 
             # Log results for this client
             await log_crm_sync_results(db, client_uuid, client_results)

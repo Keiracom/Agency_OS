@@ -21,7 +21,7 @@ RULES APPLIED:
   - Rule 14: Soft delete checks in queries
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -30,7 +30,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import BaseEngine, EngineResult
 from src.models.activity import Activity
-from src.models.base import ChannelType
 from src.models.campaign import Campaign
 from src.models.lead import Lead
 
@@ -366,15 +365,17 @@ class ReporterEngine(BaseEngine):
                 replied_count = sum(1 for a in campaign_activities if a.action == "replied")
                 converted_count = sum(1 for a in campaign_activities if a.action == "converted")
 
-                metrics["campaigns"].append({
-                    "id": str(campaign.id),
-                    "name": campaign.name,
-                    "status": campaign.status.value,
-                    "sent": sent_count,
-                    "replied": replied_count,
-                    "converted": converted_count,
-                    "reply_rate": (replied_count / sent_count * 100) if sent_count > 0 else 0.0,
-                })
+                metrics["campaigns"].append(
+                    {
+                        "id": str(campaign.id),
+                        "name": campaign.name,
+                        "status": campaign.status.value,
+                        "sent": sent_count,
+                        "replied": replied_count,
+                        "converted": converted_count,
+                        "reply_rate": (replied_count / sent_count * 100) if sent_count > 0 else 0.0,
+                    }
+                )
 
             return EngineResult.ok(
                 data=metrics,
@@ -502,9 +503,11 @@ class ReporterEngine(BaseEngine):
             lead = await self.get_lead_by_id(db, lead_id)
 
             # Get all activities for lead
-            activities_query = select(Activity).where(
-                Activity.lead_id == lead_id
-            ).order_by(Activity.created_at.desc())
+            activities_query = (
+                select(Activity)
+                .where(Activity.lead_id == lead_id)
+                .order_by(Activity.created_at.desc())
+            )
             result = await db.execute(activities_query)
             activities = result.scalars().all()
 
@@ -532,24 +535,33 @@ class ReporterEngine(BaseEngine):
             # Process activities
             for activity in activities:
                 # Add to timeline
-                metrics["timeline"].append({
-                    "date": activity.created_at.isoformat(),
-                    "channel": activity.channel.value,
-                    "action": activity.action,
-                    "sequence_step": activity.sequence_step,
-                })
+                metrics["timeline"].append(
+                    {
+                        "date": activity.created_at.isoformat(),
+                        "channel": activity.channel.value,
+                        "action": activity.action,
+                        "sequence_step": activity.sequence_step,
+                    }
+                )
 
                 # Update summary
                 metrics["engagement_summary"]["total_touches"] += 1
                 metrics["engagement_summary"]["channels_used"].add(activity.channel.value)
 
-                if activity.action == "sent" and not metrics["engagement_summary"]["last_contacted"]:
-                    metrics["engagement_summary"]["last_contacted"] = activity.created_at.isoformat()
+                if (
+                    activity.action == "sent"
+                    and not metrics["engagement_summary"]["last_contacted"]
+                ):
+                    metrics["engagement_summary"]["last_contacted"] = (
+                        activity.created_at.isoformat()
+                    )
 
                 if activity.action == "replied":
                     metrics["engagement_summary"]["reply_count"] += 1
                     if not metrics["engagement_summary"]["last_replied"]:
-                        metrics["engagement_summary"]["last_replied"] = activity.created_at.isoformat()
+                        metrics["engagement_summary"]["last_replied"] = (
+                            activity.created_at.isoformat()
+                        )
 
                 if activity.action == "opened":
                     metrics["engagement_summary"]["open_count"] += 1
@@ -667,7 +679,9 @@ class ReporterEngine(BaseEngine):
             return EngineResult.ok(
                 data=metrics,
                 metadata={
-                    "peak_hour": max(metrics["hourly_breakdown"], key=metrics["hourly_breakdown"].get)
+                    "peak_hour": max(
+                        metrics["hourly_breakdown"], key=metrics["hourly_breakdown"].get
+                    )
                     if metrics["hourly_breakdown"]
                     else None,
                 },

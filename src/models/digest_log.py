@@ -13,11 +13,12 @@ RULES APPLIED:
 """
 
 from datetime import date, datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import Date, ForeignKey, Text, TIMESTAMP
-from sqlalchemy.dialects.postgresql import JSONB, UUID as UUID_DB
+from sqlalchemy import TIMESTAMP, Date, ForeignKey, Text
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as UUID_DB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base, TimestampMixin, UUIDMixin
@@ -80,18 +81,18 @@ class DigestLog(Base, UUIDMixin, TimestampMixin):
         nullable=False,
         default="pending",
     )
-    sent_at: Mapped[Optional[datetime]] = mapped_column(
+    sent_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True),
         nullable=True,
     )
-    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Engagement tracking
-    opened_at: Mapped[Optional[datetime]] = mapped_column(
+    opened_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True),
         nullable=True,
     )
-    clicked_at: Mapped[Optional[datetime]] = mapped_column(
+    clicked_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True),
         nullable=True,
     )

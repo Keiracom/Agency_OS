@@ -26,14 +26,13 @@ Phase D additions:
 """
 
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.lead import Lead
-
 
 # Australian state-level timezone mapping (per EMAIL_DISTRIBUTION.md spec)
 # CEO Decision 2026-01-20: State-level granularity for Australia
@@ -47,19 +46,15 @@ AUSTRALIAN_STATE_TIMEZONES = {
     "tas": "Australia/Hobart",
     "australian capital territory": "Australia/Sydney",
     "act": "Australia/Sydney",
-
     # Queensland (AEST - no DST)
     "queensland": "Australia/Brisbane",
     "qld": "Australia/Brisbane",
-
     # Central (ACST/ACDT) - observes DST
     "south australia": "Australia/Adelaide",
     "sa": "Australia/Adelaide",
-
     # Central (ACST - no DST)
     "northern territory": "Australia/Darwin",
     "nt": "Australia/Darwin",
-
     # Western (AWST - no DST)
     "western australia": "Australia/Perth",
     "wa": "Australia/Perth",
@@ -75,7 +70,6 @@ COUNTRY_TIMEZONE_MAP = {
     "usa": "America/New_York",
     "canada": "America/Toronto",
     "mexico": "America/Mexico_City",
-
     # Europe
     "united kingdom": "Europe/London",
     "uk": "Europe/London",
@@ -100,7 +94,6 @@ COUNTRY_TIMEZONE_MAP = {
     "czechia": "Europe/Prague",
     "hungary": "Europe/Budapest",
     "romania": "Europe/Bucharest",
-
     # Asia Pacific
     "australia": "Australia/Sydney",
     "new zealand": "Pacific/Auckland",
@@ -120,7 +113,6 @@ COUNTRY_TIMEZONE_MAP = {
     "pakistan": "Asia/Karachi",
     "bangladesh": "Asia/Dhaka",
     "sri lanka": "Asia/Colombo",
-
     # Middle East
     "israel": "Asia/Jerusalem",
     "united arab emirates": "Asia/Dubai",
@@ -129,14 +121,12 @@ COUNTRY_TIMEZONE_MAP = {
     "turkey": "Europe/Istanbul",
     "qatar": "Asia/Qatar",
     "kuwait": "Asia/Kuwait",
-
     # Africa
     "south africa": "Africa/Johannesburg",
     "nigeria": "Africa/Lagos",
     "egypt": "Africa/Cairo",
     "kenya": "Africa/Nairobi",
     "morocco": "Africa/Casablanca",
-
     # South America
     "brazil": "America/Sao_Paulo",
     "argentina": "America/Argentina/Buenos_Aires",
@@ -144,13 +134,11 @@ COUNTRY_TIMEZONE_MAP = {
     "colombia": "America/Bogota",
     "peru": "America/Lima",
     "venezuela": "America/Caracas",
-
     # Central America & Caribbean
     "costa rica": "America/Costa_Rica",
     "panama": "America/Panama",
     "jamaica": "America/Jamaica",
     "puerto rico": "America/Puerto_Rico",
-
     # Russia & CIS
     "russia": "Europe/Moscow",
     "ukraine": "Europe/Kiev",
@@ -159,41 +147,63 @@ COUNTRY_TIMEZONE_MAP = {
 # US State to timezone mapping (for more precise US timezone detection)
 US_STATE_TIMEZONE_MAP = {
     # Eastern
-    "connecticut": "America/New_York", "delaware": "America/New_York",
-    "florida": "America/New_York", "georgia": "America/New_York",
-    "maine": "America/New_York", "maryland": "America/New_York",
-    "massachusetts": "America/New_York", "new hampshire": "America/New_York",
-    "new jersey": "America/New_York", "new york": "America/New_York",
-    "north carolina": "America/New_York", "ohio": "America/New_York",
-    "pennsylvania": "America/New_York", "rhode island": "America/New_York",
-    "south carolina": "America/New_York", "vermont": "America/New_York",
-    "virginia": "America/New_York", "west virginia": "America/New_York",
-    "michigan": "America/New_York", "indiana": "America/New_York",
-    "kentucky": "America/New_York", "dc": "America/New_York",
-    "washington dc": "America/New_York", "district of columbia": "America/New_York",
-
+    "connecticut": "America/New_York",
+    "delaware": "America/New_York",
+    "florida": "America/New_York",
+    "georgia": "America/New_York",
+    "maine": "America/New_York",
+    "maryland": "America/New_York",
+    "massachusetts": "America/New_York",
+    "new hampshire": "America/New_York",
+    "new jersey": "America/New_York",
+    "new york": "America/New_York",
+    "north carolina": "America/New_York",
+    "ohio": "America/New_York",
+    "pennsylvania": "America/New_York",
+    "rhode island": "America/New_York",
+    "south carolina": "America/New_York",
+    "vermont": "America/New_York",
+    "virginia": "America/New_York",
+    "west virginia": "America/New_York",
+    "michigan": "America/New_York",
+    "indiana": "America/New_York",
+    "kentucky": "America/New_York",
+    "dc": "America/New_York",
+    "washington dc": "America/New_York",
+    "district of columbia": "America/New_York",
     # Central
-    "alabama": "America/Chicago", "arkansas": "America/Chicago",
-    "illinois": "America/Chicago", "iowa": "America/Chicago",
-    "kansas": "America/Chicago", "louisiana": "America/Chicago",
-    "minnesota": "America/Chicago", "mississippi": "America/Chicago",
-    "missouri": "America/Chicago", "nebraska": "America/Chicago",
-    "north dakota": "America/Chicago", "oklahoma": "America/Chicago",
-    "south dakota": "America/Chicago", "tennessee": "America/Chicago",
-    "texas": "America/Chicago", "wisconsin": "America/Chicago",
-
+    "alabama": "America/Chicago",
+    "arkansas": "America/Chicago",
+    "illinois": "America/Chicago",
+    "iowa": "America/Chicago",
+    "kansas": "America/Chicago",
+    "louisiana": "America/Chicago",
+    "minnesota": "America/Chicago",
+    "mississippi": "America/Chicago",
+    "missouri": "America/Chicago",
+    "nebraska": "America/Chicago",
+    "north dakota": "America/Chicago",
+    "oklahoma": "America/Chicago",
+    "south dakota": "America/Chicago",
+    "tennessee": "America/Chicago",
+    "texas": "America/Chicago",
+    "wisconsin": "America/Chicago",
     # Mountain
-    "arizona": "America/Phoenix", "colorado": "America/Denver",
-    "idaho": "America/Denver", "montana": "America/Denver",
-    "new mexico": "America/Denver", "utah": "America/Denver",
+    "arizona": "America/Phoenix",
+    "colorado": "America/Denver",
+    "idaho": "America/Denver",
+    "montana": "America/Denver",
+    "new mexico": "America/Denver",
+    "utah": "America/Denver",
     "wyoming": "America/Denver",
-
     # Pacific
-    "california": "America/Los_Angeles", "nevada": "America/Los_Angeles",
-    "oregon": "America/Los_Angeles", "washington": "America/Los_Angeles",
-
+    "california": "America/Los_Angeles",
+    "nevada": "America/Los_Angeles",
+    "oregon": "America/Los_Angeles",
+    "washington": "America/Los_Angeles",
     # Other
-    "alaska": "America/Anchorage", "hawaii": "Pacific/Honolulu",
+    "alaska": "America/Anchorage",
+    "hawaii": "Pacific/Honolulu",
 }
 
 
@@ -209,6 +219,7 @@ def get_timezone_offset(tz_name: str) -> int:
     """
     try:
         import zoneinfo
+
         tz = zoneinfo.ZoneInfo(tz_name)
         # Get current offset (accounts for DST)
         now = datetime.now(tz)
@@ -245,12 +256,11 @@ def lookup_timezone_from_location(
     country_lower = country.lower().strip()
 
     # For US leads, try to get more precise timezone from state
-    if country_lower in ("united states", "us", "usa"):
-        if state:
-            state_lower = state.lower().strip()
-            tz_name = US_STATE_TIMEZONE_MAP.get(state_lower)
-            if tz_name:
-                return tz_name, get_timezone_offset(tz_name)
+    if country_lower in ("united states", "us", "usa") and state:
+        state_lower = state.lower().strip()
+        tz_name = US_STATE_TIMEZONE_MAP.get(state_lower)
+        if tz_name:
+            return tz_name, get_timezone_offset(tz_name)
 
     # For Australian leads, use state-level timezone (per spec)
     if country_lower in ("australia", "au", "aus"):
@@ -357,14 +367,10 @@ class TimezoneService:
         city = None
 
         # Try to extract more precise location from enriched data
-        if hasattr(lead, 'enriched_data') and lead.enriched_data:
+        if hasattr(lead, "enriched_data") and lead.enriched_data:
             enriched = lead.enriched_data or {}
             # Try different field names used by enrichment providers
-            state = (
-                enriched.get("state") or
-                enriched.get("region") or
-                enriched.get("province")
-            )
+            state = enriched.get("state") or enriched.get("region") or enriched.get("province")
             city = enriched.get("city") or enriched.get("locality")
             # If country not on lead, try enriched data
             if not country:
@@ -425,8 +431,9 @@ class TimezoneService:
 
         try:
             import zoneinfo
+
             tz = zoneinfo.ZoneInfo(lead_timezone)
-            utc = utc_time or datetime.now(timezone.utc)
+            utc = utc_time or datetime.now(UTC)
             return utc.astimezone(tz)
         except Exception:
             return None
@@ -512,7 +519,7 @@ class TimezoneService:
             target += timedelta(days=1)
 
         # Return as UTC for scheduling
-        return target.astimezone(timezone.utc)
+        return target.astimezone(UTC)
 
     def is_in_email_send_window(
         self,

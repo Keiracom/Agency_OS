@@ -169,9 +169,7 @@ class ClickSendClient:
         if custom_string:
             sms_message["custom_string"] = custom_string
 
-        data = {
-            "messages": [sms_message]
-        }
+        data = {"messages": [sms_message]}
 
         result = await self._request("POST", "/sms/send", data)
 
@@ -206,7 +204,6 @@ class ClickSendClient:
         Returns:
             List of send results
         """
-        from src.exceptions import DNCRError
 
         sms_messages = []
         skipped = []
@@ -221,21 +218,25 @@ class ClickSendClient:
                 try:
                     is_on_dncr = await self.check_dncr(to_number)
                     if is_on_dncr:
-                        skipped.append({
-                            "to": to_number,
-                            "status": "DNCR_BLOCKED",
-                            "success": False,
-                        })
+                        skipped.append(
+                            {
+                                "to": to_number,
+                                "status": "DNCR_BLOCKED",
+                                "success": False,
+                            }
+                        )
                         continue
                 except Exception:
                     pass  # Fail open on DNCR check errors
 
-            sms_messages.append({
-                "to": to_number,
-                "body": msg.get("body", msg.get("message", "")),
-                "from": msg.get("from"),
-                "custom_string": msg.get("custom_string"),
-            })
+            sms_messages.append(
+                {
+                    "to": to_number,
+                    "body": msg.get("body", msg.get("message", "")),
+                    "from": msg.get("from"),
+                    "custom_string": msg.get("custom_string"),
+                }
+            )
 
         if not sms_messages:
             return skipped
@@ -249,14 +250,16 @@ class ClickSendClient:
 
         results = []
         for api_msg in api_messages:
-            results.append({
-                "success": api_msg.get("status") == "SUCCESS",
-                "message_id": api_msg.get("message_id"),
-                "status": api_msg.get("status"),
-                "to": api_msg.get("to"),
-                "cost": api_msg.get("message_price"),
-                "provider": "clicksend",
-            })
+            results.append(
+                {
+                    "success": api_msg.get("status") == "SUCCESS",
+                    "message_id": api_msg.get("message_id"),
+                    "status": api_msg.get("status"),
+                    "to": api_msg.get("to"),
+                    "cost": api_msg.get("message_price"),
+                    "provider": "clicksend",
+                }
+            )
 
         return results + skipped
 
@@ -415,7 +418,9 @@ class ClickSendClient:
             "address_line_2": from_address.get("address_line2", ""),
             "address_city": from_address.get("city", ""),
             "address_state": from_address.get("state", ""),
-            "address_postal_code": from_address.get("postal_code", from_address.get("zip_code", "")),
+            "address_postal_code": from_address.get(
+                "postal_code", from_address.get("zip_code", "")
+            ),
             "address_country": from_address.get("country", "AU"),
         }
 
@@ -491,7 +496,9 @@ class ClickSendClient:
             "address_line_2": from_address.get("address_line2", ""),
             "address_city": from_address.get("city", ""),
             "address_state": from_address.get("state", ""),
-            "address_postal_code": from_address.get("postal_code", from_address.get("zip_code", "")),
+            "address_postal_code": from_address.get(
+                "postal_code", from_address.get("zip_code", "")
+            ),
             "address_country": from_address.get("country", "AU"),
         }
 

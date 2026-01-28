@@ -27,29 +27,27 @@ PHASE 24A CHANGES:
   - Pool methods work with dict data instead of Lead model
 """
 
+import logging
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import BaseEngine, EngineResult
 from src.engines.smart_prompts import (
-    SMART_EMAIL_PROMPT,
-    SAFE_FALLBACK_TEMPLATE,
     FACT_CHECK_PROMPT,
+    SAFE_FALLBACK_TEMPLATE,
+    SMART_EMAIL_PROMPT,
+    build_client_proof_points,
     build_full_lead_context,
     build_full_pool_lead_context,
-    build_client_proof_points,
     format_lead_context_for_prompt,
     format_proof_points_for_prompt,
     generate_priority_guidance,
 )
 from src.exceptions import AISpendLimitError, ValidationError
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
-from src.models.base import ChannelType
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -139,10 +137,22 @@ class ContentEngine(BaseEngine):
                 "testimonials": row.website_testimonials or [],
                 "case_studies": row.website_case_studies or [],
                 "ratings": {
-                    "g2": {"rating": float(row.g2_rating) if row.g2_rating else None, "count": row.g2_review_count},
-                    "capterra": {"rating": float(row.capterra_rating) if row.capterra_rating else None, "count": row.capterra_review_count},
-                    "trustpilot": {"rating": float(row.trustpilot_rating) if row.trustpilot_rating else None, "count": row.trustpilot_review_count},
-                    "google": {"rating": float(row.google_rating) if row.google_rating else None, "count": row.google_review_count},
+                    "g2": {
+                        "rating": float(row.g2_rating) if row.g2_rating else None,
+                        "count": row.g2_review_count,
+                    },
+                    "capterra": {
+                        "rating": float(row.capterra_rating) if row.capterra_rating else None,
+                        "count": row.capterra_review_count,
+                    },
+                    "trustpilot": {
+                        "rating": float(row.trustpilot_rating) if row.trustpilot_rating else None,
+                        "count": row.trustpilot_review_count,
+                    },
+                    "google": {
+                        "rating": float(row.google_rating) if row.google_rating else None,
+                        "count": row.google_review_count,
+                    },
                 },
             }
         except Exception as e:
@@ -195,7 +205,11 @@ class ContentEngine(BaseEngine):
                         message="Lead must have at least first_name and company for personalization",
                     )
                 lead_context = {
-                    "person": {"first_name": lead.first_name, "full_name": lead.full_name, "title": lead.title},
+                    "person": {
+                        "first_name": lead.first_name,
+                        "full_name": lead.full_name,
+                        "title": lead.title,
+                    },
                     "company": {"name": lead.company, "industry": lead.organization_industry},
                 }
 
@@ -211,8 +225,8 @@ class ContentEngine(BaseEngine):
             # Build campaign context
             campaign_context = f"""**Campaign:** {campaign.name}
 **Tone:** {tone}
-**Product/Service:** {getattr(campaign, 'product_name', campaign.name)}
-{f"**Value Prop:** {getattr(campaign, 'value_proposition', '')}" if hasattr(campaign, 'value_proposition') and campaign.value_proposition else ""}
+**Product/Service:** {getattr(campaign, "product_name", campaign.name)}
+{f"**Value Prop:** {getattr(campaign, 'value_proposition', '')}" if hasattr(campaign, "value_proposition") and campaign.value_proposition else ""}
 {f"**Template Guidance:** {template}" if template else ""}"""
 
             # Generate priority guidance for the prompt
@@ -248,6 +262,7 @@ Return valid JSON only with "subject" and "body" keys."""
 
             # Parse JSON from response
             import json
+
             try:
                 content = result["content"]
                 # Handle markdown code blocks
@@ -301,13 +316,16 @@ Return valid JSON only with "subject" and "body" keys."""
                     logger.info(f"Fact-check MEDIUM risk, regenerating for lead {lead_id}")
 
                     # Add warning to prompt about specific issues
-                    retry_prompt = prompt + f"""
+                    retry_prompt = (
+                        prompt
+                        + f"""
 
 ## WARNING: Previous attempt had unsupported claims
 The following claims were NOT in the source data - do NOT include them:
-{chr(10).join(f'- {claim}' for claim in fact_check.get('unsupported_claims', []))}
+{chr(10).join(f"- {claim}" for claim in fact_check.get("unsupported_claims", []))}
 
 Generate a new email that ONLY uses verified facts from the lead context."""
+                    )
 
                     retry_result = await self.anthropic.complete(
                         prompt=retry_prompt,
@@ -520,6 +538,7 @@ Be conservative - if you're unsure whether a claim is supported, mark it as unsu
 
             # Parse JSON from response
             import json
+
             content = result["content"]
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0]
@@ -897,7 +916,7 @@ Return ONLY the message text. No JSON, no formatting."""
 
             # Ensure it's under max length
             if len(message) > max_length:
-                message = message[:max_length - 3] + "..."
+                message = message[: max_length - 3] + "..."
 
             return EngineResult.ok(
                 data={
@@ -1012,6 +1031,7 @@ Return as JSON with: {{"opening": "...", "value_prop": "...", "cta": "..."}}"""
 
             # Parse JSON from response
             import json
+
             try:
                 content = result["content"]
                 # Handle markdown code blocks
@@ -1186,6 +1206,7 @@ Return valid JSON only with "subject" and "body" keys."""
 
             # Parse JSON from response
             import json
+
             try:
                 content = result["content"]
                 if "```json" in content:
@@ -1234,15 +1255,20 @@ Return valid JSON only with "subject" and "body" keys."""
 
                 # MEDIUM risk = regenerate once
                 if fact_check["verdict"] == "FAIL" and fact_check.get("risk_level") == "MEDIUM":
-                    logger.info(f"Fact-check MEDIUM risk, regenerating for pool lead {lead_pool_id}")
+                    logger.info(
+                        f"Fact-check MEDIUM risk, regenerating for pool lead {lead_pool_id}"
+                    )
 
-                    retry_prompt = prompt + f"""
+                    retry_prompt = (
+                        prompt
+                        + f"""
 
 ## WARNING: Previous attempt had unsupported claims
 The following claims were NOT in the source data - do NOT include them:
-{chr(10).join(f'- {claim}' for claim in fact_check.get('unsupported_claims', []))}
+{chr(10).join(f"- {claim}" for claim in fact_check.get("unsupported_claims", []))}
 
 Generate a new email that ONLY uses verified facts from the lead context."""
+                    )
 
                     retry_result = await self.anthropic.complete(
                         prompt=retry_prompt,
@@ -1522,7 +1548,7 @@ Return ONLY the message text. No JSON, no formatting."""
 
             message = result["content"].strip()
             if len(message) > max_length:
-                message = message[:max_length - 3] + "..."
+                message = message[: max_length - 3] + "..."
 
             return EngineResult.ok(
                 data={
@@ -1612,6 +1638,7 @@ Return as JSON with: {{"opening": "...", "value_prop": "...", "cta": "..."}}"""
             )
 
             import json
+
             try:
                 content = result["content"]
                 if "```json" in content:

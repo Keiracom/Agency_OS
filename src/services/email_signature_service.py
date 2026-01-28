@@ -22,12 +22,10 @@ phone_emoji {phone} | web_emoji {domain}
 location_emoji {address}
 """
 
-from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-
 
 # =============================================================================
 # SIGNATURE TEMPLATES
@@ -58,13 +56,13 @@ HTML_SIGNATURE_TEMPLATE = """<div class="email-signature" style="font-family: Ar
 
 def generate_signature_text(
     name: str,
-    title: Optional[str] = None,
-    company_name: Optional[str] = None,
-    tagline: Optional[str] = None,
-    phone: Optional[str] = None,
-    website: Optional[str] = None,
-    address: Optional[str] = None,
-    calendar_url: Optional[str] = None,
+    title: str | None = None,
+    company_name: str | None = None,
+    tagline: str | None = None,
+    phone: str | None = None,
+    website: str | None = None,
+    address: str | None = None,
+    calendar_url: str | None = None,
 ) -> str:
     """
     Generate plain text email signature.
@@ -131,13 +129,13 @@ def generate_signature_text(
 
 def generate_signature_html(
     name: str,
-    title: Optional[str] = None,
-    company_name: Optional[str] = None,
-    tagline: Optional[str] = None,
-    phone: Optional[str] = None,
-    website: Optional[str] = None,
-    address: Optional[str] = None,
-    calendar_url: Optional[str] = None,
+    title: str | None = None,
+    company_name: str | None = None,
+    tagline: str | None = None,
+    phone: str | None = None,
+    website: str | None = None,
+    address: str | None = None,
+    calendar_url: str | None = None,
 ) -> str:
     """
     Generate HTML email signature with styling.
@@ -165,11 +163,15 @@ def generate_signature_html(
     # Build contact line with emojis (from EMAIL.md spec)
     contact_parts = []
     if phone:
-        contact_parts.append(f'<a href="tel:{phone.replace(" ", "")}" style="color: #333; text-decoration: none;">P: {phone}</a>')
+        contact_parts.append(
+            f'<a href="tel:{phone.replace(" ", "")}" style="color: #333; text-decoration: none;">P: {phone}</a>'
+        )
     if website:
         domain = website.replace("https://", "").replace("http://", "").rstrip("/")
         url = website if website.startswith("http") else f"https://{website}"
-        contact_parts.append(f'<a href="{url}" style="color: #333; text-decoration: none;">W: {domain}</a>')
+        contact_parts.append(
+            f'<a href="{url}" style="color: #333; text-decoration: none;">W: {domain}</a>'
+        )
 
     contact_line = ""
     if contact_parts:
@@ -228,8 +230,8 @@ DISPLAY_NAME_MAX_LENGTH = 78  # Most email clients truncate at 78 chars
 
 def format_display_name(
     first_name: str,
-    last_name: Optional[str] = None,
-    company: Optional[str] = None,
+    last_name: str | None = None,
+    company: str | None = None,
 ) -> str:
     """
     Format display name for email From header.
@@ -253,7 +255,6 @@ def format_display_name(
         >>> format_display_name("John", None, None)
         'John'
     """
-    import re
 
     # Clean first name (required)
     first = (first_name or "").strip()
@@ -320,8 +321,8 @@ def validate_display_name(display_name: str) -> tuple[bool, str]:
 def format_from_header(
     email_address: str,
     first_name: str,
-    last_name: Optional[str] = None,
-    company: Optional[str] = None,
+    last_name: str | None = None,
+    company: str | None = None,
 ) -> str:
     """
     Format complete From header value.
@@ -345,6 +346,7 @@ def format_from_header(
         '"John Smith" <john@outreach-mail.com>'
     """
     import logging
+
     logger = logging.getLogger(__name__)
 
     display_name = format_display_name(first_name, last_name, company)
@@ -445,8 +447,8 @@ async def get_signature_for_persona(
 async def get_signature_for_client(
     db: AsyncSession,
     client_id: UUID,
-    sender_name: Optional[str] = None,
-    sender_title: Optional[str] = None,
+    sender_name: str | None = None,
+    sender_title: str | None = None,
     html: bool = True,
 ) -> str:
     """

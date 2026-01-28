@@ -36,7 +36,9 @@ class CampaignSuggestion(BaseModel):
     suggestion_type: str = Field(
         description="Type: create_campaign, pause_campaign, adjust_allocation, refine_targeting, change_channel_mix, update_content, adjust_timing"
     )
-    title: str = Field(description="Short, actionable title (e.g., 'Pause Low-Performing Tech Campaign')")
+    title: str = Field(
+        description="Short, actionable title (e.g., 'Pause Low-Performing Tech Campaign')"
+    )
 
     # Details
     description: str = Field(description="Detailed explanation of the suggestion (2-4 sentences)")
@@ -52,103 +54,74 @@ class CampaignSuggestion(BaseModel):
     # For create_campaign
     new_campaign_spec: dict[str, Any] | None = Field(
         default=None,
-        description="For create_campaign: {name, targeting, channels, messaging_angle}"
+        description="For create_campaign: {name, targeting, channels, messaging_angle}",
     )
 
     # For existing campaign actions
     target_campaign_criteria: dict[str, Any] | None = Field(
-        default=None,
-        description="Criteria to identify which campaign(s) this applies to"
+        default=None, description="Criteria to identify which campaign(s) this applies to"
     )
 
     # Confidence and priority
-    confidence: float = Field(
-        ge=0.0,
-        le=1.0,
-        description="Confidence in this suggestion (0.0-1.0)"
-    )
-    priority: int = Field(
-        ge=1,
-        le=100,
-        description="Priority score (100 = highest priority)"
-    )
+    confidence: float = Field(ge=0.0, le=1.0, description="Confidence in this suggestion (0.0-1.0)")
+    priority: int = Field(ge=1, le=100, description="Priority score (100 = highest priority)")
 
     # Impact projections
     projected_improvement: dict[str, float] = Field(
         default_factory=dict,
-        description="Expected improvements (e.g., {'reply_rate': 1.3, 'conversion_rate': 1.2})"
+        description="Expected improvements (e.g., {'reply_rate': 1.3, 'conversion_rate': 1.2})",
     )
 
     # Pattern sources
     pattern_types: list[str] = Field(
-        default_factory=list,
-        description="Which patterns informed this (who, what, how, when)"
+        default_factory=list, description="Which patterns informed this (who, what, how, when)"
     )
 
     # Risk assessment
-    risk_level: str = Field(
-        default="low",
-        description="Risk level: low, medium, high"
-    )
-    risk_notes: str = Field(
-        default="",
-        description="Notes on potential risks or considerations"
-    )
+    risk_level: str = Field(default="low", description="Risk level: low, medium, high")
+    risk_notes: str = Field(default="", description="Notes on potential risks or considerations")
 
 
 class CampaignSuggestionOutput(BaseModel):
     """Output from the campaign orchestrator."""
 
     # Summary
-    executive_summary: str = Field(
-        description="2-3 sentence summary for the client dashboard"
-    )
+    executive_summary: str = Field(description="2-3 sentence summary for the client dashboard")
 
     # Suggestions (prioritized)
     suggestions: list[CampaignSuggestion] = Field(
-        default_factory=list,
-        description="Prioritized list of campaign suggestions"
+        default_factory=list, description="Prioritized list of campaign suggestions"
     )
 
     # Overall health assessment
     campaign_health_score: float = Field(
-        ge=0.0,
-        le=100.0,
-        description="Overall campaign health (0-100)"
+        ge=0.0, le=100.0, description="Overall campaign health (0-100)"
     )
-    health_assessment: str = Field(
-        description="Brief health assessment (1-2 sentences)"
-    )
+    health_assessment: str = Field(description="Brief health assessment (1-2 sentences)")
 
     # Quick wins
     quick_wins: list[str] = Field(
-        default_factory=list,
-        description="Low-effort, high-impact suggestions (bullet points)"
+        default_factory=list, description="Low-effort, high-impact suggestions (bullet points)"
     )
 
     # Strategic recommendations
     strategic_recommendations: list[str] = Field(
-        default_factory=list,
-        description="Longer-term strategic recommendations"
+        default_factory=list, description="Longer-term strategic recommendations"
     )
 
     # Data gaps
     data_gaps: list[str] = Field(
-        default_factory=list,
-        description="Areas where more data is needed"
+        default_factory=list, description="Areas where more data is needed"
     )
 
     # Overall confidence
     overall_confidence: float = Field(
-        ge=0.0,
-        le=1.0,
-        description="Overall confidence in this analysis"
+        ge=0.0, le=1.0, description="Overall confidence in this analysis"
     )
 
     # Cost tracking
     total_analysis_cost_aud: float = Field(
-        default=0.0,
-        description="Total cost of WHO + WHAT + HOW + Orchestrator analysis"
+        default=0.0, description="Total cost of WHO + WHAT + HOW + Orchestrator analysis"
     )
 
 
@@ -263,22 +236,34 @@ async def run_campaign_orchestrator(
     prompt_parts.append(f"- Summary: {who_analysis.get('summary', 'N/A')}\n")
     prompt_parts.append(f"- Confidence: {who_analysis.get('confidence', 0)}\n")
     if who_analysis.get("targeting_refinements"):
-        prompt_parts.append(f"- Targeting Refinements: {len(who_analysis['targeting_refinements'])} recommendations\n")
+        prompt_parts.append(
+            f"- Targeting Refinements: {len(who_analysis['targeting_refinements'])} recommendations\n"
+        )
         for ref in who_analysis["targeting_refinements"][:3]:
-            prompt_parts.append(f"  - {ref.get('attribute')}: {ref.get('suggested_value')} (lift: {ref.get('expected_lift', 1.0)}x)\n")
+            prompt_parts.append(
+                f"  - {ref.get('attribute')}: {ref.get('suggested_value')} (lift: {ref.get('expected_lift', 1.0)}x)\n"
+            )
     if who_analysis.get("segment_opportunities"):
-        prompt_parts.append(f"- Segment Opportunities: {len(who_analysis['segment_opportunities'])} found\n")
+        prompt_parts.append(
+            f"- Segment Opportunities: {len(who_analysis['segment_opportunities'])} found\n"
+        )
     if who_analysis.get("underperforming_segments"):
-        prompt_parts.append(f"- Underperforming Segments: {who_analysis['underperforming_segments']}\n")
+        prompt_parts.append(
+            f"- Underperforming Segments: {who_analysis['underperforming_segments']}\n"
+        )
 
     # WHAT Analysis Summary
     prompt_parts.append("\n## WHAT Analysis (Content Patterns)\n")
     prompt_parts.append(f"- Summary: {what_analysis.get('summary', 'N/A')}\n")
     prompt_parts.append(f"- Confidence: {what_analysis.get('confidence', 0)}\n")
     if what_analysis.get("messaging_refinements"):
-        prompt_parts.append(f"- Messaging Refinements: {len(what_analysis['messaging_refinements'])} recommendations\n")
+        prompt_parts.append(
+            f"- Messaging Refinements: {len(what_analysis['messaging_refinements'])} recommendations\n"
+        )
         for ref in what_analysis["messaging_refinements"][:3]:
-            prompt_parts.append(f"  - {ref.get('element')}: {ref.get('suggested_approach')[:50]}...\n")
+            prompt_parts.append(
+                f"  - {ref.get('element')}: {ref.get('suggested_approach')[:50]}...\n"
+            )
     if what_analysis.get("winning_patterns"):
         prompt_parts.append(f"- Winning Patterns: {what_analysis['winning_patterns'][:3]}\n")
     if what_analysis.get("losing_patterns"):
@@ -289,9 +274,13 @@ async def run_campaign_orchestrator(
     prompt_parts.append(f"- Summary: {how_analysis.get('summary', 'N/A')}\n")
     prompt_parts.append(f"- Confidence: {how_analysis.get('confidence', 0)}\n")
     if how_analysis.get("channel_recommendations"):
-        prompt_parts.append(f"- Channel Recommendations: {len(how_analysis['channel_recommendations'])} changes\n")
+        prompt_parts.append(
+            f"- Channel Recommendations: {len(how_analysis['channel_recommendations'])} changes\n"
+        )
         for rec in how_analysis["channel_recommendations"][:3]:
-            prompt_parts.append(f"  - {rec.get('channel')}: {rec.get('current_allocation')}% -> {rec.get('suggested_allocation')}%\n")
+            prompt_parts.append(
+                f"  - {rec.get('channel')}: {rec.get('current_allocation')}% -> {rec.get('suggested_allocation')}%\n"
+            )
     if how_analysis.get("multi_channel_lift"):
         prompt_parts.append(f"- Multi-Channel Lift: {how_analysis['multi_channel_lift']}x\n")
 

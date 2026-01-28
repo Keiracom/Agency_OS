@@ -118,3 +118,8 @@ umped_*.csv
 
 # Supabase CLI temp
 supabase/.temp/
+
+# Xero financial data
+*xero*
+*accpay*
+*bills_*.json

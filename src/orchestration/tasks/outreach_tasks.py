@@ -38,6 +38,7 @@ from src.engines.email import EmailEngine
 from src.engines.linkedin import LinkedInEngine
 from src.engines.mail import MailEngine
 from src.engines.sms import SMSEngine
+from src.engines.timing import get_timing_engine
 from src.engines.voice import VoiceEngine
 from src.exceptions import ResourceRateLimitError, ValidationError
 from src.integrations.redis import rate_limiter
@@ -351,6 +352,7 @@ async def send_linkedin_task(
 
     Rule 13: JIT validation before sending.
     Rule 17: Rate limit 17/day/seat.
+    P0 Fix: Weekend rules enforced before any LinkedIn activity.
 
     Args:
         lead_id: Lead UUID
@@ -365,6 +367,34 @@ async def send_linkedin_task(
         ValidationError: If JIT validation fails
         ResourceRateLimitError: If rate limit exceeded
     """
+    # P0 Fix: Check weekend rules BEFORE any processing to avoid wasted resources
+    timing_engine = get_timing_engine()
+    timezone = "Australia/Sydney"
+
+    if timing_engine.is_weekend(timezone):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        tz = ZoneInfo(timezone)
+        today = datetime.now(tz).weekday()
+
+        if today == 6:  # Sunday - no LinkedIn activity
+            logger.warning(f"LinkedIn {message_type} blocked for lead {lead_id}: Sunday (0% quota)")
+            raise ValidationError(
+                message="LinkedIn activity paused on Sunday",
+                field="weekend_rules",
+            )
+        # Saturday: log reduced quota status
+        logger.info(f"LinkedIn {message_type} on Saturday for lead {lead_id}: 50% quota in effect")
+
+    # Check business hours
+    if not timing_engine.is_business_hours(timezone):
+        logger.warning(f"LinkedIn {message_type} blocked for lead {lead_id}: Outside business hours")
+        raise ValidationError(
+            message="LinkedIn activity paused outside business hours",
+            field="business_hours",
+        )
+
     async with get_db_session() as db:
         # === JIT VALIDATION (Rule 13) ===
         lead, client, campaign = await _validate_outreach_jit(

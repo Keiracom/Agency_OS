@@ -46,6 +46,7 @@ from src.engines.content import get_content_engine
 from src.engines.email import get_email_engine
 from src.engines.linkedin import get_linkedin_engine
 from src.engines.sms import get_sms_engine
+from src.engines.timing import get_timing_engine
 from src.integrations.supabase import get_db_session
 from src.models.base import (
     CampaignStatus,
@@ -457,9 +458,43 @@ async def send_linkedin_outreach_task(
         Dict with send result
 
     Note: Uses Unipile API (migrated from HeyReach) with timing-aware sending.
-    The TimingEngine provides humanized delays, but those are applied at the
-    queue/scheduling level, not during immediate sends.
+    The TimingEngine enforces weekend rules before any sends.
     """
+    # P0 Fix: Check weekend rules BEFORE content generation to avoid wasted resources
+    timing_engine = get_timing_engine()
+    timezone = "Australia/Sydney"  # Default timezone for LinkedIn timing
+
+    # Sunday: No LinkedIn activity allowed
+    if timing_engine.is_weekend(timezone):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        tz = ZoneInfo(timezone)
+        today = datetime.now(tz).weekday()
+
+        if today == 6:  # Sunday
+            logger.info(f"LinkedIn outreach skipped for lead {lead_id}: Sunday (no LinkedIn activity)")
+            return {
+                "lead_id": lead_id,
+                "channel": "linkedin",
+                "success": False,
+                "error": "LinkedIn paused on Sunday - queued for Monday",
+                "skipped_reason": "weekend_sunday",
+            }
+        # Saturday: reduced quota handled by engine, but log the weekend status
+        logger.info(f"LinkedIn outreach on Saturday for lead {lead_id}: 50% quota in effect")
+
+    # Check business hours
+    if not timing_engine.is_business_hours(timezone):
+        logger.info(f"LinkedIn outreach skipped for lead {lead_id}: Outside business hours")
+        return {
+            "lead_id": lead_id,
+            "channel": "linkedin",
+            "success": False,
+            "error": "LinkedIn paused outside business hours",
+            "skipped_reason": "outside_business_hours",
+        }
+
     async with get_db_session() as db:
         content_engine = get_content_engine()
         linkedin_engine = get_linkedin_engine()

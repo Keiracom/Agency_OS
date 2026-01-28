@@ -228,13 +228,22 @@ class ScorerEngine(BaseEngine):
 
         # Phase 24F: Apply buyer signal boost
         buyer_boost = await self._get_buyer_boost(db, lead.domain)
-        boost_points = buyer_boost.get("boost_points", 0)
-        weighted_score += boost_points
+        buyer_boost_points = buyer_boost.get("boost_points", 0)
+        weighted_score += buyer_boost_points
+
+        # Calculate preliminary tier for funnel boost lookup
+        prelim_score = int(max(0, min(100, weighted_score)))
+        prelim_tier = self._get_tier(prelim_score)
+
+        # Phase 24E: Apply funnel conversion patterns boost
+        funnel_boost = await self._get_funnel_boost(db, lead.client_id, prelim_tier)
+        funnel_boost_points = funnel_boost.get("boost_points", 0)
+        weighted_score += funnel_boost_points
 
         # Cap at 0-100
         total_score = int(max(0, min(100, weighted_score)))
 
-        # Determine tier
+        # Determine final tier (may have changed due to funnel boost)
         tier = self._get_tier(total_score)
 
         # Get available channels for this tier
@@ -264,8 +273,11 @@ class ScorerEngine(BaseEngine):
             "available_channels": [c.value for c in channels],
             "lead_id": str(lead_id),
             # Phase 24F: Buyer signal boost
-            "buyer_boost": boost_points,
+            "buyer_boost": buyer_boost_points,
             "buyer_boost_reason": buyer_boost.get("reason"),
+            # Phase 24E: Funnel conversion patterns boost
+            "funnel_boost": funnel_boost_points,
+            "funnel_signals": funnel_boost.get("signals", []),
         }
 
         # Update lead in database (now includes Phase 16 fields)
@@ -812,6 +824,102 @@ class ScorerEngine(BaseEngine):
             logger.warning(f"Error getting LinkedIn boost for {lead_pool_id}: {e}")
             return {"boost_points": 0, "signals": []}
 
+    async def _get_funnel_boost(
+        self,
+        db: AsyncSession,
+        client_id: UUID,
+        current_tier: str,
+    ) -> dict[str, Any]:
+        """
+        Calculate funnel boost based on downstream conversion patterns.
+
+        Phase 24E: Uses FunnelDetector patterns to boost leads in tiers
+        that historically have strong downstream conversion (show rate,
+        meeting-to-deal rate, win rate).
+
+        This closes the loop between pattern learning and actual scoring,
+        rewarding leads in tiers that convert well post-meeting.
+
+        Args:
+            db: Database session
+            client_id: Client UUID to get patterns for
+            current_tier: The lead's current ALS tier (hot/warm/cool/cold)
+
+        Returns:
+            Dict with boost_points (int, max 12) and signals (list of reasons)
+        """
+        if not client_id or not current_tier:
+            return {"boost_points": 0, "signals": []}
+
+        try:
+            # Get funnel patterns for this client
+            stmt = select(ConversionPattern).where(
+                and_(
+                    ConversionPattern.client_id == client_id,
+                    ConversionPattern.pattern_type == "funnel",
+                    ConversionPattern.valid_until > datetime.utcnow(),
+                    ConversionPattern.deleted_at.is_(None),
+                )
+            )
+            result = await db.execute(stmt)
+            pattern = result.scalar_one_or_none()
+
+            if not pattern or not pattern.patterns:
+                return {"boost_points": 0, "signals": []}
+
+            boost_points = 0
+            signals = []
+            patterns = pattern.patterns
+
+            # Check show rate patterns for this tier
+            show_rate_data = patterns.get("show_rate", {})
+            tier_show_rates = show_rate_data.get("insights", [])
+            for insight in tier_show_rates:
+                if insight.get("type") == "als_tier_impact":
+                    tier_rates = insight.get("tier_show_rates", {})
+                    tier_rate = tier_rates.get(current_tier, 0)
+                    if tier_rate >= 80:
+                        boost_points += FUNNEL_HIGH_SHOW_RATE_BOOST
+                        signals.append(f"{current_tier.upper()} tier has {tier_rate:.0f}% show rate")
+                    elif tier_rate >= 60:
+                        boost_points += 2  # Partial boost for decent show rate
+                        signals.append(f"{current_tier.upper()} tier has {tier_rate:.0f}% show rate")
+
+            # Check meeting-to-deal patterns
+            deal_data = patterns.get("meeting_to_deal", {})
+            deal_rate = deal_data.get("meeting_to_deal_rate", 0)
+            if deal_rate >= 40:
+                boost_points += FUNNEL_GOOD_DEAL_RATE_BOOST
+                signals.append(f"Strong meeting-to-deal conversion ({deal_rate:.0f}%)")
+            elif deal_rate >= 25:
+                boost_points += 2  # Partial boost
+                signals.append(f"Good meeting-to-deal conversion ({deal_rate:.0f}%)")
+
+            # Check win rate patterns
+            win_data = patterns.get("win_rate", {})
+            win_rate = win_data.get("win_rate", 0)
+            if win_rate >= 30:
+                boost_points += FUNNEL_STRONG_WIN_RATE_BOOST
+                signals.append(f"Strong win rate ({win_rate:.0f}%)")
+            elif win_rate >= 20:
+                boost_points += 2  # Partial boost
+                signals.append(f"Good win rate ({win_rate:.0f}%)")
+
+            # Cap at max
+            boost_points = min(boost_points, MAX_FUNNEL_BOOST)
+
+            if boost_points > 0:
+                logger.info(
+                    f"Funnel boost for client {client_id} ({current_tier} tier): "
+                    f"+{boost_points} points ({', '.join(signals)})"
+                )
+
+            return {"boost_points": boost_points, "signals": signals}
+
+        except Exception as e:
+            logger.warning(f"Error getting funnel boost for client {client_id}: {e}")
+            return {"boost_points": 0, "signals": []}
+
     async def _update_lead_score(
         self,
         db: AsyncSession,
@@ -1262,6 +1370,15 @@ class ScorerEngine(BaseEngine):
         linkedin_boost_points = linkedin_boost.get("boost_points", 0)
         weighted_score += linkedin_boost_points
 
+        # Calculate preliminary tier for funnel boost lookup
+        prelim_score = int(max(0, min(100, weighted_score)))
+        prelim_tier = self._get_tier(prelim_score)
+
+        # Phase 24E: Apply funnel conversion patterns boost
+        funnel_boost = await self._get_funnel_boost(db, client_id, prelim_tier)
+        funnel_boost_points = funnel_boost.get("boost_points", 0)
+        weighted_score += funnel_boost_points
+
         total_score = int(max(0, min(100, weighted_score)))
         tier = self._get_tier(total_score)
         channels = self._get_channels_for_tier(tier)
@@ -1291,6 +1408,9 @@ class ScorerEngine(BaseEngine):
             "buyer_boost_reason": buyer_boost.get("reason"),
             "linkedin_boost": linkedin_boost_points,
             "linkedin_signals": linkedin_boost.get("signals", []),
+            # Phase 24E: Funnel conversion patterns boost
+            "funnel_boost": funnel_boost_points,
+            "funnel_signals": funnel_boost.get("signals", []),
         }
 
         # Phase 37: Update lead_pool directly
@@ -1777,3 +1897,15 @@ def get_scorer_engine() -> ScorerEngine:
 # [x] LinkedIn boost integrated into score_pool_lead
 # [x] assignment_id parameter added to score_pool_lead
 # [x] linkedin_boost and linkedin_signals in score breakdown
+# ============================================
+# PHASE 24E FUNNEL DETECTOR INTEGRATION
+# ============================================
+# [x] _get_funnel_boost method using funnel patterns
+# [x] MAX_FUNNEL_BOOST constant (12 points)
+# [x] FUNNEL_HIGH_SHOW_RATE_BOOST (4 points)
+# [x] FUNNEL_GOOD_DEAL_RATE_BOOST (4 points)
+# [x] FUNNEL_STRONG_WIN_RATE_BOOST (4 points)
+# [x] Funnel boost integrated into score_lead
+# [x] Funnel boost integrated into score_assignment
+# [x] funnel_boost and funnel_signals in score breakdown
+# [x] Loads funnel patterns from ConversionPattern table

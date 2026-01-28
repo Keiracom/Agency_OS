@@ -25,9 +25,6 @@ declare module '@tabler/icons-react' {
   export const IconCaretRightFilled: IconComponent;
   export const IconCaretDownFilled: IconComponent;
   export const IconDotsVertical: IconComponent;
-  
-  // Catch-all for any other icons
-  export const [key: string]: IconComponent;
 }
 
 declare module 'three-globe' {

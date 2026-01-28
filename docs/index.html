@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0f172a">
+    <title>Elliot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            overscroll-behavior-y: contain;
+        }
+
+        /* Pull to refresh */
+        .pull-indicator {
+            transition: transform 0.2s ease-out, opacity 0.2s;
+        }
+        .pulling .pull-indicator {
+            transform: translateY(60px);
+            opacity: 1;
+        }
+        .refreshing .pull-indicator {
+            transform: translateY(60px);
+            opacity: 1;
+        }
+        .refreshing .pull-indicator svg {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Smooth scrolling */
+        .scroll-container {
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+        }
+
+        /* Card animations */
+        .card {
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .card:active {
+            transform: scale(0.98);
+        }
+
+        /* Status pulse */
+        @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        .status-pulse::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            animation: pulse-ring 2s ease-out infinite;
+        }
+        .status-online::before { background: rgb(34 197 94 / 0.4); }
+        .status-warning::before { background: rgb(234 179 8 / 0.4); }
+        .status-error::before { background: rgb(239 68 68 / 0.4); }
+
+        /* Bottom nav safe area */
+        .bottom-nav {
+            padding-bottom: max(env(safe-area-inset-bottom), 8px);
+        }
+
+        /* Markdown styling (minimal) */
+        .md-content h1, .md-content h2, .md-content h3 {
+            font-weight: 600;
+            color: #f1f5f9;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .md-content h1 { font-size: 1.25rem; }
+        .md-content h2 { font-size: 1.1rem; }
+        .md-content h3 { font-size: 1rem; }
+        .md-content p { color: #94a3b8; margin-bottom: 0.75rem; line-height: 1.6; }
+        .md-content ul, .md-content ol { padding-left: 1.25rem; margin-bottom: 0.75rem; }
+        .md-content li { color: #94a3b8; margin-bottom: 0.25rem; }
+        .md-content code {
+            background: #1e293b;
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: #e2e8f0;
+        }
+        .md-content pre {
+            background: #1e293b;
+            padding: 0.75rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-bottom: 0.75rem;
+        }
+        .md-content pre code { background: none; padding: 0; }
+        .md-content strong { color: #e2e8f0; }
+        .md-content hr { border-color: #334155; margin: 1rem 0; }
+
+        /* Hide scrollbar but allow scroll */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Tab indicator animation */
+        .tab-indicator {
+            transition: left 0.25s ease, width 0.25s ease;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen pb-20">
+
+    <!-- Pull to Refresh Indicator -->
+    <div class="pull-indicator fixed top-0 left-0 right-0 flex justify-center pt-4 -translate-y-16 opacity-0 z-50 pointer-events-none">
+        <div class="bg-slate-800 rounded-full p-2">
+            <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main id="main-content" class="scroll-container overflow-y-auto min-h-screen">
+
+        <!-- View: Status (Home) -->
+        <div id="view-status" class="view px-4 pt-6 pb-4">
+
+            <!-- Header -->
+            <header class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/20">
+                        E
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-white">Elliot</h1>
+                        <p class="text-sm text-slate-500" id="header-role">CEO/Orchestrator</p>
+                    </div>
+                </div>
+                <button onclick="refreshData()" class="p-3 -mr-1 active:bg-slate-800 rounded-xl transition-colors">
+                    <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                </button>
+            </header>
+
+            <!-- Status Card -->
+            <div class="card bg-slate-900 rounded-2xl p-5 mb-4 border border-slate-800/50">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <div id="status-dot" class="w-3 h-3 rounded-full bg-emerald-500 status-pulse status-online"></div>
+                        </div>
+                        <span id="status-text" class="font-medium text-emerald-400">Online</span>
+                    </div>
+                    <span id="last-active" class="text-sm text-slate-500">Just now</span>
+                </div>
+
+                <!-- Context Meter -->
+                <div class="mb-1">
+                    <div class="flex justify-between text-sm mb-2">
+                        <span class="text-slate-400">Context Window</span>
+                        <span id="context-percent" class="font-medium text-slate-300">-%</span>
+                    </div>
+                    <div class="h-2 bg-slate-800 rounded-full overflow-hidden">
+                        <div id="context-bar" class="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+                <p id="context-hint" class="text-xs text-slate-600 mt-2">Refreshes recommended at 60%</p>
+            </div>
+
+            <!-- Quick Stats Grid -->
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="card bg-slate-900 rounded-2xl p-4 border border-slate-800/50">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-lg">⚖️</span>
+                        <span class="text-xs text-slate-500 uppercase tracking-wide">Decisions</span>
+                    </div>
+                    <div id="stat-decisions" class="text-2xl font-bold text-white">-</div>
+                </div>
+                <div class="card bg-slate-900 rounded-2xl p-4 border border-slate-800/50">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-lg">💡</span>
+                        <span class="text-xs text-slate-500 uppercase tracking-wide">Learnings</span>
+                    </div>
+                    <div id="stat-learnings" class="text-2xl font-bold text-white">-</div>
+                </div>
+                <div class="card bg-slate-900 rounded-2xl p-4 border border-slate-800/50">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-lg">🔄</span>
+                        <span class="text-xs text-slate-500 uppercase tracking-wide">Patterns</span>
+                    </div>
+                    <div id="stat-patterns" class="text-2xl font-bold text-white">-</div>
+                </div>
+                <div class="card bg-slate-900 rounded-2xl p-4 border border-slate-800/50">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-lg">📋</span>
+                        <span class="text-xs text-slate-500 uppercase tracking-wide">Rules</span>
+                    </div>
+                    <div id="stat-rules" class="text-2xl font-bold text-white">-</div>
+                </div>
+            </div>
+
+            <!-- Tasks Summary -->
+            <div class="card bg-slate-900 rounded-2xl p-5 mb-4 border border-slate-800/50">
+                <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-4">Task Status</h3>
+                <div class="flex justify-between items-center">
+                    <div class="text-center flex-1">
+                        <div id="tasks-running" class="text-2xl font-bold text-emerald-400">-</div>
+                        <div class="text-xs text-slate-500 mt-1">Running</div>
+                    </div>
+                    <div class="w-px h-10 bg-slate-800"></div>
+                    <div class="text-center flex-1">
+                        <div id="tasks-todo" class="text-2xl font-bold text-slate-300">-</div>
+                        <div class="text-xs text-slate-500 mt-1">Queued</div>
+                    </div>
+                    <div class="w-px h-10 bg-slate-800"></div>
+                    <div class="text-center flex-1">
+                        <div id="tasks-blocked" class="text-2xl font-bold text-amber-400">-</div>
+                        <div class="text-xs text-slate-500 mt-1">Blocked</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- First Boot -->
+            <div class="text-center text-xs text-slate-600 mt-6">
+                First boot: <span id="first-boot">-</span>
+            </div>
+        </div>
+
+        <!-- View: Activity -->
+        <div id="view-activity" class="view hidden px-4 pt-6 pb-4">
+            <h2 class="text-lg font-bold text-white mb-4">Recent Activity</h2>
+            <div id="activity-list" class="space-y-3">
+                <!-- Activity cards rendered here -->
+            </div>
+        </div>
+
+        <!-- View: Memory Browser -->
+        <div id="view-memory" class="view hidden px-4 pt-6 pb-4">
+            <h2 class="text-lg font-bold text-white mb-4">Memory</h2>
+
+            <!-- Category Pills -->
+            <div class="flex gap-2 overflow-x-auto pb-4 hide-scrollbar -mx-4 px-4">
+                <button onclick="showMemory('memory')" data-mem="memory" class="mem-btn whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium bg-blue-500 text-white transition-colors min-h-[44px]">
+                    🧠 Core
+                </button>
+                <button onclick="showMemory('rules')" data-mem="rules" class="mem-btn whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium bg-slate-800 text-slate-300 transition-colors min-h-[44px]">
+                    📋 Rules
+                </button>
+                <button onclick="showMemory('learnings')" data-mem="learnings" class="mem-btn whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium bg-slate-800 text-slate-300 transition-colors min-h-[44px]">
+                    💡 Learnings
+                </button>
+                <button onclick="showMemory('patterns')" data-mem="patterns" class="mem-btn whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium bg-slate-800 text-slate-300 transition-colors min-h-[44px]">
+                    🔄 Patterns
+                </button>
+                <button onclick="showMemory('daily')" data-mem="daily" class="mem-btn whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium bg-slate-800 text-slate-300 transition-colors min-h-[44px]">
+                    📅 Daily Log
+                </button>
+            </div>
+
+            <!-- Memory Content -->
+            <div id="memory-content" class="bg-slate-900 rounded-2xl p-4 border border-slate-800/50 md-content">
+                <p class="text-slate-500 text-center py-8">Loading...</p>
+            </div>
+        </div>
+
+        <!-- View: Decisions -->
+        <div id="view-decisions" class="view hidden px-4 pt-6 pb-4">
+            <h2 class="text-lg font-bold text-white mb-4">Decision Log</h2>
+            <div id="decisions-list" class="space-y-3">
+                <!-- Decision cards rendered here -->
+            </div>
+        </div>
+
+        <!-- View: Tasks -->
+        <div id="view-tasks" class="view hidden px-4 pt-6 pb-4">
+            <h2 class="text-lg font-bold text-white mb-4">Tasks</h2>
+
+            <!-- Task Filter Pills -->
+            <div class="flex gap-2 overflow-x-auto pb-4 hide-scrollbar -mx-4 px-4">
+                <button onclick="showTasks('in_progress')" data-task="in_progress" class="task-btn whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-colors min-h-[44px]">
+                    🟢 In Progress
+                </button>
+                <button onclick="showTasks('backlog')" data-task="backlog" class="task-btn whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium bg-slate-800 text-slate-300 transition-colors min-h-[44px]">
+                    📋 Backlog
+                </button>
+            </div>
+
+            <!-- Tasks Content -->
+            <div id="tasks-content" class="bg-slate-900 rounded-2xl p-4 border border-slate-800/50 md-content">
+                <p class="text-slate-500 text-center py-8">Loading...</p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 z-50">
+        <div class="flex justify-around items-center h-16 max-w-lg mx-auto">
+            <button onclick="switchView('status')" data-view="status" class="nav-btn flex flex-col items-center justify-center w-16 h-14 text-blue-400 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                <span class="text-xs mt-1 font-medium">Status</span>
+            </button>
+            <button onclick="switchView('activity')" data-view="activity" class="nav-btn flex flex-col items-center justify-center w-16 h-14 text-slate-500 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="text-xs mt-1">Activity</span>
+            </button>
+            <button onclick="switchView('memory')" data-view="memory" class="nav-btn flex flex-col items-center justify-center w-16 h-14 text-slate-500 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                </svg>
+                <span class="text-xs mt-1">Memory</span>
+            </button>
+            <button onclick="switchView('decisions')" data-view="decisions" class="nav-btn flex flex-col items-center justify-center w-16 h-14 text-slate-500 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/>
+                </svg>
+                <span class="text-xs mt-1">Decisions</span>
+            </button>
+            <button onclick="switchView('tasks')" data-view="tasks" class="nav-btn flex flex-col items-center justify-center w-16 h-14 text-slate-500 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                </svg>
+                <span class="text-xs mt-1">Tasks</span>
+            </button>
+        </div>
+    </nav>
+
+    <script>
+        // State
+        let data = null;
+        let currentView = 'status';
+        let currentMemory = 'memory';
+        let currentTasks = 'in_progress';
+
+        // Configure marked
+        marked.setOptions({ breaks: true, gfm: true });
+
+        // Pull to refresh
+        let touchStart = 0;
+        let pullDistance = 0;
+        const main = document.getElementById('main-content');
+        const pullIndicator = document.querySelector('.pull-indicator');
+
+        main.addEventListener('touchstart', (e) => {
+            if (main.scrollTop === 0) {
+                touchStart = e.touches[0].clientY;
+            }
+        }, { passive: true });
+
+        main.addEventListener('touchmove', (e) => {
+            if (touchStart === 0) return;
+            pullDistance = e.touches[0].clientY - touchStart;
+            if (pullDistance > 0 && pullDistance < 150) {
+                document.body.classList.add('pulling');
+                pullIndicator.style.transform = `translateY(${Math.min(pullDistance * 0.5, 60)}px)`;
+                pullIndicator.style.opacity = Math.min(pullDistance / 80, 1);
+            }
+        }, { passive: true });
+
+        main.addEventListener('touchend', () => {
+            if (pullDistance > 80) {
+                document.body.classList.remove('pulling');
+                document.body.classList.add('refreshing');
+                refreshData().finally(() => {
+                    document.body.classList.remove('refreshing');
+                    pullIndicator.style.transform = '';
+                    pullIndicator.style.opacity = '';
+                });
+            } else {
+                document.body.classList.remove('pulling');
+                pullIndicator.style.transform = '';
+                pullIndicator.style.opacity = '';
+            }
+            touchStart = 0;
+            pullDistance = 0;
+        }, { passive: true });
+
+        // Load data
+        async function loadData() {
+            try {
+                const response = await fetch('dashboard-data.json?v=2?t=' + Date.now());
+                data = await response.json();
+                updateUI();
+            } catch (error) {
+                console.error('Failed to load data:', error);
+            }
+        }
+
+        async function refreshData() {
+            await loadData();
+        }
+
+        // Update UI
+        function updateUI() {
+            if (!data) return;
+
+            // Header
+            document.getElementById('header-role').textContent = data.identity.role;
+            document.getElementById('first-boot').textContent = data.identity.first_boot;
+
+            // Status
+            const lastUpdated = new Date(data.generated_at);
+            const now = new Date();
+            const diffMins = Math.floor((now - lastUpdated) / 60000);
+            document.getElementById('last-active').textContent = diffMins < 1 ? 'Just now' :
+                diffMins < 60 ? `${diffMins}m ago` : `${Math.floor(diffMins/60)}h ago`;
+
+            // Context (simulated - would come from real API)
+            const contextPercent = 35; // Placeholder
+            document.getElementById('context-percent').textContent = contextPercent + '%';
+            document.getElementById('context-bar').style.width = contextPercent + '%';
+
+            // Color the context bar based on usage
+            const bar = document.getElementById('context-bar');
+            if (contextPercent >= 60) {
+                bar.className = 'h-full bg-gradient-to-r from-red-500 to-red-400 rounded-full transition-all duration-500';
+                document.getElementById('context-hint').textContent = '⚠️ Consider restarting soon';
+                document.getElementById('context-hint').className = 'text-xs text-amber-500 mt-2';
+            } else if (contextPercent >= 40) {
+                bar.className = 'h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-500';
+            } else {
+                bar.className = 'h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500';
+            }
+
+            // Stats
+            document.getElementById('stat-decisions').textContent = data.metrics.decisions;
+            document.getElementById('stat-learnings').textContent = data.metrics.learnings;
+            document.getElementById('stat-patterns').textContent = data.metrics.patterns;
+            document.getElementById('stat-rules').textContent = data.metrics.rules;
+
+            // Tasks
+            document.getElementById('tasks-running').textContent = data.metrics.tasks_running;
+            document.getElementById('tasks-todo').textContent = data.metrics.tasks_todo;
+            document.getElementById('tasks-blocked').textContent = data.metrics.tasks_blocked;
+
+            // Activity list
+            renderActivity();
+
+            // Decisions
+            renderDecisions();
+
+            // Initial memory view
+            showMemory(currentMemory);
+            showTasks(currentTasks);
+        }
+
+        // Render activity
+        function renderActivity() {
+            const container = document.getElementById('activity-list');
+            if (!data?.recent_activity?.length) {
+                container.innerHTML = '<p class="text-slate-500 text-center py-8">No recent activity</p>';
+                return;
+            }
+
+            const icons = {
+                'PATTERNS.md': '🔄',
+                'LEARNINGS.md': '💡',
+                'RULES.md': '📋',
+                'DECISIONS.md': '⚖️',
+                'TEMPLATE.md': '📝',
+                'default': '📄'
+            };
+
+            container.innerHTML = data.recent_activity.map(item => {
+                const filename = item.file;
+                const icon = icons[filename] || icons.default;
+                const date = new Date(item.mtime * 1000);
+                const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                return `
+                    <div class="card bg-slate-900 rounded-xl p-4 border border-slate-800/50">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">${icon}</span>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-medium text-slate-200 truncate">${filename}</div>
+                                <div class="text-sm text-slate-500">Updated ${timeStr}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Render decisions as expandable cards
+        function renderDecisions() {
+            const container = document.getElementById('decisions-list');
+            const decisionsContent = data?.files?.decisions || '';
+
+            // Parse decisions from markdown
+            const sections = decisionsContent.split(/^### /gm).filter(s => s.trim() && !s.startsWith('[')); // Filter out format section
+
+            if (sections.length <= 1) {
+                container.innerHTML = '<p class="text-slate-500 text-center py-8">No decisions logged yet</p>';
+                return;
+            }
+
+            container.innerHTML = sections.slice(1).map((section, i) => {
+                const lines = section.split('\n');
+                const title = lines[0]?.trim() || 'Decision';
+                const content = lines.slice(1).join('\n');
+
+                // Extract key fields
+                const context = content.match(/\*\*Context:\*\*\s*([^\n]+)/)?.[1] || '';
+                const decision = content.match(/\*\*Decision:\*\*\s*([^\n]+)/)?.[1] || '';
+                const outcome = content.match(/\*\*Actual outcome:\*\*\s*([^\n]+)/)?.[1] || 'Pending';
+
+                const outcomeClass = outcome.includes('✅') || outcome.includes('approved') ? 'text-emerald-400' :
+                                     outcome.includes('Pending') ? 'text-slate-500' : 'text-amber-400';
+
+                return `
+                    <div class="card bg-slate-900 rounded-xl border border-slate-800/50 overflow-hidden">
+                        <button onclick="toggleDecision(${i})" class="w-full p-4 text-left min-h-[44px]">
+                            <div class="flex justify-between items-start gap-3">
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-slate-200 mb-1">${title}</div>
+                                    <div class="text-sm text-slate-500 truncate">${context || decision}</div>
+                                </div>
+                                <span class="text-xs ${outcomeClass} whitespace-nowrap">${outcome.includes('✅') ? '✅' : outcome.includes('Pending') ? '⏳' : '🔄'}</span>
+                            </div>
+                        </button>
+                        <div id="decision-${i}" class="hidden px-4 pb-4 md-content text-sm">
+                            ${marked.parse(content)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleDecision(i) {
+            const el = document.getElementById(`decision-${i}`);
+            el.classList.toggle('hidden');
+        }
+
+        // Switch views
+        function switchView(view) {
+            currentView = view;
+
+            // Hide all views
+            document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+
+            // Show selected view
+            document.getElementById(`view-${view}`).classList.remove('hidden');
+
+            // Update nav
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                const isActive = btn.dataset.view === view;
+                btn.className = `nav-btn flex flex-col items-center justify-center w-16 h-14 transition-colors ${isActive ? 'text-blue-400' : 'text-slate-500'}`;
+                const label = btn.querySelector('span');
+                if (label) label.className = `text-xs mt-1 ${isActive ? 'font-medium' : ''}`;
+            });
+
+            // Scroll to top
+            main.scrollTop = 0;
+        }
+
+        // Show memory content
+        function showMemory(type) {
+            currentMemory = type;
+
+            // Update pills
+            document.querySelectorAll('.mem-btn').forEach(btn => {
+                const isActive = btn.dataset.mem === type;
+                btn.className = `mem-btn whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors min-h-[44px] ${isActive ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-300'}`;
+            });
+
+            // Render content
+            const container = document.getElementById('memory-content');
+            let content = '';
+
+            if (type === 'daily') {
+                const today = data?.files?.daily_today || '*No entry for today*';
+                const yesterday = data?.files?.daily_yesterday || '*No entry for yesterday*';
+                content = `## Today\n\n${today}\n\n---\n\n## Yesterday\n\n${yesterday}`;
+            } else {
+                content = data?.files?.[type] || '*No content*';
+            }
+
+            container.innerHTML = marked.parse(content);
+        }
+
+        // Show tasks content - SIMPLIFIED: Direct table parsing to cards
+        function showTasks(type) {
+            currentTasks = type;
+
+            // Update pills
+            document.querySelectorAll('.task-btn').forEach(btn => {
+                const isActive = btn.dataset.task === type;
+                if (isActive) {
+                    btn.className = 'task-btn whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-colors min-h-[44px]';
+                } else {
+                    btn.className = 'task-btn whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium bg-slate-800 text-slate-300 transition-colors min-h-[44px]';
+                }
+            });
+
+            const container = document.getElementById('tasks-content');
+            const content = data?.files?.[type] || '';
+
+            if (!content || content === '*No tasks*') {
+                container.innerHTML = '<p class="text-slate-500 text-center py-8">No tasks</p>';
+                return;
+            }
+
+            // Direct approach: find ALL table rows and render as cards
+            const lines = content.split('\n');
+            const tasks = [];
+            let headers = [];
+            let inTable = false;
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const trimmed = line.trim();
+                if (!trimmed.startsWith('|')) {
+                    // Non-table line resets table state
+                    if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('-')) {
+                        inTable = false;
+                    }
+                    continue;
+                }
+                
+                const cells = trimmed.split('|').map(c => c.trim()).filter(c => c);
+                
+                // Separator row (|---|---|) - marks transition from headers to data
+                if (cells.every(c => /^[-:]+$/.test(c))) {
+                    inTable = true;
+                    continue;
+                }
+                
+                // Check if next line is a separator (then this is a header row)
+                const nextLine = (lines[i + 1] || '').trim();
+                const nextCells = nextLine.split('|').map(c => c.trim()).filter(c => c);
+                if (nextCells.length > 0 && nextCells.every(c => /^[-:]+$/.test(c))) {
+                    // This is a header row, capture headers
+                    headers = cells.map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+                    continue;
+                }
+                
+                // Data row (only if we're in a table after seeing headers+separator)
+                if (inTable && headers.length > 0) {
+                    const task = {};
+                    cells.forEach((cell, idx) => {
+                        const key = headers[idx] || `col${idx}`;
+                        task[key] = cell;
+                    });
+                    // Skip if looks like a header row or empty placeholder
+                    const id = task.taskid || task.id || '';
+                    const desc = task.description || task.name || '';
+                    if (id && id !== '—' && id.toLowerCase() !== 'task id' && 
+                        desc && desc !== '—' && desc.toLowerCase() !== 'description') {
+                        tasks.push(task);
+                    }
+                }
+            }
+
+            if (tasks.length === 0) {
+                container.innerHTML = '<p class="text-slate-500 text-center py-8">No tasks found</p>';
+                return;
+            }
+
+            // Render cards
+            const html = tasks.map(task => {
+                // Extract fields with fallbacks
+                const id = task.taskid || task.id || task.task || '-';
+                const name = task.description || task.name || task.title || task.task || 'Untitled';
+                const agent = task.agent || task.assignee || task.owner || '';
+                const started = task.started || task.date || task.created || task.since || '';
+                const status = task.status || '';
+                const blocker = task.blocker || task.blockedby || task.waiting || '';
+                const session = task.session || '';
+
+                // Status styling
+                let statusClass = 'text-slate-400';
+                let statusIcon = '⚪';
+                const statusLower = status.toLowerCase();
+                if (statusLower.includes('running') || status.includes('🟢') || statusLower.includes('active')) {
+                    statusClass = 'text-emerald-400';
+                    statusIcon = '🟢';
+                } else if (statusLower.includes('blocked') || status.includes('🟡') || statusLower.includes('waiting')) {
+                    statusClass = 'text-amber-400';
+                    statusIcon = '🟡';
+                } else if (statusLower.includes('done') || status.includes('✅') || statusLower.includes('complete')) {
+                    statusClass = 'text-blue-400';
+                    statusIcon = '✅';
+                } else if (statusLower.includes('todo') || status.includes('🔴')) {
+                    statusClass = 'text-red-400';
+                    statusIcon = '🔴';
+                }
+
+                // Clean status text (remove emojis that we're adding back)
+                const statusText = status.replace(/🟢|🟡|⚪|✅|🔴/g, '').trim() || 'Active';
+
+                return `
+                    <div class="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 mb-3">
+                        <div class="flex items-start justify-between mb-2">
+                            <span class="text-xs font-mono text-slate-500 bg-slate-900 px-2 py-1 rounded">${id}</span>
+                            <span class="${statusClass} text-sm font-medium">${statusIcon}</span>
+                        </div>
+                        <h3 class="text-base font-semibold text-white mb-3 leading-tight">${name}</h3>
+                        <div class="border-t border-slate-700/50 pt-3 space-y-2">
+                            ${agent ? `<div class="flex justify-between text-sm"><span class="text-slate-500">Agent</span><span class="text-slate-300 truncate ml-2 max-w-[60%] text-right font-mono text-xs">${agent}</span></div>` : ''}
+                            ${started ? `<div class="flex justify-between text-sm"><span class="text-slate-500">Started</span><span class="text-slate-300">${started}</span></div>` : ''}
+                            ${session ? `<div class="flex justify-between text-sm"><span class="text-slate-500">Session</span><span class="text-slate-400 font-mono text-xs">${session}</span></div>` : ''}
+                            ${blocker ? `<div class="flex justify-between text-sm"><span class="text-slate-500">Blocked</span><span class="text-amber-400">${blocker}</span></div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = html;
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', loadData);
+
+        // Auto-refresh every 60 seconds
+        setInterval(loadData, 60000);
+    </script>
+</body>
+</html>

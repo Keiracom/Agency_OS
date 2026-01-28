@@ -3,29 +3,31 @@
 declare module '@tabler/icons-react' {
   import { FC, SVGProps } from 'react';
   
-  export const IconArrowLeft: FC<SVGProps<SVGSVGElement>>;
-  export const IconArrowRight: FC<SVGProps<SVGSVGElement>>;
-  export const IconArrowNarrowLeft: FC<SVGProps<SVGSVGElement>>;
-  export const IconArrowNarrowRight: FC<SVGProps<SVGSVGElement>>;
-  export const IconX: FC<SVGProps<SVGSVGElement>>;
-  export const IconUpload: FC<SVGProps<SVGSVGElement>>;
-  export const IconLayoutNavbarCollapse: FC<SVGProps<SVGSVGElement>>;
-  export const IconBrandGithub: FC<SVGProps<SVGSVGElement>>;
-  export const IconBrandX: FC<SVGProps<SVGSVGElement>>;
-  export const IconExchange: FC<SVGProps<SVGSVGElement>>;
-  export const IconHome: FC<SVGProps<SVGSVGElement>>;
-  export const IconNewSection: FC<SVGProps<SVGSVGElement>>;
-  export const IconTerminal2: FC<SVGProps<SVGSVGElement>>;
-  export const IconBrandApple: FC<SVGProps<SVGSVGElement>>;
-  export const IconSearch: FC<SVGProps<SVGSVGElement>>;
-  export const IconWorld: FC<SVGProps<SVGSVGElement>>;
-  export const IconCommand: FC<SVGProps<SVGSVGElement>>;
-  export const IconCaretRightFilled: FC<SVGProps<SVGSVGElement>>;
-  export const IconCaretDownFilled: FC<SVGProps<SVGSVGElement>>;
+  type IconComponent = FC<SVGProps<SVGSVGElement>>;
   
-  // Catch-all for other icons
-  const icons: { [key: string]: FC<SVGProps<SVGSVGElement>> };
-  export default icons;
+  export const IconArrowLeft: IconComponent;
+  export const IconArrowRight: IconComponent;
+  export const IconArrowNarrowLeft: IconComponent;
+  export const IconArrowNarrowRight: IconComponent;
+  export const IconX: IconComponent;
+  export const IconUpload: IconComponent;
+  export const IconLayoutNavbarCollapse: IconComponent;
+  export const IconBrandGithub: IconComponent;
+  export const IconBrandX: IconComponent;
+  export const IconExchange: IconComponent;
+  export const IconHome: IconComponent;
+  export const IconNewSection: IconComponent;
+  export const IconTerminal2: IconComponent;
+  export const IconBrandApple: IconComponent;
+  export const IconSearch: IconComponent;
+  export const IconWorld: IconComponent;
+  export const IconCommand: IconComponent;
+  export const IconCaretRightFilled: IconComponent;
+  export const IconCaretDownFilled: IconComponent;
+  export const IconDotsVertical: IconComponent;
+  
+  // Catch-all for any other icons
+  export const [key: string]: IconComponent;
 }
 
 declare module 'three-globe' {
@@ -38,31 +40,74 @@ declare module 'three-globe' {
     showAtmosphere(show: boolean): this;
     atmosphereColor(color: string): this;
     atmosphereAltitude(altitude: number): this;
-    hexPolygonsData(data: any[]): this;
+    hexPolygonsData(data: unknown[]): this;
     hexPolygonResolution(resolution: number): this;
     hexPolygonMargin(margin: number): this;
     hexPolygonUseDots(useDots: boolean): this;
-    hexPolygonColor(colorFn: (d: any) => string): this;
-    hexPolygonLabel(labelFn: (d: any) => string): this;
-    arcsData(data: any[]): this;
-    arcColor(colorFn: (e: any) => string): this;
-    arcAltitude(altitudeFn: (e: any) => number): this;
-    arcStroke(strokeFn: (e: any) => number): this;
+    hexPolygonColor(colorFn: (d: unknown) => string): this;
+    hexPolygonLabel(labelFn: (d: unknown) => string): this;
+    arcsData(data: unknown[]): this;
+    arcStartLat(fn: (d: unknown) => number): this;
+    arcStartLng(fn: (d: unknown) => number): this;
+    arcEndLat(fn: (d: unknown) => number): this;
+    arcEndLng(fn: (d: unknown) => number): this;
+    arcColor(colorFn: (e: unknown) => string): this;
+    arcAltitude(altitudeFn: (e: unknown) => number): this;
+    arcStroke(strokeFn: () => number): this;
     arcDashLength(length: number): this;
-    arcDashInitialGap(gapFn: (e: any) => number): this;
+    arcDashInitialGap(gapFn: (e: unknown) => number): this;
     arcDashGap(gap: number): this;
-    arcDashAnimateTime(timeFn: (e: any) => number): this;
-    pointsData(data: any[]): this;
-    pointColor(colorFn: (e: any) => string): this;
+    arcDashAnimateTime(timeFn: () => number): this;
+    pointsData(data: unknown[]): this;
+    pointColor(colorFn: (e: unknown) => string): this;
     pointsMerge(merge: boolean): this;
     pointAltitude(altitude: number): this;
     pointRadius(radius: number): this;
-    ringsData(data: any[]): this;
-    ringColor(colorFn: (t: number) => (e: any) => string): this;
-    ringMaxRadius(radiusFn: (e: any) => number): this;
-    ringPropagationSpeed(speedFn: (e: any) => number): this;
-    ringRepeatPeriod(periodFn: (e: any) => number): this;
+    ringsData(data: unknown[]): this;
+    ringColor(colorFn: (t: number) => (e: unknown) => string): this;
+    ringMaxRadius(radiusFn: (e: unknown) => number): this;
+    ringPropagationSpeed(speedFn: (e: unknown) => number): this;
+    ringRepeatPeriod(periodFn: (e: unknown) => number): this;
   }
   
-  export default function ThreeGlobe(): GlobeInstance;
+  class ThreeGlobe extends Object3D implements GlobeInstance {
+    constructor();
+    globeImageUrl(url: string): this;
+    bumpImageUrl(url: string): this;
+    backgroundImageUrl(url: string): this;
+    showAtmosphere(show: boolean): this;
+    atmosphereColor(color: string): this;
+    atmosphereAltitude(altitude: number): this;
+    hexPolygonsData(data: unknown[]): this;
+    hexPolygonResolution(resolution: number): this;
+    hexPolygonMargin(margin: number): this;
+    hexPolygonUseDots(useDots: boolean): this;
+    hexPolygonColor(colorFn: (d: unknown) => string): this;
+    hexPolygonLabel(labelFn: (d: unknown) => string): this;
+    arcsData(data: unknown[]): this;
+    arcStartLat(fn: (d: unknown) => number): this;
+    arcStartLng(fn: (d: unknown) => number): this;
+    arcEndLat(fn: (d: unknown) => number): this;
+    arcEndLng(fn: (d: unknown) => number): this;
+    arcColor(colorFn: (e: unknown) => string): this;
+    arcAltitude(altitudeFn: (e: unknown) => number): this;
+    arcStroke(strokeFn: () => number): this;
+    arcDashLength(length: number): this;
+    arcDashInitialGap(gapFn: (e: unknown) => number): this;
+    arcDashGap(gap: number): this;
+    arcDashAnimateTime(timeFn: () => number): this;
+    pointsData(data: unknown[]): this;
+    pointColor(colorFn: (e: unknown) => string): this;
+    pointsMerge(merge: boolean): this;
+    pointAltitude(altitude: number): this;
+    pointRadius(radius: number): this;
+    ringsData(data: unknown[]): this;
+    ringColor(colorFn: (t: number) => (e: unknown) => string): this;
+    ringMaxRadius(radiusFn: (e: unknown) => number): this;
+    ringPropagationSpeed(speedFn: (e: unknown) => number): this;
+    ringRepeatPeriod(periodFn: (e: unknown) => number): this;
+  }
+  
+  export default ThreeGlobe;
+  export { GlobeInstance };
 }

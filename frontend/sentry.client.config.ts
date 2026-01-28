@@ -37,7 +37,7 @@ if (SENTRY_DSN) {
     ],
 
     // Add context before sending
-    beforeSend(event) {
+    beforeSend(event: Sentry.ErrorEvent) {
       // Don't send if no DSN (shouldn't happen but safety check)
       if (!SENTRY_DSN) return null;
       return event;

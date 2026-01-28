@@ -1,0 +1,170 @@
+/* Premium Dashboard Theme Tokens
+ * 
+ * Add these to your globals.css or tailwind.config.ts
+ * Inspired by EqtyLab's dark glassmorphism aesthetic
+ */
+
+/* ===== CSS Variables (add to :root or .dark) ===== */
+
+:root {
+  /* Premium dark backgrounds */
+  --premium-bg-deep: #0a0a0f;
+  --premium-bg-card: rgba(20, 20, 28, 0.6);
+  --premium-bg-elevated: rgba(30, 30, 40, 0.8);
+  
+  /* Glass effects */
+  --premium-glass: rgba(255, 255, 255, 0.03);
+  --premium-glass-border: rgba(255, 255, 255, 0.08);
+  --premium-glass-hover: rgba(255, 255, 255, 0.05);
+  
+  /* Accent colors - teal/emerald spectrum */
+  --premium-accent: rgb(16, 185, 129);        /* emerald-500 */
+  --premium-accent-light: rgb(52, 211, 153);  /* emerald-400 */
+  --premium-accent-glow: rgba(16, 185, 129, 0.4);
+  
+  /* Secondary accent - cyan */
+  --premium-secondary: rgb(6, 182, 212);      /* cyan-500 */
+  --premium-secondary-glow: rgba(6, 182, 212, 0.3);
+  
+  /* Aurora gradient stops */
+  --premium-aurora-1: rgba(16, 185, 129, 0.2);
+  --premium-aurora-2: rgba(6, 182, 212, 0.15);
+  --premium-aurora-3: rgba(139, 92, 246, 0.1);
+}
+
+
+/* ===== Tailwind Config Extension ===== */
+/*
+  Add to tailwind.config.ts theme.extend:
+
+  colors: {
+    premium: {
+      bg: '#0a0a0f',
+      card: 'rgba(20, 20, 28, 0.6)',
+      border: 'rgba(255, 255, 255, 0.08)',
+      accent: 'rgb(16, 185, 129)',
+    }
+  },
+  
+  boxShadow: {
+    'premium-glow': '0 0 40px rgba(16, 185, 129, 0.15)',
+    'premium-glow-lg': '0 0 60px rgba(16, 185, 129, 0.2)',
+  },
+  
+  backgroundImage: {
+    'premium-aurora': 'radial-gradient(ellipse at center, rgba(16,185,129,0.2) 0%, rgba(6,182,212,0.1) 50%, transparent 80%)',
+  },
+  
+  animation: {
+    'aurora-drift': 'auroraDrift 8s ease-in-out infinite',
+    'glow-pulse': 'glowPulse 3s ease-in-out infinite',
+  },
+  
+  keyframes: {
+    auroraDrift: {
+      '0%, 100%': { transform: 'translate(-50%, -50%) scale(1)', opacity: '0.3' },
+      '50%': { transform: 'translate(-50%, -50%) scale(1.1)', opacity: '0.5' },
+    },
+    glowPulse: {
+      '0%, 100%': { boxShadow: '0 0 20px rgba(16,185,129,0.2)' },
+      '50%': { boxShadow: '0 0 40px rgba(16,185,129,0.4)' },
+    },
+  },
+*/
+
+
+/* ===== Utility Classes ===== */
+
+.premium-card {
+  @apply relative overflow-hidden rounded-2xl;
+  @apply backdrop-blur-xl bg-white/[0.03];
+  @apply border border-white/[0.08];
+  @apply shadow-[0_0_40px_rgba(16,185,129,0.1)];
+}
+
+.premium-card-hover {
+  @apply hover:bg-white/[0.05] hover:border-white/[0.12];
+  @apply transition-all duration-300;
+}
+
+.premium-glow-border {
+  @apply border border-emerald-500/20;
+  @apply shadow-[0_0_20px_rgba(16,185,129,0.15)];
+}
+
+.premium-text-gradient {
+  @apply bg-gradient-to-r from-emerald-400 to-cyan-400;
+  @apply bg-clip-text text-transparent;
+}
+
+.premium-aurora-bg {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(16, 185, 129, 0.2) 0%,
+    rgba(6, 182, 212, 0.1) 40%,
+    transparent 70%
+  );
+  filter: blur(40px);
+}
+
+
+/* ===== Component-Specific Styles ===== */
+
+/* Hero metrics large numbers */
+.premium-stat-value {
+  @apply text-5xl font-light text-white tracking-tight;
+  text-shadow: 0 0 40px rgba(16, 185, 129, 0.2);
+}
+
+/* Status badges */
+.premium-badge {
+  @apply inline-flex items-center gap-1.5 px-3 py-1;
+  @apply rounded-full text-xs font-medium;
+  @apply bg-white/[0.05] backdrop-blur-sm;
+}
+
+.premium-badge-success {
+  @apply text-emerald-400 border border-emerald-500/20;
+}
+
+.premium-badge-warning {
+  @apply text-amber-400 border border-amber-500/20;
+}
+
+.premium-badge-info {
+  @apply text-cyan-400 border border-cyan-500/20;
+}
+
+/* Live indicator dot */
+.premium-live-dot {
+  @apply w-2 h-2 rounded-full bg-emerald-500;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Progress bars */
+.premium-progress {
+  @apply h-1.5 bg-white/[0.08] rounded-full overflow-hidden;
+}
+
+.premium-progress-fill {
+  @apply h-full rounded-full;
+  @apply bg-gradient-to-r from-emerald-500 to-cyan-500;
+}
+
+
+/* ===== Animation Keyframes ===== */
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}

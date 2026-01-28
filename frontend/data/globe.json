@@ -1,0 +1,85 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Australia" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[113, -22], [153, -22], [153, -38], [113, -38], [113, -22]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "United States" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-125, 48], [-67, 48], [-67, 25], [-125, 25], [-125, 48]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "United Kingdom" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-8, 60], [2, 60], [2, 50], [-8, 50], [-8, 60]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Germany" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[6, 55], [15, 55], [15, 47], [6, 47], [6, 55]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Japan" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[129, 46], [146, 46], [146, 31], [129, 31], [129, 46]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Brazil" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-74, 5], [-35, 5], [-35, -33], [-74, -33], [-74, 5]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "India" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[68, 35], [97, 35], [97, 8], [68, 8], [68, 35]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "China" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[74, 53], [135, 53], [135, 18], [74, 18], [74, 53]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Canada" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-141, 83], [-52, 83], [-52, 42], [-141, 42], [-141, 83]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "France" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-5, 51], [8, 51], [8, 42], [-5, 42], [-5, 51]]]
+      }
+    }
+  ]
+}

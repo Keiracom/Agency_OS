@@ -1,0 +1,1 @@
+export { HoloCard } from "./HoloCard";

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agency OS — Brushed Metal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * {
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    body {
+      background: linear-gradient(180deg, #8090a0 0%, #607080 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+      font-size: 12px;
+      min-height: 100vh;
+    }
+
+    /* ===== BRUSHED METAL CARD ===== */
+    .metal-card {
+      background: 
+        /* Brushed texture overlay */
+        repeating-linear-gradient(
+          90deg,
+          rgba(255,255,255,0.03) 0px,
+          rgba(0,0,0,0.03) 1px,
+          rgba(255,255,255,0.02) 2px,
+          rgba(0,0,0,0.02) 3px
+        ),
+        /* Base brushed metal gradient */
+        linear-gradient(
+          180deg,
+          #d8dce0 0%,
+          #c8ccd0 5%,
+          #b8bcc0 15%,
+          #a8acb0 30%,
+          #989ca0 50%,
+          #a8acb0 70%,
+          #b8bcc0 85%,
+          #c8ccd0 95%,
+          #d8dce0 100%
+        );
+      border-radius: 8px;
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.4) inset,
+        0 -1px 0 rgba(0,0,0,0.1) inset,
+        0 4px 16px rgba(0,0,0,0.3),
+        0 1px 4px rgba(0,0,0,0.2);
+      border: 1px solid rgba(0,0,0,0.2);
+      overflow: hidden;
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .metal-card:hover {
+      transform: translateY(-8px) scale(1.01);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.5) inset,
+        0 -1px 0 rgba(0,0,0,0.1) inset,
+        0 20px 40px rgba(0,0,0,0.4),
+        0 8px 16px rgba(0,0,0,0.3);
+    }
+
+    /* ===== CHROME MIRROR TITLE BAR ===== */
+    .chrome-bar {
+      background: 
+        /* Mirror reflection streaks */
+        linear-gradient(
+          90deg,
+          rgba(255,255,255,0) 0%,
+          rgba(255,255,255,0.8) 15%,
+          rgba(255,255,255,0.2) 30%,
+          rgba(255,255,255,0.9) 45%,
+          rgba(255,255,255,0.1) 55%,
+          rgba(255,255,255,0.7) 70%,
+          rgba(255,255,255,0.3) 85%,
+          rgba(255,255,255,0) 100%
+        ),
+        /* Chrome vertical gradient */
+        linear-gradient(
+          180deg,
+          #f0f2f4 0%,
+          #e8eaec 5%,
+          #d0d4d8 15%,
+          #a0a8b0 35%,
+          #707880 50%,
+          #a0a8b0 65%,
+          #d0d4d8 85%,
+          #e8eaec 95%,
+          #f0f2f4 100%
+        );
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(0,0,0,0.15);
+      position: relative;
+    }
+    
+    .chrome-bar::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 50%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, transparent 100%);
+      pointer-events: none;
+    }
+    
+    .chrome-bar span {
+      position: relative;
+      z-index: 1;
+      font-size: 11px;
+      font-weight: 600;
+      color: #1a1a1a;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+    }
+
+    /* ===== CONTENT AREA - subtle brushed ===== */
+    .metal-content {
+      background: 
+        repeating-linear-gradient(
+          90deg,
+          rgba(255,255,255,0.02) 0px,
+          rgba(0,0,0,0.02) 1px
+        ),
+        linear-gradient(180deg, #e4e6e8 0%, #d4d6d8 100%);
+    }
+
+    /* ===== ANIMATIONS ===== */
+    @keyframes slide-up {
+      0% { 
+        opacity: 0; 
+        transform: translateY(60px) scale(0.95);
+      }
+      100% { 
+        opacity: 1; 
+        transform: translateY(0) scale(1);
+      }
+    }
+    
+    @keyframes pop-in {
+      0% { 
+        opacity: 0; 
+        transform: scale(0.5);
+      }
+      70% { 
+        transform: scale(1.1);
+      }
+      100% { 
+        opacity: 1; 
+        transform: scale(1);
+      }
+    }
+    
+    @keyframes bar-fill {
+      0% { width: 0; }
+    }
+    
+    .anim-card {
+      opacity: 0;
+      animation: slide-up 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    
+    .anim-num {
+      opacity: 0;
+      animation: pop-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    
+    .anim-bar {
+      animation: bar-fill 0.8s ease-out forwards;
+    }
+    
+    .d1 { animation-delay: 0.1s; }
+    .d2 { animation-delay: 0.2s; }
+    .d3 { animation-delay: 0.3s; }
+    .d4 { animation-delay: 0.4s; }
+    .d5 { animation-delay: 0.5s; }
+
+    /* ===== ROW HOVER ===== */
+    .row-item {
+      transition: background 0.2s;
+    }
+    .row-item:hover {
+      background: rgba(255,255,255,0.3);
+    }
+    
+    /* ===== METAL BUTTON ===== */
+    .metal-btn {
+      background: 
+        linear-gradient(
+          180deg,
+          #e8eaec 0%,
+          #c8ccd0 20%,
+          #a0a4a8 50%,
+          #c8ccd0 80%,
+          #e8eaec 100%
+        );
+      border: 1px solid rgba(0,0,0,0.3);
+      border-radius: 4px;
+      padding: 6px 14px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #1a1a1a;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.5);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .metal-btn:hover {
+      background: 
+        linear-gradient(
+          180deg,
+          #f0f2f4 0%,
+          #d8dce0 20%,
+          #b0b4b8 50%,
+          #d8dce0 80%,
+          #f0f2f4 100%
+        );
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.6);
+    }
+  </style>
+</head>
+<body class="p-6">
+  
+  <div class="max-w-3xl mx-auto mb-5">
+    <h1 class="text-lg font-semibold text-white drop-shadow-md">Dashboard</h1>
+    <p class="text-[10px] text-white/70">Agency OS</p>
+  </div>
+
+  <div class="max-w-3xl mx-auto space-y-4">
+    
+    <!-- HERO METRICS -->
+    <div class="metal-card anim-card d1">
+      <div class="chrome-bar">
+        <span>Performance Metrics</span>
+      </div>
+      <div class="metal-content p-5">
+        <div class="grid grid-cols-2 gap-8">
+          <div>
+            <p class="text-[9px] font-medium text-gray-500 uppercase tracking-wide mb-1">Meetings Booked</p>
+            <div class="flex items-baseline gap-2">
+              <span class="text-4xl font-semibold text-gray-800 anim-num d2">12</span>
+              <span class="text-[10px] font-semibold text-green-600">+3</span>
+            </div>
+            <p class="text-[9px] text-gray-500 mt-1">On track for 15-25</p>
+          </div>
+          <div>
+            <p class="text-[9px] font-medium text-gray-500 uppercase tracking-wide mb-1">Show Rate</p>
+            <div class="flex items-baseline gap-1">
+              <span class="text-4xl font-semibold text-gray-800 anim-num d3">85</span>
+              <span class="text-lg text-gray-400">%</span>
+            </div>
+            <div class="w-full h-1 bg-gray-300 rounded mt-2">
+              <div class="h-full bg-green-500 rounded anim-bar" style="width:85%; animation-delay:0.4s;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TWO COLUMN -->
+    <div class="grid grid-cols-2 gap-4">
+      
+      <!-- ACTIVITY -->
+      <div class="metal-card anim-card d2">
+        <div class="chrome-bar">
+          <span>Recent Activity</span>
+        </div>
+        <div class="metal-content divide-y divide-gray-300/50">
+          <div class="flex items-center gap-3 px-4 py-2.5 row-item cursor-pointer">
+            <div class="w-6 h-6 rounded bg-blue-500 flex items-center justify-center">
+              <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            </div>
+            <div class="flex-1">
+              <p class="text-[11px] text-gray-800"><span class="font-medium">Sarah Chen</span> opened email</p>
+              <p class="text-[9px] text-gray-500">TechCorp</p>
+            </div>
+            <span class="text-[9px] text-gray-400">2m</span>
+          </div>
+          <div class="flex items-center gap-3 px-4 py-2.5 row-item cursor-pointer">
+            <div class="w-6 h-6 rounded bg-sky-500 flex items-center justify-center">
+              <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+            </div>
+            <div class="flex-1">
+              <p class="text-[11px] text-gray-800"><span class="font-medium">Mike Johnson</span> connected</p>
+              <p class="text-[9px] text-gray-500">StartupXYZ</p>
+            </div>
+            <span class="text-[9px] text-gray-400">15m</span>
+          </div>
+          <div class="flex items-center gap-3 px-4 py-2.5 row-item cursor-pointer">
+            <div class="w-6 h-6 rounded bg-green-500 flex items-center justify-center">
+              <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+            </div>
+            <div class="flex-1">
+              <p class="text-[11px] text-gray-800"><span class="font-medium">Lisa Park</span> replied</p>
+              <p class="text-[9px] text-gray-500">Acme Inc</p>
+            </div>
+            <span class="text-[9px] text-gray-400">1h</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- MEETINGS -->
+      <div class="metal-card anim-card d3">
+        <div class="chrome-bar">
+          <span>Upcoming Meetings</span>
+        </div>
+        <div class="metal-content divide-y divide-gray-300/50">
+          <div class="px-4 py-2.5 row-item cursor-pointer">
+            <div class="flex items-center justify-between mb-0.5">
+              <span class="text-[9px] font-semibold text-green-600">Today 2:00 PM</span>
+              <span class="px-1.5 py-0.5 rounded text-[8px] font-medium text-blue-700 bg-blue-100">Discovery</span>
+            </div>
+            <p class="text-[11px] font-medium text-gray-800">Sarah Chen</p>
+            <p class="text-[9px] text-gray-500">TechCorp • 30 min</p>
+          </div>
+          <div class="px-4 py-2.5 row-item cursor-pointer">
+            <div class="flex items-center justify-between mb-0.5">
+              <span class="text-[9px] font-medium text-gray-500">Tomorrow 10:00 AM</span>
+              <span class="px-1.5 py-0.5 rounded text-[8px] font-medium text-purple-700 bg-purple-100">Demo</span>
+            </div>
+            <p class="text-[11px] font-medium text-gray-800">Mike Johnson</p>
+            <p class="text-[9px] text-gray-500">StartupXYZ • 45 min</p>
+          </div>
+          <div class="px-4 py-2.5 row-item cursor-pointer">
+            <div class="flex items-center justify-between mb-0.5">
+              <span class="text-[9px] font-medium text-gray-500">Thu 3:30 PM</span>
+              <span class="px-1.5 py-0.5 rounded text-[8px] font-medium text-amber-700 bg-amber-100">Follow-up</span>
+            </div>
+            <p class="text-[11px] font-medium text-gray-800">Lisa Park</p>
+            <p class="text-[9px] text-gray-500">Acme Inc • 30 min</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CAMPAIGNS -->
+    <div class="metal-card anim-card d4">
+      <div class="chrome-bar">
+        <span>Campaign Priority</span>
+      </div>
+      <div class="metal-content p-4 space-y-4">
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] font-medium text-gray-800">Tech Decision Makers</span>
+              <span class="px-1 py-0.5 rounded text-[8px] font-bold text-white bg-green-500">AI</span>
+            </div>
+            <span class="text-[11px] font-semibold text-green-600">40%</span>
+          </div>
+          <div class="w-full h-1 bg-gray-300 rounded">
+            <div class="h-full bg-green-500 rounded anim-bar" style="width:40%; animation-delay:0.5s;"></div>
+          </div>
+          <p class="text-[9px] text-gray-500 mt-1">6 meetings • 3.8% reply</p>
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] font-medium text-gray-800">Series A Startups</span>
+              <span class="px-1 py-0.5 rounded text-[8px] font-bold text-white bg-blue-500">AI</span>
+            </div>
+            <span class="text-[11px] font-semibold text-blue-600">35%</span>
+          </div>
+          <div class="w-full h-1 bg-gray-300 rounded">
+            <div class="h-full bg-blue-500 rounded anim-bar" style="width:35%; animation-delay:0.6s;"></div>
+          </div>
+          <p class="text-[9px] text-gray-500 mt-1">4 meetings • 2.9% reply</p>
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-[11px] font-medium text-gray-800">My Custom Campaign</span>
+            <span class="text-[11px] font-semibold text-purple-600">25%</span>
+          </div>
+          <div class="w-full h-1 bg-gray-300 rounded">
+            <div class="h-full bg-purple-500 rounded anim-bar" style="width:25%; animation-delay:0.7s;"></div>
+          </div>
+          <p class="text-[9px] text-gray-500 mt-1">2 meetings • 1.8% reply</p>
+        </div>
+      </div>
+      <div class="metal-content flex items-center justify-between px-4 py-3 border-t border-gray-300/50">
+        <span class="text-[10px] text-gray-500">Total: <span class="text-gray-800 font-semibold">100%</span></span>
+        <button class="metal-btn">Confirm & Activate</button>
+      </div>
+    </div>
+
+    <p class="text-center text-[9px] text-white/50 mt-6">Agency OS • Brushed Metal</p>
+  </div>
+</body>
+</html>

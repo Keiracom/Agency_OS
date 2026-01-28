@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agency OS Dashboard — Cyberpunk</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+    
+    :root {
+      --cyber-cyan: #00fff2;
+      --cyber-cyan-dim: #00b8b0;
+      --cyber-pink: #ff00ff;
+      --cyber-dark: #0a0a0f;
+      --cyber-darker: #050508;
+      --cyber-gray: #1a1a24;
+    }
+    
+    body {
+      background: var(--cyber-darker);
+      font-family: 'JetBrains Mono', monospace;
+      min-height: 100vh;
+    }
+    
+    .font-display {
+      font-family: 'Orbitron', sans-serif;
+    }
+    
+    /* ===== SCAN LINES ===== */
+    .scanlines::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 255, 242, 0.03) 0px,
+        rgba(0, 255, 242, 0.03) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+      pointer-events: none;
+      z-index: 1000;
+    }
+    
+    /* ===== GRID BACKGROUND ===== */
+    .cyber-grid {
+      background-image: 
+        linear-gradient(rgba(0, 255, 242, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 242, 0.05) 1px, transparent 1px);
+      background-size: 50px 50px;
+    }
+    
+    /* ===== GLITCH TEXT ===== */
+    @keyframes glitch {
+      0%, 90%, 100% { 
+        transform: translate(0);
+        text-shadow: 0 0 10px var(--cyber-cyan), 0 0 20px var(--cyber-cyan), 0 0 40px var(--cyber-cyan);
+      }
+      92% { 
+        transform: translate(-2px, 1px);
+        text-shadow: -2px 0 var(--cyber-pink), 2px 0 var(--cyber-cyan);
+      }
+      94% { 
+        transform: translate(2px, -1px);
+        text-shadow: 2px 0 var(--cyber-pink), -2px 0 var(--cyber-cyan);
+      }
+      96% { 
+        transform: translate(-1px, 2px);
+        text-shadow: -2px 0 var(--cyber-pink), 2px 0 var(--cyber-cyan);
+      }
+      98% { 
+        transform: translate(1px, -2px);
+        text-shadow: 2px 0 var(--cyber-pink), -2px 0 var(--cyber-cyan);
+      }
+    }
+    
+    .glitch-text {
+      animation: glitch 4s infinite;
+    }
+    
+    /* ===== NEON GLOW ===== */
+    @keyframes neon-pulse {
+      0%, 100% { 
+        box-shadow: 
+          0 0 5px var(--cyber-cyan),
+          0 0 10px var(--cyber-cyan),
+          0 0 20px var(--cyber-cyan),
+          0 0 40px rgba(0, 255, 242, 0.3),
+          inset 0 0 10px rgba(0, 255, 242, 0.1);
+      }
+      50% { 
+        box-shadow: 
+          0 0 10px var(--cyber-cyan),
+          0 0 20px var(--cyber-cyan),
+          0 0 40px var(--cyber-cyan),
+          0 0 80px rgba(0, 255, 242, 0.5),
+          inset 0 0 20px rgba(0, 255, 242, 0.2);
+      }
+    }
+    
+    .neon-box {
+      animation: neon-pulse 3s ease-in-out infinite;
+    }
+    
+    /* ===== CYBER BORDER ===== */
+    .cyber-border {
+      border: 1px solid var(--cyber-cyan);
+      position: relative;
+    }
+    
+    .cyber-border::before,
+    .cyber-border::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--cyber-cyan);
+    }
+    
+    .cyber-border::before {
+      top: -5px;
+      left: -5px;
+      border-right: none;
+      border-bottom: none;
+    }
+    
+    .cyber-border::after {
+      bottom: -5px;
+      right: -5px;
+      border-left: none;
+      border-top: none;
+    }
+    
+    /* ===== FLICKER ===== */
+    @keyframes flicker {
+      0%, 100% { opacity: 1; }
+      41% { opacity: 1; }
+      42% { opacity: 0.8; }
+      43% { opacity: 1; }
+      45% { opacity: 0.3; }
+      46% { opacity: 1; }
+    }
+    
+    .flicker {
+      animation: flicker 5s infinite;
+    }
+    
+    /* ===== DATA STREAM ===== */
+    @keyframes data-stream {
+      0% { background-position: 0% 0%; }
+      100% { background-position: 0% 100%; }
+    }
+    
+    .data-stream {
+      background: linear-gradient(
+        180deg,
+        transparent 0%,
+        rgba(0, 255, 242, 0.1) 50%,
+        transparent 100%
+      );
+      background-size: 100% 200%;
+      animation: data-stream 2s linear infinite;
+    }
+    
+    /* ===== PULSE DOT ===== */
+    @keyframes cyber-pulse {
+      0%, 100% { 
+        transform: scale(1);
+        box-shadow: 0 0 5px var(--cyber-cyan), 0 0 10px var(--cyber-cyan);
+      }
+      50% { 
+        transform: scale(1.5);
+        box-shadow: 0 0 10px var(--cyber-cyan), 0 0 20px var(--cyber-cyan), 0 0 30px var(--cyber-cyan);
+      }
+    }
+    
+    @keyframes cyber-ring {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(3); opacity: 0; }
+    }
+    
+    .cyber-dot {
+      animation: cyber-pulse 1.5s ease-in-out infinite;
+    }
+    
+    .cyber-dot::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 50%;
+      border: 1px solid var(--cyber-cyan);
+      animation: cyber-ring 1.5s ease-out infinite;
+    }
+    
+    /* ===== HOVER EFFECTS ===== */
+    .cyber-hover {
+      transition: all 0.3s ease;
+    }
+    
+    .cyber-hover:hover {
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 
+        0 0 20px var(--cyber-cyan),
+        0 0 40px rgba(0, 255, 242, 0.3),
+        0 20px 40px rgba(0, 0, 0, 0.5);
+    }
+    
+    /* ===== TYPING CURSOR ===== */
+    @keyframes blink {
+      0%, 50% { border-color: var(--cyber-cyan); }
+      51%, 100% { border-color: transparent; }
+    }
+    
+    .typing-cursor::after {
+      content: '';
+      display: inline-block;
+      width: 3px;
+      height: 1em;
+      background: var(--cyber-cyan);
+      margin-left: 4px;
+      animation: blink 1s infinite;
+    }
+    
+    /* ===== SLIDE IN ===== */
+    @keyframes cyber-slide {
+      0% { 
+        opacity: 0; 
+        transform: translateX(-30px);
+        filter: blur(4px);
+      }
+      100% { 
+        opacity: 1; 
+        transform: translateX(0);
+        filter: blur(0);
+      }
+    }
+    
+    .cyber-slide {
+      animation: cyber-slide 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+    }
+    
+    /* ===== FADE UP ===== */
+    @keyframes cyber-fade-up {
+      0% { 
+        opacity: 0; 
+        transform: translateY(30px);
+      }
+      100% { 
+        opacity: 1; 
+        transform: translateY(0);
+      }
+    }
+    
+    .cyber-fade-up {
+      opacity: 0;
+      animation: cyber-fade-up 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+    }
+    
+    /* ===== PROGRESS BAR ===== */
+    @keyframes progress-glow {
+      0%, 100% { box-shadow: 0 0 10px var(--cyber-cyan), 0 0 20px var(--cyber-cyan); }
+      50% { box-shadow: 0 0 20px var(--cyber-cyan), 0 0 40px var(--cyber-cyan); }
+    }
+    
+    @keyframes progress-fill {
+      0% { width: 0%; }
+    }
+    
+    .cyber-progress {
+      animation: progress-fill 1s cubic-bezier(0.23, 1, 0.32, 1) forwards, progress-glow 2s ease-in-out infinite;
+    }
+    
+    /* ===== CARD GLOW ===== */
+    .cyber-card {
+      background: rgba(10, 10, 15, 0.9);
+      border: 1px solid rgba(0, 255, 242, 0.3);
+      backdrop-filter: blur(10px);
+    }
+    
+    .cyber-card:hover {
+      border-color: var(--cyber-cyan);
+      box-shadow: 
+        0 0 20px rgba(0, 255, 242, 0.2),
+        inset 0 0 20px rgba(0, 255, 242, 0.05);
+    }
+    
+    /* ===== BUTTON ===== */
+    @keyframes btn-scan {
+      0% { left: -100%; }
+      100% { left: 200%; }
+    }
+    
+    .cyber-btn {
+      position: relative;
+      overflow: hidden;
+      background: transparent;
+      border: 2px solid var(--cyber-cyan);
+      color: var(--cyber-cyan);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    
+    .cyber-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 242, 0.4), transparent);
+      animation: btn-scan 2s infinite;
+    }
+    
+    .cyber-btn:hover {
+      background: var(--cyber-cyan);
+      color: var(--cyber-dark);
+      box-shadow: 0 0 30px var(--cyber-cyan);
+    }
+    
+    /* ===== BADGE HOVER FIX ===== */
+    .cyber-badge {
+      transition: all 0.3s ease;
+    }
+    
+    .cyber-badge:hover {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    
+    /* ===== HEX PATTERN ===== */
+    .hex-pattern {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%2300fff2' fill-opacity='0.03'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5H28v2.31h-.01L17 42.15V49h-2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    
+    .delay-100 { animation-delay: 0.1s; }
+    .delay-200 { animation-delay: 0.2s; }
+    .delay-300 { animation-delay: 0.3s; }
+    .delay-400 { animation-delay: 0.4s; }
+    .delay-500 { animation-delay: 0.5s; }
+  </style>
+</head>
+<body class="min-h-screen p-8 scanlines cyber-grid">
+  
+  <!-- Page Header -->
+  <div class="max-w-5xl mx-auto mb-8 cyber-fade-up">
+    <div class="flex items-center gap-3 mb-2">
+      <div class="w-2 h-2 bg-[#00fff2] cyber-dot relative"></div>
+      <h1 class="text-2xl font-display font-bold text-[#00fff2] uppercase tracking-[0.3em] glitch-text">Agency_OS</h1>
+    </div>
+    <p class="text-[#00fff2]/50 text-xs uppercase tracking-[0.2em] font-medium">System Dashboard // Status: Online</p>
+  </div>
+
+  <div class="max-w-5xl mx-auto space-y-8">
+    
+    <!-- ==================== HERO METRICS ==================== -->
+    <div class="relative cyber-fade-up delay-100">
+      <!-- Corner accents -->
+      <div class="absolute -top-1 -left-1 w-8 h-8 border-l-2 border-t-2 border-[#00fff2]"></div>
+      <div class="absolute -top-1 -right-1 w-8 h-8 border-r-2 border-t-2 border-[#00fff2]"></div>
+      <div class="absolute -bottom-1 -left-1 w-8 h-8 border-l-2 border-b-2 border-[#00fff2]"></div>
+      <div class="absolute -bottom-1 -right-1 w-8 h-8 border-r-2 border-b-2 border-[#00fff2]"></div>
+      
+      <div class="cyber-card neon-box rounded-none p-8 hex-pattern">
+        <!-- Header bar -->
+        <div class="flex items-center justify-between mb-8 pb-4 border-b border-[#00fff2]/20">
+          <div class="flex items-center gap-4">
+            <span class="text-[#00fff2]/50 text-xs font-display uppercase tracking-widest">Performance Metrics</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 bg-[#00fff2] cyber-dot relative"></span>
+            <span class="text-[#00fff2] text-xs uppercase tracking-wider">Live Feed</span>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-12">
+          <!-- Meetings Booked -->
+          <div class="space-y-4">
+            <div class="text-[#00fff2]/60 text-xs font-display uppercase tracking-[0.3em]">
+              Meetings_Booked
+            </div>
+            <div class="flex items-baseline gap-4">
+              <span class="text-8xl font-display font-black text-[#00fff2] glitch-text tracking-tight">12</span>
+              <div class="flex items-center gap-2 text-[#00fff2]">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                  <polyline points="17 6 23 6 23 12"></polyline>
+                </svg>
+                <span class="text-sm font-bold">+3 MTD</span>
+              </div>
+            </div>
+            <div class="cyber-badge inline-flex items-center gap-2 px-4 py-2 border border-[#00fff2] text-[#00fff2] text-xs font-display uppercase tracking-widest">
+              <span class="w-1.5 h-1.5 bg-[#00fff2]"></span>
+              On Track // 15-25
+            </div>
+          </div>
+
+          <!-- Show Rate -->
+          <div class="space-y-4">
+            <div class="text-[#00fff2]/60 text-xs font-display uppercase tracking-[0.3em]">
+              Show_Rate
+            </div>
+            <div class="flex items-baseline gap-2">
+              <span class="text-8xl font-display font-black text-[#00fff2] glitch-text tracking-tight">85</span>
+              <span class="text-3xl font-display text-[#00fff2]/50">%</span>
+            </div>
+            <!-- Progress bar -->
+            <div class="w-full h-3 bg-[#00fff2]/10 border border-[#00fff2]/30">
+              <div class="h-full bg-[#00fff2] cyber-progress" style="width: 85%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TWO COLUMN ==================== -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      
+      <!-- ==================== ACTIVITY FEED ==================== -->
+      <div class="relative cyber-fade-up delay-200 cyber-hover">
+        <div class="absolute -top-1 -left-1 w-6 h-6 border-l-2 border-t-2 border-[#00fff2]"></div>
+        <div class="absolute -bottom-1 -right-1 w-6 h-6 border-r-2 border-b-2 border-[#00fff2]"></div>
+        
+        <div class="cyber-card rounded-none h-full">
+          <!-- Header -->
+          <div class="flex items-center justify-between px-6 py-4 border-b border-[#00fff2]/20">
+            <span class="text-[#00fff2] text-xs font-display uppercase tracking-[0.2em]">Activity_Stream</span>
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 bg-[#00fff2] cyber-dot relative"></span>
+              <span class="text-[#00fff2] text-xs uppercase">Live</span>
+            </div>
+          </div>
+
+          <!-- Activity list -->
+          <div class="divide-y divide-[#00fff2]/10">
+            <div class="flex items-center gap-4 px-6 py-4 hover:bg-[#00fff2]/5 transition-all cursor-pointer cyber-slide" style="animation-delay: 0.1s;">
+              <div class="w-10 h-10 border border-[#00fff2] flex items-center justify-center text-[#00fff2]">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-white"><span class="text-[#00fff2] font-bold">CHEN_S</span> // opened_email</p>
+                <p class="text-xs text-[#00fff2]/40">TechCorp</p>
+              </div>
+              <span class="text-xs text-[#00fff2]/60 font-mono">00:02:31</span>
+            </div>
+
+            <div class="flex items-center gap-4 px-6 py-4 hover:bg-[#00fff2]/5 transition-all cursor-pointer cyber-slide" style="animation-delay: 0.2s;">
+              <div class="w-10 h-10 border border-[#00fff2] flex items-center justify-center text-[#00fff2]">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
+                  <rect x="2" y="9" width="4" height="12"></rect>
+                  <circle cx="4" cy="4" r="2"></circle>
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-white"><span class="text-[#00fff2] font-bold">JOHNSON_M</span> // connected</p>
+                <p class="text-xs text-[#00fff2]/40">StartupXYZ</p>
+              </div>
+              <span class="text-xs text-[#00fff2]/60 font-mono">00:15:42</span>
+            </div>
+
+            <div class="flex items-center gap-4 px-6 py-4 hover:bg-[#00fff2]/5 transition-all cursor-pointer cyber-slide" style="animation-delay: 0.3s;">
+              <div class="w-10 h-10 border border-[#00fff2] flex items-center justify-center text-[#00fff2]">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-white"><span class="text-[#00fff2] font-bold">PARK_L</span> // replied</p>
+                <p class="text-xs text-[#00fff2]/40">Acme_Inc</p>
+              </div>
+              <span class="text-xs text-[#00fff2]/60 font-mono">01:00:00</span>
+            </div>
+
+            <div class="flex items-center gap-4 px-6 py-4 hover:bg-[#00fff2]/5 transition-all cursor-pointer cyber-slide" style="animation-delay: 0.4s;">
+              <div class="w-10 h-10 border border-[#00fff2] flex items-center justify-center text-[#00fff2]">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-white"><span class="text-[#00fff2] font-bold">WILSON_J</span> // call_scheduled</p>
+                <p class="text-xs text-[#00fff2]/40">GlobalTech</p>
+              </div>
+              <span class="text-xs text-[#00fff2]/60 font-mono">02:00:00</span>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="px-6 py-3 border-t border-[#00fff2]/20 data-stream">
+            <button class="text-xs text-[#00fff2]/60 hover:text-[#00fff2] uppercase tracking-widest transition-colors">
+              &gt; View_All_Activity
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== MEETINGS ==================== -->
+      <div class="relative cyber-fade-up delay-300 cyber-hover">
+        <div class="absolute -top-1 -left-1 w-6 h-6 border-l-2 border-t-2 border-[#00fff2]"></div>
+        <div class="absolute -bottom-1 -right-1 w-6 h-6 border-r-2 border-b-2 border-[#00fff2]"></div>
+        
+        <div class="cyber-card rounded-none h-full">
+          <div class="flex items-center justify-between px-6 py-4 border-b border-[#00fff2]/20">
+            <span class="text-[#00fff2] text-xs font-display uppercase tracking-[0.2em]">Scheduled_Meetings</span>
+            <span class="text-[#00fff2]/40 text-xs uppercase">This_Week</span>
+          </div>
+
+          <div class="divide-y divide-[#00fff2]/10">
+            <div class="px-6 py-4 hover:bg-[#00fff2]/5 transition-all cursor-pointer cyber-slide" style="animation-delay: 0.15s;">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-display text-[#00fff2] flicker">TODAY // 14:00</span>
+                <span class="px-2 py-1 border border-[#00fff2] text-[10px] text-[#00fff2] uppercase tracking-wider">Discovery</span>
+              </div>
+              <p class="text-sm text-white font-bold">CHEN_SARAH</p>
+              <p class="text-xs text-[#00fff2]/40">TechCorp // 30min</p>
+            </div>
+
+            <div class="px-6 py-4 hover:bg-[#00fff2]/5 transition-all cursor-pointer cyber-slide" style="animation-delay: 0.25s;">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-display text-[#00fff2]/60">TOMORROW // 10:00</span>
+                <span class="px-2 py-1 border border-[#00fff2]/50 text-[10px] text-[#00fff2]/70 uppercase tracking-wider">Demo</span>
+              </div>
+              <p class="text-sm text-white font-bold">JOHNSON_MIKE</p>
+              <p class="text-xs text-[#00fff2]/40">StartupXYZ // 45min</p>
+            </div>
+
+            <div class="px-6 py-4 hover:bg-[#00fff2]/5 transition-all cursor-pointer cyber-slide" style="animation-delay: 0.35s;">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-display text-[#00fff2]/60">THU // 15:30</span>
+                <span class="px-2 py-1 border border-[#00fff2]/50 text-[10px] text-[#00fff2]/70 uppercase tracking-wider">Follow-up</span>
+              </div>
+              <p class="text-sm text-white font-bold">PARK_LISA</p>
+              <p class="text-xs text-[#00fff2]/40">Acme_Inc // 30min</p>
+            </div>
+          </div>
+
+          <div class="px-6 py-3 border-t border-[#00fff2]/20">
+            <button class="text-xs text-[#00fff2]/60 hover:text-[#00fff2] uppercase tracking-widest transition-colors">
+              &gt; View_Calendar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== CAMPAIGN PRIORITY ==================== -->
+    <div class="relative cyber-fade-up delay-400">
+      <div class="absolute -top-1 -left-1 w-8 h-8 border-l-2 border-t-2 border-[#00fff2]"></div>
+      <div class="absolute -top-1 -right-1 w-8 h-8 border-r-2 border-t-2 border-[#00fff2]"></div>
+      <div class="absolute -bottom-1 -left-1 w-8 h-8 border-l-2 border-b-2 border-[#00fff2]"></div>
+      <div class="absolute -bottom-1 -right-1 w-8 h-8 border-r-2 border-b-2 border-[#00fff2]"></div>
+      
+      <div class="cyber-card rounded-none">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-[#00fff2]/20">
+          <span class="text-[#00fff2] text-xs font-display uppercase tracking-[0.2em]">Campaign_Priority_Matrix</span>
+          <span class="text-[#00fff2]/40 text-xs uppercase">Drag_To_Adjust</span>
+        </div>
+
+        <div class="p-8 space-y-8">
+          <!-- Campaign 1 -->
+          <div class="space-y-3 cyber-fade-up delay-500">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-sm text-white font-bold">TECH_DECISION_MAKERS</span>
+                <span class="px-2 py-0.5 border border-[#00fff2] text-[10px] text-[#00fff2] uppercase tracking-wider flicker">AI</span>
+              </div>
+              <span class="text-lg font-display text-[#00fff2] font-bold">40%</span>
+            </div>
+            <div class="w-full h-3 bg-[#00fff2]/10 border border-[#00fff2]/30">
+              <div class="h-full bg-[#00fff2] cyber-progress" style="width: 40%; animation-delay: 0.5s;"></div>
+            </div>
+            <div class="flex items-center gap-4 text-xs text-[#00fff2]/50">
+              <span>6 meetings</span>
+              <span class="text-[#00fff2]">//</span>
+              <span>3.8% reply_rate</span>
+            </div>
+          </div>
+
+          <!-- Campaign 2 -->
+          <div class="space-y-3 cyber-fade-up" style="animation-delay: 0.6s;">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-sm text-white font-bold">SERIES_A_STARTUPS</span>
+                <span class="px-2 py-0.5 border border-[#00fff2] text-[10px] text-[#00fff2] uppercase tracking-wider flicker" style="animation-delay: 1s;">AI</span>
+              </div>
+              <span class="text-lg font-display text-[#00fff2] font-bold">35%</span>
+            </div>
+            <div class="w-full h-3 bg-[#00fff2]/10 border border-[#00fff2]/30">
+              <div class="h-full bg-[#00fff2] cyber-progress" style="width: 35%; animation-delay: 0.7s;"></div>
+            </div>
+            <div class="flex items-center gap-4 text-xs text-[#00fff2]/50">
+              <span>4 meetings</span>
+              <span class="text-[#00fff2]">//</span>
+              <span>2.9% reply_rate</span>
+            </div>
+          </div>
+
+          <!-- Campaign 3 -->
+          <div class="space-y-3 cyber-fade-up" style="animation-delay: 0.7s;">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-sm text-white font-bold">CUSTOM_CAMPAIGN_01</span>
+              </div>
+              <span class="text-lg font-display text-[#00fff2] font-bold">25%</span>
+            </div>
+            <div class="w-full h-3 bg-[#00fff2]/10 border border-[#00fff2]/30">
+              <div class="h-full bg-[#00fff2] cyber-progress" style="width: 25%; animation-delay: 0.9s;"></div>
+            </div>
+            <div class="flex items-center gap-4 text-xs text-[#00fff2]/50">
+              <span>2 meetings</span>
+              <span class="text-[#00fff2]">//</span>
+              <span>1.8% reply_rate</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-between px-6 py-5 border-t border-[#00fff2]/20">
+          <span class="text-sm text-[#00fff2]/50">Total: <span class="text-[#00fff2] font-display font-bold">100%</span></span>
+          <button class="cyber-btn px-6 py-3 font-display text-sm font-bold uppercase tracking-widest">
+            Confirm_&_Activate
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="text-center py-8 cyber-fade-up" style="animation-delay: 0.8s;">
+      <p class="text-[#00fff2]/30 text-xs font-display uppercase tracking-[0.3em]">Agency_OS // v2.0.26 // All_Systems_Operational</p>
+    </div>
+
+  </div>
+</body>
+</html>

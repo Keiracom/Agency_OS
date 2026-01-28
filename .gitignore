@@ -100,3 +100,21 @@ nul
 
 # Temporary Claude working directories
 tmpclaude-*
+
+# Google OAuth secrets
+client_secret_*.json
+
+# Xero credentials
+config/.env_xero
+
+# Temp/test files
+temp_*.json
+temp_*.py
+test_jwt_token.txt
+_test_token.txt
+
+# CSV data files (may contain sensitive data)
+umped_*.csv
+
+# Supabase CLI temp
+supabase/.temp/

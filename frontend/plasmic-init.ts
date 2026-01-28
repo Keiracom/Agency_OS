@@ -5,6 +5,7 @@
  */
 
 import { initPlasmicLoader } from "@plasmicapp/loader-nextjs";
+import React from "react";
 
 export const PLASMIC = initPlasmicLoader({
   projects: [
@@ -18,11 +19,11 @@ export const PLASMIC = initPlasmicLoader({
 });
 
 // Register code components that Plasmic can use
-// These are the existing React components from our codebase
+// Using React.lazy for code splitting
 
 // Dashboard Components
 PLASMIC.registerComponent(
-  async () => (await import("@/components/dashboard/HeroMetricsCard")).HeroMetricsCard,
+  React.lazy(() => import("@/components/dashboard/HeroMetricsCard").then(m => ({ default: m.HeroMetricsCard }))),
   {
     name: "HeroMetricsCard",
     props: {
@@ -33,7 +34,7 @@ PLASMIC.registerComponent(
 );
 
 PLASMIC.registerComponent(
-  async () => (await import("@/components/dashboard/LiveActivityFeed")).LiveActivityFeed,
+  React.lazy(() => import("@/components/dashboard/LiveActivityFeed").then(m => ({ default: m.LiveActivityFeed }))),
   {
     name: "LiveActivityFeed",
     props: {
@@ -46,7 +47,7 @@ PLASMIC.registerComponent(
 );
 
 PLASMIC.registerComponent(
-  async () => (await import("@/components/dashboard/meetings-widget")).MeetingsWidget,
+  React.lazy(() => import("@/components/dashboard/meetings-widget").then(m => ({ default: m.MeetingsWidget }))),
   {
     name: "MeetingsWidget",
     props: {},
@@ -55,7 +56,7 @@ PLASMIC.registerComponent(
 );
 
 PLASMIC.registerComponent(
-  async () => (await import("@/components/dashboard/EmergencyPauseButton")).EmergencyPauseButton,
+  React.lazy(() => import("@/components/dashboard/EmergencyPauseButton").then(m => ({ default: m.EmergencyPauseButton }))),
   {
     name: "EmergencyPauseButton",
     props: {
@@ -69,7 +70,7 @@ PLASMIC.registerComponent(
 );
 
 PLASMIC.registerComponent(
-  async () => (await import("@/components/dashboard/OnTrackIndicator")).OnTrackIndicator,
+  React.lazy(() => import("@/components/dashboard/OnTrackIndicator").then(m => ({ default: m.OnTrackIndicator }))),
   {
     name: "OnTrackIndicator",
     props: {
@@ -86,7 +87,7 @@ PLASMIC.registerComponent(
 );
 
 PLASMIC.registerComponent(
-  async () => (await import("@/components/dashboard/BestOfShowcase")).BestOfShowcase,
+  React.lazy(() => import("@/components/dashboard/BestOfShowcase").then(m => ({ default: m.BestOfShowcase }))),
   {
     name: "BestOfShowcase",
     props: {
@@ -98,7 +99,7 @@ PLASMIC.registerComponent(
 
 // Campaign Components
 PLASMIC.registerComponent(
-  async () => (await import("@/components/campaigns/CampaignPriorityPanel")).CampaignPriorityPanel,
+  React.lazy(() => import("@/components/campaigns/CampaignPriorityPanel").then(m => ({ default: m.CampaignPriorityPanel }))),
   {
     name: "CampaignPriorityPanel",
     props: {
@@ -109,7 +110,7 @@ PLASMIC.registerComponent(
 );
 
 PLASMIC.registerComponent(
-  async () => (await import("@/components/campaigns/CampaignPriorityCard")).CampaignPriorityCard,
+  React.lazy(() => import("@/components/campaigns/CampaignPriorityCard").then(m => ({ default: m.CampaignPriorityCard }))),
   {
     name: "CampaignPriorityCard",
     props: {
@@ -125,7 +126,7 @@ PLASMIC.registerComponent(
 );
 
 PLASMIC.registerComponent(
-  async () => (await import("@/components/campaigns/CampaignMetricsPanel")).CampaignMetricsPanel,
+  React.lazy(() => import("@/components/campaigns/CampaignMetricsPanel").then(m => ({ default: m.CampaignMetricsPanel }))),
   {
     name: "CampaignMetricsPanel",
     props: {
@@ -138,7 +139,7 @@ PLASMIC.registerComponent(
 
 // Lead Components
 PLASMIC.registerComponent(
-  async () => (await import("@/components/leads/ALSScorecard")).ALSScorecard,
+  React.lazy(() => import("@/components/leads/ALSScorecard").then(m => ({ default: m.ALSScorecard }))),
   {
     name: "ALSScorecard",
     props: {

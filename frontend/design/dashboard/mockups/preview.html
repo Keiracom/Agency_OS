@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agency OS Premium Dashboard Preview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            premium: {
+              bg: '#0a0a0f',
+              card: 'rgba(20, 20, 28, 0.6)',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background: #0a0a0f;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    /* ===== AURORA ANIMATIONS ===== */
+    @keyframes aurora-drift {
+      0%, 100% { 
+        opacity: 0.3; 
+        transform: translate(-50%, -50%) scale(1) rotate(0deg); 
+      }
+      33% { 
+        opacity: 0.5; 
+        transform: translate(-50%, -50%) scale(1.1) rotate(2deg); 
+      }
+      66% { 
+        opacity: 0.4; 
+        transform: translate(-50%, -50%) scale(1.05) rotate(-2deg); 
+      }
+    }
+    
+    @keyframes aurora-shift {
+      0%, 100% { 
+        background-position: 0% 50%;
+        filter: blur(40px) hue-rotate(0deg);
+      }
+      50% { 
+        background-position: 100% 50%;
+        filter: blur(50px) hue-rotate(20deg);
+      }
+    }
+    
+    .aurora-bg {
+      animation: aurora-drift 8s ease-in-out infinite, aurora-shift 12s ease-in-out infinite;
+      background-size: 200% 200%;
+    }
+    
+    /* ===== WAVE ANIMATION ===== */
+    @keyframes wave-flow {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+    
+    .wave-animate {
+      animation: wave-flow 15s linear infinite;
+    }
+    
+    /* ===== PULSE ANIMATIONS ===== */
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.2); }
+    }
+    
+    @keyframes pulse-ring {
+      0% { transform: scale(1); opacity: 0.8; }
+      100% { transform: scale(2); opacity: 0; }
+    }
+    
+    .live-dot {
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    
+    .live-dot::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: rgb(16, 185, 129);
+      animation: pulse-ring 2s ease-out infinite;
+    }
+    
+    /* ===== GLOW ANIMATIONS ===== */
+    @keyframes glow-pulse {
+      0%, 100% { 
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.1), 0 0 40px rgba(16, 185, 129, 0.05);
+      }
+      50% { 
+        box-shadow: 0 0 30px rgba(16, 185, 129, 0.2), 0 0 60px rgba(16, 185, 129, 0.1);
+      }
+    }
+    
+    .glow-card {
+      animation: glow-pulse 4s ease-in-out infinite;
+    }
+    
+    /* ===== NUMBER COUNT UP ===== */
+    @keyframes count-up {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .animate-count {
+      animation: count-up 0.8s ease-out forwards;
+    }
+    
+    /* ===== STAGGER FADE IN ===== */
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .animate-fade-up {
+      opacity: 0;
+      animation: fade-up 0.6s ease-out forwards;
+    }
+    
+    .delay-100 { animation-delay: 0.1s; }
+    .delay-200 { animation-delay: 0.2s; }
+    .delay-300 { animation-delay: 0.3s; }
+    .delay-400 { animation-delay: 0.4s; }
+    .delay-500 { animation-delay: 0.5s; }
+    .delay-600 { animation-delay: 0.6s; }
+    
+    /* ===== PROGRESS BAR ANIMATION ===== */
+    @keyframes progress-fill {
+      from { width: 0%; }
+    }
+    
+    .animate-progress {
+      animation: progress-fill 1.2s ease-out forwards;
+    }
+    
+    /* ===== SHIMMER EFFECT ===== */
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    
+    .shimmer {
+      background: linear-gradient(
+        90deg,
+        rgba(255,255,255,0) 0%,
+        rgba(255,255,255,0.05) 50%,
+        rgba(255,255,255,0) 100%
+      );
+      background-size: 200% 100%;
+      animation: shimmer 3s infinite;
+    }
+    
+    /* ===== HOVER EFFECTS ===== */
+    .hover-lift {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .hover-lift:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 40px rgba(16, 185, 129, 0.15);
+    }
+    
+    .hover-glow {
+      transition: box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+    
+    .hover-glow:hover {
+      box-shadow: 0 0 30px rgba(16, 185, 129, 0.2);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+    
+    /* ===== ACTIVITY ITEM SLIDE ===== */
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateX(-20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    
+    .animate-slide-in {
+      animation: slide-in 0.4s ease-out forwards;
+    }
+    
+    /* ===== FLOATING ANIMATION ===== */
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    
+    .animate-float {
+      animation: float 3s ease-in-out infinite;
+    }
+    
+    /* ===== BORDER GRADIENT ANIMATION ===== */
+    @keyframes border-flow {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    
+    .animated-border {
+      position: relative;
+    }
+    
+    .animated-border::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(
+        90deg,
+        rgba(16, 185, 129, 0.3),
+        rgba(6, 182, 212, 0.3),
+        rgba(139, 92, 246, 0.2),
+        rgba(6, 182, 212, 0.3),
+        rgba(16, 185, 129, 0.3)
+      );
+      background-size: 300% 100%;
+      animation: border-flow 6s linear infinite;
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+    
+    /* ===== BUTTON SHINE ===== */
+    @keyframes button-shine {
+      0% { left: -100%; }
+      100% { left: 200%; }
+    }
+    
+    .btn-shine {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .btn-shine::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      animation: button-shine 3s infinite;
+    }
+  </style>
+</head>
+<body class="dark min-h-screen p-8">
+  
+  <!-- Page Header -->
+  <div class="max-w-5xl mx-auto mb-8 animate-fade-up">
+    <h1 class="text-2xl font-light text-white mb-2">Agency OS Premium Dashboard Preview</h1>
+    <p class="text-gray-500 text-sm">Inspired by EqtyLab's dark glassmorphism aesthetic • With animations</p>
+  </div>
+
+  <div class="max-w-5xl mx-auto space-y-8">
+    
+    <!-- ==================== PREMIUM HERO CARD ==================== -->
+    <div class="relative overflow-hidden rounded-2xl glow-card animated-border animate-fade-up delay-100">
+      <!-- Aurora background effect -->
+      <div class="absolute inset-0 bg-[#0a0a0f]">
+        <div 
+          class="aurora-bg absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px]"
+          style="background: radial-gradient(ellipse at center, rgba(16,185,129,0.4) 0%, rgba(6,182,212,0.2) 40%, transparent 70%);"
+        ></div>
+        <!-- Animated flowing wave -->
+        <svg class="absolute bottom-0 left-0 w-[200%] h-32 opacity-20 wave-animate" viewBox="0 0 2400 100" preserveAspectRatio="none">
+          <path d="M0,50 Q300,20 600,50 T1200,50 T1800,50 T2400,50 L2400,100 L0,100 Z" fill="url(#wave-gradient)"/>
+          <path d="M0,60 Q300,30 600,60 T1200,60 T1800,60 T2400,60 L2400,100 L0,100 Z" fill="url(#wave-gradient-2)" opacity="0.5"/>
+          <defs>
+            <linearGradient id="wave-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="rgba(16,185,129,0.5)"/>
+              <stop offset="50%" stop-color="rgba(6,182,212,0.5)"/>
+              <stop offset="100%" stop-color="rgba(16,185,129,0.5)"/>
+            </linearGradient>
+            <linearGradient id="wave-gradient-2" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="rgba(6,182,212,0.3)"/>
+              <stop offset="50%" stop-color="rgba(139,92,246,0.3)"/>
+              <stop offset="100%" stop-color="rgba(6,182,212,0.3)"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+
+      <!-- Glass card content -->
+      <div class="relative z-10 p-8 backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-2xl">
+        <div class="grid grid-cols-2 gap-8">
+          <!-- Meetings Booked -->
+          <div class="space-y-2">
+            <div class="flex items-center gap-2 text-gray-400 text-sm font-medium animate-fade-up delay-200">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <span>Meetings Booked</span>
+            </div>
+            <div class="flex items-baseline gap-3 animate-fade-up delay-300">
+              <span class="text-5xl font-light text-white tracking-tight animate-count" style="text-shadow: 0 0 40px rgba(16,185,129,0.3);">12</span>
+              <div class="flex items-center gap-1 text-sm text-emerald-400 animate-float">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                  <polyline points="17 6 23 6 23 12"></polyline>
+                </svg>
+                <span>+3 vs last month</span>
+              </div>
+            </div>
+            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-cyan-400 bg-white/[0.05] border border-cyan-500/20 animate-fade-up delay-400 hover-glow cursor-default">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+              </svg>
+              On track
+            </div>
+          </div>
+
+          <!-- Show Rate -->
+          <div class="space-y-2">
+            <div class="flex items-center gap-2 text-gray-400 text-sm font-medium animate-fade-up delay-200">
+              <span>Show Rate</span>
+            </div>
+            <div class="flex items-baseline gap-2 animate-fade-up delay-300">
+              <span class="text-5xl font-light text-white tracking-tight animate-count" style="text-shadow: 0 0 40px rgba(16,185,129,0.3); animation-delay: 0.2s;">85</span>
+              <span class="text-2xl text-gray-500">%</span>
+            </div>
+            <!-- Animated progress bar -->
+            <div class="w-full h-1.5 bg-white/[0.08] rounded-full overflow-hidden animate-fade-up delay-400">
+              <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500 animate-progress" style="width: 85%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TWO COLUMN LAYOUT ==================== -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      
+      <!-- ==================== PREMIUM ACTIVITY CARD ==================== -->
+      <div class="relative overflow-hidden rounded-2xl hover-lift animate-fade-up delay-200">
+        <!-- Subtle gradient background -->
+        <div class="absolute inset-0 bg-[#0a0a0f]">
+          <div class="absolute top-0 right-0 w-[300px] h-[300px] opacity-20 aurora-bg" style="background: radial-gradient(circle at top right, rgba(16,185,129,0.4), transparent 60%); filter: blur(60px);"></div>
+        </div>
+
+        <!-- Glass card -->
+        <div class="relative z-10 backdrop-blur-xl bg-white/[0.02] border border-white/[0.06] rounded-2xl hover-glow">
+          <!-- Header -->
+          <div class="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
+            <h3 class="text-sm font-medium text-gray-300">Recent Activity</h3>
+            <div class="flex items-center gap-1.5">
+              <span class="live-dot relative w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span class="text-xs text-emerald-400">Live</span>
+            </div>
+          </div>
+
+          <!-- Activity list -->
+          <div class="divide-y divide-white/[0.04]">
+            <!-- Email activity -->
+            <div class="flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition-colors cursor-pointer animate-slide-in" style="animation-delay: 0.1s;">
+              <div class="p-2 rounded-lg text-blue-400 bg-blue-400/10">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-white truncate"><span class="font-medium">Sarah Chen</span><span class="text-gray-500"> opened email</span></p>
+                <p class="text-xs text-gray-500 truncate">TechCorp</p>
+              </div>
+              <span class="text-xs text-gray-600 whitespace-nowrap">2m ago</span>
+            </div>
+
+            <!-- LinkedIn activity -->
+            <div class="flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition-colors cursor-pointer animate-slide-in" style="animation-delay: 0.2s;">
+              <div class="p-2 rounded-lg text-sky-400 bg-sky-400/10">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
+                  <rect x="2" y="9" width="4" height="12"></rect>
+                  <circle cx="4" cy="4" r="2"></circle>
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-white truncate"><span class="font-medium">Mike Johnson</span><span class="text-gray-500"> connected</span></p>
+                <p class="text-xs text-gray-500 truncate">StartupXYZ</p>
+              </div>
+              <span class="text-xs text-gray-600 whitespace-nowrap">15m ago</span>
+            </div>
+
+            <!-- Reply activity -->
+            <div class="flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition-colors cursor-pointer animate-slide-in" style="animation-delay: 0.3s;">
+              <div class="p-2 rounded-lg text-emerald-400 bg-emerald-400/10">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-white truncate"><span class="font-medium">Lisa Park</span><span class="text-gray-500"> replied</span></p>
+                <p class="text-xs text-gray-500 truncate">Acme Inc</p>
+              </div>
+              <span class="text-xs text-gray-600 whitespace-nowrap">1h ago</span>
+            </div>
+
+            <!-- Voice activity -->
+            <div class="flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition-colors cursor-pointer animate-slide-in" style="animation-delay: 0.4s;">
+              <div class="p-2 rounded-lg text-purple-400 bg-purple-400/10">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-white truncate"><span class="font-medium">James Wilson</span><span class="text-gray-500"> call scheduled</span></p>
+                <p class="text-xs text-gray-500 truncate">GlobalTech</p>
+              </div>
+              <span class="text-xs text-gray-600 whitespace-nowrap">2h ago</span>
+            </div>
+          </div>
+
+          <!-- Footer with shimmer -->
+          <div class="relative px-6 py-3 border-t border-white/[0.04] overflow-hidden">
+            <div class="shimmer absolute inset-0"></div>
+            <button class="relative flex items-center gap-2 text-xs text-gray-500 hover:text-emerald-400 transition-colors">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+              View all activity
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== UPCOMING MEETINGS CARD ==================== -->
+      <div class="relative overflow-hidden rounded-2xl hover-lift animate-fade-up delay-300">
+        <div class="absolute inset-0 bg-[#0a0a0f]">
+          <div class="absolute bottom-0 left-0 w-[250px] h-[250px] opacity-15 aurora-bg" style="background: radial-gradient(circle at bottom left, rgba(6,182,212,0.5), transparent 60%); filter: blur(50px); animation-delay: 2s;"></div>
+        </div>
+
+        <div class="relative z-10 backdrop-blur-xl bg-white/[0.02] border border-white/[0.06] rounded-2xl hover-glow">
+          <div class="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
+            <h3 class="text-sm font-medium text-gray-300">Upcoming Meetings</h3>
+            <span class="text-xs text-gray-500">This week</span>
+          </div>
+
+          <div class="divide-y divide-white/[0.04]">
+            <!-- Meeting 1 -->
+            <div class="px-6 py-4 hover:bg-white/[0.02] transition-colors cursor-pointer animate-slide-in" style="animation-delay: 0.15s;">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-medium text-emerald-400">Today 2:00 PM</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-medium text-cyan-400 bg-cyan-400/10">Discovery</span>
+              </div>
+              <p class="text-sm text-white font-medium">Sarah Chen</p>
+              <p class="text-xs text-gray-500">TechCorp • 30 min</p>
+            </div>
+
+            <!-- Meeting 2 -->
+            <div class="px-6 py-4 hover:bg-white/[0.02] transition-colors cursor-pointer animate-slide-in" style="animation-delay: 0.25s;">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-medium text-gray-400">Tomorrow 10:00 AM</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-medium text-purple-400 bg-purple-400/10">Demo</span>
+              </div>
+              <p class="text-sm text-white font-medium">Mike Johnson</p>
+              <p class="text-xs text-gray-500">StartupXYZ • 45 min</p>
+            </div>
+
+            <!-- Meeting 3 -->
+            <div class="px-6 py-4 hover:bg-white/[0.02] transition-colors cursor-pointer animate-slide-in" style="animation-delay: 0.35s;">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-medium text-gray-400">Thu 3:30 PM</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-medium text-amber-400 bg-amber-400/10">Follow-up</span>
+              </div>
+              <p class="text-sm text-white font-medium">Lisa Park</p>
+              <p class="text-xs text-gray-500">Acme Inc • 30 min</p>
+            </div>
+          </div>
+
+          <div class="px-6 py-3 border-t border-white/[0.04]">
+            <button class="flex items-center gap-2 text-xs text-gray-500 hover:text-emerald-400 transition-colors">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              View calendar
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ==================== CAMPAIGN PRIORITY PANEL ==================== -->
+    <div class="relative overflow-hidden rounded-2xl animated-border animate-fade-up delay-400">
+      <div class="absolute inset-0 bg-[#0a0a0f]"></div>
+      
+      <div class="relative z-10 backdrop-blur-xl bg-white/[0.02] border border-white/[0.06] rounded-2xl">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
+          <h3 class="text-sm font-medium text-gray-300">Campaign Priority</h3>
+          <span class="text-xs text-gray-500">Drag to adjust allocation</span>
+        </div>
+
+        <div class="p-6 space-y-6">
+          <!-- Campaign 1 -->
+          <div class="space-y-3 animate-fade-up delay-500">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-white font-medium">Tech Decision Makers</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-medium text-emerald-400 bg-emerald-400/10 animate-float">AI</span>
+              </div>
+              <span class="text-sm text-emerald-400 font-medium">40%</span>
+            </div>
+            <div class="w-full h-2 bg-white/[0.06] rounded-full overflow-hidden">
+              <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500 transition-all duration-300 animate-progress" style="width: 40%; animation-delay: 0.5s;"></div>
+            </div>
+            <div class="flex items-center gap-4 text-xs text-gray-500">
+              <span>6 meetings</span>
+              <span>•</span>
+              <span>3.8% reply rate</span>
+            </div>
+          </div>
+
+          <!-- Campaign 2 -->
+          <div class="space-y-3 animate-fade-up delay-600">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-white font-medium">Series A Startups</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-medium text-emerald-400 bg-emerald-400/10 animate-float" style="animation-delay: 0.5s;">AI</span>
+              </div>
+              <span class="text-sm text-cyan-400 font-medium">35%</span>
+            </div>
+            <div class="w-full h-2 bg-white/[0.06] rounded-full overflow-hidden">
+              <div class="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-300 animate-progress" style="width: 35%; animation-delay: 0.7s;"></div>
+            </div>
+            <div class="flex items-center gap-4 text-xs text-gray-500">
+              <span>4 meetings</span>
+              <span>•</span>
+              <span>2.9% reply rate</span>
+            </div>
+          </div>
+
+          <!-- Campaign 3 -->
+          <div class="space-y-3 animate-fade-up" style="animation-delay: 0.7s;">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-white font-medium">My Custom Campaign</span>
+              </div>
+              <span class="text-sm text-purple-400 font-medium">25%</span>
+            </div>
+            <div class="w-full h-2 bg-white/[0.06] rounded-full overflow-hidden">
+              <div class="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300 animate-progress" style="width: 25%; animation-delay: 0.9s;"></div>
+            </div>
+            <div class="flex items-center gap-4 text-xs text-gray-500">
+              <span>2 meetings</span>
+              <span>•</span>
+              <span>1.8% reply rate</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-between px-6 py-4 border-t border-white/[0.06]">
+          <span class="text-sm text-gray-400">Total: <span class="text-white font-medium">100%</span></span>
+          <button class="btn-shine px-4 py-2 rounded-lg text-sm font-medium text-white bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]">
+            Confirm & Activate
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer note -->
+    <div class="text-center py-8 animate-fade-up" style="animation-delay: 0.8s;">
+      <p class="text-xs text-gray-600">Premium Dashboard Components • Agency OS • With Animations</p>
+    </div>
+
+  </div>
+</body>
+</html>

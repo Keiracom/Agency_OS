@@ -6,6 +6,7 @@ TASK: CRED-007
 DEPENDENCIES:
   - httpx
   - pydantic
+  - tenacity
   - src/config/settings.py
   - src/exceptions.py
 RULES APPLIED:
@@ -21,11 +22,22 @@ Orchestrates voice calls using:
 API Docs: https://docs.vapi.ai/
 """
 
+import logging
+
 import httpx
 from pydantic import BaseModel, Field
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    before_sleep_log,
+)
 
 from src.config.settings import settings
 from src.exceptions import IntegrationError
+
+logger = logging.getLogger(__name__)
 
 
 class VapiAssistantConfig(BaseModel):
@@ -72,10 +84,19 @@ class VapiClient:
     - Call status and transcripts
     - Webhook processing
 
+    All API methods include retry logic with exponential backoff for
+    transient failures (network errors, timeouts). This ensures voice
+    calls don't fail silently due to temporary issues.
+
     API Docs: https://docs.vapi.ai/
     """
 
     BASE_URL = "https://api.vapi.ai"
+
+    # Retry configuration
+    MAX_RETRIES = 3
+    RETRY_MIN_WAIT = 2  # seconds
+    RETRY_MAX_WAIT = 10  # seconds
 
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key or settings.vapi_api_key
@@ -85,6 +106,49 @@ class VapiClient:
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((httpx.RequestError, httpx.TimeoutException)),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
+    async def _request(
+        self,
+        method: str,
+        endpoint: str,
+        json: dict | None = None,
+        params: dict | None = None,
+    ) -> httpx.Response:
+        """
+        Make HTTP request to Vapi API with retry logic.
+
+        Uses exponential backoff for transient failures (network errors, timeouts).
+        Retries up to 3 times with 2-10 second waits.
+
+        Args:
+            method: HTTP method (GET, POST, PATCH, DELETE)
+            endpoint: API endpoint (e.g., "/assistant")
+            json: Request body for POST/PATCH
+            params: Query parameters for GET
+
+        Returns:
+            httpx.Response object
+
+        Raises:
+            httpx.RequestError: After max retries exhausted
+            httpx.TimeoutException: After max retries exhausted
+        """
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.request(
+                method=method,
+                url=f"{self.BASE_URL}{endpoint}",
+                headers=self.headers,
+                json=json,
+                params=params,
+            )
+            return response
 
     async def create_assistant(self, config: VapiAssistantConfig) -> dict:
         """
@@ -113,41 +177,45 @@ class VapiClient:
             "recordingEnabled": True,
         }
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                f"{self.BASE_URL}/assistant", json=payload, headers=self.headers
-            )
+        try:
+            response = await self._request("POST", "/assistant", json=payload)
             if response.status_code != 201:
                 raise IntegrationError(f"Vapi create_assistant failed: {response.text}")
             return response.json()
+        except (httpx.RequestError, httpx.TimeoutException) as e:
+            logger.error(f"Vapi create_assistant failed after retries: {e}")
+            raise IntegrationError(f"Vapi create_assistant failed: {e}") from e
 
     async def get_assistant(self, assistant_id: str) -> dict:
         """Get assistant details by ID."""
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(
-                f"{self.BASE_URL}/assistant/{assistant_id}", headers=self.headers
-            )
+        try:
+            response = await self._request("GET", f"/assistant/{assistant_id}")
             if response.status_code != 200:
                 raise IntegrationError(f"Vapi get_assistant failed: {response.text}")
             return response.json()
+        except (httpx.RequestError, httpx.TimeoutException) as e:
+            logger.error(f"Vapi get_assistant failed after retries: {e}")
+            raise IntegrationError(f"Vapi get_assistant failed: {e}") from e
 
     async def update_assistant(self, assistant_id: str, updates: dict) -> dict:
         """Update an existing assistant."""
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.patch(
-                f"{self.BASE_URL}/assistant/{assistant_id}", json=updates, headers=self.headers
-            )
+        try:
+            response = await self._request("PATCH", f"/assistant/{assistant_id}", json=updates)
             if response.status_code != 200:
                 raise IntegrationError(f"Vapi update_assistant failed: {response.text}")
             return response.json()
+        except (httpx.RequestError, httpx.TimeoutException) as e:
+            logger.error(f"Vapi update_assistant failed after retries: {e}")
+            raise IntegrationError(f"Vapi update_assistant failed: {e}") from e
 
     async def delete_assistant(self, assistant_id: str) -> bool:
         """Delete an assistant."""
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.delete(
-                f"{self.BASE_URL}/assistant/{assistant_id}", headers=self.headers
-            )
+        try:
+            response = await self._request("DELETE", f"/assistant/{assistant_id}")
             return response.status_code == 200
+        except (httpx.RequestError, httpx.TimeoutException) as e:
+            logger.error(f"Vapi delete_assistant failed after retries: {e}")
+            return False
 
     async def start_outbound_call(self, request: VapiCallRequest) -> dict:
         """
@@ -158,6 +226,12 @@ class VapiClient:
 
         Returns:
             dict with 'id' key for call_id
+
+        Note:
+            This method has retry logic with exponential backoff.
+            Transient failures (network issues, timeouts) will be retried
+            up to 3 times before failing. This ensures leads don't fall
+            through due to temporary API issues.
         """
         payload = {
             "assistantId": request.assistant_id,
@@ -166,18 +240,30 @@ class VapiClient:
             "metadata": request.metadata,
         }
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                f"{self.BASE_URL}/call/phone", json=payload, headers=self.headers
-            )
+        try:
+            response = await self._request("POST", "/call/phone", json=payload)
             if response.status_code != 201:
+                logger.error(
+                    f"Vapi start_outbound_call failed: status={response.status_code}, "
+                    f"phone={request.phone_number[:6]}***, response={response.text}"
+                )
                 raise IntegrationError(f"Vapi start_outbound_call failed: {response.text}")
+            logger.info(
+                f"Vapi call initiated successfully: phone={request.phone_number[:6]}***, "
+                f"call_id={response.json().get('id')}"
+            )
             return response.json()
+        except (httpx.RequestError, httpx.TimeoutException) as e:
+            logger.error(
+                f"Vapi start_outbound_call failed after {self.MAX_RETRIES} retries: "
+                f"phone={request.phone_number[:6]}***, error={e}"
+            )
+            raise IntegrationError(f"Vapi start_outbound_call failed after retries: {e}") from e
 
     async def get_call(self, call_id: str) -> VapiCallResult:
         """Get call details and transcript."""
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(f"{self.BASE_URL}/call/{call_id}", headers=self.headers)
+        try:
+            response = await self._request("GET", f"/call/{call_id}")
             if response.status_code != 200:
                 raise IntegrationError(f"Vapi get_call failed: {response.text}")
             data = response.json()
@@ -191,6 +277,9 @@ class VapiClient:
                 cost=data.get("cost"),
                 ended_reason=data.get("endedReason"),
             )
+        except (httpx.RequestError, httpx.TimeoutException) as e:
+            logger.error(f"Vapi get_call failed after retries: call_id={call_id}, error={e}")
+            raise IntegrationError(f"Vapi get_call failed: {e}") from e
 
     async def list_calls(
         self, limit: int = 100, created_at_gt: str | None = None, assistant_id: str | None = None
@@ -202,23 +291,25 @@ class VapiClient:
         if assistant_id:
             params["assistantId"] = assistant_id
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(
-                f"{self.BASE_URL}/call", params=params, headers=self.headers
-            )
+        try:
+            response = await self._request("GET", "/call", params=params)
             if response.status_code != 200:
                 raise IntegrationError(f"Vapi list_calls failed: {response.text}")
             return response.json()
+        except (httpx.RequestError, httpx.TimeoutException) as e:
+            logger.error(f"Vapi list_calls failed after retries: {e}")
+            raise IntegrationError(f"Vapi list_calls failed: {e}") from e
 
     async def end_call(self, call_id: str) -> dict:
         """Force end an active call."""
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                f"{self.BASE_URL}/call/{call_id}/end", headers=self.headers
-            )
+        try:
+            response = await self._request("POST", f"/call/{call_id}/end")
             if response.status_code != 200:
                 raise IntegrationError(f"Vapi end_call failed: {response.text}")
             return response.json()
+        except (httpx.RequestError, httpx.TimeoutException) as e:
+            logger.error(f"Vapi end_call failed after retries: call_id={call_id}, error={e}")
+            raise IntegrationError(f"Vapi end_call failed: {e}") from e
 
     async def delete_recording(self, recording_url: str) -> bool:
         """
@@ -237,11 +328,10 @@ class VapiClient:
             If Vapi doesn't support direct recording deletion, the recording
             will be marked as deleted in our database and excluded from future
             access. Vapi recordings may have their own retention policies.
+
+            This method intentionally returns True on most errors to ensure
+            90-day compliance - our system marks it as deleted to prevent access.
         """
-        import logging
-
-        logger = logging.getLogger(__name__)
-
         try:
             # Extract call_id from recording URL
             # URL format: https://api.vapi.ai/call/{call_id}/recording or similar
@@ -252,14 +342,10 @@ class VapiClient:
                 # Return True to mark as deleted in our system even if we can't delete from Vapi
                 return True
 
-            # Attempt to delete via Vapi API
+            # Attempt to delete via Vapi API (with retry logic)
             # Note: Vapi may or may not support recording deletion
-            # If the endpoint doesn't exist, we'll catch the error and return True
-            # to mark it as deleted in our system
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.delete(
-                    f"{self.BASE_URL}/call/{call_id}/recording", headers=self.headers
-                )
+            try:
+                response = await self._request("DELETE", f"/call/{call_id}/recording")
 
                 if response.status_code in (200, 204):
                     logger.info(f"Successfully deleted Vapi recording for call {call_id}")
@@ -277,6 +363,10 @@ class VapiClient:
                     # Return True anyway - Vapi may not support deletion
                     # Our system will mark it as deleted to prevent future access
                     return True
+            except (httpx.RequestError, httpx.TimeoutException) as e:
+                logger.warning(f"Vapi recording deletion failed after retries: {e}")
+                # Return True for compliance - mark as deleted in our system
+                return True
 
         except Exception as e:
             logger.error(f"Error deleting Vapi recording: {e}")
@@ -284,7 +374,8 @@ class VapiClient:
             # This ensures 90-day compliance even if Vapi API fails
             return True
 
-    def _extract_call_id_from_url(self, recording_url: str) -> str | None:
+    @staticmethod
+    def _extract_call_id_from_url(recording_url: str) -> str | None:
         """
         Extract call ID from a Vapi recording URL.
 
@@ -363,3 +454,6 @@ def get_vapi_client() -> VapiClient:
 # [x] All functions have docstrings
 # [x] Webhook parsing method included
 # [x] Recording deletion for 90-day retention compliance (TODO.md #14)
+# [x] Retry logic with tenacity (exponential backoff, 3 attempts)
+# [x] Retries on transient failures (network errors, timeouts)
+# [x] Failure logging before and after retries

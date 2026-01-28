@@ -496,10 +496,7 @@ def list_all_schedules() -> dict[str, str]:
     Returns:
         Dictionary mapping schedule names to descriptions
     """
-    return {
-        name: config["description"]
-        for name, config in SCHEDULE_REGISTRY.items()
-    }
+    return {name: config["description"] for name, config in SCHEDULE_REGISTRY.items()}
 
 
 # === VERIFICATION CHECKLIST ===

@@ -43,13 +43,12 @@ PLATFORM_PRIORS: dict[str, Any] = {
     # - Data quality less predictive than originally assumed
     # -------------------------------------------------------------------------
     "als_weights": {
-        "data_quality": 0.15,   # Reduced from 0.20 - less predictive
-        "authority": 0.30,      # Increased from 0.25 - decision-maker critical
-        "company_fit": 0.25,    # Includes DataForSEO signals
-        "timing": 0.20,         # Increased from 0.15 - intent matters
-        "risk": 0.10,           # Reduced from 0.15 - fewer false negatives
+        "data_quality": 0.15,  # Reduced from 0.20 - less predictive
+        "authority": 0.30,  # Increased from 0.25 - decision-maker critical
+        "company_fit": 0.25,  # Includes DataForSEO signals
+        "timing": 0.20,  # Increased from 0.15 - intent matters
+        "risk": 0.10,  # Reduced from 0.15 - fewer false negatives
     },
-
     # -------------------------------------------------------------------------
     # Timing Patterns
     # -------------------------------------------------------------------------
@@ -62,9 +61,9 @@ PLATFORM_PRIORS: dict[str, Any] = {
         "best_hours": [9, 10, 14, 15],  # 9-10am, 2-3pm local time
         "good_hours": [8, 11, 13, 16],  # Acceptable alternatives
         "avoid_periods": [
-            "Monday 8-10am",    # Inbox overwhelm
-            "Friday 3-5pm",     # Checked out for weekend
-            "Sunday",           # Non-business day
+            "Monday 8-10am",  # Inbox overwhelm
+            "Friday 3-5pm",  # Checked out for weekend
+            "Sunday",  # Non-business day
         ],
         "day_of_week_lift": {
             "Monday": 0.85,
@@ -76,7 +75,6 @@ PLATFORM_PRIORS: dict[str, Any] = {
             "Sunday": 0.40,
         },
     },
-
     # -------------------------------------------------------------------------
     # Content Patterns
     # -------------------------------------------------------------------------
@@ -88,15 +86,14 @@ PLATFORM_PRIORS: dict[str, Any] = {
     "content_patterns": {
         "optimal_subject_length": {"min": 4, "max": 8, "unit": "words"},
         "optimal_body_length": {"min": 50, "max": 125, "unit": "words"},
-        "personalization_lift": 1.26,           # 26% improvement
-        "question_in_subject_lift": 1.15,       # 15% improvement
-        "company_mention_lift": 1.18,           # 18% improvement
-        "first_name_usage_lift": 1.12,          # 12% improvement
-        "recent_news_mention_lift": 1.22,       # 22% improvement
-        "mutual_connection_lift": 1.35,         # 35% improvement
-        "industry_specific_lift": 1.20,         # 20% improvement
+        "personalization_lift": 1.26,  # 26% improvement
+        "question_in_subject_lift": 1.15,  # 15% improvement
+        "company_mention_lift": 1.18,  # 18% improvement
+        "first_name_usage_lift": 1.12,  # 12% improvement
+        "recent_news_mention_lift": 1.22,  # 22% improvement
+        "mutual_connection_lift": 1.35,  # 35% improvement
+        "industry_specific_lift": 1.20,  # 20% improvement
     },
-
     # -------------------------------------------------------------------------
     # Channel Patterns
     # -------------------------------------------------------------------------
@@ -106,13 +103,13 @@ PLATFORM_PRIORS: dict[str, Any] = {
     # Voice (costly) provides 85% lift for qualified leads
     # -------------------------------------------------------------------------
     "channel_patterns": {
-        "email_first_sequence_rate": 0.67,      # 67% of wins start email
-        "linkedin_touch_lift": 1.35,            # 35% lift when included
-        "voice_touch_lift": 1.85,               # 85% lift (use selectively)
-        "sms_touch_lift": 1.25,                 # 25% lift (permission required)
-        "direct_mail_touch_lift": 1.40,         # 40% lift (expensive)
-        "optimal_touches_before_convert": 4,    # Average touches to conversion
-        "max_touches_recommended": 8,           # Diminishing returns after
+        "email_first_sequence_rate": 0.67,  # 67% of wins start email
+        "linkedin_touch_lift": 1.35,  # 35% lift when included
+        "voice_touch_lift": 1.85,  # 85% lift (use selectively)
+        "sms_touch_lift": 1.25,  # 25% lift (permission required)
+        "direct_mail_touch_lift": 1.40,  # 40% lift (expensive)
+        "optimal_touches_before_convert": 4,  # Average touches to conversion
+        "max_touches_recommended": 8,  # Diminishing returns after
         "days_between_touches": {
             "email_to_email": 3,
             "email_to_linkedin": 2,
@@ -120,7 +117,6 @@ PLATFORM_PRIORS: dict[str, Any] = {
             "any_to_followup": 4,
         },
     },
-
     # -------------------------------------------------------------------------
     # Funnel Conversion Benchmarks
     # -------------------------------------------------------------------------
@@ -129,22 +125,20 @@ PLATFORM_PRIORS: dict[str, Any] = {
     # These are baseline expectations, not targets
     # -------------------------------------------------------------------------
     "funnel_benchmarks": {
-        "visitor_to_lead": 0.023,               # 2.3% website visitors → leads
-        "lead_to_mql": 0.31,                    # 31% leads → MQL
-        "mql_to_sql": 0.13,                     # 13% MQL → SQL (biggest drop)
-        "sql_to_opportunity": 0.45,             # 30-59% SQL → Opp
-        "opportunity_to_close": 0.26,           # 22-30% Opp → Customer
-
+        "visitor_to_lead": 0.023,  # 2.3% website visitors → leads
+        "lead_to_mql": 0.31,  # 31% leads → MQL
+        "mql_to_sql": 0.13,  # 13% MQL → SQL (biggest drop)
+        "sql_to_opportunity": 0.45,  # 30-59% SQL → Opp
+        "opportunity_to_close": 0.26,  # 22-30% Opp → Customer
         # Outbound-specific (cold email/LinkedIn)
-        "cold_email_open_rate": 0.25,           # 25% open rate
-        "cold_email_reply_rate": 0.02,          # 2% reply rate
-        "cold_email_positive_reply": 0.30,      # 30% of replies positive
-        "linkedin_connection_rate": 0.25,       # 25% accept rate
-        "linkedin_message_reply_rate": 0.08,    # 8% reply to message
-        "cold_call_connect_rate": 0.08,         # 8% answer rate
-        "cold_call_meeting_rate": 0.15,         # 15% of connects → meeting
+        "cold_email_open_rate": 0.25,  # 25% open rate
+        "cold_email_reply_rate": 0.02,  # 2% reply rate
+        "cold_email_positive_reply": 0.30,  # 30% of replies positive
+        "linkedin_connection_rate": 0.25,  # 25% accept rate
+        "linkedin_message_reply_rate": 0.08,  # 8% reply to message
+        "cold_call_connect_rate": 0.08,  # 8% answer rate
+        "cold_call_meeting_rate": 0.15,  # 15% of connects → meeting
     },
-
     # -------------------------------------------------------------------------
     # Authority/Title Conversion Patterns
     # -------------------------------------------------------------------------
@@ -167,7 +161,6 @@ PLATFORM_PRIORS: dict[str, Any] = {
             "Specialist": 0.60,
         },
     },
-
     # -------------------------------------------------------------------------
     # Company Size Patterns
     # -------------------------------------------------------------------------
@@ -178,17 +171,16 @@ PLATFORM_PRIORS: dict[str, Any] = {
     "company_size_patterns": {
         "optimal_employee_range": {"min": 5, "max": 50},
         "size_conversion_lift": {
-            "1-4": 0.70,      # May not have budget
-            "5-10": 1.20,     # Decision-maker accessible
-            "11-25": 1.35,    # Sweet spot
-            "26-50": 1.25,    # Good fit
-            "51-100": 1.00,   # Longer cycle
+            "1-4": 0.70,  # May not have budget
+            "5-10": 1.20,  # Decision-maker accessible
+            "11-25": 1.35,  # Sweet spot
+            "26-50": 1.25,  # Good fit
+            "51-100": 1.00,  # Longer cycle
             "101-250": 0.85,  # Committee decisions
             "251-500": 0.70,  # Enterprise complexity
-            "500+": 0.50,     # Very long cycle
+            "500+": 0.50,  # Very long cycle
         },
     },
-
     # -------------------------------------------------------------------------
     # Metadata
     # -------------------------------------------------------------------------
@@ -214,6 +206,7 @@ PLATFORM_PRIORS: dict[str, Any] = {
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
+
 
 def get_als_weights() -> dict[str, float]:
     """Get ALS weight priors for scoring."""

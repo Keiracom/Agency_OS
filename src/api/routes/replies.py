@@ -45,6 +45,7 @@ router = APIRouter(tags=["replies"])
 
 class LeadSummary(BaseModel):
     """Summary lead info for reply list."""
+
     id: UUID
     first_name: str | None = None
     last_name: str | None = None
@@ -57,6 +58,7 @@ class LeadSummary(BaseModel):
 
 class ReplyResponse(BaseModel):
     """Schema for a reply."""
+
     id: UUID
     lead_id: UUID
     lead: LeadSummary | None = None
@@ -77,6 +79,7 @@ class ReplyResponse(BaseModel):
 
 class ReplyListResponse(BaseModel):
     """Schema for paginated reply list."""
+
     items: list[ReplyResponse] = Field(..., description="List of replies")
     total: int = Field(..., description="Total count")
     page: int = Field(..., description="Current page")
@@ -86,6 +89,7 @@ class ReplyListResponse(BaseModel):
 
 class ReplyHandledUpdate(BaseModel):
     """Schema for marking reply as handled."""
+
     handled: bool = Field(..., description="Whether the reply is handled")
 
 
@@ -116,13 +120,10 @@ async def list_replies(
     Replies are activities with action='replied'.
     """
     # Build query for replies
-    stmt = (
-        select(Activity)
-        .where(
-            and_(
-                Activity.client_id == client_id,
-                Activity.action == "replied",
-            )
+    stmt = select(Activity).where(
+        and_(
+            Activity.client_id == client_id,
+            Activity.action == "replied",
         )
     )
 

@@ -192,10 +192,12 @@ class ClientIntelligenceEngine:
                 result.sources_scraped.append("website")
                 result.total_cost_aud += Decimal(str(SCRAPE_COSTS["website"]))
             else:
-                result.errors.append({
-                    "source": "website",
-                    "error": website_data.failure_reason,
-                })
+                result.errors.append(
+                    {
+                        "source": "website",
+                        "error": website_data.failure_reason,
+                    }
+                )
         except Exception as e:
             logger.warning(f"Website scrape failed: {e}")
             result.errors.append({"source": "website", "error": str(e)})
@@ -213,7 +215,9 @@ class ClientIntelligenceEngine:
             # Try to find LinkedIn URL if not provided
             if not linkedin_url:
                 # Search for company LinkedIn page
-                domain = client.website_url.replace("https://", "").replace("http://", "").split("/")[0]
+                domain = (
+                    client.website_url.replace("https://", "").replace("http://", "").split("/")[0]
+                )
                 search_results = await self.apify.search_google(
                     [f"site:linkedin.com/company {client.name} {domain}"],
                     results_per_query=3,
@@ -231,10 +235,12 @@ class ClientIntelligenceEngine:
                     result.sources_scraped.append("linkedin")
                     result.total_cost_aud += Decimal(str(SCRAPE_COSTS["linkedin"]))
                 else:
-                    result.errors.append({
-                        "source": "linkedin",
-                        "error": "Company not found",
-                    })
+                    result.errors.append(
+                        {
+                            "source": "linkedin",
+                            "error": "Company not found",
+                        }
+                    )
         except Exception as e:
             logger.warning(f"LinkedIn scrape failed: {e}")
             result.errors.append({"source": "linkedin", "error": str(e)})
@@ -256,10 +262,12 @@ class ClientIntelligenceEngine:
                 result.sources_scraped.append("twitter")
                 result.total_cost_aud += Decimal(str(SCRAPE_COSTS["twitter"]))
             else:
-                result.errors.append({
-                    "source": "twitter",
-                    "error": "Profile not found",
-                })
+                result.errors.append(
+                    {
+                        "source": "twitter",
+                        "error": "Profile not found",
+                    }
+                )
         except Exception as e:
             logger.warning(f"Twitter scrape failed: {e}")
             result.errors.append({"source": "twitter", "error": str(e)})
@@ -278,10 +286,12 @@ class ClientIntelligenceEngine:
                 result.sources_scraped.append("facebook")
                 result.total_cost_aud += Decimal(str(SCRAPE_COSTS["facebook"]))
             else:
-                result.errors.append({
-                    "source": "facebook",
-                    "error": "Page not found",
-                })
+                result.errors.append(
+                    {
+                        "source": "facebook",
+                        "error": "Page not found",
+                    }
+                )
         except Exception as e:
             logger.warning(f"Facebook scrape failed: {e}")
             result.errors.append({"source": "facebook", "error": str(e)})
@@ -301,10 +311,12 @@ class ClientIntelligenceEngine:
                 result.sources_scraped.append("instagram")
                 result.total_cost_aud += Decimal(str(SCRAPE_COSTS["instagram"]))
             else:
-                result.errors.append({
-                    "source": "instagram",
-                    "error": "Profile not found",
-                })
+                result.errors.append(
+                    {
+                        "source": "instagram",
+                        "error": "Profile not found",
+                    }
+                )
         except Exception as e:
             logger.warning(f"Instagram scrape failed: {e}")
             result.errors.append({"source": "instagram", "error": str(e)})
@@ -329,10 +341,12 @@ class ClientIntelligenceEngine:
                 result.sources_scraped.append("trustpilot")
                 result.total_cost_aud += Decimal(str(SCRAPE_COSTS["trustpilot"]))
             else:
-                result.errors.append({
-                    "source": "trustpilot",
-                    "error": "Company not found on Trustpilot",
-                })
+                result.errors.append(
+                    {
+                        "source": "trustpilot",
+                        "error": "Company not found on Trustpilot",
+                    }
+                )
         except Exception as e:
             logger.warning(f"Trustpilot scrape failed: {e}")
             result.errors.append({"source": "trustpilot", "error": str(e)})
@@ -354,10 +368,12 @@ class ClientIntelligenceEngine:
                 result.sources_scraped.append("g2")
                 result.total_cost_aud += Decimal(str(SCRAPE_COSTS["g2"]))
             else:
-                result.errors.append({
-                    "source": "g2",
-                    "error": g2_data.get("error", "Product not found"),
-                })
+                result.errors.append(
+                    {
+                        "source": "g2",
+                        "error": g2_data.get("error", "Product not found"),
+                    }
+                )
         except Exception as e:
             logger.warning(f"G2 scrape failed: {e}")
             result.errors.append({"source": "g2", "error": str(e)})
@@ -379,10 +395,12 @@ class ClientIntelligenceEngine:
                 result.sources_scraped.append("capterra")
                 result.total_cost_aud += Decimal(str(SCRAPE_COSTS["capterra"]))
             else:
-                result.errors.append({
-                    "source": "capterra",
-                    "error": capterra_data.get("error", "Product not found"),
-                })
+                result.errors.append(
+                    {
+                        "source": "capterra",
+                        "error": capterra_data.get("error", "Product not found"),
+                    }
+                )
         except Exception as e:
             logger.warning(f"Capterra scrape failed: {e}")
             result.errors.append({"source": "capterra", "error": str(e)})
@@ -405,10 +423,12 @@ class ClientIntelligenceEngine:
                 result.sources_scraped.append("google_reviews")
                 result.total_cost_aud += Decimal(str(SCRAPE_COSTS["google_reviews"]))
             else:
-                result.errors.append({
-                    "source": "google_reviews",
-                    "error": "Business not found on Google",
-                })
+                result.errors.append(
+                    {
+                        "source": "google_reviews",
+                        "error": "Business not found on Google",
+                    }
+                )
         except Exception as e:
             logger.warning(f"Google Reviews scrape failed: {e}")
             result.errors.append({"source": "google_reviews", "error": str(e)})
@@ -476,6 +496,7 @@ Return ONLY valid JSON, no markdown."""
 
             # Parse JSON from response
             import json
+
             try:
                 # Clean response
                 content = response.strip()

@@ -248,7 +248,9 @@ class CustomerImportService:
                         crm_id=str(deal["id"]),
                         customer_since=datetime.fromisoformat(
                             props["closedate"].replace("Z", "+00:00")
-                        ) if props.get("closedate") else None,
+                        )
+                        if props.get("closedate")
+                        else None,
                     )
                 )
 
@@ -314,14 +316,18 @@ class CustomerImportService:
                         status="active",
                         deal_value=float(deal.get("value", 0) or 0),
                         crm_id=str(deal["id"]),
-                        customer_since=datetime.fromisoformat(
-                            deal["won_time"]
-                        ) if deal.get("won_time") else None,
+                        customer_since=datetime.fromisoformat(deal["won_time"])
+                        if deal.get("won_time")
+                        else None,
                     )
                 )
 
             # Pagination
-            if data.get("additional_data", {}).get("pagination", {}).get("more_items_in_collection"):
+            if (
+                data.get("additional_data", {})
+                .get("pagination", {})
+                .get("more_items_in_collection")
+            ):
                 start += 100
             else:
                 break
@@ -386,7 +392,9 @@ class CustomerImportService:
                         crm_id=opp["id"],
                         customer_since=datetime.fromisoformat(
                             opp["date_won"].replace("Z", "+00:00")
-                        ) if opp.get("date_won") else None,
+                        )
+                        if opp.get("date_won")
+                        else None,
                     )
                 )
 
@@ -523,7 +531,9 @@ class CustomerImportService:
             service_type = await self._get_client_service_type(client_id)
 
             await self.db.execute(
-                text("SELECT upsert_buyer_signal(:domain, :company_name, :industry, :deal_value, :service_type)"),
+                text(
+                    "SELECT upsert_buyer_signal(:domain, :company_name, :industry, :deal_value, :service_type)"
+                ),
                 {
                     "domain": domain,
                     "company_name": customer.company_name,
@@ -662,7 +672,9 @@ class CustomerImportService:
         """Soft delete a customer and its suppression entry (Rule 14)."""
         # Get domain before soft delete
         result = await self.db.execute(
-            text("SELECT domain FROM client_customers WHERE id = :id AND client_id = :client_id AND deleted_at IS NULL"),
+            text(
+                "SELECT domain FROM client_customers WHERE id = :id AND client_id = :client_id AND deleted_at IS NULL"
+            ),
             {"id": str(customer_id), "client_id": str(client_id)},
         )
         row = result.fetchone()
@@ -674,7 +686,9 @@ class CustomerImportService:
 
         # Soft delete customer (Rule 14)
         await self.db.execute(
-            text("UPDATE client_customers SET deleted_at = NOW() WHERE id = :id AND client_id = :client_id AND deleted_at IS NULL"),
+            text(
+                "UPDATE client_customers SET deleted_at = NOW() WHERE id = :id AND client_id = :client_id AND deleted_at IS NULL"
+            ),
             {"id": str(customer_id), "client_id": str(client_id)},
         )
 

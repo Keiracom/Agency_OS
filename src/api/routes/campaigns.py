@@ -463,7 +463,9 @@ async def list_campaigns(
     db: Annotated[AsyncSession, Depends(get_db_session)],
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Page size"),
-    status_filter: CampaignStatus | None = Query(None, alias="status", description="Filter by status"),
+    status_filter: CampaignStatus | None = Query(
+        None, alias="status", description="Filter by status"
+    ),
     search: str | None = Query(None, description="Search by name"),
 ) -> CampaignListResponse:
     """
@@ -651,8 +653,13 @@ async def update_campaign(
     # Check if updating allocations - need to validate sum
     update_data = campaign_data.model_dump(exclude_unset=True)
 
-    allocation_fields = ["allocation_email", "allocation_sms", "allocation_linkedin",
-                         "allocation_voice", "allocation_mail"]
+    allocation_fields = [
+        "allocation_email",
+        "allocation_sms",
+        "allocation_linkedin",
+        "allocation_voice",
+        "allocation_mail",
+    ]
     has_allocation_update = any(f in update_data for f in allocation_fields)
 
     if has_allocation_update:
@@ -871,11 +878,13 @@ async def pause_campaign(
 
 class EmergencyPauseRequest(BaseModel):
     """Request body for emergency pause."""
+
     reason: str | None = Field(None, max_length=500)
 
 
 class EmergencyPauseResponse(BaseModel):
     """Response for emergency pause operations."""
+
     paused: bool
     paused_at: datetime | None = None
     pause_reason: str | None = None
@@ -938,14 +947,11 @@ async def emergency_pause_all(
     client.paused_by_user_id = ctx.user_id
 
     # Also pause all active campaigns for this client
-    stmt_campaigns = (
-        select(Campaign)
-        .where(
-            and_(
-                Campaign.client_id == client_id,
-                Campaign.status == CampaignStatus.ACTIVE,
-                Campaign.deleted_at.is_(None),
-            )
+    stmt_campaigns = select(Campaign).where(
+        and_(
+            Campaign.client_id == client_id,
+            Campaign.status == CampaignStatus.ACTIVE,
+            Campaign.deleted_at.is_(None),
         )
     )
     result = await db.execute(stmt_campaigns)
@@ -962,8 +968,7 @@ async def emergency_pause_all(
     await db.flush()
 
     logger.info(
-        f"Emergency pause activated for client {client_id}, "
-        f"{campaigns_affected} campaigns paused"
+        f"Emergency pause activated for client {client_id}, {campaigns_affected} campaigns paused"
     )
 
     return EmergencyPauseResponse(
@@ -1502,17 +1507,19 @@ async def _run_campaign_enrichment(client_id: UUID, campaign_id: UUID, count: in
     """
     import logging
     import traceback
+
     logger = logging.getLogger(__name__)
 
     try:
         # 1. Populate pool from Apollo
         logger.info(f"[BACKGROUND] Starting pool population for client {client_id}, count={count}")
         from src.orchestration.flows.pool_population_flow import pool_population_flow
+
         population_result = await pool_population_flow(
             client_id=client_id,
             limit=count,
         )
-        leads_added = population_result.get('leads_added', 0)
+        leads_added = population_result.get("leads_added", 0)
         logger.info(
             f"[BACKGROUND] Pool population complete: {leads_added} leads added, "
             f"{population_result.get('leads_skipped', 0)} skipped"
@@ -1521,19 +1528,19 @@ async def _run_campaign_enrichment(client_id: UUID, campaign_id: UUID, count: in
         # 2. Assign leads to campaign
         logger.info(f"[BACKGROUND] Assigning leads to campaign {campaign_id}")
         from src.orchestration.flows.pool_assignment_flow import pool_campaign_assignment_flow
+
         assignment_result = await pool_campaign_assignment_flow(
             campaign_id=campaign_id,
             lead_count=count,
         )
-        leads_allocated = assignment_result.get('leads_allocated', 0)
-        logger.info(
-            f"[BACKGROUND] Lead assignment complete: {leads_allocated} leads assigned"
-        )
+        leads_allocated = assignment_result.get("leads_allocated", 0)
+        logger.info(f"[BACKGROUND] Lead assignment complete: {leads_allocated} leads assigned")
 
         # Update campaign total_leads counter
         from sqlalchemy import text
 
         from src.integrations.supabase import get_db_session
+
         async with get_db_session() as db:
             await db.execute(
                 text("""
@@ -1546,7 +1553,9 @@ async def _run_campaign_enrichment(client_id: UUID, campaign_id: UUID, count: in
             )
             await db.commit()
 
-        logger.info(f"[BACKGROUND] Campaign enrichment complete for {campaign_id}: {leads_allocated} leads")
+        logger.info(
+            f"[BACKGROUND] Campaign enrichment complete for {campaign_id}: {leads_allocated} leads"
+        )
         return {
             "success": True,
             "leads_added_to_pool": leads_added,
@@ -1595,12 +1604,10 @@ class CreateCampaignsFromSuggestionsRequest(BaseModel):
     """Schema for creating campaigns from suggestions."""
 
     suggestion_indices: list[int] | None = Field(
-        None,
-        description="Indices of suggestions to create (0-based). If None, creates all."
+        None, description="Indices of suggestions to create (0-based). If None, creates all."
     )
     auto_activate: bool = Field(
-        False,
-        description="Activate campaigns immediately (otherwise created as draft)"
+        False, description="Activate campaigns immediately (otherwise created as draft)"
     )
 
 
@@ -1657,9 +1664,7 @@ async def get_campaign_suggestions(
         tier=data["tier"],
         ai_campaign_slots=data["ai_campaign_slots"],
         custom_campaign_slots=data["custom_campaign_slots"],
-        suggestions=[
-            CampaignSuggestionItem(**s) for s in data["suggestions"]
-        ],
+        suggestions=[CampaignSuggestionItem(**s) for s in data["suggestions"]],
         generated_at=data["generated_at"],
     )
 
@@ -1840,16 +1845,16 @@ async def allocate_campaigns(
         old_pct = campaign.lead_allocation_pct
         campaign.lead_allocation_pct = allocation.priority_pct
 
-        updated_allocations.append({
-            "campaign_id": str(campaign.id),
-            "campaign_name": campaign.name,
-            "old_priority_pct": old_pct,
-            "new_priority_pct": allocation.priority_pct,
-        })
-
-        logger.info(
-            f"Campaign {campaign.id} allocation: {old_pct}% → {allocation.priority_pct}%"
+        updated_allocations.append(
+            {
+                "campaign_id": str(campaign.id),
+                "campaign_name": campaign.name,
+                "old_priority_pct": old_pct,
+                "new_priority_pct": allocation.priority_pct,
+            }
         )
+
+        logger.info(f"Campaign {campaign.id} allocation: {old_pct}% → {allocation.priority_pct}%")
 
     await db.commit()
 

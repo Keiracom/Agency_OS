@@ -140,7 +140,9 @@ async def enrich_lead_task(
         if not enrich_result.success:
             raise EnrichmentError(
                 message=f"Enrichment failed: {enrich_result.error}",
-                source=enrich_result.data.get("source", "unknown") if enrich_result.data else "unknown",
+                source=enrich_result.data.get("source", "unknown")
+                if enrich_result.data
+                else "unknown",
             )
 
         logger.info(
@@ -206,11 +208,13 @@ async def enrich_batch_task(
 
             except Exception as e:
                 logger.error(f"Failed to enrich lead {lead_id}: {e}")
-                results.append({
-                    "success": False,
-                    "lead_id": str(lead_id),
-                    "error": str(e),
-                })
+                results.append(
+                    {
+                        "success": False,
+                        "lead_id": str(lead_id),
+                        "error": str(e),
+                    }
+                )
                 failed += 1
 
         # Calculate Clay usage percentage
@@ -277,6 +281,7 @@ async def check_enrichment_cache_task(
     if cached_data:
         # Get TTL
         from src.integrations.redis import get_redis
+
         redis = await get_redis()
         ttl = await redis.ttl(cache_key)
 

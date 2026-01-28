@@ -212,15 +212,23 @@ async def get_admin_stats(
     (month_start - timedelta(days=1)).replace(day=1)
 
     # MRR calculation (tier-based pricing)
-    tier_pricing = {"ignition": Decimal("199"), "velocity": Decimal("499"), "dominance": Decimal("999")}
+    tier_pricing = {
+        "ignition": Decimal("199"),
+        "velocity": Decimal("499"),
+        "dominance": Decimal("999"),
+    }
 
     # Active clients with MRR
-    stmt = select(Client.tier, func.count(Client.id)).where(
-        and_(
-            Client.subscription_status == "active",
-            Client.deleted_at.is_(None),
+    stmt = (
+        select(Client.tier, func.count(Client.id))
+        .where(
+            and_(
+                Client.subscription_status == "active",
+                Client.deleted_at.is_(None),
+            )
         )
-    ).group_by(Client.tier)
+        .group_by(Client.tier)
+    )
     result = await db.execute(stmt)
     tier_counts = dict(result.fetchall())
 
@@ -258,7 +266,9 @@ async def get_admin_stats(
     result = await db.execute(stmt)
     leads_yesterday = result.scalar() or 1  # Avoid division by zero
 
-    leads_change = ((leads_today - leads_yesterday) / leads_yesterday) * 100 if leads_yesterday else 0
+    leads_change = (
+        ((leads_today - leads_yesterday) / leads_yesterday) * 100 if leads_yesterday else 0
+    )
 
     # AI spend from Redis (real data)
     from src.config.settings import settings
@@ -477,7 +487,11 @@ async def list_all_clients(
     search: str | None = None,
 ):
     """Get all clients with health scores and metrics."""
-    tier_pricing = {"ignition": Decimal("199"), "velocity": Decimal("499"), "dominance": Decimal("999")}
+    tier_pricing = {
+        "ignition": Decimal("199"),
+        "velocity": Decimal("499"),
+        "dominance": Decimal("999"),
+    }
 
     # Base query
     conditions = [Client.deleted_at.is_(None)]
@@ -557,9 +571,13 @@ async def list_all_clients(
             ClientListItem(
                 id=client.id,
                 name=client.name,
-                tier=client.tier.value if hasattr(client.tier, 'value') else client.tier,
-                subscription_status=client.subscription_status.value if hasattr(client.subscription_status, 'value') else client.subscription_status,
-                mrr=tier_pricing.get(client.tier if isinstance(client.tier, str) else client.tier.value, Decimal("0")),
+                tier=client.tier.value if hasattr(client.tier, "value") else client.tier,
+                subscription_status=client.subscription_status.value
+                if hasattr(client.subscription_status, "value")
+                else client.subscription_status,
+                mrr=tier_pricing.get(
+                    client.tier if isinstance(client.tier, str) else client.tier.value, Decimal("0")
+                ),
                 campaigns_count=campaigns_count,
                 leads_count=leads_count,
                 last_activity=last_activity,
@@ -596,12 +614,17 @@ async def get_client_detail(
         raise ResourceNotFoundError(resource_type="Client", resource_id=str(client_id))
 
     # Get campaigns
-    stmt = select(Campaign).where(
-        and_(
-            Campaign.client_id == client_id,
-            Campaign.deleted_at.is_(None),
+    stmt = (
+        select(Campaign)
+        .where(
+            and_(
+                Campaign.client_id == client_id,
+                Campaign.deleted_at.is_(None),
+            )
         )
-    ).order_by(desc(Campaign.created_at)).limit(10)
+        .order_by(desc(Campaign.created_at))
+        .limit(10)
+    )
     result = await db.execute(stmt)
     campaigns = result.scalars().all()
 
@@ -609,7 +632,7 @@ async def get_client_detail(
         {
             "id": str(c.id),
             "name": c.name,
-            "status": c.status.value if hasattr(c.status, 'value') else c.status,
+            "status": c.status.value if hasattr(c.status, "value") else c.status,
             "leads_count": 0,  # Would count actual leads
         }
         for c in campaigns
@@ -634,7 +657,7 @@ async def get_client_detail(
             "id": str(user.id),
             "email": user.email,
             "full_name": user.full_name,
-            "role": membership.role.value if hasattr(membership.role, 'value') else membership.role,
+            "role": membership.role.value if hasattr(membership.role, "value") else membership.role,
         }
         for user, membership in members
     ]
@@ -665,16 +688,24 @@ async def get_client_detail(
     health_score = 50
     if len(campaigns) > 0:
         health_score += 20
-    if client.subscription_status.value in ("active", "trialing") if hasattr(client.subscription_status, 'value') else client.subscription_status in ("active", "trialing"):
+    if (
+        client.subscription_status.value in ("active", "trialing")
+        if hasattr(client.subscription_status, "value")
+        else client.subscription_status in ("active", "trialing")
+    ):
         health_score += 15
 
     return ClientDetail(
         id=client.id,
         name=client.name,
-        tier=client.tier.value if hasattr(client.tier, 'value') else client.tier,
-        subscription_status=client.subscription_status.value if hasattr(client.subscription_status, 'value') else client.subscription_status,
+        tier=client.tier.value if hasattr(client.tier, "value") else client.tier,
+        subscription_status=client.subscription_status.value
+        if hasattr(client.subscription_status, "value")
+        else client.subscription_status,
         credits_remaining=client.credits_remaining,
-        default_permission_mode=client.default_permission_mode.value if hasattr(client.default_permission_mode, 'value') else client.default_permission_mode,
+        default_permission_mode=client.default_permission_mode.value
+        if hasattr(client.default_permission_mode, "value")
+        else client.default_permission_mode,
         stripe_customer_id=client.stripe_customer_id,
         created_at=client.created_at,
         updated_at=client.updated_at,
@@ -728,19 +759,25 @@ async def get_ai_spend(
             agent="content",
             spend_aud=Decimal(str(round(float(today_spend) * content_pct / 100, 2))),
             percentage=content_pct,
-            token_count=int(float(today_spend) * content_pct / 100 * 1000 / 0.015) if today_spend > 0 else 0,
+            token_count=int(float(today_spend) * content_pct / 100 * 1000 / 0.015)
+            if today_spend > 0
+            else 0,
         ),
         AISpendByAgent(
             agent="reply",
             spend_aud=Decimal(str(round(float(today_spend) * reply_pct / 100, 2))),
             percentage=reply_pct,
-            token_count=int(float(today_spend) * reply_pct / 100 * 1000 / 0.015) if today_spend > 0 else 0,
+            token_count=int(float(today_spend) * reply_pct / 100 * 1000 / 0.015)
+            if today_spend > 0
+            else 0,
         ),
         AISpendByAgent(
             agent="cmo",
             spend_aud=Decimal(str(round(float(today_spend) * cmo_pct / 100, 2))),
             percentage=cmo_pct,
-            token_count=int(float(today_spend) * cmo_pct / 100 * 1000 / 0.015) if today_spend > 0 else 0,
+            token_count=int(float(today_spend) * cmo_pct / 100 * 1000 / 0.015)
+            if today_spend > 0
+            else 0,
         ),
     ]
 
@@ -790,16 +827,22 @@ async def get_ai_spend(
             daily_trend.append({"date": date_str, "spend": float(today_limit) * 0.15 + i * 5})
 
     # Add today
-    daily_trend.append({
-        "date": datetime.utcnow().strftime("%Y-%m-%d"),
-        "spend": float(today_spend),
-    })
+    daily_trend.append(
+        {
+            "date": datetime.utcnow().strftime("%Y-%m-%d"),
+            "spend": float(today_spend),
+        }
+    )
 
     # Month to date (estimate based on today's spend)
     day_of_month = datetime.utcnow().day
     mtd_spend = today_spend * Decimal(str(day_of_month))  # Rough estimate
     days_in_month = 30
-    projected_mtd = (mtd_spend / Decimal(str(day_of_month))) * Decimal(str(days_in_month)) if day_of_month > 0 else Decimal("0")
+    projected_mtd = (
+        (mtd_spend / Decimal(str(day_of_month))) * Decimal(str(days_in_month))
+        if day_of_month > 0
+        else Decimal("0")
+    )
 
     return AISpendResponse(
         today_spend=today_spend,
@@ -901,19 +944,30 @@ async def get_revenue_metrics(
     db: AsyncSession = Depends(get_db_session),
 ):
     """Get revenue dashboard metrics."""
-    tier_pricing = {"ignition": Decimal("199"), "velocity": Decimal("499"), "dominance": Decimal("999")}
+    tier_pricing = {
+        "ignition": Decimal("199"),
+        "velocity": Decimal("499"),
+        "dominance": Decimal("999"),
+    }
 
     # Get tier distribution
-    stmt = select(Client.tier, func.count(Client.id)).where(
-        and_(
-            Client.subscription_status == "active",
-            Client.deleted_at.is_(None),
+    stmt = (
+        select(Client.tier, func.count(Client.id))
+        .where(
+            and_(
+                Client.subscription_status == "active",
+                Client.deleted_at.is_(None),
+            )
         )
-    ).group_by(Client.tier)
+        .group_by(Client.tier)
+    )
     result = await db.execute(stmt)
     tier_counts = dict(result.fetchall())
 
-    mrr = sum(tier_pricing.get(tier if isinstance(tier, str) else tier.value, Decimal("0")) * count for tier, count in tier_counts.items())
+    mrr = sum(
+        tier_pricing.get(tier if isinstance(tier, str) else tier.value, Decimal("0")) * count
+        for tier, count in tier_counts.items()
+    )
     arr = mrr * 12
 
     return {
@@ -927,7 +981,10 @@ async def get_revenue_metrics(
         "by_tier": {
             tier if isinstance(tier, str) else tier.value: {
                 "count": count,
-                "mrr": float(tier_pricing.get(tier if isinstance(tier, str) else tier.value, Decimal("0")) * count),
+                "mrr": float(
+                    tier_pricing.get(tier if isinstance(tier, str) else tier.value, Decimal("0"))
+                    * count
+                ),
             }
             for tier, count in tier_counts.items()
         },
@@ -976,8 +1033,12 @@ async def get_all_campaigns(
             "name": campaign.name,
             "client_id": str(client.id),
             "client_name": client.name,
-            "status": campaign.status.value if hasattr(campaign.status, 'value') else campaign.status,
-            "permission_mode": campaign.permission_mode.value if hasattr(campaign.permission_mode, 'value') else campaign.permission_mode,
+            "status": campaign.status.value
+            if hasattr(campaign.status, "value")
+            else campaign.status,
+            "permission_mode": campaign.permission_mode.value
+            if hasattr(campaign.permission_mode, "value")
+            else campaign.permission_mode,
             "created_at": campaign.created_at.isoformat(),
         }
         for campaign, client in rows
@@ -1030,7 +1091,7 @@ async def get_all_leads(
             "client_name": client.name,
             "als_score": lead.als_score,
             "als_tier": lead.als_tier,
-            "status": lead.status.value if hasattr(lead.status, 'value') else lead.status,
+            "status": lead.status.value if hasattr(lead.status, "value") else lead.status,
             "created_at": lead.created_at.isoformat(),
         }
         for lead, client in rows
@@ -1426,14 +1487,14 @@ async def manual_assign_leads(
                     "lead_pool_id": str(lead_pool_id),
                     "client_id": str(request.client_id),
                     "campaign_id": str(request.campaign_id) if request.campaign_id else None,
-                }
+                },
             )
             row = result.fetchone()
             if row:
                 # Update pool status
                 await db.execute(
                     text("UPDATE lead_pool SET pool_status = 'assigned' WHERE id = :id"),
-                    {"id": str(lead_pool_id)}
+                    {"id": str(lead_pool_id)},
                 )
                 assigned_count += 1
             else:
@@ -1473,7 +1534,9 @@ async def release_pool_leads(
             if success:
                 released_count += 1
             else:
-                errors.append({"assignment_id": str(assignment_id), "error": "Not found or already released"})
+                errors.append(
+                    {"assignment_id": str(assignment_id), "error": "Not found or already released"}
+                )
         except Exception as e:
             errors.append({"assignment_id": str(assignment_id), "error": str(e)})
 
@@ -1521,7 +1584,9 @@ async def get_pool_utilization(
                 "released": row.released,
                 "total_touches": row.total_touches,
                 "replied": row.replied,
-                "conversion_rate": round(row.converted / row.total_assigned * 100, 2) if row.total_assigned else 0,
+                "conversion_rate": round(row.converted / row.total_assigned * 100, 2)
+                if row.total_assigned
+                else 0,
             }
             for row in rows
         ]

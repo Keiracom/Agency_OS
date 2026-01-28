@@ -45,6 +45,7 @@ router = APIRouter(tags=["meetings"])
 
 class MeetingResponse(BaseModel):
     """Schema for a meeting."""
+
     id: UUID
     lead_id: UUID
     lead_name: str
@@ -62,6 +63,7 @@ class MeetingResponse(BaseModel):
 
 class MeetingListResponse(BaseModel):
     """Schema for meeting list."""
+
     items: list[MeetingResponse] = Field(..., description="List of meetings")
     total: int = Field(..., description="Total count")
 
@@ -144,6 +146,7 @@ async def list_meetings(
         # If no scheduled_at, use activity created_at + 2 days as estimate
         if not scheduled_at:
             from datetime import timedelta
+
             scheduled_at = activity.created_at + timedelta(days=2)
 
         # Filter upcoming if requested

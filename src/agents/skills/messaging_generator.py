@@ -35,7 +35,9 @@ if TYPE_CHECKING:
     from src.integrations.anthropic import AnthropicClient
 
 
-class MessagingGeneratorSkill(BaseSkill["MessagingGeneratorSkill.Input", "MessagingGeneratorSkill.Output"]):
+class MessagingGeneratorSkill(
+    BaseSkill["MessagingGeneratorSkill.Input", "MessagingGeneratorSkill.Output"]
+):
     """
     Generate channel-specific messaging content for campaign touches.
 
@@ -62,31 +64,25 @@ class MessagingGeneratorSkill(BaseSkill["MessagingGeneratorSkill.Input", "Messag
         icp_pain_points: list[str] = Field(
             ..., min_length=1, description="Target pain points from ICP"
         )
-        icp_titles: list[str] = Field(
-            ..., description="Target job titles from ICP"
-        )
-        agency_value_prop: str = Field(
-            ..., min_length=10, description="Agency's value proposition"
-        )
-        agency_name: str = Field(
-            ..., min_length=1, description="Agency name"
-        )
-        agency_services: list[str] = Field(
-            ..., description="Services offered by the agency"
-        )
-        industry: str = Field(
-            ..., min_length=1, description="Target industry"
-        )
+        icp_titles: list[str] = Field(..., description="Target job titles from ICP")
+        agency_value_prop: str = Field(..., min_length=10, description="Agency's value proposition")
+        agency_name: str = Field(..., min_length=1, description="Agency name")
+        agency_services: list[str] = Field(..., description="Services offered by the agency")
+        industry: str = Field(..., min_length=1, description="Target industry")
 
         # Generation parameters
         channel: Literal["email", "sms", "linkedin", "voice"] = Field(
             ..., description="Channel for this message"
         )
-        touch_number: int = Field(
-            ..., ge=1, le=10, description="Touch number in sequence (1-10)"
-        )
+        touch_number: int = Field(..., ge=1, le=10, description="Touch number in sequence (1-10)")
         touch_purpose: Literal[
-            "intro", "connect", "value_add", "pattern_interrupt", "follow_up", "breakup", "discovery"
+            "intro",
+            "connect",
+            "value_add",
+            "pattern_interrupt",
+            "follow_up",
+            "breakup",
+            "discovery",
         ] = Field(..., description="Purpose of this touch")
         tone: Literal["professional", "casual", "direct", "friendly", "formal"] = Field(
             "professional", description="Tone for the messaging"
@@ -96,7 +92,7 @@ class MessagingGeneratorSkill(BaseSkill["MessagingGeneratorSkill.Input", "Messag
         what_patterns: dict[str, Any] | None = Field(
             None,
             description="WHAT pattern insights from Conversion Intelligence. "
-            "Includes winning subject patterns, top CTAs, optimal length, personalization lift."
+            "Includes winning subject patterns, top CTAs, optimal length, personalization lift.",
         )
 
     class Output(BaseModel):
@@ -109,22 +105,16 @@ class MessagingGeneratorSkill(BaseSkill["MessagingGeneratorSkill.Input", "Messag
         subject_options: list[str] | None = Field(
             None, description="3 subject line variants (under 50 chars each)"
         )
-        email_body: str | None = Field(
-            None, description="Email body with {placeholders}"
-        )
+        email_body: str | None = Field(None, description="Email body with {placeholders}")
 
         # SMS fields (if channel == "sms")
-        sms_message: str | None = Field(
-            None, description="SMS message (under 160 chars)"
-        )
+        sms_message: str | None = Field(None, description="SMS message (under 160 chars)")
 
         # LinkedIn fields (if channel == "linkedin")
         connection_note: str | None = Field(
             None, description="Connection request note (under 300 chars)"
         )
-        inmail_body: str | None = Field(
-            None, description="InMail message body"
-        )
+        inmail_body: str | None = Field(None, description="InMail message body")
 
         # Voice fields (if channel == "voice")
         voice_script_points: list[str] | None = Field(
@@ -138,9 +128,7 @@ class MessagingGeneratorSkill(BaseSkill["MessagingGeneratorSkill.Input", "Messag
         placeholders_used: list[str] = Field(
             default_factory=list, description="List of placeholders in the content"
         )
-        pain_point_addressed: str = Field(
-            "", description="Primary pain point addressed"
-        )
+        pain_point_addressed: str = Field("", description="Primary pain point addressed")
 
         @field_validator("sms_message")
         @classmethod
@@ -159,7 +147,9 @@ class MessagingGeneratorSkill(BaseSkill["MessagingGeneratorSkill.Input", "Messag
                 return v[:297] + "..."
             return v
 
-    system_prompt: ClassVar[str] = """You are an expert cold outreach copywriter. Generate messaging for a specific
+    system_prompt: ClassVar[
+        str
+    ] = """You are an expert cold outreach copywriter. Generate messaging for a specific
 touch in a multi-channel sequence.
 
 RULES:
@@ -250,19 +240,21 @@ For VOICE:
     def build_prompt(self, input_data: Input) -> str:
         """Build prompt from input data."""
         # Select primary pain point to address
-        pain_point = input_data.icp_pain_points[0] if input_data.icp_pain_points else "business growth"
+        pain_point = (
+            input_data.icp_pain_points[0] if input_data.icp_pain_points else "business growth"
+        )
 
         prompt = f"""Generate {input_data.channel.upper()} messaging for touch #{input_data.touch_number}.
 
 AGENCY INFO:
 - Name: {input_data.agency_name}
 - Value Proposition: {input_data.agency_value_prop}
-- Services: {', '.join(input_data.agency_services)}
+- Services: {", ".join(input_data.agency_services)}
 
 TARGET ICP:
 - Industry: {input_data.industry}
-- Titles: {', '.join(input_data.icp_titles)}
-- Pain Points: {', '.join(input_data.icp_pain_points)}
+- Titles: {", ".join(input_data.icp_titles)}
+- Pain Points: {", ".join(input_data.icp_pain_points)}
 
 GENERATION PARAMETERS:
 - Channel: {input_data.channel}
@@ -302,7 +294,9 @@ GENERATION PARAMETERS:
 
             # Pain points that convert
             if patterns.get("pain_points", {}).get("top_pain_points"):
-                top_pains = [p.get("pain_point", "") for p in patterns["pain_points"]["top_pain_points"][:2]]
+                top_pains = [
+                    p.get("pain_point", "") for p in patterns["pain_points"]["top_pain_points"][:2]
+                ]
                 prompt += f"\n- High-converting pain points: {', '.join(top_pains)}"
 
         prompt += "\n\nGenerate the messaging content as JSON. Focus on the pain point and use appropriate placeholders."
@@ -433,7 +427,13 @@ Worth a quick chat?
 Best,
 {{sender_name}}
 {agency_name}""",
-                placeholders_used=["first_name", "company", "industry", "pain_point", "sender_name"],
+                placeholders_used=[
+                    "first_name",
+                    "company",
+                    "industry",
+                    "pain_point",
+                    "sender_name",
+                ],
                 pain_point_addressed="general business challenges",
             )
 
@@ -459,7 +459,13 @@ We specialize in helping companies like yours with {pain_point}. Would you be op
 
 Best,
 {sender_name}""",
-                placeholders_used=["first_name", "company", "industry", "pain_point", "sender_name"],
+                placeholders_used=[
+                    "first_name",
+                    "company",
+                    "industry",
+                    "pain_point",
+                    "sender_name",
+                ],
                 pain_point_addressed="general business challenges",
             )
 

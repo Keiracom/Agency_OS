@@ -347,6 +347,7 @@ async def hubspot_oauth_callback(
         expires_in = tokens.get("expires_in", 1800)  # Default 30 min
         expires_at = datetime.utcnow()
         from datetime import timedelta
+
         expires_at = expires_at + timedelta(seconds=expires_in)
 
         # Save config
@@ -537,8 +538,7 @@ async def get_crm_pipelines(
                 id=p.id,
                 name=p.name,
                 stages=[
-                    StageResponse(id=s.id, name=s.name, probability=s.probability)
-                    for s in p.stages
+                    StageResponse(id=s.id, name=s.name, probability=s.probability) for s in p.stages
                 ],
             )
             for p in pipelines

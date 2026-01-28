@@ -55,9 +55,7 @@ class SendLimiter:
         if not settings.TEST_MODE:
             return True, 0  # No limit in production
 
-        today_start = datetime.utcnow().replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
         stmt = (
             select(func.count(Activity.id))

@@ -114,14 +114,13 @@ def verify_twilio_signature(
 
     # Compute HMAC-SHA1
     computed_signature = hmac.new(
-        auth_token.encode('utf-8'),
-        signature_string.encode('utf-8'),
-        hashlib.sha1
+        auth_token.encode("utf-8"), signature_string.encode("utf-8"), hashlib.sha1
     ).digest()
 
     # Base64 encode
     import base64
-    computed_signature_b64 = base64.b64encode(computed_signature).decode('utf-8')
+
+    computed_signature_b64 = base64.b64encode(computed_signature).decode("utf-8")
 
     # Compare signatures
     return hmac.compare_digest(computed_signature_b64, signature)
@@ -143,13 +142,10 @@ async def find_lead_by_email(db: AsyncSession, email: str) -> Lead | None:
     Returns:
         Lead if found, None otherwise
     """
-    stmt = (
-        select(Lead)
-        .where(
-            and_(
-                Lead.email == email.lower(),
-                Lead.deleted_at.is_(None),  # Soft delete check (Rule 14)
-            )
+    stmt = select(Lead).where(
+        and_(
+            Lead.email == email.lower(),
+            Lead.deleted_at.is_(None),  # Soft delete check (Rule 14)
         )
     )
     result = await db.execute(stmt)
@@ -167,13 +163,10 @@ async def find_lead_by_phone(db: AsyncSession, phone: str) -> Lead | None:
     Returns:
         Lead if found, None otherwise
     """
-    stmt = (
-        select(Lead)
-        .where(
-            and_(
-                Lead.phone == phone,
-                Lead.deleted_at.is_(None),  # Soft delete check (Rule 14)
-            )
+    stmt = select(Lead).where(
+        and_(
+            Lead.phone == phone,
+            Lead.deleted_at.is_(None),  # Soft delete check (Rule 14)
         )
     )
     result = await db.execute(stmt)
@@ -191,13 +184,10 @@ async def find_lead_by_linkedin(db: AsyncSession, linkedin_url: str) -> Lead | N
     Returns:
         Lead if found, None otherwise
     """
-    stmt = (
-        select(Lead)
-        .where(
-            and_(
-                Lead.linkedin_url == linkedin_url,
-                Lead.deleted_at.is_(None),  # Soft delete check (Rule 14)
-            )
+    stmt = select(Lead).where(
+        and_(
+            Lead.linkedin_url == linkedin_url,
+            Lead.deleted_at.is_(None),  # Soft delete check (Rule 14)
         )
     )
     result = await db.execute(stmt)
@@ -264,9 +254,7 @@ async def postmark_inbound_webhook(
 
     # Verify signature (currently placeholder)
     # NOTE: Implement custom verification in production
-    if settings.is_production and not verify_postmark_signature(
-        await request.body(), signature
-    ):
+    if settings.is_production and not verify_postmark_signature(await request.body(), signature):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid webhook signature",
@@ -370,6 +358,7 @@ async def postmark_bounce_webhook(
 
         # Update lead status to bounced
         from src.models.base import LeadStatus
+
         lead.status = LeadStatus.BOUNCED
         lead.bounce_count += 1
 
@@ -436,6 +425,7 @@ async def postmark_spam_webhook(
 
         # Update lead status to unsubscribed
         from src.models.base import LeadStatus
+
         lead.status = LeadStatus.UNSUBSCRIBED
 
         # Log spam complaint activity
@@ -601,10 +591,7 @@ async def twilio_status_webhook(
         if not message_sid:
             return {"status": "ignored", "reason": "no_message_sid"}
 
-        stmt = (
-            select(Activity)
-            .where(Activity.provider_message_id == message_sid)
-        )
+        stmt = select(Activity).where(Activity.provider_message_id == message_sid)
         result = await db.execute(stmt)
         activity = result.scalar_one_or_none()
 
@@ -677,6 +664,7 @@ async def clicksend_inbound_webhook(
 
         # Parse webhook payload using ClickSend parser
         from src.integrations.clicksend import get_clicksend_client
+
         clicksend = get_clicksend_client()
         parsed = clicksend.parse_inbound_sms(payload)
 
@@ -757,6 +745,7 @@ async def clicksend_status_webhook(
 
         # Parse status webhook
         from src.integrations.clicksend import get_clicksend_client
+
         clicksend = get_clicksend_client()
         parsed = clicksend.parse_sms_webhook(payload)
 
@@ -765,10 +754,7 @@ async def clicksend_status_webhook(
         if not message_id:
             return {"status": "ignored", "reason": "no_message_id"}
 
-        stmt = (
-            select(Activity)
-            .where(Activity.provider_message_id == message_id)
-        )
+        stmt = select(Activity).where(Activity.provider_message_id == message_id)
         result = await db.execute(stmt)
         activity = result.scalar_one_or_none()
 
@@ -899,15 +885,8 @@ async def unipile_message_webhook(
             or message_data.get("sender", {}).get("identifier")
             or parsed.get("profile_url")
         )
-        message = (
-            message_data.get("text")
-            or message_data.get("body")
-            or parsed.get("message")
-        )
-        message_id = (
-            message_data.get("id")
-            or parsed.get("message_id")
-        )
+        message = message_data.get("text") or message_data.get("body") or parsed.get("message")
+        message_id = message_data.get("id") or parsed.get("message_id")
 
         if not linkedin_url:
             return {"status": "ignored", "reason": "no_linkedin_url"}
@@ -1067,11 +1046,7 @@ def verify_smartlead_signature(payload: bytes, signature: str | None) -> bool:
     if not secret:
         return not settings.is_production
 
-    computed = hmac.new(
-        secret.encode('utf-8'),
-        payload,
-        hashlib.sha256
-    ).hexdigest()
+    computed = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).hexdigest()
 
     return hmac.compare_digest(computed, signature)
 
@@ -1231,11 +1206,7 @@ def verify_salesforge_signature(payload: bytes, signature: str | None) -> bool:
     if not secret:
         return not settings.is_production
 
-    computed = hmac.new(
-        secret.encode('utf-8'),
-        payload,
-        hashlib.sha256
-    ).hexdigest()
+    computed = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).hexdigest()
 
     return hmac.compare_digest(computed, signature)
 
@@ -1407,11 +1378,8 @@ def verify_resend_signature(payload: bytes, signature: str | None) -> bool:
         sig_part = parts[1] if parts[0].startswith("v1") else parts[0]
 
         import base64
-        computed = hmac.new(
-            base64.b64decode(secret),
-            payload,
-            hashlib.sha256
-        )
+
+        computed = hmac.new(base64.b64decode(secret), payload, hashlib.sha256)
         computed_b64 = base64.b64encode(computed.digest()).decode()
 
         return hmac.compare_digest(computed_b64, sig_part)
@@ -1610,6 +1578,7 @@ async def crm_deal_webhook(
             return {"status": "error", "error": "Missing client_id"}
 
         from uuid import UUID
+
         client_id = UUID(client_id_str)
 
         # Parse based on CRM source
@@ -1647,6 +1616,7 @@ async def crm_deal_webhook(
         blind_meeting_created = False
         if not existing_deal and not deal.get("meeting_id"):
             from src.services.meeting_service import MeetingService
+
             meeting_service = MeetingService(db)
 
             # Create a "blind meeting" record for attribution tracking
@@ -1663,14 +1633,16 @@ async def crm_deal_webhook(
 
                 # Link deal to meeting
                 from sqlalchemy import text
+
                 await db.execute(
                     text("UPDATE deals SET meeting_id = :meeting_id WHERE id = :deal_id"),
-                    {"meeting_id": blind_meeting["id"], "deal_id": deal["id"]}
+                    {"meeting_id": blind_meeting["id"], "deal_id": deal["id"]},
                 )
                 await db.commit()
             except Exception as e:
                 # Log but don't fail - deal sync is more important
                 import logging
+
                 logging.getLogger(__name__).warning(f"Failed to create blind meeting: {e}")
 
         return {
@@ -1743,6 +1715,7 @@ async def crm_meeting_webhook(
                     )
                 elif event_type == "rescheduled":
                     from datetime import datetime
+
                     new_time = payload.get("new_start_time")
                     if new_time:
                         await meeting_service.reschedule(
@@ -1811,7 +1784,9 @@ def _parse_pipedrive_deal(payload: dict) -> dict:
         "name": current.get("title", ""),
         "value": current.get("value"),
         "stage": current.get("stage_id", ""),
-        "contact_email": current.get("person_id", {}).get("email", [{}])[0].get("value") if isinstance(current.get("person_id"), dict) else None,
+        "contact_email": current.get("person_id", {}).get("email", [{}])[0].get("value")
+        if isinstance(current.get("person_id"), dict)
+        else None,
         "close_date": current.get("expected_close_date"),
     }
 
@@ -1824,7 +1799,9 @@ def _parse_close_deal(payload: dict) -> dict:
         "name": payload.get("note") or payload.get("lead_name", "Close Opportunity"),
         "value": payload.get("value"),
         "stage": _map_close_status(payload.get("status_type", "")),
-        "contact_email": payload.get("contact", {}).get("email") if payload.get("contact") else None,
+        "contact_email": payload.get("contact", {}).get("email")
+        if payload.get("contact")
+        else None,
         "close_date": payload.get("date_won") or payload.get("expected_close_date"),
         "lead_id": payload.get("lead_id"),  # Close has lead_id in payload
     }
@@ -1869,9 +1846,10 @@ async def _handle_calendly_webhook(db, payload: dict, meeting_service) -> dict:
             invitee_email = invitee.get("email")
             if invitee_email:
                 from sqlalchemy import text
+
                 lead_query = await db.execute(
                     text("SELECT id, client_id FROM leads WHERE email = :email LIMIT 1"),
-                    {"email": invitee_email}
+                    {"email": invitee_email},
                 )
                 lead_row = lead_query.fetchone()
                 if lead_row:
@@ -1944,9 +1922,7 @@ async def _handle_calcom_webhook(db, payload: dict, meeting_service) -> dict:
             or booking_payload.get("client_id")
         )
         lead_id_str = (
-            metadata.get("lead_id")
-            or responses.get("lead_id")
-            or booking_payload.get("lead_id")
+            metadata.get("lead_id") or responses.get("lead_id") or booking_payload.get("lead_id")
         )
 
         if not client_id_str or not lead_id_str:
@@ -1956,9 +1932,12 @@ async def _handle_calcom_webhook(db, payload: dict, meeting_service) -> dict:
                 attendee_email = attendees[0].get("email")
                 if attendee_email:
                     from sqlalchemy import text
+
                     lead_query = await db.execute(
-                        text("SELECT id, client_id FROM leads WHERE email = :email AND deleted_at IS NULL LIMIT 1"),
-                        {"email": attendee_email}
+                        text(
+                            "SELECT id, client_id FROM leads WHERE email = :email AND deleted_at IS NULL LIMIT 1"
+                        ),
+                        {"email": attendee_email},
                     )
                     lead_row = lead_query.fetchone()
                     if lead_row:

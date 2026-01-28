@@ -74,10 +74,9 @@ class AnthropicClient:
         Returns:
             Cost in AUD
         """
-        cost = (
-            (input_tokens / 1_000_000) * self.COST_PER_M_INPUT_TOKENS
-            + (output_tokens / 1_000_000) * self.COST_PER_M_OUTPUT_TOKENS
-        )
+        cost = (input_tokens / 1_000_000) * self.COST_PER_M_INPUT_TOKENS + (
+            output_tokens / 1_000_000
+        ) * self.COST_PER_M_OUTPUT_TOKENS
         await ai_spend_tracker.add_spend(cost)
         return cost
 
@@ -94,10 +93,9 @@ class AnthropicClient:
         """
         # Rough estimate: 4 chars per token
         estimated_input_tokens = input_length / 4
-        return (
-            (estimated_input_tokens / 1_000_000) * self.COST_PER_M_INPUT_TOKENS
-            + (max_tokens / 1_000_000) * self.COST_PER_M_OUTPUT_TOKENS
-        )
+        return (estimated_input_tokens / 1_000_000) * self.COST_PER_M_INPUT_TOKENS + (
+            max_tokens / 1_000_000
+        ) * self.COST_PER_M_OUTPUT_TOKENS
 
     async def complete(
         self,
@@ -207,6 +205,7 @@ Return JSON with: {"intent": "category", "confidence": 0.0-1.0, "reasoning": "br
 
         # Parse JSON from response
         import json
+
         try:
             content = result["content"]
             # Handle markdown code blocks
@@ -259,10 +258,10 @@ Template:
 {template}
 
 Lead Data:
-- Name: {lead_data.get('first_name')} {lead_data.get('last_name')}
-- Company: {lead_data.get('company')}
-- Title: {lead_data.get('title')}
-- Industry: {lead_data.get('organization_industry')}
+- Name: {lead_data.get("first_name")} {lead_data.get("last_name")}
+- Company: {lead_data.get("company")}
+- Title: {lead_data.get("title")}
+- Industry: {lead_data.get("organization_industry")}
 
 Return only the email body text."""
 

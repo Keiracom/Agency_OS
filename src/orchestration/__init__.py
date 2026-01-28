@@ -11,6 +11,7 @@ PHASE: 5 (Orchestration)
 def start_worker():
     """Lazy wrapper to import and start the worker."""
     from src.orchestration.worker import start_worker as _start_worker
+
     return _start_worker()
 
 

@@ -40,7 +40,9 @@ class SequenceRecommendation(BaseModel):
     """A recommended multi-channel sequence."""
 
     sequence_name: str = Field(description="Name for this sequence pattern")
-    channels: list[str] = Field(description="Ordered list of channels (e.g., ['email', 'linkedin', 'email'])")
+    channels: list[str] = Field(
+        description="Ordered list of channels (e.g., ['email', 'linkedin', 'email'])"
+    )
     description: str = Field(description="Why this sequence works")
     conversion_rate: float = Field(description="Observed conversion rate for this pattern")
     sample_size: int = Field(description="Number of leads that followed this sequence")
@@ -227,9 +229,15 @@ async def run_how_analyzer(
     if campaign_metrics:
         prompt_parts.append("\n## Current Campaign Performance\n")
         prompt_parts.append(f"- Overall Reply Rate: {campaign_metrics.get('reply_rate', 'N/A')}%\n")
-        prompt_parts.append(f"- Email Reply Rate: {campaign_metrics.get('email_reply_rate', 'N/A')}%\n")
-        prompt_parts.append(f"- LinkedIn Reply Rate: {campaign_metrics.get('linkedin_reply_rate', 'N/A')}%\n")
-        prompt_parts.append(f"- Voice Connect Rate: {campaign_metrics.get('voice_connect_rate', 'N/A')}%\n")
+        prompt_parts.append(
+            f"- Email Reply Rate: {campaign_metrics.get('email_reply_rate', 'N/A')}%\n"
+        )
+        prompt_parts.append(
+            f"- LinkedIn Reply Rate: {campaign_metrics.get('linkedin_reply_rate', 'N/A')}%\n"
+        )
+        prompt_parts.append(
+            f"- Voice Connect Rate: {campaign_metrics.get('voice_connect_rate', 'N/A')}%\n"
+        )
 
     # Instructions
     prompt_parts.append("\n## Your Task\n")

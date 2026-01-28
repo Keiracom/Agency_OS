@@ -156,7 +156,7 @@ class VoiceRetryService:
                     **existing_extra,
                     "voice_retry_at": retry_at.isoformat(),
                     "voice_retry_outcome": outcome,
-                }
+                },
             )
         )
         await self.db.execute(update_stmt)
@@ -221,14 +221,16 @@ class VoiceRetryService:
                 if retry_at <= now:
                     # Check if retry already processed
                     if not activity.extra_data.get("voice_retry_processed"):
-                        pending.append({
-                            "activity_id": str(activity.id),
-                            "lead_id": str(activity.lead_id),
-                            "campaign_id": str(activity.campaign_id),
-                            "client_id": str(activity.client_id),
-                            "retry_at": retry_at,
-                            "outcome": activity.extra_data.get("voice_retry_outcome"),
-                        })
+                        pending.append(
+                            {
+                                "activity_id": str(activity.id),
+                                "lead_id": str(activity.lead_id),
+                                "campaign_id": str(activity.campaign_id),
+                                "client_id": str(activity.client_id),
+                                "retry_at": retry_at,
+                                "outcome": activity.extra_data.get("voice_retry_outcome"),
+                            }
+                        )
 
         return pending
 
@@ -253,9 +255,7 @@ class VoiceRetryService:
             extra_data["voice_retry_processed_at"] = datetime.utcnow().isoformat()
 
             update_stmt = (
-                update(Activity)
-                .where(Activity.id == activity_id)
-                .values(extra_data=extra_data)
+                update(Activity).where(Activity.id == activity_id).values(extra_data=extra_data)
             )
             await self.db.execute(update_stmt)
             await self.db.commit()

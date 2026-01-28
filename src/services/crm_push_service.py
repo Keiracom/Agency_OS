@@ -420,7 +420,9 @@ class CRMPushService:
         elif config.crm_type == "pipedrive":
             return await self._pipedrive_create_deal(config, lead, meeting, contact_id, deal_name)
         elif config.crm_type == "close":
-            deal_id = await self._close_create_opportunity(config, lead, meeting, contact_id, deal_name)
+            deal_id = await self._close_create_opportunity(
+                config, lead, meeting, contact_id, deal_name
+            )
             return deal_id, None
         else:
             raise ValueError(f"Unsupported CRM type: {config.crm_type}")
@@ -504,11 +506,7 @@ class CRMPushService:
         search_url = f"{HUBSPOT_API}/crm/v3/objects/contacts/search"
         search_body = {
             "filterGroups": [
-                {
-                    "filters": [
-                        {"propertyName": "email", "operator": "EQ", "value": lead.email}
-                    ]
-                }
+                {"filters": [{"propertyName": "email", "operator": "EQ", "value": lead.email}]}
             ],
             "limit": 1,
         }
@@ -634,7 +632,11 @@ class CRMPushService:
         response.raise_for_status()
 
         return [
-            CRMUser(id=u["id"], name=f"{u.get('firstName', '')} {u.get('lastName', '')}".strip(), email=u.get("email"))
+            CRMUser(
+                id=u["id"],
+                name=f"{u.get('firstName', '')} {u.get('lastName', '')}".strip(),
+                email=u.get("email"),
+            )
             for u in response.json().get("results", [])
         ]
 
@@ -660,7 +662,9 @@ class CRMPushService:
         # Create new person
         create_url = f"{PIPEDRIVE_API}/persons"
         create_body = {
-            "name": lead.full_name or f"{lead.first_name or ''} {lead.last_name or ''}".strip() or lead.email,
+            "name": lead.full_name
+            or f"{lead.first_name or ''} {lead.last_name or ''}".strip()
+            or lead.email,
             "email": [{"value": lead.email, "primary": True}],
         }
 
@@ -720,7 +724,9 @@ class CRMPushService:
 
         # Add expected close date based on meeting
         if meeting.scheduled_at:
-            body["expected_close_date"] = (meeting.scheduled_at + timedelta(days=30)).strftime("%Y-%m-%d")
+            body["expected_close_date"] = (meeting.scheduled_at + timedelta(days=30)).strftime(
+                "%Y-%m-%d"
+            )
 
         response = await self.http.post(url, params={"api_token": config.api_key}, json=body)
         response.raise_for_status()
@@ -818,7 +824,8 @@ class CRMPushService:
             "name": lead.organization_name or lead.full_name or lead.email,
             "contacts": [
                 {
-                    "name": lead.full_name or f"{lead.first_name or ''} {lead.last_name or ''}".strip(),
+                    "name": lead.full_name
+                    or f"{lead.first_name or ''} {lead.last_name or ''}".strip(),
                     "emails": [{"email": lead.email, "type": "office"}],
                 }
             ],
@@ -912,7 +919,11 @@ class CRMPushService:
         response.raise_for_status()
 
         return [
-            CRMUser(id=u["id"], name=f"{u.get('first_name', '')} {u.get('last_name', '')}".strip(), email=u.get("email"))
+            CRMUser(
+                id=u["id"],
+                name=f"{u.get('first_name', '')} {u.get('last_name', '')}".strip(),
+                email=u.get("email"),
+            )
             for u in response.json().get("data", [])
         ]
 

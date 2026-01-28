@@ -39,6 +39,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 class ValidationResult(Enum):
     """Result of JIT validation."""
+
     PASS = "pass"
     FAIL = "fail"
 
@@ -46,6 +47,7 @@ class ValidationResult(Enum):
 @dataclass
 class JITValidationResult:
     """Result of JIT validation check."""
+
     is_valid: bool
     block_reason: str | None = None
     block_code: str | None = None
@@ -53,11 +55,7 @@ class JITValidationResult:
     lead_pool_id: UUID | None = None
 
     @classmethod
-    def ok(
-        cls,
-        assignment_id: UUID,
-        lead_pool_id: UUID
-    ) -> "JITValidationResult":
+    def ok(cls, assignment_id: UUID, lead_pool_id: UUID) -> "JITValidationResult":
         """Create a passing result."""
         return cls(
             is_valid=True,
@@ -67,10 +65,7 @@ class JITValidationResult:
 
     @classmethod
     def fail(
-        cls,
-        reason: str,
-        code: str,
-        lead_pool_id: UUID | None = None
+        cls, reason: str, code: str, lead_pool_id: UUID | None = None
     ) -> "JITValidationResult":
         """Create a failing result."""
         return cls(
@@ -131,10 +126,7 @@ class JITValidator:
         # 1. Get pool lead
         pool_lead = await self._get_pool_lead(lead_pool_id)
         if not pool_lead:
-            return JITValidationResult.fail(
-                "Lead not found in pool",
-                "lead_not_found"
-            )
+            return JITValidationResult.fail("Lead not found in pool", "lead_not_found")
 
         # 2. Check global blocks (applies to all clients)
         global_result = self._check_global_blocks(pool_lead, channel)
@@ -152,9 +144,7 @@ class JITValidator:
         assignment = await self._get_assignment(lead_pool_id, client_id)
         if not assignment:
             return JITValidationResult.fail(
-                "Lead not assigned to this client",
-                "not_assigned",
-                lead_pool_id
+                "Lead not assigned to this client", "not_assigned", lead_pool_id
             )
 
         # 5. Check assignment status
@@ -179,10 +169,7 @@ class JITValidator:
                 return warmup_result
 
         # All checks passed
-        return JITValidationResult.ok(
-            assignment_id=assignment["id"],
-            lead_pool_id=lead_pool_id
-        )
+        return JITValidationResult.ok(assignment_id=assignment["id"], lead_pool_id=lead_pool_id)
 
     async def validate_by_email(
         self,
@@ -212,10 +199,7 @@ class JITValidator:
         row = result.fetchone()
 
         if not row:
-            return JITValidationResult.fail(
-                "Lead not found in pool",
-                "lead_not_found"
-            )
+            return JITValidationResult.fail("Lead not found in pool", "lead_not_found")
 
         return await self.validate(row.id, client_id, channel)
 
@@ -248,7 +232,7 @@ class JITValidator:
             result = await self.validate(
                 UUID(lead_pool_id) if isinstance(lead_pool_id, str) else lead_pool_id,
                 client_id,
-                channel
+                channel,
             )
             results[str(lead_pool_id)] = result
 
@@ -262,18 +246,11 @@ class JITValidator:
             FROM lead_pool
             WHERE id = :id
         """)
-        result = await self.session.execute(
-            query,
-            {"id": str(lead_pool_id)}
-        )
+        result = await self.session.execute(query, {"id": str(lead_pool_id)})
         row = result.fetchone()
         return dict(row._mapping) if row else None
 
-    async def _get_assignment(
-        self,
-        lead_pool_id: UUID,
-        client_id: UUID
-    ) -> dict[str, Any] | None:
+    async def _get_assignment(self, lead_pool_id: UUID, client_id: UUID) -> dict[str, Any] | None:
         """
         Get assignment for lead and client.
 
@@ -301,44 +278,30 @@ class JITValidator:
             AND lp.client_id = :client_id
         """)
         result = await self.session.execute(
-            query,
-            {
-                "lead_pool_id": str(lead_pool_id),
-                "client_id": str(client_id)
-            }
+            query, {"lead_pool_id": str(lead_pool_id), "client_id": str(client_id)}
         )
         row = result.fetchone()
         return dict(row._mapping) if row else None
 
-    def _check_global_blocks(
-        self,
-        pool_lead: dict[str, Any],
-        channel: str
-    ) -> JITValidationResult:
+    def _check_global_blocks(self, pool_lead: dict[str, Any], channel: str) -> JITValidationResult:
         """Check global blocking conditions."""
         # Bounced
         if pool_lead.get("is_bounced"):
             return JITValidationResult.fail(
-                "Email has bounced globally",
-                "bounced_globally",
-                pool_lead["id"]
+                "Email has bounced globally", "bounced_globally", pool_lead["id"]
             )
 
         # Unsubscribed
         if pool_lead.get("is_unsubscribed"):
             return JITValidationResult.fail(
-                "Lead requested no contact",
-                "unsubscribed_globally",
-                pool_lead["id"]
+                "Lead requested no contact", "unsubscribed_globally", pool_lead["id"]
             )
 
         # Pool status check
         pool_status = pool_lead.get("pool_status")
         if pool_status in ("bounced", "unsubscribed", "invalid"):
             return JITValidationResult.fail(
-                f"Lead is in '{pool_status}' status",
-                f"pool_status_{pool_status}",
-                pool_lead["id"]
+                f"Lead is in '{pool_status}' status", f"pool_status_{pool_status}", pool_lead["id"]
             )
 
         # Email verification (email channel only)
@@ -346,9 +309,7 @@ class JITValidator:
             email_status = pool_lead.get("email_status")
             if email_status == "invalid":
                 return JITValidationResult.fail(
-                    "Email marked as invalid",
-                    "invalid_email",
-                    pool_lead["id"]
+                    "Email marked as invalid", "invalid_email", pool_lead["id"]
                 )
             if email_status == "guessed":
                 # Warning but not blocking - could be configurable
@@ -357,10 +318,7 @@ class JITValidator:
         return JITValidationResult(is_valid=True)
 
     async def _check_suppression(
-        self,
-        client_id: UUID,
-        email: str | None,
-        lead_pool_id: UUID
+        self, client_id: UUID, email: str | None, lead_pool_id: UUID
     ) -> JITValidationResult:
         """
         Check if lead is on client's suppression list (Phase 24F).
@@ -384,15 +342,12 @@ class JITValidator:
             return JITValidationResult.fail(
                 row.details or f"Lead is suppressed: {row.reason}",
                 f"suppressed_{row.reason}",
-                lead_pool_id
+                lead_pool_id,
             )
 
         return JITValidationResult(is_valid=True)
 
-    def _check_assignment(
-        self,
-        assignment: dict[str, Any]
-    ) -> JITValidationResult:
+    def _check_assignment(self, assignment: dict[str, Any]) -> JITValidationResult:
         """
         Check assignment-level conditions.
 
@@ -406,8 +361,7 @@ class JITValidator:
         blocked_statuses = ("converted", "bounced", "unsubscribed", "invalid")
         if status in blocked_statuses:
             return JITValidationResult.fail(
-                f"Lead pool status is '{status}'",
-                f"pool_status_{status}"
+                f"Lead pool status is '{status}'", f"pool_status_{status}"
             )
 
         # Max touches
@@ -415,8 +369,7 @@ class JITValidator:
         max_touches = assignment.get("max_touches", 10)
         if total_touches >= max_touches:
             return JITValidationResult.fail(
-                f"Maximum touches ({max_touches}) reached",
-                "max_touches_reached"
+                f"Maximum touches ({max_touches}) reached", "max_touches_reached"
             )
 
         # Already replied with negative intent
@@ -424,17 +377,12 @@ class JITValidator:
             intent = assignment.get("reply_intent", "")
             if intent in ("not_interested", "unsubscribe", "do_not_contact"):
                 return JITValidationResult.fail(
-                    f"Lead replied with '{intent}' intent",
-                    f"replied_{intent}"
+                    f"Lead replied with '{intent}' intent", f"replied_{intent}"
                 )
 
         return JITValidationResult(is_valid=True)
 
-    def _check_timing(
-        self,
-        assignment: dict[str, Any],
-        channel: str
-    ) -> JITValidationResult:
+    def _check_timing(self, assignment: dict[str, Any], channel: str) -> JITValidationResult:
         """Check timing constraints."""
         now = datetime.now()
 
@@ -443,8 +391,7 @@ class JITValidator:
         if cooling_until and cooling_until > now:
             days_left = (cooling_until - now).days
             return JITValidationResult.fail(
-                f"Lead in cooling period ({days_left} days left)",
-                "cooling_period"
+                f"Lead in cooling period ({days_left} days left)", "cooling_period"
             )
 
         # Minimum gap between touches
@@ -454,7 +401,7 @@ class JITValidator:
             if days_since < self.MIN_TOUCH_GAP_DAYS:
                 return JITValidationResult.fail(
                     f"Last contacted {days_since} days ago (min: {self.MIN_TOUCH_GAP_DAYS})",
-                    "too_recent"
+                    "too_recent",
                 )
 
         # Channel cooldown
@@ -466,11 +413,7 @@ class JITValidator:
 
         return JITValidationResult(is_valid=True)
 
-    async def _check_rate_limits(
-        self,
-        client_id: UUID,
-        channel: str
-    ) -> JITValidationResult:
+    async def _check_rate_limits(self, client_id: UUID, channel: str) -> JITValidationResult:
         """Check rate limits for the client/channel."""
         # Get today's count for this channel
         query = text("""
@@ -483,8 +426,7 @@ class JITValidator:
         """)
 
         result = await self.session.execute(
-            query,
-            {"client_id": str(client_id), "channel": channel}
+            query, {"client_id": str(client_id), "channel": channel}
         )
         row = result.fetchone()
         today_count: int = int(row[0]) if row else 0
@@ -492,7 +434,7 @@ class JITValidator:
         # Get limit based on channel
         # These should come from settings in production
         limits = {
-            "email": 50,    # Per domain, really
+            "email": 50,  # Per domain, really
             "sms": 100,
             "linkedin": 17,
             "voice": 50,
@@ -503,16 +445,12 @@ class JITValidator:
 
         if today_count >= limit:
             return JITValidationResult.fail(
-                f"Daily {channel} limit ({limit}) reached",
-                f"rate_limit_{channel}"
+                f"Daily {channel} limit ({limit}) reached", f"rate_limit_{channel}"
             )
 
         return JITValidationResult(is_valid=True)
 
-    async def _check_warmup(
-        self,
-        client_id: UUID
-    ) -> JITValidationResult:
+    async def _check_warmup(self, client_id: UUID) -> JITValidationResult:
         """Check if email warmup is ready."""
         # In production, this would check Salesforge/Warmforge API
         # For now, we assume warmup is complete if client has been
@@ -523,10 +461,7 @@ class JITValidator:
             WHERE id = :client_id
         """)
 
-        result = await self.session.execute(
-            query,
-            {"client_id": str(client_id)}
-        )
+        result = await self.session.execute(query, {"client_id": str(client_id)})
         row = result.fetchone()
 
         if row:
@@ -534,7 +469,7 @@ class JITValidator:
             if days_active < 14:
                 return JITValidationResult.fail(
                     f"Email warmup incomplete ({14 - days_active} days remaining)",
-                    "warmup_not_ready"
+                    "warmup_not_ready",
                 )
 
         return JITValidationResult(is_valid=True)

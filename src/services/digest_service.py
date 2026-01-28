@@ -210,8 +210,12 @@ class DigestService:
                 "opened": metrics["opened"],
                 "clicked": metrics["clicked"],
                 "replies": metrics["replies"],
-                "open_rate": round((metrics["opened"] / metrics["sent"] * 100) if metrics["sent"] > 0 else 0, 1),
-                "reply_rate": round((metrics["replies"] / metrics["sent"] * 100) if metrics["sent"] > 0 else 0, 1),
+                "open_rate": round(
+                    (metrics["opened"] / metrics["sent"] * 100) if metrics["sent"] > 0 else 0, 1
+                ),
+                "reply_rate": round(
+                    (metrics["replies"] / metrics["sent"] * 100) if metrics["sent"] > 0 else 0, 1
+                ),
                 "meetings": meetings_count,
             },
             "top_campaigns": top_campaigns,
@@ -375,27 +379,25 @@ class DigestService:
                 "lead_name": f"{row.first_name or ''} {row.last_name or ''}".strip() or "Unknown",
                 "company": row.company or "Unknown",
                 "subject": row.subject_line or "(No subject)",
-                "preview": (row.content_snapshot or "")[:150] + "..." if row.content_snapshot and len(row.content_snapshot) > 150 else row.content_snapshot or "",
+                "preview": (row.content_snapshot or "")[:150] + "..."
+                if row.content_snapshot and len(row.content_snapshot) > 150
+                else row.content_snapshot or "",
                 "sent_at": row.created_at.isoformat() if row.created_at else None,
             }
             for row in rows
         ]
 
-    async def _get_meetings_count(
-        self, client_id: UUID, start: datetime, end: datetime
-    ) -> int:
+    async def _get_meetings_count(self, client_id: UUID, start: datetime, end: datetime) -> int:
         """Get count of meetings booked on the day."""
         # Import Meeting model if exists, otherwise return 0
         try:
             from src.models.meeting import Meeting
-            query = (
-                select(func.count(Meeting.id))
-                .where(
-                    and_(
-                        Meeting.client_id == client_id,
-                        Meeting.created_at >= start,
-                        Meeting.created_at <= end,
-                    )
+
+            query = select(func.count(Meeting.id)).where(
+                and_(
+                    Meeting.client_id == client_id,
+                    Meeting.created_at >= start,
+                    Meeting.created_at <= end,
                 )
             )
             result = await self.db.execute(query)
@@ -421,7 +423,11 @@ class DigestService:
 
         # Build metrics section
         if has_activity:
-            meetings_line = f"<p><strong>Meetings Booked:</strong> {metrics['meetings']}</p>" if metrics["meetings"] > 0 else ""
+            meetings_line = (
+                f"<p><strong>Meetings Booked:</strong> {metrics['meetings']}</p>"
+                if metrics["meetings"] > 0
+                else ""
+            )
             metrics_section = self.METRICS_SECTION_TEMPLATE.format(
                 sent=metrics["sent"],
                 opened=metrics["opened"],
@@ -439,14 +445,14 @@ class DigestService:
         if digest_data["top_campaigns"]:
             campaigns_html = '<div class="section"><h2>Top Campaigns</h2>'
             for campaign in digest_data["top_campaigns"]:
-                campaigns_html += f'''
+                campaigns_html += f"""
                 <div class="campaign">
                     <div class="campaign-name">{campaign["campaign_name"]}</div>
                     <div class="campaign-stats">
                         Sent: {campaign["sent"]} | Opened: {campaign["opened"]} | Replied: {campaign["replied"]}
                     </div>
                 </div>
-                '''
+                """
             campaigns_html += "</div>"
 
         # Build content samples section
@@ -454,12 +460,12 @@ class DigestService:
         if digest_data["content_samples"]:
             content_html = '<div class="section"><h2>Recent Content Sent</h2>'
             for sample in digest_data["content_samples"][:3]:  # Limit to 3
-                content_html += f'''
+                content_html += f"""
                 <div class="content-sample">
                     <div class="content-meta">To: {sample["lead_name"]} at {sample["company"]}</div>
                     <div class="content-preview"><strong>{sample["subject"]}</strong><br>{sample["preview"]}</div>
                 </div>
-                '''
+                """
             content_html += "</div>"
 
         # Render full template

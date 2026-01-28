@@ -44,10 +44,10 @@ logger = logging.getLogger(__name__)
 # ============================================
 
 VOICE_WARMUP_SCHEDULE = [
-    (0, 2, 20),   # Days 0-2: 20 calls/day
-    (3, 4, 30),   # Days 3-4: 30 calls/day
-    (5, 6, 40),   # Days 5-6: 40 calls/day
-    (7, 999, 50), # Days 7+: 50 calls/day (full capacity)
+    (0, 2, 20),  # Days 0-2: 20 calls/day
+    (3, 4, 30),  # Days 3-4: 30 calls/day
+    (5, 6, 40),  # Days 5-6: 40 calls/day
+    (7, 999, 50),  # Days 7+: 50 calls/day (full capacity)
 ]
 
 
@@ -129,6 +129,7 @@ class PhoneProvisioningService:
             List of available numbers with details
         """
         try:
+
             def _search():
                 kwargs = {
                     "limit": limit,
@@ -293,7 +294,9 @@ class PhoneProvisioningService:
                     ClientResource.client_id == client_id,
                     ClientResource.released_at.is_(None),
                     ResourcePool.resource_type == ResourceType.PHONE_NUMBER,
-                    ResourcePool.status.in_([ResourceStatus.AVAILABLE, ResourceStatus.WARMING, ResourceStatus.ASSIGNED]),
+                    ResourcePool.status.in_(
+                        [ResourceStatus.AVAILABLE, ResourceStatus.WARMING, ResourceStatus.ASSIGNED]
+                    ),
                 )
             )
         )
@@ -311,9 +314,7 @@ class PhoneProvisioningService:
                 )
             )
             campaign_result = await db.execute(campaign_stmt)
-            existing_campaign_phones = {
-                cr.resource_id for cr in campaign_result.scalars().all()
-            }
+            existing_campaign_phones = {cr.resource_id for cr in campaign_result.scalars().all()}
 
             # Find unassigned client phone number
             for cr in client_resources:
@@ -413,13 +414,10 @@ class PhoneProvisioningService:
             return False
 
         # Release all client assignments
-        stmt = (
-            select(ClientResource)
-            .where(
-                and_(
-                    ClientResource.resource_pool_id == resource_pool_id,
-                    ClientResource.released_at.is_(None),
-                )
+        stmt = select(ClientResource).where(
+            and_(
+                ClientResource.resource_pool_id == resource_pool_id,
+                ClientResource.released_at.is_(None),
             )
         )
         result = await db.execute(stmt)
@@ -436,6 +434,7 @@ class PhoneProvisioningService:
         # Optionally delete from Twilio
         if delete_from_twilio and resource.provider_id:
             try:
+
                 def _delete():
                     self.twilio.incoming_phone_numbers(resource.provider_id).delete()
 
@@ -477,11 +476,13 @@ class PhoneProvisioningService:
                     ClientResource.client_id == client_id,
                     ClientResource.released_at.is_(None),
                     ResourcePool.resource_type == ResourceType.PHONE_NUMBER,
-                    ResourcePool.status.in_([
-                        ResourceStatus.AVAILABLE,
-                        ResourceStatus.WARMING,
-                        ResourceStatus.ASSIGNED,
-                    ]),
+                    ResourcePool.status.in_(
+                        [
+                            ResourceStatus.AVAILABLE,
+                            ResourceStatus.WARMING,
+                            ResourceStatus.ASSIGNED,
+                        ]
+                    ),
                 )
             )
         )
@@ -493,17 +494,12 @@ class PhoneProvisioningService:
 
         # Calculate total daily capacity
         total_capacity = sum(
-            get_voice_daily_limit(
-                cr.resource.warmup_started_at or datetime.utcnow()
-            )
+            get_voice_daily_limit(cr.resource.warmup_started_at or datetime.utcnow())
             for cr in active_resources
         )
 
         # Check warmup status
-        warming_count = sum(
-            1 for cr in active_resources
-            if cr.resource.warmup_completed_at is None
-        )
+        warming_count = sum(1 for cr in active_resources if cr.resource.warmup_completed_at is None)
 
         return {
             "active_count": active_count,
@@ -540,6 +536,7 @@ class PhoneProvisioningService:
             return False
 
         try:
+
             def _update():
                 kwargs = {}
                 if voice_webhook:
@@ -639,9 +636,7 @@ class PhoneProvisioningService:
         """Assign client resource to a specific campaign."""
         resource = client_resource.resource
 
-        daily_limit = get_voice_daily_limit(
-            resource.warmup_started_at or datetime.utcnow()
-        )
+        daily_limit = get_voice_daily_limit(resource.warmup_started_at or datetime.utcnow())
 
         campaign_resource = CampaignResource(
             campaign_id=campaign_id,

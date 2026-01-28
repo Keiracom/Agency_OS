@@ -78,10 +78,12 @@ async def get_hot_leads_needing_research_task(
                     Lead.deep_research_run_at.is_(None),
                     Lead.deleted_at.is_(None),
                     Client.deleted_at.is_(None),
-                    Client.subscription_status.in_([
-                        SubscriptionStatus.ACTIVE,
-                        SubscriptionStatus.TRIALING,
-                    ]),
+                    Client.subscription_status.in_(
+                        [
+                            SubscriptionStatus.ACTIVE,
+                            SubscriptionStatus.TRIALING,
+                        ]
+                    ),
                     Client.credits_remaining > 0,
                 )
             )
@@ -97,18 +99,18 @@ async def get_hot_leads_needing_research_task(
 
         leads_data = []
         for lead_id, client_id_val, als_score, first_name, last_name, linkedin_url, credits in rows:
-            leads_data.append({
-                "lead_id": str(lead_id),
-                "client_id": str(client_id_val),
-                "als_score": als_score,
-                "name": f"{first_name or ''} {last_name or ''}".strip(),
-                "linkedin_url": linkedin_url,
-                "credits_remaining": credits,
-            })
+            leads_data.append(
+                {
+                    "lead_id": str(lead_id),
+                    "client_id": str(client_id_val),
+                    "als_score": als_score,
+                    "name": f"{first_name or ''} {last_name or ''}".strip(),
+                    "linkedin_url": linkedin_url,
+                    "credits_remaining": credits,
+                }
+            )
 
-        logger.info(
-            f"Found {len(leads_data)} hot leads needing deep research"
-        )
+        logger.info(f"Found {len(leads_data)} hot leads needing deep research")
 
         return {
             "total_leads": len(leads_data),
@@ -161,9 +163,7 @@ async def perform_deep_research_task(
                 "cost_aud": result.metadata.get("cost_aud", 0),
             }
         else:
-            logger.warning(
-                f"Deep research failed for lead {lead_id}: {result.error}"
-            )
+            logger.warning(f"Deep research failed for lead {lead_id}: {result.error}")
             return {
                 "lead_id": lead_id,
                 "client_id": client_id,
@@ -201,11 +201,7 @@ async def update_lead_research_status_task(
             update_data["deep_research_data"] = {"error": error, "status": "failed"}
             update_data["deep_research_run_at"] = datetime.utcnow()
 
-        stmt = (
-            update(Lead)
-            .where(Lead.id == lead_uuid)
-            .values(**update_data)
-        )
+        stmt = update(Lead).where(Lead.id == lead_uuid).values(**update_data)
         await db.execute(stmt)
         await db.commit()
 
@@ -255,8 +251,7 @@ async def intelligence_research_flow(
         client_id = UUID(client_id)
 
     logger.info(
-        f"Starting intelligence research flow (batch_size={batch_size}, "
-        f"client_id={client_id})"
+        f"Starting intelligence research flow (batch_size={batch_size}, client_id={client_id})"
     )
 
     # Step 1: Get hot leads needing research

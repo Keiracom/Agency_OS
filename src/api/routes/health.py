@@ -95,16 +95,9 @@ async def check_database() -> ComponentStatus:
 
         latency = (time.perf_counter() - start) * 1000  # Convert to ms
 
-        return ComponentStatus(
-            status="healthy",
-            message="Connected",
-            latency_ms=round(latency, 2)
-        )
+        return ComponentStatus(status="healthy", message="Connected", latency_ms=round(latency, 2))
     except Exception as e:
-        return ComponentStatus(
-            status="unhealthy",
-            message=f"Connection failed: {str(e)[:100]}"
-        )
+        return ComponentStatus(status="unhealthy", message=f"Connection failed: {str(e)[:100]}")
 
 
 async def check_redis() -> ComponentStatus:
@@ -124,16 +117,9 @@ async def check_redis() -> ComponentStatus:
 
         latency = (time.perf_counter() - start) * 1000  # Convert to ms
 
-        return ComponentStatus(
-            status="healthy",
-            message="Connected",
-            latency_ms=round(latency, 2)
-        )
+        return ComponentStatus(status="healthy", message="Connected", latency_ms=round(latency, 2))
     except Exception as e:
-        return ComponentStatus(
-            status="unhealthy",
-            message=f"Connection failed: {str(e)[:100]}"
-        )
+        return ComponentStatus(status="unhealthy", message=f"Connection failed: {str(e)[:100]}")
 
 
 async def check_prefect() -> ComponentStatus:
@@ -156,20 +142,12 @@ async def check_prefect() -> ComponentStatus:
 
         if response.status_code == 200:
             return ComponentStatus(
-                status="healthy",
-                message="Connected",
-                latency_ms=round(latency, 2)
+                status="healthy", message="Connected", latency_ms=round(latency, 2)
             )
         else:
-            return ComponentStatus(
-                status="unhealthy",
-                message=f"HTTP {response.status_code}"
-            )
+            return ComponentStatus(status="unhealthy", message=f"HTTP {response.status_code}")
     except Exception as e:
-        return ComponentStatus(
-            status="unhealthy",
-            message=f"Connection failed: {str(e)[:100]}"
-        )
+        return ComponentStatus(status="unhealthy", message=f"Connection failed: {str(e)[:100]}")
 
 
 # ============================================
@@ -182,7 +160,7 @@ async def check_prefect() -> ComponentStatus:
     response_model=HealthResponse,
     status_code=status.HTTP_200_OK,
     summary="Basic health check",
-    description="Simple health check that returns 200 if the service is running. Used by load balancers."
+    description="Simple health check that returns 200 if the service is running. Used by load balancers.",
 )
 async def health_check() -> HealthResponse:
     """
@@ -194,18 +172,14 @@ async def health_check() -> HealthResponse:
     Returns:
         HealthResponse with basic service information.
     """
-    return HealthResponse(
-        status="healthy",
-        service="agency-os-api",
-        version="3.0.0"
-    )
+    return HealthResponse(status="healthy", service="agency-os-api", version="3.0.0")
 
 
 @router.get(
     "/ready",
     response_model=ReadinessResponse,
     summary="Readiness check",
-    description="Check if all components (database, Redis, Prefect) are ready. Used by Kubernetes readiness probes."
+    description="Check if all components (database, Redis, Prefect) are ready. Used by Kubernetes readiness probes.",
 )
 async def readiness_check() -> ReadinessResponse:
     """
@@ -228,10 +202,7 @@ async def readiness_check() -> ReadinessResponse:
     import asyncio
 
     db_status, redis_status, prefect_status = await asyncio.gather(
-        check_database(),
-        check_redis(),
-        check_prefect(),
-        return_exceptions=True
+        check_database(), check_redis(), check_prefect(), return_exceptions=True
     )
 
     # Handle any exceptions from gather
@@ -242,11 +213,7 @@ async def readiness_check() -> ReadinessResponse:
     if isinstance(prefect_status, Exception):
         prefect_status = ComponentStatus(status="unhealthy", message=str(prefect_status))
 
-    components = {
-        "database": db_status,
-        "redis": redis_status,
-        "prefect": prefect_status
-    }
+    components = {"database": db_status, "redis": redis_status, "prefect": prefect_status}
 
     # Determine overall status
     healthy_count = sum(1 for c in components.values() if c.status == "healthy")
@@ -261,10 +228,7 @@ async def readiness_check() -> ReadinessResponse:
         overall_status = "not_ready"
 
     return ReadinessResponse(
-        status=overall_status,
-        service="agency-os-api",
-        version="3.0.0",
-        components=components
+        status=overall_status, service="agency-os-api", version="3.0.0", components=components
     )
 
 
@@ -273,7 +237,7 @@ async def readiness_check() -> ReadinessResponse:
     response_model=LivenessResponse,
     status_code=status.HTTP_200_OK,
     summary="Liveness check",
-    description="Simple liveness check that confirms the service is alive. Used by Kubernetes liveness probes."
+    description="Simple liveness check that confirms the service is alive. Used by Kubernetes liveness probes.",
 )
 async def liveness_check() -> LivenessResponse:
     """
@@ -287,11 +251,7 @@ async def liveness_check() -> LivenessResponse:
     Returns:
         LivenessResponse confirming service is alive.
     """
-    return LivenessResponse(
-        status="alive",
-        service="agency-os-api",
-        version="3.0.0"
-    )
+    return LivenessResponse(status="alive", service="agency-os-api", version="3.0.0")
 
 
 # ============================================

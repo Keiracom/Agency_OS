@@ -141,12 +141,14 @@ class MailEngine(OutreachEngine):
             )
 
         # Add lead data to merge variables
-        merge_variables.update({
-            "first_name": lead.first_name or "",
-            "last_name": lead.last_name or "",
-            "company": lead.company or "",
-            "title": lead.title or "",
-        })
+        merge_variables.update(
+            {
+                "first_name": lead.first_name or "",
+                "last_name": lead.last_name or "",
+                "company": lead.company or "",
+                "title": lead.title or "",
+            }
+        )
 
         try:
             if mail_type == "letter":

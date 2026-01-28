@@ -43,7 +43,9 @@ class LinkedInData(BaseModel):
     specialties: list[str] = Field(default_factory=list, description="Listed specialties")
 
 
-class CompanySizeEstimatorSkill(BaseSkill["CompanySizeEstimatorSkill.Input", "CompanySizeEstimatorSkill.Output"]):
+class CompanySizeEstimatorSkill(
+    BaseSkill["CompanySizeEstimatorSkill.Input", "CompanySizeEstimatorSkill.Output"]
+):
     """
     Estimate agency team size from available data.
 
@@ -62,54 +64,38 @@ class CompanySizeEstimatorSkill(BaseSkill["CompanySizeEstimatorSkill.Input", "Co
         """Input for company size estimation."""
 
         about_page: PageContent | None = Field(
-            default=None,
-            description="About page content if available"
+            default=None, description="About page content if available"
         )
         team_page: PageContent | None = Field(
-            default=None,
-            description="Team page content if available"
+            default=None, description="Team page content if available"
         )
         all_pages: list[PageContent] = Field(
-            default_factory=list,
-            description="All parsed pages for additional context"
+            default_factory=list, description="All parsed pages for additional context"
         )
         linkedin_data: LinkedInData | None = Field(
-            default=None,
-            description="LinkedIn company data if available"
+            default=None, description="LinkedIn company data if available"
         )
-        company_name: str = Field(
-            default="",
-            description="Company name for context"
-        )
+        company_name: str = Field(default="", description="Company name for context")
 
     class Output(BaseModel):
         """Output from company size estimation."""
 
-        team_size: int = Field(
-            description="Estimated team size (number of employees)"
-        )
+        team_size: int = Field(description="Estimated team size (number of employees)")
         size_range: str = Field(
             description="Size range: solo, micro (2-5), small (6-20), medium (21-50), large (51-200), enterprise (200+)"
         )
-        confidence: float = Field(
-            default=0.0,
-            description="Confidence in estimate (0.0-1.0)"
-        )
+        confidence: float = Field(default=0.0, description="Confidence in estimate (0.0-1.0)")
         evidence: list[str] = Field(
-            default_factory=list,
-            description="Evidence supporting the estimate"
+            default_factory=list, description="Evidence supporting the estimate"
         )
         years_in_business: int | None = Field(
-            default=None,
-            description="Years in business if determinable"
+            default=None, description="Years in business if determinable"
         )
         has_multiple_offices: bool = Field(
-            default=False,
-            description="Whether they have multiple office locations"
+            default=False, description="Whether they have multiple office locations"
         )
         office_locations: list[str] = Field(
-            default_factory=list,
-            description="Office locations if mentioned"
+            default_factory=list, description="Office locations if mentioned"
         )
 
     system_prompt = """You are a business analyst estimating company size.
@@ -170,11 +156,11 @@ Return valid JSON:
         if input_data.linkedin_data:
             ld = input_data.linkedin_data
             linkedin_text = f"""LINKEDIN DATA:
-Employee Count: {ld.employee_count or 'Unknown'}
-Employee Range: {ld.employee_range or 'Unknown'}
-Headquarters: {ld.headquarters or 'Unknown'}
-Founded: {ld.founded_year or 'Unknown'}
-Specialties: {', '.join(ld.specialties) if ld.specialties else 'None listed'}
+Employee Count: {ld.employee_count or "Unknown"}
+Employee Range: {ld.employee_range or "Unknown"}
+Headquarters: {ld.headquarters or "Unknown"}
+Founded: {ld.founded_year or "Unknown"}
+Specialties: {", ".join(ld.specialties) if ld.specialties else "None listed"}
 """
 
         # Add about page
@@ -184,8 +170,8 @@ Specialties: {', '.join(ld.specialties) if ld.specialties else 'None listed'}
             about_text = f"""ABOUT PAGE:
 Title: {p.title}
 Summary: {p.content_summary}
-Key Points: {', '.join(p.key_points)}
-Images: {', '.join(p.images_described)}
+Key Points: {", ".join(p.key_points)}
+Images: {", ".join(p.images_described)}
 """
 
         # Add team page
@@ -195,8 +181,8 @@ Images: {', '.join(p.images_described)}
             team_text = f"""TEAM PAGE:
 Title: {p.title}
 Summary: {p.content_summary}
-Key Points: {', '.join(p.key_points)}
-Images: {', '.join(p.images_described)}
+Key Points: {", ".join(p.key_points)}
+Images: {", ".join(p.images_described)}
 """
 
         # Add relevant info from other pages
@@ -232,10 +218,10 @@ Provide your best estimate with supporting evidence. Return valid JSON."""
         """
         # Check if we have any useful data
         has_data = (
-            input_data.about_page is not None or
-            input_data.team_page is not None or
-            input_data.linkedin_data is not None or
-            len(input_data.all_pages) > 0
+            input_data.about_page is not None
+            or input_data.team_page is not None
+            or input_data.linkedin_data is not None
+            or len(input_data.all_pages) > 0
         )
 
         if not has_data:

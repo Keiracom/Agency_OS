@@ -49,9 +49,7 @@ class AnalyzeWebsiteRequest(BaseModel):
     """Request to analyze a website for ICP extraction."""
 
     website_url: str = Field(
-        ...,
-        min_length=5,
-        description="Website URL to analyze (e.g., https://example.com)"
+        ..., min_length=5, description="Website URL to analyze (e.g., https://example.com)"
     )
 
 
@@ -104,14 +102,13 @@ class ICPProfileResponse(BaseModel):
     portfolio_companies: list[str] = Field(default_factory=list)
     enriched_portfolio: list[dict] = Field(
         default_factory=list,
-        description="Enriched portfolio with industry, size, revenue per company"
+        description="Enriched portfolio with industry, size, revenue per company",
     )
     notable_brands: list[str] = Field(default_factory=list)
 
     # Social links (extracted from website)
     social_links: dict[str, str] = Field(
-        default_factory=dict,
-        description="Social media URLs: linkedin, instagram, facebook, etc."
+        default_factory=dict, description="Social media URLs: linkedin, instagram, facebook, etc."
     )
 
     # ICP targeting
@@ -158,9 +155,7 @@ class ConfirmICPRequest(BaseModel):
     """Request to confirm extracted ICP."""
 
     job_id: UUID = Field(description="Extraction job ID to confirm")
-    adjustments: ICPUpdateRequest | None = Field(
-        None, description="Optional adjustments to apply"
-    )
+    adjustments: ICPUpdateRequest | None = Field(None, description="Optional adjustments to apply")
 
 
 # ============================================
@@ -237,6 +232,7 @@ async def analyze_website(
     except Exception as e:
         # Log error but continue - extraction can still run
         import logging
+
         logging.error(f"Failed to insert ICP extraction job: {e}")
 
     # Trigger Prefect flow for ICP extraction
@@ -335,6 +331,7 @@ async def run_extraction_background(
     except Exception as e:
         # Handle unexpected errors
         import logging
+
         logging.error(f"ICP extraction failed for job {job_id}: {e}")
         try:
             async with get_db_session_context() as db:
@@ -566,7 +563,8 @@ async def confirm_icp(
     # - JSONB fields need JSON strings with explicit CAST
     update_fields = {
         "website_url": icp_data.get("website_url"),
-        "company_description": icp_data.get("company_description") or icp_data.get("value_proposition"),
+        "company_description": icp_data.get("company_description")
+        or icp_data.get("value_proposition"),
         "services_offered": icp_data.get("services_offered", []),  # TEXT[]
         "value_proposition": icp_data.get("value_proposition"),
         "team_size": icp_data.get("team_size"),
@@ -726,8 +724,15 @@ async def update_client_icp(
         )
 
     # JSONB fields need to be serialized for asyncpg
-    jsonb_fields = {"services_offered", "icp_industries", "icp_company_sizes",
-                    "icp_locations", "icp_titles", "icp_pain_points", "als_weights"}
+    jsonb_fields = {
+        "services_offered",
+        "icp_industries",
+        "icp_company_sizes",
+        "icp_locations",
+        "icp_titles",
+        "icp_pain_points",
+        "als_weights",
+    }
     for field in jsonb_fields:
         if field in updates and isinstance(updates[field], (list, dict)):
             updates[field] = json_module.dumps(updates[field])

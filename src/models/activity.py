@@ -83,7 +83,12 @@ class Activity(Base, UUIDMixin):
 
     # Channel and action
     channel: Mapped[ChannelType] = mapped_column(
-        ENUM(ChannelType, name="channel_type", create_type=False, values_callable=lambda x: [e.value for e in x]),
+        ENUM(
+            ChannelType,
+            name="channel_type",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         nullable=False,
     )
     action: Mapped[str] = mapped_column(
@@ -200,7 +205,12 @@ class Activity(Base, UUIDMixin):
 
     # === Intent (for replies) ===
     intent: Mapped[IntentType | None] = mapped_column(
-        ENUM(IntentType, name="intent_type", create_type=False, values_callable=lambda x: [e.value for e in x]),
+        ENUM(
+            IntentType,
+            name="intent_type",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         nullable=True,
     )
     intent_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)

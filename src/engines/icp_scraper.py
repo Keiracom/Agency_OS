@@ -247,6 +247,7 @@ class ICPScraperEngine(BaseEngine):
     def camoufox_enabled(self) -> bool:
         """Check if Camoufox Tier 3 scraper is enabled and available."""
         from src.config.settings import settings
+
         return settings.camoufox_enabled and is_camoufox_available()
 
     def _extract_domain(self, url: str) -> str:
@@ -298,12 +299,22 @@ class ICPScraperEngine(BaseEngine):
             matches = re.findall(pattern, raw_html, re.IGNORECASE)
             if matches:
                 # Take the first match and clean it
-                url = matches[0].rstrip('/"\',')
+                url = matches[0].rstrip("/\"',")
                 setattr(social, platform, url)
                 logger.debug(f"Found {platform}: {url}")
 
-        found_count = sum(1 for v in [social.linkedin, social.instagram, social.facebook,
-                                       social.twitter, social.youtube, social.tiktok] if v)
+        found_count = sum(
+            1
+            for v in [
+                social.linkedin,
+                social.instagram,
+                social.facebook,
+                social.twitter,
+                social.youtube,
+                social.tiktok,
+            ]
+            if v
+        )
         if found_count:
             logger.info(f"Extracted {found_count} social media links")
 
@@ -472,7 +483,9 @@ class ICPScraperEngine(BaseEngine):
                             portfolio_html = await self._fetch_portfolio_pages(canonical_url)
                             combined_html = camoufox_result.raw_html
                             if portfolio_html:
-                                combined_html = combined_html + "\n\n---DIRECT FETCH---\n\n" + portfolio_html
+                                combined_html = (
+                                    combined_html + "\n\n---DIRECT FETCH---\n\n" + portfolio_html
+                                )
 
                             # Extract social links
                             social_links = self._extract_social_links(combined_html)
@@ -536,17 +549,23 @@ class ICPScraperEngine(BaseEngine):
                 )
 
             # Success!
-            logger.info(f"Waterfall success for {url}: tier={scrape_result.tier_used}, pages={len(pages)}")
+            logger.info(
+                f"Waterfall success for {url}: tier={scrape_result.tier_used}, pages={len(pages)}"
+            )
 
             # ICP-FIX-008: Direct fetch portfolio pages to supplement Apify scrape
             # This ensures we get case study/portfolio URLs even if Apify missed them
             portfolio_html = await self._fetch_portfolio_pages(canonical_url)
 
             # Combine all HTML sources
-            combined_html = "\n\n---PAGE BREAK---\n\n".join(all_html) if all_html else scrape_result.raw_html
+            combined_html = (
+                "\n\n---PAGE BREAK---\n\n".join(all_html) if all_html else scrape_result.raw_html
+            )
             if portfolio_html:
                 combined_html = combined_html + "\n\n---DIRECT FETCH---\n\n" + portfolio_html
-                logger.info(f"Combined raw_html size: {len(combined_html):,} chars (includes direct fetch)")
+                logger.info(
+                    f"Combined raw_html size: {len(combined_html):,} chars (includes direct fetch)"
+                )
 
             # ICP-SOC-001: Extract social media links from raw HTML
             social_links = self._extract_social_links(combined_html)
@@ -615,7 +634,9 @@ class ICPScraperEngine(BaseEngine):
         try:
             # Try Apollo domain-based lookup first
             if domain:
-                logger.info(f"Looking up LinkedIn data for {company_name} via Apollo (domain: {domain})")
+                logger.info(
+                    f"Looking up LinkedIn data for {company_name} via Apollo (domain: {domain})"
+                )
                 apollo_result = await self.apollo.enrich_company(domain)
 
                 if apollo_result.get("found"):
@@ -638,8 +659,7 @@ class ICPScraperEngine(BaseEngine):
                 logger.info(f"Falling back to LinkedIn scraper for {company_name}")
                 # Search for company LinkedIn page
                 search_results = await self.apify.search_google(
-                    [f'"{company_name}" site:linkedin.com/company'],
-                    results_per_query=1
+                    [f'"{company_name}" site:linkedin.com/company'], results_per_query=1
                 )
 
                 if search_results:
@@ -719,6 +739,7 @@ Respond in JSON format only:
 
             # Parse JSON response
             import json
+
             # Clean response - remove markdown if present
             text = response.get("content", "").strip()
             logger.info(f"Claude raw content for {company_name}: {text[:200] if text else 'EMPTY'}")
@@ -729,11 +750,14 @@ Respond in JSON format only:
             text = text.strip()
 
             result = json.loads(text)
-            logger.info(f"Claude inferred for {company_name}: {result.get('industry')} ({result.get('confidence')})")
+            logger.info(
+                f"Claude inferred for {company_name}: {result.get('industry')} ({result.get('confidence')})"
+            )
             return result
 
         except Exception as e:
             import traceback
+
             logger.error(f"Claude inference failed for {company_name}: {e}")
             logger.error(f"Claude inference traceback: {traceback.format_exc()}")
             return {}
@@ -798,7 +822,7 @@ Respond in JSON format only:
                 orgs = await self.apollo.search_organizations(
                     company_name=company_name,
                     locations=["Australia"],  # Focus on Australian companies
-                    limit=1
+                    limit=1,
                 )
 
                 if orgs and orgs[0].get("found"):
@@ -815,7 +839,9 @@ Respond in JSON format only:
                     enriched.linkedin_url = org.get("linkedin_url")
                     enrichment_source = "apollo_search"
                     domain = org.get("domain")  # Use for potential follow-up
-                    logger.info(f"Apollo search found: {company_name} - {enriched.industry}, {enriched.employee_count} employees")
+                    logger.info(
+                        f"Apollo search found: {company_name} - {enriched.industry}, {enriched.employee_count} employees"
+                    )
             except Exception as e:
                 logger.warning(f"Apollo name search failed for {company_name}: {e}")
 
@@ -837,7 +863,9 @@ Respond in JSON format only:
                     enriched.is_hiring = apollo_result.get("is_hiring")
                     enriched.linkedin_url = apollo_result.get("linkedin_url")
                     enrichment_source = "apollo"
-                    logger.info(f"Apollo found: {company_name} - {enriched.industry}, {enriched.employee_count} employees")
+                    logger.info(
+                        f"Apollo found: {company_name} - {enriched.industry}, {enriched.employee_count} employees"
+                    )
             except Exception as e:
                 logger.warning(f"Apollo enrichment failed for {domain}: {e}")
 
@@ -860,7 +888,9 @@ Respond in JSON format only:
                             enriched.founded_year = linkedin_data.get("founded_year")
                         if not enriched.location:
                             enriched.location = linkedin_data.get("headquarters")
-                        logger.info(f"LinkedIn filled gaps for {company_name}: industry={enriched.industry}, employees={enriched.employee_range}")
+                        logger.info(
+                            f"LinkedIn filled gaps for {company_name}: industry={enriched.industry}, employees={enriched.employee_range}"
+                        )
                 except Exception as e:
                     logger.warning(f"LinkedIn gap-fill failed for {company_name}: {e}")
 
@@ -885,7 +915,9 @@ Respond in JSON format only:
                     if not enriched.founded_year:
                         enriched.founded_year = clay_result.get("founded_year")
                     if clay_result.get("industry") or clay_result.get("employee_count"):
-                        logger.info(f"Clay filled gaps for {company_name}: industry={enriched.industry}, employees={enriched.employee_count}")
+                        logger.info(
+                            f"Clay filled gaps for {company_name}: industry={enriched.industry}, employees={enriched.employee_count}"
+                        )
             except Exception as e:
                 logger.warning(f"Clay enrichment failed for {company_name}: {e}")
 
@@ -895,8 +927,7 @@ Respond in JSON format only:
                 # Search for company on LinkedIn
                 logger.info(f"Tier 2: LinkedIn search for {company_name}")
                 search_results = await self.apify.search_google(
-                    [f'"{company_name}" site:linkedin.com/company'],
-                    results_per_query=1
+                    [f'"{company_name}" site:linkedin.com/company'], results_per_query=1
                 )
 
                 # Google Search actor returns nested structure:
@@ -911,14 +942,22 @@ Respond in JSON format only:
                 if linkedin_url and "linkedin.com/company" in linkedin_url:
                     linkedin_data = await self.apify.scrape_linkedin_company(linkedin_url)
                     if linkedin_data.get("found"):
-                        enriched.employee_count = linkedin_data.get("employee_count") or enriched.employee_count
-                        enriched.employee_range = linkedin_data.get("employee_range") or enriched.employee_range
+                        enriched.employee_count = (
+                            linkedin_data.get("employee_count") or enriched.employee_count
+                        )
+                        enriched.employee_range = (
+                            linkedin_data.get("employee_range") or enriched.employee_range
+                        )
                         enriched.industry = linkedin_data.get("industry") or enriched.industry
-                        enriched.founded_year = linkedin_data.get("founded_year") or enriched.founded_year
+                        enriched.founded_year = (
+                            linkedin_data.get("founded_year") or enriched.founded_year
+                        )
                         enriched.linkedin_url = linkedin_url
                         enriched.location = linkedin_data.get("headquarters") or enriched.location
                         enrichment_source = "linkedin"
-                        logger.info(f"LinkedIn found: {company_name} - {enriched.industry}, {enriched.employee_range}")
+                        logger.info(
+                            f"LinkedIn found: {company_name} - {enriched.industry}, {enriched.employee_range}"
+                        )
             except Exception as e:
                 logger.warning(f"LinkedIn enrichment failed for {company_name}: {e}")
 
@@ -937,6 +976,7 @@ Respond in JSON format only:
                     # Extract domain from website if available
                     if not enriched.domain and google_data.get("website"):
                         from urllib.parse import urlparse
+
                         parsed = urlparse(google_data.get("website", ""))
                         potential_domain = parsed.netloc.lower()
                         if potential_domain.startswith("www."):
@@ -956,8 +996,7 @@ Respond in JSON format only:
             try:
                 logger.info(f"Tier 4: General Google search for {company_name}")
                 search_results = await self.apify.search_google(
-                    [f'"{company_name}" Australia company'],
-                    results_per_query=5
+                    [f'"{company_name}" Australia company'], results_per_query=5
                 )
 
                 if search_results and search_results[0].get("organicResults"):
@@ -968,12 +1007,24 @@ Respond in JSON format only:
                         description = result.get("description", "")
 
                         # Skip social media and directory sites
-                        if any(x in url for x in ["linkedin.com", "facebook.com", "twitter.com", "instagram.com",
-                                                   "yellowpages", "yelp.com", "truelocal", "hotfrog"]):
+                        if any(
+                            x in url
+                            for x in [
+                                "linkedin.com",
+                                "facebook.com",
+                                "twitter.com",
+                                "instagram.com",
+                                "yellowpages",
+                                "yelp.com",
+                                "truelocal",
+                                "hotfrog",
+                            ]
+                        ):
                             continue
 
                         # Found a company website
                         from urllib.parse import urlparse
+
                         parsed = urlparse(url)
                         potential_domain = parsed.netloc.lower()
                         if potential_domain.startswith("www."):
@@ -987,13 +1038,29 @@ Respond in JSON format only:
                             desc_lower = (title + " " + description).lower()
                             industry_keywords = {
                                 "automotive": ["car", "auto", "motor", "vehicle", "dealer"],
-                                "hospitality": ["hotel", "resort", "accommodation", "tourism", "travel"],
+                                "hospitality": [
+                                    "hotel",
+                                    "resort",
+                                    "accommodation",
+                                    "tourism",
+                                    "travel",
+                                ],
                                 "retail": ["shop", "store", "retail", "fashion", "clothing"],
                                 "construction": ["construction", "builder", "building", "trades"],
-                                "manufacturing": ["manufacturer", "manufacturing", "timber", "steel"],
+                                "manufacturing": [
+                                    "manufacturer",
+                                    "manufacturing",
+                                    "timber",
+                                    "steel",
+                                ],
                                 "healthcare": ["health", "medical", "clinic", "physio", "dental"],
                                 "technology": ["software", "tech", "digital", "it services"],
-                                "professional_services": ["consulting", "legal", "accounting", "services"],
+                                "professional_services": [
+                                    "consulting",
+                                    "legal",
+                                    "accounting",
+                                    "services",
+                                ],
                                 "food_beverage": ["food", "restaurant", "cafe", "catering"],
                                 "recreation": ["dive", "tours", "adventure", "sports", "fitness"],
                             }
@@ -1003,7 +1070,9 @@ Respond in JSON format only:
                                     break
 
                             enrichment_source = "google_search"
-                            logger.info(f"Google Search found: {company_name} -> {potential_domain}, industry={enriched.industry}")
+                            logger.info(
+                                f"Google Search found: {company_name} -> {potential_domain}, industry={enriched.industry}"
+                            )
                             break
             except Exception as e:
                 logger.warning(f"General Google search failed for {company_name}: {e}")
@@ -1011,7 +1080,9 @@ Respond in JSON format only:
         # Final fallback: Keyword matching (only if Claude AND all APIs failed)
         # This should rarely be needed since Claude inference runs first
         if not enriched.industry:
-            logger.warning(f"All enrichment sources failed for {company_name}, trying keyword fallback")
+            logger.warning(
+                f"All enrichment sources failed for {company_name}, trying keyword fallback"
+            )
             inferred = self._infer_industry_from_name(company_name)
             if not inferred and enriched.domain:
                 inferred = self._infer_industry_from_name(enriched.domain)
@@ -1028,10 +1099,15 @@ Respond in JSON format only:
         else:
             # Even without external enrichment, we may have inferred industry
             has_inferred = bool(enriched.industry)
-            logger.info(f"No enrichment found for {company_name} - returning {'inferred' if has_inferred else 'basic'} data")
+            logger.info(
+                f"No enrichment found for {company_name} - returning {'inferred' if has_inferred else 'basic'} data"
+            )
             return EngineResult.ok(
                 data=enriched,
-                metadata={"enriched": has_inferred, "source": "inferred" if has_inferred else "none"},
+                metadata={
+                    "enriched": has_inferred,
+                    "source": "inferred" if has_inferred else "none",
+                },
             )
 
     def _infer_industry_from_name(self, company_name: str) -> str | None:
@@ -1043,22 +1119,142 @@ Respond in JSON format only:
         name_lower = company_name.lower()
 
         industry_patterns = {
-            "automotive": ["mazda", "toyota", "ford", "honda", "subaru", "car", "auto", "motor", "vehicle", "dealer", "mechanic", "vermeer"],
-            "healthcare": ["physio", "dental", "medical", "clinic", "health", "hospital", "doctor", "therapy", "care"],
-            "hospitality": ["hotel", "resort", "motel", "accommodation", "bay suite", "suites", "lodge", "inn"],
-            "tourism": ["tours", "travel", "adventure", "charter", "dive", "snorkel", "whale", "cruise", "tourism", "encounters", "safari", "wildlife"],
-            "retail": ["shop", "store", "retail", "boutique", "fashion", "clothing", "golf", "sports", "running", "warehouse"],
-            "construction": ["construction", "builder", "building", "trades", "ceiling", "floor", "roofing", "plumbing", "tiler"],
-            "manufacturing": ["timber", "steel", "manufacturing", "factory", "industrial", "cable", "wire", "equipment"],
-            "technology": ["software", "tech", "digital", "it", "app", "data", "intelligence", "develop"],
-            "professional_services": ["consulting", "legal", "accounting", "advisory", "services", "agency"],
-            "food_beverage": ["jerky", "food", "cafe", "restaurant", "catering", "bakery", "coffee", "beer", "wine"],
-            "real_estate": ["property", "real estate", "realty", "homes", "land", "development", "keller"],
+            "automotive": [
+                "mazda",
+                "toyota",
+                "ford",
+                "honda",
+                "subaru",
+                "car",
+                "auto",
+                "motor",
+                "vehicle",
+                "dealer",
+                "mechanic",
+                "vermeer",
+            ],
+            "healthcare": [
+                "physio",
+                "dental",
+                "medical",
+                "clinic",
+                "health",
+                "hospital",
+                "doctor",
+                "therapy",
+                "care",
+            ],
+            "hospitality": [
+                "hotel",
+                "resort",
+                "motel",
+                "accommodation",
+                "bay suite",
+                "suites",
+                "lodge",
+                "inn",
+            ],
+            "tourism": [
+                "tours",
+                "travel",
+                "adventure",
+                "charter",
+                "dive",
+                "snorkel",
+                "whale",
+                "cruise",
+                "tourism",
+                "encounters",
+                "safari",
+                "wildlife",
+            ],
+            "retail": [
+                "shop",
+                "store",
+                "retail",
+                "boutique",
+                "fashion",
+                "clothing",
+                "golf",
+                "sports",
+                "running",
+                "warehouse",
+            ],
+            "construction": [
+                "construction",
+                "builder",
+                "building",
+                "trades",
+                "ceiling",
+                "floor",
+                "roofing",
+                "plumbing",
+                "tiler",
+            ],
+            "manufacturing": [
+                "timber",
+                "steel",
+                "manufacturing",
+                "factory",
+                "industrial",
+                "cable",
+                "wire",
+                "equipment",
+            ],
+            "technology": [
+                "software",
+                "tech",
+                "digital",
+                "it",
+                "app",
+                "data",
+                "intelligence",
+                "develop",
+            ],
+            "professional_services": [
+                "consulting",
+                "legal",
+                "accounting",
+                "advisory",
+                "services",
+                "agency",
+            ],
+            "food_beverage": [
+                "jerky",
+                "food",
+                "cafe",
+                "restaurant",
+                "catering",
+                "bakery",
+                "coffee",
+                "beer",
+                "wine",
+            ],
+            "real_estate": [
+                "property",
+                "real estate",
+                "realty",
+                "homes",
+                "land",
+                "development",
+                "keller",
+            ],
             "education": ["academy", "school", "training", "education", "learn", "kids", "child"],
             "fitness": ["gym", "fitness", "crossfit", "yoga", "pilates", "martial"],
             "landscaping": ["landscape", "garden", "lawn", "arcadia", "outdoor"],
             "recruitment": ["hire", "recruit", "staffing", "talent", "hr", "employment", "apm"],
-            "environmental": ["enviro", "environment", "eco", "green", "sustainability", "water treatment", "planet", "earth", "solar", "renewable"],
+            "environmental": [
+                "enviro",
+                "environment",
+                "eco",
+                "green",
+                "sustainability",
+                "water treatment",
+                "planet",
+                "earth",
+                "solar",
+                "renewable",
+            ],
         }
 
         for industry, keywords in industry_patterns.items():
@@ -1099,7 +1295,8 @@ Respond in JSON format only:
                             "source": "apollo_domain",
                             "name": result.get("name"),
                             "domain": result.get("domain"),
-                            "description": result.get("short_description") or result.get("description"),
+                            "description": result.get("short_description")
+                            or result.get("description"),
                             "industry": result.get("industry"),
                             "employee_count": result.get("estimated_num_employees"),
                             "keywords": result.get("keywords", []),
@@ -1174,11 +1371,13 @@ Respond in JSON format only:
                 successful += 1
             else:
                 # Add basic entry for failed enrichment
-                enriched_list.append(EnrichedPortfolioCompany(
-                    company_name=company.get("company_name", "Unknown"),
-                    domain=company.get("domain"),
-                    source=company.get("source", "portfolio"),
-                ))
+                enriched_list.append(
+                    EnrichedPortfolioCompany(
+                        company_name=company.get("company_name", "Unknown"),
+                        domain=company.get("domain"),
+                        source=company.get("source", "portfolio"),
+                    )
+                )
                 failed += 1
 
         return EngineResult.ok(
@@ -1250,11 +1449,21 @@ Respond in JSON format only:
                     for c in enriched_companies
                 ],
                 social_links={
-                    "linkedin": scraped_website.social_links.linkedin if scraped_website.social_links else None,
-                    "instagram": scraped_website.social_links.instagram if scraped_website.social_links else None,
-                    "facebook": scraped_website.social_links.facebook if scraped_website.social_links else None,
-                    "twitter": scraped_website.social_links.twitter if scraped_website.social_links else None,
-                } if scraped_website.social_links else {},
+                    "linkedin": scraped_website.social_links.linkedin
+                    if scraped_website.social_links
+                    else None,
+                    "instagram": scraped_website.social_links.instagram
+                    if scraped_website.social_links
+                    else None,
+                    "facebook": scraped_website.social_links.facebook
+                    if scraped_website.social_links
+                    else None,
+                    "twitter": scraped_website.social_links.twitter
+                    if scraped_website.social_links
+                    else None,
+                }
+                if scraped_website.social_links
+                else {},
             )
 
             logger.info(f"Starting SDK ICP analysis for {client_name}")
@@ -1271,7 +1480,9 @@ Respond in JSON format only:
 
             if result.success:
                 # Convert Pydantic model to dict
-                icp_data = result.data.model_dump() if hasattr(result.data, 'model_dump') else result.data
+                icp_data = (
+                    result.data.model_dump() if hasattr(result.data, "model_dump") else result.data
+                )
 
                 logger.info(
                     f"SDK ICP analysis complete for {client_name}: "

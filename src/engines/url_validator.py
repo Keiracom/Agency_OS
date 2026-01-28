@@ -168,7 +168,10 @@ class URLValidator:
             domain_without_port = domain.split(":")[0]
 
             # Check for valid domain pattern
-            if not re.match(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$", domain_without_port):
+            if not re.match(
+                r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$",
+                domain_without_port,
+            ):
                 # Allow IP addresses
                 if not self._is_valid_ip(domain_without_port):
                     return "", f"Invalid domain format: {domain}"
@@ -220,10 +223,10 @@ class URLValidator:
         try:
             # Run DNS lookup in thread pool to avoid blocking
             import asyncio
+
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
-                None,
-                lambda: socket.getaddrinfo(domain, None, socket.AF_UNSPEC)
+                None, lambda: socket.getaddrinfo(domain, None, socket.AF_UNSPEC)
             )
             return True
         except socket.gaierror:
@@ -434,10 +437,7 @@ class URLValidator:
         content_lower = content.lower()
 
         # Count matching indicators
-        matches = sum(
-            1 for indicator in PARKED_CONTENT_INDICATORS
-            if indicator in content_lower
-        )
+        matches = sum(1 for indicator in PARKED_CONTENT_INDICATORS if indicator in content_lower)
 
         # If multiple indicators match, likely parked
         if matches >= 2:

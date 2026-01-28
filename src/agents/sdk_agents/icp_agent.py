@@ -78,67 +78,42 @@ class ICPInput(BaseModel):
     website_content: str = Field(description="Scraped website text content")
     portfolio_companies: list[dict] = Field(
         default_factory=list,
-        description="List of enriched portfolio companies with industry, size, etc."
+        description="List of enriched portfolio companies with industry, size, etc.",
     )
     social_links: dict = Field(
-        default_factory=dict,
-        description="Social media URLs (linkedin, instagram, etc.)"
+        default_factory=dict, description="Social media URLs (linkedin, instagram, etc.)"
     )
-    existing_icp: dict | None = Field(
-        default=None,
-        description="Any existing ICP data to refine"
-    )
+    existing_icp: dict | None = Field(default=None, description="Any existing ICP data to refine")
 
 
 class ICPOutput(BaseModel):
     """Complete Ideal Customer Profile output."""
 
     # Core ICP
-    target_industries: list[TargetIndustry] = Field(
-        description="Priority-ranked target industries"
-    )
-    company_size_range: CompanySizeRange = Field(
-        description="Target company size specifications"
-    )
-    target_titles: list[TargetTitle] = Field(
-        description="Priority-ranked decision maker titles"
-    )
+    target_industries: list[TargetIndustry] = Field(description="Priority-ranked target industries")
+    company_size_range: CompanySizeRange = Field(description="Target company size specifications")
+    target_titles: list[TargetTitle] = Field(description="Priority-ranked decision maker titles")
     target_locations: list[str] = Field(
-        default_factory=list,
-        description="Target geographic locations"
+        default_factory=list, description="Target geographic locations"
     )
 
     # Messaging intelligence
-    pain_points: list[PainPoint] = Field(
-        description="Specific pain points the agency addresses"
-    )
-    buying_signals: list[BuyingSignal] = Field(
-        description="Signals indicating purchase readiness"
-    )
+    pain_points: list[PainPoint] = Field(description="Specific pain points the agency addresses")
+    buying_signals: list[BuyingSignal] = Field(description="Signals indicating purchase readiness")
 
     # Agency positioning
-    agency_strengths: list[str] = Field(
-        description="Key differentiators and strengths"
-    )
-    services_offered: list[str] = Field(
-        description="Main services the agency provides"
-    )
+    agency_strengths: list[str] = Field(description="Key differentiators and strengths")
+    services_offered: list[str] = Field(description="Main services the agency provides")
 
     # Confidence
-    confidence_score: float = Field(
-        description="Confidence in this ICP 0.0-1.0",
-        ge=0.0,
-        le=1.0
-    )
+    confidence_score: float = Field(description="Confidence in this ICP 0.0-1.0", ge=0.0, le=1.0)
     data_gaps: list[str] = Field(
-        default_factory=list,
-        description="Areas where more data would help"
+        default_factory=list, description="Areas where more data would help"
     )
 
     # Metadata
     sources_used: list[str] = Field(
-        default_factory=list,
-        description="Sources consulted during research"
+        default_factory=list, description="Sources consulted during research"
     )
 
 
@@ -268,9 +243,7 @@ class ICPAgent:
                 f"cost=${result.cost_aud:.4f}, turns={result.turns_used}"
             )
         else:
-            logger.warning(
-                f"ICP extraction failed for {input_data.client_name}: {result.error}"
-            )
+            logger.warning(f"ICP extraction failed for {input_data.client_name}: {result.error}")
 
         return result
 
@@ -298,14 +271,18 @@ class ICPAgent:
 
         # Portfolio companies
         if input_data.portfolio_companies:
-            sections.append(f"\n## Portfolio Companies ({len(input_data.portfolio_companies)} total)")
+            sections.append(
+                f"\n## Portfolio Companies ({len(input_data.portfolio_companies)} total)"
+            )
             for i, company in enumerate(input_data.portfolio_companies[:20], 1):  # Max 20
                 name = company.get("company_name", "Unknown")
                 industry = company.get("industry", "Unknown")
                 size = company.get("employee_range") or company.get("employee_count", "Unknown")
                 location = company.get("location") or company.get("country", "")
 
-                sections.append(f"{i}. **{name}** - {industry}, {size} employees{', ' + location if location else ''}")
+                sections.append(
+                    f"{i}. **{name}** - {industry}, {size} employees{', ' + location if location else ''}"
+                )
 
         # Existing ICP (if refining)
         if input_data.existing_icp:

@@ -33,13 +33,17 @@ router = APIRouter(prefix="/customers", tags=["customers"])
 
 class CRMImportRequest(BaseModel):
     """Request to import customers from CRM."""
+
     crm_type: str = Field(..., description="CRM type: hubspot, pipedrive, or close")
-    api_key: str | None = Field(None, description="API key for the CRM (not needed for HubSpot OAuth)")
+    api_key: str | None = Field(
+        None, description="API key for the CRM (not needed for HubSpot OAuth)"
+    )
     days_back: int = Field(365, description="Import closed-won deals from last N days")
 
 
 class CSVImportRequest(BaseModel):
     """Request schema for CSV import form data."""
+
     domain_column: str = Field("domain", description="Column name for domain")
     email_column: str | None = Field(None, description="Column name for email")
     company_name_column: str | None = Field(None, description="Column name for company")
@@ -48,6 +52,7 @@ class CSVImportRequest(BaseModel):
 
 class SuppressionAddRequest(BaseModel):
     """Request to add to suppression list."""
+
     domain: str | None = Field(None, description="Domain to suppress")
     email: str | None = Field(None, description="Email to suppress")
     company_name: str | None = Field(None, description="Company name")
@@ -57,12 +62,14 @@ class SuppressionAddRequest(BaseModel):
 
 class SuppressionCheckRequest(BaseModel):
     """Request to check suppression status."""
+
     email: str | None = Field(None, description="Email to check")
     domain: str | None = Field(None, description="Domain to check")
 
 
 class CustomerResponse(BaseModel):
     """Customer response model."""
+
     id: UUID
     company_name: str | None
     domain: str | None
@@ -75,6 +82,7 @@ class CustomerResponse(BaseModel):
 
 class SuppressionResponse(BaseModel):
     """Suppression entry response model."""
+
     id: UUID
     domain: str | None
     email: str | None
@@ -88,6 +96,7 @@ class SuppressionResponse(BaseModel):
 
 class ImportResultResponse(BaseModel):
     """Import result response."""
+
     success: bool
     imported: int
     skipped: int
@@ -97,6 +106,7 @@ class ImportResultResponse(BaseModel):
 
 class SuppressionCheckResponse(BaseModel):
     """Suppression check response."""
+
     suppressed: bool
     reason: str | None = None
     details: str | None = None
@@ -327,10 +337,7 @@ async def add_suppression(
     client_id = UUID(current_user["client_id"])
 
     if not request.domain and not request.email:
-        raise HTTPException(
-            status_code=400,
-            detail="Must provide either domain or email"
-        )
+        raise HTTPException(status_code=400, detail="Must provide either domain or email")
 
     service = SuppressionService(db)
 
@@ -433,10 +440,7 @@ async def check_suppression(
     client_id = UUID(current_user["client_id"])
 
     if not request.email and not request.domain:
-        raise HTTPException(
-            status_code=400,
-            detail="Must provide either email or domain"
-        )
+        raise HTTPException(status_code=400, detail="Must provide either email or domain")
 
     service = SuppressionService(db)
     result = await service.is_suppressed(

@@ -77,23 +77,24 @@ async def calculate_lead_gap_task(client_id: UUID) -> dict[str, Any]:
         ]
         # Excluded from pipeline count: CONVERTED (success), UNSUBSCRIBED, BOUNCED
 
-        pipeline_count = await db.scalar(
-            select(func.count(Lead.id))
-            .where(
-                and_(
-                    Lead.client_id == client_id,
-                    Lead.deleted_at.is_(None),
-                    Lead.status.in_(active_statuses),
+        pipeline_count = (
+            await db.scalar(
+                select(func.count(Lead.id)).where(
+                    and_(
+                        Lead.client_id == client_id,
+                        Lead.deleted_at.is_(None),
+                        Lead.status.in_(active_statuses),
+                    )
                 )
             )
-        ) or 0
+            or 0
+        )
 
         # Calculate gap (never negative)
         gap = max(0, tier_quota - pipeline_count)
 
         logger.info(
-            f"Lead gap for {client.name}: "
-            f"Quota={tier_quota}, Pipeline={pipeline_count}, Gap={gap}"
+            f"Lead gap for {client.name}: Quota={tier_quota}, Pipeline={pipeline_count}, Gap={gap}"
         )
 
         return {
@@ -144,27 +145,24 @@ async def get_active_campaigns_task(client_id: UUID) -> list[dict[str, Any]]:
         for campaign in campaigns:
             pct = campaign.lead_allocation_pct or 0
             total_allocation += pct
-            campaign_list.append({
-                "id": str(campaign.id),
-                "name": campaign.name,
-                "lead_allocation_pct": pct,
-            })
+            campaign_list.append(
+                {
+                    "id": str(campaign.id),
+                    "name": campaign.name,
+                    "lead_allocation_pct": pct,
+                }
+            )
 
         # Normalize allocations if they don't sum to 100
         if total_allocation > 0 and total_allocation != 100:
-            logger.info(
-                f"Normalizing allocations: total={total_allocation}%, "
-                f"adjusting to 100%"
-            )
+            logger.info(f"Normalizing allocations: total={total_allocation}%, adjusting to 100%")
             for c in campaign_list:
                 c["normalized_pct"] = (c["lead_allocation_pct"] / total_allocation) * 100
         else:
             for c in campaign_list:
                 c["normalized_pct"] = c["lead_allocation_pct"]
 
-        logger.info(
-            f"Found {len(campaign_list)} active campaigns for client {client_id}"
-        )
+        logger.info(f"Found {len(campaign_list)} active campaigns for client {client_id}")
 
         return campaign_list
 
@@ -309,12 +307,14 @@ async def assign_leads_to_campaigns_task(
                 total_assigned += actual_assigned
                 remaining_leads -= actual_assigned
 
-                assignments.append({
-                    "campaign_id": campaign["id"],
-                    "campaign_name": campaign["name"],
-                    "requested": campaign_lead_count,
-                    "assigned": actual_assigned,
-                })
+                assignments.append(
+                    {
+                        "campaign_id": campaign["id"],
+                        "campaign_name": campaign["name"],
+                        "requested": campaign_lead_count,
+                        "assigned": actual_assigned,
+                    }
+                )
 
                 logger.info(
                     f"Assigned {actual_assigned}/{campaign_lead_count} leads to "
@@ -322,16 +322,16 @@ async def assign_leads_to_campaigns_task(
                 )
 
             except Exception as e:
-                logger.error(
-                    f"Failed to assign leads to campaign {campaign['id']}: {e}"
+                logger.error(f"Failed to assign leads to campaign {campaign['id']}: {e}")
+                assignments.append(
+                    {
+                        "campaign_id": campaign["id"],
+                        "campaign_name": campaign["name"],
+                        "requested": campaign_lead_count,
+                        "assigned": 0,
+                        "error": str(e),
+                    }
                 )
-                assignments.append({
-                    "campaign_id": campaign["id"],
-                    "campaign_name": campaign["name"],
-                    "requested": campaign_lead_count,
-                    "assigned": 0,
-                    "error": str(e),
-                })
 
         return {
             "success": total_assigned > 0,
@@ -391,10 +391,7 @@ async def monthly_replenishment_flow(
 
     # Early exit if pipeline is full
     if leads_to_source <= 0:
-        logger.info(
-            f"Pipeline full for {gap_result['client_name']} - "
-            f"no replenishment needed"
-        )
+        logger.info(f"Pipeline full for {gap_result['client_name']} - no replenishment needed")
         return {
             "success": True,
             "client_id": str(client_id),
@@ -507,11 +504,13 @@ async def trigger_replenishment_batch(
             results.append(result)
         except Exception as e:
             logger.error(f"Replenishment failed for client {client_id}: {e}")
-            results.append({
-                "client_id": str(client_id),
-                "success": False,
-                "error": str(e),
-            })
+            results.append(
+                {
+                    "client_id": str(client_id),
+                    "success": False,
+                    "error": str(e),
+                }
+            )
 
     return results
 

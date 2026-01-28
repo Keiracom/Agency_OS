@@ -529,8 +529,7 @@ class CloserEngine(BaseEngine):
                 lead.status = LeadStatus.ENRICHED
                 actions.append("stopped_sequence")
             logger.warning(
-                f"ADMIN ALERT: Angry/complaint reply from lead {lead.id} - "
-                f"requires manual review"
+                f"ADMIN ALERT: Angry/complaint reply from lead {lead.id} - requires manual review"
             )
             actions.append("admin_review_required")
             # Store admin review flag in lead metadata
@@ -542,9 +541,7 @@ class CloserEngine(BaseEngine):
 
         # Phase 24D: Track objection in lead history
         if reply_analysis and reply_analysis.get("objection_type"):
-            await self._add_objection_to_history(
-                db, lead, reply_analysis["objection_type"]
-            )
+            await self._add_objection_to_history(db, lead, reply_analysis["objection_type"])
             actions.append("tracked_objection")
 
         await db.commit()
@@ -586,10 +583,13 @@ class CloserEngine(BaseEngine):
             WHERE id = :lead_id
         """)
 
-        await db.execute(query, {
-            "reason": rejection_reason,
-            "lead_id": lead.id,
-        })
+        await db.execute(
+            query,
+            {
+                "reason": rejection_reason,
+                "lead_id": lead.id,
+            },
+        )
 
     async def _add_objection_to_history(
         self,
@@ -614,10 +614,13 @@ class CloserEngine(BaseEngine):
             WHERE id = :lead_id
         """)
 
-        await db.execute(query, {
-            "objection": objection_type,
-            "lead_id": lead.id,
-        })
+        await db.execute(
+            query,
+            {
+                "objection": objection_type,
+                "lead_id": lead.id,
+            },
+        )
 
     async def _update_thread_outcome(
         self,

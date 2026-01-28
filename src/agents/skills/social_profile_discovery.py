@@ -45,10 +45,14 @@ class DiscoveredProfile(BaseModel):
 
     platform: str = Field(description="Platform: linkedin, instagram, facebook")
     url: str = Field(description="Profile URL")
-    confidence: float = Field(default=0.8, description="Confidence this is the correct profile (0.0-1.0)")
+    confidence: float = Field(
+        default=0.8, description="Confidence this is the correct profile (0.0-1.0)"
+    )
 
 
-class SocialProfileDiscoverySkill(BaseSkill["SocialProfileDiscoverySkill.Input", "SocialProfileDiscoverySkill.Output"]):
+class SocialProfileDiscoverySkill(
+    BaseSkill["SocialProfileDiscoverySkill.Input", "SocialProfileDiscoverySkill.Output"]
+):
     """
     Search Google to find agency social profiles when not found on website.
 
@@ -69,7 +73,9 @@ class SocialProfileDiscoverySkill(BaseSkill["SocialProfileDiscoverySkill.Input",
         """Input for social profile discovery."""
 
         company_name: str = Field(description="Agency/company name to search for")
-        website_domain: str = Field(default="", description="Website domain (to filter out own site)")
+        website_domain: str = Field(
+            default="", description="Website domain (to filter out own site)"
+        )
 
     class Output(BaseModel):
         """Output from social profile discovery."""
@@ -78,7 +84,9 @@ class SocialProfileDiscoverySkill(BaseSkill["SocialProfileDiscoverySkill.Input",
         instagram_url: str | None = Field(default=None, description="Instagram profile URL")
         facebook_url: str | None = Field(default=None, description="Facebook page URL")
         profiles_found: int = Field(default=0, description="Number of profiles discovered")
-        search_queries_used: list[str] = Field(default_factory=list, description="Search queries executed")
+        search_queries_used: list[str] = Field(
+            default_factory=list, description="Search queries executed"
+        )
 
     # No Claude call needed - this skill uses Apify Google search + regex parsing
     system_prompt = ""
@@ -165,11 +173,13 @@ class SocialProfileDiscoverySkill(BaseSkill["SocialProfileDiscoverySkill.Input",
                         facebook_url = result.get("url")
                         logger.debug(f"Found Facebook: {facebook_url}")
 
-        profiles_found = sum([
-            1 if linkedin_url else 0,
-            1 if instagram_url else 0,
-            1 if facebook_url else 0,
-        ])
+        profiles_found = sum(
+            [
+                1 if linkedin_url else 0,
+                1 if instagram_url else 0,
+                1 if facebook_url else 0,
+            ]
+        )
 
         output = self.Output(
             linkedin_url=linkedin_url,
@@ -198,7 +208,7 @@ class SocialProfileDiscoverySkill(BaseSkill["SocialProfileDiscoverySkill.Input",
             "Digital Edge" matches "facebook.com/digitaledgeagency"
         """
         # Extract words from company name (lowercase, alphanumeric only)
-        words = re.findall(r'[a-z0-9]+', company_name.lower())
+        words = re.findall(r"[a-z0-9]+", company_name.lower())
         url_lower = url.lower()
 
         # Check if any significant word appears in URL

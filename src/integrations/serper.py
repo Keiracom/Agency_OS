@@ -29,6 +29,7 @@ from src.exceptions import APIError, IntegrationError
 
 class SerperSearchResult(BaseModel):
     """A single search result from Serper."""
+
     title: str
     link: str
     snippet: str
@@ -37,6 +38,7 @@ class SerperSearchResult(BaseModel):
 
 class SerperOrganicResults(BaseModel):
     """Organic search results container."""
+
     results: list[SerperSearchResult] = Field(default_factory=list)
     total_results: int = 0
     search_time: float = 0.0
@@ -44,6 +46,7 @@ class SerperOrganicResults(BaseModel):
 
 class SerperKnowledgeGraph(BaseModel):
     """Knowledge graph data if available."""
+
     title: str | None = None
     type: str | None = None
     description: str | None = None
@@ -52,6 +55,7 @@ class SerperKnowledgeGraph(BaseModel):
 
 class SerperResponse(BaseModel):
     """Complete Serper API response."""
+
     query: str
     organic: list[SerperSearchResult] = Field(default_factory=list)
     knowledge_graph: SerperKnowledgeGraph | None = None
@@ -84,7 +88,7 @@ class SerperClient:
         Args:
             api_key: Serper API key (falls back to settings)
         """
-        self.api_key = api_key or getattr(settings, 'serper_api_key', None)
+        self.api_key = api_key or getattr(settings, "serper_api_key", None)
         if not self.api_key:
             raise IntegrationError(
                 service="serper",
@@ -193,12 +197,14 @@ class SerperClient:
         # Parse organic results
         organic = []
         for idx, item in enumerate(response.get("organic", []), start=1):
-            organic.append(SerperSearchResult(
-                title=item.get("title", ""),
-                link=item.get("link", ""),
-                snippet=item.get("snippet", ""),
-                position=idx,
-            ))
+            organic.append(
+                SerperSearchResult(
+                    title=item.get("title", ""),
+                    link=item.get("link", ""),
+                    snippet=item.get("snippet", ""),
+                    position=idx,
+                )
+            )
 
         # Parse knowledge graph if present
         kg = response.get("knowledgeGraph")
@@ -253,12 +259,14 @@ class SerperClient:
 
         organic = []
         for idx, item in enumerate(response.get("news", []), start=1):
-            organic.append(SerperSearchResult(
-                title=item.get("title", ""),
-                link=item.get("link", ""),
-                snippet=item.get("snippet", ""),
-                position=idx,
-            ))
+            organic.append(
+                SerperSearchResult(
+                    title=item.get("title", ""),
+                    link=item.get("link", ""),
+                    snippet=item.get("snippet", ""),
+                    position=idx,
+                )
+            )
 
         return SerperResponse(
             query=query,
@@ -346,7 +354,10 @@ class SerperClient:
             # Extract from People Also Ask
             for paa in response.people_also_ask:
                 if question := paa.get("question"):
-                    if any(word in question.lower() for word in ["problem", "challenge", "struggle", "fail", "why"]):
+                    if any(
+                        word in question.lower()
+                        for word in ["problem", "challenge", "struggle", "fail", "why"]
+                    ):
                         pain_points.add(question)
 
         return list(pain_points)[:10]

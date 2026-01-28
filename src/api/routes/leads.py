@@ -81,7 +81,9 @@ class LeadBulkCreate(BaseModel):
     """Schema for bulk lead creation."""
 
     campaign_id: UUID = Field(..., description="Campaign ID")
-    leads: list[LeadCreate] = Field(..., description="List of leads to create", min_length=1, max_length=1000)
+    leads: list[LeadCreate] = Field(
+        ..., description="List of leads to create", min_length=1, max_length=1000
+    )
 
     @field_validator("leads")
     @classmethod
@@ -191,7 +193,9 @@ class DeepResearchResponse(BaseModel):
     """Schema for deep research data response."""
 
     lead_id: UUID
-    status: str = Field(..., description="Research status: not_started, in_progress, complete, failed")
+    status: str = Field(
+        ..., description="Research status: not_started, in_progress, complete, failed"
+    )
     icebreaker_hook: str | None = Field(None, description="AI-generated icebreaker")
     profile_summary: str | None = Field(None, description="LinkedIn profile summary")
     recent_activity: str | None = Field(None, description="Recent activity summary")
@@ -329,7 +333,9 @@ async def list_leads(
     page_size: int = Query(50, ge=1, le=100, description="Page size"),
     campaign_id: UUID | None = Query(None, description="Filter by campaign ID"),
     tier: str | None = Query(None, description="Filter by ALS tier (hot, warm, cool, cold, dead)"),
-    status_filter: LeadStatus | None = Query(None, alias="status", description="Filter by lead status"),
+    status_filter: LeadStatus | None = Query(
+        None, alias="status", description="Filter by lead status"
+    ),
     search: str | None = Query(None, description="Search by email, name, or company"),
 ) -> LeadListResponse:
     """
@@ -720,10 +726,14 @@ async def enrich_leads_bulk(
         Bulk enrichment job info
     """
     # Build query for leads needing enrichment
-    stmt = select(func.count()).select_from(Lead).where(
-        and_(
-            Lead.client_id == client_id,
-            Lead.deleted_at.is_(None),
+    stmt = (
+        select(func.count())
+        .select_from(Lead)
+        .where(
+            and_(
+                Lead.client_id == client_id,
+                Lead.deleted_at.is_(None),
+            )
         )
     )
 
@@ -1049,10 +1059,14 @@ async def score_lead(
                 timeout=0,
             )
             response["deep_research_triggered"] = True
-            response["message"] = f"Lead scored as {als_tier.upper()} ({als_score}). Deep research queued."
+            response["message"] = (
+                f"Lead scored as {als_tier.upper()} ({als_score}). Deep research queued."
+            )
         except Exception:
             # Prefect not available - skip auto-trigger
-            response["message"] = f"Lead scored as {als_tier.upper()} ({als_score}). Manual research trigger available."
+            response["message"] = (
+                f"Lead scored as {als_tier.upper()} ({als_score}). Manual research trigger available."
+            )
     else:
         response["message"] = f"Lead scored as {als_tier.upper()} ({als_score})."
 

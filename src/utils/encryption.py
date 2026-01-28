@@ -9,7 +9,6 @@ Provides secure encryption/decryption for sensitive credentials
 like LinkedIn passwords using Fernet symmetric encryption (AES-128-CBC + HMAC).
 """
 
-
 from cryptography.fernet import Fernet, InvalidToken
 
 from src.config.settings import settings
@@ -32,7 +31,7 @@ def _get_fernet() -> Fernet:
         if not key:
             raise ValueError(
                 "CREDENTIAL_ENCRYPTION_KEY not configured. "
-                "Generate one with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+                'Generate one with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
             )
         # Handle both string and bytes key formats
         key_bytes = key.encode() if isinstance(key, str) else key
@@ -58,8 +57,8 @@ def encrypt_credential(plaintext: str) -> str:
         raise ValueError("Cannot encrypt empty credential")
 
     fernet = _get_fernet()
-    encrypted_bytes = fernet.encrypt(plaintext.encode('utf-8'))
-    return encrypted_bytes.decode('utf-8')
+    encrypted_bytes = fernet.encrypt(plaintext.encode("utf-8"))
+    return encrypted_bytes.decode("utf-8")
 
 
 def decrypt_credential(ciphertext: str) -> str:
@@ -81,8 +80,8 @@ def decrypt_credential(ciphertext: str) -> str:
 
     fernet = _get_fernet()
     try:
-        decrypted_bytes = fernet.decrypt(ciphertext.encode('utf-8'))
-        return decrypted_bytes.decode('utf-8')
+        decrypted_bytes = fernet.decrypt(ciphertext.encode("utf-8"))
+        return decrypted_bytes.decode("utf-8")
     except InvalidToken:
         raise ValueError(
             "Failed to decrypt credential. "
@@ -99,7 +98,7 @@ def generate_encryption_key() -> str:
     Returns:
         Base64-encoded 32-byte key string
     """
-    return Fernet.generate_key().decode('utf-8')
+    return Fernet.generate_key().decode("utf-8")
 
 
 def reset_fernet() -> None:

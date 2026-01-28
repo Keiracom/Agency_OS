@@ -132,24 +132,27 @@ class EmailEventsService:
             RETURNING id
         """)
 
-        result = await self.session.execute(query, {
-            "activity_id": activity_id,
-            "lead_id": activity.lead_id,
-            "client_id": activity.client_id,
-            "event_type": event_type,
-            "event_at": event_at or datetime.utcnow(),
-            "clicked_url": clicked_url,
-            "device_type": device_type,
-            "email_client": email_client,
-            "os_type": os_type,
-            "open_ip": open_ip,
-            "open_city": open_city,
-            "open_region": open_region,
-            "open_country": open_country,
-            "provider": provider,
-            "provider_event_id": provider_event_id,
-            "raw_payload": str(raw_payload) if raw_payload else None,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "activity_id": activity_id,
+                "lead_id": activity.lead_id,
+                "client_id": activity.client_id,
+                "event_type": event_type,
+                "event_at": event_at or datetime.utcnow(),
+                "clicked_url": clicked_url,
+                "device_type": device_type,
+                "email_client": email_client,
+                "os_type": os_type,
+                "open_ip": open_ip,
+                "open_city": open_city,
+                "open_region": open_region,
+                "open_country": open_country,
+                "provider": provider,
+                "provider_event_id": provider_event_id,
+                "raw_payload": str(raw_payload) if raw_payload else None,
+            },
+        )
 
         row = result.fetchone()
         await self.session.commit()
@@ -398,9 +401,7 @@ class EmailEventsService:
         Returns:
             Activity if found
         """
-        stmt = select(Activity).where(
-            Activity.provider_message_id == provider_message_id
-        )
+        stmt = select(Activity).where(Activity.provider_message_id == provider_message_id)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -421,10 +422,13 @@ class EmailEventsService:
             WHERE provider = :provider AND provider_event_id = :provider_event_id
             LIMIT 1
         """)
-        result = await self.session.execute(query, {
-            "provider": provider,
-            "provider_event_id": provider_event_id,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "provider": provider,
+                "provider_event_id": provider_event_id,
+            },
+        )
         row = result.fetchone()
         return str(row.id) if row else None
 
@@ -564,7 +568,9 @@ def parse_resend_webhook(payload: dict) -> dict[str, Any]:
         "provider_event_id": payload.get("id"),
         "event_at": payload.get("created_at"),
         "clicked_url": data.get("click", {}).get("link"),
-        "lead_email": data.get("to", [None])[0] if isinstance(data.get("to"), list) else data.get("to"),
+        "lead_email": data.get("to", [None])[0]
+        if isinstance(data.get("to"), list)
+        else data.get("to"),
         "device_info": {},
         "geo_info": {},
         "raw": payload,

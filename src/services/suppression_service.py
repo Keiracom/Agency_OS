@@ -279,7 +279,9 @@ class SuppressionService:
         if not row:
             raise ValueError(f"Failed to create suppression entry for client {client_id}")
 
-        logger.info(f"Added suppression for client {client_id}: domain={domain}, email={email}, reason={reason}")
+        logger.info(
+            f"Added suppression for client {client_id}: domain={domain}, email={email}, reason={reason}"
+        )
         return row.id
 
     async def remove_suppression(
@@ -442,6 +444,7 @@ class SuppressionService:
         expires_at = None
         if bounce_type == "soft":
             from datetime import timedelta
+
             expires_at = datetime.utcnow() + timedelta(days=7)
 
         return await self.add_suppression(

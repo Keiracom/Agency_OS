@@ -294,15 +294,9 @@ async def enhance_icp_with_sdk_task(
 
             # Update with SDK-enhanced fields
             sdk_data = sdk_result.data
-            enhanced_profile["icp_industries"] = [
-                ind.name for ind in sdk_data.target_industries
-            ]
-            enhanced_profile["icp_titles"] = [
-                title.title for title in sdk_data.target_titles
-            ]
-            enhanced_profile["icp_pain_points"] = [
-                pp.pain_point for pp in sdk_data.pain_points
-            ]
+            enhanced_profile["icp_industries"] = [ind.name for ind in sdk_data.target_industries]
+            enhanced_profile["icp_titles"] = [title.title for title in sdk_data.target_titles]
+            enhanced_profile["icp_pain_points"] = [pp.pain_point for pp in sdk_data.pain_points]
             enhanced_profile["icp_company_sizes"] = [
                 f"{sdk_data.company_size_range.min_employees}-{sdk_data.company_size_range.max_employees}"
             ]
@@ -314,15 +308,15 @@ async def enhance_icp_with_sdk_task(
             enhanced_profile["sdk_confidence_score"] = sdk_data.confidence_score
             enhanced_profile["sdk_data_gaps"] = sdk_data.data_gaps
             enhanced_profile["sdk_buying_signals"] = [
-                {"signal": bs.signal, "urgency": bs.urgency}
-                for bs in sdk_data.buying_signals
+                {"signal": bs.signal, "urgency": bs.urgency} for bs in sdk_data.buying_signals
             ]
             enhanced_profile["sdk_sources_used"] = sdk_data.sources_used
 
             return {
                 "success": True,
                 "profile": enhanced_profile,
-                "tokens_used": basic_result.get("tokens_used", 0) + (sdk_result.input_tokens + sdk_result.output_tokens),
+                "tokens_used": basic_result.get("tokens_used", 0)
+                + (sdk_result.input_tokens + sdk_result.output_tokens),
                 "cost_aud": basic_result.get("cost_aud", 0.0) + sdk_result.cost_aud,
                 "duration_seconds": basic_result.get("duration_seconds", 0),
                 "sdk_enhanced": True,
@@ -700,7 +694,8 @@ async def icp_onboarding_flow(
             "client_id": str(client_id),
             "website_url": website_url,
             "tokens_used": extraction_result.get("tokens_used", 0),
-            "cost_aud": extraction_result.get("cost_aud", 0.0) + intel_result.get("total_cost_aud", 0.0),
+            "cost_aud": extraction_result.get("cost_aud", 0.0)
+            + intel_result.get("total_cost_aud", 0.0),
             "duration_seconds": extraction_result.get("duration_seconds", 0),
             "sdk_enhanced": extraction_result.get("sdk_enhanced", False),
             "sdk_confidence": extraction_result.get("sdk_confidence"),
@@ -826,10 +821,7 @@ async def resource_assignment_flow(
             f"{result.get('total_resources')} resources assigned"
         )
     else:
-        logger.error(
-            f"Resource assignment failed for client {client_id}: "
-            f"{result.get('error')}"
-        )
+        logger.error(f"Resource assignment failed for client {client_id}: {result.get('error')}")
 
     return result
 

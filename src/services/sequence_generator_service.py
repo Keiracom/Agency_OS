@@ -168,15 +168,11 @@ class SequenceGeneratorService:
 
         # Delete existing sequences
         await db.execute(
-            delete(CampaignSequence).where(
-                CampaignSequence.campaign_id == campaign_id
-            )
+            delete(CampaignSequence).where(CampaignSequence.campaign_id == campaign_id)
         )
 
         # Generate new sequences
-        return await self.generate_default_sequence(
-            db, campaign_id, available_channels
-        )
+        return await self.generate_default_sequence(db, campaign_id, available_channels)
 
     def get_available_channels_for_client(
         self,

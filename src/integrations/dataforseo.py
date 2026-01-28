@@ -152,11 +152,13 @@ class DataForSEOClient:
         if not clean_domain:
             return self._empty_labs_result()
 
-        data = [{
-            "target": clean_domain,
-            "location_code": location_code,
-            "language_code": language_code,
-        }]
+        data = [
+            {
+                "target": clean_domain,
+                "location_code": location_code,
+                "language_code": language_code,
+            }
+        ]
 
         response = await self._request(
             method="POST",
@@ -195,10 +197,12 @@ class DataForSEOClient:
         if not clean_domain:
             return self._empty_backlinks_result()
 
-        data = [{
-            "target": clean_domain,
-            "include_subdomains": include_subdomains,
-        }]
+        data = [
+            {
+                "target": clean_domain,
+                "include_subdomains": include_subdomains,
+            }
+        ]
 
         response = await self._request(
             method="POST",
@@ -248,14 +252,12 @@ class DataForSEOClient:
             "organic_pos_2_3": labs_result.get("organic_pos_2_3"),
             "organic_pos_4_10": labs_result.get("organic_pos_4_10"),
             "estimated_paid_traffic_cost": labs_result.get("estimated_paid_traffic_cost"),
-
             # From Backlinks API
             "domain_rank": backlinks_result.get("rank"),
             "backlinks": backlinks_result.get("backlinks"),
             "referring_domains": backlinks_result.get("referring_domains"),
             "referring_ips": backlinks_result.get("referring_ips"),
             "spam_score": backlinks_result.get("spam_score"),
-
             # Meta
             "enriched_at": datetime.utcnow().isoformat(),
         }
@@ -276,7 +278,9 @@ class DataForSEOClient:
             if response.get("tasks") and len(response["tasks"]) > 0:
                 task = response["tasks"][0]
                 if task.get("result"):
-                    result = task["result"][0] if isinstance(task["result"], list) else task["result"]
+                    result = (
+                        task["result"][0] if isinstance(task["result"], list) else task["result"]
+                    )
                     money = result.get("money", {})
                     return {
                         "status": "healthy",

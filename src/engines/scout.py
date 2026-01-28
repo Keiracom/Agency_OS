@@ -64,6 +64,7 @@ from src.services.who_refinement_service import get_who_refined_criteria
 try:
     from sentry_sdk import capture_exception
 except ImportError:
+
     def capture_exception(e):
         pass
 
@@ -282,31 +283,38 @@ class ScoutEngine(BaseEngine):
                         results["tier2_success"] += 1
                         results["clay_budget_used"] += 1
 
-                    results["enriched_leads"].append({
-                        "lead_id": str(lead_id),
-                        "tier": tier,
-                        "source": result.metadata.get("source"),
-                    })
+                    results["enriched_leads"].append(
+                        {
+                            "lead_id": str(lead_id),
+                            "tier": tier,
+                            "source": result.metadata.get("source"),
+                        }
+                    )
                 else:
                     results["failures"] += 1
-                    results["failed_leads"].append({
-                        "lead_id": str(lead_id),
-                        "error": result.error,
-                    })
+                    results["failed_leads"].append(
+                        {
+                            "lead_id": str(lead_id),
+                            "error": result.error,
+                        }
+                    )
 
             except Exception as e:
                 results["failures"] += 1
-                results["failed_leads"].append({
-                    "lead_id": str(lead_id),
-                    "error": str(e),
-                })
+                results["failed_leads"].append(
+                    {
+                        "lead_id": str(lead_id),
+                        "error": str(e),
+                    }
+                )
 
         return EngineResult.ok(
             data=results,
             metadata={
                 "batch_size": len(lead_ids),
                 "success_rate": (results["total"] - results["failures"]) / results["total"]
-                if results["total"] > 0 else 0,
+                if results["total"] > 0
+                else 0,
             },
         )
 
@@ -398,9 +406,7 @@ class ScoutEngine(BaseEngine):
             try:
                 # If we have LinkedIn URL, scrape profile
                 if lead.linkedin_url:
-                    apify_results = await self.apify.scrape_linkedin_profiles(
-                        [lead.linkedin_url]
-                    )
+                    apify_results = await self.apify.scrape_linkedin_profiles([lead.linkedin_url])
                     if apify_results:
                         apify_data = apify_results[0]
                         # Merge with Apollo result if available
@@ -471,8 +477,10 @@ class ScoutEngine(BaseEngine):
                 "title": lead.title,
                 "company_name": lead.company or enrichment_data.get("company"),
                 "company_domain": lead.domain or enrichment_data.get("domain"),
-                "company_industry": lead.organization_industry or enrichment_data.get("organization_industry"),
-                "company_employee_count": lead.organization_employee_count or enrichment_data.get("organization_employee_count"),
+                "company_industry": lead.organization_industry
+                or enrichment_data.get("organization_industry"),
+                "company_employee_count": lead.organization_employee_count
+                or enrichment_data.get("organization_employee_count"),
                 "linkedin_url": lead.linkedin_url or enrichment_data.get("linkedin_url"),
                 "linkedin_headline": enrichment_data.get("linkedin_headline"),
                 "linkedin_about": enrichment_data.get("linkedin_about"),
@@ -485,7 +493,7 @@ class ScoutEngine(BaseEngine):
                     "lead_id": str(lead.id),
                     "signals": signals,
                     "company": lead_data.get("company_name"),
-                }
+                },
             )
 
             # Run SDK enrichment agent
@@ -499,7 +507,7 @@ class ScoutEngine(BaseEngine):
                         "cost_aud": result.cost_aud,
                         "turns": result.turns_used,
                         "tool_calls": len(result.tool_calls),
-                    }
+                    },
                 )
 
                 # Convert Pydantic model to dict if needed
@@ -520,7 +528,7 @@ class ScoutEngine(BaseEngine):
                     extra={
                         "lead_id": str(lead.id),
                         "error": result.error,
-                    }
+                    },
                 )
                 return None
 
@@ -570,7 +578,8 @@ class ScoutEngine(BaseEngine):
         lead_data_for_check = {
             "als_score": effective_als_score,
             "company_latest_funding_date": enrichment_data.get("company_latest_funding_date"),
-            "company_open_roles": enrichment_data.get("company_is_hiring") or enrichment_data.get("organization_is_hiring"),
+            "company_open_roles": enrichment_data.get("company_is_hiring")
+            or enrichment_data.get("organization_is_hiring"),
             "company_employee_count": enrichment_data.get("organization_employee_count"),
             "linkedin_engagement_score": enrichment_data.get("linkedin_engagement_score"),
             "source": lead.source if hasattr(lead, "source") else None,
@@ -587,7 +596,7 @@ class ScoutEngine(BaseEngine):
                     "lead_id": str(lead_id),
                     "als_score": effective_als_score,
                     "signals": signals,
-                }
+                },
             )
 
             # Run SDK enrichment
@@ -601,7 +610,11 @@ class ScoutEngine(BaseEngine):
                         client_id=lead.client_id,
                         agent_type="enrichment",
                         model_used="claude-sonnet-4-20250514",
-                        input_tokens=sdk_result.get("sdk_tool_calls", [{}])[0].get("input_tokens", 0) if sdk_result.get("sdk_tool_calls") else 0,
+                        input_tokens=sdk_result.get("sdk_tool_calls", [{}])[0].get(
+                            "input_tokens", 0
+                        )
+                        if sdk_result.get("sdk_tool_calls")
+                        else 0,
                         output_tokens=0,  # Not tracked at this level
                         cost_aud=sdk_result.get("sdk_cost_aud", 0),
                         turns_used=sdk_result.get("sdk_turns_used", 1),
@@ -617,7 +630,9 @@ class ScoutEngine(BaseEngine):
                 enrichment_data["sdk_enrichment"] = sdk_result.get("sdk_enrichment")
                 enrichment_data["sdk_signals"] = sdk_result.get("sdk_signals")
                 enrichment_data["sdk_cost_aud"] = sdk_result.get("sdk_cost_aud", 0)
-                enrichment_data["enrichment_source"] = f"{enrichment_data.get('source', 'unknown')}+sdk"
+                enrichment_data["enrichment_source"] = (
+                    f"{enrichment_data.get('source', 'unknown')}+sdk"
+                )
 
                 # Update the lead with SDK data
                 await self._update_lead_sdk_enrichment(db, lead, sdk_result)
@@ -688,11 +703,7 @@ class ScoutEngine(BaseEngine):
         if "+sdk" not in current_source:
             update_values["enrichment_source"] = f"{current_source}+sdk"
 
-        stmt = (
-            sql_update(Lead)
-            .where(Lead.id == lead.id)
-            .values(**update_values)
-        )
+        stmt = sql_update(Lead).where(Lead.id == lead.id).values(**update_values)
         await db.execute(stmt)
         await db.commit()
 
@@ -728,7 +739,9 @@ class ScoutEngine(BaseEngine):
                 merged[key] = value
 
         # Update source to indicate merge
-        merged["source"] = f"{primary.get('source', 'unknown')}+{secondary.get('source', 'unknown')}"
+        merged["source"] = (
+            f"{primary.get('source', 'unknown')}+{secondary.get('source', 'unknown')}"
+        )
 
         # Recalculate confidence as average
         primary_conf = primary.get("confidence", 0.5)
@@ -777,6 +790,7 @@ class ScoutEngine(BaseEngine):
         if enrichment.get("employment_start_date"):
             try:
                 from datetime import date as date_type
+
                 if isinstance(enrichment["employment_start_date"], str):
                     update_data["employment_start_date"] = date_type.fromisoformat(
                         enrichment["employment_start_date"][:10]
@@ -788,11 +802,7 @@ class ScoutEngine(BaseEngine):
         update_data = {k: v for k, v in update_data.items() if v is not None}
 
         # Execute update
-        stmt = (
-            update(Lead)
-            .where(Lead.id == lead.id)
-            .values(**update_data)
-        )
+        stmt = update(Lead).where(Lead.id == lead.id).values(**update_data)
         await db.execute(stmt)
         await db.commit()
 
@@ -918,7 +928,6 @@ class ScoutEngine(BaseEngine):
                 "cost_aud": result.cost_aud,
             },
         )
-
 
     # ============================================
     # PHASE 24A: Lead Pool Methods
@@ -1076,9 +1085,7 @@ class ScoutEngine(BaseEngine):
             suppressed_emails: set[str] = set()
             if client_id:
                 emails = [l.get("email", "").lower() for l in leads if l.get("email")]
-                suppressed_emails = await self._get_suppressed_emails(
-                    db, client_id, emails
-                )
+                suppressed_emails = await self._get_suppressed_emails(db, client_id, emails)
 
             for lead_data in leads:
                 email = lead_data.get("email")
@@ -1236,11 +1243,7 @@ class ScoutEngine(BaseEngine):
 
         return suppressed
 
-    async def _get_pool_lead_by_email(
-        self,
-        db: AsyncSession,
-        email: str
-    ) -> dict[str, Any] | None:
+    async def _get_pool_lead_by_email(self, db: AsyncSession, email: str) -> dict[str, Any] | None:
         """Get a lead from the pool by email."""
         query = text("""
             SELECT * FROM lead_pool
@@ -1251,9 +1254,7 @@ class ScoutEngine(BaseEngine):
         return dict(row._mapping) if row else None
 
     async def _insert_into_pool(
-        self,
-        db: AsyncSession,
-        lead_data: dict[str, Any]
+        self, db: AsyncSession, lead_data: dict[str, Any]
     ) -> dict[str, Any]:
         """Insert a lead into the pool."""
         import json
@@ -1327,7 +1328,9 @@ class ScoutEngine(BaseEngine):
             "country": lead_data.get("country"),
             "timezone": lead_data.get("timezone"),
             "departments": lead_data.get("departments", []),
-            "employment_history": json.dumps(lead_data.get("employment_history")) if lead_data.get("employment_history") else None,
+            "employment_history": json.dumps(lead_data.get("employment_history"))
+            if lead_data.get("employment_history")
+            else None,
             "current_role_start_date": parse_date_string(lead_data.get("current_role_start_date")),
             "company_name": lead_data.get("company_name"),
             "company_domain": lead_data.get("company_domain"),
@@ -1347,14 +1350,19 @@ class ScoutEngine(BaseEngine):
             "company_postal_code": lead_data.get("company_postal_code"),
             "company_is_hiring": lead_data.get("company_is_hiring"),
             "company_latest_funding_stage": lead_data.get("company_latest_funding_stage"),
-            "company_latest_funding_date": parse_date_string(lead_data.get("company_latest_funding_date")),
+            "company_latest_funding_date": parse_date_string(
+                lead_data.get("company_latest_funding_date")
+            ),
             "company_total_funding": lead_data.get("company_total_funding"),
             "company_technologies": lead_data.get("company_technologies", []),
             "company_keywords": lead_data.get("company_keywords", []),
             "email_status": email_status,
             "enrichment_source": lead_data.get("enrichment_source", "apollo"),
-            "enrichment_confidence": lead_data.get("confidence") or lead_data.get("enrichment_confidence"),
-            "enrichment_data": json.dumps(lead_data.get("enrichment_data")) if lead_data.get("enrichment_data") else None,
+            "enrichment_confidence": lead_data.get("confidence")
+            or lead_data.get("enrichment_confidence"),
+            "enrichment_data": json.dumps(lead_data.get("enrichment_data"))
+            if lead_data.get("enrichment_data")
+            else None,
         }
 
         result = await db.execute(query, params)
@@ -1439,11 +1447,14 @@ class ScoutEngine(BaseEngine):
             RETURNING id
         """)
 
-        await db.execute(update_query, {
-            "assignment_id": str(assignment_id),
-            "person_data": json.dumps(person_data) if person_data else None,
-            "company_data": json.dumps(company_data) if company_data else None,
-        })
+        await db.execute(
+            update_query,
+            {
+                "assignment_id": str(assignment_id),
+                "person_data": json.dumps(person_data) if person_data else None,
+                "company_data": json.dumps(company_data) if company_data else None,
+            },
+        )
         await db.commit()
 
         return EngineResult.ok(
@@ -1477,13 +1488,15 @@ class ScoutEngine(BaseEngine):
             posts = []
             raw_posts = profile.get("posts", []) or profile.get("activity", [])
             for post in raw_posts[:5]:  # Last 5 posts
-                posts.append({
-                    "content": post.get("text") or post.get("content", ""),
-                    "date": post.get("date") or post.get("posted_date"),
-                    "likes": post.get("likes", 0),
-                    "comments": post.get("comments", 0),
-                    "shares": post.get("shares", 0),
-                })
+                posts.append(
+                    {
+                        "content": post.get("text") or post.get("content", ""),
+                        "date": post.get("date") or post.get("posted_date"),
+                        "likes": post.get("likes", 0),
+                        "comments": post.get("comments", 0),
+                        "shares": post.get("shares", 0),
+                    }
+                )
 
             return {
                 "found": True,

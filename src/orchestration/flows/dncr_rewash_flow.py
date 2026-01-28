@@ -82,10 +82,7 @@ async def get_leads_needing_dncr_rewash_task(
         result = await db.execute(stmt)
         rows = result.all()
 
-        leads_data = [
-            {"id": str(lead_id), "phone": phone}
-            for lead_id, phone in rows
-        ]
+        leads_data = [{"id": str(lead_id), "phone": phone} for lead_id, phone in rows]
 
         logger.info(
             f"Found {len(leads_data)} leads needing DNCR re-wash "
@@ -140,10 +137,7 @@ async def get_pool_leads_needing_dncr_rewash_task(
         result = await db.execute(stmt)
         rows = result.all()
 
-        leads_data = [
-            {"id": str(lead_id), "phone": phone}
-            for lead_id, phone in rows
-        ]
+        leads_data = [{"id": str(lead_id), "phone": phone} for lead_id, phone in rows]
 
         logger.info(
             f"Found {len(leads_data)} pool leads needing DNCR re-wash "
@@ -182,9 +176,7 @@ async def dncr_rewash_batch_task(
         dncr_client = get_dncr_client()
 
         # Build phone-to-lead mapping
-        phone_to_id: dict[str, str] = {
-            lead["phone"]: lead["id"] for lead in leads
-        }
+        phone_to_id: dict[str, str] = {lead["phone"]: lead["id"] for lead in leads}
         phones = list(phone_to_id.keys())
 
         logger.info(f"Re-washing {len(phones)} phone numbers against DNCR")
@@ -229,14 +221,10 @@ async def dncr_rewash_batch_task(
                 changed_count += 1
                 if is_on_dncr and not old_result:
                     newly_blocked.append(phone)
-                    logger.info(
-                        f"DNCR status CHANGED: {phone[:8]}... now ON register"
-                    )
+                    logger.info(f"DNCR status CHANGED: {phone[:8]}... now ON register")
                 elif not is_on_dncr and old_result:
                     newly_unblocked.append(phone)
-                    logger.info(
-                        f"DNCR status CHANGED: {phone[:8]}... now OFF register"
-                    )
+                    logger.info(f"DNCR status CHANGED: {phone[:8]}... now OFF register")
 
         await db.commit()
 
@@ -286,8 +274,7 @@ async def dncr_quarterly_rewash_flow(
         Dict with re-wash summary
     """
     logger.info(
-        f"Starting DNCR quarterly re-wash flow "
-        f"(stale_days={stale_days}, max_leads={max_leads})"
+        f"Starting DNCR quarterly re-wash flow (stale_days={stale_days}, max_leads={max_leads})"
     )
 
     # Get leads from both tables
@@ -314,7 +301,7 @@ async def dncr_quarterly_rewash_flow(
     lead_results = []
     leads_list = leads_data["leads"]
     for i in range(0, len(leads_list), batch_size):
-        batch = leads_list[i:i + batch_size]
+        batch = leads_list[i : i + batch_size]
         result = await dncr_rewash_batch_task(leads=batch, model="lead")
         lead_results.append(result)
 
@@ -322,7 +309,7 @@ async def dncr_quarterly_rewash_flow(
     pool_results = []
     pool_list = pool_leads_data["leads"]
     for i in range(0, len(pool_list), batch_size):
-        batch = pool_list[i:i + batch_size]
+        batch = pool_list[i : i + batch_size]
         result = await dncr_rewash_batch_task(leads=batch, model="lead_pool")
         pool_results.append(result)
 

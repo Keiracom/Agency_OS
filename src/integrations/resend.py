@@ -101,11 +101,14 @@ class ResendClient:
             }
 
         except Exception as e:
-            sentry_sdk.set_context("resend_email", {
-                "to": to_email,
-                "subject": subject[:50],
-                "from": from_email,
-            })
+            sentry_sdk.set_context(
+                "resend_email",
+                {
+                    "to": to_email,
+                    "subject": subject[:50],
+                    "from": from_email,
+                },
+            )
             sentry_sdk.capture_exception(e)
             raise APIError(
                 service="resend",

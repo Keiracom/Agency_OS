@@ -55,9 +55,7 @@ class ClientIntelligence(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     website_team_bios: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSONB, nullable=True, default=list
     )  # [{name, title, linkedin_url, bio}]
-    website_blog_topics: Mapped[list[str] | None] = mapped_column(
-        ARRAY(Text), nullable=True
-    )
+    website_blog_topics: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
     website_scraped_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     # === LINKEDIN COMPANY ===
@@ -65,9 +63,7 @@ class ClientIntelligence(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     linkedin_follower_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     linkedin_employee_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     linkedin_description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    linkedin_specialties: Mapped[list[str] | None] = mapped_column(
-        ARRAY(Text), nullable=True
-    )
+    linkedin_specialties: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
     linkedin_recent_posts: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSONB, nullable=True, default=list
     )  # [{text, date, engagement}]
@@ -145,9 +141,7 @@ class ClientIntelligence(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     )  # [{metric, context, source}]
     proof_clients: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
     proof_industries: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
-    common_pain_points: Mapped[list[str] | None] = mapped_column(
-        ARRAY(Text), nullable=True
-    )
+    common_pain_points: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
     differentiators: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
 
     # === SCRAPING METADATA ===
@@ -170,22 +164,26 @@ class ClientIntelligence(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     @property
     def has_social_data(self) -> bool:
         """Check if any social media data has been scraped."""
-        return any([
-            self.linkedin_scraped_at,
-            self.twitter_scraped_at,
-            self.facebook_scraped_at,
-            self.instagram_scraped_at,
-        ])
+        return any(
+            [
+                self.linkedin_scraped_at,
+                self.twitter_scraped_at,
+                self.facebook_scraped_at,
+                self.instagram_scraped_at,
+            ]
+        )
 
     @property
     def has_review_data(self) -> bool:
         """Check if any review platform data has been scraped."""
-        return any([
-            self.g2_scraped_at,
-            self.capterra_scraped_at,
-            self.trustpilot_scraped_at,
-            self.google_scraped_at,
-        ])
+        return any(
+            [
+                self.g2_scraped_at,
+                self.capterra_scraped_at,
+                self.trustpilot_scraped_at,
+                self.google_scraped_at,
+            ]
+        )
 
     @property
     def needs_refresh(self) -> bool:
@@ -206,10 +204,22 @@ class ClientIntelligence(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
             "testimonials": (self.website_testimonials or [])[:3],
             "case_studies": (self.website_case_studies or [])[:3],
             "ratings": {
-                "g2": {"rating": float(self.g2_rating) if self.g2_rating else None, "count": self.g2_review_count},
-                "capterra": {"rating": float(self.capterra_rating) if self.capterra_rating else None, "count": self.capterra_review_count},
-                "trustpilot": {"rating": float(self.trustpilot_rating) if self.trustpilot_rating else None, "count": self.trustpilot_review_count},
-                "google": {"rating": float(self.google_rating) if self.google_rating else None, "count": self.google_review_count},
+                "g2": {
+                    "rating": float(self.g2_rating) if self.g2_rating else None,
+                    "count": self.g2_review_count,
+                },
+                "capterra": {
+                    "rating": float(self.capterra_rating) if self.capterra_rating else None,
+                    "count": self.capterra_review_count,
+                },
+                "trustpilot": {
+                    "rating": float(self.trustpilot_rating) if self.trustpilot_rating else None,
+                    "count": self.trustpilot_review_count,
+                },
+                "google": {
+                    "rating": float(self.google_rating) if self.google_rating else None,
+                    "count": self.google_review_count,
+                },
             },
         }
 

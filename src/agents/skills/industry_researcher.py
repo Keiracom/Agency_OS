@@ -44,69 +44,45 @@ class IndustryResearcherInput(BaseModel):
 
     # Required
     industry: str = Field(
-        ...,
-        description="Primary industry to research (e.g., 'healthcare', 'SaaS', 'legal')"
+        ..., description="Primary industry to research (e.g., 'healthcare', 'SaaS', 'legal')"
     )
 
     # Optional context
     agency_services: list[str] = Field(
-        default_factory=list,
-        description="Services the agency offers (helps focus research)"
+        default_factory=list, description="Services the agency offers (helps focus research)"
     )
     target_titles: list[str] = Field(
-        default_factory=list,
-        description="Target job titles (helps identify relevant pain points)"
+        default_factory=list, description="Target job titles (helps identify relevant pain points)"
     )
-    location: str = Field(
-        default="Australia",
-        description="Geographic focus for research"
-    )
+    location: str = Field(default="Australia", description="Geographic focus for research")
 
     # Search parameters
     search_depth: Literal["quick", "standard", "deep"] = Field(
-        default="standard",
-        description="How thorough the research should be"
+        default="standard", description="How thorough the research should be"
     )
 
 
 class DiscoveredPainPoint(BaseModel):
     """A discovered pain point with evidence."""
 
-    pain_point: str = Field(
-        ...,
-        description="The pain point statement"
-    )
+    pain_point: str = Field(..., description="The pain point statement")
     evidence: str = Field(
-        ...,
-        description="Where this was discovered (source URL or search result)"
+        ..., description="Where this was discovered (source URL or search result)"
     )
     relevance_score: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=1.0,
-        description="How relevant to the agency's services (0-1)"
+        default=0.0, ge=0.0, le=1.0, description="How relevant to the agency's services (0-1)"
     )
     outreach_angle: str = Field(
-        default="",
-        description="Suggested angle for cold outreach messaging"
+        default="", description="Suggested angle for cold outreach messaging"
     )
 
 
 class IndustryInsight(BaseModel):
     """An industry insight or trend."""
 
-    insight: str = Field(
-        ...,
-        description="The insight or trend"
-    )
-    source: str = Field(
-        ...,
-        description="Source URL or reference"
-    )
-    implication: str = Field(
-        default="",
-        description="What this means for outreach strategy"
-    )
+    insight: str = Field(..., description="The insight or trend")
+    source: str = Field(..., description="Source URL or reference")
+    implication: str = Field(default="", description="What this means for outreach strategy")
 
 
 class CompetitorInfo(BaseModel):
@@ -114,10 +90,7 @@ class CompetitorInfo(BaseModel):
 
     name: str
     description: str
-    relevance: str = Field(
-        default="",
-        description="Why this competitor matters for prospecting"
-    )
+    relevance: str = Field(default="", description="Why this competitor matters for prospecting")
 
 
 class IndustryResearcherOutput(BaseModel):
@@ -131,25 +104,19 @@ class IndustryResearcherOutput(BaseModel):
 
     # ICP enhancement suggestions
     suggested_titles: list[str] = Field(
-        default_factory=list,
-        description="Additional job titles to target"
+        default_factory=list, description="Additional job titles to target"
     )
     suggested_company_sizes: list[str] = Field(
-        default_factory=list,
-        description="Ideal company size ranges"
+        default_factory=list, description="Ideal company size ranges"
     )
     messaging_angles: list[str] = Field(
-        default_factory=list,
-        description="Suggested angles for cold outreach"
+        default_factory=list, description="Suggested angles for cold outreach"
     )
 
     # Metadata
     sources_searched: int = 0
     confidence: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=1.0,
-        description="Confidence in the research quality"
+        default=0.0, ge=0.0, le=1.0, description="Confidence in the research quality"
     )
     search_queries_used: list[str] = Field(default_factory=list)
 
@@ -250,21 +217,21 @@ QUALITY CRITERIA:
 
             if input_data.agency_services:
                 services_str = " ".join(input_data.agency_services[:3])
-                pain_point_queries.append(
-                    f"{input_data.industry} {services_str} problems"
-                )
+                pain_point_queries.append(f"{input_data.industry} {services_str} problems")
 
             pain_point_results = []
             for query in pain_point_queries:
                 result = await self._serper.search(query, num_results)
-                pain_point_results.append({
-                    "query": query,
-                    "results": [
-                        {"title": r.title, "snippet": r.snippet, "link": r.link}
-                        for r in result.organic[:5]
-                    ],
-                    "people_also_ask": result.people_also_ask[:3],
-                })
+                pain_point_results.append(
+                    {
+                        "query": query,
+                        "results": [
+                            {"title": r.title, "snippet": r.snippet, "link": r.link}
+                            for r in result.organic[:5]
+                        ],
+                        "people_also_ask": result.people_also_ask[:3],
+                    }
+                )
 
             # Step 3: Compile search data for Claude analysis
             search_data = {
@@ -275,16 +242,22 @@ QUALITY CRITERIA:
                 "trends_search": [
                     {"title": r.title, "snippet": r.snippet}
                     for r in search_results.get("trends", []).organic[:5]
-                ] if "trends" in search_results else [],
+                ]
+                if "trends" in search_results
+                else [],
                 "pain_point_searches": pain_point_results,
                 "key_players": [
                     {"title": r.title, "snippet": r.snippet}
                     for r in search_results.get("key_players", []).organic[:5]
-                ] if "key_players" in search_results else [],
+                ]
+                if "key_players" in search_results
+                else [],
                 "news": [
                     {"title": r.title, "snippet": r.snippet}
                     for r in search_results.get("news", []).organic[:3]
-                ] if "news" in search_results else [],
+                ]
+                if "news" in search_results
+                else [],
             }
 
             # Step 4: Use Claude to analyze and structure findings
@@ -294,8 +267,8 @@ SEARCH DATA:
 {self._format_search_data(search_data)}
 
 AGENCY CONTEXT:
-- Services: {', '.join(input_data.agency_services) if input_data.agency_services else 'General marketing/growth services'}
-- Target Titles: {', '.join(input_data.target_titles) if input_data.target_titles else 'Decision makers'}
+- Services: {", ".join(input_data.agency_services) if input_data.agency_services else "General marketing/growth services"}
+- Target Titles: {", ".join(input_data.target_titles) if input_data.target_titles else "Decision makers"}
 - Location: {input_data.location}
 
 Please provide:
@@ -339,7 +312,11 @@ Format your response as structured data that can be parsed."""
 
             # Calculate confidence based on search quality
             total_results = sum(
-                len(search_results.get(key, []).organic if hasattr(search_results.get(key, []), 'organic') else [])
+                len(
+                    search_results.get(key, []).organic
+                    if hasattr(search_results.get(key, []), "organic")
+                    else []
+                )
                 for key in ["trends", "key_players", "news"]
             )
             confidence = min(0.9, 0.5 + (total_results / 50))
@@ -351,8 +328,8 @@ Format your response as structured data that can be parsed."""
             return SkillResult.ok(
                 data=output,
                 confidence=confidence,
-                tokens_used=response.usage.total_tokens if hasattr(response, 'usage') else 0,
-                cost_aud=response.cost_aud if hasattr(response, 'cost_aud') else 0.0,
+                tokens_used=response.usage.total_tokens if hasattr(response, "usage") else 0,
+                cost_aud=response.cost_aud if hasattr(response, "cost_aud") else 0.0,
                 metadata={
                     "industry": input_data.industry,
                     "search_depth": input_data.search_depth,
@@ -455,6 +432,7 @@ Extract ONLY what's in the analysis. If something is missing, use empty arrays."
             )
 
             import json
+
             # Clean response - remove markdown if present
             content = response.content.strip()
             if content.startswith("```"):
@@ -466,20 +444,11 @@ Extract ONLY what's in the analysis. If something is missing, use empty arrays."
             data = json.loads(content)
 
             # Build output from parsed data
-            pain_points = [
-                DiscoveredPainPoint(**pp)
-                for pp in data.get("pain_points", [])[:5]
-            ]
+            pain_points = [DiscoveredPainPoint(**pp) for pp in data.get("pain_points", [])[:5]]
 
-            insights = [
-                IndustryInsight(**ins)
-                for ins in data.get("industry_insights", [])[:3]
-            ]
+            insights = [IndustryInsight(**ins) for ins in data.get("industry_insights", [])[:3]]
 
-            players = [
-                CompetitorInfo(**p)
-                for p in data.get("key_players", [])[:3]
-            ]
+            players = [CompetitorInfo(**p) for p in data.get("key_players", [])[:3]]
 
             return IndustryResearcherOutput(
                 industry=industry,

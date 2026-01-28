@@ -82,9 +82,7 @@ async def validate_client_for_pool_task(client_id: UUID) -> dict[str, Any]:
             SubscriptionStatus.ACTIVE,
             SubscriptionStatus.TRIALING,
         ]:
-            raise ValueError(
-                f"Client subscription is {client.subscription_status.value}"
-            )
+            raise ValueError(f"Client subscription is {client.subscription_status.value}")
 
         # JIT validation: credits
         if client.credits_remaining <= 0:
@@ -92,15 +90,15 @@ async def validate_client_for_pool_task(client_id: UUID) -> dict[str, Any]:
 
         # Get ICP from client
         icp_criteria = {}
-        if hasattr(client, 'icp_industries') and client.icp_industries:
+        if hasattr(client, "icp_industries") and client.icp_industries:
             icp_criteria["industries"] = client.icp_industries
-        if hasattr(client, 'icp_seniorities') and client.icp_seniorities:
+        if hasattr(client, "icp_seniorities") and client.icp_seniorities:
             icp_criteria["seniorities"] = client.icp_seniorities
-        if hasattr(client, 'icp_countries') and client.icp_countries:
+        if hasattr(client, "icp_countries") and client.icp_countries:
             icp_criteria["countries"] = client.icp_countries
-        if hasattr(client, 'icp_employee_min') and client.icp_employee_min:
+        if hasattr(client, "icp_employee_min") and client.icp_employee_min:
             icp_criteria["employee_min"] = client.icp_employee_min
-        if hasattr(client, 'icp_employee_max') and client.icp_employee_max:
+        if hasattr(client, "icp_employee_max") and client.icp_employee_max:
             icp_criteria["employee_max"] = client.icp_employee_max
 
         return {
@@ -177,9 +175,7 @@ async def allocate_pool_leads_task(
             campaign_id=campaign_id,
         )
 
-        logger.info(
-            f"Allocated {len(assigned_leads)} leads from pool to campaign {campaign_id}"
-        )
+        logger.info(f"Allocated {len(assigned_leads)} leads from pool to campaign {campaign_id}")
 
         return {
             "campaign_id": str(campaign_id),
@@ -392,14 +388,14 @@ async def trigger_enrichment_for_leads_task(
             triggered += 1
         except Exception as e:
             logger.error(f"Failed to trigger enrichment for {lead_pool_id}: {e}")
-            errors.append({
-                "lead_pool_id": lead_pool_id,
-                "error": str(e),
-            })
+            errors.append(
+                {
+                    "lead_pool_id": lead_pool_id,
+                    "error": str(e),
+                }
+            )
 
-    logger.info(
-        f"Triggered enrichment for {triggered}/{len(lead_pool_ids)} leads"
-    )
+    logger.info(f"Triggered enrichment for {triggered}/{len(lead_pool_ids)} leads")
 
     return {
         "triggered": triggered,
@@ -444,8 +440,7 @@ async def pool_campaign_assignment_flow(
         campaign_id = UUID(campaign_id)
 
     logger.info(
-        f"Starting pool assignment flow for campaign {campaign_id}, "
-        f"requesting {lead_count} leads"
+        f"Starting pool assignment flow for campaign {campaign_id}, requesting {lead_count} leads"
     )
 
     # Step 1: Validate campaign
@@ -479,9 +474,7 @@ async def pool_campaign_assignment_flow(
 
     # Step 4: Score allocated leads (initial scoring with Apollo data only)
     # Phase 37: Use lead_pool_ids directly (no separate assignments)
-    lead_pool_ids = [
-        lead["lead_pool_id"] for lead in allocation_result["assigned_leads"]
-    ]
+    lead_pool_ids = [lead["lead_pool_id"] for lead in allocation_result["assigned_leads"]]
     scoring_result = await score_pool_leads_task(
         lead_pool_ids=lead_pool_ids,
         client_id=str(client_id),
@@ -583,10 +576,12 @@ async def pool_daily_allocation_flow(
             total_allocated += result.get("leads_allocated", 0)
         except Exception as e:
             logger.error(f"Failed to allocate to campaign {campaign_id}: {e}")
-            allocation_results.append({
-                "campaign_id": str(campaign_id),
-                "error": str(e),
-            })
+            allocation_results.append(
+                {
+                    "campaign_id": str(campaign_id),
+                    "error": str(e),
+                }
+            )
 
     # Get pool stats
     pool_stats = await get_pool_stats_task()
@@ -628,9 +623,7 @@ async def jit_validate_outreach_batch_flow(
     Returns:
         Dict with valid and blocked leads
     """
-    logger.info(
-        f"JIT validating {len(lead_pool_ids)} leads for {channel} outreach"
-    )
+    logger.info(f"JIT validating {len(lead_pool_ids)} leads for {channel} outreach")
 
     valid_leads = []
     blocked_leads = []
@@ -643,16 +636,20 @@ async def jit_validate_outreach_batch_flow(
         )
 
         if result["is_valid"]:
-            valid_leads.append({
-                "lead_pool_id": result["lead_pool_id"],
-                "assignment_id": result["assignment_id"],
-            })
+            valid_leads.append(
+                {
+                    "lead_pool_id": result["lead_pool_id"],
+                    "assignment_id": result["assignment_id"],
+                }
+            )
         else:
-            blocked_leads.append({
-                "lead_pool_id": result["lead_pool_id"],
-                "block_reason": result["block_reason"],
-                "block_code": result["block_code"],
-            })
+            blocked_leads.append(
+                {
+                    "lead_pool_id": result["lead_pool_id"],
+                    "block_reason": result["block_reason"],
+                    "block_code": result["block_code"],
+                }
+            )
 
     summary = {
         "total_checked": len(lead_pool_ids),
@@ -664,10 +661,7 @@ async def jit_validate_outreach_batch_flow(
         "client_id": str(client_id),
     }
 
-    logger.info(
-        f"JIT validation complete: {len(valid_leads)} valid, "
-        f"{len(blocked_leads)} blocked"
-    )
+    logger.info(f"JIT validation complete: {len(valid_leads)} valid, {len(blocked_leads)} blocked")
 
     return summary
 

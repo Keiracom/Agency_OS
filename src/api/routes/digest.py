@@ -48,12 +48,8 @@ class DigestSettingsUpdate(BaseModel):
     """Request model for updating digest settings."""
 
     digest_enabled: bool | None = None
-    digest_frequency: str | None = Field(
-        None, description="daily, weekly, or none"
-    )
-    digest_send_hour: int | None = Field(
-        None, ge=0, le=23, description="Hour of day (0-23)"
-    )
+    digest_frequency: str | None = Field(None, description="daily, weekly, or none")
+    digest_send_hour: int | None = Field(None, ge=0, le=23, description="Hour of day (0-23)")
     digest_timezone: str | None = None
     digest_recipients: list[str] | None = None
 
@@ -116,9 +112,7 @@ async def get_digest_settings(
         digest_timezone=client.digest_timezone,
         digest_recipients=client.digest_recipients or [],
         last_digest_sent_at=(
-            client.last_digest_sent_at.isoformat()
-            if client.last_digest_sent_at
-            else None
+            client.last_digest_sent_at.isoformat() if client.last_digest_sent_at else None
         ),
     )
 
@@ -173,9 +167,7 @@ async def update_digest_settings(
         digest_timezone=client.digest_timezone,
         digest_recipients=client.digest_recipients or [],
         last_digest_sent_at=(
-            client.last_digest_sent_at.isoformat()
-            if client.last_digest_sent_at
-            else None
+            client.last_digest_sent_at.isoformat() if client.last_digest_sent_at else None
         ),
     )
 
@@ -243,9 +235,7 @@ async def get_digest_history(
     # Get total count
     from sqlalchemy import func
 
-    count_query = select(func.count(DigestLog.id)).where(
-        DigestLog.client_id == client_id
-    )
+    count_query = select(func.count(DigestLog.id)).where(DigestLog.client_id == client_id)
     count_result = await db.execute(count_query)
     total = count_result.scalar() or 0
 

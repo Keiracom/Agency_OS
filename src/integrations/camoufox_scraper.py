@@ -87,10 +87,14 @@ class CamoufoxScraper:
             proxy_username: Proxy auth username
             proxy_password: Proxy auth password
         """
-        self.proxy_host = proxy_host or getattr(settings, 'residential_proxy_host', None)
-        self.proxy_port = proxy_port or getattr(settings, 'residential_proxy_port', None)
-        self.proxy_username = proxy_username or getattr(settings, 'residential_proxy_username', None)
-        self.proxy_password = proxy_password or getattr(settings, 'residential_proxy_password', None)
+        self.proxy_host = proxy_host or getattr(settings, "residential_proxy_host", None)
+        self.proxy_port = proxy_port or getattr(settings, "residential_proxy_port", None)
+        self.proxy_username = proxy_username or getattr(
+            settings, "residential_proxy_username", None
+        )
+        self.proxy_password = proxy_password or getattr(
+            settings, "residential_proxy_password", None
+        )
 
         self._proxy_config = self._build_proxy_config()
 
@@ -297,10 +301,7 @@ class CamoufoxScraper:
         html_lower = html.lower()
 
         # Count blocked indicators
-        matches = sum(
-            1 for indicator in BLOCKED_INDICATORS
-            if indicator in html_lower
-        )
+        matches = sum(1 for indicator in BLOCKED_INDICATORS if indicator in html_lower)
 
         # Multiple indicators = likely blocked
         return matches >= 2
@@ -327,6 +328,7 @@ def is_camoufox_available() -> bool:
     """
     try:
         import camoufox  # noqa: F401
+
         return True
     except ImportError:
         return False

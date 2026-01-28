@@ -128,11 +128,14 @@ class DNCRClient:
             with contextlib.suppress(Exception):
                 error_body = e.response.json()
 
-            sentry_sdk.set_context("dncr_error", {
-                "status_code": e.response.status_code,
-                "response": error_body,
-                "endpoint": endpoint,
-            })
+            sentry_sdk.set_context(
+                "dncr_error",
+                {
+                    "status_code": e.response.status_code,
+                    "response": error_body,
+                    "endpoint": endpoint,
+                },
+            )
             sentry_sdk.capture_exception(e)
 
             raise APIError(
@@ -185,6 +188,7 @@ class DNCRClient:
         """
         try:
             from src.integrations.redis import get_redis
+
             redis = await get_redis()
 
             cache_key = self._get_cache_key(phone)
@@ -207,6 +211,7 @@ class DNCRClient:
         """
         try:
             from src.integrations.redis import get_redis
+
             redis = await get_redis()
 
             cache_key = self._get_cache_key(phone)
@@ -320,9 +325,7 @@ class DNCRClient:
 
         try:
             # Normalize all uncached numbers
-            normalized_map = {
-                self._normalize_phone(p): p for p in uncached_phones
-            }
+            normalized_map = {self._normalize_phone(p): p for p in uncached_phones}
             normalized_list = list(normalized_map.keys())
 
             # Batch API call

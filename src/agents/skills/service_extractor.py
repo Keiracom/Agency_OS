@@ -45,21 +45,18 @@ class ServiceInfo(BaseModel):
     category: str = Field(
         description="Category: digital_marketing, branding, web_development, content, social_media, seo, ppc, email_marketing, analytics, consulting, design, video, pr, other"
     )
-    description: str = Field(
-        default="",
-        description="Brief description of the service"
-    )
+    description: str = Field(default="", description="Brief description of the service")
     is_primary: bool = Field(
-        default=False,
-        description="Whether this appears to be a primary/flagship service"
+        default=False, description="Whether this appears to be a primary/flagship service"
     )
     mentioned_on_pages: list[str] = Field(
-        default_factory=list,
-        description="Page types where this service is mentioned"
+        default_factory=list, description="Page types where this service is mentioned"
     )
 
 
-class ServiceExtractorSkill(BaseSkill["ServiceExtractorSkill.Input", "ServiceExtractorSkill.Output"]):
+class ServiceExtractorSkill(
+    BaseSkill["ServiceExtractorSkill.Input", "ServiceExtractorSkill.Output"]
+):
     """
     Identify and categorize services a marketing agency offers.
 
@@ -79,36 +76,24 @@ class ServiceExtractorSkill(BaseSkill["ServiceExtractorSkill.Input", "ServiceExt
     class Input(BaseModel):
         """Input for service extraction."""
 
-        pages: list[PageContent] = Field(
-            description="Parsed page content from website"
-        )
-        company_name: str = Field(
-            default="",
-            description="Company name for context"
-        )
+        pages: list[PageContent] = Field(description="Parsed page content from website")
+        company_name: str = Field(default="", description="Company name for context")
 
     class Output(BaseModel):
         """Output from service extraction."""
 
         services: list[ServiceInfo] = Field(
-            default_factory=list,
-            description="List of services identified"
+            default_factory=list, description="List of services identified"
         )
         primary_categories: list[str] = Field(
-            default_factory=list,
-            description="Primary service categories (top 3)"
+            default_factory=list, description="Primary service categories (top 3)"
         )
         service_focus: str = Field(
-            default="",
-            description="Brief description of agency's service focus"
+            default="", description="Brief description of agency's service focus"
         )
-        confidence: float = Field(
-            default=0.0,
-            description="Confidence in extraction (0.0-1.0)"
-        )
+        confidence: float = Field(default=0.0, description="Confidence in extraction (0.0-1.0)")
         source_pages: list[str] = Field(
-            default_factory=list,
-            description="Page types used for extraction"
+            default_factory=list, description="Page types used for extraction"
         )
 
     system_prompt = """You are a marketing agency analyst. Extract services from website content.
@@ -165,18 +150,20 @@ Return valid JSON:
             page_info = f"""
 PAGE: {page.page_type.upper()} ({page.url})
 Title: {page.title}
-Headings: {', '.join(page.headings)}
+Headings: {", ".join(page.headings)}
 Summary: {page.content_summary}
-Key Points: {', '.join(page.key_points)}
-CTAs: {', '.join(page.ctas)}
+Key Points: {", ".join(page.key_points)}
+CTAs: {", ".join(page.ctas)}
 """
             pages_text.append(page_info)
 
-        company_context = f"Company: {input_data.company_name}\n\n" if input_data.company_name else ""
+        company_context = (
+            f"Company: {input_data.company_name}\n\n" if input_data.company_name else ""
+        )
 
         return f"""{company_context}Analyze the following website content and extract all services offered:
 
-{'---'.join(pages_text)}
+{"---".join(pages_text)}
 
 Identify all services, categorize them, and determine which are primary services. Return valid JSON."""
 

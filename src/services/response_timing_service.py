@@ -30,14 +30,14 @@ logger = logging.getLogger(__name__)
 DEFAULT_TIMEZONE = "Australia/Sydney"
 
 # Business hours (in lead's local time)
-BUSINESS_HOUR_START = 9   # 9 AM
-BUSINESS_HOUR_END = 17    # 5 PM
+BUSINESS_HOUR_START = 9  # 9 AM
+BUSINESS_HOUR_END = 17  # 5 PM
 
 # Delay ranges in seconds
-BUSINESS_HOURS_DELAY_MIN = 180   # 3 minutes
-BUSINESS_HOURS_DELAY_MAX = 300   # 5 minutes
-OUTSIDE_HOURS_DELAY_MIN = 600    # 10 minutes
-OUTSIDE_HOURS_DELAY_MAX = 900    # 15 minutes
+BUSINESS_HOURS_DELAY_MIN = 180  # 3 minutes
+BUSINESS_HOURS_DELAY_MAX = 300  # 5 minutes
+OUTSIDE_HOURS_DELAY_MIN = 600  # 10 minutes
+OUTSIDE_HOURS_DELAY_MAX = 900  # 15 minutes
 
 
 def is_business_hours(timezone: str = DEFAULT_TIMEZONE) -> bool:
@@ -196,16 +196,20 @@ class ResponseTimingService:
 
             pending = []
             for row in rows:
-                pending.append({
-                    "id": str(row.id),
-                    "lead_id": str(row.lead_id),
-                    "client_id": str(row.client_id),
-                    "channel": row.channel,
-                    "content": row.content,
-                    "scheduled_for": row.scheduled_for.isoformat() if row.scheduled_for else None,
-                    "response_method": row.response_method,
-                    "response_cost": float(row.response_cost) if row.response_cost else 0.0,
-                })
+                pending.append(
+                    {
+                        "id": str(row.id),
+                        "lead_id": str(row.lead_id),
+                        "client_id": str(row.client_id),
+                        "channel": row.channel,
+                        "content": row.content,
+                        "scheduled_for": row.scheduled_for.isoformat()
+                        if row.scheduled_for
+                        else None,
+                        "response_method": row.response_method,
+                        "response_cost": float(row.response_cost) if row.response_cost else 0.0,
+                    }
+                )
 
             logger.info(f"Found {len(pending)} pending responses (limit={limit})")
             return pending

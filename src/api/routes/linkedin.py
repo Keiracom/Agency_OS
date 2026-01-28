@@ -95,10 +95,14 @@ async def get_client_id_from_user(
 
     from src.models.membership import Membership
 
-    stmt = select(Membership.client_id).where(
-        Membership.user_id == user.id,
-        Membership.deleted_at.is_(None),
-    ).limit(1)
+    stmt = (
+        select(Membership.client_id)
+        .where(
+            Membership.user_id == user.id,
+            Membership.deleted_at.is_(None),
+        )
+        .limit(1)
+    )
 
     result = await db.execute(stmt)
     client_id = result.scalar_one_or_none()

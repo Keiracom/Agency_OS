@@ -65,7 +65,9 @@ if settings.sentry_dsn:
         # Attach request data for debugging
         attach_stacktrace=True,
         # Filter out health checks from performance monitoring
-        traces_sampler=lambda ctx: 0 if ctx.get("transaction_context", {}).get("name", "").endswith("/health") else 0.1,
+        traces_sampler=lambda ctx: 0
+        if ctx.get("transaction_context", {}).get("name", "").endswith("/health")
+        else 0.1,
     )
 
 # Configure logging
@@ -217,9 +219,7 @@ async def validation_error_handler(request: Request, exc: ValidationError):
 
 
 @app.exception_handler(RequestValidationError)
-async def request_validation_error_handler(
-    request: Request, exc: RequestValidationError
-):
+async def request_validation_error_handler(request: Request, exc: RequestValidationError):
     """Handle FastAPI request validation errors."""
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

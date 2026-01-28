@@ -504,14 +504,15 @@ async def send_voice_task(
                     enhanced_script = f"[OPENING HOOK: {best_hook}]\n\n{script}"
 
                 if voice_kb.get("company_context"):
-                    enhanced_script = f"[CONTEXT: {voice_kb['company_context']}]\n\n{enhanced_script}"
+                    enhanced_script = (
+                        f"[CONTEXT: {voice_kb['company_context']}]\n\n{enhanced_script}"
+                    )
 
                 if voice_kb.get("objection_responses"):
                     # Append objection handlers
-                    objections = "\n".join([
-                        f"- {k}: {v}"
-                        for k, v in voice_kb["objection_responses"].items()
-                    ])
+                    objections = "\n".join(
+                        [f"- {k}: {v}" for k, v in voice_kb["objection_responses"].items()]
+                    )
                     enhanced_script = f"{enhanced_script}\n\n[OBJECTION HANDLERS]\n{objections}"
 
                 logger.info(f"SDK voice KB generated for lead {lead_id}, script enhanced")
@@ -525,16 +526,16 @@ async def send_voice_task(
         )
 
         if not qa_result.passed:
-            logger.warning(
-                f"Voice QA failed for lead {lead_id}: {qa_result.error_messages}"
-            )
+            logger.warning(f"Voice QA failed for lead {lead_id}: {qa_result.error_messages}")
             raise ValidationError(
                 message=f"Content QA failed: {'; '.join(qa_result.error_messages)}",
                 field="voice_script",
             )
 
         # === INITIATE VOICE CALL ===
-        logger.info(f"Initiating voice call to lead {lead_id} (campaign {campaign.id}, SDK: {sdk_used})")
+        logger.info(
+            f"Initiating voice call to lead {lead_id} (campaign {campaign.id}, SDK: {sdk_used})"
+        )
 
         send_result = await voice_engine.send(
             db=db,

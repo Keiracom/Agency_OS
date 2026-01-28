@@ -50,21 +50,34 @@ router = APIRouter(
 # Pydantic Models
 # ============================================
 
+
 class WebhookConfigCreate(BaseModel):
     """Schema for creating a webhook configuration."""
+
     name: str = Field(..., min_length=1, max_length=100, description="Human-readable name")
     url: HttpUrl = Field(..., description="Webhook endpoint URL")
-    secret: str | None = Field(None, min_length=16, max_length=256, description="HMAC signing secret")
-    events: list[WebhookEventType] = Field(..., min_items=1, description="Event types to subscribe to")
+    secret: str | None = Field(
+        None, min_length=16, max_length=256, description="HMAC signing secret"
+    )
+    events: list[WebhookEventType] = Field(
+        ..., min_items=1, description="Event types to subscribe to"
+    )
     headers: dict[str, str] = Field(default_factory=dict, description="Custom headers to include")
-    timeout_ms: int = Field(default=30000, ge=1000, le=120000, description="Request timeout in milliseconds")
+    timeout_ms: int = Field(
+        default=30000, ge=1000, le=120000, description="Request timeout in milliseconds"
+    )
     retry_count: int = Field(default=3, ge=0, le=10, description="Number of retries on failure")
-    retry_delay_ms: int = Field(default=1000, ge=100, le=60000, description="Initial delay between retries")
-    auto_disable_threshold: int = Field(default=10, ge=1, le=100, description="Auto-disable after N consecutive failures")
+    retry_delay_ms: int = Field(
+        default=1000, ge=100, le=60000, description="Initial delay between retries"
+    )
+    auto_disable_threshold: int = Field(
+        default=10, ge=1, le=100, description="Auto-disable after N consecutive failures"
+    )
 
 
 class WebhookConfigUpdate(BaseModel):
     """Schema for updating a webhook configuration."""
+
     name: str | None = Field(None, min_length=1, max_length=100)
     url: HttpUrl | None = None
     secret: str | None = Field(None, min_length=16, max_length=256)
@@ -79,6 +92,7 @@ class WebhookConfigUpdate(BaseModel):
 
 class WebhookConfigResponse(BaseModel):
     """Schema for webhook configuration response."""
+
     id: UUID
     client_id: UUID
     name: str
@@ -104,6 +118,7 @@ class WebhookConfigResponse(BaseModel):
 
 class WebhookDispatchRequest(BaseModel):
     """Schema for dispatching a webhook (internal use)."""
+
     client_id: UUID = Field(..., description="Client ID to dispatch webhook for")
     event_type: WebhookEventType = Field(..., description="Event type")
     payload: dict[str, Any] = Field(..., description="Event payload data")
@@ -111,6 +126,7 @@ class WebhookDispatchRequest(BaseModel):
 
 class WebhookDeliveryResponse(BaseModel):
     """Schema for webhook delivery log response."""
+
     id: UUID
     webhook_config_id: UUID
     event_type: str
@@ -130,6 +146,7 @@ class WebhookDeliveryResponse(BaseModel):
 # HMAC Signature Functions
 # ============================================
 
+
 def generate_hmac_signature(payload: dict[str, Any], secret: str) -> str:
     """
     Generate HMAC-SHA256 signature for webhook payload.
@@ -145,13 +162,11 @@ def generate_hmac_signature(payload: dict[str, Any], secret: str) -> str:
     HMAC-SHA256(secret, JSON.stringify(payload))
     """
     # Convert payload to canonical JSON string (sorted keys, no whitespace)
-    payload_json = json.dumps(payload, sort_keys=True, separators=(',', ':'))
+    payload_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
     # Generate HMAC signature
     signature = hmac.new(
-        key=secret.encode('utf-8'),
-        msg=payload_json.encode('utf-8'),
-        digestmod=hashlib.sha256
+        key=secret.encode("utf-8"), msg=payload_json.encode("utf-8"), digestmod=hashlib.sha256
     ).hexdigest()
 
     return signature
@@ -176,6 +191,7 @@ def verify_hmac_signature(payload: dict[str, Any], signature: str, secret: str) 
 # ============================================
 # Webhook Dispatch Logic
 # ============================================
+
 
 async def dispatch_webhook_delivery(
     delivery_id: UUID,
@@ -234,7 +250,7 @@ async def dispatch_webhook_delivery(
                     "status": response.status_code,
                     "body": response.text[:10000],  # Truncate
                     "time_ms": response_time_ms,
-                }
+                },
             )
             await db.commit()
         else:
@@ -246,7 +262,7 @@ async def dispatch_webhook_delivery(
                     "status": response.status_code,
                     "error": f"HTTP {response.status_code}: {response.text[:1000]}",
                     "should_retry": True,
-                }
+                },
             )
             await db.commit()
 
@@ -259,7 +275,7 @@ async def dispatch_webhook_delivery(
                 "status": 0,
                 "error": f"Request timeout after {timeout_ms}ms",
                 "should_retry": True,
-            }
+            },
         )
         await db.commit()
 
@@ -272,7 +288,7 @@ async def dispatch_webhook_delivery(
                 "status": 0,
                 "error": f"Error: {str(e)[:1000]}",
                 "should_retry": True,
-            }
+            },
         )
         await db.commit()
 
@@ -307,7 +323,7 @@ async def create_and_dispatch_webhook(
         AND deleted_at IS NULL
         AND :event_type = ANY(events)
         """,
-        {"client_id": client_id, "event_type": event_type.value}
+        {"client_id": client_id, "event_type": event_type.value},
     )
     webhooks = result.fetchall()
 
@@ -345,7 +361,7 @@ async def create_and_dispatch_webhook(
                 "event_type": event_type.value,
                 "payload": json.dumps(full_payload),
                 "signature": signature,
-            }
+            },
         )
         delivery_id = delivery_result.scalar_one()
         await db.commit()
@@ -370,6 +386,7 @@ async def create_and_dispatch_webhook(
 # ============================================
 # API Endpoints
 # ============================================
+
 
 @router.post("/dispatch", status_code=status.HTTP_202_ACCEPTED)
 async def dispatch_webhook(
@@ -416,7 +433,7 @@ async def dispatch_webhook(
         "status": "accepted",
         "event_type": request.event_type.value,
         "webhooks_dispatched": dispatched_count,
-        "message": f"Dispatched to {dispatched_count} webhook(s)"
+        "message": f"Dispatched to {dispatched_count} webhook(s)",
     }
 
 
@@ -438,10 +455,14 @@ async def get_webhook_configs(
         List of webhook configurations
     """
     # Build query
-    query = select("*").select_from("webhook_configs").where(
-        and_(
-            "client_id = :client_id",
-            "deleted_at IS NULL",
+    query = (
+        select("*")
+        .select_from("webhook_configs")
+        .where(
+            and_(
+                "client_id = :client_id",
+                "deleted_at IS NULL",
+            )
         )
     )
 
@@ -454,10 +475,10 @@ async def get_webhook_configs(
         SELECT * FROM webhook_configs
         WHERE client_id = :client_id
         AND deleted_at IS NULL
-        {'' if include_inactive else 'AND is_active = TRUE'}
+        {"" if include_inactive else "AND is_active = TRUE"}
         ORDER BY created_at DESC
         """,
-        {"client_id": client_id}
+        {"client_id": client_id},
     )
 
     webhooks = result.fetchall()
@@ -512,12 +533,11 @@ async def create_webhook_config(
     # Check if client exists
     client_result = await db.execute(
         "SELECT id FROM clients WHERE id = :client_id AND deleted_at IS NULL",
-        {"client_id": client_id}
+        {"client_id": client_id},
     )
     if not client_result.fetchone():
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Client {client_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Client {client_id} not found"
         )
 
     # Check for duplicate name
@@ -526,12 +546,12 @@ async def create_webhook_config(
         SELECT id FROM webhook_configs
         WHERE client_id = :client_id AND name = :name AND deleted_at IS NULL
         """,
-        {"client_id": client_id, "name": config.name}
+        {"client_id": client_id, "name": config.name},
     )
     if name_result.fetchone():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Webhook configuration with name '{config.name}' already exists"
+            detail=f"Webhook configuration with name '{config.name}' already exists",
         )
 
     # Create webhook config
@@ -558,7 +578,7 @@ async def create_webhook_config(
             "retry_count": config.retry_count,
             "retry_delay_ms": config.retry_delay_ms,
             "auto_disable_threshold": config.auto_disable_threshold,
-        }
+        },
     )
     webhook = result.fetchone()
     await db.commit()
@@ -613,12 +633,12 @@ async def update_webhook_config(
         SELECT id FROM webhook_configs
         WHERE id = :webhook_id AND client_id = :client_id AND deleted_at IS NULL
         """,
-        {"webhook_id": webhook_id, "client_id": client_id}
+        {"webhook_id": webhook_id, "client_id": client_id},
     )
     if not check_result.fetchone():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Webhook configuration {webhook_id} not found"
+            detail=f"Webhook configuration {webhook_id} not found",
         )
 
     # Build update query dynamically
@@ -659,8 +679,7 @@ async def update_webhook_config(
     if not update_fields:
         # No fields to update, just return current state
         result = await db.execute(
-            "SELECT * FROM webhook_configs WHERE id = :webhook_id",
-            {"webhook_id": webhook_id}
+            "SELECT * FROM webhook_configs WHERE id = :webhook_id", {"webhook_id": webhook_id}
         )
         webhook = result.fetchone()
     else:
@@ -668,11 +687,11 @@ async def update_webhook_config(
         result = await db.execute(
             f"""
             UPDATE webhook_configs
-            SET {', '.join(update_fields)}
+            SET {", ".join(update_fields)}
             WHERE id = :webhook_id
             RETURNING *
             """,
-            params
+            params,
         )
         webhook = result.fetchone()
         await db.commit()
@@ -722,12 +741,12 @@ async def delete_webhook_config(
         SELECT id FROM webhook_configs
         WHERE id = :webhook_id AND client_id = :client_id AND deleted_at IS NULL
         """,
-        {"webhook_id": webhook_id, "client_id": client_id}
+        {"webhook_id": webhook_id, "client_id": client_id},
     )
     if not check_result.fetchone():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Webhook configuration {webhook_id} not found"
+            detail=f"Webhook configuration {webhook_id} not found",
         )
 
     # Soft delete (Rule 14)
@@ -737,7 +756,7 @@ async def delete_webhook_config(
         SET deleted_at = NOW()
         WHERE id = :webhook_id
         """,
-        {"webhook_id": webhook_id}
+        {"webhook_id": webhook_id},
     )
     await db.commit()
 
@@ -772,12 +791,12 @@ async def get_webhook_deliveries(
         SELECT id FROM webhook_configs
         WHERE id = :webhook_id AND client_id = :client_id AND deleted_at IS NULL
         """,
-        {"webhook_id": webhook_id, "client_id": client_id}
+        {"webhook_id": webhook_id, "client_id": client_id},
     )
     if not check_result.fetchone():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Webhook configuration {webhook_id} not found"
+            detail=f"Webhook configuration {webhook_id} not found",
         )
 
     # Get deliveries
@@ -791,7 +810,7 @@ async def get_webhook_deliveries(
         ORDER BY created_at DESC
         LIMIT :limit OFFSET :offset
         """,
-        {"webhook_id": webhook_id, "limit": limit, "offset": offset}
+        {"webhook_id": webhook_id, "limit": limit, "offset": offset},
     )
 
     deliveries = result.fetchall()

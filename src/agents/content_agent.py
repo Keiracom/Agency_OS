@@ -528,7 +528,16 @@ Adapt your tone based on:
         # C-suite or VP = professional
         if any(
             keyword in title_lower
-            for keyword in ["ceo", "cto", "cfo", "coo", "chief", "president", "vp", "vice president"]
+            for keyword in [
+                "ceo",
+                "cto",
+                "cfo",
+                "coo",
+                "chief",
+                "president",
+                "vp",
+                "vice president",
+            ]
         ):
             return "professional"
 

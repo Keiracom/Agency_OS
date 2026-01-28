@@ -32,6 +32,7 @@ from supabase import Client, create_client
 # SQLAlchemy Async Engine (for ORM operations)
 # ============================================
 
+
 def create_database_engine() -> AsyncEngine:
     """
     Create async SQLAlchemy engine with pool configuration.
@@ -89,6 +90,7 @@ async def dispose_engine() -> None:
 # ============================================
 # Async Session Factory
 # ============================================
+
 
 def create_session_factory(engine: AsyncEngine | None = None) -> async_sessionmaker[AsyncSession]:
     """
@@ -217,6 +219,7 @@ def get_supabase_service_client() -> Client:
 # Health Check
 # ============================================
 
+
 async def check_database_health() -> dict:
     """
     Check database connection health.
@@ -245,6 +248,7 @@ async def check_database_health() -> dict:
 # ============================================
 # Cleanup
 # ============================================
+
 
 async def cleanup() -> None:
     """Cleanup all database connections."""

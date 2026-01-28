@@ -119,12 +119,14 @@ class WhoRefinementService:
             )
             if title_result["boosted"]:
                 refined["titles"] = title_result["titles"]
-                refinements_applied.append({
-                    "field": "titles",
-                    "action": "boosted",
-                    "added": title_result["added"],
-                    "reason": "High-converting titles from WHO patterns",
-                })
+                refinements_applied.append(
+                    {
+                        "field": "titles",
+                        "action": "boosted",
+                        "added": title_result["added"],
+                        "reason": "High-converting titles from WHO patterns",
+                    }
+                )
 
         # Apply industry refinements
         if "industries" not in locked_fields:
@@ -134,12 +136,14 @@ class WhoRefinementService:
             )
             if industry_result["prioritized"]:
                 refined["industries"] = industry_result["industries"]
-                refinements_applied.append({
-                    "field": "industries",
-                    "action": "prioritized",
-                    "prioritized": industry_result["top_industries"],
-                    "reason": "High-converting industries from WHO patterns",
-                })
+                refinements_applied.append(
+                    {
+                        "field": "industries",
+                        "action": "prioritized",
+                        "prioritized": industry_result["top_industries"],
+                        "reason": "High-converting industries from WHO patterns",
+                    }
+                )
 
         # Apply company size refinements
         if "employee_min" not in locked_fields and "employee_max" not in locked_fields:
@@ -151,12 +155,14 @@ class WhoRefinementService:
             if size_result["adjusted"]:
                 refined["employee_min"] = size_result["employee_min"]
                 refined["employee_max"] = size_result["employee_max"]
-                refinements_applied.append({
-                    "field": "company_size",
-                    "action": "narrowed_to_sweet_spot",
-                    "sweet_spot": size_result["sweet_spot"],
-                    "reason": f"Sweet spot range has {size_result['conversion_rate']:.0%} conversion",
-                })
+                refinements_applied.append(
+                    {
+                        "field": "company_size",
+                        "action": "narrowed_to_sweet_spot",
+                        "sweet_spot": size_result["sweet_spot"],
+                        "reason": f"Sweet spot range has {size_result['conversion_rate']:.0%} conversion",
+                    }
+                )
 
         # Log refinements for transparency (Phase H dashboard integration)
         if refinements_applied:
@@ -189,13 +195,18 @@ class WhoRefinementService:
         Returns:
             ConversionPattern if valid one exists, None otherwise
         """
-        stmt = select(ConversionPattern).where(
-            and_(
-                ConversionPattern.client_id == client_id,
-                ConversionPattern.pattern_type == "who",
-                ConversionPattern.valid_until > datetime.utcnow(),
+        stmt = (
+            select(ConversionPattern)
+            .where(
+                and_(
+                    ConversionPattern.client_id == client_id,
+                    ConversionPattern.pattern_type == "who",
+                    ConversionPattern.valid_until > datetime.utcnow(),
+                )
             )
-        ).order_by(ConversionPattern.computed_at.desc()).limit(1)
+            .order_by(ConversionPattern.computed_at.desc())
+            .limit(1)
+        )
 
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
@@ -515,6 +526,7 @@ class WhoRefinementService:
         """)
 
         import json
+
         await self.session.execute(
             stmt,
             {
@@ -524,7 +536,7 @@ class WhoRefinementService:
                 "refined_criteria": json.dumps(refined_criteria),
                 "refinements": json.dumps(refinements),
                 "confidence": confidence,
-            }
+            },
         )
         # Note: Commit handled by caller's session management
 

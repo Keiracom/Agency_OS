@@ -234,11 +234,7 @@ async def get_client_resources(
     Returns:
         List of ClientResource objects with ResourcePool loaded
     """
-    stmt = (
-        select(ClientResource)
-        .join(ResourcePool)
-        .where(ClientResource.client_id == client_id)
-    )
+    stmt = select(ClientResource).join(ResourcePool).where(ClientResource.client_id == client_id)
 
     if active_only:
         stmt = stmt.where(ClientResource.released_at.is_(None))
@@ -303,9 +299,7 @@ async def get_pool_stats(
 
     for rt in types_to_check:
         # Total resources
-        total_stmt = select(func.count()).where(
-            ResourcePool.resource_type == rt
-        )
+        total_stmt = select(func.count()).where(ResourcePool.resource_type == rt)
         total = (await db.execute(total_stmt)).scalar() or 0
 
         # Available resources
@@ -393,7 +387,9 @@ async def check_buffer_and_alert(
 
         return {
             "resource_type": resource_type.value,
-            "status": "warning" if actual_buffer >= (allocated * BUFFER_CRITICAL_PCT / 100) else "critical",
+            "status": "warning"
+            if actual_buffer >= (allocated * BUFFER_CRITICAL_PCT / 100)
+            else "critical",
             "message": f"Buffer below {BUFFER_WARNING_PCT}%: have {actual_buffer}, need {required_buffer}",
             "allocated": allocated,
             "available": available,

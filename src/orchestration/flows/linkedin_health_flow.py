@@ -59,10 +59,7 @@ async def process_warmups_task(client_id: str | None = None) -> dict[str, Any]:
         result = await linkedin_warmup_service.process_all_warmups(db, client_uuid)
 
         if result["completed"] > 0:
-            logger.info(
-                f"Warmup completions: {result['completed']} seats "
-                f"transitioned to ACTIVE"
-            )
+            logger.info(f"Warmup completions: {result['completed']} seats transitioned to ACTIVE")
 
         return result
 
@@ -92,8 +89,7 @@ async def update_health_task(client_id: str | None = None) -> dict[str, Any]:
 
         if result["warning"] > 0:
             logger.info(
-                f"Warning: {result['warning']} LinkedIn seats have "
-                f"below-target accept rates (<30%)"
+                f"Warning: {result['warning']} LinkedIn seats have below-target accept rates (<30%)"
             )
 
         return result
@@ -142,16 +138,10 @@ async def withdraw_stale_connections_task(days: int = 30) -> dict[str, Any]:
         result = await linkedin_health_service.withdraw_stale_requests(db, days=days)
 
         if result["withdrawn"] > 0:
-            logger.info(
-                f"Withdrew {result['withdrawn']} stale LinkedIn "
-                f"connections (>{days} days)"
-            )
+            logger.info(f"Withdrew {result['withdrawn']} stale LinkedIn connections (>{days} days)")
 
         if result["failed"] > 0:
-            logger.warning(
-                f"Failed to withdraw {result['failed']} stale "
-                f"LinkedIn connections"
-            )
+            logger.warning(f"Failed to withdraw {result['failed']} stale LinkedIn connections")
 
         return result
 

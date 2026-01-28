@@ -117,7 +117,12 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
 
     # === Status & Tracking ===
     status: Mapped[LeadStatus] = mapped_column(
-        ENUM(LeadStatus, name="lead_status", create_type=False, values_callable=lambda x: [e.value for e in x]),
+        ENUM(
+            LeadStatus,
+            name="lead_status",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         nullable=False,
         default=LeadStatus.NEW,
     )
@@ -160,14 +165,22 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     # Note: rejection_reason is a PostgreSQL ENUM type created in migration 027
     rejection_reason: Mapped[str | None] = mapped_column(
         ENUM(
-            'timing_not_now', 'budget_constraints', 'using_competitor',
-            'not_decision_maker', 'no_need', 'bad_experience', 'too_busy',
-            'not_interested_generic', 'do_not_contact', 'wrong_contact',
-            'company_policy', 'other',
-            name='rejection_reason_type',
+            "timing_not_now",
+            "budget_constraints",
+            "using_competitor",
+            "not_decision_maker",
+            "no_need",
+            "bad_experience",
+            "too_busy",
+            "not_interested_generic",
+            "do_not_contact",
+            "wrong_contact",
+            "company_policy",
+            "other",
+            name="rejection_reason_type",
             create_constraint=False,  # Type already exists in DB
         ),
-        nullable=True
+        nullable=True,
     )
     rejection_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     rejection_at: Mapped[datetime | None] = mapped_column(nullable=True)
@@ -175,7 +188,9 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
 
     # === Phase 24C: Timezone Tracking (from location data) ===
     timezone: Mapped[str | None] = mapped_column(Text, nullable=True)
-    timezone_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)  # UTC offset in minutes
+    timezone_offset: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )  # UTC offset in minutes
 
     # === Assigned Resources ===
     assigned_email_resource: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -192,9 +207,7 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     )
 
     # Constraints - compound uniqueness per client
-    __table_args__ = (
-        UniqueConstraint("client_id", "email", name="unique_lead_per_client"),
-    )
+    __table_args__ = (UniqueConstraint("client_id", "email", name="unique_lead_per_client"),)
 
     def __repr__(self) -> str:
         return f"<Lead(id={self.id}, email='{self.email}', als_score={self.als_score})>"
@@ -213,12 +226,14 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     @property
     def is_scorable(self) -> bool:
         """Check if lead has enough data for scoring."""
-        return all([
-            self.email,
-            self.first_name,
-            self.last_name,
-            self.company,
-        ])
+        return all(
+            [
+                self.email,
+                self.first_name,
+                self.last_name,
+                self.company,
+            ]
+        )
 
     @property
     def is_contactable(self) -> bool:
@@ -298,9 +313,7 @@ class ClientSuppression(Base, UUIDMixin):
         default=datetime.utcnow,
     )
 
-    __table_args__ = (
-        UniqueConstraint("client_id", "email", name="unique_client_suppression"),
-    )
+    __table_args__ = (UniqueConstraint("client_id", "email", name="unique_client_suppression"),)
 
     def __repr__(self) -> str:
         return f"<ClientSuppression(client_id={self.client_id}, email='{self.email}')>"

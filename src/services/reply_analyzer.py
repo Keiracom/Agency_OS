@@ -33,65 +33,153 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Objection keywords for rule-based fallback
 OBJECTION_PATTERNS = {
     "timing": [
-        "not now", "not the right time", "maybe later", "reach out later",
-        "in a few months", "next quarter", "next year", "too busy right now",
-        "swamped", "slammed", "crazy time"
+        "not now",
+        "not the right time",
+        "maybe later",
+        "reach out later",
+        "in a few months",
+        "next quarter",
+        "next year",
+        "too busy right now",
+        "swamped",
+        "slammed",
+        "crazy time",
     ],
     "budget": [
-        "budget", "expensive", "can't afford", "no budget", "cost",
-        "pricing", "too much", "cheaper", "don't have the funds"
+        "budget",
+        "expensive",
+        "can't afford",
+        "no budget",
+        "cost",
+        "pricing",
+        "too much",
+        "cheaper",
+        "don't have the funds",
     ],
     "authority": [
-        "not my decision", "not the decision maker", "need to ask",
-        "check with my", "run it by", "get approval", "my boss",
-        "the team decides", "not my call"
+        "not my decision",
+        "not the decision maker",
+        "need to ask",
+        "check with my",
+        "run it by",
+        "get approval",
+        "my boss",
+        "the team decides",
+        "not my call",
     ],
     "need": [
-        "don't need", "already have", "not looking", "not interested",
-        "satisfied with", "happy with current", "no need"
+        "don't need",
+        "already have",
+        "not looking",
+        "not interested",
+        "satisfied with",
+        "happy with current",
+        "no need",
     ],
     "competitor": [
-        "using another", "working with", "signed with", "contract with",
-        "already partnered", "competitor", "different provider"
+        "using another",
+        "working with",
+        "signed with",
+        "contract with",
+        "already partnered",
+        "competitor",
+        "different provider",
     ],
     "trust": [
-        "never heard of", "not familiar", "don't know you",
-        "who are you", "is this legit", "spam", "scam"
+        "never heard of",
+        "not familiar",
+        "don't know you",
+        "who are you",
+        "is this legit",
+        "spam",
+        "scam",
     ],
 }
 
 # Intent patterns
 INTENT_PATTERNS = {
     "interested": [
-        "sounds interesting", "tell me more", "i'd like to learn",
-        "how does it work", "can you explain", "curious about",
-        "yes", "definitely", "absolutely", "love to"
+        "sounds interesting",
+        "tell me more",
+        "i'd like to learn",
+        "how does it work",
+        "can you explain",
+        "curious about",
+        "yes",
+        "definitely",
+        "absolutely",
+        "love to",
     ],
     "meeting_request": [
-        "let's meet", "schedule a call", "book a time", "calendar",
-        "set up a meeting", "let's talk", "when are you free"
+        "let's meet",
+        "schedule a call",
+        "book a time",
+        "calendar",
+        "set up a meeting",
+        "let's talk",
+        "when are you free",
     ],
     "question": [
-        "what", "how", "why", "when", "where", "who", "which",
-        "can you", "could you", "would you", "is it", "are you", "do you"
+        "what",
+        "how",
+        "why",
+        "when",
+        "where",
+        "who",
+        "which",
+        "can you",
+        "could you",
+        "would you",
+        "is it",
+        "are you",
+        "do you",
     ],
     "not_interested": [
-        "not interested", "no thanks", "no thank you", "pass",
-        "remove me", "unsubscribe", "stop", "don't contact"
+        "not interested",
+        "no thanks",
+        "no thank you",
+        "pass",
+        "remove me",
+        "unsubscribe",
+        "stop",
+        "don't contact",
     ],
 }
 
 # Sentiment keywords
 SENTIMENT_KEYWORDS = {
     "positive": [
-        "great", "awesome", "excellent", "love", "perfect", "wonderful",
-        "fantastic", "amazing", "thanks", "thank you", "appreciate",
-        "helpful", "useful", "interested", "excited"
+        "great",
+        "awesome",
+        "excellent",
+        "love",
+        "perfect",
+        "wonderful",
+        "fantastic",
+        "amazing",
+        "thanks",
+        "thank you",
+        "appreciate",
+        "helpful",
+        "useful",
+        "interested",
+        "excited",
     ],
     "negative": [
-        "annoying", "frustrated", "angry", "upset", "disappointed",
-        "terrible", "awful", "horrible", "hate", "spam", "stop",
-        "remove", "unsubscribe", "leave me alone"
+        "annoying",
+        "frustrated",
+        "angry",
+        "upset",
+        "disappointed",
+        "terrible",
+        "awful",
+        "horrible",
+        "hate",
+        "spam",
+        "stop",
+        "remove",
+        "unsubscribe",
+        "leave me alone",
     ],
 }
 
@@ -208,7 +296,7 @@ Return ONLY valid JSON, no other text."""
             response_text = response.get("content", "")
 
             # Try to extract JSON from response
-            json_match = re.search(r'\{[\s\S]*\}', response_text)
+            json_match = re.search(r"\{[\s\S]*\}", response_text)
             if json_match:
                 result = json.loads(json_match.group())
                 return {
@@ -315,7 +403,7 @@ Return ONLY valid JSON, no other text."""
     def _extract_question(self, content: str) -> str | None:
         """Extract the main question from content."""
         # Find sentences ending with ?
-        questions = re.findall(r'[^.!?]*\?', content)
+        questions = re.findall(r"[^.!?]*\?", content)
         if questions:
             # Return the longest question (likely the main one)
             return max(questions, key=len).strip()
@@ -326,21 +414,105 @@ Return ONLY valid JSON, no other text."""
         # Simple extraction - in production, use NLP
         # Remove common words and extract key terms
         stop_words = {
-            "the", "a", "an", "is", "are", "was", "were", "be", "been",
-            "have", "has", "had", "do", "does", "did", "will", "would",
-            "could", "should", "may", "might", "must", "can", "i", "you",
-            "we", "they", "it", "this", "that", "these", "those", "my",
-            "your", "our", "their", "its", "to", "of", "in", "for", "on",
-            "with", "at", "by", "from", "as", "into", "through", "during",
-            "and", "or", "but", "if", "then", "else", "when", "where",
-            "why", "how", "all", "each", "every", "both", "few", "more",
-            "most", "other", "some", "such", "no", "not", "only", "same",
-            "so", "than", "too", "very", "just", "also", "now", "here",
-            "there", "up", "down", "out", "about", "over", "again", "hi",
-            "hello", "hey", "thanks", "thank", "please", "yes"
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "can",
+            "i",
+            "you",
+            "we",
+            "they",
+            "it",
+            "this",
+            "that",
+            "these",
+            "those",
+            "my",
+            "your",
+            "our",
+            "their",
+            "its",
+            "to",
+            "of",
+            "in",
+            "for",
+            "on",
+            "with",
+            "at",
+            "by",
+            "from",
+            "as",
+            "into",
+            "through",
+            "during",
+            "and",
+            "or",
+            "but",
+            "if",
+            "then",
+            "else",
+            "when",
+            "where",
+            "why",
+            "how",
+            "all",
+            "each",
+            "every",
+            "both",
+            "few",
+            "more",
+            "most",
+            "other",
+            "some",
+            "such",
+            "no",
+            "not",
+            "only",
+            "same",
+            "so",
+            "than",
+            "too",
+            "very",
+            "just",
+            "also",
+            "now",
+            "here",
+            "there",
+            "up",
+            "down",
+            "out",
+            "about",
+            "over",
+            "again",
+            "hi",
+            "hello",
+            "hey",
+            "thanks",
+            "thank",
+            "please",
+            "yes",
         }
 
-        words = re.findall(r'\b[a-z]+\b', content)
+        words = re.findall(r"\b[a-z]+\b", content)
         topics = []
         for word in words:
             if word not in stop_words and len(word) > 3:
@@ -423,14 +595,17 @@ Return ONLY valid JSON, no other text."""
             RETURNING *
         """)
 
-        await self.session.execute(query, {
-            "reply_id": reply_id,
-            "sentiment": analysis["sentiment"],
-            "sentiment_score": analysis["sentiment_score"],
-            "objection_type": analysis.get("objection_type"),
-            "question_extracted": analysis.get("question_extracted"),
-            "topics_mentioned": analysis.get("topics_mentioned", []),
-        })
+        await self.session.execute(
+            query,
+            {
+                "reply_id": reply_id,
+                "sentiment": analysis["sentiment"],
+                "sentiment_score": analysis["sentiment_score"],
+                "objection_type": analysis.get("objection_type"),
+                "question_extracted": analysis.get("question_extracted"),
+                "topics_mentioned": analysis.get("topics_mentioned", []),
+            },
+        )
 
         await self.session.commit()
 
@@ -471,9 +646,15 @@ Return ONLY valid JSON, no other text."""
 
             # Check for specific patterns
             content_lower = content.lower()
-            if "stop" in content_lower or "unsubscribe" in content_lower or "remove" in content_lower:
+            if (
+                "stop" in content_lower
+                or "unsubscribe" in content_lower
+                or "remove" in content_lower
+            ):
                 rejection_reason = "do_not_contact"
-            elif "wrong" in content_lower and ("person" in content_lower or "contact" in content_lower):
+            elif "wrong" in content_lower and (
+                "person" in content_lower or "contact" in content_lower
+            ):
                 rejection_reason = "wrong_contact"
 
         return {

@@ -47,7 +47,9 @@ class ExtractedClient(BaseModel):
 
     company_name: str = Field(description="Company name")
     source: str = Field(description="Where it was found: linkedin, instagram, facebook, google")
-    context: str = Field(default="", description="Surrounding context (e.g., 'case study', 'testimonial')")
+    context: str = Field(
+        default="", description="Surrounding context (e.g., 'case study', 'testimonial')"
+    )
     confidence: float = Field(default=0.8, description="Confidence this is a real client (0.0-1.0)")
 
 
@@ -61,7 +63,9 @@ class SocialTextContent(BaseModel):
     google_category: str | None = None
 
 
-class SocialClientExtractorSkill(BaseSkill["SocialClientExtractorSkill.Input", "SocialClientExtractorSkill.Output"]):
+class SocialClientExtractorSkill(
+    BaseSkill["SocialClientExtractorSkill.Input", "SocialClientExtractorSkill.Output"]
+):
     """
     Extract portfolio company names from agency social media profiles.
 
@@ -83,34 +87,42 @@ class SocialClientExtractorSkill(BaseSkill["SocialClientExtractorSkill.Input", "
 
         company_name: str = Field(description="Agency name")
         # Option 1: Provide pre-scraped text content (avoids re-scraping)
-        linkedin_description: str | None = Field(default=None, description="Pre-scraped LinkedIn description")
-        linkedin_specialties: list[str] = Field(default_factory=list, description="Pre-scraped LinkedIn specialties")
+        linkedin_description: str | None = Field(
+            default=None, description="Pre-scraped LinkedIn description"
+        )
+        linkedin_specialties: list[str] = Field(
+            default_factory=list, description="Pre-scraped LinkedIn specialties"
+        )
         instagram_bio: str | None = Field(default=None, description="Pre-scraped Instagram bio")
         facebook_about: str | None = Field(default=None, description="Pre-scraped Facebook about")
         # Option 2: Provide URLs to scrape (only used if pre-scraped content not provided)
-        linkedin_url: str | None = Field(default=None, description="LinkedIn company URL (fallback)")
-        instagram_url: str | None = Field(default=None, description="Instagram profile URL (fallback)")
+        linkedin_url: str | None = Field(
+            default=None, description="LinkedIn company URL (fallback)"
+        )
+        instagram_url: str | None = Field(
+            default=None, description="Instagram profile URL (fallback)"
+        )
         facebook_url: str | None = Field(default=None, description="Facebook page URL (fallback)")
-        location: str = Field(default="Australia", description="Location for Google Business search")
+        location: str = Field(
+            default="Australia", description="Location for Google Business search"
+        )
         existing_portfolio: list[str] = Field(
             default_factory=list,
-            description="Already known portfolio companies (to avoid duplicates)"
+            description="Already known portfolio companies (to avoid duplicates)",
         )
 
     class Output(BaseModel):
         """Output from social client extraction."""
 
         extracted_clients: list[ExtractedClient] = Field(
-            default_factory=list,
-            description="Client companies extracted from social profiles"
+            default_factory=list, description="Client companies extracted from social profiles"
         )
         social_content: SocialTextContent = Field(
             default_factory=SocialTextContent,
-            description="Raw text content collected from social profiles"
+            description="Raw text content collected from social profiles",
         )
         new_companies_count: int = Field(
-            default=0,
-            description="Number of new companies found (not in existing portfolio)"
+            default=0, description="Number of new companies found (not in existing portfolio)"
         )
 
     system_prompt = """You are an expert at extracting company/client names from marketing text.
@@ -180,7 +192,9 @@ Be conservative - only extract names that clearly appear to be clients, not just
 
             if input_data.linkedin_specialties:
                 social_content.linkedin_specialties = input_data.linkedin_specialties
-                all_text_parts.append(f"LINKEDIN SPECIALTIES:\n{', '.join(input_data.linkedin_specialties)}")
+                all_text_parts.append(
+                    f"LINKEDIN SPECIALTIES:\n{', '.join(input_data.linkedin_specialties)}"
+                )
 
             if input_data.instagram_bio:
                 social_content.instagram_bio = input_data.instagram_bio
@@ -196,7 +210,9 @@ Be conservative - only extract names that clearly appear to be clients, not just
             # Fetch LinkedIn
             if input_data.linkedin_url:
                 try:
-                    logger.info(f"Fetching LinkedIn for client extraction: {input_data.linkedin_url}")
+                    logger.info(
+                        f"Fetching LinkedIn for client extraction: {input_data.linkedin_url}"
+                    )
                     data = await apify.scrape_linkedin_company(input_data.linkedin_url)
                     if data.get("found"):
                         description = data.get("description", "")
@@ -206,8 +222,12 @@ Be conservative - only extract names that clearly appear to be clients, not just
                         if description:
                             all_text_parts.append(f"LINKEDIN DESCRIPTION:\n{description}")
                         if specialties:
-                            all_text_parts.append(f"LINKEDIN SPECIALTIES:\n{', '.join(specialties)}")
-                        logger.info(f"LinkedIn: {len(description)} chars description, {len(specialties)} specialties")
+                            all_text_parts.append(
+                                f"LINKEDIN SPECIALTIES:\n{', '.join(specialties)}"
+                            )
+                        logger.info(
+                            f"LinkedIn: {len(description)} chars description, {len(specialties)} specialties"
+                        )
                 except Exception as e:
                     logger.warning(f"LinkedIn fetch failed: {e}")
                     errors.append(f"linkedin: {str(e)}")
@@ -215,7 +235,9 @@ Be conservative - only extract names that clearly appear to be clients, not just
             # Fetch Instagram
             if input_data.instagram_url:
                 try:
-                    logger.info(f"Fetching Instagram for client extraction: {input_data.instagram_url}")
+                    logger.info(
+                        f"Fetching Instagram for client extraction: {input_data.instagram_url}"
+                    )
                     data = await apify.scrape_instagram_profile(input_data.instagram_url)
                     if data.get("found"):
                         bio = data.get("bio", "")
@@ -230,7 +252,9 @@ Be conservative - only extract names that clearly appear to be clients, not just
             # Fetch Facebook
             if input_data.facebook_url:
                 try:
-                    logger.info(f"Fetching Facebook for client extraction: {input_data.facebook_url}")
+                    logger.info(
+                        f"Fetching Facebook for client extraction: {input_data.facebook_url}"
+                    )
                     data = await apify.scrape_facebook_page(input_data.facebook_url)
                     if data.get("found"):
                         about = data.get("about", "") or data.get("description", "")
@@ -289,12 +313,14 @@ Extract any client/company names mentioned. Return JSON with "clients" array."""
                 # Determine source based on where name might have appeared
                 source = self._guess_source(name, social_content)
 
-                extracted_clients.append(ExtractedClient(
-                    company_name=name,
-                    source=source,
-                    context=client.get("context", ""),
-                    confidence=client.get("confidence", 0.8),
-                ))
+                extracted_clients.append(
+                    ExtractedClient(
+                        company_name=name,
+                        source=source,
+                        context=client.get("context", ""),
+                        confidence=client.get("confidence", 0.8),
+                    )
+                )
 
             new_count = len(extracted_clients)
             logger.info(f"Extracted {new_count} new client names from social profiles")
@@ -327,9 +353,9 @@ Extract any client/company names mentioned. Return JSON with "clients" array."""
         """Normalize company name for comparison."""
         # Remove common suffixes and normalize
         name = name.lower().strip()
-        name = re.sub(r'\s+(pty|ltd|inc|llc|co|corp|company|limited)\.?$', '', name)
-        name = re.sub(r'[^\w\s]', '', name)
-        name = re.sub(r'\s+', ' ', name)
+        name = re.sub(r"\s+(pty|ltd|inc|llc|co|corp|company|limited)\.?$", "", name)
+        name = re.sub(r"[^\w\s]", "", name)
+        name = re.sub(r"\s+", " ", name)
         return name.strip()
 
     def _guess_source(self, name: str, content: SocialTextContent) -> str:

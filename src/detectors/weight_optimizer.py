@@ -86,9 +86,7 @@ class WeightOptimizer:
             Dict with optimized weights, confidence, and metadata
         """
         # Get leads with ALS components and outcomes
-        leads = await self._get_leads_with_components(
-            db, client_id, lookback_days
-        )
+        leads = await self._get_leads_with_components(db, client_id, lookback_days)
 
         if len(leads) < self.min_samples:
             return {
@@ -116,8 +114,7 @@ class WeightOptimizer:
 
         # Convert to dict
         optimized_weights = {
-            COMPONENT_ORDER[i]: round(result["weights"][i], 3)
-            for i in range(len(COMPONENT_ORDER))
+            COMPONENT_ORDER[i]: round(result["weights"][i], 3) for i in range(len(COMPONENT_ORDER))
         }
 
         return {
@@ -143,11 +140,13 @@ class WeightOptimizer:
             and_(
                 Lead.client_id == client_id,
                 Lead.als_data_quality.isnot(None),  # Ensure components exist
-                Lead.status.in_([
-                    LeadStatus.CONVERTED,
-                    LeadStatus.BOUNCED,
-                    LeadStatus.UNSUBSCRIBED,
-                ]),
+                Lead.status.in_(
+                    [
+                        LeadStatus.CONVERTED,
+                        LeadStatus.BOUNCED,
+                        LeadStatus.UNSUBSCRIBED,
+                    ]
+                ),
                 Lead.created_at >= cutoff,
                 Lead.deleted_at.is_(None),
             )
@@ -193,7 +192,7 @@ class WeightOptimizer:
 
             X_rows.append(row)
             # Check status as string since it may be stored as string in DB
-            lead_status = lead.status.value if hasattr(lead.status, 'value') else lead.status
+            lead_status = lead.status.value if hasattr(lead.status, "value") else lead.status
             y_vals.append(1 if lead_status == LeadStatus.CONVERTED.value else 0)
 
         if not X_rows:

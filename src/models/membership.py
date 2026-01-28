@@ -101,9 +101,7 @@ class Membership(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     )
 
     # Unique constraint
-    __table_args__ = (
-        UniqueConstraint("user_id", "client_id", name="unique_membership"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "client_id", name="unique_membership"),)
 
     def __repr__(self) -> str:
         return f"<Membership(user_id={self.user_id}, client_id={self.client_id}, role={self.role.value})>"

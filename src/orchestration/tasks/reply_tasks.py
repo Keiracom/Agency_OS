@@ -127,8 +127,7 @@ async def process_reply_task(
         lead_status = reply_result.data.get("lead_status", "in_sequence")
 
         logger.info(
-            f"Processed reply from lead {lead_id}. "
-            f"Intent: {intent}, New status: {lead_status}"
+            f"Processed reply from lead {lead_id}. Intent: {intent}, New status: {lead_status}"
         )
 
         return {
@@ -187,9 +186,7 @@ async def classify_intent_task(
         intent = classify_result.data.get("intent", "unknown")
         confidence = classify_result.data.get("confidence", 0.0)
 
-        logger.info(
-            f"Classified intent as '{intent}' (confidence: {confidence:.2f})"
-        )
+        logger.info(f"Classified intent as '{intent}' (confidence: {confidence:.2f})")
 
         return {
             "intent": intent,
@@ -253,12 +250,16 @@ async def poll_email_replies_task(
                     message_id = msg.get("MessageID")
 
                     # Find lead by email
-                    stmt = select(Lead).where(
-                        and_(
-                            Lead.email == from_email,
-                            Lead.deleted_at.is_(None),
+                    stmt = (
+                        select(Lead)
+                        .where(
+                            and_(
+                                Lead.email == from_email,
+                                Lead.deleted_at.is_(None),
+                            )
                         )
-                    ).order_by(desc(Lead.created_at))
+                        .order_by(desc(Lead.created_at))
+                    )
                     result = await db.execute(stmt)
                     lead = result.scalar_one_or_none()
 
@@ -276,21 +277,20 @@ async def poll_email_replies_task(
                         metadata={"from_polling": True},
                     )
 
-                    replies.append({
-                        "lead_id": str(lead.id),
-                        "from_email": from_email,
-                        "message_id": message_id,
-                    })
+                    replies.append(
+                        {
+                            "lead_id": str(lead.id),
+                            "from_email": from_email,
+                            "message_id": message_id,
+                        }
+                    )
                     processed += 1
 
                 except Exception as e:
                     logger.error(f"Failed to process email reply: {e}")
                     failed += 1
 
-        logger.info(
-            f"Email polling complete. "
-            f"Processed: {processed}, Failed: {failed}"
-        )
+        logger.info(f"Email polling complete. Processed: {processed}, Failed: {failed}")
 
         return {
             "total": len(messages),
@@ -357,12 +357,16 @@ async def poll_sms_replies_task(
                     message_sid = msg.get("sid")
 
                     # Find lead by phone
-                    stmt = select(Lead).where(
-                        and_(
-                            Lead.phone == from_number,
-                            Lead.deleted_at.is_(None),
+                    stmt = (
+                        select(Lead)
+                        .where(
+                            and_(
+                                Lead.phone == from_number,
+                                Lead.deleted_at.is_(None),
+                            )
                         )
-                    ).order_by(desc(Lead.created_at))
+                        .order_by(desc(Lead.created_at))
+                    )
                     result = await db.execute(stmt)
                     lead = result.scalar_one_or_none()
 
@@ -379,21 +383,20 @@ async def poll_sms_replies_task(
                         metadata={"from_polling": True},
                     )
 
-                    replies.append({
-                        "lead_id": str(lead.id),
-                        "from_number": from_number,
-                        "message_sid": message_sid,
-                    })
+                    replies.append(
+                        {
+                            "lead_id": str(lead.id),
+                            "from_number": from_number,
+                            "message_sid": message_sid,
+                        }
+                    )
                     processed += 1
 
                 except Exception as e:
                     logger.error(f"Failed to process SMS reply: {e}")
                     failed += 1
 
-        logger.info(
-            f"SMS polling complete. "
-            f"Processed: {processed}, Failed: {failed}"
-        )
+        logger.info(f"SMS polling complete. Processed: {processed}, Failed: {failed}")
 
         return {
             "total": len(messages),
@@ -460,12 +463,16 @@ async def poll_linkedin_replies_task(
                     conversation_id = conv.get("id")
 
                     # Find lead by LinkedIn URL
-                    stmt = select(Lead).where(
-                        and_(
-                            Lead.linkedin_url == linkedin_url,
-                            Lead.deleted_at.is_(None),
+                    stmt = (
+                        select(Lead)
+                        .where(
+                            and_(
+                                Lead.linkedin_url == linkedin_url,
+                                Lead.deleted_at.is_(None),
+                            )
                         )
-                    ).order_by(desc(Lead.created_at))
+                        .order_by(desc(Lead.created_at))
+                    )
                     result = await db.execute(stmt)
                     lead = result.scalar_one_or_none()
 
@@ -482,21 +489,20 @@ async def poll_linkedin_replies_task(
                         metadata={"from_polling": True},
                     )
 
-                    replies.append({
-                        "lead_id": str(lead.id),
-                        "linkedin_url": linkedin_url,
-                        "conversation_id": conversation_id,
-                    })
+                    replies.append(
+                        {
+                            "lead_id": str(lead.id),
+                            "linkedin_url": linkedin_url,
+                            "conversation_id": conversation_id,
+                        }
+                    )
                     processed += 1
 
                 except Exception as e:
                     logger.error(f"Failed to process LinkedIn reply: {e}")
                     failed += 1
 
-        logger.info(
-            f"LinkedIn polling complete. "
-            f"Processed: {processed}, Failed: {failed}"
-        )
+        logger.info(f"LinkedIn polling complete. Processed: {processed}, Failed: {failed}")
 
         return {
             "total": len(conversations),

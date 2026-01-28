@@ -65,10 +65,19 @@ def __getattr__(name: str):
     """Lazy import to avoid loading pydantic_ai on package import."""
     if name in ("BaseAgent", "AgentContext", "AgentResult"):
         from src.agents.base_agent import AgentContext, AgentResult, BaseAgent
-        return {"BaseAgent": BaseAgent, "AgentContext": AgentContext, "AgentResult": AgentResult}[name]
 
-    if name in ("CMOAgent", "get_cmo_agent", "CampaignAnalysis", "ChannelRecommendation",
-                "LeadPrioritization", "TimingRecommendation"):
+        return {"BaseAgent": BaseAgent, "AgentContext": AgentContext, "AgentResult": AgentResult}[
+            name
+        ]
+
+    if name in (
+        "CMOAgent",
+        "get_cmo_agent",
+        "CampaignAnalysis",
+        "ChannelRecommendation",
+        "LeadPrioritization",
+        "TimingRecommendation",
+    ):
         from src.agents.cmo_agent import (
             CampaignAnalysis,
             ChannelRecommendation,
@@ -77,6 +86,7 @@ def __getattr__(name: str):
             TimingRecommendation,
             get_cmo_agent,
         )
+
         return {
             "CMOAgent": CMOAgent,
             "get_cmo_agent": get_cmo_agent,
@@ -86,8 +96,14 @@ def __getattr__(name: str):
             "TimingRecommendation": TimingRecommendation,
         }[name]
 
-    if name in ("ContentAgent", "get_content_agent", "EmailContent", "SMSContent",
-                "LinkedInContent", "VoiceScript"):
+    if name in (
+        "ContentAgent",
+        "get_content_agent",
+        "EmailContent",
+        "SMSContent",
+        "LinkedInContent",
+        "VoiceScript",
+    ):
         from src.agents.content_agent import (
             ContentAgent,
             EmailContent,
@@ -96,6 +112,7 @@ def __getattr__(name: str):
             VoiceScript,
             get_content_agent,
         )
+
         return {
             "ContentAgent": ContentAgent,
             "get_content_agent": get_content_agent,
@@ -105,8 +122,14 @@ def __getattr__(name: str):
             "VoiceScript": VoiceScript,
         }[name]
 
-    if name in ("ReplyAgent", "get_reply_agent", "IntentClassification", "ResponseSuggestion",
-                "SentimentAnalysis", "ExtractedEntities"):
+    if name in (
+        "ReplyAgent",
+        "get_reply_agent",
+        "IntentClassification",
+        "ResponseSuggestion",
+        "SentimentAnalysis",
+        "ExtractedEntities",
+    ):
         from src.agents.reply_agent import (
             ExtractedEntities,
             IntentClassification,
@@ -115,6 +138,7 @@ def __getattr__(name: str):
             SentimentAnalysis,
             get_reply_agent,
         )
+
         return {
             "ReplyAgent": ReplyAgent,
             "get_reply_agent": get_reply_agent,
@@ -124,13 +148,19 @@ def __getattr__(name: str):
             "ExtractedEntities": ExtractedEntities,
         }[name]
 
-    if name in ("ICPDiscoveryAgent", "get_icp_discovery_agent", "ICPProfile", "ICPExtractionResult"):
+    if name in (
+        "ICPDiscoveryAgent",
+        "get_icp_discovery_agent",
+        "ICPProfile",
+        "ICPExtractionResult",
+    ):
         from src.agents.icp_discovery_agent import (
             ICPDiscoveryAgent,
             ICPExtractionResult,
             ICPProfile,
             get_icp_discovery_agent,
         )
+
         return {
             "ICPDiscoveryAgent": ICPDiscoveryAgent,
             "get_icp_discovery_agent": get_icp_discovery_agent,
@@ -138,14 +168,19 @@ def __getattr__(name: str):
             "ICPExtractionResult": ICPExtractionResult,
         }[name]
 
-    if name in ("CampaignGenerationAgent", "get_campaign_generation_agent",
-                "GeneratedCampaign", "CampaignGenerationResult"):
+    if name in (
+        "CampaignGenerationAgent",
+        "get_campaign_generation_agent",
+        "GeneratedCampaign",
+        "CampaignGenerationResult",
+    ):
         from src.agents.campaign_generation_agent import (
             CampaignGenerationAgent,
             CampaignGenerationResult,
             GeneratedCampaign,
             get_campaign_generation_agent,
         )
+
         return {
             "CampaignGenerationAgent": CampaignGenerationAgent,
             "get_campaign_generation_agent": get_campaign_generation_agent,

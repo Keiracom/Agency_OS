@@ -41,6 +41,7 @@ if TYPE_CHECKING:
 
 class PoolStatus:
     """Pool status enum values."""
+
     AVAILABLE = "available"
     ASSIGNED = "assigned"
     CONVERTED = "converted"
@@ -51,6 +52,7 @@ class PoolStatus:
 
 class EmailStatus:
     """Email verification status values."""
+
     VERIFIED = "verified"
     GUESSED = "guessed"
     INVALID = "invalid"

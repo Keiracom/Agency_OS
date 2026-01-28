@@ -313,11 +313,13 @@ class SMSEngine(OutreachEngine):
 
             if not all([lead_id, campaign_id, content]):
                 results["failed"] += 1
-                results["messages"].append({
-                    "lead_id": str(lead_id) if lead_id else None,
-                    "status": "failed",
-                    "reason": "Missing required fields",
-                })
+                results["messages"].append(
+                    {
+                        "lead_id": str(lead_id) if lead_id else None,
+                        "status": "failed",
+                        "reason": "Missing required fields",
+                    }
+                )
                 continue
 
             result = await self.validate_and_send(
@@ -330,34 +332,42 @@ class SMSEngine(OutreachEngine):
 
             if result.success:
                 results["sent"] += 1
-                results["messages"].append({
-                    "lead_id": str(lead_id),
-                    "status": "sent",
-                    "message_sid": result.data.get("message_sid"),
-                })
+                results["messages"].append(
+                    {
+                        "lead_id": str(lead_id),
+                        "status": "sent",
+                        "message_sid": result.data.get("message_sid"),
+                    }
+                )
             else:
                 # Categorize failure
                 if "dncr" in result.error.lower() or result.metadata.get("reason") == "dncr":
                     results["dncr_rejected"] += 1
-                    results["messages"].append({
-                        "lead_id": str(lead_id),
-                        "status": "dncr_rejected",
-                        "reason": result.error,
-                    })
+                    results["messages"].append(
+                        {
+                            "lead_id": str(lead_id),
+                            "status": "dncr_rejected",
+                            "reason": result.error,
+                        }
+                    )
                 elif "rate limit" in result.error.lower():
                     results["rate_limited"] += 1
-                    results["messages"].append({
-                        "lead_id": str(lead_id),
-                        "status": "rate_limited",
-                        "reason": result.error,
-                    })
+                    results["messages"].append(
+                        {
+                            "lead_id": str(lead_id),
+                            "status": "rate_limited",
+                            "reason": result.error,
+                        }
+                    )
                 else:
                     results["failed"] += 1
-                    results["messages"].append({
-                        "lead_id": str(lead_id),
-                        "status": "failed",
-                        "reason": result.error,
-                    })
+                    results["messages"].append(
+                        {
+                            "lead_id": str(lead_id),
+                            "status": "failed",
+                            "reason": result.error,
+                        }
+                    )
 
         return EngineResult.ok(
             data=results,
@@ -450,8 +460,9 @@ class SMSEngine(OutreachEngine):
         links_included = None
         if message_content:
             import re
+
             # Extract URLs from SMS content
-            url_pattern = r'https?://[^\s]+'
+            url_pattern = r"https?://[^\s]+"
             links_included = list(set(re.findall(url_pattern, message_content)))
 
         activity = Activity(

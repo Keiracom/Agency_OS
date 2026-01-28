@@ -95,9 +95,7 @@ class RecordingCleanupService:
                 # Check if recording is flagged for retention
                 if self._is_flagged_for_retention(activity):
                     skipped_flagged += 1
-                    logger.debug(
-                        f"Skipping flagged recording for activity {activity.id}"
-                    )
+                    logger.debug(f"Skipping flagged recording for activity {activity.id}")
                     continue
 
                 # Get recording URL from metadata
@@ -107,9 +105,7 @@ class RecordingCleanupService:
                     continue
 
                 if dry_run:
-                    logger.info(
-                        f"[DRY RUN] Would delete recording for activity {activity.id}"
-                    )
+                    logger.info(f"[DRY RUN] Would delete recording for activity {activity.id}")
                     deleted += 1
                     continue
 
@@ -126,15 +122,11 @@ class RecordingCleanupService:
                     )
                 else:
                     failed += 1
-                    logger.warning(
-                        f"Failed to delete recording for activity {activity.id}"
-                    )
+                    logger.warning(f"Failed to delete recording for activity {activity.id}")
 
             except Exception as e:
                 failed += 1
-                logger.error(
-                    f"Error processing recording for activity {activity.id}: {e}"
-                )
+                logger.error(f"Error processing recording for activity {activity.id}: {e}")
 
         # Commit any remaining changes
         if not dry_run:
@@ -191,10 +183,7 @@ class RecordingCleanupService:
         activities = result.scalars().all()
 
         # Filter out already-deleted recordings (check extra_data)
-        return [
-            a for a in activities
-            if not a.extra_data.get("recording_deleted", False)
-        ]
+        return [a for a in activities if not a.extra_data.get("recording_deleted", False)]
 
     def _is_flagged_for_retention(self, activity: Activity) -> bool:
         """
@@ -267,11 +256,7 @@ class RecordingCleanupService:
         extra_data["recording_deleted_at"] = datetime.utcnow().isoformat()
         extra_data["recording_deleted_reason"] = "retention_policy"
 
-        stmt = (
-            update(Activity)
-            .where(Activity.id == activity.id)
-            .values(extra_data=extra_data)
-        )
+        stmt = update(Activity).where(Activity.id == activity.id).values(extra_data=extra_data)
         await self.db.execute(stmt)
 
     async def flag_recording_for_retention(
@@ -309,11 +294,7 @@ class RecordingCleanupService:
         extra_data["flagged_at"] = datetime.utcnow().isoformat()
         extra_data["flagged_reason"] = reason
 
-        stmt = (
-            update(Activity)
-            .where(Activity.id == activity_id)
-            .values(extra_data=extra_data)
-        )
+        stmt = update(Activity).where(Activity.id == activity_id).values(extra_data=extra_data)
         await self.db.execute(stmt)
         await self.db.commit()
 
@@ -347,11 +328,7 @@ class RecordingCleanupService:
         extra_data["flagged_for_retention"] = False
         extra_data["unflagged_at"] = datetime.utcnow().isoformat()
 
-        stmt = (
-            update(Activity)
-            .where(Activity.id == activity_id)
-            .values(extra_data=extra_data)
-        )
+        stmt = update(Activity).where(Activity.id == activity_id).values(extra_data=extra_data)
         await self.db.execute(stmt)
         await self.db.commit()
 

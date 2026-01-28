@@ -30,12 +30,13 @@ if TYPE_CHECKING:
 
 class LinkedInSeatStatus:
     """LinkedIn seat status constants."""
-    PENDING = "pending"           # Awaiting client connection
-    AWAITING_2FA = "awaiting_2fa" # 2FA code needed
-    WARMUP = "warmup"             # In 2-week ramp
-    ACTIVE = "active"             # Full capacity
-    RESTRICTED = "restricted"     # LinkedIn flagged
-    DISCONNECTED = "disconnected" # Client removed
+
+    PENDING = "pending"  # Awaiting client connection
+    AWAITING_2FA = "awaiting_2fa"  # 2FA code needed
+    WARMUP = "warmup"  # In 2-week ramp
+    ACTIVE = "active"  # Full capacity
+    RESTRICTED = "restricted"  # LinkedIn flagged
+    DISCONNECTED = "disconnected"  # Client removed
 
 
 # Warmup schedule: (start_day, end_day, daily_limit)

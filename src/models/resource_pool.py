@@ -39,6 +39,7 @@ if TYPE_CHECKING:
 
 class ResourceType(str, Enum):
     """Resource types available in the pool."""
+
     EMAIL_DOMAIN = "email_domain"
     PHONE_NUMBER = "phone_number"
     LINKEDIN_SEAT = "linkedin_seat"
@@ -46,6 +47,7 @@ class ResourceType(str, Enum):
 
 class ResourceStatus(str, Enum):
     """Resource lifecycle status."""
+
     AVAILABLE = "available"
     ASSIGNED = "assigned"
     WARMING = "warming"
@@ -54,8 +56,9 @@ class ResourceStatus(str, Enum):
 
 class HealthStatus(str, Enum):
     """Domain health status based on bounce/complaint rates."""
-    GOOD = "good"          # <2% bounce, <0.05% complaint → 50/day
-    WARNING = "warning"    # 2-5% bounce, 0.05-0.1% complaint → 35/day
+
+    GOOD = "good"  # <2% bounce, <0.05% complaint → 50/day
+    WARNING = "warning"  # 2-5% bounce, 0.05-0.1% complaint → 35/day
     CRITICAL = "critical"  # >5% bounce, >0.1% complaint → 0/day (paused)
 
 
@@ -65,12 +68,12 @@ class HealthStatus(str, Enum):
 
 HEALTH_THRESHOLDS = {
     "bounce": {
-        "good": 0.02,      # <2%
-        "warning": 0.05,   # 2-5%
+        "good": 0.02,  # <2%
+        "warning": 0.05,  # 2-5%
         # >5% = critical
     },
     "complaint": {
-        "good": 0.0005,    # <0.05%
+        "good": 0.0005,  # <0.05%
         "warning": 0.001,  # 0.05-0.1%
         # >0.1% = critical
     },
@@ -126,7 +129,12 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
 
     # Resource identification
     resource_type: Mapped[ResourceType] = mapped_column(
-        ENUM(ResourceType, name="resource_type", create_type=False, values_callable=lambda x: [e.value for e in x]),
+        ENUM(
+            ResourceType,
+            name="resource_type",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         nullable=False,
     )
     resource_value: Mapped[str] = mapped_column(
@@ -153,7 +161,12 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
 
     # Status
     status: Mapped[ResourceStatus] = mapped_column(
-        ENUM(ResourceStatus, name="resource_status", create_type=False, values_callable=lambda x: [e.value for e in x]),
+        ENUM(
+            ResourceStatus,
+            name="resource_status",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         default=ResourceStatus.AVAILABLE,
         nullable=False,
     )
@@ -289,10 +302,7 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
 
         # Check health status for fully warmed domains
         if self.warmup_completed_at:
-            return HEALTH_DAILY_LIMITS.get(
-                HealthStatus(self.health_status),
-                50
-            )
+            return HEALTH_DAILY_LIMITS.get(HealthStatus(self.health_status), 50)
 
         # Not started warmup
         if not self.warmup_started_at:
@@ -349,12 +359,16 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
         bounce_float = float(self.bounce_rate) if self.bounce_rate else 0
         complaint_float = float(self.complaint_rate) if self.complaint_rate else 0
 
-        if bounce_float > HEALTH_THRESHOLDS["bounce"]["warning"] or \
-           complaint_float > HEALTH_THRESHOLDS["complaint"]["warning"]:
+        if (
+            bounce_float > HEALTH_THRESHOLDS["bounce"]["warning"]
+            or complaint_float > HEALTH_THRESHOLDS["complaint"]["warning"]
+        ):
             self.health_status = HealthStatus.CRITICAL.value
             self.daily_limit_override = 0
-        elif bounce_float > HEALTH_THRESHOLDS["bounce"]["good"] or \
-             complaint_float > HEALTH_THRESHOLDS["complaint"]["good"]:
+        elif (
+            bounce_float > HEALTH_THRESHOLDS["bounce"]["good"]
+            or complaint_float > HEALTH_THRESHOLDS["complaint"]["good"]
+        ):
             self.health_status = HealthStatus.WARNING.value
             self.daily_limit_override = 35
         else:

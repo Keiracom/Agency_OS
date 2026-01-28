@@ -248,6 +248,7 @@ class BaseSkill(ABC, Generic[InputT, OutputT]):
         """
         import logging
         import re
+
         logger = logging.getLogger(__name__)
 
         original_content = content
@@ -268,18 +269,18 @@ class BaseSkill(ABC, Generic[InputT, OutputT]):
 
             # Method 1: Try regex to extract JSON from markdown code blocks
             # Matches ```json ... ``` or ``` ... ```
-            code_block_pattern = r'```(?:json)?\s*\n?([\s\S]*?)\n?```'
+            code_block_pattern = r"```(?:json)?\s*\n?([\s\S]*?)\n?```"
             match = re.search(code_block_pattern, content)
             if match:
                 content = match.group(1).strip()
                 logger.info(f"Extracted from code block (len={len(content)}): {content[:200]}...")
 
             # Method 2: If no code block found, try to find JSON object/array directly
-            if not content.startswith('{') and not content.startswith('['):
+            if not content.startswith("{") and not content.startswith("["):
                 # Look for first { or [ in the content
                 json_start = -1
                 for i, char in enumerate(content):
-                    if char in '{[':
+                    if char in "{[":
                         json_start = i
                         break
                 if json_start > 0:
@@ -287,14 +288,14 @@ class BaseSkill(ABC, Generic[InputT, OutputT]):
                     logger.info(f"Trimmed to JSON start: {content[:100]}...")
 
             # Method 3: Clean up any trailing text after JSON
-            if content.startswith('{'):
+            if content.startswith("{"):
                 # Find matching closing brace
                 brace_count = 0
                 json_end = -1
                 for i, char in enumerate(content):
-                    if char == '{':
+                    if char == "{":
                         brace_count += 1
-                    elif char == '}':
+                    elif char == "}":
                         brace_count -= 1
                         if brace_count == 0:
                             json_end = i + 1
@@ -316,7 +317,9 @@ class BaseSkill(ABC, Generic[InputT, OutputT]):
             return json.loads(content)
         except json.JSONDecodeError as e:
             logger.error(f"JSON parse error: {e}")
-            logger.error(f"Original content (len={len(original_content)}): {original_content[:500]}")
+            logger.error(
+                f"Original content (len={len(original_content)}): {original_content[:500]}"
+            )
             logger.error(f"Processed content (len={len(content)}): {content[:500]}")
             raise SkillError(
                 skill_name=self.name,

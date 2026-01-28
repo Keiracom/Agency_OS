@@ -85,10 +85,12 @@ async def get_eligible_clients_task(min_conversions: int = MIN_CONVERSIONS) -> l
             .where(
                 and_(
                     Client.deleted_at.is_(None),
-                    Client.subscription_status.in_([
-                        SubscriptionStatus.ACTIVE,
-                        SubscriptionStatus.TRIALING,
-                    ]),
+                    Client.subscription_status.in_(
+                        [
+                            SubscriptionStatus.ACTIVE,
+                            SubscriptionStatus.TRIALING,
+                        ]
+                    ),
                     Lead.deleted_at.is_(None),
                     Lead.status == LeadStatus.CONVERTED,
                     Lead.updated_at >= cutoff,
@@ -132,9 +134,7 @@ async def archive_expired_patterns_task() -> dict[str, Any]:
         now = datetime.utcnow()
 
         # Find expired patterns
-        expired_stmt = select(ConversionPattern).where(
-            ConversionPattern.valid_until < now
-        )
+        expired_stmt = select(ConversionPattern).where(ConversionPattern.valid_until < now)
         result = await db.execute(expired_stmt)
         expired_patterns = list(result.scalars().all())
 

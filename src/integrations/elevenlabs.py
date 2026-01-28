@@ -18,7 +18,6 @@ Used by Vapi for voice synthesis.
 API Docs: https://elevenlabs.io/docs/api-reference
 """
 
-
 import httpx
 from pydantic import BaseModel
 
@@ -28,6 +27,7 @@ from src.exceptions import IntegrationError
 
 class VoiceSettings(BaseModel):
     """Voice configuration settings."""
+
     stability: float = 0.5  # 0-1, higher = more consistent
     similarity_boost: float = 0.75  # 0-1, higher = closer to original
     style: float = 0.0  # 0-1, style exaggeration (v2 voices only)
@@ -36,6 +36,7 @@ class VoiceSettings(BaseModel):
 
 class ElevenLabsVoice(BaseModel):
     """Voice model from ElevenLabs."""
+
     voice_id: str
     name: str
     category: str  # premade, cloned, generated
@@ -55,28 +56,22 @@ class ElevenLabsClient:
 
     # Recommended voices for Australian business context
     RECOMMENDED_VOICES = {
-        "adam": "pNInz6obpgDQGcFmaJgB",      # Professional male
-        "rachel": "21m00Tcm4TlvDq8ikWAM",    # Professional female
-        "josh": "TxGEqnHWrfWFTfGW9XjX",      # Casual male
-        "bella": "EXAVITQu4vr4xnSDxMaL",     # Friendly female
+        "adam": "pNInz6obpgDQGcFmaJgB",  # Professional male
+        "rachel": "21m00Tcm4TlvDq8ikWAM",  # Professional female
+        "josh": "TxGEqnHWrfWFTfGW9XjX",  # Casual male
+        "bella": "EXAVITQu4vr4xnSDxMaL",  # Friendly female
     }
 
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key or settings.elevenlabs_api_key
         if not self.api_key:
             raise IntegrationError("ELEVENLABS_API_KEY not configured")
-        self.headers = {
-            "xi-api-key": self.api_key,
-            "Content-Type": "application/json"
-        }
+        self.headers = {"xi-api-key": self.api_key, "Content-Type": "application/json"}
 
     async def list_voices(self) -> list[ElevenLabsVoice]:
         """List all available voices."""
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(
-                f"{self.BASE_URL}/voices",
-                headers=self.headers
-            )
+            response = await client.get(f"{self.BASE_URL}/voices", headers=self.headers)
             if response.status_code != 200:
                 raise IntegrationError(f"ElevenLabs list_voices failed: {response.text}")
 
@@ -87,7 +82,7 @@ class ElevenLabsClient:
                     name=v["name"],
                     category=v.get("category", "premade"),
                     labels=v.get("labels", {}),
-                    preview_url=v.get("preview_url")
+                    preview_url=v.get("preview_url"),
                 )
                 for v in data.get("voices", [])
             ]
@@ -95,10 +90,7 @@ class ElevenLabsClient:
     async def get_voice(self, voice_id: str) -> ElevenLabsVoice:
         """Get details for a specific voice."""
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(
-                f"{self.BASE_URL}/voices/{voice_id}",
-                headers=self.headers
-            )
+            response = await client.get(f"{self.BASE_URL}/voices/{voice_id}", headers=self.headers)
             if response.status_code != 200:
                 raise IntegrationError(f"ElevenLabs get_voice failed: {response.text}")
 
@@ -108,14 +100,11 @@ class ElevenLabsClient:
                 name=v["name"],
                 category=v.get("category", "premade"),
                 labels=v.get("labels", {}),
-                preview_url=v.get("preview_url")
+                preview_url=v.get("preview_url"),
             )
 
     async def text_to_speech(
-        self,
-        text: str,
-        voice_id: str | None = None,
-        voice_settings: VoiceSettings | None = None
+        self, text: str, voice_id: str | None = None, voice_settings: VoiceSettings | None = None
     ) -> bytes:
         """
         Convert text to speech audio.
@@ -134,15 +123,13 @@ class ElevenLabsClient:
                 "stability": voice_settings.stability,
                 "similarity_boost": voice_settings.similarity_boost,
                 "style": voice_settings.style,
-                "use_speaker_boost": voice_settings.use_speaker_boost
-            }
+                "use_speaker_boost": voice_settings.use_speaker_boost,
+            },
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
-                f"{self.BASE_URL}/text-to-speech/{voice_id}",
-                json=payload,
-                headers=self.headers
+                f"{self.BASE_URL}/text-to-speech/{voice_id}", json=payload, headers=self.headers
             )
             if response.status_code != 200:
                 raise IntegrationError(f"ElevenLabs TTS failed: {response.text}")
@@ -152,10 +139,7 @@ class ElevenLabsClient:
     async def get_subscription_info(self) -> dict:
         """Get current subscription and usage info."""
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(
-                f"{self.BASE_URL}/user/subscription",
-                headers=self.headers
-            )
+            response = await client.get(f"{self.BASE_URL}/user/subscription", headers=self.headers)
             if response.status_code != 200:
                 raise IntegrationError(f"ElevenLabs subscription check failed: {response.text}")
             return response.json()
@@ -163,10 +147,7 @@ class ElevenLabsClient:
     async def get_user_info(self) -> dict:
         """Get user account info including character usage."""
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(
-                f"{self.BASE_URL}/user",
-                headers=self.headers
-            )
+            response = await client.get(f"{self.BASE_URL}/user", headers=self.headers)
             if response.status_code != 200:
                 raise IntegrationError(f"ElevenLabs user info failed: {response.text}")
             return response.json()

@@ -72,8 +72,8 @@ from src.models.lead import Lead
 # BUSINESS HOURS CONSTANTS (Per VOICE.md spec)
 # ============================================
 VOICE_BUSINESS_HOURS = {
-    "start": 9,   # 9 AM
-    "end": 17,    # 5 PM
+    "start": 9,  # 9 AM
+    "end": 17,  # 5 PM
     "lunch_start": 12,  # Skip 12-1 PM (low answer rate)
     "lunch_end": 13,
     "days": [0, 1, 2, 3, 4],  # Monday-Friday (weekday() values)
@@ -281,10 +281,22 @@ class VoiceEngine(OutreachEngine):
                 "testimonials": row.website_testimonials or [],
                 "case_studies": row.website_case_studies or [],
                 "ratings": {
-                    "g2": {"rating": float(row.g2_rating) if row.g2_rating else None, "count": row.g2_review_count},
-                    "capterra": {"rating": float(row.capterra_rating) if row.capterra_rating else None, "count": row.capterra_review_count},
-                    "trustpilot": {"rating": float(row.trustpilot_rating) if row.trustpilot_rating else None, "count": row.trustpilot_review_count},
-                    "google": {"rating": float(row.google_rating) if row.google_rating else None, "count": row.google_review_count},
+                    "g2": {
+                        "rating": float(row.g2_rating) if row.g2_rating else None,
+                        "count": row.g2_review_count,
+                    },
+                    "capterra": {
+                        "rating": float(row.capterra_rating) if row.capterra_rating else None,
+                        "count": row.capterra_review_count,
+                    },
+                    "trustpilot": {
+                        "rating": float(row.trustpilot_rating) if row.trustpilot_rating else None,
+                        "count": row.trustpilot_review_count,
+                    },
+                    "google": {
+                        "rating": float(row.google_rating) if row.google_rating else None,
+                        "count": row.google_review_count,
+                    },
                 },
             }
         except Exception as e:
@@ -674,7 +686,10 @@ class VoiceEngine(OutreachEngine):
                 # === VOICE RETRY SCHEDULING ===
                 # Schedule retry for busy/no_answer outcomes
                 retry_result = None
-                if outcome in RETRYABLE_OUTCOMES or outcome.lower().replace("_", "-") in RETRYABLE_OUTCOMES:
+                if (
+                    outcome in RETRYABLE_OUTCOMES
+                    or outcome.lower().replace("_", "-") in RETRYABLE_OUTCOMES
+                ):
                     retry_service = VoiceRetryService(db)
                     retry_result = await retry_service.schedule_retry(
                         activity_id=completion_activity.id,
@@ -695,7 +710,9 @@ class VoiceEngine(OutreachEngine):
                     "event": event_type,
                     "processed": True,
                     "retry_scheduled": retry_result["scheduled"] if retry_result else False,
-                    "retry_at": retry_result["retry_at"].isoformat() if retry_result and retry_result.get("retry_at") else None,
+                    "retry_at": retry_result["retry_at"].isoformat()
+                    if retry_result and retry_result.get("retry_at")
+                    else None,
                 },
                 metadata={"activity_id": str(activity.id)},
             )
@@ -873,9 +890,9 @@ Always be respectful of their time."""
 
             # Build campaign context
             campaign_context = f"""**Campaign:** {campaign.name}
-**Product/Service:** {getattr(campaign, 'product_name', campaign.name)}
-{f"**Value Prop:** {getattr(campaign, 'value_proposition', '')}" if hasattr(campaign, 'value_proposition') and campaign.value_proposition else ""}
-{f"**Differentiator:** {getattr(campaign, 'differentiator', '')}" if hasattr(campaign, 'differentiator') and campaign.differentiator else ""}"""
+**Product/Service:** {getattr(campaign, "product_name", campaign.name)}
+{f"**Value Prop:** {getattr(campaign, 'value_proposition', '')}" if hasattr(campaign, "value_proposition") and campaign.value_proposition else ""}
+{f"**Differentiator:** {getattr(campaign, 'differentiator', '')}" if hasattr(campaign, "differentiator") and campaign.differentiator else ""}"""
 
             # Use Smart Voice KB Prompt
             prompt = SMART_VOICE_KB_PROMPT.format(
@@ -899,6 +916,7 @@ Be specific and actionable. Return valid JSON only."""
 
             # Parse JSON from response
             import json
+
             try:
                 content = result["content"]
                 if "```json" in content:
@@ -926,7 +944,10 @@ Be specific and actionable. Return valid JSON only."""
                 return EngineResult.ok(
                     data={
                         "recommended_opener": f"Hi {lead_context.get('person', {}).get('first_name', 'there')}, this is a quick call about {campaign.name}.",
-                        "opening_hooks": ["Ask about their current challenges", "Reference their company's industry"],
+                        "opening_hooks": [
+                            "Ask about their current challenges",
+                            "Reference their company's industry",
+                        ],
                         "objection_responses": {},
                         "lead_id": str(lead_id),
                         "campaign_id": str(campaign_id),
@@ -1016,7 +1037,9 @@ Be specific and actionable. Return valid JSON only."""
                     "assistant_id": assistant_id,
                     "voice_kb": kb_data,
                     "first_message_used": personalized_first_message,
-                    "sdk_enhanced": kb_result.metadata.get("sdk", False) if kb_result.success else False,
+                    "sdk_enhanced": kb_result.metadata.get("sdk", False)
+                    if kb_result.success
+                    else False,
                 },
                 metadata={
                     "cost_aud": kb_result.metadata.get("cost_aud", 0) if kb_result.success else 0,

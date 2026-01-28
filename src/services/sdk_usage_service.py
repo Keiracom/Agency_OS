@@ -90,25 +90,28 @@ async def log_sdk_usage(
         )
     """)
 
-    await db.execute(query, {
-        "id": str(log_id),
-        "client_id": str(client_id),
-        "lead_id": str(lead_id) if lead_id else None,
-        "campaign_id": str(campaign_id) if campaign_id else None,
-        "user_id": str(user_id) if user_id else None,
-        "agent_type": agent_type,
-        "model_used": model_used,
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
-        "cached_tokens": cached_tokens,
-        "cost_aud": cost_aud,
-        "turns_used": turns_used,
-        "duration_ms": duration_ms,
-        "tool_calls": str(tool_calls_json).replace("'", '"'),  # Convert to JSON string
-        "success": success,
-        "error_message": error_message,
-        "created_at": datetime.utcnow(),
-    })
+    await db.execute(
+        query,
+        {
+            "id": str(log_id),
+            "client_id": str(client_id),
+            "lead_id": str(lead_id) if lead_id else None,
+            "campaign_id": str(campaign_id) if campaign_id else None,
+            "user_id": str(user_id) if user_id else None,
+            "agent_type": agent_type,
+            "model_used": model_used,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "cached_tokens": cached_tokens,
+            "cost_aud": cost_aud,
+            "turns_used": turns_used,
+            "duration_ms": duration_ms,
+            "tool_calls": str(tool_calls_json).replace("'", '"'),  # Convert to JSON string
+            "success": success,
+            "error_message": error_message,
+            "created_at": datetime.utcnow(),
+        },
+    )
 
     await db.commit()
 
@@ -121,7 +124,7 @@ async def log_sdk_usage(
             "cost_aud": cost_aud,
             "turns_used": turns_used,
             "success": success,
-        }
+        },
     )
 
     return log_id
@@ -206,10 +209,13 @@ async def get_client_sdk_spend(
         ORDER BY total_cost DESC
     """)
 
-    result = await db.execute(query, {
-        "client_id": str(client_id),
-        "days": f"{days} days",
-    })
+    result = await db.execute(
+        query,
+        {
+            "client_id": str(client_id),
+            "days": f"{days} days",
+        },
+    )
     rows = result.fetchall()
 
     breakdown = {}

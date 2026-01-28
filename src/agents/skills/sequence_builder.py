@@ -52,9 +52,7 @@ class SequenceTouch(BaseModel):
     skip_if: str | None = Field(
         None, description="Skip condition (e.g., 'phone_missing', 'linkedin_url_missing')"
     )
-    messaging_key: str = Field(
-        ..., description="Key for looking up generated messaging content"
-    )
+    messaging_key: str = Field(..., description="Key for looking up generated messaging content")
 
 
 class SequenceBuilderSkill(BaseSkill["SequenceBuilderSkill.Input", "SequenceBuilderSkill.Output"]):
@@ -81,29 +79,23 @@ class SequenceBuilderSkill(BaseSkill["SequenceBuilderSkill.Input", "SequenceBuil
     class Input(BaseModel):
         """Input for sequence building."""
 
-        icp_profile: dict[str, Any] = Field(
-            ..., description="Full ICPProfile as dictionary"
-        )
+        icp_profile: dict[str, Any] = Field(..., description="Full ICPProfile as dictionary")
         available_channels: list[Literal["email", "linkedin", "sms", "voice", "mail"]] = Field(
             ..., description="Channels available for this campaign"
         )
-        sequence_days: int = Field(
-            14, ge=7, le=30, description="Total sequence duration in days"
-        )
-        aggressive: bool = Field(
-            False, description="Use faster timing for hot leads"
-        )
+        sequence_days: int = Field(14, ge=7, le=30, description="Total sequence duration in days")
+        aggressive: bool = Field(False, description="Use faster timing for hot leads")
 
         # Phase 16: Pattern insights (optional)
         when_patterns: dict[str, Any] | None = Field(
             None,
             description="WHEN pattern insights from Conversion Intelligence. "
-            "Includes best days, best hours, optimal touch gaps."
+            "Includes best days, best hours, optimal touch gaps.",
         )
         how_patterns: dict[str, Any] | None = Field(
             None,
             description="HOW pattern insights from Conversion Intelligence. "
-            "Includes channel effectiveness, multi-channel lift, winning sequences."
+            "Includes channel effectiveness, multi-channel lift, winning sequences.",
         )
 
     class Output(BaseModel):
@@ -116,11 +108,11 @@ class SequenceBuilderSkill(BaseSkill["SequenceBuilderSkill.Input", "SequenceBuil
         adaptive_rules: list[str] = Field(
             ..., description="Runtime behavior rules for the sequence"
         )
-        channel_summary: dict[str, int] = Field(
-            ..., description="Count of touches per channel"
-        )
+        channel_summary: dict[str, int] = Field(..., description="Count of touches per channel")
 
-    system_prompt: ClassVar[str] = """You are a sales sequence strategist. Given an ICP profile and available channels,
+    system_prompt: ClassVar[
+        str
+    ] = """You are a sales sequence strategist. Given an ICP profile and available channels,
 build an optimal touch sequence following the "Growth Engine" pattern.
 
 The Growth Engine sequence is:
@@ -187,11 +179,11 @@ Return JSON with this exact structure:
 
 ICP PROFILE:
 - Primary Industry: {primary_industry}
-- All Industries: {', '.join(industries) if industries else 'Not specified'}
-- Target Titles: {', '.join(icp.get('icp_titles', [])) if icp.get('icp_titles') else 'Not specified'}
-- Pain Points: {', '.join(icp.get('icp_pain_points', [])) if icp.get('icp_pain_points') else 'Not specified'}
+- All Industries: {", ".join(industries) if industries else "Not specified"}
+- Target Titles: {", ".join(icp.get("icp_titles", [])) if icp.get("icp_titles") else "Not specified"}
+- Pain Points: {", ".join(icp.get("icp_pain_points", [])) if icp.get("icp_pain_points") else "Not specified"}
 
-AVAILABLE CHANNELS: {', '.join(input_data.available_channels)}
+AVAILABLE CHANNELS: {", ".join(input_data.available_channels)}
 SEQUENCE DURATION: {input_data.sequence_days} days
 AGGRESSIVE MODE: {input_data.aggressive}"""
 
@@ -232,7 +224,9 @@ AGGRESSIVE MODE: {input_data.aggressive}"""
             # Channel effectiveness
             if patterns.get("channel_effectiveness"):
                 channels = patterns["channel_effectiveness"][:3]
-                rankings = [f"{c.get('channel', '')}: {c.get('conversion_rate', 0):.1%}" for c in channels]
+                rankings = [
+                    f"{c.get('channel', '')}: {c.get('conversion_rate', 0):.1%}" for c in channels
+                ]
                 prompt += f"\n- Channel conversion rates: {', '.join(rankings)}"
 
             # Multi-channel recommendation

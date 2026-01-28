@@ -45,39 +45,23 @@ class PageContent(BaseModel):
         description="Type of page: home, about, services, portfolio, case_studies, contact, blog, team, careers, other"
     )
     headings: list[str] = Field(
-        default_factory=list,
-        description="Main headings from the page (H1, H2)"
+        default_factory=list, description="Main headings from the page (H1, H2)"
     )
-    content_summary: str = Field(
-        description="Summary of main content (max 500 chars)"
-    )
+    content_summary: str = Field(description="Summary of main content (max 500 chars)")
     key_points: list[str] = Field(
-        default_factory=list,
-        description="Key bullet points or highlights"
+        default_factory=list, description="Key bullet points or highlights"
     )
     images_described: list[str] = Field(
         default_factory=list,
-        description="Descriptions of important images (logos, team photos, etc.)"
+        description="Descriptions of important images (logos, team photos, etc.)",
     )
-    ctas: list[str] = Field(
-        default_factory=list,
-        description="Call-to-action buttons/links found"
-    )
-    has_testimonials: bool = Field(
-        default=False,
-        description="Whether page contains testimonials"
-    )
-    has_case_studies: bool = Field(
-        default=False,
-        description="Whether page contains case studies"
-    )
-    has_client_logos: bool = Field(
-        default=False,
-        description="Whether page contains client logos"
-    )
+    ctas: list[str] = Field(default_factory=list, description="Call-to-action buttons/links found")
+    has_testimonials: bool = Field(default=False, description="Whether page contains testimonials")
+    has_case_studies: bool = Field(default=False, description="Whether page contains case studies")
+    has_client_logos: bool = Field(default=False, description="Whether page contains client logos")
     social_links: dict[str, str] = Field(
         default_factory=dict,
-        description="Social media links found on page: {linkedin, instagram, facebook, twitter}"
+        description="Social media links found on page: {linkedin, instagram, facebook, twitter}",
     )
 
 
@@ -107,42 +91,29 @@ class WebsiteParserSkill(BaseSkill["WebsiteParserSkill.Input", "WebsiteParserSki
         html: str = Field(
             description="Raw HTML content of the website (may be concatenated multi-page)"
         )
-        url: str = Field(
-            description="Base URL of the website"
-        )
+        url: str = Field(description="Base URL of the website")
         page_urls: list[str] = Field(
             default_factory=list,
-            description="List of page URLs included in the HTML (if multi-page scrape)"
+            description="List of page URLs included in the HTML (if multi-page scrape)",
         )
 
     class Output(BaseModel):
         """Output from website parsing."""
 
-        company_name: str = Field(
-            description="Detected company/agency name"
-        )
-        domain: str = Field(
-            description="Website domain"
-        )
+        company_name: str = Field(description="Detected company/agency name")
+        domain: str = Field(description="Website domain")
         navigation: list[str] = Field(
-            default_factory=list,
-            description="Main navigation items found"
+            default_factory=list, description="Main navigation items found"
         )
         pages: list[PageContent] = Field(
-            default_factory=list,
-            description="Structured content from each page"
+            default_factory=list, description="Structured content from each page"
         )
-        meta_description: str = Field(
-            default="",
-            description="Site meta description if found"
-        )
+        meta_description: str = Field(default="", description="Site meta description if found")
         social_links: list[str] = Field(
-            default_factory=list,
-            description="Social media links found (LinkedIn, Twitter, etc.)"
+            default_factory=list, description="Social media links found (LinkedIn, Twitter, etc.)"
         )
         contact_info: dict = Field(
-            default_factory=dict,
-            description="Contact information found (email, phone, address)"
+            default_factory=dict, description="Contact information found (email, phone, address)"
         )
 
     system_prompt = """You are a website content analyst specializing in marketing agency websites.
@@ -257,7 +228,10 @@ Extract all relevant information following the guidelines. Return valid JSON."""
         if not input_data.html or len(input_data.html.strip()) < 100:
             return SkillResult.fail(
                 error="Website returned no HTML content. The site may require JavaScript rendering or have anti-bot protection.",
-                metadata={"url": input_data.url, "html_length": len(input_data.html) if input_data.html else 0},
+                metadata={
+                    "url": input_data.url,
+                    "html_length": len(input_data.html) if input_data.html else 0,
+                },
             )
 
         prompt = self.build_prompt(input_data)
@@ -272,7 +246,10 @@ Extract all relevant information following the guidelines. Return valid JSON."""
 
             output = self.Output(
                 company_name=parsed.get("company_name", "Unknown"),
-                domain=parsed.get("domain", input_data.url.split("/")[2] if "/" in input_data.url else input_data.url),
+                domain=parsed.get(
+                    "domain",
+                    input_data.url.split("/")[2] if "/" in input_data.url else input_data.url,
+                ),
                 navigation=parsed.get("navigation", []),
                 pages=pages,
                 meta_description=parsed.get("meta_description", ""),

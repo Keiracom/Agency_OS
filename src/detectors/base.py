@@ -195,9 +195,7 @@ class BaseDetector(ABC):
             )
             # Returns: [{"key": "CEO", "conversion_rate": 0.25, "sample": 100, ...}, ...]
         """
-        stats: dict[Any, dict[str, int]] = defaultdict(
-            lambda: {"total": 0, "converted": 0}
-        )
+        stats: dict[Any, dict[str, int]] = defaultdict(lambda: {"total": 0, "converted": 0})
 
         for item in items:
             key = key_fn(item)
@@ -221,13 +219,15 @@ class BaseDetector(ABC):
             rate = segment_stats["converted"] / segment_stats["total"]
             lift = self.calculate_lift(rate, baseline_rate)
 
-            results.append({
-                "key": key,
-                "conversion_rate": round(rate, 4),
-                "sample": segment_stats["total"],
-                "converted": segment_stats["converted"],
-                "lift": round(lift, 2),
-            })
+            results.append(
+                {
+                    "key": key,
+                    "conversion_rate": round(rate, 4),
+                    "sample": segment_stats["total"],
+                    "converted": segment_stats["converted"],
+                    "lift": round(lift, 2),
+                }
+            )
 
         # Sort by conversion rate descending
         results.sort(key=lambda x: x["conversion_rate"], reverse=True)

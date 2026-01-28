@@ -59,23 +59,34 @@ def _extract_portfolio_sections(raw_html: str, max_chars: int = 100000) -> str:
         logger.debug("_extract_portfolio_sections: No raw HTML provided")
         return ""
 
-    logger.debug(f"_extract_portfolio_sections: Processing {len(raw_html):,} chars of raw HTML (limit: {max_chars:,})")
+    logger.debug(
+        f"_extract_portfolio_sections: Processing {len(raw_html):,} chars of raw HTML (limit: {max_chars:,})"
+    )
 
     sections = []
 
     # Pattern definitions for relevant sections
     patterns = [
         # Testimonials
-        (r'(?i)<(?:div|section)[^>]*(?:testimonial|review|quote|feedback)[^>]*>.*?</(?:div|section)>', 'TESTIMONIALS'),
-        (r'(?i)<blockquote[^>]*>.*?</blockquote>', 'QUOTE'),
+        (
+            r"(?i)<(?:div|section)[^>]*(?:testimonial|review|quote|feedback)[^>]*>.*?</(?:div|section)>",
+            "TESTIMONIALS",
+        ),
+        (r"(?i)<blockquote[^>]*>.*?</blockquote>", "QUOTE"),
         # Case studies
-        (r'(?i)<(?:div|section|article)[^>]*(?:case.?study|portfolio|work|project)[^>]*>.*?</(?:div|section|article)>', 'CASE_STUDIES'),
+        (
+            r"(?i)<(?:div|section|article)[^>]*(?:case.?study|portfolio|work|project)[^>]*>.*?</(?:div|section|article)>",
+            "CASE_STUDIES",
+        ),
         # Client logos
-        (r'(?i)<(?:div|section)[^>]*(?:client|partner|logo|trusted|brand)[^>]*>.*?</(?:div|section)>', 'CLIENT_LOGOS'),
+        (
+            r"(?i)<(?:div|section)[^>]*(?:client|partner|logo|trusted|brand)[^>]*>.*?</(?:div|section)>",
+            "CLIENT_LOGOS",
+        ),
         # Image alt text (often contains client names)
-        (r'<img[^>]*alt=["\']([^"\']+)["\'][^>]*>', 'IMAGE_ALT'),
+        (r'<img[^>]*alt=["\']([^"\']+)["\'][^>]*>', "IMAGE_ALT"),
         # About/team sections for context
-        (r'(?i)<(?:div|section)[^>]*(?:about|team|story)[^>]*>.*?</(?:div|section)>', 'ABOUT'),
+        (r"(?i)<(?:div|section)[^>]*(?:about|team|story)[^>]*>.*?</(?:div|section)>", "ABOUT"),
     ]
 
     # Extract matching sections
@@ -85,8 +96,8 @@ def _extract_portfolio_sections(raw_html: str, max_chars: int = 100000) -> str:
             for match in matches[:10]:  # Limit matches per pattern
                 if isinstance(match, str) and len(match) > 50:
                     # Clean up HTML but preserve text
-                    text = re.sub(r'<[^>]+>', ' ', match)
-                    text = re.sub(r'\s+', ' ', text).strip()
+                    text = re.sub(r"<[^>]+>", " ", match)
+                    text = re.sub(r"\s+", " ", text).strip()
                     if text and len(text) > 20:
                         sections.append(f"[{label}]\n{text[:2000]}\n")
         except re.error:
@@ -120,14 +131,16 @@ def _extract_portfolio_sections(raw_html: str, max_chars: int = 100000) -> str:
 
     if url_companies:
         unique_url_companies = list(set(url_companies))[:50]
-        logger.debug(f"Extracted {len(unique_url_companies)} companies from URLs: {unique_url_companies[:10]}")
+        logger.debug(
+            f"Extracted {len(unique_url_companies)} companies from URLs: {unique_url_companies[:10]}"
+        )
         sections.append(f"[CASE_STUDY_URLS]\n{', '.join(unique_url_companies)}\n")
 
     # Extract any names that look like company names from the full text
     # This catches mentions in prose that might not be in specific sections
     company_patterns = [
-        r'(?:worked with|client|partner|helped|trusted by|featuring)[:\s]+([A-Z][a-zA-Z\s&]+(?:Pty Ltd|Ltd|Inc|Corp|Co\.?)?)',
-        r'(?:testimonial from|quote from|says)[:\s]+([A-Z][a-zA-Z\s]+)',
+        r"(?:worked with|client|partner|helped|trusted by|featuring)[:\s]+([A-Z][a-zA-Z\s&]+(?:Pty Ltd|Ltd|Inc|Corp|Co\.?)?)",
+        r"(?:testimonial from|quote from|says)[:\s]+([A-Z][a-zA-Z\s]+)",
     ]
 
     for pattern in company_patterns:
@@ -165,39 +178,30 @@ class PortfolioCompany(BaseModel):
 
     company_name: str = Field(description="Company name")
     company_domain: str | None = Field(
-        default=None,
-        description="Company website domain if identifiable"
+        default=None, description="Company website domain if identifiable"
     )
-    source: str = Field(
-        description="How discovered: logo, case_study, testimonial, client_list"
-    )
+    source: str = Field(description="How discovered: logo, case_study, testimonial, client_list")
     industry_hint: str | None = Field(
-        default=None,
-        description="Industry if mentioned or inferable"
+        default=None, description="Industry if mentioned or inferable"
     )
     testimonial_person: str | None = Field(
-        default=None,
-        description="Person who gave testimonial (if applicable)"
+        default=None, description="Person who gave testimonial (if applicable)"
     )
-    testimonial_title: str | None = Field(
-        default=None,
-        description="Title of testimonial person"
-    )
+    testimonial_title: str | None = Field(default=None, description="Title of testimonial person")
     testimonial_text: str | None = Field(
-        default=None,
-        description="Testimonial content (if available)"
+        default=None, description="Testimonial content (if available)"
     )
     case_study_summary: str | None = Field(
-        default=None,
-        description="Brief summary of case study (if applicable)"
+        default=None, description="Brief summary of case study (if applicable)"
     )
     results_mentioned: list[str] = Field(
-        default_factory=list,
-        description="Results or metrics mentioned"
+        default_factory=list, description="Results or metrics mentioned"
     )
 
 
-class PortfolioExtractorSkill(BaseSkill["PortfolioExtractorSkill.Input", "PortfolioExtractorSkill.Output"]):
+class PortfolioExtractorSkill(
+    BaseSkill["PortfolioExtractorSkill.Input", "PortfolioExtractorSkill.Output"]
+):
     """
     Extract client portfolio from website content.
 
@@ -217,45 +221,34 @@ class PortfolioExtractorSkill(BaseSkill["PortfolioExtractorSkill.Input", "Portfo
     class Input(BaseModel):
         """Input for portfolio extraction."""
 
-        pages: list[PageContent] = Field(
-            description="Parsed page content from website"
-        )
-        company_name: str = Field(
-            default="",
-            description="Agency name for context"
-        )
+        pages: list[PageContent] = Field(description="Parsed page content from website")
+        company_name: str = Field(default="", description="Agency name for context")
         raw_html: str = Field(
             default="",
-            description="Raw HTML content for extracting company names from testimonials/case studies"
+            description="Raw HTML content for extracting company names from testimonials/case studies",
         )
 
     class Output(BaseModel):
         """Output from portfolio extraction."""
 
         companies: list[PortfolioCompany] = Field(
-            default_factory=list,
-            description="Companies identified from portfolio"
+            default_factory=list, description="Companies identified from portfolio"
         )
         total_clients_claimed: int | None = Field(
             default=None,
-            description="Number of clients claimed (if mentioned, e.g., '100+ clients')"
+            description="Number of clients claimed (if mentioned, e.g., '100+ clients')",
         )
         notable_brands: list[str] = Field(
-            default_factory=list,
-            description="Well-known brand names identified"
+            default_factory=list, description="Well-known brand names identified"
         )
         industries_represented: list[str] = Field(
-            default_factory=list,
-            description="Industries found in portfolio"
+            default_factory=list, description="Industries found in portfolio"
         )
         source_distribution: dict = Field(
             default_factory=dict,
-            description="Count by source: {logo: X, case_study: Y, testimonial: Z}"
+            description="Count by source: {logo: X, case_study: Y, testimonial: Z}",
         )
-        confidence: float = Field(
-            default=0.0,
-            description="Confidence in extraction (0.0-1.0)"
-        )
+        confidence: float = Field(default=0.0, description="Confidence in extraction (0.0-1.0)")
 
     system_prompt = """You are a portfolio analyst extracting client information from agency websites.
 
@@ -356,10 +349,10 @@ Return valid JSON:
                 page_info = f"""
 PAGE: {page.page_type.upper()} ({page.url})
 Title: {page.title}
-Headings: {', '.join(page.headings)}
+Headings: {", ".join(page.headings)}
 Summary: {page.content_summary}
-Key Points: {', '.join(page.key_points)}
-Images: {', '.join(page.images_described)}
+Key Points: {", ".join(page.key_points)}
+Images: {", ".join(page.images_described)}
 Has Client Logos: {page.has_client_logos}
 Has Case Studies: {page.has_case_studies}
 Has Testimonials: {page.has_testimonials}
@@ -381,7 +374,7 @@ Has Testimonials: {page.has_testimonials}
                 pages_text.append(f"""
 PAGE: {page.page_type.upper()}
 Summary: {page.content_summary}
-Key Points: {', '.join(page.key_points)}
+Key Points: {", ".join(page.key_points)}
 """)
 
         context = f"Agency: {input_data.company_name}\n\n" if input_data.company_name else ""
@@ -403,7 +396,7 @@ Extract ALL company names you find in these sections. These are the real client 
 
         return f"""{context}Extract client portfolio information from this website content:
 
-{'---'.join(pages_text)}
+{"---".join(pages_text)}
 {raw_html_sections}
 Identify all clients, case studies, and testimonials. Return valid JSON."""
 

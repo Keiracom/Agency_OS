@@ -48,51 +48,33 @@ class ALSWeights(BaseModel):
         default=20,
         ge=10,
         le=30,
-        description="Weight for data quality (email verified, phone, LinkedIn)"
+        description="Weight for data quality (email verified, phone, LinkedIn)",
     )
     authority: int = Field(
         default=25,
         ge=15,
         le=35,
-        description="Weight for decision-making authority (title/seniority)"
+        description="Weight for decision-making authority (title/seniority)",
     )
     company_fit: int = Field(
-        default=25,
-        ge=15,
-        le=35,
-        description="Weight for company fit (industry, size, location)"
+        default=25, ge=15, le=35, description="Weight for company fit (industry, size, location)"
     )
     timing: int = Field(
-        default=15,
-        ge=5,
-        le=25,
-        description="Weight for timing signals (hiring, funding, new role)"
+        default=15, ge=5, le=25, description="Weight for timing signals (hiring, funding, new role)"
     )
     risk: int = Field(
-        default=15,
-        ge=5,
-        le=25,
-        description="Weight for risk factors (bounces, competitor, etc.)"
+        default=15, ge=5, le=25, description="Weight for risk factors (bounces, competitor, etc.)"
     )
 
     # Sub-component weights for company_fit
     industry_weight: int = Field(
-        default=10,
-        ge=0,
-        le=15,
-        description="Sub-weight for industry match within company_fit"
+        default=10, ge=0, le=15, description="Sub-weight for industry match within company_fit"
     )
     size_weight: int = Field(
-        default=8,
-        ge=0,
-        le=15,
-        description="Sub-weight for company size within company_fit"
+        default=8, ge=0, le=15, description="Sub-weight for company size within company_fit"
     )
     location_weight: int = Field(
-        default=7,
-        ge=0,
-        le=15,
-        description="Sub-weight for location match within company_fit"
+        default=7, ge=0, le=15, description="Sub-weight for location match within company_fit"
     )
 
     @field_validator("data_quality", "authority", "company_fit", "timing", "risk")
@@ -114,7 +96,9 @@ class WeightReasoning(BaseModel):
     reasoning: str = Field(description="Why this weight")
 
 
-class ALSWeightSuggesterSkill(BaseSkill["ALSWeightSuggesterSkill.Input", "ALSWeightSuggesterSkill.Output"]):
+class ALSWeightSuggesterSkill(
+    BaseSkill["ALSWeightSuggesterSkill.Input", "ALSWeightSuggesterSkill.Output"]
+):
     """
     Suggest custom ALS weights based on ICP profile.
 
@@ -134,46 +118,28 @@ class ALSWeightSuggesterSkill(BaseSkill["ALSWeightSuggesterSkill.Input", "ALSWei
     class Input(BaseModel):
         """Input for ALS weight suggestion."""
 
-        icp_profile: DerivedICP = Field(
-            description="Derived ICP profile"
-        )
-        services_offered: list[str] = Field(
-            default_factory=list,
-            description="Agency services"
-        )
+        icp_profile: DerivedICP = Field(description="Derived ICP profile")
+        services_offered: list[str] = Field(default_factory=list, description="Agency services")
         avg_deal_size: str = Field(
-            default="",
-            description="Average deal size if known (e.g., '$10k-$50k')"
+            default="", description="Average deal size if known (e.g., '$10k-$50k')"
         )
-        sales_cycle: str = Field(
-            default="",
-            description="Typical sales cycle (e.g., '30-60 days')"
-        )
-        company_name: str = Field(
-            default="",
-            description="Agency name"
-        )
+        sales_cycle: str = Field(default="", description="Typical sales cycle (e.g., '30-60 days')")
+        company_name: str = Field(default="", description="Agency name")
 
     class Output(BaseModel):
         """Output from ALS weight suggestion."""
 
         weights: ALSWeights = Field(description="Suggested ALS weights")
         reasoning: list[WeightReasoning] = Field(
-            default_factory=list,
-            description="Reasoning for each weight"
+            default_factory=list, description="Reasoning for each weight"
         )
         priority_signals: list[str] = Field(
-            default_factory=list,
-            description="Top signals to prioritize for this ICP"
+            default_factory=list, description="Top signals to prioritize for this ICP"
         )
         recommended_tiers: dict = Field(
-            default_factory=dict,
-            description="Recommended tier thresholds"
+            default_factory=dict, description="Recommended tier thresholds"
         )
-        confidence: float = Field(
-            default=0.0,
-            description="Confidence in suggestions (0.0-1.0)"
-        )
+        confidence: float = Field(default=0.0, description="Confidence in suggestions (0.0-1.0)")
 
     system_prompt = """You are an ALS (Agency OS Lead Score) optimization expert.
 
@@ -270,24 +236,24 @@ Return valid JSON:
         icp_summary = f"""
 ICP PROFILE:
 
-Industries: {', '.join(icp.icp_industries)}
+Industries: {", ".join(icp.icp_industries)}
 Industry Pattern: {icp.industry_pattern}
 
-Company Sizes: {', '.join(icp.icp_company_sizes)}
+Company Sizes: {", ".join(icp.icp_company_sizes)}
 Size Pattern: {icp.size_pattern}
 
-Revenue: {', '.join(icp.icp_revenue_ranges)}
+Revenue: {", ".join(icp.icp_revenue_ranges)}
 
-Locations: {', '.join(icp.icp_locations)}
+Locations: {", ".join(icp.icp_locations)}
 Location Pattern: {icp.location_pattern}
 
-Target Titles: {', '.join(icp.icp_titles)}
+Target Titles: {", ".join(icp.icp_titles)}
 
-Technologies: {', '.join(icp.icp_technologies[:5]) if icp.icp_technologies else 'Not specified'}
+Technologies: {", ".join(icp.icp_technologies[:5]) if icp.icp_technologies else "Not specified"}
 
-Signals: {', '.join(icp.icp_signals)}
+Signals: {", ".join(icp.icp_signals)}
 
-Pain Points: {', '.join(icp.icp_pain_points[:3]) if icp.icp_pain_points else 'Not specified'}
+Pain Points: {", ".join(icp.icp_pain_points[:3]) if icp.icp_pain_points else "Not specified"}
 
 Pattern: {icp.pattern_description}
 Confidence: {icp.pattern_confidence}
@@ -332,7 +298,11 @@ Based on this ICP, suggest custom ALS weights that will optimize lead scoring fo
                     authority=int(weights.authority * factor),
                     company_fit=int(weights.company_fit * factor),
                     timing=int(weights.timing * factor),
-                    risk=100 - int(weights.data_quality * factor) - int(weights.authority * factor) - int(weights.company_fit * factor) - int(weights.timing * factor),
+                    risk=100
+                    - int(weights.data_quality * factor)
+                    - int(weights.authority * factor)
+                    - int(weights.company_fit * factor)
+                    - int(weights.timing * factor),
                     industry_weight=weights.industry_weight,
                     size_weight=weights.size_weight,
                     location_weight=weights.location_weight,
@@ -347,12 +317,15 @@ Based on this ICP, suggest custom ALS weights that will optimize lead scoring fo
                 weights=weights,
                 reasoning=reasoning,
                 priority_signals=parsed.get("priority_signals", []),
-                recommended_tiers=parsed.get("recommended_tiers", {
-                    "hot": 85,
-                    "warm": 60,
-                    "cool": 35,
-                    "cold": 20,
-                }),
+                recommended_tiers=parsed.get(
+                    "recommended_tiers",
+                    {
+                        "hot": 85,
+                        "warm": 60,
+                        "cool": 35,
+                        "cold": 20,
+                    },
+                ),
                 confidence=parsed.get("confidence", 0.7),
             )
 

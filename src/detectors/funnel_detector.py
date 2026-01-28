@@ -193,35 +193,41 @@ class FunnelDetector(BaseDetector):
             confirmed_rate = row.confirmed_showed / row.confirmed_total * 100
             unconfirmed_rate = row.unconfirmed_showed / row.unconfirmed_total * 100
             if confirmed_rate > unconfirmed_rate + 10:
-                insights.append({
-                    "type": "confirmation_impact",
-                    "message": f"Confirmed meetings show {confirmed_rate:.0f}% vs {unconfirmed_rate:.0f}% unconfirmed",
-                    "impact": "high",
-                    "action": "Always send confirmation requests",
-                })
+                insights.append(
+                    {
+                        "type": "confirmation_impact",
+                        "message": f"Confirmed meetings show {confirmed_rate:.0f}% vs {unconfirmed_rate:.0f}% unconfirmed",
+                        "impact": "high",
+                        "action": "Always send confirmation requests",
+                    }
+                )
 
         # Reminder impact
         if row.reminded_total > 0:
             reminded_rate = row.reminded_showed / row.reminded_total * 100
             if reminded_rate > overall_rate + 5:
-                insights.append({
-                    "type": "reminder_impact",
-                    "message": f"Reminded leads show {reminded_rate:.0f}% vs {overall_rate:.0f}% overall",
-                    "impact": "medium",
-                    "action": "Send reminders 24h before meetings",
-                })
+                insights.append(
+                    {
+                        "type": "reminder_impact",
+                        "message": f"Reminded leads show {reminded_rate:.0f}% vs {overall_rate:.0f}% overall",
+                        "impact": "medium",
+                        "action": "Send reminders 24h before meetings",
+                    }
+                )
 
         # Reschedule impact
         if row.resched_total >= 5 and row.no_resched_total >= 5:
             resched_rate = row.resched_showed / row.resched_total * 100
             no_resched_rate = row.no_resched_showed / row.no_resched_total * 100
             if no_resched_rate > resched_rate + 10:
-                insights.append({
-                    "type": "reschedule_risk",
-                    "message": f"First-time bookings show {no_resched_rate:.0f}% vs {resched_rate:.0f}% rescheduled",
-                    "impact": "medium",
-                    "action": "Minimize reschedules; confirm commitment",
-                })
+                insights.append(
+                    {
+                        "type": "reschedule_risk",
+                        "message": f"First-time bookings show {no_resched_rate:.0f}% vs {resched_rate:.0f}% rescheduled",
+                        "impact": "medium",
+                        "action": "Minimize reschedules; confirm commitment",
+                    }
+                )
 
         # ALS tier impact
         tier_rates = {}
@@ -234,12 +240,14 @@ class FunnelDetector(BaseDetector):
 
         if tier_rates:
             best_tier = max(tier_rates, key=tier_rates.get)
-            insights.append({
-                "type": "als_tier_impact",
-                "tier_show_rates": tier_rates,
-                "best_tier": best_tier,
-                "message": f"{best_tier.upper()} leads have highest show rate ({tier_rates[best_tier]:.0f}%)",
-            })
+            insights.append(
+                {
+                    "type": "als_tier_impact",
+                    "tier_show_rates": tier_rates,
+                    "best_tier": best_tier,
+                    "message": f"{best_tier.upper()} leads have highest show rate ({tier_rates[best_tier]:.0f}%)",
+                }
+            )
 
         return {
             "sample_size": row.total,
@@ -312,22 +320,26 @@ class FunnelDetector(BaseDetector):
         if row.good_total >= 5 and row.bad_total >= 5:
             good_rate = row.good_deals / row.good_total * 100
             bad_rate = row.bad_deals / row.bad_total * 100 if row.bad_total > 0 else 0
-            insights.append({
-                "type": "outcome_impact",
-                "good_meeting_deal_rate": round(good_rate, 1),
-                "bad_meeting_deal_rate": round(bad_rate, 1),
-                "message": f"Good meetings convert {good_rate:.0f}% vs {bad_rate:.0f}% for bad meetings",
-            })
+            insights.append(
+                {
+                    "type": "outcome_impact",
+                    "good_meeting_deal_rate": round(good_rate, 1),
+                    "bad_meeting_deal_rate": round(bad_rate, 1),
+                    "message": f"Good meetings convert {good_rate:.0f}% vs {bad_rate:.0f}% for bad meetings",
+                }
+            )
 
         # Company size impact
         if row.avg_employees_deal and row.avg_employees_no_deal:
             if row.avg_employees_deal > row.avg_employees_no_deal * 1.5:
-                insights.append({
-                    "type": "company_size_preference",
-                    "avg_deal_employees": int(row.avg_employees_deal),
-                    "avg_no_deal_employees": int(row.avg_employees_no_deal),
-                    "message": f"Larger companies ({int(row.avg_employees_deal)} avg employees) more likely to become deals",
-                })
+                insights.append(
+                    {
+                        "type": "company_size_preference",
+                        "avg_deal_employees": int(row.avg_employees_deal),
+                        "avg_no_deal_employees": int(row.avg_employees_no_deal),
+                        "message": f"Larger companies ({int(row.avg_employees_deal)} avg employees) more likely to become deals",
+                    }
+                )
 
         return {
             "sample_size": row.total,
@@ -394,21 +406,25 @@ class FunnelDetector(BaseDetector):
         # Deal velocity insight
         if row.avg_days_to_win and row.avg_days_to_lose:
             if row.avg_days_to_win < row.avg_days_to_lose:
-                insights.append({
-                    "type": "velocity_indicator",
-                    "avg_days_to_win": round(row.avg_days_to_win, 0),
-                    "avg_days_to_lose": round(row.avg_days_to_lose, 0),
-                    "message": f"Won deals close in {row.avg_days_to_win:.0f} days vs {row.avg_days_to_lose:.0f} for lost",
-                    "action": "Deals stalling beyond average may be at risk",
-                })
+                insights.append(
+                    {
+                        "type": "velocity_indicator",
+                        "avg_days_to_win": round(row.avg_days_to_win, 0),
+                        "avg_days_to_lose": round(row.avg_days_to_lose, 0),
+                        "message": f"Won deals close in {row.avg_days_to_win:.0f} days vs {row.avg_days_to_lose:.0f} for lost",
+                        "action": "Deals stalling beyond average may be at risk",
+                    }
+                )
 
         # Touch count insight
         if row.avg_touches_won and row.avg_touches_lost:
-            insights.append({
-                "type": "touch_count",
-                "avg_touches_won": round(row.avg_touches_won, 1),
-                "avg_touches_lost": round(row.avg_touches_lost, 1),
-            })
+            insights.append(
+                {
+                    "type": "touch_count",
+                    "avg_touches_won": round(row.avg_touches_won, 1),
+                    "avg_touches_lost": round(row.avg_touches_lost, 1),
+                }
+            )
 
         # Channel win rates
         channel_rates = {}
@@ -419,12 +435,14 @@ class FunnelDetector(BaseDetector):
 
         if len(channel_rates) >= 2:
             best_channel = max(channel_rates, key=channel_rates.get)
-            insights.append({
-                "type": "channel_win_rates",
-                "rates": {k: round(v, 1) for k, v in channel_rates.items()},
-                "best_channel": best_channel,
-                "message": f"{best_channel} leads have highest win rate ({channel_rates[best_channel]:.0f}%)",
-            })
+            insights.append(
+                {
+                    "type": "channel_win_rates",
+                    "rates": {k: round(v, 1) for k, v in channel_rates.items()},
+                    "best_channel": best_channel,
+                    "message": f"{best_channel} leads have highest win rate ({channel_rates[best_channel]:.0f}%)",
+                }
+            )
 
         return {
             "sample_size": row.total,
@@ -466,13 +484,15 @@ class FunnelDetector(BaseDetector):
 
         for row in rows[:5]:  # Top 5 reasons
             percentage = row.count / total * 100
-            top_reasons.append({
-                "reason": row.lost_reason or "unknown",
-                "count": row.count,
-                "percentage": round(percentage, 1),
-                "total_value_lost": float(row.total_value) if row.total_value else 0,
-                "avg_days_in_pipeline": round(row.avg_days, 0) if row.avg_days else 0,
-            })
+            top_reasons.append(
+                {
+                    "reason": row.lost_reason or "unknown",
+                    "count": row.count,
+                    "percentage": round(percentage, 1),
+                    "total_value_lost": float(row.total_value) if row.total_value else 0,
+                    "avg_days_in_pipeline": round(row.avg_days, 0) if row.avg_days else 0,
+                }
+            )
 
         return {
             "sample_size": total,
@@ -514,15 +534,19 @@ class FunnelDetector(BaseDetector):
             revenue = float(row.won_value) if row.won_value else 0
             percentage = revenue / total_revenue * 100 if total_revenue > 0 else 0
 
-            channels.append({
-                "channel": row.first_touch_channel,
-                "deals_won": row.won_count,
-                "deals_total": row.total_count,
-                "win_rate": round(row.won_count / row.total_count * 100, 1) if row.total_count > 0 else 0,
-                "revenue": revenue,
-                "revenue_percentage": round(percentage, 1),
-                "avg_deal_value": float(row.avg_deal_value) if row.avg_deal_value else 0,
-            })
+            channels.append(
+                {
+                    "channel": row.first_touch_channel,
+                    "deals_won": row.won_count,
+                    "deals_total": row.total_count,
+                    "win_rate": round(row.won_count / row.total_count * 100, 1)
+                    if row.total_count > 0
+                    else 0,
+                    "revenue": revenue,
+                    "revenue_percentage": round(percentage, 1),
+                    "avg_deal_value": float(row.avg_deal_value) if row.avg_deal_value else 0,
+                }
+            )
 
         return {
             "sample_size": sum(row.total_count for row in rows),
@@ -577,13 +601,15 @@ class FunnelDetector(BaseDetector):
 
         stage_velocity = []
         for row in rows:
-            stage_velocity.append({
-                "stage": row.from_stage,
-                "avg_days_won": round(row.avg_days_won, 1) if row.avg_days_won else 0,
-                "avg_days_lost": round(row.avg_days_lost, 1) if row.avg_days_lost else 0,
-                "won_count": row.won_count,
-                "lost_count": row.lost_count,
-            })
+            stage_velocity.append(
+                {
+                    "stage": row.from_stage,
+                    "avg_days_won": round(row.avg_days_won, 1) if row.avg_days_won else 0,
+                    "avg_days_lost": round(row.avg_days_lost, 1) if row.avg_days_lost else 0,
+                    "won_count": row.won_count,
+                    "lost_count": row.lost_count,
+                }
+            )
 
         return {
             "sample_size": sum(row.won_count + row.lost_count for row in rows),

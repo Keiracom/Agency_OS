@@ -82,9 +82,7 @@ class LeadAllocatorService:
             ValidationError: If count is invalid
         """
         if count <= 0 or count > 1000:
-            raise ValidationError(
-                message="Count must be between 1 and 1000"
-            )
+            raise ValidationError(message="Count must be between 1 and 1000")
 
         # Build matching query
         conditions = ["lp.pool_status = 'available'"]
@@ -129,7 +127,9 @@ class LeadAllocatorService:
             titles = icp_criteria["titles"]
             if isinstance(titles, str):
                 titles = [titles]
-            title_conditions = [f"lp.title ILIKE '%' || :title_{i} || '%'" for i in range(len(titles))]
+            title_conditions = [
+                f"lp.title ILIKE '%' || :title_{i} || '%'" for i in range(len(titles))
+            ]
             conditions.append(f"({' OR '.join(title_conditions)})")
             for i, title in enumerate(titles):
                 params[f"title_{i}"] = title
@@ -194,27 +194,27 @@ class LeadAllocatorService:
                     "lead_pool_id": str(lead_pool_id),
                     "client_id": str(client_id),
                     "campaign_id": str(campaign_id) if campaign_id else None,
-                }
+                },
             )
             updated = assign_result.fetchone()
 
             if updated:
-                assigned_leads.append({
-                    "lead_pool_id": str(lead_pool_id),
-                    "email": lead.email,
-                    "first_name": lead.first_name,
-                    "last_name": lead.last_name,
-                    "title": lead.title,
-                    "company_name": lead.company_name,
-                })
+                assigned_leads.append(
+                    {
+                        "lead_pool_id": str(lead_pool_id),
+                        "email": lead.email,
+                        "first_name": lead.first_name,
+                        "last_name": lead.last_name,
+                        "title": lead.title,
+                        "company_name": lead.company_name,
+                    }
+                )
 
         await self.session.commit()
         return assigned_leads
 
     async def get_assignment(
-        self,
-        lead_pool_id: UUID,
-        client_id: UUID | None = None
+        self, lead_pool_id: UUID, client_id: UUID | None = None
     ) -> dict[str, Any] | None:
         """
         Get ownership info for a lead from lead_pool.
@@ -290,17 +290,13 @@ class LeadAllocatorService:
                 "status": status,
                 "limit": limit,
                 "offset": offset,
-            }
+            },
         )
         rows = result.fetchall()
 
         return [dict(row._mapping) for row in rows]
 
-    async def release_lead(
-        self,
-        lead_pool_id: UUID,
-        reason: str = "manual"
-    ) -> bool:
+    async def release_lead(self, lead_pool_id: UUID, reason: str = "manual") -> bool:
         """
         Release a lead back to the pool.
 
@@ -325,19 +321,14 @@ class LeadAllocatorService:
             RETURNING id
         """)
 
-        result = await self.session.execute(
-            query,
-            {"id": str(lead_pool_id)}
-        )
+        result = await self.session.execute(query, {"id": str(lead_pool_id)})
         row = result.fetchone()
 
         await self.session.commit()
         return row is not None
 
     async def mark_converted(
-        self,
-        lead_pool_id: UUID,
-        conversion_type: str = "meeting_booked"
+        self, lead_pool_id: UUID, conversion_type: str = "meeting_booked"
     ) -> bool:
         """
         Mark a lead as converted.
@@ -362,10 +353,7 @@ class LeadAllocatorService:
             RETURNING id
         """)
 
-        result = await self.session.execute(
-            query,
-            {"id": str(lead_pool_id)}
-        )
+        result = await self.session.execute(query, {"id": str(lead_pool_id)})
         row = result.fetchone()
 
         await self.session.commit()
@@ -403,10 +391,7 @@ class LeadAllocatorService:
             RETURNING id
         """)
 
-        result = await self.session.execute(
-            query,
-            {"id": str(lead_pool_id), "channel": channel}
-        )
+        result = await self.session.execute(query, {"id": str(lead_pool_id), "channel": channel})
         row = result.fetchone()
         await self.session.commit()
 
@@ -440,10 +425,7 @@ class LeadAllocatorService:
             RETURNING id
         """)
 
-        result = await self.session.execute(
-            query,
-            {"id": str(lead_pool_id), "intent": intent}
-        )
+        result = await self.session.execute(query, {"id": str(lead_pool_id), "intent": intent})
         row = result.fetchone()
         await self.session.commit()
 
@@ -478,10 +460,7 @@ class LeadAllocatorService:
             WHERE client_id = :client_id
         """)
 
-        result = await self.session.execute(
-            query,
-            {"client_id": str(client_id)}
-        )
+        result = await self.session.execute(query, {"client_id": str(client_id)})
         row = result.fetchone()
 
         if not row:
@@ -501,11 +480,7 @@ class LeadAllocatorService:
 
         return dict(row._mapping)
 
-    async def release_client_leads(
-        self,
-        client_id: UUID,
-        reason: str = "client_cancelled"
-    ) -> int:
+    async def release_client_leads(self, client_id: UUID, reason: str = "client_cancelled") -> int:
         """
         Release all leads for a client (e.g., subscription cancelled).
 
@@ -529,14 +504,11 @@ class LeadAllocatorService:
             AND pool_status != 'converted'
         """)
 
-        result = await self.session.execute(
-            query,
-            {"client_id": str(client_id)}
-        )
+        result = await self.session.execute(query, {"client_id": str(client_id)})
 
         await self.session.commit()
         # CursorResult has rowcount attribute
-        row_count = getattr(result, 'rowcount', 0)
+        row_count = getattr(result, "rowcount", 0)
         return row_count if row_count else 0
 
 

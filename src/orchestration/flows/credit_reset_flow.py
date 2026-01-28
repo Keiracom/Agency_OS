@@ -54,24 +54,23 @@ async def find_clients_needing_credit_reset_task() -> list[dict[str, Any]]:
     async with get_db_session() as db:
         now = datetime.utcnow()
 
-        stmt = (
-            select(
-                Client.id,
-                Client.name,
-                Client.tier,
-                Client.credits_remaining,
-                Client.credits_reset_at,
-            )
-            .where(
-                and_(
-                    Client.deleted_at.is_(None),
-                    Client.subscription_status.in_([
+        stmt = select(
+            Client.id,
+            Client.name,
+            Client.tier,
+            Client.credits_remaining,
+            Client.credits_reset_at,
+        ).where(
+            and_(
+                Client.deleted_at.is_(None),
+                Client.subscription_status.in_(
+                    [
                         SubscriptionStatus.ACTIVE,
                         SubscriptionStatus.TRIALING,
-                    ]),
-                    # Reset if: reset date passed OR never set (new client)
-                    (Client.credits_reset_at <= now) | (Client.credits_reset_at.is_(None)),
-                )
+                    ]
+                ),
+                # Reset if: reset date passed OR never set (new client)
+                (Client.credits_reset_at <= now) | (Client.credits_reset_at.is_(None)),
             )
         )
 
@@ -80,13 +79,15 @@ async def find_clients_needing_credit_reset_task() -> list[dict[str, Any]]:
 
         clients = []
         for row in rows:
-            clients.append({
-                "id": row.id,
-                "name": row.name,
-                "tier": row.tier.value if row.tier else "ignition",
-                "credits_remaining": row.credits_remaining,
-                "credits_reset_at": row.credits_reset_at,
-            })
+            clients.append(
+                {
+                    "id": row.id,
+                    "name": row.name,
+                    "tier": row.tier.value if row.tier else "ignition",
+                    "credits_remaining": row.credits_remaining,
+                    "credits_reset_at": row.credits_reset_at,
+                }
+            )
 
         logger.info(f"Found {len(clients)} clients needing credit reset")
         return clients
@@ -254,11 +255,13 @@ async def credit_reset_check_flow() -> dict[str, Any]:
 
         except Exception as e:
             logger.error(f"Failed to reset credits for client {client['id']}: {e}")
-            resets.append({
-                "client_id": str(client["id"]),
-                "client_name": client["name"],
-                "error": str(e),
-            })
+            resets.append(
+                {
+                    "client_id": str(client["id"]),
+                    "client_name": client["name"],
+                    "error": str(e),
+                }
+            )
 
     successful_resets = [r for r in resets if "error" not in r]
     failed_resets = [r for r in resets if "error" in r]

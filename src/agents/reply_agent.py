@@ -56,9 +56,7 @@ class IntentClassification(BaseModel):
         pattern="^(urgent|high|medium|low)$",
     )
     is_human: bool = Field(..., description="Whether reply appears to be from a human")
-    requires_response: bool = Field(
-        ..., description="Whether a response is needed from sales team"
-    )
+    requires_response: bool = Field(..., description="Whether a response is needed from sales team")
 
 
 class ResponseSuggestion(BaseModel):
@@ -68,15 +66,11 @@ class ResponseSuggestion(BaseModel):
 
     suggested_response: str = Field(..., description="Suggested email/message response")
     tone: str = Field(..., description="Tone of the suggested response")
-    key_points: list[str] = Field(
-        ..., description="Key points to address in the response"
-    )
+    key_points: list[str] = Field(..., description="Key points to address in the response")
     timing_advice: str = Field(
         ..., description="When to send the response (e.g., 'immediately', 'within 2 hours')"
     )
-    should_book_meeting: bool = Field(
-        ..., description="Whether to include meeting booking link"
-    )
+    should_book_meeting: bool = Field(..., description="Whether to include meeting booking link")
     alternative_responses: list[str] = Field(
         default_factory=list, description="Alternative response options"
     )
@@ -99,15 +93,11 @@ class SentimentAnalysis(BaseModel):
     urgency: str = Field(
         ..., description="Urgency level", pattern="^(urgent|high|medium|low|none)$"
     )
-    formality: str = Field(
-        ..., description="Formality level", pattern="^(formal|neutral|casual)$"
-    )
+    formality: str = Field(..., description="Formality level", pattern="^(formal|neutral|casual)$")
     buying_signals: list[str] = Field(
         default_factory=list, description="Buying signals detected in the message"
     )
-    objections: list[str] = Field(
-        default_factory=list, description="Objections or concerns raised"
-    )
+    objections: list[str] = Field(default_factory=list, description="Objections or concerns raised")
 
 
 class ExtractedEntities(BaseModel):
@@ -119,18 +109,12 @@ class ExtractedEntities(BaseModel):
         default_factory=dict,
         description="Extracted meeting time/date preferences",
     )
-    questions: list[str] = Field(
-        default_factory=list, description="Questions asked by the lead"
-    )
-    pain_points: list[str] = Field(
-        default_factory=list, description="Pain points mentioned"
-    )
+    questions: list[str] = Field(default_factory=list, description="Questions asked by the lead")
+    pain_points: list[str] = Field(default_factory=list, description="Pain points mentioned")
     mentioned_competitors: list[str] = Field(
         default_factory=list, description="Competitors mentioned"
     )
-    budget_signals: list[str] = Field(
-        default_factory=list, description="Budget-related signals"
-    )
+    budget_signals: list[str] = Field(default_factory=list, description="Budget-related signals")
     timeline_signals: list[str] = Field(
         default_factory=list, description="Timeline/urgency signals"
     )
@@ -471,10 +455,7 @@ Be thorough and extract all relevant information."""
             Context string with lead and campaign information
         """
         # Get lead with campaign
-        stmt = (
-            select(Lead)
-            .where(and_(Lead.id == lead_id, Lead.deleted_at.is_(None)))
-        )
+        stmt = select(Lead).where(and_(Lead.id == lead_id, Lead.deleted_at.is_(None)))
         result = await db.execute(stmt)
         lead = result.scalar_one_or_none()
 
@@ -482,11 +463,11 @@ Be thorough and extract all relevant information."""
             return "Lead not found"
 
         context = f"""Lead: {lead.full_name}
-Title: {lead.title or 'Unknown'}
-Company: {lead.company or 'Unknown'}
-ALS Score: {lead.als_score or 'Not scored'}
+Title: {lead.title or "Unknown"}
+Company: {lead.company or "Unknown"}
+ALS Score: {lead.als_score or "Not scored"}
 Status: {lead.status.value}
-Last Contacted: {lead.last_contacted_at.isoformat() if lead.last_contacted_at else 'Never'}
+Last Contacted: {lead.last_contacted_at.isoformat() if lead.last_contacted_at else "Never"}
 Reply Count: {lead.reply_count}
 """
         return context

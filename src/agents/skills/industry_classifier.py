@@ -44,21 +44,12 @@ class IndustryMatch(BaseModel):
     """
 
     industry: str = Field(description="Industry name (standardized)")
-    confidence: float = Field(
-        description="Confidence this is a target industry (0.0-1.0)"
-    )
+    confidence: float = Field(description="Confidence this is a target industry (0.0-1.0)")
     evidence: list[str] = Field(
-        default_factory=list,
-        description="Evidence supporting this classification"
+        default_factory=list, description="Evidence supporting this classification"
     )
-    is_primary: bool = Field(
-        default=False,
-        description="Whether this is a primary target industry"
-    )
-    client_count: int = Field(
-        default=0,
-        description="Number of portfolio clients in this industry"
-    )
+    is_primary: bool = Field(default=False, description="Whether this is a primary target industry")
+    client_count: int = Field(default=0, description="Number of portfolio clients in this industry")
 
 
 # Standard industry categories
@@ -90,7 +81,9 @@ STANDARD_INDUSTRIES = [
 ]
 
 
-class IndustryClassifierSkill(BaseSkill["IndustryClassifierSkill.Input", "IndustryClassifierSkill.Output"]):
+class IndustryClassifierSkill(
+    BaseSkill["IndustryClassifierSkill.Input", "IndustryClassifierSkill.Output"]
+):
     """
     Classify target industries from services and portfolio.
 
@@ -109,50 +102,35 @@ class IndustryClassifierSkill(BaseSkill["IndustryClassifierSkill.Input", "Indust
         """Input for industry classification."""
 
         services: list[ServiceInfo] = Field(
-            default_factory=list,
-            description="Services offered by the agency"
+            default_factory=list, description="Services offered by the agency"
         )
         portfolio_companies: list[PortfolioCompany] = Field(
-            default_factory=list,
-            description="Companies from portfolio"
+            default_factory=list, description="Companies from portfolio"
         )
         target_audience_hints: list[str] = Field(
-            default_factory=list,
-            description="Target audience hints from value prop"
+            default_factory=list, description="Target audience hints from value prop"
         )
-        company_name: str = Field(
-            default="",
-            description="Agency name for context"
-        )
+        company_name: str = Field(default="", description="Agency name for context")
 
     class Output(BaseModel):
         """Output from industry classification."""
 
         industries: list[IndustryMatch] = Field(
-            default_factory=list,
-            description="Classified target industries"
+            default_factory=list, description="Classified target industries"
         )
         primary_industries: list[str] = Field(
-            default_factory=list,
-            description="Top 3 primary industries"
+            default_factory=list, description="Top 3 primary industries"
         )
         industry_focus: str = Field(
-            default="generalist",
-            description="Focus type: specialist, niche, generalist"
+            default="generalist", description="Focus type: specialist, niche, generalist"
         )
-        focus_description: str = Field(
-            default="",
-            description="Description of industry focus"
-        )
-        confidence: float = Field(
-            default=0.0,
-            description="Overall confidence (0.0-1.0)"
-        )
+        focus_description: str = Field(default="", description="Description of industry focus")
+        confidence: float = Field(default=0.0, description="Overall confidence (0.0-1.0)")
 
     system_prompt = f"""You are an industry analyst classifying agency target markets.
 
 STANDARD INDUSTRIES (use these exact values):
-{chr(10).join(f'- {ind}' for ind in STANDARD_INDUSTRIES)}
+{chr(10).join(f"- {ind}" for ind in STANDARD_INDUSTRIES)}
 
 CLASSIFICATION GUIDELINES:
 
@@ -224,7 +202,9 @@ Return valid JSON:
         # Format hints
         hints_text = ""
         if input_data.target_audience_hints:
-            hints_text = "\nTARGET AUDIENCE HINTS:\n- " + "\n- ".join(input_data.target_audience_hints)
+            hints_text = "\nTARGET AUDIENCE HINTS:\n- " + "\n- ".join(
+                input_data.target_audience_hints
+            )
 
         context = f"Agency: {input_data.company_name}\n" if input_data.company_name else ""
 

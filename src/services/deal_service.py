@@ -145,23 +145,26 @@ class DealService:
             RETURNING *
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "lead_id": lead_id,
-            "meeting_id": meeting_id,
-            "name": name,
-            "value": value,
-            "currency": currency,
-            "stage": stage,
-            "expected_close_date": expected_close_date,
-            "probability": probability,
-            "converting_activity_id": converting_activity_id,
-            "converting_channel": converting_channel,
-            "first_touch_channel": first_channel,
-            "touches_before_deal": touches_before,
-            "external_crm": external_crm,
-            "external_deal_id": external_deal_id,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "lead_id": lead_id,
+                "meeting_id": meeting_id,
+                "name": name,
+                "value": value,
+                "currency": currency,
+                "stage": stage,
+                "expected_close_date": expected_close_date,
+                "probability": probability,
+                "converting_activity_id": converting_activity_id,
+                "converting_channel": converting_channel,
+                "first_touch_channel": first_channel,
+                "touches_before_deal": touches_before,
+                "external_crm": external_crm,
+                "external_deal_id": external_deal_id,
+            },
+        )
 
         row = result.fetchone()
         await self.session.commit()
@@ -178,7 +181,7 @@ class DealService:
                     updated_at = NOW()
                 WHERE id = :lead_id
             """),
-            {"deal_id": row.id, "value": value, "lead_id": lead_id}
+            {"deal_id": row.id, "value": value, "lead_id": lead_id},
         )
         await self.session.commit()
 
@@ -231,10 +234,13 @@ class DealService:
             AND external_deal_id = :external_deal_id
         """)
 
-        result = await self.session.execute(query, {
-            "external_crm": external_crm,
-            "external_deal_id": external_deal_id,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "external_crm": external_crm,
+                "external_deal_id": external_deal_id,
+            },
+        )
         row = result.fetchone()
 
         if not row:
@@ -301,11 +307,14 @@ class DealService:
             RETURNING *
         """)
 
-        result = await self.session.execute(query, {
-            "deal_id": deal_id,
-            "stage": stage,
-            "probability": probability,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "deal_id": deal_id,
+                "stage": stage,
+                "probability": probability,
+            },
+        )
 
         row = result.fetchone()
         await self.session.commit()
@@ -349,10 +358,13 @@ class DealService:
             RETURNING *
         """)
 
-        result = await self.session.execute(query, {
-            "deal_id": deal_id,
-            "value": update_value,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "deal_id": deal_id,
+                "value": update_value,
+            },
+        )
 
         row = result.fetchone()
         await self.session.commit()
@@ -371,7 +383,7 @@ class DealService:
                     updated_at = NOW()
                 WHERE id = :lead_id
             """),
-            {"value": update_value, "lead_id": deal["lead_id"]}
+            {"value": update_value, "lead_id": deal["lead_id"]},
         )
         await self.session.commit()
 
@@ -420,11 +432,14 @@ class DealService:
             RETURNING *
         """)
 
-        result = await self.session.execute(query, {
-            "deal_id": deal_id,
-            "lost_reason": lost_reason,
-            "lost_notes": lost_notes,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "deal_id": deal_id,
+                "lost_reason": lost_reason,
+                "lost_notes": lost_notes,
+            },
+        )
 
         row = result.fetchone()
         await self.session.commit()
@@ -461,11 +476,14 @@ class DealService:
                 WHERE id = :deal_id
                 RETURNING *
             """)
-            result = await self.session.execute(query, {
-                "deal_id": deal_id,
-                "value": value,
-                "currency": currency,
-            })
+            result = await self.session.execute(
+                query,
+                {
+                    "deal_id": deal_id,
+                    "value": value,
+                    "currency": currency,
+                },
+            )
         else:
             query = text("""
                 UPDATE deals
@@ -473,10 +491,13 @@ class DealService:
                 WHERE id = :deal_id
                 RETURNING *
             """)
-            result = await self.session.execute(query, {
-                "deal_id": deal_id,
-                "value": value,
-            })
+            result = await self.session.execute(
+                query,
+                {
+                    "deal_id": deal_id,
+                    "value": value,
+                },
+            )
 
         row = result.fetchone()
         await self.session.commit()
@@ -487,7 +508,7 @@ class DealService:
         # Update lead value
         await self.session.execute(
             text("UPDATE leads SET deal_value = :value WHERE id = :lead_id"),
-            {"value": value, "lead_id": deal["lead_id"]}
+            {"value": value, "lead_id": deal["lead_id"]},
         )
         await self.session.commit()
 
@@ -580,18 +601,20 @@ class DealService:
         result = await self.session.execute(query, {"client_id": client_id})
         rows = result.fetchall()
 
-        stages: dict[str, dict[str, int | float]] = {row.stage: {
-            "count": int(row.count) if row.count else 0,
-            "total_value": float(row.total_value) if row.total_value else 0.0,
-            "avg_probability": int(row.avg_probability) if row.avg_probability else 0,
-        } for row in rows}
+        stages: dict[str, dict[str, int | float]] = {
+            row.stage: {
+                "count": int(row.count) if row.count else 0,
+                "total_value": float(row.total_value) if row.total_value else 0.0,
+                "avg_probability": int(row.avg_probability) if row.avg_probability else 0,
+            }
+            for row in rows
+        }
 
         # Calculate totals
         total_count = sum(int(s["count"]) for s in stages.values())
         total_value = sum(float(s["total_value"]) for s in stages.values())
         weighted_value = sum(
-            float(s["total_value"]) * int(s["avg_probability"]) / 100
-            for s in stages.values()
+            float(s["total_value"]) * int(s["avg_probability"]) / 100 for s in stages.values()
         )
 
         return {
@@ -641,10 +664,13 @@ class DealService:
             SELECT calculate_revenue_attribution(:deal_id, :model)
         """)
 
-        await self.session.execute(query, {
-            "deal_id": deal_id,
-            "model": model,
-        })
+        await self.session.execute(
+            query,
+            {
+                "deal_id": deal_id,
+                "model": model,
+            },
+        )
         await self.session.commit()
 
     async def get_funnel_analytics(
@@ -666,10 +692,13 @@ class DealService:
             SELECT * FROM get_funnel_analytics(:client_id, :days)
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "days": days,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "days": days,
+            },
+        )
         row = result.fetchone()
 
         if not row:
@@ -706,11 +735,14 @@ class DealService:
             SELECT * FROM get_channel_revenue_attribution(:client_id, :days, :model)
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "days": days,
-            "model": model,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "days": days,
+                "model": model,
+            },
+        )
         rows = result.fetchall()
 
         return [dict(row._mapping) for row in rows]
@@ -734,10 +766,13 @@ class DealService:
             SELECT * FROM get_lost_deal_analysis(:client_id, :days)
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "days": days,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "days": days,
+            },
+        )
         rows = result.fetchall()
 
         return [dict(row._mapping) for row in rows]
@@ -817,12 +852,15 @@ class DealService:
                 RETURNING *
             """)
 
-            result = await self.session.execute(query, {
-                "deal_id": existing["id"],
-                "stage": our_stage,
-                "value": data.get("value"),
-                "won": won,
-            })
+            result = await self.session.execute(
+                query,
+                {
+                    "deal_id": existing["id"],
+                    "stage": our_stage,
+                    "value": data.get("value"),
+                    "won": won,
+                },
+            )
 
             row = result.fetchone()
             await self.session.commit()
@@ -842,10 +880,13 @@ class DealService:
                         WHERE client_id = :client_id AND email = :email
                         LIMIT 1
                     """)
-                    lead_result = await self.session.execute(lead_query, {
-                        "client_id": client_id,
-                        "email": lead_email,
-                    })
+                    lead_result = await self.session.execute(
+                        lead_query,
+                        {
+                            "client_id": client_id,
+                            "email": lead_email,
+                        },
+                    )
                     lead_row = lead_result.fetchone()
                     if lead_row:
                         lead_id = lead_row.id

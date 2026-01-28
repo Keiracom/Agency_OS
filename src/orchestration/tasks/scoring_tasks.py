@@ -168,17 +168,16 @@ async def score_batch_task(
 
         except Exception as e:
             logger.error(f"Failed to score lead {lead_id}: {e}")
-            results.append({
-                "success": False,
-                "lead_id": str(lead_id),
-                "error": str(e),
-            })
+            results.append(
+                {
+                    "success": False,
+                    "lead_id": str(lead_id),
+                    "error": str(e),
+                }
+            )
             failed += 1
 
-    logger.info(
-        f"Scored {successful}/{len(lead_ids)} leads. "
-        f"Distribution: {tier_counts}"
-    )
+    logger.info(f"Scored {successful}/{len(lead_ids)} leads. Distribution: {tier_counts}")
 
     return {
         "total": len(lead_ids),
@@ -252,9 +251,7 @@ async def get_tier_distribution_task(
         }
 
         # Calculate average score
-        avg_score_stmt = select(func.avg(Lead.als_score)).where(
-            Lead.deleted_at.is_(None)
-        )
+        avg_score_stmt = select(func.avg(Lead.als_score)).where(Lead.deleted_at.is_(None))
         if campaign_id:
             avg_score_stmt = avg_score_stmt.where(Lead.campaign_id == campaign_id)
         if client_id:

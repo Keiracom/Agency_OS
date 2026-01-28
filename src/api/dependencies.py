@@ -167,9 +167,7 @@ async def get_current_user_from_token(
             raise AuthenticationError("Invalid token: missing user ID")
 
         # Look up user in database (with soft delete check)
-        stmt = select(User).where(
-            User.id == UUID(user_id)
-        )
+        stmt = select(User).where(User.id == UUID(user_id))
         result = await db.execute(stmt)
         user = result.scalar_one_or_none()
 
@@ -180,7 +178,7 @@ async def get_current_user_from_token(
             id=user.id,
             email=user.email,
             full_name=user.full_name,
-            is_platform_admin=getattr(user, 'is_platform_admin', False) or False,
+            is_platform_admin=getattr(user, "is_platform_admin", False) or False,
         )
 
     except JWTError as e:

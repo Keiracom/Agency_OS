@@ -181,9 +181,7 @@ async def create_draft_campaigns_task(
             "error": result.error,
         }
 
-    logger.info(
-        f"Created {result.data['campaigns_created']} campaigns for client {client_id}"
-    )
+    logger.info(f"Created {result.data['campaigns_created']} campaigns for client {client_id}")
 
     return {
         "success": True,
@@ -225,9 +223,7 @@ async def source_leads_from_apollo_task(
             "error": result.get("error", "Pool population failed"),
         }
 
-    logger.info(
-        f"Sourced {result.get('leads_added', 0)} leads for client {client_id}"
-    )
+    logger.info(f"Sourced {result.get('leads_added', 0)} leads for client {client_id}")
 
     return {
         "success": True,
@@ -293,16 +289,16 @@ async def assign_leads_to_campaigns_task(
                 campaign_id=campaign_id,
             )
 
-            assignments.append({
-                "campaign_id": str(campaign_id),
-                "campaign_name": campaign.get("name", "Unknown"),
-                "leads_assigned": len(assigned),
-                "allocation_pct": allocation_pct,
-            })
-
-            logger.info(
-                f"Assigned {len(assigned)} leads to campaign {campaign_id}"
+            assignments.append(
+                {
+                    "campaign_id": str(campaign_id),
+                    "campaign_name": campaign.get("name", "Unknown"),
+                    "leads_assigned": len(assigned),
+                    "allocation_pct": allocation_pct,
+                }
             )
+
+            logger.info(f"Assigned {len(assigned)} leads to campaign {campaign_id}")
 
     total_assigned = sum(a["leads_assigned"] for a in assignments)
 
@@ -568,10 +564,12 @@ async def trigger_lead_sourcing_flow(
                 campaign_id=campaign_id,
             )
 
-            assignments.append({
-                "campaign_id": str(campaign_id),
-                "leads_assigned": len(assigned),
-            })
+            assignments.append(
+                {
+                    "campaign_id": str(campaign_id),
+                    "leads_assigned": len(assigned),
+                }
+            )
 
     return {
         "success": True,

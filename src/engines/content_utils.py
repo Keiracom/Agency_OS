@@ -28,36 +28,93 @@ from src.models.lead import Lead
 
 PAIN_POINT_KEYWORDS: dict[str, list[str]] = {
     "leads": [
-        "leads", "pipeline", "prospects", "opportunities",
-        "qualified", "mql", "sql", "inbound", "lead gen",
+        "leads",
+        "pipeline",
+        "prospects",
+        "opportunities",
+        "qualified",
+        "mql",
+        "sql",
+        "inbound",
+        "lead gen",
     ],
     "revenue": [
-        "revenue", "sales", "growth", "roi", "profit",
-        "income", "deals", "closed", "won", "booking",
+        "revenue",
+        "sales",
+        "growth",
+        "roi",
+        "profit",
+        "income",
+        "deals",
+        "closed",
+        "won",
+        "booking",
     ],
     "time": [
-        "time", "hours", "manual", "automate", "efficiency",
-        "busy", "bandwidth", "overwhelmed", "tedious", "repetitive",
+        "time",
+        "hours",
+        "manual",
+        "automate",
+        "efficiency",
+        "busy",
+        "bandwidth",
+        "overwhelmed",
+        "tedious",
+        "repetitive",
     ],
     "scaling": [
-        "scale", "scaling", "growth", "capacity", "bandwidth",
-        "hire", "team", "expand", "growing", "bottleneck",
+        "scale",
+        "scaling",
+        "growth",
+        "capacity",
+        "bandwidth",
+        "hire",
+        "team",
+        "expand",
+        "growing",
+        "bottleneck",
     ],
     "competition": [
-        "competitors", "competition", "market share", "behind",
-        "catching up", "losing", "threat", "outpace",
+        "competitors",
+        "competition",
+        "market share",
+        "behind",
+        "catching up",
+        "losing",
+        "threat",
+        "outpace",
     ],
     "cost": [
-        "cost", "expensive", "budget", "waste", "spending",
-        "save", "afford", "price", "investment", "roi",
+        "cost",
+        "expensive",
+        "budget",
+        "waste",
+        "spending",
+        "save",
+        "afford",
+        "price",
+        "investment",
+        "roi",
     ],
     "quality": [
-        "quality", "results", "performance", "outcomes",
-        "better", "improve", "consistent", "reliable",
+        "quality",
+        "results",
+        "performance",
+        "outcomes",
+        "better",
+        "improve",
+        "consistent",
+        "reliable",
     ],
     "clients": [
-        "clients", "customers", "retention", "churn",
-        "satisfaction", "referrals", "testimonials", "reviews",
+        "clients",
+        "customers",
+        "retention",
+        "churn",
+        "satisfaction",
+        "referrals",
+        "testimonials",
+        "reviews",
     ],
 }
 
@@ -85,6 +142,7 @@ CTA_PATTERNS: list[str] = [
 # =============================================================================
 # EXTRACTION FUNCTIONS
 # =============================================================================
+
 
 def extract_pain_points(text: str) -> list[str]:
     """
@@ -248,22 +306,17 @@ def build_content_snapshot(
         "body": body,
         "channel": channel,
         "template_id": template_id,
-
         # Metrics
         "word_count": len(body.split()) if body else 0,
         "char_count": len(body) if body else 0,
-
         # Extracted features
         "pain_points_used": pain_points,
         "cta_used": cta,
-
         # Personalization flags
         **personalization,
-
         # Sequence context
         "touch_number": touch_number,
         "sequence_id": sequence_id,
-
         # Timing (for WHEN Detector)
         "sent_at": now.isoformat(),
         "day_of_week": now.weekday(),  # 0=Monday, 6=Sunday

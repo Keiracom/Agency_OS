@@ -163,11 +163,15 @@ def generate_signature_html(
     # Build contact line with emojis (from EMAIL.md spec)
     contact_parts = []
     if phone:
-        contact_parts.append(f'<a href="tel:{phone.replace(" ", "")}" style="color: #333; text-decoration: none;">P: {phone}</a>')
+        contact_parts.append(
+            f'<a href="tel:{phone.replace(" ", "")}" style="color: #333; text-decoration: none;">P: {phone}</a>'
+        )
     if website:
         domain = website.replace("https://", "").replace("http://", "").rstrip("/")
         url = website if website.startswith("http") else f"https://{website}"
-        contact_parts.append(f'<a href="{url}" style="color: #333; text-decoration: none;">W: {domain}</a>')
+        contact_parts.append(
+            f'<a href="{url}" style="color: #333; text-decoration: none;">W: {domain}</a>'
+        )
 
     contact_line = ""
     if contact_parts:
@@ -342,6 +346,7 @@ def format_from_header(
         '"John Smith" <john@outreach-mail.com>'
     """
     import logging
+
     logger = logging.getLogger(__name__)
 
     display_name = format_display_name(first_name, last_name, company)

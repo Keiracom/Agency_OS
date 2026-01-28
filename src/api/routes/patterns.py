@@ -155,9 +155,7 @@ async def list_patterns(
         conditions.append(ConversionPattern.valid_until > now)
 
     stmt = (
-        select(ConversionPattern)
-        .where(and_(*conditions))
-        .order_by(ConversionPattern.pattern_type)
+        select(ConversionPattern).where(and_(*conditions)).order_by(ConversionPattern.pattern_type)
     )
 
     result = await db.execute(stmt)

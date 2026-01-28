@@ -75,27 +75,21 @@ class LinkedInHealthService:
         cutoff = datetime.utcnow() - timedelta(days=days)
 
         # Count total requests in period
-        total_stmt = (
-            select(func.count(LinkedInConnection.id))
-            .where(
-                and_(
-                    LinkedInConnection.seat_id == seat_id,
-                    LinkedInConnection.requested_at >= cutoff,
-                )
+        total_stmt = select(func.count(LinkedInConnection.id)).where(
+            and_(
+                LinkedInConnection.seat_id == seat_id,
+                LinkedInConnection.requested_at >= cutoff,
             )
         )
         total_result = await db.execute(total_stmt)
         total = total_result.scalar() or 0
 
         # Count accepted in period
-        accepted_stmt = (
-            select(func.count(LinkedInConnection.id))
-            .where(
-                and_(
-                    LinkedInConnection.seat_id == seat_id,
-                    LinkedInConnection.requested_at >= cutoff,
-                    LinkedInConnection.status == "accepted",
-                )
+        accepted_stmt = select(func.count(LinkedInConnection.id)).where(
+            and_(
+                LinkedInConnection.seat_id == seat_id,
+                LinkedInConnection.requested_at >= cutoff,
+                LinkedInConnection.status == "accepted",
             )
         )
         accepted_result = await db.execute(accepted_stmt)
@@ -127,13 +121,10 @@ class LinkedInHealthService:
         Returns:
             Number of pending requests
         """
-        stmt = (
-            select(func.count(LinkedInConnection.id))
-            .where(
-                and_(
-                    LinkedInConnection.seat_id == seat_id,
-                    LinkedInConnection.status == "pending",
-                )
+        stmt = select(func.count(LinkedInConnection.id)).where(
+            and_(
+                LinkedInConnection.seat_id == seat_id,
+                LinkedInConnection.status == "pending",
             )
         )
         result = await db.execute(stmt)
@@ -170,14 +161,10 @@ class LinkedInHealthService:
         old_override = seat.daily_limit_override
 
         seat.accept_rate_7d = (
-            Decimal(str(stats_7d["accept_rate"]))
-            if stats_7d["accept_rate"] is not None
-            else None
+            Decimal(str(stats_7d["accept_rate"])) if stats_7d["accept_rate"] is not None else None
         )
         seat.accept_rate_30d = (
-            Decimal(str(stats_30d["accept_rate"]))
-            if stats_30d["accept_rate"] is not None
-            else None
+            Decimal(str(stats_30d["accept_rate"])) if stats_30d["accept_rate"] is not None else None
         )
         seat.pending_count = pending
 
@@ -189,21 +176,25 @@ class LinkedInHealthService:
             if seat.accept_rate_7d < ACCEPT_RATE_CRITICAL:
                 seat.daily_limit_override = LIMIT_CRITICAL_REDUCTION
                 action = "critical_reduction"
-                alerts.append({
-                    "type": "accept_rate_critical",
-                    "message": f"Accept rate critically low: {float(seat.accept_rate_7d):.1%}",
-                    "threshold": float(ACCEPT_RATE_CRITICAL),
-                    "new_limit": LIMIT_CRITICAL_REDUCTION,
-                })
+                alerts.append(
+                    {
+                        "type": "accept_rate_critical",
+                        "message": f"Accept rate critically low: {float(seat.accept_rate_7d):.1%}",
+                        "threshold": float(ACCEPT_RATE_CRITICAL),
+                        "new_limit": LIMIT_CRITICAL_REDUCTION,
+                    }
+                )
             elif seat.accept_rate_7d < ACCEPT_RATE_WARNING:
                 seat.daily_limit_override = LIMIT_WARNING_REDUCTION
                 action = "warning_reduction"
-                alerts.append({
-                    "type": "accept_rate_warning",
-                    "message": f"Accept rate below target: {float(seat.accept_rate_7d):.1%}",
-                    "threshold": float(ACCEPT_RATE_WARNING),
-                    "new_limit": LIMIT_WARNING_REDUCTION,
-                })
+                alerts.append(
+                    {
+                        "type": "accept_rate_warning",
+                        "message": f"Accept rate below target: {float(seat.accept_rate_7d):.1%}",
+                        "threshold": float(ACCEPT_RATE_WARNING),
+                        "new_limit": LIMIT_WARNING_REDUCTION,
+                    }
+                )
             else:
                 # Healthy - remove override (unless restricted)
                 if seat.status != LinkedInSeatStatus.RESTRICTED:
@@ -213,17 +204,21 @@ class LinkedInHealthService:
 
         # Check pending count
         if pending >= PENDING_CRITICAL_THRESHOLD:
-            alerts.append({
-                "type": "pending_critical",
-                "message": f"Pending requests critically high: {pending}",
-                "threshold": PENDING_CRITICAL_THRESHOLD,
-            })
+            alerts.append(
+                {
+                    "type": "pending_critical",
+                    "message": f"Pending requests critically high: {pending}",
+                    "threshold": PENDING_CRITICAL_THRESHOLD,
+                }
+            )
         elif pending >= PENDING_WARNING_THRESHOLD:
-            alerts.append({
-                "type": "pending_warning",
-                "message": f"Pending requests above normal: {pending}",
-                "threshold": PENDING_WARNING_THRESHOLD,
-            })
+            alerts.append(
+                {
+                    "type": "pending_warning",
+                    "message": f"Pending requests above normal: {pending}",
+                    "threshold": PENDING_WARNING_THRESHOLD,
+                }
+            )
 
         await db.commit()
 
@@ -263,10 +258,12 @@ class LinkedInHealthService:
         """
         # Get active seats (warmup or active)
         stmt = select(LinkedInSeat).where(
-            LinkedInSeat.status.in_([
-                LinkedInSeatStatus.WARMUP,
-                LinkedInSeatStatus.ACTIVE,
-            ])
+            LinkedInSeat.status.in_(
+                [
+                    LinkedInSeatStatus.WARMUP,
+                    LinkedInSeatStatus.ACTIVE,
+                ]
+            )
         )
 
         if client_id:
@@ -399,10 +396,12 @@ class LinkedInHealthService:
                 and_(
                     LinkedInConnection.status == LinkedInConnectionStatus.PENDING,
                     LinkedInConnection.requested_at < cutoff,
-                    LinkedInSeat.status.in_([
-                        LinkedInSeatStatus.WARMUP,
-                        LinkedInSeatStatus.ACTIVE,
-                    ]),
+                    LinkedInSeat.status.in_(
+                        [
+                            LinkedInSeatStatus.WARMUP,
+                            LinkedInSeatStatus.ACTIVE,
+                        ]
+                    ),
                 )
             )
             .order_by(LinkedInConnection.requested_at.asc())  # Oldest first
@@ -519,16 +518,15 @@ class LinkedInHealthService:
         cutoff = datetime.utcnow() - timedelta(days=3)
 
         # Get seats with no recent activity
-        stmt = (
-            select(LinkedInSeat)
-            .where(
-                and_(
-                    LinkedInSeat.status.in_([
+        stmt = select(LinkedInSeat).where(
+            and_(
+                LinkedInSeat.status.in_(
+                    [
                         LinkedInSeatStatus.WARMUP,
                         LinkedInSeatStatus.ACTIVE,
-                    ]),
-                    LinkedInSeat.activated_at < cutoff,
-                )
+                    ]
+                ),
+                LinkedInSeat.activated_at < cutoff,
             )
         )
         result = await db.execute(stmt)
@@ -537,27 +535,26 @@ class LinkedInHealthService:
         suspicious = []
         for seat in seats:
             # Check if any connections in last 3 days
-            conn_stmt = (
-                select(func.count(LinkedInConnection.id))
-                .where(
-                    and_(
-                        LinkedInConnection.seat_id == seat.id,
-                        LinkedInConnection.requested_at >= cutoff,
-                    )
+            conn_stmt = select(func.count(LinkedInConnection.id)).where(
+                and_(
+                    LinkedInConnection.seat_id == seat.id,
+                    LinkedInConnection.requested_at >= cutoff,
                 )
             )
             conn_result = await db.execute(conn_stmt)
             recent_count = conn_result.scalar() or 0
 
             if recent_count == 0 and seat.daily_limit > 0:
-                suspicious.append({
-                    "seat_id": str(seat.id),
-                    "client_id": str(seat.client_id),
-                    "account_name": seat.account_name,
-                    "status": seat.status,
-                    "days_no_activity": 3,
-                    "reason": "No connections sent despite having quota",
-                })
+                suspicious.append(
+                    {
+                        "seat_id": str(seat.id),
+                        "client_id": str(seat.client_id),
+                        "account_name": seat.account_name,
+                        "status": seat.status,
+                        "days_no_activity": 3,
+                        "reason": "No connections sent despite having quota",
+                    }
+                )
 
         if suspicious:
             logger.warning(f"Found {len(suspicious)} potentially restricted seats")

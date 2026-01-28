@@ -112,10 +112,12 @@ async def get_leads_ready_for_outreach_task(limit: int = 50) -> dict[str, Any]:
                     Lead.deleted_at.is_(None),  # Soft delete check
                     # Client validation (JIT)
                     Client.deleted_at.is_(None),
-                    Client.subscription_status.in_([
-                        SubscriptionStatus.ACTIVE,
-                        SubscriptionStatus.TRIALING,
-                    ]),
+                    Client.subscription_status.in_(
+                        [
+                            SubscriptionStatus.ACTIVE,
+                            SubscriptionStatus.TRIALING,
+                        ]
+                    ),
                     Client.credits_remaining > 0,
                     # Campaign validation (JIT)
                     Campaign.deleted_at.is_(None),
@@ -160,25 +162,33 @@ async def get_leads_ready_for_outreach_task(limit: int = 50) -> dict[str, Any]:
 
             # Assign to channels based on resource allocation
             if email_resource:
-                leads_by_channel["email"].append({
-                    **lead_data,
-                    "resource": email_resource,
-                })
+                leads_by_channel["email"].append(
+                    {
+                        **lead_data,
+                        "resource": email_resource,
+                    }
+                )
             if linkedin_seat:
-                leads_by_channel["linkedin"].append({
-                    **lead_data,
-                    "resource": linkedin_seat,
-                })
+                leads_by_channel["linkedin"].append(
+                    {
+                        **lead_data,
+                        "resource": linkedin_seat,
+                    }
+                )
             if phone_resource:
                 # Could be SMS or voice - we'll check lead tier later
-                leads_by_channel["sms"].append({
-                    **lead_data,
-                    "resource": phone_resource,
-                })
-                leads_by_channel["voice"].append({
-                    **lead_data,
-                    "resource": phone_resource,
-                })
+                leads_by_channel["sms"].append(
+                    {
+                        **lead_data,
+                        "resource": phone_resource,
+                    }
+                )
+                leads_by_channel["voice"].append(
+                    {
+                        **lead_data,
+                        "resource": phone_resource,
+                    }
+                )
 
         total_leads = len(rows)
         logger.info(
@@ -232,9 +242,7 @@ async def jit_validate_outreach_task(
             SubscriptionStatus.ACTIVE,
             SubscriptionStatus.TRIALING,
         ]:
-            raise ValueError(
-                f"Client subscription status is {client.subscription_status.value}"
-            )
+            raise ValueError(f"Client subscription status is {client.subscription_status.value}")
 
         if client.credits_remaining <= 0:
             raise ValueError("Client has no credits remaining")
@@ -263,9 +271,7 @@ async def jit_validate_outreach_task(
 
         # Phase H, Item 43: Campaign pause check
         if campaign.paused_at is not None:
-            raise ValueError(
-                f"Campaign is paused since {campaign.paused_at.isoformat()}"
-            )
+            raise ValueError(f"Campaign is paused since {campaign.paused_at.isoformat()}")
 
         # Validate lead
         stmt_lead = select(Lead).where(
@@ -402,9 +408,7 @@ async def send_email_outreach_task(
         )
 
         if not qa_result.passed:
-            logger.warning(
-                f"Email QA failed for lead {lead_id}: {qa_result.error_messages}"
-            )
+            logger.warning(f"Email QA failed for lead {lead_id}: {qa_result.error_messages}")
             return {
                 "lead_id": lead_id,
                 "channel": "email",
@@ -501,9 +505,7 @@ async def send_linkedin_outreach_task(
         )
 
         if not qa_result.passed:
-            logger.warning(
-                f"LinkedIn QA failed for lead {lead_id}: {qa_result.error_messages}"
-            )
+            logger.warning(f"LinkedIn QA failed for lead {lead_id}: {qa_result.error_messages}")
             return {
                 "lead_id": lead_id,
                 "channel": "linkedin",
@@ -614,9 +616,7 @@ async def send_sms_outreach_task(
         )
 
         if not qa_result.passed:
-            logger.warning(
-                f"SMS QA failed for lead {lead_id}: {qa_result.error_messages}"
-            )
+            logger.warning(f"SMS QA failed for lead {lead_id}: {qa_result.error_messages}")
             return {
                 "lead_id": lead_id,
                 "channel": "sms",
@@ -718,12 +718,14 @@ async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
 
         except ValueError as e:
             logger.warning(f"JIT validation failed for lead {lead_data['lead_id']}: {e}")
-            results["email"].append({
-                "lead_id": lead_data["lead_id"],
-                "channel": "email",
-                "success": False,
-                "error": str(e),
-            })
+            results["email"].append(
+                {
+                    "lead_id": lead_data["lead_id"],
+                    "channel": "email",
+                    "success": False,
+                    "error": str(e),
+                }
+            )
 
     # Process LinkedIn outreach
     for lead_data in leads_data["leads_by_channel"]["linkedin"]:
@@ -746,12 +748,14 @@ async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
 
         except ValueError as e:
             logger.warning(f"JIT validation failed for lead {lead_data['lead_id']}: {e}")
-            results["linkedin"].append({
-                "lead_id": lead_data["lead_id"],
-                "channel": "linkedin",
-                "success": False,
-                "error": str(e),
-            })
+            results["linkedin"].append(
+                {
+                    "lead_id": lead_data["lead_id"],
+                    "channel": "linkedin",
+                    "success": False,
+                    "error": str(e),
+                }
+            )
 
     # Process SMS outreach
     for lead_data in leads_data["leads_by_channel"]["sms"]:
@@ -774,12 +778,14 @@ async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
 
         except ValueError as e:
             logger.warning(f"JIT validation failed for lead {lead_data['lead_id']}: {e}")
-            results["sms"].append({
-                "lead_id": lead_data["lead_id"],
-                "channel": "sms",
-                "success": False,
-                "error": str(e),
-            })
+            results["sms"].append(
+                {
+                    "lead_id": lead_data["lead_id"],
+                    "channel": "sms",
+                    "success": False,
+                    "error": str(e),
+                }
+            )
 
     # Compile summary
     emails_sent = sum(1 for r in results["email"] if r["success"])

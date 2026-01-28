@@ -114,13 +114,17 @@ class WhenDetector(BaseDetector):
         """Get outbound activities with timing data."""
         cutoff = datetime.utcnow() - timedelta(days=90)
 
-        stmt = select(Activity).where(
-            and_(
-                Activity.client_id == client_id,
-                Activity.action.in_(["sent", "email_sent", "sms_sent", "linkedin_sent"]),
-                Activity.created_at >= cutoff,
+        stmt = (
+            select(Activity)
+            .where(
+                and_(
+                    Activity.client_id == client_id,
+                    Activity.action.in_(["sent", "email_sent", "sms_sent", "linkedin_sent"]),
+                    Activity.created_at >= cutoff,
+                )
             )
-        ).order_by(Activity.lead_id, Activity.created_at)
+            .order_by(Activity.lead_id, Activity.created_at)
+        )
 
         result = await db.execute(stmt)
         return list(result.scalars().all())
@@ -136,9 +140,7 @@ class WhenDetector(BaseDetector):
         Phase 24C: Uses lead_local_day_of_week when available
         for more accurate local time analysis.
         """
-        day_stats: dict[int, dict[str, int]] = {
-            i: {"total": 0, "converted": 0} for i in range(7)
-        }
+        day_stats: dict[int, dict[str, int]] = {i: {"total": 0, "converted": 0} for i in range(7)}
 
         for activity in activities:
             # Phase 24C: Use lead's local day of week if available
@@ -156,12 +158,14 @@ class WhenDetector(BaseDetector):
             if stats["total"] < 5:
                 continue
             rate = stats["converted"] / stats["total"]
-            results.append({
-                "day": DAY_NAMES[day_index],
-                "day_index": day_index,
-                "conversion_rate": round(rate, 4),
-                "sample": stats["total"],
-            })
+            results.append(
+                {
+                    "day": DAY_NAMES[day_index],
+                    "day_index": day_index,
+                    "conversion_rate": round(rate, 4),
+                    "sample": stats["total"],
+                }
+            )
 
         results.sort(key=lambda x: x["conversion_rate"], reverse=True)
         return results[:5]
@@ -177,9 +181,7 @@ class WhenDetector(BaseDetector):
         Phase 24C: Uses lead_local_time when available
         for more accurate local time analysis.
         """
-        hour_stats: dict[int, dict[str, int]] = {
-            i: {"total": 0, "converted": 0} for i in range(24)
-        }
+        hour_stats: dict[int, dict[str, int]] = {i: {"total": 0, "converted": 0} for i in range(24)}
 
         for activity in activities:
             # Phase 24C: Use lead's local time if available
@@ -197,11 +199,13 @@ class WhenDetector(BaseDetector):
             if stats["total"] < 5:
                 continue
             rate = stats["converted"] / stats["total"]
-            results.append({
-                "hour": hour,
-                "conversion_rate": round(rate, 4),
-                "sample": stats["total"],
-            })
+            results.append(
+                {
+                    "hour": hour,
+                    "conversion_rate": round(rate, 4),
+                    "sample": stats["total"],
+                }
+            )
 
         results.sort(key=lambda x: x["conversion_rate"], reverse=True)
         return results[:5]
@@ -266,11 +270,11 @@ class WhenDetector(BaseDetector):
                 if act.days_since_last_touch is not None:
                     gap_days = act.days_since_last_touch
                 else:
-                    gap_days = (act.created_at - lead_acts[i-1].created_at).days
+                    gap_days = (act.created_at - lead_acts[i - 1].created_at).days
 
                 if 0 <= gap_days < 30:  # Reasonable gap
                     touch_num = act.touch_number or (i + 1)
-                    gap_data[f"touch_{touch_num-1}_to_{touch_num}"].append(gap_days)
+                    gap_data[f"touch_{touch_num - 1}_to_{touch_num}"].append(gap_days)
 
         # Calculate median gaps
         result = {}
@@ -331,17 +335,23 @@ class WhenDetector(BaseDetector):
 
         if open_to_click_times:
             open_to_click_times.sort()
-            result["median_open_to_click_minutes"] = open_to_click_times[len(open_to_click_times) // 2]
+            result["median_open_to_click_minutes"] = open_to_click_times[
+                len(open_to_click_times) // 2
+            ]
 
         # Calculate optimal windows (when converting leads opened/clicked)
         if opened_and_converted:
             opened_and_converted.sort()
             # Find the window where most converting opens happened
-            result["optimal_open_window_minutes"] = opened_and_converted[len(opened_and_converted) // 2]
+            result["optimal_open_window_minutes"] = opened_and_converted[
+                len(opened_and_converted) // 2
+            ]
 
         if clicked_and_converted:
             clicked_and_converted.sort()
-            result["optimal_click_window_minutes"] = clicked_and_converted[len(clicked_and_converted) // 2]
+            result["optimal_click_window_minutes"] = clicked_and_converted[
+                len(clicked_and_converted) // 2
+            ]
 
         # Engagement rates
         total_email = len([a for a in activities if a.channel and a.channel.value == "email"])
@@ -394,18 +404,23 @@ class WhenDetector(BaseDetector):
                 opened = row.total_opened or 0
                 clicked = row.total_clicked or 0
 
-                timezone_data.append({
-                    "timezone": row.lead_timezone,
-                    "sample": total,
-                    "open_rate": round(opened / total * 100, 2) if total > 0 else 0,
-                    "click_rate": round(clicked / total * 100, 2) if total > 0 else 0,
-                    "avg_time_to_open": round(float(row.avg_time_to_open or 0), 0),
-                    "avg_send_hour_local": round(float(row.avg_send_hour or 12), 1),
-                })
+                timezone_data.append(
+                    {
+                        "timezone": row.lead_timezone,
+                        "sample": total,
+                        "open_rate": round(opened / total * 100, 2) if total > 0 else 0,
+                        "click_rate": round(clicked / total * 100, 2) if total > 0 else 0,
+                        "avg_time_to_open": round(float(row.avg_time_to_open or 0), 0),
+                        "avg_send_hour_local": round(float(row.avg_send_hour or 12), 1),
+                    }
+                )
 
             return {
                 "by_timezone": timezone_data,
-                "timezone_coverage": len([a for a in self._activities_cache if a.lead_timezone]) / len(self._activities_cache) if hasattr(self, '_activities_cache') and self._activities_cache else 0,
+                "timezone_coverage": len([a for a in self._activities_cache if a.lead_timezone])
+                / len(self._activities_cache)
+                if hasattr(self, "_activities_cache") and self._activities_cache
+                else 0,
             }
 
         except Exception:

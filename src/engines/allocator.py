@@ -47,11 +47,11 @@ from src.models.lead import Lead
 # ============================================
 
 RATE_LIMITS = {
-    ChannelType.LINKEDIN: 17,    # 17 per day per seat
-    ChannelType.EMAIL: 50,       # 50 per day per domain
-    ChannelType.SMS: 100,        # 100 per day per number
-    ChannelType.VOICE: 50,       # 50 per day per number
-    ChannelType.MAIL: 1000,      # Higher limit for mail
+    ChannelType.LINKEDIN: 17,  # 17 per day per seat
+    ChannelType.EMAIL: 50,  # 50 per day per domain
+    ChannelType.SMS: 100,  # 100 per day per number
+    ChannelType.VOICE: 50,  # 50 per day per number
+    ChannelType.MAIL: 1000,  # Higher limit for mail
 }
 
 
@@ -262,10 +262,7 @@ class AllocatorEngine(BaseEngine):
             EngineResult with resource status
         """
         # Get all campaign resources
-        stmt = (
-            select(CampaignResource)
-            .where(CampaignResource.campaign_id == campaign_id)
-        )
+        stmt = select(CampaignResource).where(CampaignResource.campaign_id == campaign_id)
         result = await db.execute(stmt)
         resources = list(result.scalars().all())
 
@@ -350,11 +347,13 @@ class AllocatorEngine(BaseEngine):
 
             if not available_channels:
                 results["failed"] += 1
-                results["leads"].append({
-                    "lead_id": str(lead_id),
-                    "status": "failed",
-                    "reason": "No channels available for tier",
-                })
+                results["leads"].append(
+                    {
+                        "lead_id": str(lead_id),
+                        "status": "failed",
+                        "reason": "No channels available for tier",
+                    }
+                )
                 continue
 
             try:
@@ -373,32 +372,39 @@ class AllocatorEngine(BaseEngine):
                         results["partial"] += 1
                         status = "partial"
 
-                    results["leads"].append({
-                        "lead_id": str(lead_id),
-                        "status": status,
-                        "channels": result.data["channels"],
-                    })
+                    results["leads"].append(
+                        {
+                            "lead_id": str(lead_id),
+                            "status": status,
+                            "channels": result.data["channels"],
+                        }
+                    )
                 else:
                     results["failed"] += 1
-                    results["leads"].append({
-                        "lead_id": str(lead_id),
-                        "status": "failed",
-                        "reason": result.error,
-                    })
+                    results["leads"].append(
+                        {
+                            "lead_id": str(lead_id),
+                            "status": "failed",
+                            "reason": result.error,
+                        }
+                    )
 
             except Exception as e:
                 results["failed"] += 1
-                results["leads"].append({
-                    "lead_id": str(lead_id),
-                    "status": "failed",
-                    "reason": str(e),
-                })
+                results["leads"].append(
+                    {
+                        "lead_id": str(lead_id),
+                        "status": "failed",
+                        "reason": str(e),
+                    }
+                )
 
         return EngineResult.ok(
             data=results,
             metadata={
                 "success_rate": (results["allocated"] + results["partial"]) / results["total"]
-                if results["total"] > 0 else 0,
+                if results["total"] > 0
+                else 0,
             },
         )
 
@@ -433,14 +439,16 @@ class AllocatorEngine(BaseEngine):
                 limit=limit,
             )
 
-            resource_list.append({
-                "resource": resource,
-                "resource_id": resource_id,
-                "resource_name": resource.resource_name,
-                "channel": channel,
-                "remaining_quota": remaining,
-                "daily_limit": limit,
-            })
+            resource_list.append(
+                {
+                    "resource": resource,
+                    "resource_id": resource_id,
+                    "resource_name": resource.resource_name,
+                    "channel": channel,
+                    "remaining_quota": remaining,
+                    "daily_limit": limit,
+                }
+            )
 
         return resource_list
 
@@ -499,7 +507,11 @@ class AllocatorEngine(BaseEngine):
         """Get unique identifier for a resource based on channel."""
         if resource.channel == ChannelType.EMAIL:
             # Use domain for email
-            return resource.resource_value.split("@")[-1] if "@" in resource.resource_value else resource.resource_value
+            return (
+                resource.resource_value.split("@")[-1]
+                if "@" in resource.resource_value
+                else resource.resource_value
+            )
         else:
             # Use the resource value directly (seat ID, phone number, etc.)
             return resource.resource_value
@@ -777,8 +789,7 @@ class AllocatorEngine(BaseEngine):
         insights = {
             "prioritization_source": "tier" if tier else "overall",
             "channel_rates": {
-                c.value: channel_priority.get(c.value, 0.0)
-                for c in available_channels
+                c.value: channel_priority.get(c.value, 0.0) for c in available_channels
             },
             "original_order": [c.value for c in available_channels],
             "optimized_order": [c.value for c in prioritized],
@@ -803,13 +814,17 @@ class AllocatorEngine(BaseEngine):
         Returns:
             ConversionPattern if valid one exists, None otherwise
         """
-        stmt = select(ConversionPattern).where(
-            and_(
-                ConversionPattern.client_id == client_id,
-                ConversionPattern.pattern_type == pattern_type,
-                ConversionPattern.valid_until > datetime.utcnow(),
+        stmt = (
+            select(ConversionPattern)
+            .where(
+                and_(
+                    ConversionPattern.client_id == client_id,
+                    ConversionPattern.pattern_type == pattern_type,
+                    ConversionPattern.valid_until > datetime.utcnow(),
+                )
             )
-        ).order_by(ConversionPattern.computed_at.desc())
+            .order_by(ConversionPattern.computed_at.desc())
+        )
 
         result = await db.execute(stmt)
         return result.scalar_one_or_none()

@@ -264,9 +264,7 @@ async def trigger_enrichment_task(lead_ids: list[str], campaign_id: str) -> dict
 
         queued_count = result.rowcount
 
-        logger.info(
-            f"Queued {queued_count} leads for enrichment in campaign {campaign_id}"
-        )
+        logger.info(f"Queued {queued_count} leads for enrichment in campaign {campaign_id}")
 
         return {
             "campaign_id": campaign_id,

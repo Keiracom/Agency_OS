@@ -32,6 +32,7 @@ from src.models.base import Base, SoftDeleteMixin, TimestampMixin, UUIDMixin
 
 class SuggestionType(str, Enum):
     """Types of campaign suggestions."""
+
     CREATE_CAMPAIGN = "create_campaign"
     PAUSE_CAMPAIGN = "pause_campaign"
     ADJUST_ALLOCATION = "adjust_allocation"
@@ -43,6 +44,7 @@ class SuggestionType(str, Enum):
 
 class SuggestionStatus(str, Enum):
     """Suggestion lifecycle status."""
+
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"

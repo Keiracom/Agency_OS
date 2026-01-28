@@ -115,10 +115,12 @@ async def get_clients_needing_backfill_task(
             .where(
                 and_(
                     Client.deleted_at.is_(None),
-                    Client.subscription_status.in_([
-                        SubscriptionStatus.ACTIVE,
-                        SubscriptionStatus.TRIALING,
-                    ]),
+                    Client.subscription_status.in_(
+                        [
+                            SubscriptionStatus.ACTIVE,
+                            SubscriptionStatus.TRIALING,
+                        ]
+                    ),
                     activity_counts.c.activity_count >= min_activities,
                     valid_patterns.c.client_id.is_(None),  # No valid patterns
                 )
@@ -180,7 +182,9 @@ async def backfill_led_to_booking_task(client_id: str) -> dict[str, Any]:
                 .where(
                     and_(
                         Activity.lead_id == lead.id,
-                        Activity.action.in_(["sent", "email_sent", "sms_sent", "linkedin_sent", "voice_completed"]),
+                        Activity.action.in_(
+                            ["sent", "email_sent", "sms_sent", "linkedin_sent", "voice_completed"]
+                        ),
                         Activity.created_at <= lead.updated_at,  # Before conversion
                     )
                 )
@@ -203,8 +207,7 @@ async def backfill_led_to_booking_task(client_id: str) -> dict[str, Any]:
         await db.commit()
 
         logger.info(
-            f"Backfilled led_to_booking for client {client_id}: "
-            f"{marked_count} activities marked"
+            f"Backfilled led_to_booking for client {client_id}: {marked_count} activities marked"
         )
 
         return {

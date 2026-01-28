@@ -106,27 +106,21 @@ class ICPProfile(BaseModel):
     )
     enriched_portfolio: list[dict] = Field(
         default_factory=list,
-        description="Enriched portfolio companies with industry, size, revenue (for finding similar leads)"
+        description="Enriched portfolio companies with industry, size, revenue (for finding similar leads)",
     )
     notable_brands: list[str] = Field(default_factory=list, description="Notable brands")
 
     # ICP targeting
     icp_industries: list[str] = Field(default_factory=list, description="Target industries")
-    icp_company_sizes: list[str] = Field(
-        default_factory=list, description="Target company sizes"
-    )
-    icp_revenue_ranges: list[str] = Field(
-        default_factory=list, description="Target revenue ranges"
-    )
+    icp_company_sizes: list[str] = Field(default_factory=list, description="Target company sizes")
+    icp_revenue_ranges: list[str] = Field(default_factory=list, description="Target revenue ranges")
     icp_locations: list[str] = Field(default_factory=list, description="Target locations")
     icp_titles: list[str] = Field(default_factory=list, description="Target titles")
     icp_pain_points: list[str] = Field(default_factory=list, description="Pain points")
     icp_signals: list[str] = Field(default_factory=list, description="Buying signals")
 
     # ALS weights
-    als_weights: dict[str, int] = Field(
-        default_factory=dict, description="Custom ALS weights"
-    )
+    als_weights: dict[str, int] = Field(default_factory=dict, description="Custom ALS weights")
 
     # Social profiles
     social_links: dict[str, str] = Field(
@@ -265,6 +259,7 @@ class ICPDiscoveryAgent(BaseAgent):
             SocialProfiles with scraped data
         """
         import logging
+
         logger = logging.getLogger(__name__)
 
         linkedin_profile = None
@@ -371,6 +366,7 @@ class ICPDiscoveryAgent(BaseAgent):
     def _extract_domain(self, url: str) -> str:
         """Extract domain from URL."""
         from urllib.parse import urlparse
+
         parsed = urlparse(url)
         domain = parsed.netloc
         if domain.startswith("www."):
@@ -403,6 +399,7 @@ class ICPDiscoveryAgent(BaseAgent):
             Tuple of (portfolio_companies, updated_social_profiles, tokens_used, cost_aud)
         """
         import logging
+
         logger = logging.getLogger(__name__)
 
         logger.info(f"Starting portfolio fallback discovery for: {company_name}")
@@ -430,7 +427,9 @@ class ICPDiscoveryAgent(BaseAgent):
             if data.get("found"):
                 apollo_description = data.get("description")
                 apollo_keywords = data.get("keywords", [])
-                logger.info(f"Tier F1: Found Apollo data - description length: {len(apollo_description or '')}")
+                logger.info(
+                    f"Tier F1: Found Apollo data - description length: {len(apollo_description or '')}"
+                )
             else:
                 logger.info("Tier F1: Agency not found in Apollo")
 
@@ -457,14 +456,18 @@ class ICPDiscoveryAgent(BaseAgent):
                     new_links["facebook"] = discovered.facebook_url
 
                 if new_links:
-                    logger.info(f"Tier F2: Discovered {len(new_links)} new social profiles: {list(new_links.keys())}")
+                    logger.info(
+                        f"Tier F2: Discovered {len(new_links)} new social profiles: {list(new_links.keys())}"
+                    )
                     # Scrape the newly discovered profiles
                     merged_links = {**collected_social_links, **new_links}
                     updated_social_profiles = await self._scrape_social_profiles(
                         merged_links,
                         company_name,
                     )
-                    logger.info(f"Tier F2: Scraped profiles - platforms found: {updated_social_profiles.platforms_found}")
+                    logger.info(
+                        f"Tier F2: Scraped profiles - platforms found: {updated_social_profiles.platforms_found}"
+                    )
 
         # Get LinkedIn description from updated profiles
         if updated_social_profiles and updated_social_profiles.linkedin:
@@ -580,6 +583,7 @@ class ICPDiscoveryAgent(BaseAgent):
 
             # Log scraped content info
             import logging
+
             logger = logging.getLogger(__name__)
             logger.info(f"Scraped {scraped.page_count} pages from {website_url}")
             logger.info(f"Raw HTML length: {len(scraped.raw_html)} chars")
@@ -610,24 +614,26 @@ class ICPDiscoveryAgent(BaseAgent):
             # Collect social links from parsed pages
             collected_social_links: dict[str, str] = {}
             for page in parsed.pages:
-                if hasattr(page, 'social_links') and page.social_links:
+                if hasattr(page, "social_links") and page.social_links:
                     # Merge social links from all pages (first found wins)
                     for platform, url in page.social_links.items():
                         if platform not in collected_social_links and url:
                             collected_social_links[platform] = url
 
             # Also check top-level social_links from parser output
-            if hasattr(parsed, 'social_links') and parsed.social_links:
+            if hasattr(parsed, "social_links") and parsed.social_links:
                 for url in parsed.social_links:
                     url_lower = url.lower()
-                    if 'linkedin.com' in url_lower and 'linkedin' not in collected_social_links:
-                        collected_social_links['linkedin'] = url
-                    elif 'instagram.com' in url_lower and 'instagram' not in collected_social_links:
-                        collected_social_links['instagram'] = url
-                    elif 'facebook.com' in url_lower and 'facebook' not in collected_social_links:
-                        collected_social_links['facebook'] = url
-                    elif ('twitter.com' in url_lower or 'x.com' in url_lower) and 'twitter' not in collected_social_links:
-                        collected_social_links['twitter'] = url
+                    if "linkedin.com" in url_lower and "linkedin" not in collected_social_links:
+                        collected_social_links["linkedin"] = url
+                    elif "instagram.com" in url_lower and "instagram" not in collected_social_links:
+                        collected_social_links["instagram"] = url
+                    elif "facebook.com" in url_lower and "facebook" not in collected_social_links:
+                        collected_social_links["facebook"] = url
+                    elif (
+                        "twitter.com" in url_lower or "x.com" in url_lower
+                    ) and "twitter" not in collected_social_links:
+                        collected_social_links["twitter"] = url
 
             logger.info(f"Collected social links: {collected_social_links}")
 
@@ -671,9 +677,7 @@ class ICPDiscoveryAgent(BaseAgent):
                 + portfolio_result.tokens_used
             )
             total_cost += (
-                services_result.cost_aud
-                + value_prop_result.cost_aud
-                + portfolio_result.cost_aud
+                services_result.cost_aud + value_prop_result.cost_aud + portfolio_result.cost_aud
             )
 
             if services_data:
@@ -694,20 +698,16 @@ class ICPDiscoveryAgent(BaseAgent):
                     "extract_social_clients",
                     company_name=parsed.company_name,
                     linkedin_description=(
-                        social_profiles.linkedin.description
-                        if social_profiles.linkedin else None
+                        social_profiles.linkedin.description if social_profiles.linkedin else None
                     ),
                     linkedin_specialties=(
-                        social_profiles.linkedin.specialties
-                        if social_profiles.linkedin else []
+                        social_profiles.linkedin.specialties if social_profiles.linkedin else []
                     ),
                     instagram_bio=(
-                        social_profiles.instagram.bio
-                        if social_profiles.instagram else None
+                        social_profiles.instagram.bio if social_profiles.instagram else None
                     ),
                     facebook_about=(
-                        social_profiles.facebook.about
-                        if social_profiles.facebook else None
+                        social_profiles.facebook.about if social_profiles.facebook else None
                     ),
                     existing_portfolio=existing_names,
                 )
@@ -741,13 +741,16 @@ class ICPDiscoveryAgent(BaseAgent):
                     f"Portfolio empty for {parsed.company_name} - triggering fallback discovery"
                 )
 
-                fallback_companies, fallback_social, fallback_tokens, fallback_cost = (
-                    await self._portfolio_fallback_discovery(
-                        company_name=parsed.company_name,
-                        website_domain=self._extract_domain(website_url),
-                        collected_social_links=collected_social_links,
-                        social_profiles=social_profiles,
-                    )
+                (
+                    fallback_companies,
+                    fallback_social,
+                    fallback_tokens,
+                    fallback_cost,
+                ) = await self._portfolio_fallback_discovery(
+                    company_name=parsed.company_name,
+                    website_domain=self._extract_domain(website_url),
+                    collected_social_links=collected_social_links,
+                    social_profiles=social_profiles,
                 )
 
                 all_portfolio_companies.extend(fallback_companies)
@@ -762,9 +765,7 @@ class ICPDiscoveryAgent(BaseAgent):
                             f"Updated social profiles from fallback: {social_profiles.platforms_found}"
                         )
 
-                logger.info(
-                    f"Fallback discovery found {len(fallback_companies)} companies"
-                )
+                logger.info(f"Fallback discovery found {len(fallback_companies)} companies")
 
             # Step 4: Enrich portfolio companies
             enriched_companies: list[EnrichedCompany] = []
@@ -779,9 +780,7 @@ class ICPDiscoveryAgent(BaseAgent):
                     for c in all_portfolio_companies[:30]  # Limit to 30 (increased from 15)
                 ]
 
-                enrich_result = await self.scraper.enrich_portfolio_batch(
-                    companies_to_enrich
-                )
+                enrich_result = await self.scraper.enrich_portfolio_batch(companies_to_enrich)
 
                 if enrich_result.success and enrich_result.data:
                     for ec in enrich_result.data:
@@ -806,9 +805,7 @@ class ICPDiscoveryAgent(BaseAgent):
             # Step 5: Classify industries + estimate company size (parallel)
             services_list = []
             if services_data:
-                services_list = [
-                    ServiceInfo(**s.model_dump()) for s in services_data.services
-                ]
+                services_list = [ServiceInfo(**s.model_dump()) for s in services_data.services]
 
             # Use all_portfolio_companies which includes social-extracted clients
             portfolio_list = all_portfolio_companies
@@ -840,9 +837,7 @@ class ICPDiscoveryAgent(BaseAgent):
                 company_name=parsed.company_name,
             )
 
-            industry_result, size_result = await asyncio.gather(
-                industry_task, size_task
-            )
+            industry_result, size_result = await asyncio.gather(industry_task, size_task)
 
             industry_data = industry_result.data if industry_result.success else None
             size_data = size_result.data if size_result.success else None
@@ -864,12 +859,8 @@ class ICPDiscoveryAgent(BaseAgent):
                 "derive_icp",
                 enriched_portfolio=[ec.model_dump() for ec in enriched_companies],
                 classified_industries=[i.model_dump() for i in classified_industries],
-                services_offered=(
-                    services_data.primary_categories if services_data else []
-                ),
-                value_proposition=(
-                    value_prop_data.value_proposition if value_prop_data else ""
-                ),
+                services_offered=(services_data.primary_categories if services_data else []),
+                value_proposition=(value_prop_data.value_proposition if value_prop_data else ""),
                 company_name=parsed.company_name,
             )
 
@@ -883,9 +874,7 @@ class ICPDiscoveryAgent(BaseAgent):
                 als_weights_result = await self.use_skill(
                     "suggest_als_weights",
                     icp_profile=icp_data.icp.model_dump(),
-                    services_offered=(
-                        services_data.primary_categories if services_data else []
-                    ),
+                    services_offered=(services_data.primary_categories if services_data else []),
                     company_name=parsed.company_name,
                 )
                 total_tokens += als_weights_result.tokens_used
@@ -895,53 +884,33 @@ class ICPDiscoveryAgent(BaseAgent):
             profile = ICPProfile(
                 company_name=parsed.company_name,
                 website_url=website_url,
-                company_description=(
-                    value_prop_data.value_proposition if value_prop_data else ""
-                ),
+                company_description=(value_prop_data.value_proposition if value_prop_data else ""),
                 services_offered=(
                     [s.name for s in services_data.services] if services_data else []
                 ),
                 primary_service_categories=(
                     services_data.primary_categories if services_data else []
                 ),
-                value_proposition=(
-                    value_prop_data.value_proposition if value_prop_data else ""
-                ),
+                value_proposition=(value_prop_data.value_proposition if value_prop_data else ""),
                 taglines=(value_prop_data.taglines if value_prop_data else []),
-                differentiators=(
-                    value_prop_data.differentiators if value_prop_data else []
-                ),
+                differentiators=(value_prop_data.differentiators if value_prop_data else []),
                 team_size=(size_data.team_size if size_data else None),
                 size_range=(size_data.size_range if size_data else "small"),
-                years_in_business=(
-                    size_data.years_in_business if size_data else None
-                ),
+                years_in_business=(size_data.years_in_business if size_data else None),
                 portfolio_companies=[c.company_name for c in all_portfolio_companies],
                 enriched_portfolio=[ec.model_dump() for ec in enriched_companies],
-                notable_brands=(
-                    portfolio_data.notable_brands if portfolio_data else []
-                ),
-                icp_industries=(
-                    icp_data.icp.icp_industries if icp_data and icp_data.icp else []
-                ),
+                notable_brands=(portfolio_data.notable_brands if portfolio_data else []),
+                icp_industries=(icp_data.icp.icp_industries if icp_data and icp_data.icp else []),
                 icp_company_sizes=(
                     icp_data.icp.icp_company_sizes if icp_data and icp_data.icp else []
                 ),
                 icp_revenue_ranges=(
                     icp_data.icp.icp_revenue_ranges if icp_data and icp_data.icp else []
                 ),
-                icp_locations=(
-                    icp_data.icp.icp_locations if icp_data and icp_data.icp else []
-                ),
-                icp_titles=(
-                    icp_data.icp.icp_titles if icp_data and icp_data.icp else []
-                ),
-                icp_pain_points=(
-                    icp_data.icp.icp_pain_points if icp_data and icp_data.icp else []
-                ),
-                icp_signals=(
-                    icp_data.icp.icp_signals if icp_data and icp_data.icp else []
-                ),
+                icp_locations=(icp_data.icp.icp_locations if icp_data and icp_data.icp else []),
+                icp_titles=(icp_data.icp.icp_titles if icp_data and icp_data.icp else []),
+                icp_pain_points=(icp_data.icp.icp_pain_points if icp_data and icp_data.icp else []),
+                icp_signals=(icp_data.icp.icp_signals if icp_data and icp_data.icp else []),
                 als_weights=(
                     als_weights_result.data.weights.model_dump()
                     if als_weights_result and als_weights_result.success
@@ -950,15 +919,9 @@ class ICPDiscoveryAgent(BaseAgent):
                 social_links=collected_social_links,
                 social_profiles=social_profiles,
                 pattern_description=(
-                    icp_data.icp.pattern_description
-                    if icp_data and icp_data.icp
-                    else ""
+                    icp_data.icp.pattern_description if icp_data and icp_data.icp else ""
                 ),
-                confidence=(
-                    icp_data.icp.pattern_confidence
-                    if icp_data and icp_data.icp
-                    else 0.5
-                ),
+                confidence=(icp_data.icp.pattern_confidence if icp_data and icp_data.icp else 0.5),
             )
 
             # Complete result
@@ -967,18 +930,14 @@ class ICPDiscoveryAgent(BaseAgent):
             result.total_tokens = total_tokens
             result.total_cost_aud = total_cost
             result.completed_at = datetime.utcnow()
-            result.duration_seconds = (
-                result.completed_at - result.started_at
-            ).total_seconds()
+            result.duration_seconds = (result.completed_at - result.started_at).total_seconds()
 
             return result
 
         except Exception as e:
             result.error = str(e)
             result.completed_at = datetime.utcnow()
-            result.duration_seconds = (
-                result.completed_at - result.started_at
-            ).total_seconds()
+            result.duration_seconds = (result.completed_at - result.started_at).total_seconds()
             return result
 
 

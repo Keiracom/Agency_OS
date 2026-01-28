@@ -35,10 +35,28 @@ HOT_THRESHOLD = 85
 
 # Executive titles that warrant SDK enrichment
 EXECUTIVE_TITLES = [
-    "ceo", "chief executive", "founder", "co-founder", "cofounder",
-    "vp", "vice president", "director", "head of", "svp", "evp",
-    "cto", "cfo", "cmo", "coo", "cpo", "ciso", "chief",
-    "president", "owner", "partner", "managing director",
+    "ceo",
+    "chief executive",
+    "founder",
+    "co-founder",
+    "cofounder",
+    "vp",
+    "vice president",
+    "director",
+    "head of",
+    "svp",
+    "evp",
+    "cto",
+    "cfo",
+    "cmo",
+    "coo",
+    "cpo",
+    "ciso",
+    "chief",
+    "president",
+    "owner",
+    "partner",
+    "managing director",
 ]
 
 # Minimum employee count for "enterprise" classification
@@ -95,7 +113,13 @@ def calculate_data_completeness(lead_data: dict[str, Any]) -> float:
         value = lead_data.get(field)
         if value:
             # Check for non-empty values
-            if isinstance(value, str) and value.strip() or isinstance(value, (list, dict)) and len(value) > 0 or isinstance(value, (int, float, bool)):
+            if (
+                isinstance(value, str)
+                and value.strip()
+                or isinstance(value, (list, dict))
+                and len(value) > 0
+                or isinstance(value, (int, float, bool))
+            ):
                 earned_weight += weight
 
     completeness = earned_weight / total_weight if total_weight > 0 else 0.0
@@ -155,7 +179,9 @@ def should_use_sdk_enrichment(lead_data: dict[str, Any]) -> tuple[bool, list[str
         logger.debug(f"SDK trigger: sparse data ({completeness:.0%} complete)")
 
     # Trigger 2: Enterprise company (500+ employees)
-    emp_count = lead_data.get("company_employee_count") or lead_data.get("organization_employee_count") or 0
+    emp_count = (
+        lead_data.get("company_employee_count") or lead_data.get("organization_employee_count") or 0
+    )
     if emp_count >= ENTERPRISE_THRESHOLD:
         signals.append(f"enterprise_{emp_count}_employees")
         logger.debug(f"SDK trigger: enterprise ({emp_count} employees)")
@@ -183,6 +209,7 @@ def should_use_sdk_enrichment(lead_data: dict[str, Any]) -> tuple[bool, list[str
             except TypeError:
                 # Handle case where funding_date is date not datetime
                 from datetime import date
+
                 if isinstance(funding_date, date):
                     days_since = (datetime.utcnow().date() - funding_date).days
                     if 0 <= days_since <= 90:
@@ -277,8 +304,8 @@ def get_sdk_coverage_estimate(total_leads: int, hot_percentage: float = 0.10) ->
 
     # Cost estimates (per lead, AUD)
     enrichment_cost = 1.21  # ~$1.00-1.21 per enrichment
-    email_cost = 0.25       # ~$0.20-0.25 per email
-    voice_kb_cost = 1.79    # ~$1.50-1.79 per voice KB
+    email_cost = 0.25  # ~$0.20-0.25 per email
+    voice_kb_cost = 1.79  # ~$1.50-1.79 per voice KB
 
     return {
         "total_leads": total_leads,
@@ -300,6 +327,6 @@ def get_sdk_coverage_estimate(total_leads: int, hot_percentage: float = 0.10) ->
             sdk_enrichment_count * enrichment_cost
             + sdk_email_count * email_cost
             + sdk_voice_kb_count * voice_kb_cost,
-            2
+            2,
         ),
     }

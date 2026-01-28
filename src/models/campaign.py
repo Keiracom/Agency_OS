@@ -58,6 +58,7 @@ if TYPE_CHECKING:
 
 class CampaignType:
     """Campaign type values."""
+
     AI_SUGGESTED = "ai_suggested"
     CUSTOM = "custom"
 
@@ -89,7 +90,12 @@ class Campaign(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[CampaignStatus] = mapped_column(
-        ENUM(CampaignStatus, name="campaign_status", create_type=False, values_callable=lambda x: [e.value for e in x]),
+        ENUM(
+            CampaignStatus,
+            name="campaign_status",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         nullable=False,
         default=CampaignStatus.DRAFT,
     )
@@ -129,7 +135,12 @@ class Campaign(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
 
     # Permission mode (overrides client default)
     permission_mode: Mapped[PermissionMode | None] = mapped_column(
-        ENUM(PermissionMode, name="permission_mode", create_type=False, values_callable=lambda x: [e.value for e in x]),
+        ENUM(
+            PermissionMode,
+            name="permission_mode",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         nullable=True,
     )
 
@@ -346,7 +357,12 @@ class CampaignResource(Base, UUIDMixin, TimestampMixin):
 
     # Resource info
     channel: Mapped[ChannelType] = mapped_column(
-        ENUM(ChannelType, name="channel_type", create_type=False, values_callable=lambda x: [e.value for e in x]),
+        ENUM(
+            ChannelType,
+            name="channel_type",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         nullable=False,
     )
     resource_id: Mapped[str] = mapped_column(Text, nullable=False)
@@ -409,7 +425,12 @@ class CampaignSequence(Base, UUIDMixin, TimestampMixin):
     # Sequence config
     step_number: Mapped[int] = mapped_column(Integer, nullable=False)
     channel: Mapped[ChannelType] = mapped_column(
-        ENUM(ChannelType, name="channel_type", create_type=False, values_callable=lambda x: [e.value for e in x]),
+        ENUM(
+            ChannelType,
+            name="channel_type",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         nullable=False,
     )
     delay_days: Mapped[int] = mapped_column(Integer, default=3)

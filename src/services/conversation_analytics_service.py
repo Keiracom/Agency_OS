@@ -67,10 +67,13 @@ class ConversationAnalyticsService:
             SELECT * FROM get_conversation_analytics(:client_id, :days)
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "days": days,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "days": days,
+            },
+        )
 
         row = result.fetchone()
         if not row:
@@ -101,11 +104,14 @@ class ConversationAnalyticsService:
             SELECT * FROM get_common_questions(:client_id, :days, :limit)
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "days": days,
-            "limit": limit,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "days": days,
+                "limit": limit,
+            },
+        )
 
         rows = result.fetchall()
         return [dict(row._mapping) for row in rows]
@@ -149,10 +155,13 @@ class ConversationAnalyticsService:
             FROM objection_stats
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "days": days,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "days": days,
+            },
+        )
 
         rows = result.fetchall()
         return {
@@ -213,10 +222,13 @@ class ConversationAnalyticsService:
                 END
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "days": days,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "days": days,
+            },
+        )
 
         rows = result.fetchall()
 
@@ -267,10 +279,13 @@ class ConversationAnalyticsService:
             ORDER BY tm.position, tm.sentiment
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "days": days,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "days": days,
+            },
+        )
 
         rows = result.fetchall()
 
@@ -347,10 +362,13 @@ class ConversationAnalyticsService:
             GROUP BY outcome
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "days": days,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "days": days,
+            },
+        )
 
         rows = result.fetchall()
 
@@ -360,9 +378,15 @@ class ConversationAnalyticsService:
                 "count": row.count,
                 "avg_messages": float(row.avg_messages) if row.avg_messages else 0,
                 "avg_our_messages": float(row.avg_our_messages) if row.avg_our_messages else 0,
-                "avg_their_messages": float(row.avg_their_messages) if row.avg_their_messages else 0,
-                "avg_our_response_min": int(row.avg_our_response_min) if row.avg_our_response_min else 0,
-                "avg_their_response_min": int(row.avg_their_response_min) if row.avg_their_response_min else 0,
+                "avg_their_messages": float(row.avg_their_messages)
+                if row.avg_their_messages
+                else 0,
+                "avg_our_response_min": int(row.avg_our_response_min)
+                if row.avg_our_response_min
+                else 0,
+                "avg_their_response_min": int(row.avg_their_response_min)
+                if row.avg_their_response_min
+                else 0,
                 "avg_objections": float(row.avg_objections) if row.avg_objections else 0,
                 "avg_questions": float(row.avg_questions) if row.avg_questions else 0,
                 "most_common_final_sentiment": row.most_common_final_sentiment,
@@ -424,11 +448,14 @@ class ConversationAnalyticsService:
             LIMIT :limit
         """)
 
-        result = await self.session.execute(query, {
-            "client_id": client_id,
-            "days": days,
-            "limit": limit,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "client_id": client_id,
+                "days": days,
+                "limit": limit,
+            },
+        )
 
         rows = result.fetchall()
         return [dict(row._mapping) for row in rows]

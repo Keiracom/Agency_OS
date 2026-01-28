@@ -63,22 +63,21 @@ async def get_active_clients_task() -> list[dict[str, Any]]:
         List of client dicts with id, name, tier, credits_remaining, credits_reset_at
     """
     async with get_db_session() as db:
-        stmt = (
-            select(
-                Client.id,
-                Client.name,
-                Client.tier,
-                Client.credits_remaining,
-                Client.credits_reset_at,
-            )
-            .where(
-                and_(
-                    Client.deleted_at.is_(None),
-                    Client.subscription_status.in_([
+        stmt = select(
+            Client.id,
+            Client.name,
+            Client.tier,
+            Client.credits_remaining,
+            Client.credits_reset_at,
+        ).where(
+            and_(
+                Client.deleted_at.is_(None),
+                Client.subscription_status.in_(
+                    [
                         SubscriptionStatus.ACTIVE,
                         SubscriptionStatus.TRIALING,
-                    ]),
-                )
+                    ]
+                ),
             )
         )
 
@@ -87,13 +86,15 @@ async def get_active_clients_task() -> list[dict[str, Any]]:
 
         clients = []
         for row in rows:
-            clients.append({
-                "id": row.id,
-                "name": row.name,
-                "tier": row.tier.value if row.tier else "ignition",
-                "credits_remaining": row.credits_remaining,
-                "credits_reset_at": row.credits_reset_at,
-            })
+            clients.append(
+                {
+                    "id": row.id,
+                    "name": row.name,
+                    "tier": row.tier.value if row.tier else "ignition",
+                    "credits_remaining": row.credits_remaining,
+                    "credits_reset_at": row.credits_reset_at,
+                }
+            )
 
         logger.info(f"Found {len(clients)} active clients for pacing check")
         return clients
@@ -132,9 +133,12 @@ async def calculate_daily_pacing_task(client_data: dict[str, Any]) -> dict[str, 
     if credits_reset_at:
         # Days since last reset (start of billing cycle)
         # credits_reset_at is the NEXT reset date, so current cycle started 30 days before that
-        cycle_start = credits_reset_at.date() if hasattr(credits_reset_at, 'date') else credits_reset_at
+        cycle_start = (
+            credits_reset_at.date() if hasattr(credits_reset_at, "date") else credits_reset_at
+        )
         # Approximate: cycle started ~30 days before next reset
         from datetime import timedelta
+
         cycle_start_approx = cycle_start - timedelta(days=30)
         day_in_cycle = max(1, (today - cycle_start_approx).days)
         day_in_cycle = min(day_in_cycle, WORK_DAYS_PER_MONTH)  # Cap at 22
@@ -165,10 +169,12 @@ async def calculate_daily_pacing_task(client_data: dict[str, Any]) -> dict[str, 
         # Also get cumulative outreach this billing cycle
         if credits_reset_at:
             from datetime import timedelta
+
             cycle_start = credits_reset_at - timedelta(days=30)
         else:
             # Assume cycle started 30 days ago
             from datetime import timedelta
+
             cycle_start = now - timedelta(days=30)
 
         cumulative_stmt = (
@@ -346,27 +352,33 @@ async def daily_pacing_check_flow(
 
             # Track flagged clients
             if alert_result["alert_type"] == "burning_fast":
-                flagged_fast.append({
-                    "client_id": alert_result["client_id"],
-                    "client_name": alert_result["client_name"],
-                    "pacing_percentage": alert_result["pacing_percentage"],
-                    "message": alert_result["alert_message"],
-                })
+                flagged_fast.append(
+                    {
+                        "client_id": alert_result["client_id"],
+                        "client_name": alert_result["client_name"],
+                        "pacing_percentage": alert_result["pacing_percentage"],
+                        "message": alert_result["alert_message"],
+                    }
+                )
             elif alert_result["alert_type"] == "burning_slow":
-                flagged_slow.append({
-                    "client_id": alert_result["client_id"],
-                    "client_name": alert_result["client_name"],
-                    "pacing_percentage": alert_result["pacing_percentage"],
-                    "message": alert_result["alert_message"],
-                })
+                flagged_slow.append(
+                    {
+                        "client_id": alert_result["client_id"],
+                        "client_name": alert_result["client_name"],
+                        "pacing_percentage": alert_result["pacing_percentage"],
+                        "message": alert_result["alert_message"],
+                    }
+                )
 
         except Exception as e:
             logger.error(f"Failed to check pacing for client {client['id']}: {e}")
-            all_results.append({
-                "client_id": str(client["id"]),
-                "client_name": client["name"],
-                "error": str(e),
-            })
+            all_results.append(
+                {
+                    "client_id": str(client["id"]),
+                    "client_name": client["name"],
+                    "error": str(e),
+                }
+            )
 
     total_flagged = len(flagged_fast) + len(flagged_slow)
 

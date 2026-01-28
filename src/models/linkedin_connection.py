@@ -27,11 +27,12 @@ if TYPE_CHECKING:
 
 class LinkedInConnectionStatus:
     """LinkedIn connection status constants."""
-    PENDING = "pending"       # Request sent, awaiting response
-    ACCEPTED = "accepted"     # Connection accepted
-    IGNORED = "ignored"       # 14 days no response
-    DECLINED = "declined"     # Explicitly declined
-    WITHDRAWN = "withdrawn"   # We withdrew stale request
+
+    PENDING = "pending"  # Request sent, awaiting response
+    ACCEPTED = "accepted"  # Connection accepted
+    IGNORED = "ignored"  # 14 days no response
+    DECLINED = "declined"  # Explicitly declined
+    WITHDRAWN = "withdrawn"  # We withdrew stale request
 
 
 class LinkedInConnection(Base, UUIDMixin):
@@ -160,6 +161,7 @@ class LinkedInConnection(Base, UUIDMixin):
     def mark_accepted(self, follow_up_days: int = 4) -> None:
         """Mark connection as accepted and schedule follow-up."""
         from datetime import timedelta
+
         self.status = LinkedInConnectionStatus.ACCEPTED
         self.responded_at = datetime.utcnow()
         self.follow_up_scheduled_for = datetime.utcnow() + timedelta(days=follow_up_days)

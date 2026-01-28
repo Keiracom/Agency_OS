@@ -77,20 +77,12 @@ class SocialProfiles(BaseModel):
     """Aggregate model containing all social media profiles."""
 
     linkedin: LinkedInCompanyProfile | None = Field(
-        default=None,
-        description="LinkedIn company profile"
+        default=None, description="LinkedIn company profile"
     )
-    instagram: InstagramProfile | None = Field(
-        default=None,
-        description="Instagram profile"
-    )
-    facebook: FacebookPageProfile | None = Field(
-        default=None,
-        description="Facebook page profile"
-    )
+    instagram: InstagramProfile | None = Field(default=None, description="Instagram profile")
+    facebook: FacebookPageProfile | None = Field(default=None, description="Facebook page profile")
     google_business: GoogleBusinessProfile | None = Field(
-        default=None,
-        description="Google Business profile"
+        default=None, description="Google Business profile"
     )
 
     @computed_field

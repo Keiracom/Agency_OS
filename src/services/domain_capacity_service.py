@@ -104,9 +104,7 @@ class DomainCapacityService:
         daily_limit = resource.get_daily_limit()
 
         # Count today's sends
-        used_today = await self._count_domain_sends_today(
-            db, resource.resource_value
-        )
+        used_today = await self._count_domain_sends_today(db, resource.resource_value)
 
         # Calculate remaining
         remaining = max(0, daily_limit - used_today)
@@ -119,10 +117,7 @@ class DomainCapacityService:
 
         # Determine if available for sending
         health_status = HealthStatus(resource.health_status)
-        is_available = (
-            health_status != HealthStatus.CRITICAL
-            and available_for_outbound > 0
-        )
+        is_available = health_status != HealthStatus.CRITICAL and available_for_outbound > 0
 
         return DomainCapacityResult(
             domain=resource.resource_value,
@@ -142,19 +137,14 @@ class DomainCapacityService:
         domain: str,
     ) -> int:
         """Count emails sent today for a domain."""
-        today_start = datetime.utcnow().replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
-        stmt = (
-            select(func.count(Activity.id))
-            .where(
-                and_(
-                    Activity.sender_domain == domain,
-                    Activity.action == "sent",
-                    Activity.channel == "email",
-                    Activity.created_at >= today_start,
-                )
+        stmt = select(func.count(Activity.id)).where(
+            and_(
+                Activity.sender_domain == domain,
+                Activity.action == "sent",
+                Activity.channel == "email",
+                Activity.created_at >= today_start,
             )
         )
         result = await db.execute(stmt)
@@ -221,15 +211,9 @@ class DomainCapacityService:
         total_available = sum(c.available_for_outbound for c in capacities)
 
         # Count domains by health
-        healthy_count = sum(
-            1 for c in capacities if c.health_status == HealthStatus.GOOD
-        )
-        warning_count = sum(
-            1 for c in capacities if c.health_status == HealthStatus.WARNING
-        )
-        critical_count = sum(
-            1 for c in capacities if c.health_status == HealthStatus.CRITICAL
-        )
+        healthy_count = sum(1 for c in capacities if c.health_status == HealthStatus.GOOD)
+        warning_count = sum(1 for c in capacities if c.health_status == HealthStatus.WARNING)
+        critical_count = sum(1 for c in capacities if c.health_status == HealthStatus.CRITICAL)
 
         return {
             "client_id": str(client_id),

@@ -29,7 +29,9 @@ logger = logging.getLogger(__name__)
 class MessagingRefinement(BaseModel):
     """A specific messaging/content refinement."""
 
-    element: str = Field(description="The element to refine (subject_line, pain_point, cta, angle, length)")
+    element: str = Field(
+        description="The element to refine (subject_line, pain_point, cta, angle, length)"
+    )
     current_approach: str = Field(description="Current approach being used")
     suggested_approach: str = Field(description="Suggested new approach")
     example: str = Field(description="Concrete example of the suggested approach")
@@ -223,13 +225,19 @@ async def run_what_analyzer(
         prompt_parts.append("\n## Current Campaign Performance\n")
         prompt_parts.append(f"- Open Rate: {campaign_metrics.get('open_rate', 'N/A')}%\n")
         prompt_parts.append(f"- Reply Rate: {campaign_metrics.get('reply_rate', 'N/A')}%\n")
-        prompt_parts.append(f"- Conversion Rate: {campaign_metrics.get('conversion_rate', 'N/A')}%\n")
+        prompt_parts.append(
+            f"- Conversion Rate: {campaign_metrics.get('conversion_rate', 'N/A')}%\n"
+        )
 
     # Business context
     if business_context:
         prompt_parts.append("\n## Business Context\n")
-        prompt_parts.append(f"- Value Proposition: {business_context.get('value_proposition', 'N/A')}\n")
-        prompt_parts.append(f"- Target Audience: {business_context.get('target_audience', 'N/A')}\n")
+        prompt_parts.append(
+            f"- Value Proposition: {business_context.get('value_proposition', 'N/A')}\n"
+        )
+        prompt_parts.append(
+            f"- Target Audience: {business_context.get('target_audience', 'N/A')}\n"
+        )
         prompt_parts.append(f"- Tone: {business_context.get('tone', 'professional')}\n")
 
     # Instructions

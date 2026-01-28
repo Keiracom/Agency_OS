@@ -1,39 +1,15 @@
 // Type declarations for modules without TypeScript types
 
+// Accept any icon from @tabler/icons-react
 declare module '@tabler/icons-react' {
   import { FC, SVGProps } from 'react';
-  
   type IconComponent = FC<SVGProps<SVGSVGElement>>;
-  
-  export const IconArrowLeft: IconComponent;
-  export const IconArrowRight: IconComponent;
-  export const IconArrowNarrowLeft: IconComponent;
-  export const IconArrowNarrowRight: IconComponent;
-  export const IconX: IconComponent;
-  export const IconUpload: IconComponent;
-  export const IconLayoutNavbarCollapse: IconComponent;
-  export const IconBrandGithub: IconComponent;
-  export const IconBrandX: IconComponent;
-  export const IconExchange: IconComponent;
-  export const IconHome: IconComponent;
-  export const IconNewSection: IconComponent;
-  export const IconTerminal2: IconComponent;
-  export const IconBrandApple: IconComponent;
-  export const IconSearch: IconComponent;
-  export const IconWorld: IconComponent;
-  export const IconCommand: IconComponent;
-  export const IconCaretRightFilled: IconComponent;
-  export const IconCaretDownFilled: IconComponent;
-  export const IconCaretUpFilled: IconComponent;
-  export const IconDotsVertical: IconComponent;
-  export const IconMicrophone: IconComponent;
-  export const IconChevronUp: IconComponent;
-  export const IconBrightnessUp: IconComponent;
-  export const IconBrightnessDown: IconComponent;
+  const value: { [key: string]: IconComponent };
+  export = value;
 }
 
 declare module 'three-globe' {
-  import { Object3D } from 'three';
+  import { Object3D, Material } from 'three';
   
   class ThreeGlobe extends Object3D {
     constructor();
@@ -67,10 +43,11 @@ declare module 'three-globe' {
     pointAltitude(altitude: number): this;
     pointRadius(radius: number): this;
     ringsData(data: unknown[]): this;
-    ringColor(colorFn: ((t: number) => (e: unknown) => string) | string): this;
+    ringColor(colorFn: (() => string) | string | ((t: number) => (e: unknown) => string)): this;
     ringMaxRadius(radiusOrFn: number | ((e: unknown) => number)): this;
     ringPropagationSpeed(speedOrFn: number | ((e: unknown) => number)): this;
     ringRepeatPeriod(periodOrFn: number | ((e: unknown) => number)): this;
+    globeMaterial(): Material;
   }
   
   export default ThreeGlobe;

@@ -188,6 +188,11 @@ class Settings(BaseSettings):
     # === Video AI (HeyGen) ===
     heygen_api_key: str = Field(default="", description="HeyGen API key for AI avatar videos")
 
+    # === YouTube Data API v3 ===
+    youtube_client_id: str = Field(default="", description="YouTube OAuth 2.0 client ID")
+    youtube_client_secret: str = Field(default="", description="YouTube OAuth 2.0 client secret")
+    youtube_refresh_token: str = Field(default="", description="YouTube OAuth 2.0 refresh token")
+
     # === Stripe ===
     stripe_api_key: str = Field(default="", description="Stripe secret key")
     stripe_publishable_key: str = Field(default="", description="Stripe publishable key")

@@ -118,6 +118,12 @@ LINKEDIN_HIGH_CONNECTIONS_BOOST = 2  # 500+ connections (influential)
 LINKEDIN_HIGH_FOLLOWERS_BOOST = 2  # Company 1000+ followers
 LINKEDIN_RECENT_ACTIVITY_BOOST = 1  # Posted in last 30 days
 
+# Phase 24E: Funnel conversion patterns boost (max 12 points boost)
+MAX_FUNNEL_BOOST = 12
+FUNNEL_HIGH_SHOW_RATE_BOOST = 4  # Tier has high show rate (80%+)
+FUNNEL_GOOD_DEAL_RATE_BOOST = 4  # Good meeting-to-deal conversion (40%+)
+FUNNEL_STRONG_WIN_RATE_BOOST = 4  # Strong win rate (30%+)
+
 # Default component weights (Phase 16)
 # These are used when no learned weights are available
 DEFAULT_WEIGHTS = {

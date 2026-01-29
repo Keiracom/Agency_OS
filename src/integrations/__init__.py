@@ -3,7 +3,7 @@
 FILE: src/integrations/__init__.py
 PURPOSE: Integrations package - External API wrappers (LAYER 2)
 PHASE: 1
-TASK: INT-001 to INT-012
+TASK: INT-001 to INT-013
 DEPENDENCIES:
   - src/models/*
   - src/exceptions.py
@@ -13,12 +13,16 @@ RULES APPLIED:
 
 # Agency OS - Integrations Package
 
+from src.integrations.buffer import BufferClient
 from src.integrations.clicksend import ClickSendClient, get_clicksend_client
 from src.integrations.elevenlabs import ElevenLabsClient, get_elevenlabs_client
+from src.integrations.heygen import HeyGenClient, get_heygen_client
 from src.integrations.serper import SerperClient, get_serper_client
+from src.integrations.twitter import TwitterClient, get_twitter_client
 from src.integrations.vapi import VapiClient, get_vapi_client
 
 __all__ = [
+    "BufferClient",
     "SerperClient",
     "get_serper_client",
     "VapiClient",
@@ -27,4 +31,6 @@ __all__ = [
     "get_elevenlabs_client",
     "ClickSendClient",
     "get_clicksend_client",
+    "HeyGenClient",
+    "get_heygen_client",
 ]

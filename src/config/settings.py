@@ -131,6 +131,17 @@ class Settings(BaseSettings):
         default="", description="HeyReach API key (deprecated, use Unipile)"
     )
 
+    # === Twitter/X API v2 ===
+    twitter_api_key: str = Field(default="", description="Twitter API key (consumer key)")
+    twitter_api_secret: str = Field(default="", description="Twitter API secret (consumer secret)")
+    twitter_access_token: str = Field(default="", description="Twitter OAuth 1.0a access token")
+    twitter_access_secret: str = Field(
+        default="", description="Twitter OAuth 1.0a access token secret"
+    )
+    twitter_bearer_token: str = Field(
+        default="", description="Twitter OAuth 2.0 bearer token (read-only)"
+    )
+
     # === Unipile (LinkedIn Automation - replacing HeyReach) ===
     unipile_api_url: str = Field(default="", description="Unipile API base URL")
     unipile_api_key: str = Field(default="", description="Unipile API key")
@@ -167,6 +178,9 @@ class Settings(BaseSettings):
     vapi_phone_number_id: str = Field(default="", description="Twilio number linked in Vapi")
     elevenlabs_api_key: str = Field(default="", description="ElevenLabs API key")
 
+    # === Video AI (HeyGen) ===
+    heygen_api_key: str = Field(default="", description="HeyGen API key for AI avatar videos")
+
     # === Stripe ===
     stripe_api_key: str = Field(default="", description="Stripe secret key")
     stripe_publishable_key: str = Field(default="", description="Stripe publishable key")
@@ -176,6 +190,9 @@ class Settings(BaseSettings):
     stripe_price_dominance: str = Field(
         default="", description="Stripe Price ID for Dominance tier"
     )
+
+    # === Social Media Scheduling ===
+    buffer_api_key: str = Field(default="", description="Buffer API access token")
 
     # === Calendar/Meetings ===
     calcom_api_key: str = Field(default="", description="Cal.com API key")

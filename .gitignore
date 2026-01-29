@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+.venv/
+
+# Build artifacts
+builds/
+*.apk
+
+# Logs
+logs/
+
+# Cloned repos (track separately)
+Agency_OS/
+
+# Local/temp
+app-data/
+canvas/
+*.png
+*.html
+
+# Clawdbot system
+.clawdhub/
+projects/elliot-mobile/
+projects/elliot-status/

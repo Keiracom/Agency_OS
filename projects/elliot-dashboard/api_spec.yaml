@@ -1,0 +1,1328 @@
+openapi: 3.1.0
+info:
+  title: Elliot Dashboard API
+  description: API endpoints for Elliot's memory, knowledge, and activity dashboard
+  version: 1.0.0
+  contact:
+    name: Agency OS
+    
+servers:
+  - url: https://api.agency-os.com
+    description: Production
+  - url: http://localhost:8000
+    description: Local development
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: memory
+    description: Daily logs, weekly rollups, and patterns
+  - name: knowledge
+    description: Rules, learnings, and decisions
+  - name: activity
+    description: Real-time agent activity stream
+  - name: sync
+    description: File synchronization operations
+  - name: health
+    description: Service health monitoring
+
+paths:
+  # ============================================
+  # MEMORY ENDPOINTS
+  # ============================================
+  
+  /api/elliot/memory/daily:
+    get:
+      tags: [memory]
+      summary: List daily logs
+      description: Retrieve paginated list of daily memory logs
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Start date filter (inclusive)
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: End date filter (inclusive)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 30
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Full-text search in accomplishments and notes
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DailyLog'
+                  total:
+                    type: integer
+                  hasMore:
+                    type: boolean
+    
+    post:
+      tags: [memory]
+      summary: Create or update daily log
+      description: Upsert a daily log entry (by date)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DailyLogInput'
+      responses:
+        '200':
+          description: Created/updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyLog'
+
+  /api/elliot/memory/daily/{date}:
+    get:
+      tags: [memory]
+      summary: Get specific daily log
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyLog'
+        '404':
+          description: Not found
+
+  /api/elliot/memory/weekly:
+    get:
+      tags: [memory]
+      summary: List weekly rollups
+      parameters:
+        - name: year
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 12
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WeeklyRollup'
+
+  /api/elliot/memory/weekly/{year_week}:
+    get:
+      tags: [memory]
+      summary: Get specific weekly rollup
+      parameters:
+        - name: year_week
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "2026-W04"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeeklyRollup'
+
+  /api/elliot/memory/patterns:
+    get:
+      tags: [memory]
+      summary: Get all patterns
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, resolved, archived]
+            default: active
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pattern'
+
+    post:
+      tags: [memory]
+      summary: Create pattern
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatternInput'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pattern'
+
+  /api/elliot/memory/patterns/{id}:
+    patch:
+      tags: [memory]
+      summary: Update pattern
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatternInput'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pattern'
+
+  # ============================================
+  # KNOWLEDGE ENDPOINTS
+  # ============================================
+
+  /api/elliot/knowledge/rules:
+    get:
+      tags: [knowledge]
+      summary: Get all rules
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: active_only
+          in: query
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Rule'
+
+    put:
+      tags: [knowledge]
+      summary: Replace all rules
+      description: Bulk update rules (syncs from RULES.md)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/RuleInput'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Rule'
+
+  /api/elliot/knowledge/learnings:
+    get:
+      tags: [knowledge]
+      summary: List learnings
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: impact_level
+          in: query
+          schema:
+            type: string
+            enum: [high, medium, low]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Learning'
+                  total:
+                    type: integer
+
+    post:
+      tags: [knowledge]
+      summary: Add learning
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LearningInput'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Learning'
+
+  /api/elliot/knowledge/learnings/{id}:
+    get:
+      tags: [knowledge]
+      summary: Get learning by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Learning'
+
+    patch:
+      tags: [knowledge]
+      summary: Update learning
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LearningInput'
+      responses:
+        '200':
+          description: Updated
+
+  /api/elliot/knowledge/decisions:
+    get:
+      tags: [knowledge]
+      summary: List decisions
+      parameters:
+        - name: outcome_status
+          in: query
+          schema:
+            type: string
+            enum: [pending, success, partial, failure]
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: importance
+          in: query
+          schema:
+            type: string
+            enum: [critical, high, medium, low]
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Decision'
+                  stats:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      pending:
+                        type: integer
+                      success:
+                        type: integer
+                      failure:
+                        type: integer
+
+    post:
+      tags: [knowledge]
+      summary: Log decision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionInput'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Decision'
+
+  /api/elliot/knowledge/decisions/{id}:
+    get:
+      tags: [knowledge]
+      summary: Get decision by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Decision'
+
+    patch:
+      tags: [knowledge]
+      summary: Update decision (especially outcome)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                actual_outcome:
+                  type: string
+                outcome_status:
+                  type: string
+                  enum: [pending, success, partial, failure]
+                outcome_date:
+                  type: string
+                  format: date
+                learning_extracted:
+                  type: string
+      responses:
+        '200':
+          description: Updated
+
+  # ============================================
+  # ACTIVITY ENDPOINTS
+  # ============================================
+
+  /api/elliot/activity:
+    get:
+      tags: [activity]
+      summary: Get activity stream
+      parameters:
+        - name: activity_type
+          in: query
+          schema:
+            type: string
+            enum: [message, file_read, file_write, api_call, thinking, decision]
+        - name: channel
+          in: query
+          schema:
+            type: string
+        - name: session_id
+          in: query
+          schema:
+            type: string
+        - name: since
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Get activities after this timestamp
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 500
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Activity'
+                  latestTimestamp:
+                    type: string
+                    format: date-time
+
+    post:
+      tags: [activity]
+      summary: Log activity (internal use)
+      description: Used by Elliot/sync service to log activities
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityInput'
+      responses:
+        '201':
+          description: Created
+
+  /api/elliot/activity/stats:
+    get:
+      tags: [activity]
+      summary: Get activity statistics
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: granularity
+          in: query
+          schema:
+            type: string
+            enum: [hourly, daily, weekly]
+            default: daily
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  summary:
+                    type: object
+                    properties:
+                      totalActivities:
+                        type: integer
+                      totalTokens:
+                        type: integer
+                      activeChannels:
+                        type: array
+                        items:
+                          type: string
+                  timeSeries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ActivityStats'
+
+  # ============================================
+  # SYNC ENDPOINTS
+  # ============================================
+
+  /api/elliot/sync/trigger:
+    post:
+      tags: [sync]
+      summary: Trigger manual sync
+      description: Manually trigger file → database sync
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                direction:
+                  type: string
+                  enum: [file_to_db, db_to_file, bidirectional]
+                  default: file_to_db
+                file_types:
+                  type: array
+                  items:
+                    type: string
+                    enum: [daily, weekly, patterns, rules, learnings, decisions]
+                  description: Specific file types to sync (empty = all)
+      responses:
+        '202':
+          description: Sync initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sync_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                  message:
+                    type: string
+
+  /api/elliot/sync/status:
+    get:
+      tags: [sync]
+      summary: Get sync status
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  overall_status:
+                    type: string
+                    enum: [synced, syncing, pending, error]
+                  last_sync_at:
+                    type: string
+                    format: date-time
+                  files:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SyncState'
+                  conflicts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SyncConflict'
+
+  /api/elliot/sync/conflicts/{id}/resolve:
+    post:
+      tags: [sync]
+      summary: Resolve sync conflict
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - resolution
+              properties:
+                resolution:
+                  type: string
+                  enum: [use_file, use_db, merge]
+                merged_content:
+                  type: string
+                  description: Required if resolution is 'merge'
+      responses:
+        '200':
+          description: Conflict resolved
+
+  # ============================================
+  # HEALTH ENDPOINTS
+  # ============================================
+
+  /api/health/services:
+    get:
+      tags: [health]
+      summary: Get all service health
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  overall:
+                    type: string
+                    enum: [healthy, degraded, down]
+                  services:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServiceHealth'
+                  checked_at:
+                    type: string
+                    format: date-time
+
+  /api/health/services/{service_name}:
+    get:
+      tags: [health]
+      summary: Get specific service health
+      parameters:
+        - name: service_name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: include_history
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: history_hours
+          in: query
+          schema:
+            type: integer
+            default: 24
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ServiceHealth'
+                  - type: object
+                    properties:
+                      history:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            status:
+                              type: string
+                            response_time_ms:
+                              type: integer
+                            checked_at:
+                              type: string
+                              format: date-time
+
+  /api/health/check:
+    post:
+      tags: [health]
+      summary: Trigger health check
+      description: Immediately check health of services
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                services:
+                  type: array
+                  items:
+                    type: string
+                  description: Specific services to check (empty = all)
+      responses:
+        '200':
+          description: Health check results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServiceHealth'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # Memory Schemas
+    DailyLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        log_date:
+          type: string
+          format: date
+        accomplishments:
+          type: array
+          items:
+            type: string
+        interactions:
+          type: array
+          items:
+            type: object
+            properties:
+              channel:
+                type: string
+              with:
+                type: string
+              summary:
+                type: string
+              timestamp:
+                type: string
+        issues:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+        sync_status:
+          type: string
+        synced_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DailyLogInput:
+      type: object
+      required:
+        - log_date
+      properties:
+        log_date:
+          type: string
+          format: date
+        accomplishments:
+          type: array
+          items:
+            type: string
+        interactions:
+          type: array
+          items:
+            type: object
+        issues:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+        raw_content:
+          type: string
+          description: Full markdown content
+
+    WeeklyRollup:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        year_week:
+          type: string
+        week_start:
+          type: string
+          format: date
+        week_end:
+          type: string
+          format: date
+        key_accomplishments:
+          type: array
+          items:
+            type: string
+        decisions_made:
+          type: array
+          items:
+            type: object
+        patterns_noticed:
+          type: array
+          items:
+            type: string
+        open_questions:
+          type: array
+          items:
+            type: string
+        summary:
+          type: string
+
+    Pattern:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        pattern_key:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        status:
+          type: string
+          enum: [active, resolved, archived]
+        first_observed:
+          type: string
+          format: date
+        last_observed:
+          type: string
+          format: date
+        occurrence_count:
+          type: integer
+        evidence:
+          type: array
+          items:
+            type: object
+        related_learnings:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    PatternInput:
+      type: object
+      required:
+        - title
+        - description
+      properties:
+        pattern_key:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        status:
+          type: string
+        evidence:
+          type: array
+          items:
+            type: object
+
+    # Knowledge Schemas
+    Rule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        rule_key:
+          type: string
+        category:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          enum: [critical, standard, guideline]
+        is_active:
+          type: boolean
+        source:
+          type: string
+        added_date:
+          type: string
+          format: date
+        sort_order:
+          type: integer
+
+    RuleInput:
+      type: object
+      required:
+        - category
+        - title
+        - description
+      properties:
+        rule_key:
+          type: string
+        category:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+        is_active:
+          type: boolean
+        source:
+          type: string
+        sort_order:
+          type: integer
+
+    Learning:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        learning_key:
+          type: string
+        category:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        context:
+          type: string
+        source_type:
+          type: string
+        learned_date:
+          type: string
+          format: date
+        impact_level:
+          type: string
+          enum: [high, medium, low]
+        times_applied:
+          type: integer
+        evidence:
+          type: array
+          items:
+            type: object
+
+    LearningInput:
+      type: object
+      required:
+        - title
+        - description
+      properties:
+        learning_key:
+          type: string
+        category:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        context:
+          type: string
+        source_type:
+          type: string
+        impact_level:
+          type: string
+
+    Decision:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        decision_key:
+          type: string
+        title:
+          type: string
+        decision_date:
+          type: string
+          format: date
+        context:
+          type: string
+        options:
+          type: array
+          items:
+            type: object
+            properties:
+              option:
+                type: string
+              pros:
+                type: array
+                items:
+                  type: string
+              cons:
+                type: array
+                items:
+                  type: string
+        chosen_option:
+          type: string
+        rationale:
+          type: string
+        expected_outcome:
+          type: string
+        actual_outcome:
+          type: string
+        outcome_date:
+          type: string
+          format: date
+        outcome_status:
+          type: string
+          enum: [pending, success, partial, failure]
+        learning_extracted:
+          type: string
+        linked_learning_id:
+          type: string
+          format: uuid
+        category:
+          type: string
+        importance:
+          type: string
+          enum: [critical, high, medium, low]
+        stakeholders:
+          type: array
+          items:
+            type: string
+
+    DecisionInput:
+      type: object
+      required:
+        - title
+        - context
+        - chosen_option
+        - rationale
+      properties:
+        decision_key:
+          type: string
+        title:
+          type: string
+        decision_date:
+          type: string
+          format: date
+        context:
+          type: string
+        options:
+          type: array
+          items:
+            type: object
+        chosen_option:
+          type: string
+        rationale:
+          type: string
+        expected_outcome:
+          type: string
+        category:
+          type: string
+        importance:
+          type: string
+        stakeholders:
+          type: array
+          items:
+            type: string
+
+    # Activity Schemas
+    Activity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        activity_type:
+          type: string
+        channel:
+          type: string
+        summary:
+          type: string
+        details:
+          type: object
+        related_files:
+          type: array
+          items:
+            type: string
+        session_id:
+          type: string
+        duration_ms:
+          type: integer
+        token_usage:
+          type: object
+          properties:
+            input:
+              type: integer
+            output:
+              type: integer
+        status:
+          type: string
+        error_message:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    ActivityInput:
+      type: object
+      required:
+        - activity_type
+        - summary
+      properties:
+        activity_type:
+          type: string
+        channel:
+          type: string
+        summary:
+          type: string
+        details:
+          type: object
+        related_files:
+          type: array
+          items:
+            type: string
+        session_id:
+          type: string
+        duration_ms:
+          type: integer
+        token_usage:
+          type: object
+        status:
+          type: string
+        error_message:
+          type: string
+
+    ActivityStats:
+      type: object
+      properties:
+        stat_date:
+          type: string
+          format: date
+        stat_hour:
+          type: integer
+        total_activities:
+          type: integer
+        messages_sent:
+          type: integer
+        files_accessed:
+          type: integer
+        decisions_made:
+          type: integer
+        errors:
+          type: integer
+        total_input_tokens:
+          type: integer
+        total_output_tokens:
+          type: integer
+        channel_breakdown:
+          type: object
+        activity_breakdown:
+          type: object
+
+    # Sync Schemas
+    SyncState:
+      type: object
+      properties:
+        file_path:
+          type: string
+        file_type:
+          type: string
+        sync_status:
+          type: string
+          enum: [synced, pending, conflict, error]
+        last_sync_at:
+          type: string
+          format: date-time
+        last_sync_direction:
+          type: string
+        sync_error:
+          type: string
+
+    SyncConflict:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        file_path:
+          type: string
+        file_content:
+          type: string
+        db_content:
+          type: string
+        detected_at:
+          type: string
+          format: date-time
+
+    # Health Schemas
+    ServiceHealth:
+      type: object
+      properties:
+        service_name:
+          type: string
+        status:
+          type: string
+          enum: [healthy, degraded, down, unknown]
+        last_check_at:
+          type: string
+          format: date-time
+        response_time_ms:
+          type: integer
+        details:
+          type: object
+        error_message:
+          type: string

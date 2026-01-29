@@ -1,0 +1,1 @@
+# Competitive Intelligence\n\nDashboard research for AI SDR competitors.\n\n## Reports\n- artisan-dashboard.md\n- 11x-dashboard.md\n- regie-dashboard.md\n- aisdr-dashboard.md\n- instantly-smartlead-dashboard.md

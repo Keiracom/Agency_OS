@@ -12,15 +12,29 @@ deployments:
           SUPABASE_URL: "{{ $SUPABASE_URL }}"
           SUPABASE_SERVICE_KEY: "{{ $SUPABASE_SERVICE_KEY }}"
           APIFY_API_KEY: "{{ $APIFY_API_KEY }}"
-    schedule:
-      cron: "0 19 * * *"  # 7pm UTC = 6am AEST
+    schedules:
+      # Daily at 7am AEST = 21:00 UTC (previous day)
+      # AEST = UTC+11 during daylight saving, UTC+10 otherwise
+      # Using 21:00 UTC for winter (7am AEST) / 20:00 UTC for summer (7am AEDT)
+      - cron: "0 21 * * *"
+        timezone: "Australia/Sydney"
+        active: true
     tags:
       - learning
       - daily
-    description: Daily scrape of HN, ProductHunt, GitHub, YouTube, Reddit for knowledge base
+      - knowledge-pipeline
+    description: |
+      Daily scrape of multiple sources for knowledge base:
+      - HackerNews (top + Show HN + Ask HN)
+      - ProductHunt (today's launches with descriptions)
+      - GitHub Trending (Python, TypeScript, Collections)
+      - YouTube (target channels + AI/SaaS topics)
+      - Reddit (r/SaaS, r/Entrepreneur, r/sales, r/startups, etc.)
+      
+      Schedule: Daily at 7am AEST
     parameters:
-      hn_limit: 30
-      ph_limit: 5
-      gh_limit: 10
-      yt_limit: 20
-      reddit_limit: 30
+      hn_limit: 50
+      ph_limit: 10
+      gh_limit: 15
+      yt_limit: 30
+      reddit_limit: 50

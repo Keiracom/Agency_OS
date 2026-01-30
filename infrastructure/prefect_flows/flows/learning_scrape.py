@@ -1,10 +1,18 @@
 """
 Elliot Daily Learning Scrape Flow
 =================================
-Automated knowledge acquisition from HackerNews, ProductHunt, and GitHub Trending.
+Automated knowledge acquisition from HackerNews, ProductHunt, GitHub Trending,
+YouTube, and Reddit.
 
 Rate-limited to 1 request per 5 seconds. Writes to elliot_knowledge table.
 Includes relevance scoring to prioritize Agency OS-relevant content.
+
+Enhanced with:
+- YouTube: Specific tech/AI/SaaS channels via Apify
+- HackerNews: Show HN, Ask HN sections
+- ProductHunt: Today's launches with descriptions
+- GitHub: Language filters (Python, TypeScript) + Collections
+- Reddit: r/SaaS, r/Entrepreneur, r/sales, r/startups
 """
 
 import asyncio
@@ -241,6 +249,17 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
 APIFY_API_KEY = os.environ.get("APIFY_API_KEY")
 
+# Target YouTube channels for tech/AI/SaaS content
+YOUTUBE_CHANNELS = [
+    # Channel handles/URLs for specific tech channels
+    {"name": "Y Combinator", "handle": "@ycombinator", "url": "https://www.youtube.com/@ycombinator/videos"},
+    {"name": "Lex Fridman", "handle": "@lexfridman", "url": "https://www.youtube.com/@lexfridman/videos"},
+    {"name": "My First Million", "handle": "@MyFirstMillionPod", "url": "https://www.youtube.com/@MyFirstMillionPod/videos"},
+    {"name": "All-In Podcast", "handle": "@alaboringpodcast", "url": "https://www.youtube.com/@alaboringpodcast/videos"},
+    {"name": "Lenny's Podcast", "handle": "@LennysPodcast", "url": "https://www.youtube.com/@LennysPodcast/videos"},
+    {"name": "Greg Isenberg", "handle": "@gregisenberg", "url": "https://www.youtube.com/@gregisenberg/videos"},
+]
+
 # ============================================
 # Rate Limiter
 # ============================================
@@ -284,194 +303,305 @@ def get_supabase() -> Client:
 )
 async def scrape_hackernews(limit: int = 30) -> list[dict]:
     """
-    Scrape HackerNews front page stories.
+    Scrape HackerNews front page, Show HN, and Ask HN stories.
     Uses official HN API (free, no auth required).
+    
+    Enhanced to capture:
+    - Top stories (main page)
+    - Show HN posts (product launches, demos)
+    - Ask HN posts (questions, patterns, advice)
     """
     logger = get_run_logger()
-    logger.info(f"Scraping HackerNews top {limit} stories...")
+    logger.info(f"Scraping HackerNews (top + Show HN + Ask HN) limit: {limit}...")
     
     insights = []
     
+    # Define story sources with their endpoints and types
+    story_sources = [
+        ("topstories", "hackernews", limit),
+        ("showstories", "hackernews_show", limit // 2),  # Show HN
+        ("askstories", "hackernews_ask", limit // 2),    # Ask HN
+    ]
+    
     async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-        # Get top story IDs
-        await rate_limiter.wait()
-        response = await client.get("https://hacker-news.firebaseio.com/v0/topstories.json")
-        response.raise_for_status()
-        story_ids = response.json()[:limit]
-        
-        for story_id in story_ids:
+        for endpoint, source_type, source_limit in story_sources:
             await rate_limiter.wait()
             try:
-                story_response = await client.get(
-                    f"https://hacker-news.firebaseio.com/v0/item/{story_id}.json"
-                )
-                story_response.raise_for_status()
-                story = story_response.json()
+                response = await client.get(f"https://hacker-news.firebaseio.com/v0/{endpoint}.json")
+                response.raise_for_status()
+                story_ids = response.json()[:source_limit]
                 
-                if not story or story.get("type") != "story":
-                    continue
-                
-                title = story.get("title", "")
-                url = story.get("url", f"https://news.ycombinator.com/item?id={story_id}")
-                score = story.get("score", 0)
-                
-                # Calculate confidence based on engagement
-                confidence = min(0.95, 0.4 + (score / 500))
-                
-                # Categorize based on title keywords
-                category = categorize_content(title)
-                
-                insights.append({
-                    "category": category,
-                    "content": f"[HN {score}pts] {title}",
-                    "summary": title[:200],
-                    "source_url": url,
-                    "source_type": "hackernews",
-                    "confidence_score": round(confidence, 2),
-                    "metadata": {
-                        "hn_id": story_id,
-                        "score": score,
-                        "comments": story.get("descendants", 0)
-                    }
-                })
-                
+                for story_id in story_ids:
+                    await rate_limiter.wait()
+                    try:
+                        story_response = await client.get(
+                            f"https://hacker-news.firebaseio.com/v0/item/{story_id}.json"
+                        )
+                        story_response.raise_for_status()
+                        story = story_response.json()
+                        
+                        if not story or story.get("type") != "story":
+                            continue
+                        
+                        title = story.get("title", "")
+                        url = story.get("url", f"https://news.ycombinator.com/item?id={story_id}")
+                        score = story.get("score", 0)
+                        text = story.get("text", "")  # Ask HN posts have text body
+                        
+                        # Calculate confidence based on engagement
+                        confidence = min(0.95, 0.4 + (score / 500))
+                        
+                        # Categorize based on title keywords and source
+                        category = categorize_content(title)
+                        
+                        # Add prefix based on source type
+                        if source_type == "hackernews_show":
+                            prefix = "[Show HN"
+                        elif source_type == "hackernews_ask":
+                            prefix = "[Ask HN"
+                        else:
+                            prefix = "[HN"
+                        
+                        insights.append({
+                            "category": category,
+                            "content": f"{prefix} {score}pts] {title}",
+                            "summary": text[:300] if text else title[:200],
+                            "source_url": url,
+                            "source_type": source_type,
+                            "confidence_score": round(confidence, 2),
+                            "metadata": {
+                                "hn_id": story_id,
+                                "score": score,
+                                "comments": story.get("descendants", 0),
+                                "hn_type": endpoint.replace("stories", "")
+                            }
+                        })
+                        
+                    except Exception as e:
+                        logger.warning(f"Failed to fetch HN story {story_id}: {e}")
+                        continue
+                        
             except Exception as e:
-                logger.warning(f"Failed to fetch HN story {story_id}: {e}")
+                logger.warning(f"Failed to fetch HN {endpoint}: {e}")
                 continue
     
-    logger.info(f"Scraped {len(insights)} HackerNews stories")
+    logger.info(f"Scraped {len(insights)} HackerNews stories (top + Show HN + Ask HN)")
     return insights
 
 
 @task(retries=2, retry_delay_seconds=10)
-async def scrape_producthunt(limit: int = 5) -> list[dict]:
+async def scrape_producthunt(limit: int = 10) -> list[dict]:
     """
-    Scrape ProductHunt homepage.
+    Scrape ProductHunt today's launches with descriptions.
     Uses web scraping (no API key required for basic data).
+    
+    Enhanced to capture:
+    - Today's launches specifically
+    - Product descriptions/taglines
+    - Vote counts
     """
     logger = get_run_logger()
-    logger.info(f"Scraping ProductHunt top {limit} products...")
+    logger.info(f"Scraping ProductHunt today's launches (limit: {limit})...")
     
     insights = []
     
     async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
         await rate_limiter.wait()
         
-        # ProductHunt has a GraphQL API but requires auth
-        # Fall back to scraping the RSS feed or homepage
         try:
+            # ProductHunt RSS feed for today's posts
             response = await client.get(
                 "https://www.producthunt.com/feed",
                 headers={"User-Agent": "Elliot-Learning-Bot/1.0"}
             )
             response.raise_for_status()
             
-            # Parse RSS feed (simple regex for now, could use feedparser)
             content = response.text
+            
+            # Parse RSS feed - extract title, link, and description
+            # Pattern matches: <item>...<title>...</title>...<link>...</link>...<description>...</description>...</item>
             items = re.findall(
-                r'<item>.*?<title><!\[CDATA\[(.*?)\]\]></title>.*?<link>(.*?)</link>.*?</item>',
+                r'<item>.*?<title><!\[CDATA\[(.*?)\]\]></title>.*?<link>(.*?)</link>.*?<description><!\[CDATA\[(.*?)\]\]></description>.*?</item>',
                 content,
                 re.DOTALL
             )[:limit]
             
-            for title, url in items:
+            for title, url, description in items:
                 title = title.strip()
                 url = url.strip()
+                description = description.strip()[:500]  # Truncate long descriptions
+                
+                # Clean up HTML from description
+                description = re.sub(r'<[^>]+>', '', description)
                 
                 insights.append({
                     "category": "tool_discovery",
-                    "content": f"[ProductHunt] {title}",
-                    "summary": title[:200],
+                    "content": f"[ProductHunt Today] {title}",
+                    "summary": f"{title}: {description[:200]}" if description else title[:200],
                     "source_url": url,
                     "source_type": "producthunt",
                     "confidence_score": 0.7,
-                    "metadata": {"scraped_from": "rss_feed"}
+                    "metadata": {
+                        "scraped_from": "rss_feed",
+                        "tagline": description[:100] if description else "",
+                        "launch_type": "today"
+                    }
                 })
                 
         except Exception as e:
-            logger.warning(f"ProductHunt RSS failed, trying homepage: {e}")
-            # Fallback: just note the failure, don't block the flow
+            logger.warning(f"ProductHunt RSS failed: {e}")
             
     logger.info(f"Scraped {len(insights)} ProductHunt products")
     return insights
 
 
 @task(retries=2, retry_delay_seconds=10)
-async def scrape_github_trending(limit: int = 10) -> list[dict]:
+async def scrape_github_trending(limit: int = 15) -> list[dict]:
     """
-    Scrape GitHub Trending repositories.
+    Scrape GitHub Trending repositories with language filters.
     Uses web scraping (no API key required).
+    
+    Enhanced to capture:
+    - Python trending repos
+    - TypeScript trending repos
+    - Collections (curated lists)
     """
     logger = get_run_logger()
-    logger.info(f"Scraping GitHub Trending top {limit} repos...")
+    logger.info(f"Scraping GitHub Trending (Python + TypeScript + Collections) limit: {limit}...")
     
     insights = []
     
+    # Define language filters and sources
+    sources = [
+        ("https://github.com/trending/python?since=daily", "python", limit // 3),
+        ("https://github.com/trending/typescript?since=daily", "typescript", limit // 3),
+        ("https://github.com/trending?since=daily", "all", limit // 3),
+    ]
+    
     async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-        await rate_limiter.wait()
+        for url, language, source_limit in sources:
+            await rate_limiter.wait()
+            
+            try:
+                response = await client.get(
+                    url,
+                    headers={
+                        "User-Agent": "Elliot-Learning-Bot/1.0",
+                        "Accept": "text/html"
+                    }
+                )
+                response.raise_for_status()
+                content = response.text
+                
+                # Parse trending repos - look for repo links in article elements
+                # Pattern: href="/owner/repo" followed by description
+                repo_pattern = r'<article[^>]*>.*?<h2[^>]*>.*?<a href="(/[^/]+/[^"]+)"[^>]*>.*?</h2>.*?<p[^>]*>(.*?)</p>'
+                matches = re.findall(repo_pattern, content, re.DOTALL)
+                
+                # Fallback to simpler pattern if no matches
+                if not matches:
+                    repos = re.findall(r'href="(/[^/]+/[^"]+)"[^>]*class="[^"]*Link[^"]*"', content)
+                    matches = [(repo, "") for repo in repos]
+                
+                seen = set()
+                count = 0
+                
+                for repo_path, description in matches:
+                    if repo_path.startswith('/trending') or repo_path.count('/') != 2:
+                        continue
+                    if repo_path in seen:
+                        continue
+                    seen.add(repo_path)
+                    
+                    if count >= source_limit:
+                        break
+                    
+                    repo_name = repo_path.strip('/')
+                    repo_url = f"https://github.com{repo_path}"
+                    desc = re.sub(r'<[^>]+>', '', description).strip()[:200] if description else ""
+                    
+                    # Determine category based on repo name/description
+                    category = "tool_discovery"
+                    text_to_check = f"{repo_name} {desc}".lower()
+                    if any(kw in text_to_check for kw in ['ai', 'ml', 'llm', 'gpt', 'agent']):
+                        category = "tech_trend"
+                    
+                    insights.append({
+                        "category": category,
+                        "content": f"[GitHub Trending {language.upper()}] {repo_name}",
+                        "summary": f"{repo_name}: {desc}" if desc else f"Trending repo: {repo_name}",
+                        "source_url": repo_url,
+                        "source_type": "github",
+                        "confidence_score": 0.75,
+                        "metadata": {
+                            "repo": repo_name,
+                            "language": language,
+                            "description": desc
+                        }
+                    })
+                    count += 1
+                    
+            except Exception as e:
+                logger.warning(f"GitHub trending scrape failed for {language}: {e}")
         
+        # Also scrape GitHub Collections
+        await rate_limiter.wait()
         try:
-            response = await client.get(
-                "https://github.com/trending",
+            collections_response = await client.get(
+                "https://github.com/collections",
                 headers={
                     "User-Agent": "Elliot-Learning-Bot/1.0",
                     "Accept": "text/html"
                 }
             )
-            response.raise_for_status()
-            content = response.text
+            collections_response.raise_for_status()
+            collections_content = collections_response.text
             
-            # Parse trending repos (regex approach)
-            # Pattern: /owner/repo in h2 article-title
-            repo_pattern = r'<h2 class="h3 lh-condensed">.*?<a href="(/[^"]+)"[^>]*>\s*([^<]+)\s*/\s*([^<]+)</a>'
+            # Extract collection links and titles
+            collection_pattern = r'<a[^>]*href="(/collections/[^"]+)"[^>]*>.*?<h3[^>]*>(.*?)</h3>'
+            collections = re.findall(collection_pattern, collections_content, re.DOTALL)[:5]
             
-            # Simpler pattern for repo URLs
-            repos = re.findall(r'href="(/[^/]+/[^"]+)"[^>]*class="[^"]*Link[^"]*"', content)
-            seen = set()
-            
-            for repo_path in repos:
-                if repo_path.startswith('/trending') or repo_path.count('/') != 2:
-                    continue
-                if repo_path in seen:
-                    continue
-                seen.add(repo_path)
-                
-                if len(insights) >= limit:
-                    break
-                
-                repo_name = repo_path.strip('/')
-                url = f"https://github.com{repo_path}"
-                
-                # Determine category based on repo name/path
-                category = "tool_discovery"
-                if any(kw in repo_path.lower() for kw in ['ai', 'ml', 'llm', 'gpt']):
-                    category = "tech_trend"
+            for collection_path, collection_title in collections:
+                collection_title = re.sub(r'<[^>]+>', '', collection_title).strip()
+                collection_url = f"https://github.com{collection_path}"
                 
                 insights.append({
-                    "category": category,
-                    "content": f"[GitHub Trending] {repo_name}",
-                    "summary": f"Trending repo: {repo_name}",
-                    "source_url": url,
-                    "source_type": "github",
-                    "confidence_score": 0.75,
-                    "metadata": {"repo": repo_name}
+                    "category": "tool_discovery",
+                    "content": f"[GitHub Collection] {collection_title}",
+                    "summary": f"Curated collection: {collection_title}",
+                    "source_url": collection_url,
+                    "source_type": "github_collection",
+                    "confidence_score": 0.65,
+                    "metadata": {
+                        "collection_name": collection_title,
+                        "type": "collection"
+                    }
                 })
                 
         except Exception as e:
-            logger.error(f"GitHub trending scrape failed: {e}")
+            logger.warning(f"GitHub collections scrape failed: {e}")
     
-    logger.info(f"Scraped {len(insights)} GitHub trending repos")
+    logger.info(f"Scraped {len(insights)} GitHub trending repos and collections")
     return insights
 
 
 @task(retries=2, retry_delay_seconds=30)
-async def scrape_youtube(limit: int = 20) -> list[dict]:
+async def scrape_youtube(limit: int = 30) -> list[dict]:
     """
-    Scrape YouTube for AI/automation videos using Apify.
-    Uses streamers/youtube-scraper actor with search URLs.
+    Scrape YouTube for AI/SaaS videos from specific tech channels using Apify.
+    
+    Target channels:
+    - Y Combinator
+    - Lex Fridman (AI guests)
+    - My First Million (SaaS)
+    - All-In Podcast
+    - Lenny's Podcast
+    - Greg Isenberg
+    
+    Also includes search queries for AI/automation topics.
     """
     logger = get_run_logger()
-    logger.info(f"Scraping YouTube for AI/automation videos (limit: {limit})...")
+    logger.info(f"Scraping YouTube channels and AI/automation videos (limit: {limit})...")
     
     if not APIFY_API_KEY:
         logger.warning("APIFY_API_KEY not set, skipping YouTube scrape")
@@ -479,34 +609,41 @@ async def scrape_youtube(limit: int = 20) -> list[dict]:
     
     insights = []
     
-    # Search URLs - YouTube search filtered by upload date (last week) and sorted by view count
-    # Format: https://www.youtube.com/results?search_query={query}&sp=EgQIAxAB (Upload date: This week, Sort: View count)
-    # Focus: Thought leaders, technical deep-dives, novel approaches, enterprise-grade content
-    search_urls = [
-        {"url": "https://www.youtube.com/results?search_query=AI+agent+architecture&sp=EgQIAxAB"},
-        {"url": "https://www.youtube.com/results?search_query=autonomous+agent+frameworks&sp=EgQIAxAB"},
-        {"url": "https://www.youtube.com/results?search_query=multi-agent+orchestration&sp=EgQIAxAB"},
-        {"url": "https://www.youtube.com/results?search_query=LLM+production+deployment&sp=EgQIAxAB"},
-        {"url": "https://www.youtube.com/results?search_query=enterprise+AI+infrastructure&sp=EgQIAxAB"},
-        {"url": "https://www.youtube.com/results?search_query=agentic+AI+research&sp=EgQIAxAB"},
-        {"url": "https://www.youtube.com/results?search_query=Claude+Opus+production&sp=EgQIAxAB"},
-        {"url": "https://www.youtube.com/results?search_query=AI-first+SaaS+architecture&sp=EgQIAxAB"},
-        # Competitive intel
-        {"url": "https://www.youtube.com/results?search_query=Instantly+AI+cold+email&sp=EgQIAxAB"},
-        {"url": "https://www.youtube.com/results?search_query=Smartlead+vs+Apollo&sp=EgQIAxAB"},
-        {"url": "https://www.youtube.com/results?search_query=AI+sales+automation+enterprise&sp=EgQIAxAB"},
+    # Build start URLs from both channels and search queries
+    start_urls = []
+    
+    # Add channel URLs (recent videos)
+    for channel in YOUTUBE_CHANNELS:
+        start_urls.append({"url": channel["url"]})
+    
+    # Add search URLs for AI/automation topics (filtered by upload date)
+    search_queries = [
+        "AI agent architecture",
+        "autonomous agent frameworks",
+        "multi-agent orchestration",
+        "LLM production deployment",
+        "enterprise AI infrastructure",
+        "agentic AI research",
+        "AI-first SaaS architecture",
+        "cold email AI automation",
+        "AI sales automation enterprise",
     ]
     
-    async with httpx.AsyncClient(timeout=180) as client:
+    for query in search_queries:
+        # sp=EgQIAxAB filters to "This week" and sorts by view count
+        encoded_query = query.replace(" ", "+")
+        start_urls.append({"url": f"https://www.youtube.com/results?search_query={encoded_query}&sp=EgQIAxAB"})
+    
+    async with httpx.AsyncClient(timeout=300) as client:
         await rate_limiter.wait()
         
         try:
-            # Start Apify actor run with all search URLs at once
+            # Use streamers/youtube-scraper actor
             run_response = await client.post(
                 "https://api.apify.com/v2/acts/streamers~youtube-scraper/runs",
                 headers={"Authorization": f"Bearer {APIFY_API_KEY}"},
                 json={
-                    "startUrls": search_urls,
+                    "startUrls": start_urls,
                     "maxResults": limit,
                     "maxResultsShorts": 0,  # Skip shorts
                     "proxy": {"useApifyProxy": True},
@@ -525,8 +662,8 @@ async def scrape_youtube(limit: int = 20) -> list[dict]:
             
             logger.info(f"YouTube scraper started: run_id={run_id}")
             
-            # Poll for completion (max 120 seconds - YouTube scraper can be slow)
-            for _ in range(24):
+            # Poll for completion (max 180 seconds for multiple channels)
+            for _ in range(36):
                 await asyncio.sleep(5)
                 status_response = await client.get(
                     f"https://api.apify.com/v2/actor-runs/{run_id}",
@@ -541,7 +678,7 @@ async def scrape_youtube(limit: int = 20) -> list[dict]:
                     logger.warning(f"YouTube scraper run failed: {status}")
                     return []
             else:
-                logger.warning("YouTube scraper timed out after 120s")
+                logger.warning("YouTube scraper timed out after 180s")
                 return []
             
             # Get results
@@ -558,10 +695,11 @@ async def scrape_youtube(limit: int = 20) -> list[dict]:
             
             for video in videos:
                 title = video.get("title", "")
-                description = video.get("description", video.get("text", ""))[:500] if video.get("description") or video.get("text") else ""
-                channel = video.get("channelName", video.get("author", {}).get("name", ""))
-                view_count = video.get("viewCount", video.get("views", 0))
-                url = video.get("url", video.get("link", ""))
+                description = (video.get("description") or video.get("text") or "")[:500]
+                channel = video.get("channelName") or video.get("author", {}).get("name", "")
+                view_count = video.get("viewCount") or video.get("views", 0)
+                url = video.get("url") or video.get("link", "")
+                published = video.get("uploadDate") or video.get("date", "")
                 
                 # Handle view count as string with commas
                 if isinstance(view_count, str):
@@ -570,13 +708,21 @@ async def scrape_youtube(limit: int = 20) -> list[dict]:
                 if not title or not url:
                     continue
                 
-                # Filter by minimum views (1000+)
-                if view_count < 1000:
+                # Filter by minimum views (500+ for channel videos, 1000+ for search)
+                min_views = 500 if any(ch["name"].lower() in channel.lower() for ch in YOUTUBE_CHANNELS) else 1000
+                if view_count < min_views:
                     continue
                 
-                # Confidence based on views
+                # Confidence based on views and channel
                 confidence = min(0.95, 0.5 + (view_count / 100000))
+                # Boost confidence for known channels
+                if any(ch["name"].lower() in channel.lower() for ch in YOUTUBE_CHANNELS):
+                    confidence = min(0.95, confidence + 0.1)
+                
                 category = categorize_content(f"{title} {description}")
+                
+                # Determine if from target channel
+                from_target_channel = any(ch["name"].lower() in channel.lower() for ch in YOUTUBE_CHANNELS)
                 
                 insights.append({
                     "category": category,
@@ -588,6 +734,8 @@ async def scrape_youtube(limit: int = 20) -> list[dict]:
                     "metadata": {
                         "channel": channel,
                         "view_count": view_count,
+                        "published": published,
+                        "from_target_channel": from_target_channel,
                     }
                 })
                 
@@ -599,13 +747,23 @@ async def scrape_youtube(limit: int = 20) -> list[dict]:
 
 
 @task(retries=2, retry_delay_seconds=30)
-async def scrape_reddit(limit: int = 30) -> list[dict]:
+async def scrape_reddit(limit: int = 50) -> list[dict]:
     """
     Scrape Reddit for relevant posts using Apify.
-    Uses trudax/reddit-scraper-lite actor (free tier).
+    Uses trudax/reddit-scraper-lite actor.
+    
+    Enhanced subreddits:
+    - r/SaaS - SaaS business discussions
+    - r/Entrepreneur - Business/startup insights
+    - r/sales - Sales strategies and tools
+    - r/startups - Startup community
+    - r/automation - Automation tools and workflows
+    - r/LocalLLaMA - Local LLM developments
+    - r/ChatGPT - AI/LLM trends
+    - r/webdev - Web development trends
     """
     logger = get_run_logger()
-    logger.info(f"Scraping Reddit for AI/SaaS posts (limit: {limit})...")
+    logger.info(f"Scraping Reddit (expanded subreddits) limit: {limit}...")
     
     if not APIFY_API_KEY:
         logger.warning("APIFY_API_KEY not set, skipping Reddit scrape")
@@ -613,14 +771,21 @@ async def scrape_reddit(limit: int = 30) -> list[dict]:
     
     insights = []
     
-    # Target subreddits with top posts from today
+    # Enhanced subreddit list with top posts from today
     subreddit_urls = [
+        # Business/SaaS
         {"url": "https://www.reddit.com/r/SaaS/top/?t=day"},
-        {"url": "https://www.reddit.com/r/automation/top/?t=day"},
         {"url": "https://www.reddit.com/r/Entrepreneur/top/?t=day"},
+        {"url": "https://www.reddit.com/r/sales/top/?t=day"},
+        {"url": "https://www.reddit.com/r/startups/top/?t=day"},
+        # Tech/AI
+        {"url": "https://www.reddit.com/r/automation/top/?t=day"},
         {"url": "https://www.reddit.com/r/LocalLLaMA/top/?t=day"},
         {"url": "https://www.reddit.com/r/ChatGPT/top/?t=day"},
         {"url": "https://www.reddit.com/r/webdev/top/?t=day"},
+        # Additional valuable subreddits
+        {"url": "https://www.reddit.com/r/smallbusiness/top/?t=day"},
+        {"url": "https://www.reddit.com/r/agency/top/?t=day"},
     ]
     
     async with httpx.AsyncClient(timeout=180) as client:
@@ -681,10 +846,10 @@ async def scrape_reddit(limit: int = 30) -> list[dict]:
             
             for post in posts:
                 # Handle reddit-scraper-lite field names
-                title = post.get("title", post.get("parsedTitle", ""))
-                body = post.get("body", post.get("text", ""))[:500] if post.get("body") or post.get("text") else ""
-                subreddit = post.get("communityName", post.get("parsedCommunityName", "")).replace("r/", "")
-                score = post.get("score", post.get("upVotes", 0))
+                title = post.get("title") or post.get("parsedTitle", "")
+                body = (post.get("body") or post.get("text") or "")[:500]
+                subreddit = (post.get("communityName") or post.get("parsedCommunityName", "")).replace("r/", "")
+                score = post.get("score") or post.get("upVotes", 0)
                 url = post.get("url", "")
                 
                 # Skip comments (only want posts)
@@ -698,8 +863,12 @@ async def scrape_reddit(limit: int = 30) -> list[dict]:
                 if url and not url.startswith("http"):
                     url = f"https://reddit.com{url}"
                 
-                # Filter by minimum score (50+ upvotes)
-                if score < 50:
+                # Different score thresholds for different subreddits
+                # Business subreddits typically have lower engagement
+                business_subs = ['saas', 'entrepreneur', 'sales', 'startups', 'smallbusiness', 'agency']
+                min_score = 20 if subreddit.lower() in business_subs else 50
+                
+                if score < min_score:
                     continue
                 
                 # Confidence based on score
@@ -895,17 +1064,17 @@ async def update_learning_stats(stored_count: int):
     log_prints=True
 )
 async def daily_learning_scrape(
-    hn_limit: int = 30,
-    ph_limit: int = 5,
-    gh_limit: int = 10,
-    yt_limit: int = 20,
-    reddit_limit: int = 30
+    hn_limit: int = 50,
+    ph_limit: int = 10,
+    gh_limit: int = 15,
+    yt_limit: int = 30,
+    reddit_limit: int = 50
 ):
     """
     Main flow: Scrape multiple sources and store insights.
     
     Args:
-        hn_limit: Number of HackerNews stories to scrape
+        hn_limit: Number of HackerNews stories to scrape (top + Show HN + Ask HN)
         ph_limit: Number of ProductHunt products to scrape
         gh_limit: Number of GitHub trending repos to scrape
         yt_limit: Number of YouTube videos to scrape

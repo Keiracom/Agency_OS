@@ -1,69 +1,157 @@
-# YouTube Video Analysis Skill
+# YouTube Scraping (Native, No API Key)
 
-Extract transcripts with timestamps from YouTube videos.
+## 1. Overview
 
-## Usage
+Native Python YouTube scraping without API key requirements.
+
+| Library | Purpose | Cost |
+|---------|---------|------|
+| `youtube-search-python` | Search videos, channels, playlists | $0 |
+| `youtube-transcript-api` | Extract video transcripts | $0 |
+
+## 2. Installation
 
 ```bash
-source /home/elliotbot/clawd/.venv/bin/activate
-python /home/elliotbot/clawd/scripts/youtube_transcript.py "<youtube_url_or_id>" [language] [--json]
+pip install youtube-search-python youtube-transcript-api
 ```
 
-## Examples
+## 3. Search Videos
 
-**Get transcript with timestamps:**
-```bash
-python /home/elliotbot/clawd/scripts/youtube_transcript.py "https://www.youtube.com/watch?v=VIDEO_ID"
+```python
+from youtubesearchpython import VideosSearch, ChannelsSearch, PlaylistsSearch
+
+# Basic search
+search = VideosSearch("AI agents", limit=20)
+results = search.result()['result']
+
+# Get next page
+search.next()
+more_results = search.result()['result']
+
+# Search with filters
+search = VideosSearch("AI tutorial", limit=20, 
+                      language='en', 
+                      region='US')
 ```
 
-**Get JSON output (for programmatic use):**
-```bash
-python /home/elliotbot/clawd/scripts/youtube_transcript.py "VIDEO_ID" --json
+## 4. Get Transcripts
+
+```python
+from youtube_transcript_api import YouTubeTranscriptApi
+
+# Get transcript
+transcript = YouTubeTranscriptApi.get_transcript("video_id")
+full_text = " ".join([t['text'] for t in transcript])
+
+# Get specific language
+transcript = YouTubeTranscriptApi.get_transcript("video_id", languages=['en'])
+
+# List available transcripts
+transcript_list = YouTubeTranscriptApi.list_transcripts("video_id")
+for t in transcript_list:
+    print(t.language, t.is_generated)
 ```
 
-**Get transcript in specific language:**
-```bash
-python /home/elliotbot/clawd/scripts/youtube_transcript.py "VIDEO_ID" de
+## 5. Error Handling
+
+```python
+from youtube_transcript_api._errors import (
+    TranscriptsDisabled,
+    NoTranscriptFound,
+    VideoUnavailable
+)
+
+try:
+    transcript = YouTubeTranscriptApi.get_transcript(video_id)
+except TranscriptsDisabled:
+    # Video has transcripts disabled
+    pass
+except NoTranscriptFound:
+    # No transcript in requested language
+    pass
+except VideoUnavailable:
+    # Video doesn't exist or is private
+    pass
 ```
 
-## Output Format
+## 6. Channel Videos
 
-**Human-readable (default):**
-```
-[00:01] First line of transcript
-[00:05] Second line of transcript
-[01:23] And so on...
+```python
+from youtubesearchpython import Channel
+
+channel = Channel("channel_id_or_url")
+videos = channel.result['videos']
 ```
 
-**JSON (--json flag):**
-```json
+## 7. Rate Limits
+
+| Concern | Recommendation |
+|---------|----------------|
+| No official limits | It's scraping, not API |
+| Request spacing | 0.5-1 second between requests |
+| IP blocking | Too fast = potential block |
+| Heavy usage | Use proxies for large-scale scraping |
+
+## 8. Response Structures
+
+### Video Search Result
+
+```python
+{
+    'id': 'video_id',
+    'title': 'Video Title',
+    'duration': '10:30',
+    'viewCount': {'text': '1.2M views'},
+    'publishedTime': '2 weeks ago',
+    'channel': {'name': 'Channel Name', 'id': 'channel_id'},
+    'descriptionSnippet': [{'text': '...'}],
+    'thumbnails': [...]
+}
+```
+
+### Transcript Result
+
+```python
 [
-  {"text": "First line", "start": 1.0, "duration": 3.5},
-  {"text": "Second line", "start": 5.2, "duration": 2.1}
+    {'text': 'Hello everyone', 'start': 0.0, 'duration': 2.5},
+    {'text': 'today we will', 'start': 2.5, 'duration': 1.8},
+    ...
 ]
 ```
 
-## Supported URL Formats
+## 9. Full Example
 
-- `https://www.youtube.com/watch?v=VIDEO_ID`
-- `https://youtu.be/VIDEO_ID`
-- `https://youtube.com/embed/VIDEO_ID`
-- Just the video ID: `VIDEO_ID`
+```python
+from youtubesearchpython import VideosSearch
+from youtube_transcript_api import YouTubeTranscriptApi
 
-## How to Use This
+def search_and_transcribe(query: str, limit: int = 5):
+    """Search YouTube and extract transcripts for matching videos."""
+    results = []
+    search = VideosSearch(query, limit=limit)
+    
+    for video in search.result()['result']:
+        video_id = video['id']
+        try:
+            transcript = YouTubeTranscriptApi.get_transcript(video_id)
+            text = " ".join([t['text'] for t in transcript])
+        except Exception:
+            text = None
+        
+        results.append({
+            'title': video['title'],
+            'url': f"https://youtube.com/watch?v={video_id}",
+            'transcript': text
+        })
+    
+    return results
+```
 
-When given a YouTube link:
+## 10. Use Cases
 
-1. Run the transcript script to get full content with timestamps
-2. Analyze/summarize the content as needed
-3. Reference specific timestamps when discussing parts of the video
-
-## Dependencies
-
-Requires the `youtube-transcript-api` package (installed in venv).
-
-## Limitations
-
-- Only works if video has captions (auto-generated or manual)
-- Some videos have captions disabled
-- Private/unlisted videos may not be accessible
+- Extract tutorials for learning
+- Scrape educational content
+- Research competitor videos
+- Build knowledge base from video content
+- Analyze trending topics in a niche
+- Generate summaries of video series

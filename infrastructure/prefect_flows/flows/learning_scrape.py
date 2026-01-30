@@ -1,20 +1,20 @@
 """
 Elliot Daily Learning Scrape Flow
 =================================
-Automated knowledge acquisition from HackerNews, ProductHunt, GitHub Trending,
+Automated knowledge acquisition from HackerNews, ProductHunt, GitHub,
 YouTube, Reddit, and Twitter/X.
 
 All scrapers run in PARALLEL using asyncio.gather() to avoid timeouts.
-Each scraper maintains its own internal rate limiting.
+Each scraper uses TARGETED KEYWORD SEARCHES for maximum relevance.
 Writes to elliot_knowledge table with relevance scoring.
 
-Enhanced with:
-- YouTube: Specific tech/AI/SaaS channels via Apify
-- HackerNews: Show HN, Ask HN sections
-- ProductHunt: Today's launches with descriptions
-- GitHub: Language filters (Python, TypeScript) + Collections
-- Reddit: r/SaaS, r/Entrepreneur, r/sales, r/startups
-- Twitter/X: Thought leaders and hashtags (#buildinpublic, #indiehackers)
+Scrapers use keyword-based searches:
+- HackerNews: Algolia API with 15 targeted keywords (ALL TIME)
+- GitHub: Search API with 15 keywords sorted by stars
+- Reddit: Search across subreddits with 10 keywords (ALL TIME)
+- YouTube: Search queries with 10 keywords + target channels
+- ProductHunt: Search for AI/automation/sales tools
+- Twitter/X: Keyword searches + thought leader accounts
 """
 
 import asyncio
@@ -30,6 +30,116 @@ from prefect import flow, task, get_run_logger
 from prefect.tasks import task_input_hash
 from supabase import create_client, Client
 
+
+# ============================================
+# Keywords Configuration
+# ============================================
+
+# HackerNews Keywords (15) - Searched via Algolia ALL TIME
+HACKERNEWS_KEYWORDS = [
+    "cold email",
+    "sales automation",
+    "AI agents",
+    "LLM memory",
+    "autonomous agents",
+    "SaaS pricing",
+    "outbound sales",
+    "CRM automation",
+    "lead generation",
+    "multi-agent",
+    "RAG",
+    "vector database",
+    "Claude",
+    "GPT-4",
+    "email deliverability",
+]
+
+# GitHub Keywords (15) - Searched via Search API sorted by stars
+GITHUB_KEYWORDS = [
+    "ai-agents",
+    "sales-automation",
+    "cold-email",
+    "llm-memory",
+    "multi-agent",
+    "autonomous-agent",
+    "rag",
+    "langchain",
+    "email-automation",
+    "crewai",
+    "autogen",
+    "vector-database",
+    "claude",
+    "outbound",
+    "lead-generation",
+]
+
+# Reddit Keywords (10) - Searched ALL TIME across subreddits
+REDDIT_KEYWORDS = [
+    "AI agents",
+    "cold email automation",
+    "sales automation",
+    "LLM memory",
+    "autonomous agents",
+    "SaaS tools",
+    "multi-agent",
+    "outbound sales",
+    "lead gen",
+    "Claude",
+]
+
+# Reddit Subreddits (includes r/ClaudeAI)
+REDDIT_SUBREDDITS = [
+    "SaaS",
+    "Entrepreneur",
+    "sales",
+    "startups",
+    "automation",
+    "LocalLLaMA",
+    "ChatGPT",
+    "ClaudeAI",
+    "webdev",
+    "smallbusiness",
+]
+
+# YouTube Keywords (10) - Search queries
+YOUTUBE_KEYWORDS = [
+    "AI agent tutorial",
+    "cold email automation",
+    "LLM memory architecture",
+    "sales automation demo",
+    "multi-agent system",
+    "autonomous AI",
+    "RAG tutorial",
+    "Claude coding",
+    "GPT automation",
+    "SaaS growth",
+]
+
+# ProductHunt Search Terms
+PRODUCTHUNT_KEYWORDS = [
+    "AI",
+    "automation",
+    "sales",
+    "email",
+    "CRM",
+    "agent",
+    "LLM",
+    "outreach",
+]
+
+# Twitter/X Keywords
+TWITTER_KEYWORDS = [
+    "AI agents",
+    "cold email",
+    "sales automation",
+    "LLM memory",
+    "multi-agent",
+    "autonomous AI",
+    "RAG",
+    "Claude AI",
+    "SaaS tools",
+    "email deliverability",
+]
 
 # ============================================
 # Relevance Scoring System
@@ -244,22 +354,34 @@ if ENV_FILE.exists() and not os.environ.get("SUPABASE_URL"):
                 key, _, value = line.partition("=")
                 os.environ.setdefault(key.strip(), value.strip())
 
-RATE_LIMIT_SECONDS = 5
+RATE_LIMIT_SECONDS = 2  # Reduced for faster scraping
 REQUEST_TIMEOUT = 30
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
 APIFY_API_KEY = os.environ.get("APIFY_API_KEY")
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")  # For higher rate limits
 
 # Target YouTube channels for tech/AI/SaaS content
 YOUTUBE_CHANNELS = [
-    # Channel handles/URLs for specific tech channels
     {"name": "Y Combinator", "handle": "@ycombinator", "url": "https://www.youtube.com/@ycombinator/videos"},
     {"name": "Lex Fridman", "handle": "@lexfridman", "url": "https://www.youtube.com/@lexfridman/videos"},
     {"name": "My First Million", "handle": "@MyFirstMillionPod", "url": "https://www.youtube.com/@MyFirstMillionPod/videos"},
     {"name": "All-In Podcast", "handle": "@alaboringpodcast", "url": "https://www.youtube.com/@alaboringpodcast/videos"},
     {"name": "Lenny's Podcast", "handle": "@LennysPodcast", "url": "https://www.youtube.com/@LennysPodcast/videos"},
     {"name": "Greg Isenberg", "handle": "@gregisenberg", "url": "https://www.youtube.com/@gregisenberg/videos"},
+]
+
+# Twitter/X thought leader accounts
+TWITTER_ACCOUNTS = [
+    "levelsio",       # Pieter Levels - indie hacker legend
+    "marckohlbrugge", # Marc Köhlbrugge - WIP founder
+    "gregisenberg",   # Greg Isenberg - Late Checkout
+    "ycombinator",    # Y Combinator
+    "paulg",          # Paul Graham
+    "sama",           # Sam Altman
+    "AnthropicAI",    # Anthropic
+    "OpenAI",         # OpenAI
 ]
 
 # ============================================
@@ -269,7 +391,7 @@ YOUTUBE_CHANNELS = [
 class RateLimiter:
     """Simple async rate limiter."""
     
-    def __init__(self, min_interval: float = 5.0):
+    def __init__(self, min_interval: float = 2.0):
         self.min_interval = min_interval
         self.last_request = 0
     
@@ -297,313 +419,293 @@ def get_supabase() -> Client:
 # Scraping Tasks
 # ============================================
 
-@task(
-    retries=2,
-    retry_delay_seconds=10,
-    cache_key_fn=task_input_hash,
-    cache_expiration=timedelta(hours=6) if 'timedelta' in dir() else None
-)
-async def scrape_hackernews(limit: int = 30) -> list[dict]:
+@task(retries=2, retry_delay_seconds=10)
+async def scrape_hackernews(limit_per_keyword: int = 100) -> list[dict]:
     """
-    Scrape HackerNews front page, Show HN, and Ask HN stories.
-    Uses official HN API (free, no auth required).
+    Scrape HackerNews using Algolia API with targeted keyword searches.
+    Searches ALL TIME for comprehensive coverage.
     
-    Enhanced to capture:
-    - Top stories (main page)
-    - Show HN posts (product launches, demos)
-    - Ask HN posts (questions, patterns, advice)
+    Args:
+        limit_per_keyword: Max results per keyword (100)
     """
     logger = get_run_logger()
-    logger.info(f"Scraping HackerNews (top + Show HN + Ask HN) limit: {limit}...")
+    logger.info(f"Scraping HackerNews via Algolia API with {len(HACKERNEWS_KEYWORDS)} keywords...")
     
     insights = []
-    
-    # Define story sources with their endpoints and types
-    story_sources = [
-        ("topstories", "hackernews", limit),
-        ("showstories", "hackernews_show", limit // 2),  # Show HN
-        ("askstories", "hackernews_ask", limit // 2),    # Ask HN
-    ]
+    seen_ids = set()
     
     async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-        for endpoint, source_type, source_limit in story_sources:
+        for keyword in HACKERNEWS_KEYWORDS:
             await rate_limiter.wait()
             try:
-                response = await client.get(f"https://hacker-news.firebaseio.com/v0/{endpoint}.json")
-                response.raise_for_status()
-                story_ids = response.json()[:source_limit]
-                
-                for story_id in story_ids:
-                    await rate_limiter.wait()
-                    try:
-                        story_response = await client.get(
-                            f"https://hacker-news.firebaseio.com/v0/item/{story_id}.json"
-                        )
-                        story_response.raise_for_status()
-                        story = story_response.json()
-                        
-                        if not story or story.get("type") != "story":
-                            continue
-                        
-                        title = story.get("title", "")
-                        url = story.get("url", f"https://news.ycombinator.com/item?id={story_id}")
-                        score = story.get("score", 0)
-                        text = story.get("text", "")  # Ask HN posts have text body
-                        
-                        # Calculate confidence based on engagement
-                        confidence = min(0.95, 0.4 + (score / 500))
-                        
-                        # Categorize based on title keywords and source
-                        category = categorize_content(title)
-                        
-                        # Add prefix based on source type
-                        if source_type == "hackernews_show":
-                            prefix = "[Show HN"
-                        elif source_type == "hackernews_ask":
-                            prefix = "[Ask HN"
-                        else:
-                            prefix = "[HN"
-                        
-                        insights.append({
-                            "category": category,
-                            "content": f"{prefix} {score}pts] {title}",
-                            "summary": text[:300] if text else title[:200],
-                            "source_url": url,
-                            "source_type": source_type,
-                            "confidence_score": round(confidence, 2),
-                            "metadata": {
-                                "hn_id": story_id,
-                                "score": score,
-                                "comments": story.get("descendants", 0),
-                                "hn_type": endpoint.replace("stories", "")
-                            }
-                        })
-                        
-                    except Exception as e:
-                        logger.warning(f"Failed to fetch HN story {story_id}: {e}")
-                        continue
-                        
-            except Exception as e:
-                logger.warning(f"Failed to fetch HN {endpoint}: {e}")
-                continue
-    
-    logger.info(f"Scraped {len(insights)} HackerNews stories (top + Show HN + Ask HN)")
-    return insights
-
-
-@task(retries=2, retry_delay_seconds=10)
-async def scrape_producthunt(limit: int = 10) -> list[dict]:
-    """
-    Scrape ProductHunt today's launches with descriptions.
-    Uses web scraping (no API key required for basic data).
-    
-    Enhanced to capture:
-    - Today's launches specifically
-    - Product descriptions/taglines
-    - Vote counts
-    """
-    logger = get_run_logger()
-    logger.info(f"Scraping ProductHunt today's launches (limit: {limit})...")
-    
-    insights = []
-    
-    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-        await rate_limiter.wait()
-        
-        try:
-            # ProductHunt RSS feed for today's posts
-            response = await client.get(
-                "https://www.producthunt.com/feed",
-                headers={"User-Agent": "Elliot-Learning-Bot/1.0"}
-            )
-            response.raise_for_status()
-            
-            content = response.text
-            
-            # Parse RSS feed - extract title, link, and description
-            # Pattern matches: <item>...<title>...</title>...<link>...</link>...<description>...</description>...</item>
-            items = re.findall(
-                r'<item>.*?<title><!\[CDATA\[(.*?)\]\]></title>.*?<link>(.*?)</link>.*?<description><!\[CDATA\[(.*?)\]\]></description>.*?</item>',
-                content,
-                re.DOTALL
-            )[:limit]
-            
-            for title, url, description in items:
-                title = title.strip()
-                url = url.strip()
-                description = description.strip()[:500]  # Truncate long descriptions
-                
-                # Clean up HTML from description
-                description = re.sub(r'<[^>]+>', '', description)
-                
-                insights.append({
-                    "category": "tool_discovery",
-                    "content": f"[ProductHunt Today] {title}",
-                    "summary": f"{title}: {description[:200]}" if description else title[:200],
-                    "source_url": url,
-                    "source_type": "producthunt",
-                    "confidence_score": 0.7,
-                    "metadata": {
-                        "scraped_from": "rss_feed",
-                        "tagline": description[:100] if description else "",
-                        "launch_type": "today"
-                    }
-                })
-                
-        except Exception as e:
-            logger.warning(f"ProductHunt RSS failed: {e}")
-            
-    logger.info(f"Scraped {len(insights)} ProductHunt products")
-    return insights
-
-
-@task(retries=2, retry_delay_seconds=10)
-async def scrape_github_trending(limit: int = 15) -> list[dict]:
-    """
-    Scrape GitHub Trending repositories with language filters.
-    Uses web scraping (no API key required).
-    
-    Enhanced to capture:
-    - Python trending repos
-    - TypeScript trending repos
-    - Collections (curated lists)
-    """
-    logger = get_run_logger()
-    logger.info(f"Scraping GitHub Trending (Python + TypeScript + Collections) limit: {limit}...")
-    
-    insights = []
-    
-    # Define language filters and sources
-    sources = [
-        ("https://github.com/trending/python?since=daily", "python", limit // 3),
-        ("https://github.com/trending/typescript?since=daily", "typescript", limit // 3),
-        ("https://github.com/trending?since=daily", "all", limit // 3),
-    ]
-    
-    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-        for url, language, source_limit in sources:
-            await rate_limiter.wait()
-            
-            try:
+                # Algolia API - search ALL TIME (no date filter)
+                params = {
+                    "query": keyword,
+                    "tags": "story",
+                    "hitsPerPage": limit_per_keyword,
+                }
                 response = await client.get(
-                    url,
-                    headers={
-                        "User-Agent": "Elliot-Learning-Bot/1.0",
-                        "Accept": "text/html"
-                    }
+                    "http://hn.algolia.com/api/v1/search",
+                    params=params
                 )
                 response.raise_for_status()
-                content = response.text
+                data = response.json()
                 
-                # Parse trending repos - look for repo links in article elements
-                # Pattern: href="/owner/repo" followed by description
-                repo_pattern = r'<article[^>]*>.*?<h2[^>]*>.*?<a href="(/[^/]+/[^"]+)"[^>]*>.*?</h2>.*?<p[^>]*>(.*?)</p>'
-                matches = re.findall(repo_pattern, content, re.DOTALL)
+                hits = data.get("hits", [])
+                logger.info(f"  [{keyword}] Found {len(hits)} stories")
                 
-                # Fallback to simpler pattern if no matches
-                if not matches:
-                    repos = re.findall(r'href="(/[^/]+/[^"]+)"[^>]*class="[^"]*Link[^"]*"', content)
-                    matches = [(repo, "") for repo in repos]
-                
-                seen = set()
-                count = 0
-                
-                for repo_path, description in matches:
-                    if repo_path.startswith('/trending') or repo_path.count('/') != 2:
+                for hit in hits:
+                    story_id = hit.get("objectID")
+                    if story_id in seen_ids:
                         continue
-                    if repo_path in seen:
+                    seen_ids.add(story_id)
+                    
+                    title = hit.get("title", "")
+                    url = hit.get("url") or f"https://news.ycombinator.com/item?id={story_id}"
+                    score = hit.get("points", 0) or 0
+                    num_comments = hit.get("num_comments", 0) or 0
+                    created_at = hit.get("created_at", "")
+                    author = hit.get("author", "")
+                    
+                    if not title:
                         continue
-                    seen.add(repo_path)
                     
-                    if count >= source_limit:
-                        break
-                    
-                    repo_name = repo_path.strip('/')
-                    repo_url = f"https://github.com{repo_path}"
-                    desc = re.sub(r'<[^>]+>', '', description).strip()[:200] if description else ""
-                    
-                    # Determine category based on repo name/description
-                    category = "tool_discovery"
-                    text_to_check = f"{repo_name} {desc}".lower()
-                    if any(kw in text_to_check for kw in ['ai', 'ml', 'llm', 'gpt', 'agent']):
-                        category = "tech_trend"
+                    # Confidence based on engagement
+                    confidence = min(0.95, 0.4 + (score / 500) + (num_comments / 200))
+                    category = categorize_content(title)
                     
                     insights.append({
                         "category": category,
-                        "content": f"[GitHub Trending {language.upper()}] {repo_name}",
-                        "summary": f"{repo_name}: {desc}" if desc else f"Trending repo: {repo_name}",
-                        "source_url": repo_url,
-                        "source_type": "github",
-                        "confidence_score": 0.75,
+                        "content": f"[HN {score}pts] {title}",
+                        "summary": f"{title} (by {author}, {num_comments} comments)",
+                        "source_url": url,
+                        "source_type": "hackernews",
+                        "confidence_score": round(confidence, 2),
                         "metadata": {
-                            "repo": repo_name,
-                            "language": language,
-                            "description": desc
+                            "hn_id": story_id,
+                            "score": score,
+                            "comments": num_comments,
+                            "author": author,
+                            "keyword": keyword,
+                            "created_at": created_at,
                         }
                     })
-                    count += 1
                     
             except Exception as e:
-                logger.warning(f"GitHub trending scrape failed for {language}: {e}")
-        
-        # Also scrape GitHub Collections
-        await rate_limiter.wait()
-        try:
-            collections_response = await client.get(
-                "https://github.com/collections",
-                headers={
-                    "User-Agent": "Elliot-Learning-Bot/1.0",
-                    "Accept": "text/html"
-                }
-            )
-            collections_response.raise_for_status()
-            collections_content = collections_response.text
-            
-            # Extract collection links and titles
-            collection_pattern = r'<a[^>]*href="(/collections/[^"]+)"[^>]*>.*?<h3[^>]*>(.*?)</h3>'
-            collections = re.findall(collection_pattern, collections_content, re.DOTALL)[:5]
-            
-            for collection_path, collection_title in collections:
-                collection_title = re.sub(r'<[^>]+>', '', collection_title).strip()
-                collection_url = f"https://github.com{collection_path}"
-                
-                insights.append({
-                    "category": "tool_discovery",
-                    "content": f"[GitHub Collection] {collection_title}",
-                    "summary": f"Curated collection: {collection_title}",
-                    "source_url": collection_url,
-                    "source_type": "github_collection",
-                    "confidence_score": 0.65,
-                    "metadata": {
-                        "collection_name": collection_title,
-                        "type": "collection"
-                    }
-                })
-                
-        except Exception as e:
-            logger.warning(f"GitHub collections scrape failed: {e}")
+                logger.warning(f"HN search failed for keyword '{keyword}': {e}")
+                continue
     
-    logger.info(f"Scraped {len(insights)} GitHub trending repos and collections")
+    logger.info(f"Scraped {len(insights)} unique HackerNews stories (from {len(HACKERNEWS_KEYWORDS)} keywords)")
+    return insights
+
+
+@task(retries=2, retry_delay_seconds=10)
+async def scrape_github(limit_per_keyword: int = 50) -> list[dict]:
+    """
+    Scrape GitHub using Search API with targeted keyword searches.
+    Sorted by stars for quality signal.
+    
+    Args:
+        limit_per_keyword: Max results per keyword (50)
+    """
+    logger = get_run_logger()
+    logger.info(f"Scraping GitHub via Search API with {len(GITHUB_KEYWORDS)} keywords...")
+    
+    insights = []
+    seen_repos = set()
+    
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "Elliot-Learning-Bot/1.0"
+    }
+    if GITHUB_TOKEN:
+        headers["Authorization"] = f"token {GITHUB_TOKEN}"
+    
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+        for keyword in GITHUB_KEYWORDS:
+            await rate_limiter.wait()
+            try:
+                params = {
+                    "q": keyword,
+                    "sort": "stars",
+                    "order": "desc",
+                    "per_page": min(limit_per_keyword, 100),  # GitHub max is 100
+                }
+                response = await client.get(
+                    "https://api.github.com/search/repositories",
+                    params=params,
+                    headers=headers
+                )
+                
+                if response.status_code == 403:
+                    logger.warning(f"GitHub rate limit hit for keyword '{keyword}'")
+                    await asyncio.sleep(60)  # Wait a minute
+                    continue
+                    
+                response.raise_for_status()
+                data = response.json()
+                
+                items = data.get("items", [])
+                logger.info(f"  [{keyword}] Found {len(items)} repos")
+                
+                for repo in items:
+                    full_name = repo.get("full_name", "")
+                    if full_name in seen_repos:
+                        continue
+                    seen_repos.add(full_name)
+                    
+                    name = repo.get("name", "")
+                    description = (repo.get("description") or "")[:300]
+                    stars = repo.get("stargazers_count", 0)
+                    url = repo.get("html_url", "")
+                    language = repo.get("language", "")
+                    topics = repo.get("topics", [])
+                    updated_at = repo.get("updated_at", "")
+                    
+                    if not name or not url:
+                        continue
+                    
+                    # Minimum stars threshold
+                    if stars < 10:
+                        continue
+                    
+                    # Confidence based on stars
+                    confidence = min(0.95, 0.5 + (stars / 5000))
+                    category = categorize_content(f"{name} {description}")
+                    
+                    insights.append({
+                        "category": category,
+                        "content": f"[GitHub ⭐{stars:,}] {full_name}",
+                        "summary": f"{full_name}: {description}" if description else f"GitHub repo: {full_name}",
+                        "source_url": url,
+                        "source_type": "github",
+                        "confidence_score": round(confidence, 2),
+                        "metadata": {
+                            "repo": full_name,
+                            "stars": stars,
+                            "language": language,
+                            "topics": topics[:5],
+                            "keyword": keyword,
+                            "updated_at": updated_at,
+                        }
+                    })
+                    
+            except Exception as e:
+                logger.warning(f"GitHub search failed for keyword '{keyword}': {e}")
+                continue
+    
+    logger.info(f"Scraped {len(insights)} unique GitHub repos (from {len(GITHUB_KEYWORDS)} keywords)")
+    return insights
+
+
+@task(retries=2, retry_delay_seconds=10)
+async def scrape_reddit(limit_per_search: int = 50) -> list[dict]:
+    """
+    Scrape Reddit using search API across subreddits with keyword searches.
+    Searches ALL TIME for comprehensive coverage.
+    
+    Args:
+        limit_per_search: Max results per subreddit/keyword combo
+    """
+    logger = get_run_logger()
+    logger.info(f"Scraping Reddit with {len(REDDIT_KEYWORDS)} keywords across {len(REDDIT_SUBREDDITS)} subreddits...")
+    
+    insights = []
+    seen_ids = set()
+    
+    headers = {
+        "User-Agent": "Elliot-Learning-Bot/1.0 (by /u/elliot_agent)"
+    }
+    
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+        for subreddit in REDDIT_SUBREDDITS:
+            for keyword in REDDIT_KEYWORDS:
+                await rate_limiter.wait()
+                try:
+                    # Reddit search API - ALL TIME
+                    url = f"https://www.reddit.com/r/{subreddit}/search.json"
+                    params = {
+                        "q": keyword,
+                        "sort": "relevance",
+                        "t": "all",  # ALL TIME
+                        "limit": limit_per_search,
+                        "restrict_sr": "on",  # Restrict to subreddit
+                    }
+                    response = await client.get(url, params=params, headers=headers)
+                    
+                    if response.status_code == 429:
+                        logger.warning(f"Reddit rate limit hit, waiting...")
+                        await asyncio.sleep(60)
+                        continue
+                    
+                    response.raise_for_status()
+                    data = response.json()
+                    
+                    posts = data.get("data", {}).get("children", [])
+                    
+                    for post_wrapper in posts:
+                        post = post_wrapper.get("data", {})
+                        post_id = post.get("id", "")
+                        
+                        if post_id in seen_ids:
+                            continue
+                        seen_ids.add(post_id)
+                        
+                        title = post.get("title", "")
+                        selftext = (post.get("selftext") or "")[:500]
+                        score = post.get("score", 0)
+                        num_comments = post.get("num_comments", 0)
+                        permalink = post.get("permalink", "")
+                        post_url = f"https://reddit.com{permalink}" if permalink else ""
+                        created_utc = post.get("created_utc", 0)
+                        author = post.get("author", "")
+                        
+                        if not title or not post_url:
+                            continue
+                        
+                        # Minimum score threshold
+                        if score < 5:
+                            continue
+                        
+                        # Confidence based on score and comments
+                        confidence = min(0.95, 0.4 + (score / 500) + (num_comments / 100))
+                        category = categorize_content(f"{title} {selftext}")
+                        
+                        insights.append({
+                            "category": category,
+                            "content": f"[r/{subreddit} {score}pts] {title}",
+                            "summary": f"{title}. {selftext[:200]}" if selftext else title,
+                            "source_url": post_url,
+                            "source_type": "reddit",
+                            "confidence_score": round(confidence, 2),
+                            "metadata": {
+                                "subreddit": subreddit,
+                                "score": score,
+                                "comments": num_comments,
+                                "author": author,
+                                "keyword": keyword,
+                                "created_utc": created_utc,
+                            }
+                        })
+                        
+                except Exception as e:
+                    logger.warning(f"Reddit search failed for r/{subreddit} '{keyword}': {e}")
+                    continue
+    
+    logger.info(f"Scraped {len(insights)} unique Reddit posts (from {len(REDDIT_SUBREDDITS)} subreddits x {len(REDDIT_KEYWORDS)} keywords)")
     return insights
 
 
 @task(retries=2, retry_delay_seconds=30)
-async def scrape_youtube(limit: int = 30) -> list[dict]:
+async def scrape_youtube(limit_per_keyword: int = 20) -> list[dict]:
     """
-    Scrape YouTube for AI/SaaS videos from specific tech channels using Apify.
+    Scrape YouTube using Apify with keyword searches + target channels.
     
-    Target channels:
-    - Y Combinator
-    - Lex Fridman (AI guests)
-    - My First Million (SaaS)
-    - All-In Podcast
-    - Lenny's Podcast
-    - Greg Isenberg
-    
-    Also includes search queries for AI/automation topics.
+    Args:
+        limit_per_keyword: Max results per search query
     """
     logger = get_run_logger()
-    logger.info(f"Scraping YouTube channels and AI/automation videos (limit: {limit})...")
+    logger.info(f"Scraping YouTube with {len(YOUTUBE_KEYWORDS)} keywords + {len(YOUTUBE_CHANNELS)} channels...")
     
     if not APIFY_API_KEY:
         logger.warning("APIFY_API_KEY not set, skipping YouTube scrape")
@@ -611,30 +713,20 @@ async def scrape_youtube(limit: int = 30) -> list[dict]:
     
     insights = []
     
-    # Build start URLs from both channels and search queries
+    # Build start URLs from keywords and channels
     start_urls = []
     
-    # Add channel URLs (recent videos)
+    # Add keyword search URLs
+    for keyword in YOUTUBE_KEYWORDS:
+        encoded_query = keyword.replace(" ", "+")
+        # No date filter to get ALL TIME best results
+        start_urls.append({"url": f"https://www.youtube.com/results?search_query={encoded_query}"})
+    
+    # Add channel URLs (recent videos from target channels)
     for channel in YOUTUBE_CHANNELS:
         start_urls.append({"url": channel["url"]})
     
-    # Add search URLs for AI/automation topics (filtered by upload date)
-    search_queries = [
-        "AI agent architecture",
-        "autonomous agent frameworks",
-        "multi-agent orchestration",
-        "LLM production deployment",
-        "enterprise AI infrastructure",
-        "agentic AI research",
-        "AI-first SaaS architecture",
-        "cold email AI automation",
-        "AI sales automation enterprise",
-    ]
-    
-    for query in search_queries:
-        # sp=EgQIAxAB filters to "This week" and sorts by view count
-        encoded_query = query.replace(" ", "+")
-        start_urls.append({"url": f"https://www.youtube.com/results?search_query={encoded_query}&sp=EgQIAxAB"})
+    total_limit = limit_per_keyword * len(YOUTUBE_KEYWORDS) + 10 * len(YOUTUBE_CHANNELS)
     
     async with httpx.AsyncClient(timeout=300) as client:
         await rate_limiter.wait()
@@ -646,7 +738,7 @@ async def scrape_youtube(limit: int = 30) -> list[dict]:
                 headers={"Authorization": f"Bearer {APIFY_API_KEY}"},
                 json={
                     "startUrls": start_urls,
-                    "maxResults": limit,
+                    "maxResults": total_limit,
                     "maxResultsShorts": 0,  # Skip shorts
                     "proxy": {"useApifyProxy": True},
                 }
@@ -664,8 +756,8 @@ async def scrape_youtube(limit: int = 30) -> list[dict]:
             
             logger.info(f"YouTube scraper started: run_id={run_id}")
             
-            # Poll for completion (max 180 seconds for multiple channels)
-            for _ in range(36):
+            # Poll for completion (max 300 seconds for larger scrape)
+            for _ in range(60):
                 await asyncio.sleep(5)
                 status_response = await client.get(
                     f"https://api.apify.com/v2/actor-runs/{run_id}",
@@ -680,7 +772,7 @@ async def scrape_youtube(limit: int = 30) -> list[dict]:
                     logger.warning(f"YouTube scraper run failed: {status}")
                     return []
             else:
-                logger.warning("YouTube scraper timed out after 180s")
+                logger.warning("YouTube scraper timed out after 300s")
                 return []
             
             # Get results
@@ -694,8 +786,14 @@ async def scrape_youtube(limit: int = 30) -> list[dict]:
             )
             
             videos = results_response.json() if results_response.status_code == 200 else []
+            seen_ids = set()
             
             for video in videos:
+                video_id = video.get("id") or video.get("videoId", "")
+                if video_id in seen_ids:
+                    continue
+                seen_ids.add(video_id)
+                
                 title = video.get("title", "")
                 description = (video.get("description") or video.get("text") or "")[:500]
                 channel = video.get("channelName") or video.get("author", {}).get("name", "")
@@ -710,9 +808,8 @@ async def scrape_youtube(limit: int = 30) -> list[dict]:
                 if not title or not url:
                     continue
                 
-                # Filter by minimum views (500+ for channel videos, 1000+ for search)
-                min_views = 500 if any(ch["name"].lower() in channel.lower() for ch in YOUTUBE_CHANNELS) else 1000
-                if view_count < min_views:
+                # Minimum views threshold
+                if view_count < 1000:
                     continue
                 
                 # Confidence based on views and channel
@@ -722,8 +819,6 @@ async def scrape_youtube(limit: int = 30) -> list[dict]:
                     confidence = min(0.95, confidence + 0.1)
                 
                 category = categorize_content(f"{title} {description}")
-                
-                # Determine if from target channel
                 from_target_channel = any(ch["name"].lower() in channel.lower() for ch in YOUTUBE_CHANNELS)
                 
                 insights.append({
@@ -734,6 +829,7 @@ async def scrape_youtube(limit: int = 30) -> list[dict]:
                     "source_type": "youtube",
                     "confidence_score": round(confidence, 2),
                     "metadata": {
+                        "video_id": video_id,
                         "channel": channel,
                         "view_count": view_count,
                         "published": published,
@@ -748,43 +844,106 @@ async def scrape_youtube(limit: int = 30) -> list[dict]:
     return insights
 
 
-# Target Twitter/X accounts for tech/AI/SaaS content
-TWITTER_ACCOUNTS = [
-    "levelsio",       # Pieter Levels - indie hacker legend
-    "marckohlbrugge", # Marc Köhlbrugge - WIP founder
-    "paborenstein",   # Pablo Borenstein
-    "gregisenberg",   # Greg Isenberg - Late Checkout
-    "dhaborenstein",  # Dan Borenstein  
-    "aaborenstein",   # Adam Borenstein
-    "ycombinator",    # Y Combinator
-    "paulg",          # Paul Graham
-    "sama",           # Sam Altman
-]
-
-TWITTER_HASHTAGS = [
-    "#buildinpublic",
-    "#indiehackers", 
-    "#saas",
-    "#ai",
-]
+@task(retries=2, retry_delay_seconds=10)
+async def scrape_producthunt(limit: int = 100) -> list[dict]:
+    """
+    Scrape ProductHunt for AI, automation, sales, and email tools.
+    Uses web scraping for search results.
+    
+    Args:
+        limit: Total max products to scrape
+    """
+    logger = get_run_logger()
+    logger.info(f"Scraping ProductHunt with {len(PRODUCTHUNT_KEYWORDS)} keyword searches...")
+    
+    insights = []
+    seen_slugs = set()
+    
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+        # First get RSS feed for today's launches
+        await rate_limiter.wait()
+        try:
+            response = await client.get(
+                "https://www.producthunt.com/feed",
+                headers={"User-Agent": "Elliot-Learning-Bot/1.0"}
+            )
+            response.raise_for_status()
+            content = response.text
+            
+            # Parse RSS feed
+            items = re.findall(
+                r'<item>.*?<title><!\[CDATA\[(.*?)\]\]></title>.*?<link>(.*?)</link>.*?<description><!\[CDATA\[(.*?)\]\]></description>.*?</item>',
+                content,
+                re.DOTALL
+            )
+            
+            for title, url, description in items:
+                title = title.strip()
+                url = url.strip()
+                description = re.sub(r'<[^>]+>', '', description.strip()[:500])
+                
+                # Extract slug from URL for dedup
+                slug = url.split("/posts/")[-1] if "/posts/" in url else url
+                if slug in seen_slugs:
+                    continue
+                seen_slugs.add(slug)
+                
+                # Check if relevant to our keywords
+                text_to_check = f"{title} {description}".lower()
+                is_relevant = any(kw.lower() in text_to_check for kw in PRODUCTHUNT_KEYWORDS)
+                
+                if is_relevant or len(insights) < 20:  # Always include top 20
+                    insights.append({
+                        "category": "tool_discovery",
+                        "content": f"[ProductHunt] {title}",
+                        "summary": f"{title}: {description[:200]}" if description else title[:200],
+                        "source_url": url,
+                        "source_type": "producthunt",
+                        "confidence_score": 0.75 if is_relevant else 0.60,
+                        "metadata": {
+                            "slug": slug,
+                            "tagline": description[:100] if description else "",
+                            "matched_keywords": [kw for kw in PRODUCTHUNT_KEYWORDS if kw.lower() in text_to_check],
+                        }
+                    })
+                    
+        except Exception as e:
+            logger.warning(f"ProductHunt RSS failed: {e}")
+        
+        # Also search for specific keywords on ProductHunt
+        for keyword in PRODUCTHUNT_KEYWORDS[:4]:  # Top 4 keywords
+            await rate_limiter.wait()
+            try:
+                search_url = f"https://www.producthunt.com/search?q={keyword}"
+                response = await client.get(
+                    search_url,
+                    headers={
+                        "User-Agent": "Elliot-Learning-Bot/1.0",
+                        "Accept": "text/html"
+                    },
+                    follow_redirects=True
+                )
+                # Note: ProductHunt search requires JavaScript, so limited results via HTML scraping
+                # The RSS feed above provides better coverage
+            except Exception as e:
+                logger.warning(f"ProductHunt search failed for '{keyword}': {e}")
+                continue
+    
+    logger.info(f"Scraped {len(insights)} ProductHunt products")
+    return insights
 
 
 @task(retries=2, retry_delay_seconds=30)
-async def scrape_twitter(limit: int = 50) -> list[dict]:
+async def scrape_twitter(limit_per_keyword: int = 50) -> list[dict]:
     """
-    Scrape Twitter/X for AI/SaaS content from thought leaders using Apify.
-    Uses microworlds/twitter-scraper actor.
+    Scrape Twitter/X using Apify with keyword searches + thought leader accounts.
+    Uses apidojo/tweet-scraper actor which supports searchTerms.
     
-    Target accounts:
-    - @levelsio, @marckohlbrugge - Indie hackers
-    - @gregisenberg - Startup/community building
-    - @ycombinator, @paulg, @sama - YC/AI leaders
-    - Plus Borenstein brothers
-    
-    Also searches hashtags: #buildinpublic, #indiehackers, #saas, #ai
+    Args:
+        limit_per_keyword: Max tweets per search term
     """
     logger = get_run_logger()
-    logger.info(f"Scraping Twitter/X (accounts + hashtags) limit: {limit}...")
+    logger.info(f"Scraping Twitter/X with {len(TWITTER_KEYWORDS)} keywords + {len(TWITTER_ACCOUNTS)} accounts...")
     
     if not APIFY_API_KEY:
         logger.warning("APIFY_API_KEY not set, skipping Twitter scrape")
@@ -792,31 +951,33 @@ async def scrape_twitter(limit: int = 50) -> list[dict]:
     
     insights = []
     
-    # Build search terms - accounts and hashtags
+    # Build search terms - keywords + account searches
     search_terms = []
+    
+    # Add keyword searches
+    for keyword in TWITTER_KEYWORDS:
+        search_terms.append(keyword)
     
     # Add account searches (from:username gets their tweets)
     for account in TWITTER_ACCOUNTS:
         search_terms.append(f"from:{account}")
     
-    # Add hashtag searches
-    for hashtag in TWITTER_HASHTAGS:
-        # Remove # for search term
-        search_terms.append(hashtag.lstrip("#"))
+    total_limit = limit_per_keyword * (len(TWITTER_KEYWORDS) + len(TWITTER_ACCOUNTS))
     
     async with httpx.AsyncClient(timeout=300) as client:
         await rate_limiter.wait()
         
         try:
-            # Use microworlds/twitter-scraper actor
+            # Use apidojo/tweet-scraper actor (Tweet Scraper V2)
             run_response = await client.post(
-                "https://api.apify.com/v2/acts/microworlds~twitter-scraper/runs",
+                "https://api.apify.com/v2/acts/apidojo~tweet-scraper/runs",
                 headers={"Authorization": f"Bearer {APIFY_API_KEY}"},
                 json={
                     "searchTerms": search_terms,
-                    "maxTweets": limit,
+                    "maxTweets": total_limit,
                     "sort": "Latest",
                     "tweetLanguage": "en",
+                    "addUserInfo": True,
                     "proxy": {"useApifyProxy": True},
                 }
             )
@@ -833,8 +994,8 @@ async def scrape_twitter(limit: int = 50) -> list[dict]:
             
             logger.info(f"Twitter scraper started: run_id={run_id}")
             
-            # Poll for completion (max 180 seconds)
-            for _ in range(36):
+            # Poll for completion (max 300 seconds)
+            for _ in range(60):
                 await asyncio.sleep(5)
                 status_response = await client.get(
                     f"https://api.apify.com/v2/actor-runs/{run_id}",
@@ -849,7 +1010,7 @@ async def scrape_twitter(limit: int = 50) -> list[dict]:
                     logger.warning(f"Twitter scraper run failed: {status}")
                     return []
             else:
-                logger.warning("Twitter scraper timed out after 180s")
+                logger.warning("Twitter scraper timed out after 300s")
                 return []
             
             # Get results
@@ -863,13 +1024,11 @@ async def scrape_twitter(limit: int = 50) -> list[dict]:
             )
             
             tweets = results_response.json() if results_response.status_code == 200 else []
-            
             seen_ids = set()
+            
             for tweet in tweets:
-                # Extract tweet data - handle various field name conventions
                 tweet_id = tweet.get("id") or tweet.get("id_str") or tweet.get("tweetId", "")
                 
-                # Dedupe within this batch
                 if tweet_id in seen_ids:
                     continue
                 seen_ids.add(tweet_id)
@@ -894,28 +1053,25 @@ async def scrape_twitter(limit: int = 50) -> list[dict]:
                 if not text:
                     continue
                 
-                # Skip retweets (start with "RT @")
+                # Skip retweets
                 if text.startswith("RT @"):
                     continue
                 
                 # Calculate engagement score
                 engagement = likes + (retweets * 2) + replies
-                
-                # Higher threshold for hashtag searches, lower for known accounts
                 is_target_account = username.lower() in [a.lower() for a in TWITTER_ACCOUNTS]
-                min_engagement = 5 if is_target_account else 20
                 
+                # Minimum engagement threshold
+                min_engagement = 5 if is_target_account else 10
                 if engagement < min_engagement:
                     continue
                 
-                # Confidence based on engagement and account status
+                # Confidence based on engagement
                 confidence = min(0.95, 0.4 + (engagement / 1000))
                 if is_target_account:
                     confidence = min(0.95, confidence + 0.15)
                 
                 category = categorize_content(text)
-                
-                # Truncate text for content field
                 content_text = text[:200] + "..." if len(text) > 200 else text
                 
                 insights.append({
@@ -942,663 +1098,6 @@ async def scrape_twitter(limit: int = 50) -> list[dict]:
             logger.error(f"Twitter scrape failed: {e}")
     
     logger.info(f"Scraped {len(insights)} tweets from X/Twitter")
-    return insights
-
-
-@task(retries=2, retry_delay_seconds=10)
-async def scrape_arxiv(keywords: list = None, limit: int = 50) -> list[dict]:
-    """
-    Scrape ArXiv for AI/ML research papers.
-    Uses ArXiv API (free, no auth required).
-    
-    Categories: cs.AI, cs.CL, cs.LG
-    Keywords: agent memory, multi-agent systems, LLM reasoning, tool use
-    """
-    logger = get_run_logger()
-    logger.info(f"Scraping ArXiv papers (limit: {limit})...")
-    
-    if keywords is None:
-        keywords = [
-            "agent memory",
-            "multi-agent systems", 
-            "LLM reasoning",
-            "tool use language models",
-            "autonomous agents",
-            "agentic AI",
-            "retrieval augmented generation"
-        ]
-    
-    # ArXiv categories for AI research
-    categories = ["cs.AI", "cs.CL", "cs.LG"]
-    
-    insights = []
-    
-    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-        # Search by keywords
-        for keyword in keywords[:5]:  # Limit to avoid rate limiting
-            await rate_limiter.wait()
-            
-            try:
-                # Build query: search in title/abstract, filter by categories
-                cat_query = "+OR+".join([f"cat:{cat}" for cat in categories])
-                search_query = f"all:{keyword.replace(' ', '+AND+all:')}+AND+({cat_query})"
-                
-                response = await client.get(
-                    f"http://export.arxiv.org/api/query",
-                    params={
-                        "search_query": search_query,
-                        "max_results": limit // len(keywords),
-                        "sortBy": "submittedDate",
-                        "sortOrder": "descending"
-                    }
-                )
-                response.raise_for_status()
-                
-                content = response.text
-                
-                # Parse XML response - extract entries
-                entries = re.findall(
-                    r'<entry>(.*?)</entry>',
-                    content,
-                    re.DOTALL
-                )
-                
-                for entry in entries:
-                    # Extract fields
-                    title_match = re.search(r'<title>(.*?)</title>', entry, re.DOTALL)
-                    summary_match = re.search(r'<summary>(.*?)</summary>', entry, re.DOTALL)
-                    link_match = re.search(r'<id>(.*?)</id>', entry)
-                    published_match = re.search(r'<published>(.*?)</published>', entry)
-                    authors_matches = re.findall(r'<author>.*?<name>(.*?)</name>.*?</author>', entry, re.DOTALL)
-                    categories_matches = re.findall(r'<category[^>]*term="([^"]+)"', entry)
-                    
-                    if not title_match or not link_match:
-                        continue
-                    
-                    title = title_match.group(1).strip().replace('\n', ' ')
-                    summary = summary_match.group(1).strip().replace('\n', ' ')[:500] if summary_match else ""
-                    url = link_match.group(1).strip()
-                    published = published_match.group(1).strip() if published_match else ""
-                    authors = authors_matches[:3]  # First 3 authors
-                    paper_categories = categories_matches[:5]
-                    
-                    # Skip if already seen (ArXiv IDs are unique)
-                    arxiv_id = url.split('/')[-1] if url else ""
-                    
-                    category = categorize_content(f"{title} {summary}")
-                    confidence = 0.85  # Research papers are high quality
-                    
-                    insights.append({
-                        "category": category,
-                        "content": f"[ArXiv {arxiv_id}] {title}",
-                        "summary": f"{title}. {summary[:300]}",
-                        "source_url": url,
-                        "source_type": "arxiv",
-                        "confidence_score": round(confidence, 2),
-                        "metadata": {
-                            "arxiv_id": arxiv_id,
-                            "authors": authors,
-                            "categories": paper_categories,
-                            "published": published,
-                            "search_keyword": keyword
-                        }
-                    })
-                    
-            except Exception as e:
-                logger.warning(f"ArXiv search failed for '{keyword}': {e}")
-                continue
-    
-    # Dedupe by arxiv_id
-    seen_ids = set()
-    unique_insights = []
-    for insight in insights:
-        arxiv_id = insight.get("metadata", {}).get("arxiv_id", "")
-        if arxiv_id and arxiv_id not in seen_ids:
-            seen_ids.add(arxiv_id)
-            unique_insights.append(insight)
-    
-    logger.info(f"Scraped {len(unique_insights)} ArXiv papers")
-    return unique_insights
-
-
-@task(retries=2, retry_delay_seconds=10)
-async def scrape_devto(keywords: list = None, limit: int = 50) -> list[dict]:
-    """
-    Scrape Dev.to for tech articles.
-    Uses Dev.to API (free, no auth required).
-    
-    Tags: ai, llm, automation, python, agents
-    """
-    logger = get_run_logger()
-    logger.info(f"Scraping Dev.to articles (limit: {limit})...")
-    
-    if keywords is None:
-        keywords = ["ai", "llm", "automation", "python", "agents", "machinelearning", "webdev"]
-    
-    insights = []
-    
-    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-        # Search by tags
-        for tag in keywords[:6]:
-            await rate_limiter.wait()
-            
-            try:
-                response = await client.get(
-                    "https://dev.to/api/articles",
-                    params={
-                        "tag": tag,
-                        "per_page": min(30, limit // len(keywords)),
-                        "state": "rising"  # Get trending/fresh content
-                    },
-                    headers={"User-Agent": "Elliot-Learning-Bot/1.0"}
-                )
-                response.raise_for_status()
-                
-                articles = response.json()
-                
-                for article in articles:
-                    title = article.get("title", "")
-                    description = article.get("description", "")[:300]
-                    url = article.get("url", "")
-                    author = article.get("user", {}).get("username", "")
-                    reactions = article.get("positive_reactions_count", 0)
-                    comments = article.get("comments_count", 0)
-                    reading_time = article.get("reading_time_minutes", 0)
-                    published = article.get("published_at", "")
-                    tags = article.get("tag_list", [])
-                    
-                    if not title or not url:
-                        continue
-                    
-                    # Minimum engagement threshold
-                    if reactions < 10:
-                        continue
-                    
-                    # Confidence based on engagement
-                    confidence = min(0.9, 0.5 + (reactions / 200) + (comments / 50))
-                    category = categorize_content(f"{title} {description} {' '.join(tags)}")
-                    
-                    insights.append({
-                        "category": category,
-                        "content": f"[Dev.to {reactions}❤️] {title}",
-                        "summary": f"{title} by @{author}. {description}",
-                        "source_url": url,
-                        "source_type": "devto",
-                        "confidence_score": round(confidence, 2),
-                        "metadata": {
-                            "author": author,
-                            "reactions": reactions,
-                            "comments": comments,
-                            "reading_time": reading_time,
-                            "tags": tags,
-                            "published": published,
-                            "search_tag": tag
-                        }
-                    })
-                    
-            except Exception as e:
-                logger.warning(f"Dev.to search failed for tag '{tag}': {e}")
-                continue
-    
-    # Dedupe by URL
-    seen_urls = set()
-    unique_insights = []
-    for insight in insights:
-        url = insight.get("source_url", "")
-        if url and url not in seen_urls:
-            seen_urls.add(url)
-            unique_insights.append(insight)
-    
-    logger.info(f"Scraped {len(unique_insights)} Dev.to articles")
-    return unique_insights
-
-
-@task(retries=2, retry_delay_seconds=10)
-async def scrape_indiehackers(limit: int = 30) -> list[dict]:
-    """
-    Scrape Indie Hackers RSS feed.
-    Filters for SaaS, automation, AI keywords.
-    """
-    logger = get_run_logger()
-    logger.info(f"Scraping Indie Hackers (limit: {limit})...")
-    
-    insights = []
-    
-    # Keywords to filter for relevant content
-    relevant_keywords = [
-        'saas', 'ai', 'automation', 'startup', 'mrr', 'revenue',
-        'launch', 'product', 'bootstrap', 'indie', 'growth', 'marketing',
-        'sales', 'b2b', 'llm', 'gpt', 'agent', 'api'
-    ]
-    
-    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-        await rate_limiter.wait()
-        
-        try:
-            response = await client.get(
-                "https://www.indiehackers.com/feed.xml",
-                headers={"User-Agent": "Elliot-Learning-Bot/1.0"}
-            )
-            response.raise_for_status()
-            
-            content = response.text
-            
-            # Parse RSS items
-            items = re.findall(
-                r'<item>(.*?)</item>',
-                content,
-                re.DOTALL
-            )[:limit * 2]  # Get more to filter
-            
-            for item in items:
-                title_match = re.search(r'<title><!\[CDATA\[(.*?)\]\]></title>', item)
-                if not title_match:
-                    title_match = re.search(r'<title>(.*?)</title>', item)
-                    
-                link_match = re.search(r'<link>(.*?)</link>', item)
-                desc_match = re.search(r'<description><!\[CDATA\[(.*?)\]\]></description>', item, re.DOTALL)
-                if not desc_match:
-                    desc_match = re.search(r'<description>(.*?)</description>', item, re.DOTALL)
-                pub_date_match = re.search(r'<pubDate>(.*?)</pubDate>', item)
-                
-                if not title_match or not link_match:
-                    continue
-                
-                title = title_match.group(1).strip()
-                url = link_match.group(1).strip()
-                description = desc_match.group(1).strip()[:500] if desc_match else ""
-                pub_date = pub_date_match.group(1).strip() if pub_date_match else ""
-                
-                # Clean HTML from description
-                description = re.sub(r'<[^>]+>', '', description)
-                
-                # Check if content is relevant (contains any relevant keyword)
-                text_to_check = f"{title} {description}".lower()
-                if not any(kw in text_to_check for kw in relevant_keywords):
-                    continue
-                
-                category = categorize_content(f"{title} {description}")
-                confidence = 0.7  # Indie Hackers has quality discussions
-                
-                insights.append({
-                    "category": category,
-                    "content": f"[Indie Hackers] {title}",
-                    "summary": f"{title}. {description[:200]}",
-                    "source_url": url,
-                    "source_type": "indiehackers",
-                    "confidence_score": round(confidence, 2),
-                    "metadata": {
-                        "published": pub_date,
-                        "feed": "main"
-                    }
-                })
-                
-                if len(insights) >= limit:
-                    break
-                    
-        except Exception as e:
-            logger.warning(f"Indie Hackers RSS failed: {e}")
-    
-    logger.info(f"Scraped {len(insights)} Indie Hackers posts")
-    return insights
-
-
-@task(retries=2, retry_delay_seconds=10)
-async def scrape_substacks(limit: int = 50) -> list[dict]:
-    """
-    Scrape Substack newsletters via RSS feeds.
-    
-    Known newsletters:
-    - Lenny's Newsletter
-    - Latent Space (AI)
-    - One Useful Thing (AI/productivity)
-    """
-    logger = get_run_logger()
-    logger.info(f"Scraping Substack newsletters (limit: {limit})...")
-    
-    # Newsletter RSS feeds
-    newsletters = [
-        {"name": "Lenny's Newsletter", "feed": "https://www.lennysnewsletter.com/feed"},
-        {"name": "Latent Space", "feed": "https://www.latent.space/feed"},
-        {"name": "One Useful Thing", "feed": "https://www.oneusefulthing.org/feed"},
-        {"name": "The Pragmatic Engineer", "feed": "https://newsletter.pragmaticengineer.com/feed"},
-        {"name": "Simon Willison", "feed": "https://simonwillison.net/atom/entries/"},
-    ]
-    
-    insights = []
-    per_feed_limit = max(5, limit // len(newsletters))
-    
-    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-        for newsletter in newsletters:
-            await rate_limiter.wait()
-            
-            try:
-                response = await client.get(
-                    newsletter["feed"],
-                    headers={"User-Agent": "Elliot-Learning-Bot/1.0"},
-                    follow_redirects=True
-                )
-                response.raise_for_status()
-                
-                content = response.text
-                
-                # Parse RSS/Atom items
-                # Try RSS format first
-                items = re.findall(r'<item>(.*?)</item>', content, re.DOTALL)
-                is_atom = False
-                
-                # Fall back to Atom format
-                if not items:
-                    items = re.findall(r'<entry>(.*?)</entry>', content, re.DOTALL)
-                    is_atom = True
-                
-                items = items[:per_feed_limit]
-                
-                for item in items:
-                    if is_atom:
-                        title_match = re.search(r'<title[^>]*>(.*?)</title>', item, re.DOTALL)
-                        link_match = re.search(r'<link[^>]*href="([^"]+)"', item)
-                        desc_match = re.search(r'<content[^>]*>(.*?)</content>', item, re.DOTALL)
-                        if not desc_match:
-                            desc_match = re.search(r'<summary[^>]*>(.*?)</summary>', item, re.DOTALL)
-                        pub_match = re.search(r'<published>(.*?)</published>', item)
-                        if not pub_match:
-                            pub_match = re.search(r'<updated>(.*?)</updated>', item)
-                    else:
-                        title_match = re.search(r'<title><!\[CDATA\[(.*?)\]\]></title>', item)
-                        if not title_match:
-                            title_match = re.search(r'<title>(.*?)</title>', item)
-                        link_match = re.search(r'<link>(.*?)</link>', item)
-                        desc_match = re.search(r'<description><!\[CDATA\[(.*?)\]\]></description>', item, re.DOTALL)
-                        if not desc_match:
-                            desc_match = re.search(r'<description>(.*?)</description>', item, re.DOTALL)
-                        pub_match = re.search(r'<pubDate>(.*?)</pubDate>', item)
-                    
-                    if not title_match or not link_match:
-                        continue
-                    
-                    title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip()
-                    url = link_match.group(1).strip()
-                    description = ""
-                    if desc_match:
-                        description = re.sub(r'<[^>]+>', '', desc_match.group(1)).strip()[:500]
-                    pub_date = pub_match.group(1).strip() if pub_match else ""
-                    
-                    category = categorize_content(f"{title} {description}")
-                    confidence = 0.8  # Substacks are curated, high quality
-                    
-                    insights.append({
-                        "category": category,
-                        "content": f"[{newsletter['name']}] {title}",
-                        "summary": f"{title}. {description[:200]}",
-                        "source_url": url,
-                        "source_type": "substack",
-                        "confidence_score": round(confidence, 2),
-                        "metadata": {
-                            "newsletter": newsletter["name"],
-                            "published": pub_date
-                        }
-                    })
-                    
-            except Exception as e:
-                logger.warning(f"Substack RSS failed for {newsletter['name']}: {e}")
-                continue
-    
-    logger.info(f"Scraped {len(insights)} Substack posts")
-    return insights
-
-
-@task(retries=2, retry_delay_seconds=10)
-async def scrape_ai_blogs(limit: int = 30) -> list[dict]:
-    """
-    Scrape AI company/project blogs via RSS.
-    
-    Sources:
-    - Anthropic
-    - OpenAI
-    - LangChain
-    """
-    logger = get_run_logger()
-    logger.info(f"Scraping AI blogs (limit: {limit})...")
-    
-    # Blog RSS feeds
-    blogs = [
-        {"name": "Anthropic", "feed": "https://www.anthropic.com/feed.xml", "fallback": "https://www.anthropic.com/research"},
-        {"name": "OpenAI", "feed": "https://openai.com/blog/rss.xml", "fallback": None},
-        {"name": "LangChain", "feed": "https://blog.langchain.dev/rss/", "fallback": None},
-        {"name": "Hugging Face", "feed": "https://huggingface.co/blog/feed.xml", "fallback": None},
-        {"name": "Google AI", "feed": "https://blog.google/technology/ai/rss/", "fallback": None},
-    ]
-    
-    insights = []
-    per_blog_limit = max(5, limit // len(blogs))
-    
-    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-        for blog in blogs:
-            await rate_limiter.wait()
-            
-            try:
-                response = await client.get(
-                    blog["feed"],
-                    headers={"User-Agent": "Elliot-Learning-Bot/1.0"},
-                    follow_redirects=True
-                )
-                response.raise_for_status()
-                
-                content = response.text
-                
-                # Parse RSS/Atom items
-                items = re.findall(r'<item>(.*?)</item>', content, re.DOTALL)
-                is_atom = False
-                
-                if not items:
-                    items = re.findall(r'<entry>(.*?)</entry>', content, re.DOTALL)
-                    is_atom = True
-                
-                items = items[:per_blog_limit]
-                
-                for item in items:
-                    if is_atom:
-                        title_match = re.search(r'<title[^>]*>(.*?)</title>', item, re.DOTALL)
-                        link_match = re.search(r'<link[^>]*href="([^"]+)"', item)
-                        if not link_match:
-                            link_match = re.search(r'<link>(.*?)</link>', item)
-                        desc_match = re.search(r'<content[^>]*>(.*?)</content>', item, re.DOTALL)
-                        if not desc_match:
-                            desc_match = re.search(r'<summary[^>]*>(.*?)</summary>', item, re.DOTALL)
-                        pub_match = re.search(r'<published>(.*?)</published>', item)
-                        if not pub_match:
-                            pub_match = re.search(r'<updated>(.*?)</updated>', item)
-                    else:
-                        title_match = re.search(r'<title><!\[CDATA\[(.*?)\]\]></title>', item)
-                        if not title_match:
-                            title_match = re.search(r'<title>(.*?)</title>', item)
-                        link_match = re.search(r'<link>(.*?)</link>', item)
-                        desc_match = re.search(r'<description><!\[CDATA\[(.*?)\]\]></description>', item, re.DOTALL)
-                        if not desc_match:
-                            desc_match = re.search(r'<description>(.*?)</description>', item, re.DOTALL)
-                        pub_match = re.search(r'<pubDate>(.*?)</pubDate>', item)
-                    
-                    if not title_match or not link_match:
-                        continue
-                    
-                    title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip()
-                    url = link_match.group(1).strip()
-                    description = ""
-                    if desc_match:
-                        description = re.sub(r'<[^>]+>', '', desc_match.group(1)).strip()[:500]
-                    pub_date = pub_match.group(1).strip() if pub_match else ""
-                    
-                    category = "tech_trend"  # AI blogs are always tech trends
-                    confidence = 0.9  # Primary sources from AI labs
-                    
-                    insights.append({
-                        "category": category,
-                        "content": f"[{blog['name']} Blog] {title}",
-                        "summary": f"{title}. {description[:200]}",
-                        "source_url": url,
-                        "source_type": "ai_blog",
-                        "confidence_score": round(confidence, 2),
-                        "metadata": {
-                            "blog": blog["name"],
-                            "published": pub_date
-                        }
-                    })
-                    
-            except Exception as e:
-                logger.warning(f"AI blog RSS failed for {blog['name']}: {e}")
-                continue
-    
-    logger.info(f"Scraped {len(insights)} AI blog posts")
-    return insights
-
-
-@task(retries=2, retry_delay_seconds=30)
-async def scrape_reddit(limit: int = 50) -> list[dict]:
-    """
-    Scrape Reddit for relevant posts using Apify.
-    Uses trudax/reddit-scraper-lite actor.
-    
-    Enhanced subreddits:
-    - r/SaaS - SaaS business discussions
-    - r/Entrepreneur - Business/startup insights
-    - r/sales - Sales strategies and tools
-    - r/startups - Startup community
-    - r/automation - Automation tools and workflows
-    - r/LocalLLaMA - Local LLM developments
-    - r/ChatGPT - AI/LLM trends
-    - r/webdev - Web development trends
-    """
-    logger = get_run_logger()
-    logger.info(f"Scraping Reddit (expanded subreddits) limit: {limit}...")
-    
-    if not APIFY_API_KEY:
-        logger.warning("APIFY_API_KEY not set, skipping Reddit scrape")
-        return []
-    
-    insights = []
-    
-    # Enhanced subreddit list with top posts from today
-    subreddit_urls = [
-        # Business/SaaS
-        {"url": "https://www.reddit.com/r/SaaS/top/?t=day"},
-        {"url": "https://www.reddit.com/r/Entrepreneur/top/?t=day"},
-        {"url": "https://www.reddit.com/r/sales/top/?t=day"},
-        {"url": "https://www.reddit.com/r/startups/top/?t=day"},
-        # Tech/AI
-        {"url": "https://www.reddit.com/r/automation/top/?t=day"},
-        {"url": "https://www.reddit.com/r/LocalLLaMA/top/?t=day"},
-        {"url": "https://www.reddit.com/r/ChatGPT/top/?t=day"},
-        {"url": "https://www.reddit.com/r/webdev/top/?t=day"},
-        # Additional valuable subreddits
-        {"url": "https://www.reddit.com/r/smallbusiness/top/?t=day"},
-        {"url": "https://www.reddit.com/r/agency/top/?t=day"},
-    ]
-    
-    async with httpx.AsyncClient(timeout=180) as client:
-        await rate_limiter.wait()
-        
-        try:
-            # Start Apify actor run using reddit-scraper-lite
-            run_response = await client.post(
-                "https://api.apify.com/v2/acts/trudax~reddit-scraper-lite/runs",
-                headers={"Authorization": f"Bearer {APIFY_API_KEY}"},
-                json={
-                    "startUrls": subreddit_urls,
-                    "maxItems": limit,
-                    "proxy": {"useApifyProxy": True},
-                }
-            )
-            
-            if run_response.status_code != 201:
-                logger.warning(f"Reddit scraper start failed: {run_response.status_code} - {run_response.text[:200]}")
-                return []
-            
-            run_data = run_response.json()
-            run_id = run_data.get("data", {}).get("id")
-            
-            if not run_id:
-                return []
-            
-            # Poll for completion (max 120 seconds)
-            for _ in range(24):
-                await asyncio.sleep(5)
-                status_response = await client.get(
-                    f"https://api.apify.com/v2/actor-runs/{run_id}",
-                    headers={"Authorization": f"Bearer {APIFY_API_KEY}"}
-                )
-                status_data = status_response.json()
-                status = status_data.get("data", {}).get("status")
-                
-                if status == "SUCCEEDED":
-                    break
-                elif status in ["FAILED", "ABORTED", "TIMED-OUT"]:
-                    logger.warning(f"Reddit scraper run failed: {status}")
-                    return []
-            else:
-                logger.warning("Reddit scraper timed out")
-                return []
-            
-            # Get results
-            dataset_id = status_data.get("data", {}).get("defaultDatasetId")
-            if not dataset_id:
-                return []
-            
-            results_response = await client.get(
-                f"https://api.apify.com/v2/datasets/{dataset_id}/items",
-                headers={"Authorization": f"Bearer {APIFY_API_KEY}"}
-            )
-            
-            posts = results_response.json() if results_response.status_code == 200 else []
-            
-            for post in posts:
-                # Handle reddit-scraper-lite field names
-                title = post.get("title") or post.get("parsedTitle", "")
-                body = (post.get("body") or post.get("text") or "")[:500]
-                subreddit = (post.get("communityName") or post.get("parsedCommunityName", "")).replace("r/", "")
-                score = post.get("score") or post.get("upVotes", 0)
-                url = post.get("url", "")
-                
-                # Skip comments (only want posts)
-                if post.get("category") == "comment" or post.get("parentId"):
-                    continue
-                
-                if not title:
-                    continue
-                
-                # Ensure URL is complete
-                if url and not url.startswith("http"):
-                    url = f"https://reddit.com{url}"
-                
-                # Different score thresholds for different subreddits
-                # Business subreddits typically have lower engagement
-                business_subs = ['saas', 'entrepreneur', 'sales', 'startups', 'smallbusiness', 'agency']
-                min_score = 20 if subreddit.lower() in business_subs else 50
-                
-                if score < min_score:
-                    continue
-                
-                # Confidence based on score
-                confidence = min(0.95, 0.5 + (score / 1000))
-                category = categorize_content(f"{title} {body}")
-                
-                insights.append({
-                    "category": category,
-                    "content": f"[r/{subreddit} {score}pts] {title}",
-                    "summary": f"{title}. {body[:200]}" if body else title,
-                    "source_url": url,
-                    "source_type": "reddit",
-                    "confidence_score": round(confidence, 2),
-                    "metadata": {
-                        "subreddit": subreddit,
-                        "score": score,
-                    }
-                })
-                
-        except Exception as e:
-            logger.error(f"Reddit scrape failed: {e}")
-    
-    logger.info(f"Scraped {len(insights)} Reddit posts")
     return insights
 
 
@@ -1765,79 +1264,64 @@ async def update_learning_stats(stored_count: int):
 
 @flow(
     name="daily_learning_scrape",
-    description="Scrape HackerNews, ProductHunt, GitHub Trending, YouTube, Reddit, X/Twitter, ArXiv, Dev.to, Indie Hackers, Substack, and AI blogs for insights",
+    description="Scrape HackerNews, ProductHunt, GitHub, YouTube, Reddit, and X/Twitter with targeted keyword searches",
     retries=1,
     retry_delay_seconds=300,
     log_prints=True
 )
 async def daily_learning_scrape(
-    hn_limit: int = 15,
-    ph_limit: int = 10,
-    gh_limit: int = 15,
-    yt_limit: int = 30,
-    reddit_limit: int = 50,
-    twitter_limit: int = 50,
-    arxiv_limit: int = 50,
-    devto_limit: int = 50,
-    indiehackers_limit: int = 30,
-    substack_limit: int = 50,
-    aiblogs_limit: int = 30
+    hn_limit_per_keyword: int = 100,
+    gh_limit_per_keyword: int = 50,
+    reddit_limit_per_search: int = 50,
+    yt_limit_per_keyword: int = 20,
+    ph_limit: int = 100,
+    twitter_limit_per_keyword: int = 50
 ):
     """
-    Main flow: Scrape multiple sources and store insights.
+    Main flow: Scrape multiple sources with targeted keyword searches and store insights.
+    
+    This is a BIG INITIAL SCRAPE - higher limits to build comprehensive knowledge base.
     
     Args:
-        hn_limit: Number of HackerNews stories to scrape (top + Show HN + Ask HN)
-        ph_limit: Number of ProductHunt products to scrape
-        gh_limit: Number of GitHub trending repos to scrape
-        yt_limit: Number of YouTube videos to scrape
-        reddit_limit: Number of Reddit posts to scrape
-        twitter_limit: Number of X/Twitter posts to scrape
-        arxiv_limit: Number of ArXiv papers to scrape
-        devto_limit: Number of Dev.to articles to scrape
-        indiehackers_limit: Number of Indie Hackers posts to scrape
-        substack_limit: Number of Substack posts to scrape
-        aiblogs_limit: Number of AI blog posts to scrape
+        hn_limit_per_keyword: HackerNews results per keyword (100 x 15 keywords)
+        gh_limit_per_keyword: GitHub repos per keyword (50 x 15 keywords)
+        reddit_limit_per_search: Reddit posts per subreddit/keyword combo
+        yt_limit_per_keyword: YouTube videos per keyword (20 x 10 keywords)
+        ph_limit: ProductHunt products total
+        twitter_limit_per_keyword: Tweets per keyword/account (50 x 18 terms)
     """
     logger = get_run_logger()
-    logger.info("Starting daily learning scrape...")
+    logger.info("Starting targeted keyword learning scrape (BIG INITIAL SCRAPE)...")
+    logger.info(f"Keywords: HN={len(HACKERNEWS_KEYWORDS)}, GH={len(GITHUB_KEYWORDS)}, Reddit={len(REDDIT_KEYWORDS)}, YT={len(YOUTUBE_KEYWORDS)}, Twitter={len(TWITTER_KEYWORDS)}")
     
-    # Run all scrapers in parallel (each has its own rate limiting internally)
-    # Using asyncio.gather with return_exceptions=True so one failure doesn't block others
+    # Run all scrapers in parallel
     logger.info("Launching all scrapers in parallel...")
     results = await asyncio.gather(
-        scrape_hackernews(hn_limit),
+        scrape_hackernews(hn_limit_per_keyword),
+        scrape_github(gh_limit_per_keyword),
+        scrape_reddit(reddit_limit_per_search),
+        scrape_youtube(yt_limit_per_keyword),
         scrape_producthunt(ph_limit),
-        scrape_github_trending(gh_limit),
-        scrape_youtube(yt_limit),
-        scrape_reddit(reddit_limit),
-        scrape_twitter(twitter_limit),
-        scrape_arxiv(limit=arxiv_limit),
-        scrape_devto(limit=devto_limit),
-        scrape_indiehackers(limit=indiehackers_limit),
-        scrape_substacks(limit=substack_limit),
-        scrape_ai_blogs(limit=aiblogs_limit),
+        scrape_twitter(twitter_limit_per_keyword),
         return_exceptions=True
     )
     
     # Unpack results, handling any exceptions
-    scraper_names = ["hackernews", "producthunt", "github", "youtube", "reddit", "twitter", "arxiv", "devto", "indiehackers", "substack", "aiblogs"]
-    hn_insights, ph_insights, gh_insights, yt_insights, reddit_insights, twitter_insights, arxiv_insights, devto_insights, ih_insights, substack_insights, aiblogs_insights = [], [], [], [], [], [], [], [], [], [], []
-    insights_list = [hn_insights, ph_insights, gh_insights, yt_insights, reddit_insights, twitter_insights, arxiv_insights, devto_insights, ih_insights, substack_insights, aiblogs_insights]
+    scraper_names = ["hackernews", "github", "reddit", "youtube", "producthunt", "twitter"]
+    all_results = {name: [] for name in scraper_names}
     
     for i, result in enumerate(results):
         if isinstance(result, Exception):
             logger.error(f"Scraper {scraper_names[i]} failed: {result}")
         else:
-            insights_list[i].extend(result or [])
+            all_results[scraper_names[i]] = result or []
             logger.info(f"Scraper {scraper_names[i]} returned {len(result or [])} insights")
     
     # Combine all insights
-    all_insights = (
-        hn_insights + ph_insights + gh_insights + yt_insights + 
-        reddit_insights + twitter_insights + arxiv_insights + 
-        devto_insights + ih_insights + substack_insights + aiblogs_insights
-    )
+    all_insights = []
+    for name in scraper_names:
+        all_insights.extend(all_results[name])
+    
     logger.info(f"Total raw insights: {len(all_insights)}")
     
     # Deduplicate
@@ -1846,7 +1330,7 @@ async def daily_learning_scrape(
     # Score for relevance
     scored_insights = await score_insights(unique_insights)
     
-    # Store in Supabase (DB trigger will also score, but we include for logging)
+    # Store in Supabase
     stored_count = await store_insights(scored_insights)
     
     # Update stats
@@ -1857,7 +1341,7 @@ async def daily_learning_scrape(
     medium_relevance = len([i for i in scored_insights if 0.5 <= i.get('relevance_score', 0) < 0.8])
     low_relevance = len([i for i in scored_insights if i.get('relevance_score', 0) < 0.5])
     
-    logger.info(f"Daily learning scrape complete: {stored_count} new insights stored")
+    logger.info(f"Targeted keyword scrape complete: {stored_count} new insights stored")
     
     return {
         "total_scraped": len(all_insights),
@@ -1868,18 +1352,13 @@ async def daily_learning_scrape(
             "medium": medium_relevance,
             "low": low_relevance
         },
-        "sources": {
-            "hackernews": len(hn_insights),
-            "producthunt": len(ph_insights),
-            "github": len(gh_insights),
-            "youtube": len(yt_insights),
-            "reddit": len(reddit_insights),
-            "twitter": len(twitter_insights),
-            "arxiv": len(arxiv_insights),
-            "devto": len(devto_insights),
-            "indiehackers": len(ih_insights),
-            "substack": len(substack_insights),
-            "aiblogs": len(aiblogs_insights)
+        "sources": {name: len(all_results[name]) for name in scraper_names},
+        "keywords_used": {
+            "hackernews": len(HACKERNEWS_KEYWORDS),
+            "github": len(GITHUB_KEYWORDS),
+            "reddit": len(REDDIT_KEYWORDS),
+            "youtube": len(YOUTUBE_KEYWORDS),
+            "twitter": len(TWITTER_KEYWORDS),
         }
     }
 

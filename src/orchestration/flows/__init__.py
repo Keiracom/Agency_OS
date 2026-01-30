@@ -21,6 +21,7 @@ from src.orchestration.flows.daily_digest_flow import (
     daily_digest_flow,
     send_client_digest_flow,
 )
+from src.orchestration.flows.warmup_monitor_flow import warmup_monitor_flow
 from src.orchestration.flows.enrichment_flow import daily_enrichment_flow
 from src.orchestration.flows.outreach_flow import hourly_outreach_flow as outreach_flow
 from src.orchestration.flows.pattern_backfill_flow import (
@@ -68,8 +69,13 @@ __all__ = [
     # Phase H, Item 44: Daily Digest
     "daily_digest_flow",
     "send_client_digest_flow",
+
     # Phase 19: Marketing Automation
     "daily_content_flow",
     "milestone_content_flow",
     "preview_daily_content_flow",
+
+    # Resource Pool: Warmup Monitor
+    "warmup_monitor_flow",
+
 ]

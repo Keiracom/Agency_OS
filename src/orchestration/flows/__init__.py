@@ -42,6 +42,10 @@ from src.orchestration.flows.stale_lead_refresh_flow import (
     daily_outreach_prep_flow,
     refresh_stale_leads_flow,
 )
+from src.orchestration.flows.persona_buffer_flow import (
+    persona_buffer_flow,
+    get_buffer_status,
+)
 
 __all__ = [
     # Core flows
@@ -66,4 +70,7 @@ __all__ = [
     "send_client_digest_flow",
     # Resource Pool: Warmup Monitor
     "warmup_monitor_flow",
+    # Resource Pool: Persona Buffer
+    "persona_buffer_flow",
+    "get_buffer_status",
 ]

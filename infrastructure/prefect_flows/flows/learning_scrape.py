@@ -746,6 +746,203 @@ async def scrape_youtube(limit: int = 30) -> list[dict]:
     return insights
 
 
+# Target Twitter/X accounts for tech/AI/SaaS content
+TWITTER_ACCOUNTS = [
+    "levelsio",       # Pieter Levels - indie hacker legend
+    "marckohlbrugge", # Marc Köhlbrugge - WIP founder
+    "paborenstein",   # Pablo Borenstein
+    "gregisenberg",   # Greg Isenberg - Late Checkout
+    "dhaborenstein",  # Dan Borenstein  
+    "aaborenstein",   # Adam Borenstein
+    "ycombinator",    # Y Combinator
+    "paulg",          # Paul Graham
+    "sama",           # Sam Altman
+]
+
+TWITTER_HASHTAGS = [
+    "#buildinpublic",
+    "#indiehackers", 
+    "#saas",
+    "#ai",
+]
+
+
+@task(retries=2, retry_delay_seconds=30)
+async def scrape_twitter(limit: int = 50) -> list[dict]:
+    """
+    Scrape Twitter/X for AI/SaaS content from thought leaders using Apify.
+    Uses microworlds/twitter-scraper actor.
+    
+    Target accounts:
+    - @levelsio, @marckohlbrugge - Indie hackers
+    - @gregisenberg - Startup/community building
+    - @ycombinator, @paulg, @sama - YC/AI leaders
+    - Plus Borenstein brothers
+    
+    Also searches hashtags: #buildinpublic, #indiehackers, #saas, #ai
+    """
+    logger = get_run_logger()
+    logger.info(f"Scraping Twitter/X (accounts + hashtags) limit: {limit}...")
+    
+    if not APIFY_API_KEY:
+        logger.warning("APIFY_API_KEY not set, skipping Twitter scrape")
+        return []
+    
+    insights = []
+    
+    # Build search terms - accounts and hashtags
+    search_terms = []
+    
+    # Add account searches (from:username gets their tweets)
+    for account in TWITTER_ACCOUNTS:
+        search_terms.append(f"from:{account}")
+    
+    # Add hashtag searches
+    for hashtag in TWITTER_HASHTAGS:
+        # Remove # for search term
+        search_terms.append(hashtag.lstrip("#"))
+    
+    async with httpx.AsyncClient(timeout=300) as client:
+        await rate_limiter.wait()
+        
+        try:
+            # Use microworlds/twitter-scraper actor
+            run_response = await client.post(
+                "https://api.apify.com/v2/acts/microworlds~twitter-scraper/runs",
+                headers={"Authorization": f"Bearer {APIFY_API_KEY}"},
+                json={
+                    "searchTerms": search_terms,
+                    "maxTweets": limit,
+                    "sort": "Latest",
+                    "tweetLanguage": "en",
+                    "proxy": {"useApifyProxy": True},
+                }
+            )
+            
+            if run_response.status_code != 201:
+                logger.warning(f"Twitter scraper start failed: {run_response.status_code} - {run_response.text[:200]}")
+                return []
+            
+            run_data = run_response.json()
+            run_id = run_data.get("data", {}).get("id")
+            
+            if not run_id:
+                return []
+            
+            logger.info(f"Twitter scraper started: run_id={run_id}")
+            
+            # Poll for completion (max 180 seconds)
+            for _ in range(36):
+                await asyncio.sleep(5)
+                status_response = await client.get(
+                    f"https://api.apify.com/v2/actor-runs/{run_id}",
+                    headers={"Authorization": f"Bearer {APIFY_API_KEY}"}
+                )
+                status_data = status_response.json()
+                status = status_data.get("data", {}).get("status")
+                
+                if status == "SUCCEEDED":
+                    break
+                elif status in ["FAILED", "ABORTED", "TIMED-OUT"]:
+                    logger.warning(f"Twitter scraper run failed: {status}")
+                    return []
+            else:
+                logger.warning("Twitter scraper timed out after 180s")
+                return []
+            
+            # Get results
+            dataset_id = status_data.get("data", {}).get("defaultDatasetId")
+            if not dataset_id:
+                return []
+            
+            results_response = await client.get(
+                f"https://api.apify.com/v2/datasets/{dataset_id}/items",
+                headers={"Authorization": f"Bearer {APIFY_API_KEY}"}
+            )
+            
+            tweets = results_response.json() if results_response.status_code == 200 else []
+            
+            seen_ids = set()
+            for tweet in tweets:
+                # Extract tweet data - handle various field name conventions
+                tweet_id = tweet.get("id") or tweet.get("id_str") or tweet.get("tweetId", "")
+                
+                # Dedupe within this batch
+                if tweet_id in seen_ids:
+                    continue
+                seen_ids.add(tweet_id)
+                
+                text = tweet.get("text") or tweet.get("full_text") or tweet.get("tweet", "")
+                author = tweet.get("author", {})
+                username = author.get("username") or author.get("screen_name") or tweet.get("username", "")
+                display_name = author.get("name") or tweet.get("name", username)
+                
+                # Engagement metrics
+                likes = tweet.get("likeCount") or tweet.get("favorite_count") or tweet.get("likes", 0)
+                retweets = tweet.get("retweetCount") or tweet.get("retweet_count") or tweet.get("retweets", 0)
+                replies = tweet.get("replyCount") or tweet.get("reply_count") or 0
+                
+                # Tweet URL
+                url = tweet.get("url") or tweet.get("tweetUrl", "")
+                if not url and username and tweet_id:
+                    url = f"https://x.com/{username}/status/{tweet_id}"
+                
+                created_at = tweet.get("createdAt") or tweet.get("created_at", "")
+                
+                if not text:
+                    continue
+                
+                # Skip retweets (start with "RT @")
+                if text.startswith("RT @"):
+                    continue
+                
+                # Calculate engagement score
+                engagement = likes + (retweets * 2) + replies
+                
+                # Higher threshold for hashtag searches, lower for known accounts
+                is_target_account = username.lower() in [a.lower() for a in TWITTER_ACCOUNTS]
+                min_engagement = 5 if is_target_account else 20
+                
+                if engagement < min_engagement:
+                    continue
+                
+                # Confidence based on engagement and account status
+                confidence = min(0.95, 0.4 + (engagement / 1000))
+                if is_target_account:
+                    confidence = min(0.95, confidence + 0.15)
+                
+                category = categorize_content(text)
+                
+                # Truncate text for content field
+                content_text = text[:200] + "..." if len(text) > 200 else text
+                
+                insights.append({
+                    "category": category,
+                    "content": f"[X @{username} {likes}❤️ {retweets}🔄] {content_text}",
+                    "summary": f"@{username} ({display_name}): {text[:300]}",
+                    "source_url": url,
+                    "source_type": "twitter",
+                    "confidence_score": round(confidence, 2),
+                    "metadata": {
+                        "tweet_id": tweet_id,
+                        "username": username,
+                        "display_name": display_name,
+                        "likes": likes,
+                        "retweets": retweets,
+                        "replies": replies,
+                        "engagement": engagement,
+                        "is_target_account": is_target_account,
+                        "created_at": created_at,
+                    }
+                })
+                
+        except Exception as e:
+            logger.error(f"Twitter scrape failed: {e}")
+    
+    logger.info(f"Scraped {len(insights)} tweets from X/Twitter")
+    return insights
+
+
 @task(retries=2, retry_delay_seconds=30)
 async def scrape_reddit(limit: int = 50) -> list[dict]:
     """
@@ -1058,7 +1255,7 @@ async def update_learning_stats(stored_count: int):
 
 @flow(
     name="daily_learning_scrape",
-    description="Scrape HackerNews, ProductHunt, GitHub Trending, YouTube, and Reddit for insights",
+    description="Scrape HackerNews, ProductHunt, GitHub Trending, YouTube, Reddit, and X/Twitter for insights",
     retries=1,
     retry_delay_seconds=300,
     log_prints=True
@@ -1068,7 +1265,8 @@ async def daily_learning_scrape(
     ph_limit: int = 10,
     gh_limit: int = 15,
     yt_limit: int = 30,
-    reddit_limit: int = 50
+    reddit_limit: int = 50,
+    twitter_limit: int = 50
 ):
     """
     Main flow: Scrape multiple sources and store insights.
@@ -1079,6 +1277,7 @@ async def daily_learning_scrape(
         gh_limit: Number of GitHub trending repos to scrape
         yt_limit: Number of YouTube videos to scrape
         reddit_limit: Number of Reddit posts to scrape
+        twitter_limit: Number of X/Twitter posts to scrape
     """
     logger = get_run_logger()
     logger.info("Starting daily learning scrape...")
@@ -1089,9 +1288,10 @@ async def daily_learning_scrape(
     gh_insights = await scrape_github_trending(gh_limit)
     yt_insights = await scrape_youtube(yt_limit)
     reddit_insights = await scrape_reddit(reddit_limit)
+    twitter_insights = await scrape_twitter(twitter_limit)
     
     # Combine all insights
-    all_insights = hn_insights + ph_insights + gh_insights + yt_insights + reddit_insights
+    all_insights = hn_insights + ph_insights + gh_insights + yt_insights + reddit_insights + twitter_insights
     logger.info(f"Total raw insights: {len(all_insights)}")
     
     # Deduplicate
@@ -1127,7 +1327,8 @@ async def daily_learning_scrape(
             "producthunt": len(ph_insights),
             "github": len(gh_insights),
             "youtube": len(yt_insights),
-            "reddit": len(reddit_insights)
+            "reddit": len(reddit_insights),
+            "twitter": len(twitter_insights)
         }
     }
 

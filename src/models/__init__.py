@@ -24,6 +24,7 @@ from src.models.campaign_suggestion import (
 from src.models.client import Client
 from src.models.client_intelligence import ClientIntelligence
 from src.models.client_persona import PERSONA_ALLOCATIONS, ClientPersona
+from src.models.persona import PERSONA_TIER_ALLOCATIONS, Persona, PersonaStatus
 from src.models.conversion_patterns import ConversionPattern, ConversionPatternHistory
 from src.models.digest_log import DigestLog
 from src.models.icp_refinement_log import IcpRefinementLog
@@ -95,6 +96,10 @@ __all__ = [
     # Client Personas
     "ClientPersona",
     "PERSONA_ALLOCATIONS",
+    # Persona Pool
+    "Persona",
+    "PersonaStatus",
+    "PERSONA_TIER_ALLOCATIONS",
     # LinkedIn
     "LinkedInSeat",
     "LinkedInSeatStatus",

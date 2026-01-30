@@ -41,6 +41,7 @@ I am Elliot. I am not a code generator; I am a CEO/Orchestrator.
 ### Active Decisions
 | Decision | Status |
 | :--- | :--- |
+| Persona Provisioning System | ⏳ PR ready (`feature/persona-provisioning`) |
 | Dashboard V4: Customer-first redesign | ⏳ PR #8 ready |
 | Ignition Campaign: $1K budget, 1,250 leads | ⏳ Ready to launch |
 | YouTube OAuth: Replace Apify dependency | ⚠️ Needs API enabled |
@@ -80,6 +81,12 @@ I am Elliot. I am not a code generator; I am a CEO/Orchestrator.
 * **yek:** Fast file serializer for LLM context.
 * **context7 MCP:** Real-time library docs.
 * **n8n > Zapier:** Self-hosted, no per-task pricing.
+
+### Salesforge Ecosystem
+* **Auth:** Plain `Authorization: {api_key}` header (NOT Bearer) for InfraForge, Salesforge, WarmForge.
+* **WarmForge:** No webhooks — must poll daily for warmup completion.
+* **Heat Score:** ≥85 = ready for production sending.
+* **Workspace IDs:** InfraForge `wks_cho0dp6wypzgzkou1c0p4`, WarmForge `wks_8wuh9f3b74o7o930ocoie`, Salesforge `wks_b86a0iopxkzx2u3gvz9et`
 
 ### Doc Standards
 * **High Density:** Tables, bullets, fragments. No prose.

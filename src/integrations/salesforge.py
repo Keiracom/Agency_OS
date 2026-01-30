@@ -13,7 +13,8 @@ Warmforge-warmed mailboxes. This replaces Resend to preserve warmup progress.
 
 API Reference:
 - Base URL: https://api.salesforge.ai/public/v2
-- Auth: X-API-KEY header
+- Auth: Authorization header (plain key, not Bearer)
+- Swagger: https://api.salesforge.ai/public/v2/swagger/index.html
 """
 
 import contextlib
@@ -61,7 +62,7 @@ class SalesforgeClient:
         self._client = httpx.AsyncClient(
             base_url=self.api_url,
             headers={
-                "X-API-KEY": self.api_key,
+                "Authorization": self.api_key,  # Salesforge uses plain Authorization header, not X-API-KEY
                 "Content-Type": "application/json",
             },
             timeout=30.0,

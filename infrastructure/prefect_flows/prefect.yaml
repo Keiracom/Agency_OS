@@ -1,0 +1,26 @@
+# Prefect deployment configuration
+name: elliot-learning
+
+deployments:
+  - name: daily-learning-scrape
+    entrypoint: flows/learning_scrape.py:daily_learning_scrape
+    work_pool:
+      name: local-pool
+      job_variables:
+        working_dir: /home/elliotbot/clawd/infrastructure/prefect_flows
+        env:
+          SUPABASE_URL: "{{ $SUPABASE_URL }}"
+          SUPABASE_SERVICE_KEY: "{{ $SUPABASE_SERVICE_KEY }}"
+          APIFY_API_KEY: "{{ $APIFY_API_KEY }}"
+    schedule:
+      cron: "0 19 * * *"  # 7pm UTC = 6am AEST
+    tags:
+      - learning
+      - daily
+    description: Daily scrape of HN, ProductHunt, GitHub, YouTube, Reddit for knowledge base
+    parameters:
+      hn_limit: 30
+      ph_limit: 5
+      gh_limit: 10
+      yt_limit: 20
+      reddit_limit: 30

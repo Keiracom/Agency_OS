@@ -10,12 +10,22 @@
 * **Extract:** Move *new* Learnings/Decisions/Patterns to permanent files.
 * **Tag:** Append `[PROCESSED]` to extracted lines in the daily log to prevent duplicates.
 
-## 3. External Checks (Pick ONE per beat)
+## 3. Proactive Scans (Pick ONE per beat, rotate)
 
-* [ ] Urgent Emails (Gmail/Salesforge)
-* [ ] Calendar (Next 24h)
-* [ ] GitHub Notifications (PRs/Issues)
-* [ ] Project Status (Agency OS pipeline)
+| Check | What to Look For |
+| :--- | :--- |
+| GitHub | Stale PRs (>48h), failing CI, unreviewed code |
+| Services | API health (Supabase, Railway, Prefect) |
+| Blockers | $0 balances, expired trials, broken integrations |
+| Opportunities | New leads, warm replies, hot prospects |
+| Calendar | Upcoming meetings (next 24h), prep needed |
+
+**Action:** If blocker found → surface immediately. If opportunity → add to daily log.
+
+## 4. Delegation Audit (Weekly)
+
+* Count `[DELEGATED]` vs `[SELF]` tags in daily logs.
+* Target: 80% delegated. If below, flag for review.
 
 ## Output Protocol
 

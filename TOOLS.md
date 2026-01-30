@@ -41,6 +41,24 @@
 | elliot-dashboard | Vercel (Auto-deploy) | elliot-dashboard.vercel.app |
 | Agency_OS | Railway + Vercel | PRs Only (Dave merges) |
 
+## 🛠️ Local Dev Tools
+
+### yek (Codebase Context)
+Fast file serializer for LLM ingestion. Generates tree + file contents in one pass.
+
+```bash
+# Direct usage
+yek --max-size 100K --tree-header src/api
+
+# Via wrapper script (recommended)
+./scripts/yek-context.sh agency-os 100K    # Backend src/
+./scripts/yek-context.sh frontend 50K      # Frontend src/
+./scripts/yek-context.sh mobile 100K       # Elliot Mobile
+./scripts/yek-context.sh src/api 200K      # Specific path
+```
+
+Output lands in `.context/` directory. Use for sub-agent context injection.
+
 ## 🩺 Quick Diagnostics
 
 ```bash

@@ -1,0 +1,15 @@
+[Unit]
+Description=Prefect Worker (local-pool)
+After=network.target
+
+[Service]
+Type=simple
+User=elliotbot
+WorkingDirectory=/home/elliotbot/clawd/infrastructure/prefect_flows
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+ExecStart=/home/elliotbot/clawd/infrastructure/.venv/bin/prefect worker start --pool local-pool
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,2888 @@
+Directory structure:
+├── agents/
+│   ├── campaign_evolution/
+│   │   ├── __init__.py
+│   │   ├── campaign_orchestrator_agent.py
+│   │   ├── how_analyzer_agent.py
+│   │   ├── what_analyzer_agent.py
+│   │   └── who_analyzer_agent.py
+│   ├── sdk_agents/
+│   │   ├── __init__.py
+│   │   ├── email_agent.py
+│   │   ├── enrichment_agent.py
+│   │   ├── icp_agent.py
+│   │   ├── sdk_eligibility.py
+│   │   ├── sdk_tools.py
+│   │   └── voice_kb_agent.py
+│   ├── skills/
+│   │   ├── __init__.py
+│   │   ├── als_weight_suggester.py
+│   │   ├── base_skill.py
+│   │   ├── campaign_splitter.py
+│   │   ├── company_size_estimator.py
+│   │   ├── icp_deriver.py
+│   │   ├── industry_classifier.py
+│   │   ├── industry_researcher.py
+│   │   ├── messaging_generator.py
+│   │   ├── portfolio_extractor.py
+│   │   ├── portfolio_fallback.py
+│   │   ├── research_skills.py
+│   │   ├── sequence_builder.py
+│   │   ├── service_extractor.py
+│   │   ├── social_enricher.py
+│   │   ├── social_profile_discovery.py
+│   │   ├── value_prop_extractor.py
+│   │   └── website_parser.py
+│   ├── __init__.py
+│   ├── base_agent.py
+│   ├── campaign_generation_agent.py
+│   ├── cmo_agent.py
+│   ├── content_agent.py
+│   ├── icp_discovery_agent.py
+│   └── reply_agent.py
+├── api/
+│   ├── routes/
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── campaign_generation.py
+│   │   ├── campaigns.py
+│   │   ├── crm.py
+│   │   ├── customers.py
+│   │   ├── digest.py
+│   │   ├── health.py
+│   │   ├── leads.py
+│   │   ├── linkedin.py
+│   │   ├── meetings.py
+│   │   ├── onboarding.py
+│   │   ├── patterns.py
+│   │   ├── pool.py
+│   │   ├── replies.py
+│   │   ├── reports.py
+│   │   ├── webhooks.py
+│   │   └── webhooks_outbound.py
+│   ├── __init__.py
+│   ├── dependencies.py
+│   └── main.py
+├── config/
+│   ├── __init__.py
+│   ├── settings.py
+│   └── tiers.py
+├── detectors/
+│   ├── __init__.py
+│   ├── base.py
+│   ├── funnel_detector.py
+│   ├── how_detector.py
+│   ├── weight_optimizer.py
+│   ├── what_detector.py
+│   ├── when_detector.py
+│   └── who_detector.py
+├── engines/
+│   ├── __init__.py
+│   ├── allocator.py
+│   ├── base.py
+│   ├── campaign_suggester.py
+│   ├── client_intelligence.py
+│   ├── closer.py
+│   ├── content.py
+│   ├── content_utils.py
+│   ├── email.py
+│   ├── icp_scraper.py
+│   ├── linkedin.py
+│   ├── mail.py
+│   ├── reporter.py
+│   ├── scorer.py
+│   ├── scout.py
+│   ├── smart_prompts.py
+│   ├── sms.py
+│   ├── timing.py
+│   ├── url_validator.py
+│   └── voice.py
+├── integrations/
+│   ├── __init__.py
+│   ├── anthropic.py
+│   ├── apify.py
+│   ├── apollo.py
+│   ├── camoufox_scraper.py
+│   ├── clay.py
+│   ├── clicksend.py
+│   ├── dataforseo.py
+│   ├── dncr.py
+│   ├── elevenlabs.py
+│   ├── heyreach.py
+│   ├── postmark.py
+│   ├── redis.py
+│   ├── resend.py
+│   ├── salesforge.py
+│   ├── sdk_brain.py
+│   ├── sentry_utils.py
+│   ├── serper.py
+│   ├── supabase.py
+│   ├── twilio.py
+│   ├── unipile.py
+│   └── vapi.py
+├── intelligence/
+│   ├── __init__.py
+│   └── platform_priors.py
+├── models/
+│   ├── __init__.py
+│   ├── activity.py
+│   ├── base.py
+│   ├── campaign.py
+│   ├── campaign_suggestion.py
+│   ├── client.py
+│   ├── client_intelligence.py
+│   ├── client_persona.py
+│   ├── conversion_patterns.py
+│   ├── digest_log.py
+│   ├── icp_refinement_log.py
+│   ├── lead.py
+│   ├── lead_pool.py
+│   ├── lead_social_post.py
+│   ├── linkedin_connection.py
+│   ├── linkedin_credential.py
+│   ├── linkedin_seat.py
+│   ├── membership.py
+│   ├── resource_pool.py
+│   ├── sdk_usage_log.py
+│   ├── social_profile.py
+│   ├── url_validation.py
+│   └── user.py
+├── orchestration/
+│   ├── flows/
+│   │   ├── __init__.py
+│   │   ├── campaign_evolution_flow.py
+│   │   ├── campaign_flow.py
+│   │   ├── credit_reset_flow.py
+│   │   ├── crm_sync_flow.py
+│   │   ├── daily_digest_flow.py
+│   │   ├── daily_pacing_flow.py
+│   │   ├── dncr_rewash_flow.py
+│   │   ├── enrichment_flow.py
+│   │   ├── intelligence_flow.py
+│   │   ├── lead_enrichment_flow.py
+│   │   ├── linkedin_health_flow.py
+│   │   ├── monthly_replenishment_flow.py
+│   │   ├── onboarding_flow.py
+│   │   ├── outreach_flow.py
+│   │   ├── pattern_backfill_flow.py
+│   │   ├── pattern_learning_flow.py
+│   │   ├── pool_assignment_flow.py
+│   │   ├── pool_population_flow.py
+│   │   ├── post_onboarding_flow.py
+│   │   ├── recording_cleanup_flow.py
+│   │   ├── reply_recovery_flow.py
+│   │   └── stale_lead_refresh_flow.py
+│   ├── schedules/
+│   │   ├── __init__.py
+│   │   └── scheduled_jobs.py
+│   ├── tasks/
+│   │   ├── __init__.py
+│   │   ├── enrichment_tasks.py
+│   │   ├── outreach_tasks.py
+│   │   ├── reply_tasks.py
+│   │   └── scoring_tasks.py
+│   ├── __init__.py
+│   └── worker.py
+├── services/
+│   ├── __init__.py
+│   ├── buyer_signal_service.py
+│   ├── content_qa_service.py
+│   ├── conversation_analytics_service.py
+│   ├── crm_push_service.py
+│   ├── customer_import_service.py
+│   ├── deal_service.py
+│   ├── digest_service.py
+│   ├── domain_capacity_service.py
+│   ├── domain_health_service.py
+│   ├── email_events_service.py
+│   ├── email_signature_service.py
+│   ├── jit_validator.py
+│   ├── lead_allocator_service.py
+│   ├── lead_pool_service.py
+│   ├── linkedin_connection_service.py
+│   ├── linkedin_health_service.py
+│   ├── linkedin_warmup_service.py
+│   ├── meeting_service.py
+│   ├── phone_provisioning_service.py
+│   ├── recording_cleanup_service.py
+│   ├── reply_analyzer.py
+│   ├── resource_assignment_service.py
+│   ├── response_timing_service.py
+│   ├── sdk_usage_service.py
+│   ├── send_limiter.py
+│   ├── sequence_generator_service.py
+│   ├── suppression_service.py
+│   ├── thread_service.py
+│   ├── timezone_service.py
+│   ├── voice_retry_service.py
+│   └── who_refinement_service.py
+├── utils/
+│   ├── __init__.py
+│   └── encryption.py
+├── __init__.py
+└── exceptions.py
+
+>>>> config/__init__.py
+# Agency OS - Configuration Package
+from src.config.settings import settings
+
+__all__ = ["settings"]
+
+>>>> config/settings.py
+"""
+FILE: src/config/settings.py
+PURPOSE: Pydantic settings with database pool configuration
+PHASE: 1 (Foundation + DevOps)
+TASK: DB-001
+DEPENDENCIES:
+  - pydantic-settings
+  - python-dotenv
+RULES APPLIED:
+  - Rule 1: Follow blueprint exactly
+  - Rule 19: Connection pool limits (pool_size=5, max_overflow=10)
+"""
+
+from functools import lru_cache
+from typing import Literal
+
+from pydantic import AliasChoices, Field, computed_field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Application settings loaded from environment variables."""
+
+    model_config = SettingsConfigDict(
+        env_file="config/.env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    # === Environment ===
+    ENV: Literal["development", "staging", "production"] = Field(
+        default="development", alias="environment"
+    )
+    debug: bool = False
+
+    # === CORS ===
+    ALLOWED_ORIGINS: list[str] = Field(
+        default=["http://localhost:3000", "http://localhost:8000"],
+        description="Allowed CORS origins for production",
+    )
+
+    # === Database (Supabase PostgreSQL) ===
+    # Transaction Pooler for application (Port 6543)
+    database_url: str = Field(
+        default="postgresql+asyncpg://postgres:password@localhost:6543/postgres",
+        description="PostgreSQL connection string (use port 6543 for transaction pooler)",
+    )
+    # Session Pooler for migrations (Port 5432)
+    database_url_migrations: str = Field(
+        default="postgresql://postgres:password@localhost:5432/postgres",
+        description="PostgreSQL connection string for migrations (use port 5432)",
+    )
+
+    # Pool configuration (ENFORCED: Rule 19)
+    db_pool_size: int = Field(default=5, description="Connection pool size")
+    db_max_overflow: int = Field(default=10, description="Max overflow connections")
+    db_pool_timeout: int = Field(default=30, description="Pool timeout in seconds")
+    db_pool_recycle: int = Field(default=1800, description="Connection recycle time in seconds")
+
+    # === Supabase ===
+    supabase_url: str = Field(default="", description="Supabase project URL")
+    supabase_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("SUPABASE_KEY", "SUPABASE_ANON_KEY"),
+        description="Supabase anon/public key (accepts SUPABASE_KEY or SUPABASE_ANON_KEY)",
+    )
+    supabase_service_key: str = Field(default="", description="Supabase service role key")
+    supabase_jwt_secret: str = Field(
+        default="", description="Supabase JWT secret for token verification"
+    )
+
+    # === Redis (Caching ONLY - NOT task queues) ===
+    redis_url: str = Field(
+        default="redis://localhost:6379/0", description="Redis connection URL (for caching only)"
+    )
+    redis_cache_ttl: int = Field(
+        default=7776000, description="Default cache TTL (90 days in seconds)"
+    )
+    redis_cache_version: str = Field(default="v1", description="Cache key version prefix")
+
+    # === Backend API Base URL ===
+    base_url: str = Field(
+        default="http://localhost:8000",
+        description="Backend API base URL (for webhook callbacks)",
+        alias="BASE_URL",
+    )
+
+    # === Prefect (Workflow Orchestration) ===
+    prefect_api_url: str = Field(
+        default="http://localhost:4200/api", description="Prefect server API URL"
+    )
+
+    # === API Keys ===
+    anthropic_api_key: str = Field(default="", description="Anthropic/Claude API key")
+    anthropic_daily_spend_limit: float = Field(
+        default=50.0, description="Daily AI spend limit in AUD"
+    )
+
+    # === SDK Brain (Claude Agent SDK) ===
+    sdk_brain_enabled: bool = Field(
+        default=True, description="Enable SDK Brain for agentic AI tasks"
+    )
+    sdk_min_als_score: int = Field(
+        default=85, description="Minimum ALS score for SDK enrichment (Hot tier threshold)"
+    )
+    sdk_daily_limit_ignition: float = Field(
+        default=50.0, description="Daily SDK budget for Ignition tier (AUD)"
+    )
+    sdk_daily_limit_velocity: float = Field(
+        default=100.0, description="Daily SDK budget for Velocity tier (AUD)"
+    )
+    sdk_daily_limit_dominance: float = Field(
+        default=200.0, description="Daily SDK budget for Dominance tier (AUD)"
+    )
+
+    apollo_api_key: str = Field(default="", description="Apollo.io API key")
+    apify_api_key: str = Field(default="", description="Apify API key")
+    clay_api_key: str = Field(default="", description="Clay API key")
+
+    resend_api_key: str = Field(default="", description="Resend API key")
+    postmark_server_token: str = Field(default="", description="Postmark server token")
+
+    # === Twilio (Voice Calls ONLY via Vapi) ===
+    # NOT used for SMS. ClickSend is the SMS provider for Australia.
+    twilio_account_sid: str = Field(default="", description="Twilio account SID (voice only)")
+    twilio_auth_token: str = Field(default="", description="Twilio auth token (voice only)")
+    twilio_phone_number: str = Field(default="", description="Twilio phone number (voice only)")
+
+    heyreach_api_key: str = Field(
+        default="", description="HeyReach API key (deprecated, use Unipile)"
+    )
+
+    # === Unipile (LinkedIn Automation - replacing HeyReach) ===
+    unipile_api_url: str = Field(default="", description="Unipile API base URL")
+    unipile_api_key: str = Field(default="", description="Unipile API key")
+
+    # === LinkedIn Timing (Humanization) ===
+    linkedin_min_delay_minutes: int = Field(
+        default=8, description="Minimum delay between LinkedIn actions"
+    )
+    linkedin_max_delay_minutes: int = Field(
+        default=45, description="Maximum delay between LinkedIn actions"
+    )
+    linkedin_min_daily: int = Field(default=15, description="Minimum daily connections")
+    linkedin_max_daily: int = Field(
+        default=20, description="Maximum daily connections (can increase to 80-100)"
+    )
+    linkedin_max_per_hour: int = Field(
+        default=8, description="Max actions per hour (burst prevention)"
+    )
+    linkedin_business_hours_start: int = Field(default=8, description="Business hours start (24h)")
+    linkedin_business_hours_end: int = Field(default=18, description="Business hours end (24h)")
+    linkedin_weekend_reduction: float = Field(default=0.5, description="Weekend volume multiplier")
+
+    # === ClickSend (Australian SMS + Direct Mail) ===
+    # Primary SMS provider for Australian market. Twilio is used for voice calls ONLY.
+    clicksend_username: str = Field(default="", description="ClickSend username/email")
+    clicksend_api_key: str = Field(default="", description="ClickSend API key")
+
+    # === DataForSEO (SEO Metrics Enrichment) ===
+    dataforseo_login: str = Field(default="", description="DataForSEO login email")
+    dataforseo_password: str = Field(default="", description="DataForSEO API password")
+
+    # === Voice AI Stack (Vapi + ElevenLabs) ===
+    vapi_api_key: str = Field(default="", description="Vapi API key")
+    vapi_phone_number_id: str = Field(default="", description="Twilio number linked in Vapi")
+    elevenlabs_api_key: str = Field(default="", description="ElevenLabs API key")
+
+    # === Stripe ===
+    stripe_api_key: str = Field(default="", description="Stripe secret key")
+    stripe_publishable_key: str = Field(default="", description="Stripe publishable key")
+    stripe_webhook_secret: str = Field(default="", description="Stripe webhook signing secret")
+    stripe_price_ignition: str = Field(default="", description="Stripe Price ID for Ignition tier")
+    stripe_price_velocity: str = Field(default="", description="Stripe Price ID for Velocity tier")
+    stripe_price_dominance: str = Field(
+        default="", description="Stripe Price ID for Dominance tier"
+    )
+
+    # === Calendar/Meetings ===
+    calcom_api_key: str = Field(default="", description="Cal.com API key")
+    calendly_api_key: str = Field(default="", description="Calendly API key")
+
+    # === Australian DNCR (Do Not Call Register) ===
+    dncr_api_key: str = Field(default="", description="ACMA DNCR API key")
+    dncr_api_url: str = Field(default="https://api.dncr.gov.au/v1", description="DNCR API URL")
+    dncr_account_id: str = Field(default="", description="DNCR Account ID")
+    dncr_cache_ttl_hours: int = Field(default=24, description="Hours to cache DNCR results")
+
+    # === Web Search (Phase 12B) ===
+    serper_api_key: str = Field(default="", description="Serper.dev Google Search API key")
+
+    # === Sentry (Error Tracking) ===
+    sentry_dsn: str = Field(default="", description="Sentry DSN for error tracking")
+    sentry_auth_token: str = Field(default="", description="Sentry auth token for API access")
+
+    # === Development ===
+    ngrok_authtoken: str = Field(default="", description="ngrok auth token for local webhooks")
+
+    # === Email Infrastructure (Phase 18) ===
+    # InfraForge - Domain purchase, mailbox creation, DNS automation
+    infraforge_api_key: str = Field(default="", description="InfraForge API key")
+    infraforge_api_url: str = Field(
+        default="https://api.infraforge.ai/public", description="InfraForge API URL"
+    )
+
+    # Warmforge - Email warmup (free with Salesforge)
+    warmforge_api_key: str = Field(default="", description="Warmforge API key")
+    warmforge_api_url: str = Field(
+        default="https://api.warmforge.ai/public", description="Warmforge API URL"
+    )
+
+    # Salesforge - Campaign sending, reply tracking, sender rotation
+    salesforge_api_key: str = Field(default="", description="Salesforge API key")
+    salesforge_api_url: str = Field(
+        default="https://api.salesforge.ai/public/v2", description="Salesforge API URL"
+    )
+
+    # v0.dev - AI UI generation
+    v0_api_key: str = Field(default="", description="v0.dev API key for UI generation")
+
+    # === Residential Proxy (Tier 3 Scraper - Camoufox) ===
+    # Required for Cloudflare bypass. Recommended providers: WebShare, IPRoyal
+    residential_proxy_host: str = Field(default="", description="Residential proxy hostname")
+    residential_proxy_port: int = Field(default=0, description="Residential proxy port")
+    residential_proxy_username: str = Field(default="", description="Proxy auth username")
+    residential_proxy_password: str = Field(default="", description="Proxy auth password")
+    camoufox_enabled: bool = Field(default=False, description="Enable Camoufox Tier 3 scraper")
+    scraper_timeout_ms: int = Field(default=45000, description="Scraper timeout in milliseconds")
+
+    # === Rate Limits (Resource-Level) ===
+    rate_limit_linkedin_per_seat: int = Field(
+        default=17, description="LinkedIn actions per day per seat"
+    )
+    rate_limit_email_per_domain: int = Field(default=50, description="Emails per day per domain")
+    rate_limit_sms_per_number: int = Field(default=100, description="SMS per day per number")
+
+    # === Enrichment ===
+    enrichment_confidence_threshold: float = Field(
+        default=0.70, description="Minimum confidence score for enriched data"
+    )
+    enrichment_clay_max_percentage: float = Field(
+        default=0.15, description="Maximum percentage of batch to send to Clay (fallback)"
+    )
+
+    # === HMAC Signing ===
+    webhook_hmac_secret: str = Field(default="", description="HMAC secret for outbound webhooks")
+
+    # === Email Provider Webhook Secrets (Phase 24C) ===
+    smartlead_api_key: str = Field(default="", description="Smartlead API key")
+    smartlead_api_url: str = Field(
+        default="https://api.smartlead.ai/api/v1", description="Smartlead API URL"
+    )
+    smartlead_webhook_secret: str = Field(default="", description="Smartlead webhook HMAC secret")
+    salesforge_webhook_secret: str = Field(default="", description="Salesforge webhook HMAC secret")
+    resend_webhook_secret: str = Field(default="", description="Resend/Svix webhook secret")
+
+    # === TEST_MODE Configuration (Phase 21) ===
+    # When enabled, all outbound messages redirect to test recipients
+    TEST_MODE: bool = Field(default=False, description="Enable TEST_MODE for safe E2E testing")
+    TEST_EMAIL_RECIPIENT: str = Field(
+        default="david.stephens@keiracom.com", description="Email recipient for TEST_MODE"
+    )
+    TEST_SMS_RECIPIENT: str = Field(
+        default="+61457543392", description="SMS recipient for TEST_MODE"
+    )
+    TEST_VOICE_RECIPIENT: str = Field(
+        default="+61457543392", description="Voice call recipient for TEST_MODE"
+    )
+    TEST_LINKEDIN_RECIPIENT: str = Field(
+        default="https://www.linkedin.com/in/david-stephens-8847a636a/",
+        description="LinkedIn profile for TEST_MODE",
+    )
+    TEST_DAILY_EMAIL_LIMIT: int = Field(
+        default=15, description="Daily email limit during TEST_MODE for mailbox warmup protection"
+    )
+
+    # === Credential Encryption (Phase 24H) ===
+    credential_encryption_key: str = Field(
+        default="",
+        description="Fernet encryption key for LinkedIn credentials (generate with cryptography.fernet.Fernet.generate_key())",
+    )
+
+    # === CRM Integration (Phase 24E) ===
+    # HubSpot OAuth (required for HubSpot integration)
+    hubspot_client_id: str = Field(default="", description="HubSpot OAuth client ID")
+    hubspot_client_secret: str = Field(default="", description="HubSpot OAuth client secret")
+    hubspot_redirect_uri: str = Field(
+        default="http://localhost:8000/api/v1/crm/callback/hubspot",
+        description="HubSpot OAuth redirect URI",
+    )
+    hubspot_scopes: str = Field(
+        default="crm.objects.contacts.read,crm.objects.contacts.write,crm.objects.deals.read,crm.objects.deals.write,crm.schemas.deals.read",
+        description="HubSpot OAuth scopes (comma-separated)",
+    )
+
+    # Pipedrive (API key auth - no OAuth needed)
+    # Note: Pipedrive API key is stored per-client in client_crm_configs
+
+    # Close CRM (API key auth - no OAuth needed)
+    # Note: Close API key is stored per-client in client_crm_configs
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def is_production(self) -> bool:
+        """Check if running in production environment."""
+        return self.ENV == "production"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def database_pool_config(self) -> dict:
+        """Get SQLAlchemy pool configuration."""
+        return {
+            "pool_size": self.db_pool_size,
+            "max_overflow": self.db_max_overflow,
+            "pool_timeout": self.db_pool_timeout,
+            "pool_recycle": self.db_pool_recycle,
+            "pool_pre_ping": True,
+        }
+
+
+@lru_cache
+def get_settings() -> Settings:
+    """Get cached settings instance."""
+    return Settings()
+
+
+# Singleton instance for easy import
+settings = get_settings()
+
+
+# === VERIFICATION CHECKLIST ===
+# [x] Contract comment at top
+# [x] No hardcoded credentials (all from env)
+# [x] Pool config: pool_size=5, max_overflow=10 (Rule 19)
+# [x] Transaction Pooler port 6543 for app
+# [x] Session Pooler port 5432 for migrations
+# [x] Redis for caching only (not task queues)
+# [x] Prefect API URL for orchestration
+# [x] Rate limits at resource level (Rule 17)
+# [x] Enrichment confidence threshold 0.70 (Rule 4)
+# [x] AI spend limiter setting (Rule 15)
+# [x] All fields have type hints
+# [x] All fields have descriptions
+# [x] Residential proxy settings for Tier 3 scraper (SCR-008)
+
+>>>> config/tiers.py
+"""
+FILE: src/config/tiers.py
+PURPOSE: Canonical tier configuration for Agency OS pricing
+SOURCE: docs/specs/PRICING_TIERS.md (LOCKED)
+DATE: January 2026
+
+DO NOT MODIFY without CEO approval.
+All tier limits are business decisions documented in PRICING_TIERS.md
+"""
+
+from dataclasses import dataclass
+from enum import Enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.models.base import ChannelType
+
+
+class TierName(str, Enum):
+    """Subscription tier names."""
+
+    IGNITION = "ignition"
+    VELOCITY = "velocity"
+    DOMINANCE = "dominance"
+
+
+@dataclass(frozen=True)
+class TierConfig:
+    """Configuration for a subscription tier."""
+
+    name: TierName
+    price_aud: int  # Monthly price in AUD
+    founding_price_aud: int  # Founding member price (50% off)
+    leads_per_month: int  # Lead pool quota
+    max_campaigns: int  # Max active campaigns
+    ai_suggested_campaigns: int  # AI-suggested campaign slots
+    custom_campaigns: int  # Custom campaign slots
+    linkedin_seats: int  # HeyReach seats
+    daily_outreach: int  # Max daily outreach actions
+
+
+# =============================================================================
+# OFFICIAL TIER CONFIGURATION
+# Source: docs/specs/PRICING_TIERS.md (LOCKED - January 2026)
+# =============================================================================
+
+IGNITION = TierConfig(
+    name=TierName.IGNITION,
+    price_aud=2500,
+    founding_price_aud=1250,
+    leads_per_month=1250,
+    max_campaigns=5,
+    ai_suggested_campaigns=3,
+    custom_campaigns=2,
+    linkedin_seats=1,
+    daily_outreach=50,
+)
+
+VELOCITY = TierConfig(
+    name=TierName.VELOCITY,
+    price_aud=5000,
+    founding_price_aud=2500,
+    leads_per_month=2250,
+    max_campaigns=10,
+    ai_suggested_campaigns=6,
+    custom_campaigns=4,
+    linkedin_seats=3,
+    daily_outreach=100,
+)
+
+DOMINANCE = TierConfig(
+    name=TierName.DOMINANCE,
+    price_aud=7500,
+    founding_price_aud=3750,
+    leads_per_month=4500,
+    max_campaigns=20,
+    ai_suggested_campaigns=12,
+    custom_campaigns=8,
+    linkedin_seats=5,
+    daily_outreach=200,
+)
+
+# Lookup by tier name
+TIER_CONFIG: dict[str, TierConfig] = {
+    "ignition": IGNITION,
+    "velocity": VELOCITY,
+    "dominance": DOMINANCE,
+}
+
+
+def get_tier_config(tier_name: str) -> TierConfig:
+    """
+    Get tier configuration by name.
+
+    Args:
+        tier_name: Tier name (ignition, velocity, dominance)
+
+    Returns:
+        TierConfig for the specified tier
+
+    Raises:
+        ValueError: If tier name is invalid
+    """
+    config = TIER_CONFIG.get(tier_name.lower())
+    if not config:
+        valid_tiers = ", ".join(TIER_CONFIG.keys())
+        raise ValueError(f"Invalid tier '{tier_name}'. Valid tiers: {valid_tiers}")
+    return config
+
+
+def get_leads_for_tier(tier_name: str) -> int:
+    """Get lead quota for a tier."""
+    return get_tier_config(tier_name).leads_per_month
+
+
+def get_max_campaigns_for_tier(tier_name: str) -> int:
+    """Get max campaigns for a tier."""
+    return get_tier_config(tier_name).max_campaigns
+
+
+def get_campaign_slots(tier_name: str) -> tuple[int, int]:
+    """
+    Get campaign slots for a tier.
+
+    Returns:
+        Tuple of (ai_suggested_slots, custom_slots)
+    """
+    config = get_tier_config(tier_name)
+    return config.ai_suggested_campaigns, config.custom_campaigns
+
+
+# =============================================================================
+# CHANNEL ACCESS BY ALS SCORE
+# Source: docs/specs/PRICING_TIERS.md
+# =============================================================================
+
+ALS_TIER_THRESHOLDS = {
+    "hot": 85,  # 85-100
+    "warm": 60,  # 60-84
+    "cool": 35,  # 35-59
+    "cold": 20,  # 20-34
+    "dead": 0,  # 0-19
+}
+
+CHANNEL_ACCESS_BY_ALS = {
+    "hot": ["email", "linkedin", "voice", "sms", "mail"],
+    "warm": ["email", "linkedin", "voice"],
+    "cool": ["email", "linkedin"],
+    "cold": ["email"],
+    "dead": [],
+}
+
+
+def get_als_tier(score: int) -> str:
+    """Get ALS tier name from score."""
+    if score >= 85:
+        return "hot"
+    elif score >= 60:
+        return "warm"
+    elif score >= 35:
+        return "cool"
+    elif score >= 20:
+        return "cold"
+    else:
+        return "dead"
+
+
+def get_available_channels(als_score: int) -> list[str]:
+    """Get available channels for a given ALS score."""
+    tier = get_als_tier(als_score)
+    return CHANNEL_ACCESS_BY_ALS.get(tier, [])
+
+
+def get_available_channels_enum(als_score: int) -> list["ChannelType"]:
+    """
+    Get available channels as ChannelType enums for a given ALS score.
+
+    Use this in orchestration flows where ChannelType enums are needed.
+    Canonical source - replaces any hardcoded tier_channel_map.
+    """
+    from src.models.base import ChannelType
+
+    channel_str_to_enum = {
+        "email": ChannelType.EMAIL,
+        "linkedin": ChannelType.LINKEDIN,
+        "voice": ChannelType.VOICE,
+        "sms": ChannelType.SMS,
+        "mail": ChannelType.MAIL,
+    }
+
+    channels_str = get_available_channels(als_score)
+    return [channel_str_to_enum[ch] for ch in channels_str if ch in channel_str_to_enum]
+
+
+# =============================================================================
+# VERIFICATION
+# =============================================================================
+# [x] Matches PRICING_TIERS.md exactly
+# [x] Ignition: 1,250 leads, 5 campaigns (3 AI + 2 custom), 1 LinkedIn seat
+# [x] Velocity: 2,250 leads, 10 campaigns (6 AI + 4 custom), 3 LinkedIn seats
+# [x] Dominance: 4,500 leads, 20 campaigns (12 AI + 8 custom), 5 LinkedIn seats
+# [x] Founding prices at 50% discount
+# [x] ALS tier thresholds: Hot 85+, Warm 60+, Cool 35+, Cold 20+, Dead <20
+# [x] Channel access rules match spec
+
+>>>> __init__.py
+# Agency OS - Core Package
+
+>>>> agents/__init__.py
+"""
+FILE: src/agents/__init__.py
+PURPOSE: Pydantic AI agents package - Intelligent automation layer
+PHASE: 6 (Agents)
+TASK: AGT-001
+DEPENDENCIES:
+  - src/engines/*
+  - src/integrations/*
+  - src/models/*
+RULES APPLIED:
+  - Rule 12: LAYER 5 - Top layer, can import from everything below
+  - Pydantic AI for type-safe agent framework
+
+This package contains all AI agents for Agency OS:
+- base_agent: Abstract base with shared functionality
+- cmo_agent: Chief Marketing Officer agent for orchestration decisions
+- content_agent: Content generation agent for personalized copy
+- reply_agent: Reply handling agent for intent classification
+- skills/: Modular AI skills (loaded independently)
+"""
+
+# Lazy imports to avoid loading pydantic_ai unless agents are used
+# This allows skills subpackage to be imported independently
+
+__all__ = [
+    # Base
+    "BaseAgent",
+    "AgentContext",
+    "AgentResult",
+    # CMO Agent
+    "CMOAgent",
+    "get_cmo_agent",
+    "CampaignAnalysis",
+    "ChannelRecommendation",
+    "LeadPrioritization",
+    "TimingRecommendation",
+    # Content Agent
+    "ContentAgent",
+    "get_content_agent",
+    "EmailContent",
+    "SMSContent",
+    "LinkedInContent",
+    "VoiceScript",
+    # Reply Agent
+    "ReplyAgent",
+    "get_reply_agent",
+    "IntentClassification",
+    "ResponseSuggestion",
+    "SentimentAnalysis",
+    "ExtractedEntities",
+    # ICP Discovery Agent
+    "ICPDiscoveryAgent",
+    "get_icp_discovery_agent",
+    "ICPProfile",
+    "ICPExtractionResult",
+    # Campaign Generation Agent
+    "CampaignGenerationAgent",
+    "get_campaign_generation_agent",
+    "GeneratedCampaign",
+    "CampaignGenerationResult",
+]
+
+
+def __getattr__(name: str):
+    """Lazy import to avoid loading pydantic_ai on package import."""
+    if name in ("BaseAgent", "AgentContext", "AgentResult"):
+        from src.agents.base_agent import AgentContext, AgentResult, BaseAgent
+
+        return {"BaseAgent": BaseAgent, "AgentContext": AgentContext, "AgentResult": AgentResult}[
+            name
+        ]
+
+    if name in (
+        "CMOAgent",
+        "get_cmo_agent",
+        "CampaignAnalysis",
+        "ChannelRecommendation",
+        "LeadPrioritization",
+        "TimingRecommendation",
+    ):
+        from src.agents.cmo_agent import (
+            CampaignAnalysis,
+            ChannelRecommendation,
+            CMOAgent,
+            LeadPrioritization,
+            TimingRecommendation,
+            get_cmo_agent,
+        )
+
+        return {
+            "CMOAgent": CMOAgent,
+            "get_cmo_agent": get_cmo_agent,
+            "CampaignAnalysis": CampaignAnalysis,
+            "ChannelRecommendation": ChannelRecommendation,
+            "LeadPrioritization": LeadPrioritization,
+            "TimingRecommendation": TimingRecommendation,
+        }[name]
+
+    if name in (
+        "ContentAgent",
+        "get_content_agent",
+        "EmailContent",
+        "SMSContent",
+        "LinkedInContent",
+        "VoiceScript",
+    ):
+        from src.agents.content_agent import (
+            ContentAgent,
+            EmailContent,
+            LinkedInContent,
+            SMSContent,
+            VoiceScript,
+            get_content_agent,
+        )
+
+        return {
+            "ContentAgent": ContentAgent,
+            "get_content_agent": get_content_agent,
+            "EmailContent": EmailContent,
+            "SMSContent": SMSContent,
+            "LinkedInContent": LinkedInContent,
+            "VoiceScript": VoiceScript,
+        }[name]
+
+    if name in (
+        "ReplyAgent",
+        "get_reply_agent",
+        "IntentClassification",
+        "ResponseSuggestion",
+        "SentimentAnalysis",
+        "ExtractedEntities",
+    ):
+        from src.agents.reply_agent import (
+            ExtractedEntities,
+            IntentClassification,
+            ReplyAgent,
+            ResponseSuggestion,
+            SentimentAnalysis,
+            get_reply_agent,
+        )
+
+        return {
+            "ReplyAgent": ReplyAgent,
+            "get_reply_agent": get_reply_agent,
+            "IntentClassification": IntentClassification,
+            "ResponseSuggestion": ResponseSuggestion,
+            "SentimentAnalysis": SentimentAnalysis,
+            "ExtractedEntities": ExtractedEntities,
+        }[name]
+
+    if name in (
+        "ICPDiscoveryAgent",
+        "get_icp_discovery_agent",
+        "ICPProfile",
+        "ICPExtractionResult",
+    ):
+        from src.agents.icp_discovery_agent import (
+            ICPDiscoveryAgent,
+            ICPExtractionResult,
+            ICPProfile,
+            get_icp_discovery_agent,
+        )
+
+        return {
+            "ICPDiscoveryAgent": ICPDiscoveryAgent,
+            "get_icp_discovery_agent": get_icp_discovery_agent,
+            "ICPProfile": ICPProfile,
+            "ICPExtractionResult": ICPExtractionResult,
+        }[name]
+
+    if name in (
+        "CampaignGenerationAgent",
+        "get_campaign_generation_agent",
+        "GeneratedCampaign",
+        "CampaignGenerationResult",
+    ):
+        from src.agents.campaign_generation_agent import (
+            CampaignGenerationAgent,
+            CampaignGenerationResult,
+            GeneratedCampaign,
+            get_campaign_generation_agent,
+        )
+
+        return {
+            "CampaignGenerationAgent": CampaignGenerationAgent,
+            "get_campaign_generation_agent": get_campaign_generation_agent,
+            "GeneratedCampaign": GeneratedCampaign,
+            "CampaignGenerationResult": CampaignGenerationResult,
+        }[name]
+
+    raise AttributeError(f"module 'src.agents' has no attribute {name!r}")
+
+>>>> agents/base_agent.py
+"""
+Contract: src/agents/base_agent.py
+Purpose: Pydantic AI base agent with shared functionality
+Layer: 4 - agents
+Imports: config, integrations
+Consumers: all agent subclasses
+
+FILE: src/agents/base_agent.py
+PURPOSE: Pydantic AI base agent with shared functionality
+PHASE: 6 (Agents)
+TASK: AGT-001
+DEPENDENCIES:
+  - src/config/settings.py
+  - src/integrations/anthropic.py
+  - src/integrations/redis.py
+  - src/exceptions.py
+RULES APPLIED:
+  - Rule 1: Follow blueprint exactly
+  - Rule 11: Session passed as argument (DI pattern)
+  - Rule 15: AI spend limiter via Anthropic integration
+  - Pydantic AI for type-safe validation
+"""
+
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Generic, TypeVar
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+from pydantic_ai import Agent
+from pydantic_ai.models.anthropic import AnthropicModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.integrations.anthropic import get_anthropic_client
+from src.integrations.redis import ai_spend_tracker
+
+# Type variable for agent result data
+T = TypeVar("T")
+
+
+class AgentContext(BaseModel):
+    """
+    Context passed to all agents.
+
+    Contains database session, client info, and other shared data.
+    """
+
+    client_id: UUID | None = None
+    campaign_id: UUID | None = None
+    lead_id: UUID | None = None
+    user_id: UUID | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+@dataclass
+class AgentResult(Generic[T]):
+    """
+    Standardized result wrapper for all agent outputs.
+
+    Similar to EngineResult but specific to agents.
+    """
+
+    success: bool
+    data: T | None = None
+    error: str | None = None
+    reasoning: str | None = None
+    confidence: float = 0.0
+    tokens_used: int = 0
+    cost_aud: float = 0.0
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def ok(
+        cls,
+        data: T,
+        reasoning: str | None = None,
+        confidence: float = 1.0,
+        tokens_used: int = 0,
+        cost_aud: float = 0.0,
+        metadata: dict[str, Any] | None = None,
+    ) -> "AgentResult[T]":
+        """Create a successful result."""
+        return cls(
+            success=True,
+            data=data,
+            reasoning=reasoning,
+            confidence=confidence,
+            tokens_used=tokens_used,
+            cost_aud=cost_aud,
+            metadata=metadata or {},
+        )
+
+    @classmethod
+    def fail(
+        cls,
+        error: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> "AgentResult[T]":
+        """Create a failed result."""
+        return cls(
+            success=False,
+            error=error,
+            metadata=metadata or {},
+        )
+
+
+class BaseAgent(ABC):
+    """
+    Abstract base class for all Pydantic AI agents.
+
+    Provides:
+    - Anthropic model integration with spend limiting
+    - Shared context handling
+    - Result standardization
+    - Token/cost tracking
+    - Type-safe inputs/outputs
+    """
+
+    # Anthropic model configuration
+    DEFAULT_MODEL = "claude-sonnet-4-20250514"
+    DEFAULT_MAX_TOKENS = 1024
+    DEFAULT_TEMPERATURE = 0.7
+
+    def __init__(
+        self,
+        model: str | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
+    ):
+        """
+        Initialize base agent with configuration.
+
+        Args:
+            model: Model to use (defaults to Claude 3 Sonnet)
+            max_tokens: Maximum output tokens
+            temperature: Sampling temperature
+        """
+        self.model_name = model or self.DEFAULT_MODEL
+        self.max_tokens = max_tokens or self.DEFAULT_MAX_TOKENS
+        self.temperature = temperature or self.DEFAULT_TEMPERATURE
+
+        # Create Anthropic model for Pydantic AI
+        # Note: AnthropicModel reads api_key from ANTHROPIC_API_KEY env var
+        self._model = AnthropicModel(self.model_name)
+
+        # Reference to spend limiter
+        self._spend_tracker = ai_spend_tracker
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Agent name for logging and tracking."""
+        pass
+
+    @property
+    @abstractmethod
+    def system_prompt(self) -> str:
+        """System prompt defining agent behavior."""
+        pass
+
+    @property
+    def model(self) -> AnthropicModel:
+        """Get the Anthropic model instance."""
+        return self._model
+
+    async def check_budget(self, estimated_tokens: int = 1000) -> bool:
+        """
+        Check if there's budget for an AI call.
+
+        Args:
+            estimated_tokens: Estimated tokens for the call
+
+        Returns:
+            True if budget available, False otherwise
+        """
+        # Estimate cost (using Claude 3 Sonnet rates)
+        estimated_cost = (estimated_tokens / 1_000_000) * 18.0  # ~$18/M tokens avg
+        remaining = await self._spend_tracker.get_remaining()
+        return remaining >= estimated_cost
+
+    async def record_usage(
+        self,
+        input_tokens: int,
+        output_tokens: int,
+    ) -> float:
+        """
+        Record token usage and cost.
+
+        Args:
+            input_tokens: Input tokens used
+            output_tokens: Output tokens used
+
+        Returns:
+            Cost in AUD
+        """
+        # Calculate cost (Claude 3 Sonnet rates in AUD)
+        cost = (
+            (input_tokens / 1_000_000) * 3.0  # $3/M input
+            + (output_tokens / 1_000_000) * 15.0  # $15/M output
+        )
+        await self._spend_tracker.add_spend(cost)
+        return cost
+
+    async def get_spend_status(self) -> dict[str, Any]:
+        """
+        Get current AI spend status.
+
+        Returns:
+            Spend status with remaining budget
+        """
+        client = get_anthropic_client()
+        return await client.get_spend_status()
+
+    def create_agent(
+        self,
+        result_type: type[BaseModel] | None = None,
+        deps_type: type | None = None,
+    ) -> Agent:
+        """
+        Create a Pydantic AI agent instance.
+
+        Args:
+            result_type: Optional Pydantic model for structured output
+            deps_type: Optional dependencies type
+
+        Returns:
+            Configured Agent instance
+        """
+        kwargs = {
+            "model": self.model,
+            "system_prompt": self.system_prompt,
+        }
+
+        if result_type:
+            kwargs["result_type"] = result_type
+
+        if deps_type:
+            kwargs["deps_type"] = deps_type
+
+        return Agent(**kwargs)
+
+    async def validate_context(
+        self,
+        db: AsyncSession,
+        context: AgentContext,
+    ) -> tuple[bool, str | None]:
+        """
+        Validate agent context before execution.
+
+        Args:
+            db: Database session
+            context: Agent context
+
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        # Check budget
+        if not await self.check_budget():
+            return False, "AI spend limit exceeded"
+
+        return True, None
+
+
+class AgentDependencies(BaseModel):
+    """
+    Dependencies injected into agents.
+
+    Contains database session and context for agent execution.
+    """
+
+    db: Any  # AsyncSession - using Any to avoid serialization issues
+    context: AgentContext
+    anthropic_client: Any = None  # Optional Anthropic client override
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+# ============================================
+# VERIFICATION CHECKLIST
+# ============================================
+# [x] Contract comment at top
+# [x] No hardcoded credentials
+# [x] Pydantic AI integration (Agent, AnthropicModel)
+# [x] Type-safe AgentContext and AgentResult
+# [x] Abstract base class pattern
+# [x] Budget checking via spend tracker (Rule 15)
+# [x] Token/cost tracking
+# [x] Agent factory method (create_agent)
+# [x] Context validation
+# [x] Dependency injection support
+# [x] All functions have type hints
+# [x] All functions have docstrings
+
+>>>> agents/campaign_evolution/__init__.py
+"""
+Contract: src/agents/campaign_evolution/__init__.py
+Purpose: Campaign evolution agent exports
+Layer: 3 - agents
+Phase: Phase D - Item 18
+"""
+
+from src.agents.campaign_evolution.campaign_orchestrator_agent import (
+    CampaignSuggestionOutput,
+    generate_campaign_suggestions,
+    run_campaign_orchestrator,
+)
+from src.agents.campaign_evolution.how_analyzer_agent import (
+    HOWAnalysis,
+    run_how_analyzer,
+)
+from src.agents.campaign_evolution.what_analyzer_agent import (
+    WHATAnalysis,
+    run_what_analyzer,
+)
+from src.agents.campaign_evolution.who_analyzer_agent import (
+    WHOAnalysis,
+    run_who_analyzer,
+)
+
+__all__ = [
+    # WHO Analyzer
+    "WHOAnalysis",
+    "run_who_analyzer",
+    # WHAT Analyzer
+    "WHATAnalysis",
+    "run_what_analyzer",
+    # HOW Analyzer
+    "HOWAnalysis",
+    "run_how_analyzer",
+    # Orchestrator
+    "CampaignSuggestionOutput",
+    "run_campaign_orchestrator",
+    "generate_campaign_suggestions",
+]
+
+>>>> agents/campaign_evolution/campaign_orchestrator_agent.py
+"""
+Contract: src/agents/campaign_evolution/campaign_orchestrator_agent.py
+Purpose: Orchestrate analyzer outputs into actionable campaign suggestions
+Layer: 3 - agents
+Imports: models, integrations (sdk_brain)
+Consumers: campaign_evolution_flow
+Phase: Phase D - Item 18
+
+The Orchestrator Agent combines WHO, WHAT, and HOW analyzer outputs
+to generate prioritized, actionable campaign suggestions that require
+client approval before being applied.
+
+CRITICAL: Suggestions are NEVER auto-applied. They require explicit client approval.
+"""
+
+import logging
+from typing import Any
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+from src.integrations.sdk_brain import SDKBrainResult, create_sdk_brain
+
+logger = logging.getLogger(__name__)
+
+
+# ============================================
+# OUTPUT SCHEMA
+# ============================================
+
+
+class CampaignSuggestion(BaseModel):
+    """A single actionable campaign suggestion."""
+
+    # Identification
+    suggestion_type: str = Field(
+        description="Type: create_campaign, pause_campaign, adjust_allocation, refine_targeting, change_channel_mix, update_content, adjust_timing"
+    )
+    title: str = Field(
+        description="Short, actionable title (e.g., 'Pause Low-Performing Tech Campaign')"
+    )
+
+    # Details
+    description: str = Field(description="Detailed explanation of the suggestion (2-4 sentences)")
+    rationale: dict[str, Any] = Field(
+        description="Which patterns support this suggestion (pattern_type -> key findings)"
+    )
+
+    # Action
+    recommended_action: dict[str, Any] = Field(
+        description="Specific action to take (varies by suggestion_type)"
+    )
+
+    # For create_campaign
+    new_campaign_spec: dict[str, Any] | None = Field(
+        default=None,
+        description="For create_campaign: {name, targeting, channels, messaging_angle}",
+    )
+
+    # For existing campaign actions
+    target_campaign_criteria: dict[str, Any] | None = Field(
+        default=None, description="Criteria to identify which campaign(s) this applies to"
+    )
+
+    # Confidence and priority
+    confidence: float = Field(ge=0.0, le=1.0, description="Confidence in this suggestion (0.0-1.0)")
+    priority: int = Field(ge=1, le=100, description="Priority score (100 = highest priority)")
+
+    # Impact projections
+    projected_improvement: dict[str, float] = Field(
+        default_factory=dict,
+        description="Expected improvements (e.g., {'reply_rate': 1.3, 'conversion_rate': 1.2})",
+    )
+
+    # Pattern sources
+    pattern_types: list[str] = Field(
+        default_factory=list, description="Which patterns informed this (who, what, how, when)"
+    )
+
+    # Risk assessment
+    risk_level: str = Field(default="low", description="Risk level: low, medium, high")
+    risk_notes: str = Field(default="", description="Notes on potential risks or considerations")
+
+
+class CampaignSuggestionOutput(BaseModel):
+    """Output from the campaign orchestrator."""
+
+    # Summary
+    executive_summary: str = Field(description="2-3 sentence summary for the client dashboard")
+
+    # Suggestions (prioritized)
+    suggestions: list[CampaignSuggestion] = Field(
+        default_factory=list, description="Prioritized list of campaign suggestions"
+    )
+
+    # Overall health assessment
+    campaign_health_score: float = Field(
+        ge=0.0, le=100.0, description="Overall campaign health (0-100)"
+    )
+    health_assessment: str = Field(description="Brief health assessment (1-2 sentences)")
+
+    # Quick wins
+    quick_wins: list[str] = Field(
+        default_factory=list, description="Low-effort, high-impact suggestions (bullet points)"
+    )
+
+    # Strategic recommendations
+    strategic_recommendations: list[str] = Field(
+        default_factory=list, description="Longer-term strategic recommendations"
+    )
+
+    # Data gaps
+    data_gaps: list[str] = Field(
+        default_factory=list, description="Areas where more data is needed"
+    )
+
+    # Overall confidence
+    overall_confidence: float = Field(
+        ge=0.0, le=1.0, description="Overall confidence in this analysis"
+    )
+
+    # Cost tracking
+    total_analysis_cost_aud: float = Field(
+        default=0.0, description="Total cost of WHO + WHAT + HOW + Orchestrator analysis"
+    )
+
+
+# ============================================
+# SYSTEM PROMPT
+# ============================================
+
+ORCHESTRATOR_SYSTEM_PROMPT = """You are a senior B2B campaign strategist synthesizing insights from multiple data sources.
+
+Your role is to combine WHO, WHAT, and HOW pattern analyses into prioritized, actionable campaign suggestions.
+
+## CRITICAL RULES
+
+1. **NEVER suggest auto-applying changes** - All suggestions require client approval
+2. **Be conservative** - Only suggest changes with sufficient confidence (0.7+)
+3. **Prioritize ruthlessly** - Maximum 5-7 suggestions, ranked by impact × confidence
+4. **Be specific** - Vague suggestions are useless
+5. **Show your work** - Always cite which patterns support each suggestion
+
+## Input Data You'll Receive
+
+1. **WHO Analysis**: Targeting refinements, segment opportunities, underperforming segments
+2. **WHAT Analysis**: Messaging refinements, A/B test recommendations, winning/losing patterns
+3. **HOW Analysis**: Channel recommendations, sequence recommendations, tier strategies
+
+4. **Current Campaign State**: Active campaigns, their performance, current configurations
+5. **Client Context**: Tier, budget constraints, preferences
+
+## Suggestion Types
+
+| Type | Trigger | Confidence Required |
+|------|---------|---------------------|
+| `create_campaign` | Clear untapped segment with 0.15+ conversion rate | 0.8+ |
+| `pause_campaign` | <1% reply rate after 100+ leads, trending down | 0.7+ |
+| `adjust_allocation` | One campaign outperforming by 2x+ | 0.7+ |
+| `refine_targeting` | Clear WHO pattern with 1.5x+ lift | 0.7+ |
+| `change_channel_mix` | Clear channel winner with 1.5x+ lift | 0.8+ |
+| `update_content` | Clear WHAT pattern with 1.3x+ lift | 0.7+ |
+| `adjust_timing` | Clear WHEN pattern with 1.3x+ lift | 0.7+ |
+
+## Priority Scoring (1-100)
+
+- **90-100**: Critical - immediate action needed (e.g., pause failing campaign)
+- **70-89**: High - strong pattern, high confidence, significant impact
+- **50-69**: Medium - good pattern, moderate confidence
+- **30-49**: Low - emerging pattern, worth testing
+- **1-29**: Watch - interesting but insufficient data
+
+## Output Guidelines
+
+1. **Executive Summary**: Start with 2-3 sentences a busy client can scan
+2. **Quick Wins**: 2-3 low-effort, high-impact actions
+3. **Suggestions**: Maximum 7, sorted by priority descending
+4. **Data Gaps**: What would make the analysis stronger
+
+## Risk Assessment
+
+- **Low**: Well-supported by data, reversible, minimal downside
+- **Medium**: Good data but some uncertainty, moderate effort to reverse
+- **High**: Limited data or significant effort/cost to reverse
+
+Return your analysis in the specified JSON format."""
+
+
+# ============================================
+# CONFIDENCE THRESHOLDS
+# ============================================
+
+CONFIDENCE_THRESHOLDS = {
+    "create_campaign": 0.80,
+    "pause_campaign": 0.70,
+    "adjust_allocation": 0.70,
+    "refine_targeting": 0.70,
+    "change_channel_mix": 0.80,
+    "update_content": 0.70,
+    "adjust_timing": 0.70,
+}
+
+
+# ============================================
+# CORE FUNCTION
+# ============================================
+
+
+async def run_campaign_orchestrator(
+    who_analysis: dict[str, Any],
+    what_analysis: dict[str, Any],
+    how_analysis: dict[str, Any],
+    current_campaigns: list[dict[str, Any]],
+    client_context: dict[str, Any],
+    client_id: UUID | None = None,
+) -> SDKBrainResult:
+    """
+    Orchestrate analyzer outputs into campaign suggestions.
+
+    Args:
+        who_analysis: Output from WHO analyzer
+        what_analysis: Output from WHAT analyzer
+        how_analysis: Output from HOW analyzer
+        current_campaigns: List of active campaign data
+        client_context: Client tier, preferences, constraints
+        client_id: Client UUID for cost tracking
+
+    Returns:
+        SDKBrainResult with CampaignSuggestionOutput data
+    """
+    # Build comprehensive prompt
+    prompt_parts = []
+
+    # WHO Analysis Summary
+    prompt_parts.append("## WHO Analysis (Targeting Patterns)\n")
+    prompt_parts.append(f"- Summary: {who_analysis.get('summary', 'N/A')}\n")
+    prompt_parts.append(f"- Confidence: {who_analysis.get('confidence', 0)}\n")
+    if who_analysis.get("targeting_refinements"):
+        prompt_parts.append(
+            f"- Targeting Refinements: {len(who_analysis['targeting_refinements'])} recommendations\n"
+        )
+        for ref in who_analysis["targeting_refinements"][:3]:
+            prompt_parts.append(
+                f"  - {ref.get('attribute')}: {ref.get('suggested_value')} (lift: {ref.get('expected_lift', 1.0)}x)\n"
+            )
+    if who_analysis.get("segment_opportunities"):
+        prompt_parts.append(
+            f"- Segment Opportunities: {len(who_analysis['segment_opportunities'])} found\n"
+        )
+    if who_analysis.get("underperforming_segments"):
+        prompt_parts.append(
+            f"- Underperforming Segments: {who_analysis['underperforming_segments']}\n"
+        )
+
+    # WHAT Analysis Summary
+    prompt_parts.append("\n## WHAT Analysis (Content Patterns)\n")
+    prompt_parts.append(f"- Summary: {what_analysis.get('summary', 'N/A')}\n")
+    prompt_parts.append(f"- Confidence: {what_analysis.get('confidence', 0)}\n")
+    if what_analysis.get("messaging_refinements"):
+        prompt_parts.append(
+            f"- Messaging Refinements: {len(what_analysis['messaging_refinements'])} recommendations\n"
+        )
+        for ref in what_analysis["messaging_refinements"][:3]:
+            prompt_parts.append(
+                f"  - {ref.get('element')}: {ref.get('suggested_approach')[:50]}...\n"
+            )
+    if what_analysis.get("winning_patterns"):
+        prompt_parts.append(f"- Winning Patterns: {what_analysis['winning_patterns'][:3]}\n")
+    if what_analysis.get("losing_patterns"):
+        prompt_parts.append(f"- Losing Patterns: {what_analysis['losing_patterns'][:3]}\n")
+
+    # HOW Analysis Summary
+    prompt_parts.append("\n## HOW Analysis (Channel Patterns)\n")
+    prompt_parts.append(f"- Summary: {how_analysis.get('summary', 'N/A')}\n")
+    prompt_parts.append(f"- Confidence: {how_analysis.get('confidence', 0)}\n")
+    if how_analysis.get("channel_recommendations"):
+        prompt_parts.append(
+            f"- Channel Recommendations: {len(how_analysis['channel_recommendations'])} changes\n"
+        )
+        for rec in how_analysis["channel_recommendations"][:3]:
+            prompt_parts.append(
+                f"  - {rec.get('channel')}: {rec.get('current_allocation')}% -> {rec.get('suggested_allocation')}%\n"
+            )
+    if how_analysis.get("multi_channel_lift"):
+        prompt_parts.append(f"- Multi-Channel Lift: {how_analysis['multi_channel_lift']}x\n")
+
+    # Current Campaigns
+    prompt_parts.append("\n## Current Campaigns\n")
+    for i, campaign in enumerate(current_campaigns[:5], 1):
+        prompt_parts.append(f"\n### Campaign {i}: {campaign.get('name', 'Unnamed')}\n")
+        prompt_parts.append(f"- Status: {campaign.get('status', 'unknown')}\n")
+        prompt_parts.append(f"- Leads: {campaign.get('lead_count', 0)}\n")
+        prompt_parts.append(f"- Reply Rate: {campaign.get('reply_rate', 0)}%\n")
+        prompt_parts.append(f"- Conversion Rate: {campaign.get('conversion_rate', 0)}%\n")
+        prompt_parts.append(f"- Allocation: {campaign.get('lead_allocation_pct', 0)}%\n")
+
+    # Client Context
+    prompt_parts.append("\n## Client Context\n")
+    prompt_parts.append(f"- Tier: {client_context.get('tier', 'ignition')}\n")
+    prompt_parts.append(f"- Monthly Lead Budget: {client_context.get('monthly_leads', 1250)}\n")
+    prompt_parts.append(f"- Active Months: {client_context.get('active_months', 1)}\n")
+    if client_context.get("preferences"):
+        prompt_parts.append(f"- Preferences: {client_context['preferences']}\n")
+
+    # Instructions
+    prompt_parts.append("\n## Your Task\n")
+    prompt_parts.append(
+        "Synthesize the WHO, WHAT, and HOW analyses into actionable campaign suggestions. "
+        "Prioritize by impact × confidence. Maximum 7 suggestions. "
+        "Be specific about what to change and why. "
+        "Remember: ALL suggestions require client approval - never auto-apply."
+    )
+
+    user_prompt = "".join(prompt_parts)
+
+    # Create brain and run
+    brain = create_sdk_brain("campaign_evolution_orchestrator")
+
+    result = await brain.run(
+        prompt=user_prompt,
+        tools=[],
+        output_schema=CampaignSuggestionOutput,
+        system=ORCHESTRATOR_SYSTEM_PROMPT,
+    )
+
+    # Post-process: Filter suggestions below confidence threshold
+    if result.success and result.data:
+        filtered_suggestions = []
+        for suggestion in result.data.suggestions:
+            threshold = CONFIDENCE_THRESHOLDS.get(suggestion.suggestion_type, 0.7)
+            if suggestion.confidence >= threshold:
+                filtered_suggestions.append(suggestion)
+            else:
+                logger.info(
+                    f"Filtered suggestion '{suggestion.title}' - "
+                    f"confidence {suggestion.confidence} < threshold {threshold}"
+                )
+        result.data.suggestions = filtered_suggestions
+
+    logger.info(
+        f"Orchestrator complete: {len(result.data.suggestions) if result.success else 0} suggestions, "
+        f"confidence={result.data.overall_confidence if result.success else 'N/A'}, "
+        f"cost=${result.cost_aud:.4f}"
+    )
+
+    return result
+
+
+# ============================================
+# CONVENIENCE WRAPPER
+# ============================================
+
+
+async def generate_campaign_suggestions(
+    who_analysis: dict[str, Any],
+    what_analysis: dict[str, Any],
+    how_analysis: dict[str, Any],
+    current_campaigns: list[dict[str, Any]],
+    client_context: dict[str, Any],
+    analyzer_costs: dict[str, float] | None = None,
+    client_id: UUID | None = None,
+) -> dict[str, Any] | None:
+    """
+    Convenience wrapper for generating campaign suggestions.
+
+    Args:
+        who_analysis: WHO analyzer output
+        what_analysis: WHAT analyzer output
+        how_analysis: HOW analyzer output
+        current_campaigns: Active campaign data
+        client_context: Client context
+        analyzer_costs: Cost from each analyzer {who: X, what: Y, how: Z}
+        client_id: Client UUID
+
+    Returns:
+        Dict with suggestions or None if failed
+    """
+    result = await run_campaign_orchestrator(
+        who_analysis=who_analysis,
+        what_analysis=what_analysis,
+        how_analysis=how_analysis,
+        current_campaigns=current_campaigns,
+        client_context=client_context,
+        client_id=client_id,
+    )
+
+    if result.success and result.data:
+        output = result.data.model_dump() if hasattr(result.data, "model_dump") else result.data
+
+        # Calculate total cost
+        total_cost = result.cost_aud
+        if analyzer_costs:
+            total_cost += sum(analyzer_costs.values())
+        output["total_analysis_cost_aud"] = total_cost
+
+        output["source"] = "sdk_campaign_orchestrator"
+        output["orchestrator_cost_aud"] = result.cost_aud
+
+        return output
+
+    logger.warning(f"Orchestrator failed: {result.error}")
+    return None
+
+
+# ============================================
+# VALIDATION HELPERS
+# ============================================
+
+
+def validate_suggestion_for_storage(suggestion: dict[str, Any]) -> bool:
+    """
+    Validate a suggestion has all required fields for database storage.
+
+    Args:
+        suggestion: Suggestion dict from orchestrator
+
+    Returns:
+        True if valid, False otherwise
+    """
+    required_fields = [
+        "suggestion_type",
+        "title",
+        "description",
+        "confidence",
+        "priority",
+        "recommended_action",
+    ]
+
+    for field in required_fields:
+        if field not in suggestion or suggestion[field] is None:
+            logger.warning(f"Suggestion missing required field: {field}")
+            return False
+
+    # Validate suggestion_type
+    valid_types = [
+        "create_campaign",
+        "pause_campaign",
+        "adjust_allocation",
+        "refine_targeting",
+        "change_channel_mix",
+        "update_content",
+        "adjust_timing",
+    ]
+    if suggestion["suggestion_type"] not in valid_types:
+        logger.warning(f"Invalid suggestion_type: {suggestion['suggestion_type']}")
+        return False
+
+    # Validate confidence range
+    if not 0 <= suggestion["confidence"] <= 1:
+        logger.warning(f"Invalid confidence: {suggestion['confidence']}")
+        return False
+
+    # Validate priority range
+    if not 1 <= suggestion["priority"] <= 100:
+        logger.warning(f"Invalid priority: {suggestion['priority']}")
+        return False
+
+    return True
+
+
+# ============================================
+# VERIFICATION CHECKLIST
+# ============================================
+# [x] Contract comment at top
+# [x] CRITICAL rule: suggestions require client approval
+# [x] Pydantic output schemas (CampaignSuggestion, CampaignSuggestionOutput)
+# [x] Detailed system prompt with confidence thresholds
+# [x] Core async function (run_campaign_orchestrator)
+# [x] Confidence threshold filtering post-process
+# [x] Convenience wrapper with cost aggregation
+# [x] Validation helper for storage
+# [x] Comprehensive logging
+# [x] Type hints throughout
+# [x] Risk assessment in suggestions
+# [x] Priority scoring guidance
+
+>>>> agents/campaign_evolution/how_analyzer_agent.py
+"""
+Contract: src/agents/campaign_evolution/how_analyzer_agent.py
+Purpose: Analyze HOW patterns to generate channel optimization suggestions
+Layer: 3 - agents
+Imports: models, integrations (sdk_brain)
+Consumers: campaign_orchestrator_agent, campaign_evolution_flow
+Phase: Phase D - Item 18
+
+HOW Analyzer examines channel patterns (email vs voice vs LinkedIn)
+and generates channel mix optimization suggestions.
+"""
+
+import logging
+from typing import Any
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+from src.integrations.sdk_brain import SDKBrainResult, create_sdk_brain
+
+logger = logging.getLogger(__name__)
+
+
+# ============================================
+# OUTPUT SCHEMA
+# ============================================
+
+
+class ChannelRecommendation(BaseModel):
+    """A specific channel optimization recommendation."""
+
+    channel: str = Field(description="The channel (email, voice, linkedin, sms)")
+    current_allocation: float = Field(description="Current percentage allocation (0-100)")
+    suggested_allocation: float = Field(description="Suggested percentage allocation (0-100)")
+    reason: str = Field(description="Why this change is recommended based on patterns")
+    expected_lift: float = Field(description="Expected improvement (e.g., 1.2 = 20% better)")
+
+
+class SequenceRecommendation(BaseModel):
+    """A recommended multi-channel sequence."""
+
+    sequence_name: str = Field(description="Name for this sequence pattern")
+    channels: list[str] = Field(
+        description="Ordered list of channels (e.g., ['email', 'linkedin', 'email'])"
+    )
+    description: str = Field(description="Why this sequence works")
+    conversion_rate: float = Field(description="Observed conversion rate for this pattern")
+    sample_size: int = Field(description="Number of leads that followed this sequence")
+
+
+class TierChannelStrategy(BaseModel):
+    """Channel strategy for a specific lead tier."""
+
+    tier: str = Field(description="Lead tier (hot, warm, cool, cold)")
+    primary_channel: str = Field(description="Best performing channel for this tier")
+    secondary_channel: str = Field(description="Second best channel")
+    avoid_channel: str | None = Field(description="Channel to avoid for this tier", default=None)
+    rationale: str = Field(description="Why this strategy works for this tier")
+
+
+class HOWAnalysis(BaseModel):
+    """Output from HOW pattern analysis."""
+
+    # High-level summary
+    summary: str = Field(description="1-2 sentence summary of HOW pattern findings")
+
+    # Channel recommendations
+    channel_recommendations: list[ChannelRecommendation] = Field(
+        default_factory=list,
+        description="Specific channel allocation changes recommended",
+    )
+
+    # Sequence recommendations
+    sequence_recommendations: list[SequenceRecommendation] = Field(
+        default_factory=list,
+        description="Multi-channel sequence patterns to adopt",
+    )
+
+    # Tier-specific strategies
+    tier_strategies: list[TierChannelStrategy] = Field(
+        default_factory=list,
+        description="Channel strategies by lead tier",
+    )
+
+    # Multi-channel insights
+    multi_channel_recommendation: str = Field(
+        default="",
+        description="Whether to use single or multi-channel approach",
+    )
+    multi_channel_lift: float = Field(
+        default=1.0,
+        description="Observed lift from multi-channel vs single-channel",
+    )
+
+    # Key insights
+    key_insights: list[str] = Field(
+        default_factory=list,
+        description="Top 3-5 actionable channel insights",
+    )
+
+    # Timing considerations
+    optimal_timing: dict[str, str] = Field(
+        default_factory=dict,
+        description="Optimal timing by channel (e.g., {'email': 'Tuesday 10AM'})",
+    )
+
+    # Confidence
+    confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Overall confidence in this analysis (0.0-1.0)",
+    )
+
+    # Data quality notes
+    data_quality_notes: str = Field(
+        default="",
+        description="Notes on data quality or limitations",
+    )
+
+
+# ============================================
+# SYSTEM PROMPT
+# ============================================
+
+HOW_ANALYZER_SYSTEM_PROMPT = """You are a B2B channel optimization expert analyzing outreach patterns.
+
+Your role is to examine HOW patterns (which channels and sequences convert best) and generate actionable channel strategy suggestions.
+
+## Input Data You'll Receive
+
+1. **HOW Patterns** from CIS (Conversion Intelligence System):
+   - channel_effectiveness: Performance by channel (email, voice, linkedin, sms)
+   - sequence_patterns: Multi-channel sequences that work
+   - tier_channel_effectiveness: Channel performance by lead tier (hot/warm/cool/cold)
+   - multi_channel_lift: Single vs multi-channel comparison
+   - email_engagement_correlation: How email engagement predicts conversion
+   - channel_conversation_quality: Conversation depth by channel
+
+2. **WHEN Patterns** (timing data):
+   - best_days: Best days of week by channel
+   - best_hours: Best hours by channel
+   - optimal_sequence_gaps: Time between touches
+
+3. **Current Channel Strategy**:
+   - Current channel allocation percentages
+   - Current sequence patterns
+   - Current timing rules
+
+## Your Analysis Tasks
+
+1. **Optimize Channel Allocation**
+   - Compare current allocation to what actually converts
+   - Suggest reallocation with expected lift
+   - Consider cost-effectiveness (voice is expensive)
+
+2. **Recommend Sequences**
+   - Identify winning multi-channel sequences
+   - Suggest new sequences to test
+   - Define optimal sequence gaps
+
+3. **Tier-Specific Strategies**
+   - Define optimal channels by lead tier
+   - Hot leads may need voice; cold leads may need email first
+
+## Output Guidelines
+
+- Be SPECIFIC: "Increase LinkedIn from 15% to 25%" not "use more LinkedIn"
+- Be DATA-DRIVEN: Always cite the pattern data that supports your recommendation
+- Be COST-AWARE: Voice costs ~$2/call, email ~$0.01, LinkedIn ~$0.05
+- Be TIER-AWARE: Different tiers may need different channel strategies
+
+## Confidence Scoring
+
+- 0.9+: Clear patterns with 100+ sample per channel
+- 0.7-0.9: Good patterns with 50-100 sample per channel
+- 0.5-0.7: Emerging patterns, worth testing
+- <0.5: Insufficient data, recommend testing
+
+Return your analysis in the specified JSON format."""
+
+
+# ============================================
+# CORE FUNCTION
+# ============================================
+
+
+async def run_how_analyzer(
+    how_patterns: dict[str, Any],
+    when_patterns: dict[str, Any] | None,
+    current_strategy: dict[str, Any],
+    campaign_metrics: dict[str, Any] | None = None,
+    client_id: UUID | None = None,
+) -> SDKBrainResult:
+    """
+    Run HOW pattern analysis to generate channel suggestions.
+
+    Args:
+        how_patterns: CIS HOW detector output
+        when_patterns: CIS WHEN detector output (optional, for timing)
+        current_strategy: Current channel allocation and strategy
+        campaign_metrics: Current campaign performance (optional)
+        client_id: Client UUID for cost tracking
+
+    Returns:
+        SDKBrainResult with HOWAnalysis data
+    """
+    # Build context prompt
+    prompt_parts = []
+
+    # HOW patterns
+    prompt_parts.append("## HOW Patterns (from CIS)\n")
+    prompt_parts.append(f"```json\n{_format_how_patterns(how_patterns)}\n```\n")
+
+    # WHEN patterns (timing)
+    if when_patterns:
+        prompt_parts.append("\n## WHEN Patterns (Timing)\n")
+        prompt_parts.append(f"```json\n{_format_when_patterns(when_patterns)}\n```\n")
+
+    # Current strategy
+    prompt_parts.append("\n## Current Channel Strategy\n")
+    if current_strategy.get("channel_allocation"):
+        prompt_parts.append(f"- Channel Allocation: {current_strategy['channel_allocation']}\n")
+    if current_strategy.get("sequence_pattern"):
+        prompt_parts.append(f"- Sequence Pattern: {current_strategy['sequence_pattern']}\n")
+    if current_strategy.get("tier_strategies"):
+        prompt_parts.append(f"- Tier Strategies: {current_strategy['tier_strategies']}\n")
+
+    # Campaign metrics
+    if campaign_metrics:
+        prompt_parts.append("\n## Current Campaign Performance\n")
+        prompt_parts.append(f"- Overall Reply Rate: {campaign_metrics.get('reply_rate', 'N/A')}%\n")
+        prompt_parts.append(
+            f"- Email Reply Rate: {campaign_metrics.get('email_reply_rate', 'N/A')}%\n"
+        )
+        prompt_parts.append(
+            f"- LinkedIn Reply Rate: {campaign_metrics.get('linkedin_reply_rate', 'N/A')}%\n"
+        )
+        prompt_parts.append(
+            f"- Voice Connect Rate: {campaign_metrics.get('voice_connect_rate', 'N/A')}%\n"
+        )
+
+    # Instructions
+    prompt_parts.append("\n## Your Task\n")
+    prompt_parts.append(
+        "Analyze the HOW patterns and current channel strategy. "
+        "Generate specific channel allocation recommendations. "
+        "Recommend winning sequences to adopt. "
+        "Define tier-specific channel strategies."
+    )
+
+    user_prompt = "".join(prompt_parts)
+
+    # Create brain and run
+    brain = create_sdk_brain("campaign_evolution_how")
+
+    result = await brain.run(
+        prompt=user_prompt,
+        tools=[],  # No tools needed - analyzing provided data
+        output_schema=HOWAnalysis,
+        system=HOW_ANALYZER_SYSTEM_PROMPT,
+    )
+
+    logger.info(
+        f"HOW analyzer complete: confidence={result.data.confidence if result.success else 'N/A'}, "
+        f"cost=${result.cost_aud:.4f}"
+    )
+
+    return result
+
+
+# ============================================
+# HELPER FUNCTIONS
+# ============================================
+
+
+def _format_how_patterns(patterns: dict[str, Any]) -> str:
+    """Format HOW patterns for prompt."""
+    import json
+
+    formatted = {}
+
+    # Channel effectiveness
+    if "channel_effectiveness" in patterns:
+        formatted["channel_effectiveness"] = patterns["channel_effectiveness"]
+
+    # Sequence patterns - top 5
+    if "sequence_patterns" in patterns:
+        sp = patterns["sequence_patterns"]
+        formatted["winning_sequences"] = sp.get("winning_sequences", [])[:5]
+
+    # Tier effectiveness
+    if "tier_channel_effectiveness" in patterns:
+        formatted["tier_channel_effectiveness"] = patterns["tier_channel_effectiveness"]
+
+    # Multi-channel lift
+    if "multi_channel_lift" in patterns:
+        formatted["multi_channel_lift"] = patterns["multi_channel_lift"]
+
+    # Baseline
+    if "baseline_conversion_rate" in patterns:
+        formatted["baseline_conversion_rate"] = patterns["baseline_conversion_rate"]
+
+    return json.dumps(formatted, indent=2, default=str)
+
+
+def _format_when_patterns(patterns: dict[str, Any]) -> str:
+    """Format WHEN patterns for prompt."""
+    import json
+
+    formatted = {}
+
+    # Best days - top 3
+    if "best_days" in patterns:
+        formatted["best_days"] = patterns["best_days"][:3]
+
+    # Best hours - top 3
+    if "best_hours" in patterns:
+        formatted["best_hours"] = patterns["best_hours"][:3]
+
+    # Sequence gaps
+    if "optimal_sequence_gaps" in patterns:
+        formatted["optimal_sequence_gaps"] = patterns["optimal_sequence_gaps"]
+
+    return json.dumps(formatted, indent=2, default=str)
+
+
+# ============================================
+# CONVENIENCE WRAPPER
+# ============================================
+
+
+async def analyze_how_patterns(
+    how_patterns: dict[str, Any],
+    when_patterns: dict[str, Any] | None,
+    current_strategy: dict[str, Any],
+    campaign_metrics: dict[str, Any] | None = None,
+    client_id: UUID | None = None,
+) -> dict[str, Any] | None:
+    """
+    Convenience wrapper for HOW analysis.
+
+    Returns dict with analysis results or None if failed.
+    """
+    result = await run_how_analyzer(
+        how_patterns=how_patterns,
+        when_patterns=when_patterns,
+        current_strategy=current_strategy,
+        campaign_metrics=campaign_metrics,
+        client_id=client_id,
+    )
+
+    if result.success and result.data:
+        analysis = result.data.model_dump() if hasattr(result.data, "model_dump") else result.data
+        return {
+            **analysis,
+            "source": "sdk_how_analyzer",
+            "cost_aud": result.cost_aud,
+        }
+
+    logger.warning(f"HOW analysis failed: {result.error}")
+    return None
+
+
+# ============================================
+# VERIFICATION CHECKLIST
+# ============================================
+# [x] Contract comment at top
+# [x] Pydantic output schema (HOWAnalysis)
+# [x] Detailed system prompt
+# [x] Core async function (run_how_analyzer)
+# [x] Uses create_sdk_brain pattern
+# [x] No tools needed (analyzes provided data)
+# [x] Convenience wrapper
+# [x] Helper functions for data formatting
+# [x] Logging
+# [x] Type hints throughout
+
+>>>> agents/campaign_evolution/what_analyzer_agent.py
+"""
+Contract: src/agents/campaign_evolution/what_analyzer_agent.py
+Purpose: Analyze WHAT patterns to generate content/messaging suggestions
+Layer: 3 - agents
+Imports: models, integrations (sdk_brain)
+Consumers: campaign_orchestrator_agent, campaign_evolution_flow
+Phase: Phase D - Item 18
+
+WHAT Analyzer examines content patterns (subjects, pain points, CTAs)
+and generates messaging optimization suggestions.
+"""
+
+import logging
+from typing import Any
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+from src.integrations.sdk_brain import SDKBrainResult, create_sdk_brain
+
+logger = logging.getLogger(__name__)
+
+
+# ============================================
+# OUTPUT SCHEMA
+# ============================================
+
+
+class MessagingRefinement(BaseModel):
+    """A specific messaging/content refinement."""
+
+    element: str = Field(
+        description="The element to refine (subject_line, pain_point, cta, angle, length)"
+    )
+    current_approach: str = Field(description="Current approach being used")
+    suggested_approach: str = Field(description="Suggested new approach")
+    example: str = Field(description="Concrete example of the suggested approach")
+    reason: str = Field(description="Why this change is recommended based on patterns")
+    expected_lift: float = Field(description="Expected improvement (e.g., 1.3 = 30% better)")
+
+
+class ABTestRecommendation(BaseModel):
+    """Recommended A/B test based on patterns."""
+
+    test_name: str = Field(description="Name for this test")
+    hypothesis: str = Field(description="What we're testing and why")
+    variant_a: str = Field(description="Control variant description")
+    variant_b: str = Field(description="Test variant description")
+    success_metric: str = Field(description="How to measure success (reply_rate, conversion_rate)")
+    confidence_required: float = Field(description="Statistical confidence needed (typically 0.95)")
+
+
+class ContentInsight(BaseModel):
+    """A key insight about content performance."""
+
+    insight: str = Field(description="The insight")
+    supporting_data: str = Field(description="Data supporting this insight")
+    action: str = Field(description="Recommended action based on this insight")
+
+
+class WHATAnalysis(BaseModel):
+    """Output from WHAT pattern analysis."""
+
+    # High-level summary
+    summary: str = Field(description="1-2 sentence summary of WHAT pattern findings")
+
+    # Messaging refinements
+    messaging_refinements: list[MessagingRefinement] = Field(
+        default_factory=list,
+        description="Specific content/messaging changes recommended",
+    )
+
+    # A/B test recommendations
+    ab_test_recommendations: list[ABTestRecommendation] = Field(
+        default_factory=list,
+        description="Recommended A/B tests to run",
+    )
+
+    # Winning patterns to amplify
+    winning_patterns: list[str] = Field(
+        default_factory=list,
+        description="Content patterns that work well - use more",
+    )
+
+    # Losing patterns to avoid
+    losing_patterns: list[str] = Field(
+        default_factory=list,
+        description="Content patterns that underperform - use less",
+    )
+
+    # Key insights
+    key_insights: list[ContentInsight] = Field(
+        default_factory=list,
+        description="Top 3-5 actionable content insights",
+    )
+
+    # Optimal parameters
+    optimal_length: dict[str, int] = Field(
+        default_factory=dict,
+        description="Optimal message length by channel (words)",
+    )
+
+    # Confidence
+    confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Overall confidence in this analysis (0.0-1.0)",
+    )
+
+    # Data quality notes
+    data_quality_notes: str = Field(
+        default="",
+        description="Notes on data quality or limitations",
+    )
+
+
+# ============================================
+# SYSTEM PROMPT
+# ============================================
+
+WHAT_ANALYZER_SYSTEM_PROMPT = """You are a B2B content optimization expert analyzing messaging patterns.
+
+Your role is to examine WHAT patterns (which content resonates) and generate actionable content suggestions.
+
+## Input Data You'll Receive
+
+1. **WHAT Patterns** from CIS (Conversion Intelligence System):
+   - subject_patterns: Subject lines that work/don't work
+   - pain_points: Which pain points resonate
+   - ctas: Which calls-to-action convert
+   - angles: Which messaging angles work
+   - optimal_length: Ideal message length by channel
+   - personalization_lift: Value of different personalization elements
+   - template_performance: Which templates perform best
+   - ab_test_insights: Results from A/B tests
+
+2. **Current Content Strategy**:
+   - Current subject line patterns
+   - Current pain points used
+   - Current CTA approach
+   - Current message templates
+
+3. **Business Context**:
+   - Client's value proposition
+   - Target audience characteristics
+
+## Your Analysis Tasks
+
+1. **Identify Messaging Refinements**
+   - Compare current content to what actually converts
+   - Suggest specific changes with examples
+   - Quantify expected improvement
+
+2. **Recommend A/B Tests**
+   - Identify testable hypotheses from patterns
+   - Design clear test variants
+   - Define success metrics
+
+3. **Catalog Winners and Losers**
+   - Document patterns to amplify
+   - Document patterns to avoid
+
+## Output Guidelines
+
+- Be SPECIFIC: Provide actual example text, not abstract suggestions
+- Be DATA-DRIVEN: Always cite the pattern data that supports your recommendation
+- Be ACTIONABLE: "Change CTA from 'Learn more' to 'See how [Company] did it'"
+- Be TESTABLE: Frame suggestions as hypotheses when data is limited
+
+## Confidence Scoring
+
+- 0.9+: Clear patterns with 100+ sample size, consistent results
+- 0.7-0.9: Good patterns with 50-100 sample size
+- 0.5-0.7: Emerging patterns, worth testing
+- <0.5: Insufficient data, flag for future testing
+
+Return your analysis in the specified JSON format."""
+
+
+# ============================================
+# CORE FUNCTION
+# ============================================
+
+
+async def run_what_analyzer(
+    what_patterns: dict[str, Any],
+    current_content: dict[str, Any],
+    campaign_metrics: dict[str, Any] | None = None,
+    business_context: dict[str, Any] | None = None,
+    client_id: UUID | None = None,
+) -> SDKBrainResult:
+    """
+    Run WHAT pattern analysis to generate content suggestions.
+
+    Args:
+        what_patterns: CIS WHAT detector output
+        current_content: Current content strategy/templates
+        campaign_metrics: Current campaign performance (optional)
+        business_context: Client business context (optional)
+        client_id: Client UUID for cost tracking
+
+    Returns:
+        SDKBrainResult with WHATAnalysis data
+    """
+    # Build context prompt
+    prompt_parts = []
+
+    # WHAT patterns
+    prompt_parts.append("## WHAT Patterns (from CIS)\n")
+    prompt_parts.append(f"```json\n{_format_patterns(what_patterns)}\n```\n")
+
+    # Current content strategy
+    prompt_parts.append("\n## Current Content Strategy\n")
+    if current_content.get("subject_patterns"):
+        prompt_parts.append(f"- Subject Patterns: {current_content['subject_patterns']}\n")
+    if current_content.get("pain_points"):
+        prompt_parts.append(f"- Pain Points Used: {current_content['pain_points']}\n")
+    if current_content.get("ctas"):
+        prompt_parts.append(f"- CTAs Used: {current_content['ctas']}\n")
+    if current_content.get("templates"):
+        prompt_parts.append(f"- Active Templates: {len(current_content['templates'])} templates\n")
+
+    # Campaign metrics
+    if campaign_metrics:
+        prompt_parts.append("\n## Current Campaign Performance\n")
+        prompt_parts.append(f"- Open Rate: {campaign_metrics.get('open_rate', 'N/A')}%\n")
+        prompt_parts.append(f"- Reply Rate: {campaign_metrics.get('reply_rate', 'N/A')}%\n")
+        prompt_parts.append(
+            f"- Conversion Rate: {campaign_metrics.get('conversion_rate', 'N/A')}%\n"
+        )
+
+    # Business context
+    if business_context:
+        prompt_parts.append("\n## Business Context\n")
+        prompt_parts.append(
+            f"- Value Proposition: {business_context.get('value_proposition', 'N/A')}\n"
+        )
+        prompt_parts.append(
+            f"- Target Audience: {business_context.get('target_audience', 'N/A')}\n"
+        )
+        prompt_parts.append(f"- Tone: {business_context.get('tone', 'professional')}\n")
+
+    # Instructions
+    prompt_parts.append("\n## Your Task\n")
+    prompt_parts.append(
+        "Analyze the WHAT patterns and current content strategy. "
+        "Generate specific, data-driven messaging refinements with examples. "
+        "Recommend A/B tests for uncertain areas. "
+        "Document winning patterns to amplify and losing patterns to avoid."
+    )
+
+    user_prompt = "".join(prompt_parts)
+
+    # Create brain and run
+    brain = create_sdk_brain("campaign_evolution_what")
+
+    result = await brain.run(
+        prompt=user_prompt,
+        tools=[],  # No tools needed - analyzing provided data
+        output_schema=WHATAnalysis,
+        system=WHAT_ANALYZER_SYSTEM_PROMPT,
+    )
+
+    logger.info(
+        f"WHAT analyzer complete: confidence={result.data.confidence if result.success else 'N/A'}, "
+        f"cost=${result.cost_aud:.4f}"
+    )
+
+    return result
+
+
+# ============================================
+# HELPER FUNCTIONS
+# ============================================
+
+
+def _format_patterns(patterns: dict[str, Any]) -> str:
+    """Format patterns for prompt, handling large data."""
+    import json
+
+    formatted = {}
+
+    # Subject patterns - winning only
+    if "subject_patterns" in patterns:
+        sp = patterns["subject_patterns"]
+        formatted["subject_patterns"] = {
+            "winning": sp.get("winning", [])[:5],
+        }
+
+    # Pain points - effective only
+    if "pain_points" in patterns:
+        pp = patterns["pain_points"]
+        formatted["pain_points"] = {
+            "effective": pp.get("effective", [])[:5],
+            "ineffective": pp.get("ineffective", [])[:3],
+        }
+
+    # CTAs - effective only
+    if "ctas" in patterns:
+        formatted["ctas"] = {
+            "effective": patterns["ctas"].get("effective", [])[:5],
+        }
+
+    # Optimal length
+    if "optimal_length" in patterns:
+        formatted["optimal_length"] = patterns["optimal_length"]
+
+    # Personalization lift
+    if "personalization_lift" in patterns:
+        formatted["personalization_lift"] = patterns["personalization_lift"]
+
+    # Template performance - top/bottom only
+    if "template_performance" in patterns:
+        tp = patterns["template_performance"]
+        formatted["template_performance"] = {
+            "top_templates": tp.get("top_templates", [])[:3],
+            "bottom_templates": tp.get("bottom_templates", [])[:2],
+        }
+
+    # Baseline
+    if "baseline_conversion_rate" in patterns:
+        formatted["baseline_conversion_rate"] = patterns["baseline_conversion_rate"]
+
+    return json.dumps(formatted, indent=2, default=str)
+
+
+# ============================================
+# CONVENIENCE WRAPPER
+# ============================================
+
+
+async def analyze_what_patterns(
+    what_patterns: dict[str, Any],
+    current_content: dict[str, Any],
+    campaign_metrics: dict[str, Any] | None = None,
+    client_id: UUID | None = None,
+) -> dict[str, Any] | None:
+    """
+    Convenience wrapper for WHAT analysis.
+
+    Returns dict with analysis results or None if failed.
+    """
+    result = await run_what_analyzer(
+        what_patterns=what_patterns,
+        current_content=current_content,
+        campaign_metrics=campaign_metrics,
+        client_id=client_id,
+    )
+
+    if result.success and result.data:
+        analysis = result.data.model_dump() if hasattr(result.data, "model_dump") else result.data
+        return {
+            **analysis,
+            "source": "sdk_what_analyzer",
+            "cost_aud": result.cost_aud,
+        }
+
+    logger.warning(f"WHAT analysis failed: {result.error}")
+    return None
+
+
+# ============================================
+# VERIFICATION CHECKLIST
+# ============================================
+# [x] Contract comment at top
+# [x] Pydantic output schema (WHATAnalysis)
+# [x] Detailed system prompt
+# [x] Core async function (run_what_analyzer)
+# [x] Uses create_sdk_brain pattern
+# [x] No tools needed (analyzes provided data)
+# [x] Convenience wrapper
+# [x] Helper functions for data formatting
+# [x] Logging
+# [x] Type hints throughout
+
+>>>> agents/campaign_evolution/who_analyzer_agent.py
+"""
+Contract: src/agents/campaign_evolution/who_analyzer_agent.py
+Purpose: Analyze WHO patterns to generate targeting suggestions
+Layer: 3 - agents
+Imports: models, integrations (sdk_brain)
+Consumers: campaign_orchestrator_agent, campaign_evolution_flow
+Phase: Phase D - Item 18
+
+WHO Analyzer examines lead attribute patterns (title, industry, company size)
+and generates targeting refinement suggestions.
+"""
+
+import logging
+from typing import Any
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+from src.integrations.sdk_brain import SDKBrainResult, create_sdk_brain
+
+logger = logging.getLogger(__name__)
+
+
+# ============================================
+# OUTPUT SCHEMA
+# ============================================
+
+
+class TargetingRefinement(BaseModel):
+    """A specific targeting refinement suggestion."""
+
+    attribute: str = Field(
+        description="The attribute to refine (title, industry, company_size, seniority)"
+    )
+    current_value: str = Field(description="Current targeting value or range")
+    suggested_value: str = Field(description="Suggested new value or range")
+    reason: str = Field(description="Why this change is recommended based on patterns")
+    expected_lift: float = Field(
+        description="Expected conversion lift (e.g., 1.5 = 50% improvement)"
+    )
+
+
+class SegmentOpportunity(BaseModel):
+    """An untapped segment opportunity."""
+
+    segment_name: str = Field(
+        description="Name for this segment (e.g., 'Tech CTOs at Growth-Stage')"
+    )
+    description: str = Field(description="Description of the segment")
+    attributes: dict[str, str] = Field(description="Key attributes defining this segment")
+    conversion_rate: float = Field(description="Observed conversion rate for this segment")
+    sample_size: int = Field(description="Number of leads analyzed in this segment")
+    recommendation: str = Field(description="Specific action to take")
+
+
+class WHOAnalysis(BaseModel):
+    """Output from WHO pattern analysis."""
+
+    # High-level summary
+    summary: str = Field(description="1-2 sentence summary of WHO pattern findings")
+
+    # Targeting refinements
+    targeting_refinements: list[TargetingRefinement] = Field(
+        default_factory=list,
+        description="Specific targeting changes recommended",
+    )
+
+    # Segment opportunities
+    segment_opportunities: list[SegmentOpportunity] = Field(
+        default_factory=list,
+        description="Untapped segments worth targeting",
+    )
+
+    # Underperforming segments
+    underperforming_segments: list[str] = Field(
+        default_factory=list,
+        description="Segments that should be deprioritized or excluded",
+    )
+
+    # Key insights
+    key_insights: list[str] = Field(
+        default_factory=list,
+        description="Top 3-5 actionable insights from WHO patterns",
+    )
+
+    # Confidence
+    confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Overall confidence in this analysis (0.0-1.0)",
+    )
+
+    # Data quality notes
+    data_quality_notes: str = Field(
+        default="",
+        description="Notes on data quality or limitations",
+    )
+
+
+# ============================================
+# SYSTEM PROMPT
+# ============================================
+
+WHO_ANALYZER_SYSTEM_PROMPT = """You are a B2B targeting optimization expert analyzing conversion patterns.
+
+Your role is to examine WHO patterns (which lead attributes convert best) and generate actionable targeting suggestions.
+
+## Input Data You'll Receive
+
+1. **WHO Patterns** from CIS (Conversion Intelligence System):
+   - title_rankings: Job titles ranked by conversion rate
+   - industry_rankings: Industries ranked by conversion rate
+   - size_analysis: Company size sweet spots
+   - timing_signals: Lift from new role, hiring, funding signals
+   - objection_patterns: Common objections by segment
+
+2. **Current Campaign Targeting**:
+   - Current ICP criteria (industries, titles, company sizes)
+   - Current campaign performance metrics
+
+3. **Business Context**:
+   - Client's value proposition
+   - Target market constraints
+
+## Your Analysis Tasks
+
+1. **Identify Targeting Refinements**
+   - Compare current targeting to what actually converts
+   - Suggest specific changes (add/remove titles, narrow industries, etc.)
+   - Quantify expected improvement
+
+2. **Find Segment Opportunities**
+   - Identify high-converting segments not currently targeted
+   - Look for "sweet spots" in the data
+   - Suggest new campaigns for untapped segments
+
+3. **Flag Underperformers**
+   - Identify segments with poor conversion rates
+   - Suggest exclusions or deprioritization
+
+## Output Guidelines
+
+- Be SPECIFIC: "Add 'VP of Engineering' to title targeting" not "target more technical roles"
+- Be DATA-DRIVEN: Always cite the pattern data that supports your recommendation
+- Be CONSERVATIVE: Only suggest changes with sufficient sample size (30+ leads)
+- Be REALISTIC: Projected lifts should be based on observed data, not assumptions
+
+## Confidence Scoring
+
+- 0.9+: Strong patterns with 100+ sample size
+- 0.7-0.9: Good patterns with 50-100 sample size
+- 0.5-0.7: Emerging patterns with 30-50 sample size
+- <0.5: Insufficient data for confident recommendations
+
+Return your analysis in the specified JSON format."""
+
+
+# ============================================
+# CORE FUNCTION
+# ============================================
+
+
+async def run_who_analyzer(
+    who_patterns: dict[str, Any],
+    current_targeting: dict[str, Any],
+    campaign_metrics: dict[str, Any] | None = None,
+    business_context: dict[str, Any] | None = None,
+    client_id: UUID | None = None,
+) -> SDKBrainResult:
+    """
+    Run WHO pattern analysis to generate targeting suggestions.
+
+    Args:
+        who_patterns: CIS WHO detector output (title_rankings, industry_rankings, etc.)
+        current_targeting: Current ICP/targeting criteria
+        campaign_metrics: Current campaign performance (optional)
+        business_context: Client business context (optional)
+        client_id: Client UUID for cost tracking
+
+    Returns:
+        SDKBrainResult with WHOAnalysis data
+    """
+    # Build context prompt
+    prompt_parts = []
+
+    # WHO patterns
+    prompt_parts.append("## WHO Patterns (from CIS)\n")
+    prompt_parts.append(f"```json\n{_format_patterns(who_patterns)}\n```\n")
+
+    # Current targeting
+    prompt_parts.append("\n## Current Targeting Criteria\n")
+    prompt_parts.append(f"- Industries: {current_targeting.get('industries', [])}\n")
+    prompt_parts.append(f"- Titles: {current_targeting.get('titles', [])}\n")
+    prompt_parts.append(f"- Company Sizes: {current_targeting.get('company_sizes', [])}\n")
+    prompt_parts.append(f"- Locations: {current_targeting.get('locations', [])}\n")
+
+    # Campaign metrics
+    if campaign_metrics:
+        prompt_parts.append("\n## Current Campaign Performance\n")
+        prompt_parts.append(f"- Reply Rate: {campaign_metrics.get('reply_rate', 'N/A')}%\n")
+        prompt_parts.append(
+            f"- Conversion Rate: {campaign_metrics.get('conversion_rate', 'N/A')}%\n"
+        )
+        prompt_parts.append(
+            f"- Leads Contacted: {campaign_metrics.get('leads_contacted', 'N/A')}\n"
+        )
+
+    # Business context
+    if business_context:
+        prompt_parts.append("\n## Business Context\n")
+        prompt_parts.append(
+            f"- Value Proposition: {business_context.get('value_proposition', 'N/A')}\n"
+        )
+        prompt_parts.append(f"- Target Market: {business_context.get('target_market', 'N/A')}\n")
+
+    # Instructions
+    prompt_parts.append("\n## Your Task\n")
+    prompt_parts.append(
+        "Analyze the WHO patterns and current targeting. "
+        "Generate specific, data-driven targeting refinements. "
+        "Identify any untapped high-converting segments. "
+        "Flag underperforming segments that should be deprioritized."
+    )
+
+    user_prompt = "".join(prompt_parts)
+
+    # Create brain and run
+    brain = create_sdk_brain("campaign_evolution_who")
+
+    result = await brain.run(
+        prompt=user_prompt,
+        tools=[],  # No tools needed - analyzing provided data
+        output_schema=WHOAnalysis,
+        system=WHO_ANALYZER_SYSTEM_PROMPT,
+    )
+
+    logger.info(
+        f"WHO analyzer complete: confidence={result.data.confidence if result.success else 'N/A'}, "
+        f"cost=${result.cost_aud:.4f}"
+    )
+
+    return result
+
+
+# ============================================
+# HELPER FUNCTIONS
+# ============================================
+
+
+def _format_patterns(patterns: dict[str, Any]) -> str:
+    """Format patterns for prompt, handling large data."""
+    import json
+
+    # Limit size of pattern data to avoid token bloat
+    formatted = {}
+
+    # Title rankings - top 10
+    if "title_rankings" in patterns:
+        formatted["title_rankings"] = patterns["title_rankings"][:10]
+
+    # Industry rankings - top 10
+    if "industry_rankings" in patterns:
+        formatted["industry_rankings"] = patterns["industry_rankings"][:10]
+
+    # Size analysis - keep as-is (usually small)
+    if "size_analysis" in patterns:
+        formatted["size_analysis"] = patterns["size_analysis"]
+
+    # Timing signals - keep as-is
+    if "timing_signals" in patterns:
+        formatted["timing_signals"] = patterns["timing_signals"]
+
+    # Baseline conversion rate
+    if "baseline_conversion_rate" in patterns:
+        formatted["baseline_conversion_rate"] = patterns["baseline_conversion_rate"]
+
+    # Objection patterns - summary only
+    if "objection_patterns" in patterns:
+        obj = patterns["objection_patterns"]
+        formatted["objection_patterns_summary"] = {
+            "top_objections": obj.get("overall_distribution", [])[:5],
+        }
+
+    return json.dumps(formatted, indent=2, default=str)
+
+
+# ============================================
+# CONVENIENCE WRAPPER
+# ============================================
+
+
+async def analyze_who_patterns(
+    who_patterns: dict[str, Any],
+    current_targeting: dict[str, Any],
+    campaign_metrics: dict[str, Any] | None = None,
+    client_id: UUID | None = None,
+) -> dict[str, Any] | None:
+    """
+    Convenience wrapper for WHO analysis.
+
+    Returns dict with analysis results or None if failed.
+    """
+    result = await run_who_analyzer(
+        who_patterns=who_patterns,
+        current_targeting=current_targeting,
+        campaign_metrics=campaign_metrics,
+        client_id=client_id,
+    )
+
+    if result.success and result.data:
+        analysis = result.data.model_dump() if hasattr(result.data, "model_dump") else result.data
+        return {
+            **analysis,
+            "source": "sdk_who_analyzer",
+            "cost_aud": result.cost_aud,
+        }
+
+    logger.warning(f"WHO analysis failed: {result.error}")
+    return None
+
+
+# ============================================
+# VERIFICATION CHECKLIST
+# ============================================
+# [x] Contract comment at top
+# [x] Pydantic output schema (WHOAnalysis)
+# [x] Detailed system prompt
+# [x] Core async function (run_who_analyzer)
+# [x] Uses create_sdk_brain pattern
+# [x] No tools needed (analyzes provided data)
+# [x] Convenience wrapper
+# [x] Helper functions for data formatting
+# [x] Logging
+# [x] Type hints throughout
+

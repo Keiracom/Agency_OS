@@ -31,6 +31,7 @@ Rate Limiting Strategy (to prevent bans):
 import asyncio
 import hashlib
 import os
+import random
 import re
 import time
 from collections import defaultdict
@@ -45,6 +46,14 @@ from prefect import flow, task, get_run_logger
 from prefect.tasks import task_input_hash
 from supabase import create_client, Client
 
+# Native YouTube scraping (no API key needed)
+import yt_dlp
+from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api._errors import (
+    TranscriptsDisabled, NoTranscriptFound, CouldNotRetrieveTranscript,
+    RequestBlocked, IpBlocked
+)
+
 
 # ============================================
 # Rate Limiting Infrastructure
@@ -54,6 +63,96 @@ from supabase import create_client, Client
 HEADERS = {
     'User-Agent': 'ElliotBot/1.0 (Research; https://github.com/elliot-agent)'
 }
+
+
+# ============================================
+# Anti-Ban Safety Measures
+# ============================================
+
+async def safe_delay(min_delay: float = 1.0, max_delay: float = 3.0):
+    """
+    Randomized delay to prevent detection patterns.
+    Uses random interval instead of fixed delay.
+    """
+    delay = random.uniform(min_delay, max_delay)
+    logger = get_run_logger()
+    logger.debug(f"Rate limiting: waiting {delay:.1f}s before next request")
+    await asyncio.sleep(delay)
+
+
+def jittered_delay(base: float = 1.0, jitter: float = 0.5) -> float:
+    """
+    Add jitter to a base delay to avoid predictable patterns.
+    
+    Args:
+        base: Base delay in seconds
+        jitter: Maximum jitter (+/-) in seconds
+    
+    Returns:
+        Delay with random jitter applied
+    """
+    return base + random.uniform(-jitter, jitter)
+
+
+class BlockDetector:
+    """
+    Detects potential blocks/bans based on consecutive errors.
+    Triggers graceful stop when threshold is reached.
+    """
+    
+    def __init__(self, max_errors: int = 3, source_name: str = "scraper"):
+        self.consecutive_errors = 0
+        self.max_errors = max_errors
+        self.blocked = False
+        self.source_name = source_name
+        self.total_errors = 0
+        self.total_successes = 0
+    
+    def record_success(self):
+        """Record a successful request, reset consecutive error count."""
+        self.consecutive_errors = 0
+        self.total_successes += 1
+    
+    def record_error(self, error: Exception):
+        """
+        Record an error. Check for block indicators.
+        Triggers block detection after max consecutive errors.
+        """
+        self.consecutive_errors += 1
+        self.total_errors += 1
+        logger = get_run_logger()
+        
+        error_str = str(error).lower()
+        
+        # Check for explicit block indicators
+        block_keywords = ["blocked", "captcha", "rate limit", "too many requests", 
+                         "forbidden", "access denied", "bot detected", "429"]
+        
+        if any(kw in error_str for kw in block_keywords):
+            self.blocked = True
+            logger.warning(f"[{self.source_name}] Block indicator detected in error: {error}")
+            return
+        
+        if self.consecutive_errors >= self.max_errors:
+            self.blocked = True
+            logger.warning(
+                f"[{self.source_name}] Possible block detected after {self.max_errors} "
+                f"consecutive errors. Stopping scraper."
+            )
+    
+    def should_stop(self) -> bool:
+        """Check if scraper should stop due to detected block."""
+        return self.blocked
+    
+    def get_stats(self) -> dict:
+        """Get detection statistics."""
+        return {
+            "source": self.source_name,
+            "blocked": self.blocked,
+            "total_successes": self.total_successes,
+            "total_errors": self.total_errors,
+            "consecutive_errors": self.consecutive_errors,
+        }
 
 
 class SourceRateLimiter:
@@ -289,14 +388,19 @@ REDDIT_SUBREDDITS = [
     "ClaudeAI",
 ]
 
-# YouTube Keywords (5) - Search queries
-# Reduced from 10 - Apify handles limits but be conservative
+# YouTube Keywords (10) - Search queries
+# Native scraper: no Apify limits, but rate-limited to 0.5s between requests
 YOUTUBE_KEYWORDS = [
     "AI agent tutorial",
+    "LLM memory architecture", 
     "cold email automation",
-    "sales automation demo",
+    "sales automation SaaS",
     "multi-agent system",
-    "SaaS growth",
+    "Claude AI coding",
+    "RAG tutorial",
+    "autonomous AI agents",
+    "prompt engineering",
+    "SaaS growth strategies",
 ]
 
 # ProductHunt Search Terms (5)
@@ -309,14 +413,18 @@ PRODUCTHUNT_KEYWORDS = [
     "agent",
 ]
 
-# Twitter/X Keywords (5)
-# Reduced from 10 - Apify handles limits but be conservative
+# Twitter/X Keywords (10) - Native scraper, no Apify
 TWITTER_KEYWORDS = [
     "AI agents",
-    "cold email",
+    "cold email automation",
+    "SaaS growth",
+    "LLM memory",
+    "Claude AI",
     "sales automation",
     "multi-agent",
-    "SaaS",
+    "autonomous AI",
+    "prompt engineering",
+    "outbound sales",
 ]
 
 # ============================================
@@ -547,13 +655,26 @@ YOUTUBE_CHANNELS = [
     {"name": "Greg Isenberg", "handle": "@gregisenberg", "url": "https://www.youtube.com/@gregisenberg/videos"},
 ]
 
-# Twitter/X thought leader accounts (reduced from 8 to 5)
+# Twitter/X thought leader accounts (for nitter RSS)
 TWITTER_ACCOUNTS = [
     "levelsio",       # Pieter Levels - indie hacker legend
-    "gregisenberg",   # Greg Isenberg - Late Checkout
-    "paulg",          # Paul Graham
+    "sama",           # Sam Altman
     "AnthropicAI",    # Anthropic
     "OpenAI",         # OpenAI
+    "LangChainAI",    # LangChain
+    "gregisenberg",   # Greg Isenberg - Late Checkout
+    "swyx",           # Shawn Wang - AI Engineer
+]
+
+# Nitter instances (public Twitter frontends with RSS) - ordered by reliability
+# Note: Nitter instances frequently go down. This list should be updated periodically.
+NITTER_INSTANCES = [
+    "https://nitter.net",
+    "https://nitter.poast.org",
+    "https://nitter.privacydev.net",
+    "https://nitter.cz",
+    "https://nitter.unixfox.eu",
+    "https://n.opnxng.com",
 ]
 
 # ============================================
@@ -883,164 +1004,149 @@ async def scrape_reddit(limit_per_search: int = 25) -> list[dict]:
 
 
 @task(retries=2, retry_delay_seconds=30)
-async def scrape_youtube(limit_per_keyword: int = 15) -> list[dict]:
+async def scrape_youtube(limit_per_keyword: int = 10) -> list[dict]:
     """
-    Scrape YouTube using Apify with keyword searches + target channels.
+    Scrape YouTube using native Python libraries (no API key needed).
+    Uses yt-dlp for search and youtube-transcript-api for transcripts.
     
-    Rate limit: Apify handles internal rate limits
+    Note: Transcripts may be unavailable from cloud IPs due to YouTube blocking.
+    Video metadata (title, views, channel) is still captured.
+    
+    Rate limit: 0.5s between requests (self-imposed)
     
     Args:
-        limit_per_keyword: Max results per search query (15, reduced from 20)
+        limit_per_keyword: Max results per search query (10)
     """
     logger = get_run_logger()
-    logger.info(f"Scraping YouTube with {len(YOUTUBE_KEYWORDS)} keywords + {len(YOUTUBE_CHANNELS)} channels...")
-    
-    if not APIFY_API_KEY:
-        logger.warning("APIFY_API_KEY not set, skipping YouTube scrape")
-        return []
-    
-    # Check request cap (Apify calls count as requests)
-    if not request_tracker.can_continue:
-        logger.warning("Request cap reached, skipping YouTube scrape")
-        return []
+    logger.info(f"Scraping YouTube (native) with {len(YOUTUBE_KEYWORDS)} keywords...")
     
     insights = []
+    seen_ids = set()
+    transcripts_found = 0
+    transcripts_blocked = 0
+    transcripts_unavailable = 0
     
-    # Build start URLs from keywords and channels
-    start_urls = []
+    # yt-dlp options for search
+    ydl_opts = {
+        'quiet': True,
+        'no_warnings': True,
+        'extract_flat': True,  # Don't download, just get metadata
+        'ignoreerrors': True,
+    }
     
-    # Add keyword search URLs
+    # Track if transcripts are being blocked (stop trying after 3 blocks)
+    ip_blocked = False
+    
     for keyword in YOUTUBE_KEYWORDS:
-        encoded_query = keyword.replace(" ", "+")
-        # No date filter to get ALL TIME best results
-        start_urls.append({"url": f"https://www.youtube.com/results?search_query={encoded_query}"})
-    
-    # Add channel URLs (recent videos from target channels)
-    for channel in YOUTUBE_CHANNELS:
-        start_urls.append({"url": channel["url"]})
-    
-    total_limit = limit_per_keyword * len(YOUTUBE_KEYWORDS) + 10 * len(YOUTUBE_CHANNELS)
-    
-    async with httpx.AsyncClient(timeout=300) as client:
+        # Check request cap
+        if not request_tracker.can_continue:
+            logger.warning("Request cap reached, stopping YouTube scrape")
+            break
+            
         try:
-            # Use streamers/youtube-scraper actor (Apify handles rate limits)
-            run_response = await make_request(
-                client, 'POST',
-                "https://api.apify.com/v2/acts/streamers~youtube-scraper/runs",
-                source='apify',
-                headers={"Authorization": f"Bearer {APIFY_API_KEY}"},
-                json={
-                    "startUrls": start_urls,
-                    "maxResults": total_limit,
-                    "maxResultsShorts": 0,  # Skip shorts
-                    "proxy": {"useApifyProxy": True},
-                }
-            )
+            # Search YouTube using yt-dlp
+            search_url = f"ytsearch{limit_per_keyword}:{keyword}"
             
-            if run_response.status_code != 201:
-                error_text = run_response.text[:200] if run_response.text else ""
-                # Check for Apify billing/limit errors
-                if run_response.status_code == 402 or "limit" in error_text.lower() or "exceeded" in error_text.lower():
-                    logger.warning(f"YouTube scraper: Apify monthly limit exceeded - returning empty results")
-                    return []
-                logger.warning(f"YouTube scraper start failed: {run_response.status_code} - {error_text}")
-                return []
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                search_result = ydl.extract_info(search_url, download=False)
             
-            run_data = run_response.json()
-            run_id = run_data.get("data", {}).get("id")
-            
-            if not run_id:
-                return []
-            
-            logger.info(f"YouTube scraper started: run_id={run_id}")
-            
-            # Poll for completion (max 300 seconds for larger scrape)
-            for _ in range(60):
-                await asyncio.sleep(5)
+            if not search_result or 'entries' not in search_result:
+                logger.warning(f"  [{keyword}] No results")
+                continue
                 
-                # Don't count polling as requests toward cap
-                status_response = await client.get(
-                    f"https://api.apify.com/v2/actor-runs/{run_id}",
-                    headers={**HEADERS, "Authorization": f"Bearer {APIFY_API_KEY}"}
-                )
-                status_data = status_response.json()
-                status = status_data.get("data", {}).get("status")
-                
-                if status == "SUCCEEDED":
-                    break
-                elif status in ["FAILED", "ABORTED", "TIMED-OUT"]:
-                    logger.warning(f"YouTube scraper run failed: {status}")
-                    return []
-            else:
-                logger.warning("YouTube scraper timed out after 300s")
-                return []
-            
-            # Get results
-            dataset_id = status_data.get("data", {}).get("defaultDatasetId")
-            if not dataset_id:
-                return []
-            
-            results_response = await client.get(
-                f"https://api.apify.com/v2/datasets/{dataset_id}/items",
-                headers={**HEADERS, "Authorization": f"Bearer {APIFY_API_KEY}"}
-            )
-            
-            videos = results_response.json() if results_response.status_code == 200 else []
-            seen_ids = set()
+            videos = [e for e in search_result['entries'] if e]
+            logger.info(f"  [{keyword}] Found {len(videos)} videos")
             
             for video in videos:
-                video_id = video.get("id") or video.get("videoId", "")
-                if video_id in seen_ids:
+                video_id = video.get('id') or video.get('url', '').split('=')[-1]
+                if not video_id or video_id in seen_ids:
                     continue
                 seen_ids.add(video_id)
                 
-                title = video.get("title", "")
-                description = (video.get("description") or video.get("text") or "")[:500]
-                channel = video.get("channelName") or video.get("author", {}).get("name", "")
-                view_count = video.get("viewCount") or video.get("views", 0)
-                url = video.get("url") or video.get("link", "")
-                published = video.get("uploadDate") or video.get("date", "")
+                title = video.get('title', '')
+                channel_name = video.get('channel', '') or video.get('uploader', '')
+                view_count = video.get('view_count', 0) or 0
+                duration = video.get('duration', 0)
+                duration_str = f"{duration // 60}:{duration % 60:02d}" if duration else ''
                 
-                # Handle view count as string with commas
-                if isinstance(view_count, str):
-                    view_count = int(view_count.replace(",", "").replace(" views", "").strip() or 0)
+                # Try to get transcript (skip if IP is blocked)
+                transcript_text = None
+                if not ip_blocked:
+                    try:
+                        ytt_api = YouTubeTranscriptApi()
+                        transcript = ytt_api.fetch(video_id)
+                        transcript_text = " ".join([entry.text for entry in transcript])
+                        # Truncate to reasonable size
+                        if len(transcript_text) > 5000:
+                            transcript_text = transcript_text[:5000] + "..."
+                        transcripts_found += 1
+                    except (RequestBlocked, IpBlocked):
+                        transcripts_blocked += 1
+                        if transcripts_blocked >= 3:
+                            ip_blocked = True
+                            logger.warning("YouTube IP blocked - skipping transcript fetches for remaining videos")
+                    except (TranscriptsDisabled, NoTranscriptFound, CouldNotRetrieveTranscript):
+                        transcripts_unavailable += 1
+                    except Exception as e:
+                        transcripts_unavailable += 1
+                        logger.debug(f"Transcript error for {video_id}: {e}")
                 
-                if not title or not url:
-                    continue
+                # Get description as fallback
+                description = (video.get('description') or '')[:500]
                 
-                # Minimum views threshold
+                # Use transcript if available, otherwise use description or title
+                content_text = transcript_text or description or title
+                
+                # Minimum threshold - accept all videos with decent views
+                # (transcripts unavailable from cloud, so don't penalize)
                 if view_count < 1000:
                     continue
                 
-                # Confidence based on views and channel
+                # Confidence based on views and transcript availability
                 confidence = min(0.95, 0.5 + (view_count / 100000))
-                # Boost confidence for known channels
-                if any(ch["name"].lower() in channel.lower() for ch in YOUTUBE_CHANNELS):
+                if transcript_text:
                     confidence = min(0.95, confidence + 0.1)
                 
-                category = categorize_content(f"{title} {description}")
-                from_target_channel = any(ch["name"].lower() in channel.lower() for ch in YOUTUBE_CHANNELS)
+                # Check if from target channel
+                from_target_channel = any(
+                    ch["name"].lower() in channel_name.lower() 
+                    for ch in YOUTUBE_CHANNELS
+                )
+                if from_target_channel:
+                    confidence = min(0.95, confidence + 0.1)
+                
+                category = categorize_content(f"{title} {content_text[:500]}")
                 
                 insights.append({
                     "category": category,
                     "content": f"[YouTube {view_count:,} views] {title}",
-                    "summary": f"{title} by {channel}. {description[:200]}",
-                    "source_url": url,
+                    "summary": f"{title} by {channel_name}. {content_text[:300]}",
+                    "source_url": f"https://youtube.com/watch?v={video_id}",
                     "source_type": "youtube",
                     "confidence_score": round(confidence, 2),
                     "metadata": {
                         "video_id": video_id,
-                        "channel": channel,
+                        "channel": channel_name,
                         "view_count": view_count,
-                        "published": published,
+                        "duration": duration_str,
+                        "has_transcript": transcript_text is not None,
+                        "transcript_length": len(transcript_text) if transcript_text else 0,
                         "from_target_channel": from_target_channel,
+                        "keyword": keyword,
                     }
                 })
                 
+                # Rate limit between requests
+                await asyncio.sleep(0.5)
+                
         except Exception as e:
-            logger.error(f"YouTube scrape failed: {e}")
+            logger.warning(f"YouTube search failed for '{keyword}': {e}")
+            continue
     
-    logger.info(f"Scraped {len(insights)} YouTube videos")
+    transcript_status = f"found={transcripts_found}, unavailable={transcripts_unavailable}"
+    if transcripts_blocked > 0:
+        transcript_status += f", blocked={transcripts_blocked} (cloud IP)"
+    logger.info(f"Scraped {len(insights)} YouTube videos (transcripts: {transcript_status})")
     return insights
 
 
@@ -1142,22 +1248,29 @@ async def scrape_producthunt(limit: int = 50) -> list[dict]:
 
 
 @task(retries=2, retry_delay_seconds=30)
-async def scrape_twitter(limit_per_keyword: int = 25) -> list[dict]:
+async def scrape_twitter(limit_per_keyword: int = 50) -> list[dict]:
     """
-    Scrape Twitter/X using Apify with keyword searches + thought leader accounts.
-    Uses apidojo/tweet-scraper actor which supports searchTerms.
+    Native Twitter/X scraper using nitter RSS feeds (no API key needed).
     
-    Rate limit: Apify handles internal rate limits
+    Strategy:
+    1. Scrape target thought leader accounts via nitter RSS
+    2. Try multiple nitter instances with fallback
+    3. Rate limited to 1 request/second between nitter calls
+    
+    Note: Native Twitter scraping is inherently unreliable due to:
+    - Nitter instances frequently go down
+    - Twitter/X actively blocks scrapers
+    - No official public API without authentication
+    
+    This implementation gracefully fails if all methods are exhausted.
+    
+    Rate limit: 1 req/sec between requests
     
     Args:
-        limit_per_keyword: Max tweets per search term (25, reduced from 50)
+        limit_per_keyword: Max tweets per account (50)
     """
     logger = get_run_logger()
-    logger.info(f"Scraping Twitter/X with {len(TWITTER_KEYWORDS)} keywords + {len(TWITTER_ACCOUNTS)} accounts...")
-    
-    if not APIFY_API_KEY:
-        logger.warning("APIFY_API_KEY not set, skipping Twitter scrape")
-        return []
+    logger.info(f"Scraping Twitter/X natively with {len(TWITTER_ACCOUNTS)} accounts...")
     
     # Check request cap
     if not request_tracker.can_continue:
@@ -1165,160 +1278,137 @@ async def scrape_twitter(limit_per_keyword: int = 25) -> list[dict]:
         return []
     
     insights = []
+    seen_ids = set()
+    working_instance = None
     
-    # Build search terms - keywords + account searches
-    search_terms = []
-    
-    # Add keyword searches
-    for keyword in TWITTER_KEYWORDS:
-        search_terms.append(keyword)
-    
-    # Add account searches (from:username gets their tweets)
-    for account in TWITTER_ACCOUNTS:
-        search_terms.append(f"from:{account}")
-    
-    total_limit = limit_per_keyword * (len(TWITTER_KEYWORDS) + len(TWITTER_ACCOUNTS))
-    
-    async with httpx.AsyncClient(timeout=300) as client:
-        try:
-            # Use apidojo/tweet-scraper actor (Tweet Scraper V2)
-            run_response = await make_request(
-                client, 'POST',
-                "https://api.apify.com/v2/acts/apidojo~tweet-scraper/runs",
-                source='apify',
-                headers={"Authorization": f"Bearer {APIFY_API_KEY}"},
-                json={
-                    "searchTerms": search_terms,
-                    "maxTweets": total_limit,
-                    "sort": "Latest",
-                    "tweetLanguage": "en",
-                    "addUserInfo": True,
-                    "proxy": {"useApifyProxy": True},
-                }
-            )
-            
-            if run_response.status_code != 201:
-                error_text = run_response.text[:200] if run_response.text else ""
-                # Check for Apify billing/limit errors
-                if run_response.status_code == 402 or "limit" in error_text.lower() or "exceeded" in error_text.lower():
-                    logger.warning(f"Twitter scraper: Apify monthly limit exceeded - returning empty results")
-                    return []
-                logger.warning(f"Twitter scraper start failed: {run_response.status_code} - {error_text}")
-                return []
-            
-            run_data = run_response.json()
-            run_id = run_data.get("data", {}).get("id")
-            
-            if not run_id:
-                return []
-            
-            logger.info(f"Twitter scraper started: run_id={run_id}")
-            
-            # Poll for completion (max 300 seconds)
-            # Don't count polling as requests toward cap
-            for _ in range(60):
-                await asyncio.sleep(5)
-                status_response = await client.get(
-                    f"https://api.apify.com/v2/actor-runs/{run_id}",
-                    headers={**HEADERS, "Authorization": f"Bearer {APIFY_API_KEY}"}
-                )
-                status_data = status_response.json()
-                status = status_data.get("data", {}).get("status")
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+        # First, find a working nitter instance
+        for instance in NITTER_INSTANCES:
+            if not request_tracker.can_continue:
+                break
+            try:
+                # Test with a known active account
+                test_url = f"{instance}/OpenAI/rss"
+                await rate_limiter.wait('twitter')
                 
-                if status == "SUCCEEDED":
-                    break
-                elif status in ["FAILED", "ABORTED", "TIMED-OUT"]:
-                    logger.warning(f"Twitter scraper run failed: {status}")
-                    return []
-            else:
-                logger.warning("Twitter scraper timed out after 300s")
-                return []
-            
-            # Get results
-            dataset_id = status_data.get("data", {}).get("defaultDatasetId")
-            if not dataset_id:
-                return []
-            
-            results_response = await client.get(
-                f"https://api.apify.com/v2/datasets/{dataset_id}/items",
-                headers={**HEADERS, "Authorization": f"Bearer {APIFY_API_KEY}"}
-            )
-            
-            tweets = results_response.json() if results_response.status_code == 200 else []
-            seen_ids = set()
-            
-            for tweet in tweets:
-                tweet_id = tweet.get("id") or tweet.get("id_str") or tweet.get("tweetId", "")
-                
-                if tweet_id in seen_ids:
-                    continue
-                seen_ids.add(tweet_id)
-                
-                text = tweet.get("text") or tweet.get("full_text") or tweet.get("tweet", "")
-                author = tweet.get("author", {})
-                username = author.get("username") or author.get("screen_name") or tweet.get("username", "")
-                display_name = author.get("name") or tweet.get("name", username)
-                
-                # Engagement metrics
-                likes = tweet.get("likeCount") or tweet.get("favorite_count") or tweet.get("likes", 0)
-                retweets = tweet.get("retweetCount") or tweet.get("retweet_count") or tweet.get("retweets", 0)
-                replies = tweet.get("replyCount") or tweet.get("reply_count") or 0
-                
-                # Tweet URL
-                url = tweet.get("url") or tweet.get("tweetUrl", "")
-                if not url and username and tweet_id:
-                    url = f"https://x.com/{username}/status/{tweet_id}"
-                
-                created_at = tweet.get("createdAt") or tweet.get("created_at", "")
-                
-                if not text:
-                    continue
-                
-                # Skip retweets
-                if text.startswith("RT @"):
-                    continue
-                
-                # Calculate engagement score
-                engagement = likes + (retweets * 2) + replies
-                is_target_account = username.lower() in [a.lower() for a in TWITTER_ACCOUNTS]
-                
-                # Minimum engagement threshold
-                min_engagement = 5 if is_target_account else 10
-                if engagement < min_engagement:
-                    continue
-                
-                # Confidence based on engagement
-                confidence = min(0.95, 0.4 + (engagement / 1000))
-                if is_target_account:
-                    confidence = min(0.95, confidence + 0.15)
-                
-                category = categorize_content(text)
-                content_text = text[:200] + "..." if len(text) > 200 else text
-                
-                insights.append({
-                    "category": category,
-                    "content": f"[X @{username} {likes}❤️ {retweets}🔄] {content_text}",
-                    "summary": f"@{username} ({display_name}): {text[:300]}",
-                    "source_url": url,
-                    "source_type": "twitter",
-                    "confidence_score": round(confidence, 2),
-                    "metadata": {
-                        "tweet_id": tweet_id,
-                        "username": username,
-                        "display_name": display_name,
-                        "likes": likes,
-                        "retweets": retweets,
-                        "replies": replies,
-                        "engagement": engagement,
-                        "is_target_account": is_target_account,
-                        "created_at": created_at,
+                response = await client.get(
+                    test_url,
+                    headers={
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
                     }
-                })
+                )
                 
-        except Exception as e:
-            logger.error(f"Twitter scrape failed: {e}")
+                if response.status_code == 200:
+                    feed = feedparser.parse(response.text)
+                    if feed.entries and len(feed.entries) > 0:
+                        working_instance = instance
+                        logger.info(f"Found working nitter instance: {instance}")
+                        break
+                    else:
+                        logger.debug(f"Nitter {instance} returned empty feed")
+                else:
+                    logger.debug(f"Nitter {instance} returned {response.status_code}")
+                    
+            except Exception as e:
+                logger.debug(f"Nitter {instance} failed: {type(e).__name__}: {e}")
+                continue
+        
+        if not working_instance:
+            logger.warning("No working nitter instance found - Twitter scrape returning empty")
+            return []
+        
+        # Scrape each target account
+        for account in TWITTER_ACCOUNTS:
+            if not request_tracker.can_continue:
+                logger.warning("Request cap reached, stopping Twitter scrape")
+                break
+                
+            try:
+                await rate_limiter.wait('twitter')
+                
+                feed_url = f"{working_instance}/{account}/rss"
+                response = await client.get(
+                    feed_url,
+                    headers={
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+                    }
+                )
+                
+                if response.status_code != 200:
+                    logger.warning(f"  [@{account}] HTTP {response.status_code}")
+                    continue
+                
+                feed = feedparser.parse(response.text)
+                
+                if not feed.entries:
+                    logger.info(f"  [@{account}] No entries in feed")
+                    continue
+                
+                logger.info(f"  [@{account}] Found {len(feed.entries)} tweets")
+                
+                for entry in feed.entries[:limit_per_keyword]:
+                    # Extract tweet ID from link
+                    # Nitter links look like: https://nitter.net/username/status/1234567890
+                    link = entry.get("link", "")
+                    tweet_id = link.split("/status/")[-1].split("#")[0] if "/status/" in link else ""
+                    
+                    if tweet_id in seen_ids:
+                        continue
+                    seen_ids.add(tweet_id)
+                    
+                    # Get title (usually the tweet text truncated)
+                    title = entry.get("title", "")
+                    
+                    # Get full content from description/summary (HTML)
+                    description = entry.get("description", "") or entry.get("summary", "")
+                    # Strip HTML tags
+                    text = re.sub(r'<[^>]+>', '', description).strip()
+                    
+                    # Get published date
+                    published = entry.get("published", "")
+                    
+                    # Convert nitter URL to x.com URL
+                    tweet_url = f"https://x.com/{account}/status/{tweet_id}" if tweet_id else link.replace(working_instance, "https://x.com")
+                    
+                    if not text:
+                        continue
+                    
+                    # Skip retweets (nitter shows them as "RT by @username")
+                    if text.startswith("RT by") or "RT @" in text[:20]:
+                        continue
+                    
+                    # For nitter RSS, we don't have engagement metrics
+                    # Set confidence based on being a target account
+                    confidence = 0.70  # Base for target accounts
+                    
+                    category = categorize_content(text)
+                    content_text = text[:200] + "..." if len(text) > 200 else text
+                    
+                    insights.append({
+                        "category": category,
+                        "content": f"[X @{account}] {content_text}",
+                        "summary": f"@{account}: {text[:300]}",
+                        "source_url": tweet_url,
+                        "source_type": "twitter",
+                        "confidence_score": round(confidence, 2),
+                        "metadata": {
+                            "tweet_id": tweet_id,
+                            "username": account,
+                            "display_name": account,
+                            "is_target_account": True,
+                            "published": published,
+                            "scrape_method": "nitter_rss",
+                            "nitter_instance": working_instance,
+                        }
+                    })
+                    
+            except Exception as e:
+                logger.warning(f"Twitter scrape failed for @{account}: {type(e).__name__}: {e}")
+                continue
     
-    logger.info(f"Scraped {len(insights)} tweets from X/Twitter")
+    logger.info(f"Scraped {len(insights)} tweets from X/Twitter (native, no API)")
     return insights
 
 

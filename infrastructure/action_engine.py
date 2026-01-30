@@ -151,11 +151,11 @@ Output your analysis to MEMORY.md with competitive insights.
 class KnowledgeItem:
     """Represents a knowledge item from elliot_knowledge table."""
     id: str
-    title: str
+    title: str  # Maps from 'content' column
     summary: str
-    content: dict
+    content: dict  # Maps from 'metadata' column
     category: str
-    source: str
+    source: str  # Maps from 'source_type' column
     source_url: Optional[str]
     relevance_score: float
     applied: bool
@@ -171,7 +171,7 @@ class SignoffQueueItem:
     title: str
     summary: str
     status: str
-    learned_at: str
+    created_at: str
 
 
 # ============================================
@@ -307,7 +307,7 @@ def get_pending_signoffs() -> list[SignoffQueueItem]:
     
     result = client.table("elliot_signoff_queue").select("*").eq(
         "status", "pending"
-    ).order("learned_at", desc=True).execute()
+    ).order("created_at", desc=True).execute()
     
     return [_row_to_signoff(row) for row in result.data]
 
@@ -721,11 +721,11 @@ def _row_to_knowledge(row: dict) -> KnowledgeItem:
     """Convert database row to KnowledgeItem."""
     return KnowledgeItem(
         id=row["id"],
-        title=row.get("title", ""),
+        title=row.get("content", ""),  # 'content' column holds the title
         summary=row.get("summary", ""),
-        content=row.get("content", {}),
+        content=row.get("metadata", {}),  # 'metadata' holds additional data
         category=row.get("category", ""),
-        source=row.get("source", ""),
+        source=row.get("source_type", ""),  # 'source_type' column
         source_url=row.get("source_url"),
         relevance_score=row.get("relevance_score", 0.0),
         applied=row.get("applied", False),
@@ -742,7 +742,7 @@ def _row_to_signoff(row: dict) -> SignoffQueueItem:
         title=row.get("title", ""),
         summary=row.get("summary", ""),
         status=row.get("status", "pending"),
-        learned_at=row.get("learned_at", ""),
+        created_at=row.get("created_at", ""),
     )
 
 

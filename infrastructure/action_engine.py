@@ -19,6 +19,9 @@ from enum import Enum
 from supabase import create_client, Client
 
 # Import from our existing infrastructure
+import re
+from pathlib import Path
+
 from infrastructure.signoff_notify import (
     SignoffRequest as NotifySignoffRequest,
     ActionType as NotifyActionType,
@@ -31,6 +34,9 @@ from infrastructure.task_tracker import (
     mark_failed,
     get_supabase_client,
 )
+
+# Workspace path for skills
+WORKSPACE_PATH = Path("/home/elliotbot/clawd")
 
 # ============================================
 # Configuration
@@ -53,6 +59,37 @@ class ActionType(str, Enum):
     ANALYZE = "analyze"
 
 
+# ============================================
+# Slug Generation
+# ============================================
+
+def generate_skill_slug(title: str) -> str:
+    """
+    Convert title to skill slug.
+    
+    "Effective Context Engineering for AI Agents" -> "context-engineering-agents"
+    "[HN 100pts] Some Tool" -> "some-tool"
+    """
+    # Remove common prefixes like [HN 100pts], [GitHub], etc.
+    title = re.sub(r'^\[.*?\]\s*', '', title)
+    
+    # Extract words (letters only)
+    words = re.findall(r'[a-zA-Z]+', title.lower())
+    
+    # Filter out stop words
+    stop_words = {
+        'the', 'a', 'an', 'for', 'and', 'or', 'to', 'in', 'on', 'with', 
+        'is', 'are', 'how', 'what', 'why', 'this', 'that', 'of', 'by',
+        'your', 'you', 'we', 'our', 'their', 'its', 'be', 'been', 'being'
+    }
+    meaningful = [w for w in words if w not in stop_words and len(w) > 2]
+    
+    # Take first 3 meaningful words
+    slug_parts = meaningful[:3]
+    
+    return '-'.join(slug_parts) if slug_parts else 'new-skill'
+
+
 # Map knowledge categories to action types
 CATEGORY_TO_ACTION = {
     "tool_discovery": ActionType.EVALUATE_TOOL,
@@ -70,7 +107,7 @@ CATEGORY_TO_ACTION = {
 ACTION_DESCRIPTIONS = {
     ActionType.EVALUATE_TOOL: "Spawn agent to assess tool fit with our stack",
     ActionType.RESEARCH: "Spawn agent to deep-dive into this trend",
-    ActionType.ABSORB: "Extract pattern/technique and add to knowledge base",
+    ActionType.ABSORB: "Create a new skill at skills/{slug}/SKILL.md with patterns and examples",
     ActionType.COMPETITIVE_INTEL: "Analyze competitor and add to competitive tracking",
     ActionType.AUDIT: "Spawn agent to check if we follow this pattern",
     ActionType.ANALYZE: "Spawn agent to compare against our approach",
@@ -137,22 +174,53 @@ Output your findings to MEMORY.md with actionable insights.
 """,
     
     ActionType.ABSORB: """
-Extract and absorb this knowledge into our systems:
+Create a new skill from this knowledge:
 
 **Topic:** {title}
 **Source:** {source}
+**Skill Path:** {skill_path}
 
 **Context:**
 {content}
 
 Your task:
-1. Understand the core pattern/technique/insight
-2. Identify how it applies to Elliot or Agency OS
-3. Extract actionable takeaways
-4. Determine where to store (MEMORY.md patterns, SOUL.md behaviors, or knowledge/)
-5. Add the distilled knowledge to the appropriate location
+1. **Read the full source** - If a URL is provided, fetch and read the full content
+2. **Extract key patterns/techniques** - What are the core actionable insights?
+3. **Create skill file** at `{skill_path}` with this structure:
 
-Output confirmation of what was absorbed and where.
+```markdown
+---
+name: {skill_slug}
+description: [One-line description of what this skill enables]
+source: {source}
+learned_at: [current ISO timestamp]
+tags: [relevant tags]
+---
+
+# [Skill Title]
+
+## Source
+{source}
+
+## Key Concepts
+[Extract 3-5 core concepts from the content]
+
+## How to Apply
+[Concrete steps for applying this knowledge]
+[When to use it]
+[What problems it solves]
+
+## Examples
+[Provide 1-2 concrete examples of applying this]
+
+## Anti-patterns
+[What NOT to do / common mistakes]
+```
+
+4. **Make it actionable** - Not just informational. Focus on what to DO.
+5. **Commit the new skill** with message: "skill: add {skill_slug}"
+
+Output the path of the created skill file.
 """,
     
     ActionType.COMPETITIVE_INTEL: """
@@ -567,6 +635,9 @@ def _generate_absorb_description(
     """Generate description for knowledge absorption."""
     title = knowledge.title or "Knowledge Item"
     
+    # Generate skill slug for preview
+    skill_slug = generate_skill_slug(title)
+    
     # The insight - what it teaches
     insight = knowledge.summary
     if not insight:
@@ -592,7 +663,7 @@ Source: {source_display}
 {how_helps}
 
 **IF APPROVED:**
-I'll extract the pattern/technique and add to MEMORY.md or SOUL.md."""
+I'll create a new skill at `skills/{skill_slug}/SKILL.md` with extracted patterns, how-to apply, and examples."""
 
 
 def _generate_competitive_description(
@@ -748,12 +819,22 @@ def spawn_action_agent(
     # Get the prompt template
     prompt_template = AGENT_PROMPTS.get(action_type, AGENT_PROMPTS[ActionType.RESEARCH])
     
+    # Build format args
+    format_args = {
+        "title": knowledge.title,
+        "source": knowledge.source_url or knowledge.source,
+        "content": knowledge.summary or json.dumps(knowledge.content, indent=2),
+    }
+    
+    # For ABSORB actions, add skill path info
+    if action_type == ActionType.ABSORB:
+        skill_slug = generate_skill_slug(knowledge.title)
+        skill_path = f"skills/{skill_slug}/SKILL.md"
+        format_args["skill_slug"] = skill_slug
+        format_args["skill_path"] = skill_path
+    
     # Format the prompt
-    prompt = prompt_template.format(
-        title=knowledge.title,
-        source=knowledge.source,
-        content=knowledge.summary or json.dumps(knowledge.content, indent=2),
-    )
+    prompt = prompt_template.format(**format_args)
     
     # Generate label for tracking
     label = f"{action_type.value}-{knowledge.id[:8]}"

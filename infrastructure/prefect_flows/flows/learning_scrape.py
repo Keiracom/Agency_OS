@@ -2,10 +2,11 @@
 Elliot Daily Learning Scrape Flow
 =================================
 Automated knowledge acquisition from HackerNews, ProductHunt, GitHub Trending,
-YouTube, and Reddit.
+YouTube, Reddit, and Twitter/X.
 
-Rate-limited to 1 request per 5 seconds. Writes to elliot_knowledge table.
-Includes relevance scoring to prioritize Agency OS-relevant content.
+All scrapers run in PARALLEL using asyncio.gather() to avoid timeouts.
+Each scraper maintains its own internal rate limiting.
+Writes to elliot_knowledge table with relevance scoring.
 
 Enhanced with:
 - YouTube: Specific tech/AI/SaaS channels via Apify
@@ -13,6 +14,7 @@ Enhanced with:
 - ProductHunt: Today's launches with descriptions
 - GitHub: Language filters (Python, TypeScript) + Collections
 - Reddit: r/SaaS, r/Entrepreneur, r/sales, r/startups
+- Twitter/X: Thought leaders and hashtags (#buildinpublic, #indiehackers)
 """
 
 import asyncio
@@ -1282,13 +1284,30 @@ async def daily_learning_scrape(
     logger = get_run_logger()
     logger.info("Starting daily learning scrape...")
     
-    # Run scrapers (sequentially to respect rate limits)
-    hn_insights = await scrape_hackernews(hn_limit)
-    ph_insights = await scrape_producthunt(ph_limit)
-    gh_insights = await scrape_github_trending(gh_limit)
-    yt_insights = await scrape_youtube(yt_limit)
-    reddit_insights = await scrape_reddit(reddit_limit)
-    twitter_insights = await scrape_twitter(twitter_limit)
+    # Run all scrapers in parallel (each has its own rate limiting internally)
+    # Using asyncio.gather with return_exceptions=True so one failure doesn't block others
+    logger.info("Launching all scrapers in parallel...")
+    results = await asyncio.gather(
+        scrape_hackernews(hn_limit),
+        scrape_producthunt(ph_limit),
+        scrape_github_trending(gh_limit),
+        scrape_youtube(yt_limit),
+        scrape_reddit(reddit_limit),
+        scrape_twitter(twitter_limit),
+        return_exceptions=True
+    )
+    
+    # Unpack results, handling any exceptions
+    scraper_names = ["hackernews", "producthunt", "github", "youtube", "reddit", "twitter"]
+    hn_insights, ph_insights, gh_insights, yt_insights, reddit_insights, twitter_insights = [], [], [], [], [], []
+    insights_list = [hn_insights, ph_insights, gh_insights, yt_insights, reddit_insights, twitter_insights]
+    
+    for i, result in enumerate(results):
+        if isinstance(result, Exception):
+            logger.error(f"Scraper {scraper_names[i]} failed: {result}")
+        else:
+            insights_list[i].extend(result or [])
+            logger.info(f"Scraper {scraper_names[i]} returned {len(result or [])} insights")
     
     # Combine all insights
     all_insights = hn_insights + ph_insights + gh_insights + yt_insights + reddit_insights + twitter_insights

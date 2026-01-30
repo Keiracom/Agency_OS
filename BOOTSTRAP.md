@@ -1,77 +1,51 @@
-# BOOTSTRAP.md - Session Handoff (2026-01-30 03:30 UTC)
+# BOOTSTRAP.md - Session Handoff (2026-01-30 06:20 UTC)
 
 **DELETE THIS FILE AFTER READING**
 
-## Immediate Actions
+## Just Completed
 
-### 1. Merge Dashboard PR
-PR #14: https://github.com/Keiracom/Agency_OS/pull/14
-- Elliot monitoring dashboard at `/dashboard/elliot`
-- 9 files, 1,719 lines
-- Ready for merge → Vercel auto-deploys
+### Persona & Domain Provisioning System (BUILT)
 
-### 3. Apply Migration 007 (Realtime)
-Run in Supabase SQL Editor for live dashboard updates:
-```sql
--- Enable realtime on Elliot tables
-ALTER PUBLICATION supabase_realtime ADD TABLE elliot_tasks;
-ALTER PUBLICATION supabase_realtime ADD TABLE elliot_signoff_queue;
-ALTER PUBLICATION supabase_realtime ADD TABLE elliot_knowledge;
-```
+Full automated system for pre-creating professional personas with matching domains.
 
-## Tonight's Accomplishments
+**Branch:** `feature/elliot-dashboard` — Ready for PR/merge
 
-### Systems Built & Deployed
-1. **Action Engine** — Knowledge → Route → Sign-off → Agent → Execute
-2. **Task Tracker** — Prevents silent agent failures, auto-retry
-3. **Sign-off Queue** — Telegram buttons for approve/reject
-4. **Dashboard** — Task Monitor, Sign-off Queue, Knowledge Feed, Costs (PR ready)
-5. **enforce-rules Hook** — Injects rules every message
-6. **Scoring Rubric** — Auto-scores knowledge 0-1
+**Files created:**
+- `supabase/migrations/054_personas.sql` — Personas table + RLS
+- `src/models/persona.py` — SQLAlchemy model
+- `src/services/persona_service.py` — AI generation, tier allocation
+- `src/services/domain_provisioning_service.py` — InfraForge integration
+- `src/integrations/warmforge.py` — WarmForge API client
+- `src/orchestration/flows/persona_buffer_flow.py` — Event-driven 40% buffer
+- `src/orchestration/flows/warmup_monitor_flow.py` — Daily warmup check
+- `docs/specs/PERSONA_DOMAIN_PROVISIONING.md` — Full spec
 
-### Migrations Applied
-- 002: Knowledge decay
-- 003: Scoring rubric
-- 004: Sign-off queue
-- 005: Task tracking
-- 006: Action engine updates
+**Architecture:**
+| Trigger | Action |
+|---------|--------|
+| Stripe signup webhook | Allocate personas + domains → Replenish buffer if < 40% |
+| Daily cron (6am AEST) | Poll WarmForge → Mark warmed domains AVAILABLE |
 
-### Knowledge Created
-- `knowledge/agency-os-architecture.md` — Full 17-API architecture (441 lines)
-- `knowledge/costs.md` — Verified pricing for all services
-- `knowledge/rag-research.md` — RAG best practices
+**Key insight:** WarmForge has no webhooks — must poll daily.
 
-### Action Engine First Run (5 evaluations completed)
-| Tool | Verdict |
-|------|---------|
-| screenshot-to-code | HOLD — v0 better for shadcn |
-| yek | ADOPT — already working |
-| x-trends | TRIAL — 2 weeks |
-| opencode-auth | REJECT — TOS violation |
-| Claude benchmarks | ACTION — subscribe to Marginlab alerts |
+## Pending Actions
 
-### Agency OS Audit Complete
-Key findings:
-- Remove Prospeo (saves $49-99/mo) — Apollo already does email finding
-- Enable Anthropic prompt caching (up to 90% cost reduction)
-- Biggest gap: No master inbox with AI categorization (Smartlead has this)
-- Can reduce 17 → 12 API integrations
+1. [ ] Create PR for `feature/elliot-dashboard` → `main`
+2. [ ] Apply migration 054 in Supabase SQL Editor
+3. [ ] Wire persona allocation into existing onboarding flow
+4. [ ] Register warmup_monitor cron in Prefect (0 19 * * * = 6am AEST)
+5. [ ] Seed initial persona buffer before first paying client
 
-Full audit in `memory/daily/2026-01-30.md`
+## Workspace IDs
 
-### Windows Filesystem Access
-Dave can mount vultr at `\\sshfs\elliotbot@149.28.182.216\clawd` after installing WinFSP + SSHFS-Win.
-
-## Rules (Enforced via Hook)
-1. Decisions, not questions. Dave signs off. Operations are mine.
-2. Validate approach with co-operator before presenting to Dave.
-3. "A or B?" → Pick one.
-4. NO EXECUTION. Orchestrate and communicate. Spawn agents for all tasks.
-5. Bottom line first. No hedge words.
-6. Path clear? → Do it. Present finished work.
-7. Fix issues. Research solutions. Never report "testing..." — report results.
+| Service | Workspace ID |
+|---------|--------------|
+| InfraForge | `wks_cho0dp6wypzgzkou1c0p4` |
+| WarmForge | `wks_8wuh9f3b74o7o930ocoie` |
+| Salesforge | `wks_b86a0iopxkzx2u3gvz9et` |
 
 ## Context
-- Time: 03:30 UTC (14:30 AEST)
-- Dave is awake and active
-- Session ended due to context limit (99%+)
+
+- Time: 06:20 UTC (17:20 AEST)
+- Dave is active
+- Session ended due to context limit

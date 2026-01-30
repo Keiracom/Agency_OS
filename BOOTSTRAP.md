@@ -1,51 +1,38 @@
-# BOOTSTRAP.md - Session Handoff (2026-01-30 06:20 UTC)
+# BOOTSTRAP.md - Session Handoff (2026-01-30 10:02 UTC)
 
 **DELETE THIS FILE AFTER READING**
 
 ## Just Completed
 
-### Persona & Domain Provisioning System (BUILT)
+### Persona & Domain Provisioning System
+**Branch:** `feature/persona-provisioning` — Ready for PR
+- All files created and pushed
+- See `memory/learnings/persona-domain-provisioning.md` for full details
 
-Full automated system for pre-creating professional personas with matching domains.
+### Knowledge Pipeline
+- `run_knowledge_pipeline.py` master trigger script exists
+- YouTube + Reddit scrapers added (may duplicate existing)
+- Action engine working: `python infrastructure/action_engine.py process`
 
-**Branch:** `feature/elliot-dashboard` — Ready for PR/merge
+### Enforce Rules Hook
+- Agent spawned to create hook at `~/.clawdbot/hooks/enforce-rules/`
+- Purpose: Inject ENFORCE.md per-message (not just session start)
+- Check if completed: `clawdbot hooks list`
 
-**Files created:**
-- `supabase/migrations/054_personas.sql` — Personas table + RLS
-- `src/models/persona.py` — SQLAlchemy model
-- `src/services/persona_service.py` — AI generation, tier allocation
-- `src/services/domain_provisioning_service.py` — InfraForge integration
-- `src/integrations/warmforge.py` — WarmForge API client
-- `src/orchestration/flows/persona_buffer_flow.py` — Event-driven 40% buffer
-- `src/orchestration/flows/warmup_monitor_flow.py` — Daily warmup check
-- `docs/specs/PERSONA_DOMAIN_PROVISIONING.md` — Full spec
+## Key Learning This Session
 
-**Architecture:**
-| Trigger | Action |
-|---------|--------|
-| Stripe signup webhook | Allocate personas + domains → Replenish buffer if < 40% |
-| Daily cron (6am AEST) | Poll WarmForge → Mark warmed domains AVAILABLE |
+**Bootstrap files (AGENTS.md, SOUL.md, etc.) are cached after session start.**
+The `agent:bootstrap` hook fires per-message and CAN mutate `context.bootstrapFiles`.
+Solution for per-message rule injection: create hook that reads ENFORCE.md fresh each run.
 
-**Key insight:** WarmForge has no webhooks — must poll daily.
+## Pending
 
-## Pending Actions
+1. [ ] PR `feature/persona-provisioning` → `main`
+2. [ ] Apply migration 054 in Supabase
+3. [ ] Verify enforce-rules hook installed
+4. [ ] Seed initial persona buffer
 
-1. [ ] Create PR for `feature/elliot-dashboard` → `main`
-2. [ ] Apply migration 054 in Supabase SQL Editor
-3. [ ] Wire persona allocation into existing onboarding flow
-4. [ ] Register warmup_monitor cron in Prefect (0 19 * * * = 6am AEST)
-5. [ ] Seed initial persona buffer before first paying client
+## Mistakes to Avoid
 
-## Workspace IDs
-
-| Service | Workspace ID |
-|---------|--------------|
-| InfraForge | `wks_cho0dp6wypzgzkou1c0p4` |
-| WarmForge | `wks_8wuh9f3b74o7o930ocoie` |
-| Salesforge | `wks_b86a0iopxkzx2u3gvz9et` |
-
-## Context
-
-- Time: 06:20 UTC (17:20 AEST)
-- Dave is active
-- Session ended due to context limit
+- Don't rebuild infrastructure that already exists — CHECK FIRST
+- Read core files (ENFORCE.md) and FOLLOW them mid-session

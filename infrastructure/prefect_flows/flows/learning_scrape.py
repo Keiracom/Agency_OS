@@ -1263,7 +1263,7 @@ async def update_learning_stats(stored_count: int):
     log_prints=True
 )
 async def daily_learning_scrape(
-    hn_limit: int = 50,
+    hn_limit: int = 15,
     ph_limit: int = 10,
     gh_limit: int = 15,
     yt_limit: int = 30,

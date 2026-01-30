@@ -39,6 +39,7 @@ from typing import Optional
 from pathlib import Path
 from functools import wraps
 
+import feedparser
 import httpx
 from prefect import flow, task, get_run_logger
 from prefect.tasks import task_input_hash
@@ -1331,23 +1332,29 @@ ARXIV_CATEGORIES = ["cs.AI", "cs.LG", "cs.CL", "cs.MA"]  # AI, ML, NLP, Multi-ag
 # Dev.to tags for relevant content
 DEVTO_TAGS = ["ai", "machinelearning", "automation", "saas", "python"]
 
-# AI/Tech blogs RSS feeds
+# AI/Tech blogs RSS feeds (from skills/rss-feeds/SKILL.md)
 AI_BLOG_FEEDS = [
+    # AI Company Blogs
     {"name": "OpenAI Blog", "url": "https://openai.com/blog/rss.xml"},
-    {"name": "Anthropic Research", "url": "https://www.anthropic.com/research/rss.xml"},
     {"name": "LangChain Blog", "url": "https://blog.langchain.dev/rss/"},
     {"name": "Hugging Face Blog", "url": "https://huggingface.co/blog/feed.xml"},
-    {"name": "The Batch (DeepLearning.AI)", "url": "https://www.deeplearning.ai/the-batch/feed/"},
+    # Key Newsletters (from skill documentation)
+    {"name": "Latent Space", "url": "https://www.latent.space/feed"},
+    {"name": "Simon Willison", "url": "https://simonwillison.net/atom/everything/"},
+    {"name": "Lenny's Newsletter", "url": "https://www.lennysnewsletter.com/feed"},
+    {"name": "One Useful Thing", "url": "https://www.oneusefulthing.org/feed"},
+    {"name": "Pragmatic Engineer", "url": "https://newsletter.pragmaticengineer.com/feed"},
 ]
+# Note: Anthropic has no public RSS feed per skill documentation
 
 
 @task(retries=2, retry_delay_seconds=10)
 async def scrape_arxiv(limit_per_category: int = 25) -> list[dict]:
     """
     Scrape ArXiv for AI/ML research papers via their API.
-    Uses direct Atom API - no Apify needed.
+    Uses feedparser for reliable Atom XML parsing per skills/arxiv/SKILL.md.
     
-    Rate limit: 1 req/3sec (ArXiv policy)
+    Rate limit: 1 req/3sec (ArXiv policy - be a good citizen)
     
     Args:
         limit_per_category: Max results per category (25)
@@ -1358,14 +1365,16 @@ async def scrape_arxiv(limit_per_category: int = 25) -> list[dict]:
     insights = []
     seen_ids = set()
     
-    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, follow_redirects=True) as client:
         for category in ARXIV_CATEGORIES:
             if not request_tracker.can_continue:
                 logger.warning("Request cap reached, stopping ArXiv scrape")
                 break
                 
             try:
-                # ArXiv API query
+                # ArXiv API query per skill documentation
+                # Format: search_query=cat:{category}&sortBy=submittedDate&sortOrder=descending
+                # Note: ArXiv now redirects HTTP to HTTPS, so use HTTPS directly
                 params = {
                     "search_query": f"cat:{category}",
                     "sortBy": "submittedDate",
@@ -1374,51 +1383,58 @@ async def scrape_arxiv(limit_per_category: int = 25) -> list[dict]:
                 }
                 response = await make_request(
                     client, 'GET',
-                    "http://export.arxiv.org/api/query",
+                    "https://export.arxiv.org/api/query",
                     source='arxiv',
                     params=params
                 )
                 response.raise_for_status()
                 content = response.text
                 
-                # Parse Atom feed entries
-                entries = re.findall(
-                    r'<entry>(.*?)</entry>',
-                    content,
-                    re.DOTALL
-                )
+                # Parse Atom feed using feedparser (per skill recommendation)
+                feed = feedparser.parse(content)
                 
-                logger.info(f"  [{category}] Found {len(entries)} papers")
+                if feed.bozo:
+                    logger.warning(f"  [{category}] Parse warning: {feed.bozo_exception}")
                 
-                for entry in entries:
-                    # Extract paper ID
-                    id_match = re.search(r'<id>([^<]+)</id>', entry)
-                    paper_id = id_match.group(1) if id_match else ""
+                logger.info(f"  [{category}] Found {len(feed.entries)} papers")
+                
+                for entry in feed.entries:
+                    # Extract paper ID from entry.id (format: http://arxiv.org/abs/2401.12345v1)
+                    paper_id = entry.get("id", "")
+                    arxiv_id = paper_id.split("/abs/")[-1] if "/abs/" in paper_id else paper_id
                     
                     if paper_id in seen_ids:
                         continue
                     seen_ids.add(paper_id)
                     
                     # Extract title (clean whitespace)
-                    title_match = re.search(r'<title>([^<]+)</title>', entry, re.DOTALL)
-                    title = re.sub(r'\s+', ' ', title_match.group(1).strip()) if title_match else ""
+                    title = re.sub(r'\s+', ' ', entry.get("title", "").strip())
                     
                     # Extract summary/abstract
-                    summary_match = re.search(r'<summary>([^<]+)</summary>', entry, re.DOTALL)
-                    summary = re.sub(r'\s+', ' ', summary_match.group(1).strip())[:500] if summary_match else ""
+                    summary = re.sub(r'\s+', ' ', entry.get("summary", "").strip())[:500]
                     
-                    # Extract authors
-                    authors = re.findall(r'<name>([^<]+)</name>', entry)
+                    # Extract authors (feedparser provides entry.authors list)
+                    authors = [a.get("name", "") for a in entry.get("authors", [])]
                     author_str = ", ".join(authors[:3])
                     if len(authors) > 3:
                         author_str += f" et al. ({len(authors)} authors)"
                     
                     # Extract published date
-                    published_match = re.search(r'<published>([^<]+)</published>', entry)
-                    published = published_match.group(1) if published_match else ""
+                    published = entry.get("published", "")
                     
-                    # Get abstract page URL
-                    url = paper_id.replace("/abs/", "/abs/") if "/abs/" in paper_id else paper_id
+                    # Get abstract page URL (entry.link or construct from ID)
+                    url = entry.get("link", paper_id)
+                    
+                    # Get PDF URL (from links with title='pdf')
+                    pdf_url = None
+                    for link in entry.get("links", []):
+                        if link.get("title") == "pdf":
+                            pdf_url = link.get("href")
+                            break
+                    
+                    # Get primary category from arxiv:primary_category or tags
+                    primary_cat = category
+                    tags = [t.get("term", "") for t in entry.get("tags", [])]
                     
                     if not title:
                         continue
@@ -1427,16 +1443,18 @@ async def scrape_arxiv(limit_per_category: int = 25) -> list[dict]:
                     
                     insights.append({
                         "category": category_str,
-                        "content": f"[ArXiv {category}] {title}",
+                        "content": f"[ArXiv {primary_cat}] {title}",
                         "summary": f"{title} by {author_str}. {summary[:250]}",
                         "source_url": url,
                         "source_type": "arxiv",
                         "confidence_score": 0.80,  # Research papers are high quality
                         "metadata": {
-                            "arxiv_id": paper_id,
-                            "category": category,
+                            "arxiv_id": arxiv_id,
+                            "category": primary_cat,
+                            "categories": tags[:5],
                             "authors": authors[:5],
                             "published": published,
+                            "pdf_url": pdf_url,
                         }
                     })
                     
@@ -1546,9 +1564,9 @@ async def scrape_devto(limit_per_tag: int = 20) -> list[dict]:
 async def scrape_ai_blogs(limit_per_feed: int = 15) -> list[dict]:
     """
     Scrape AI company blogs and newsletters via RSS.
-    Uses direct RSS - no Apify needed.
+    Uses feedparser for reliable RSS/Atom parsing per skills/rss-feeds/SKILL.md.
     
-    Rate limit: 1 req/2sec (standard RSS courtesy)
+    Rate limit: 1 req/2sec (standard RSS courtesy per skill documentation)
     
     Args:
         limit_per_feed: Max results per RSS feed (15)
@@ -1560,7 +1578,7 @@ async def scrape_ai_blogs(limit_per_feed: int = 15) -> list[dict]:
     seen_urls = set()
     
     async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, follow_redirects=True) as client:
-        for feed in AI_BLOG_FEEDS:
+        for feed_config in AI_BLOG_FEEDS:
             if not request_tracker.can_continue:
                 logger.warning("Request cap reached, stopping AI blogs scrape")
                 break
@@ -1568,45 +1586,49 @@ async def scrape_ai_blogs(limit_per_feed: int = 15) -> list[dict]:
             try:
                 response = await make_request(
                     client, 'GET',
-                    feed["url"],
+                    feed_config["url"],
                     source='aiblogs'
                 )
                 
                 if response.status_code != 200:
-                    logger.warning(f"  [{feed['name']}] HTTP {response.status_code}")
+                    logger.warning(f"  [{feed_config['name']}] HTTP {response.status_code}")
                     continue
                     
                 content = response.text
                 
-                # Try multiple RSS/Atom patterns
-                # Pattern 1: RSS item format
-                items = re.findall(
-                    r'<item>.*?<title>(?:<!\[CDATA\[)?([^\]<]+)(?:\]\]>)?</title>.*?<link>([^<]+)</link>.*?(?:<description>(?:<!\[CDATA\[)?([^\]<]*)(?:\]\]>)?</description>)?.*?</item>',
-                    content,
-                    re.DOTALL
-                )
+                # Parse RSS/Atom using feedparser (handles both formats automatically)
+                feed = feedparser.parse(content)
                 
-                # Pattern 2: Atom entry format
-                if not items:
-                    atom_entries = re.findall(r'<entry>(.*?)</entry>', content, re.DOTALL)
-                    items = []
-                    for entry in atom_entries:
-                        title_match = re.search(r'<title[^>]*>(?:<!\[CDATA\[)?([^\]<]+)(?:\]\]>)?</title>', entry)
-                        link_match = re.search(r'<link[^>]*href=["\']([^"\']+)["\']', entry)
-                        summary_match = re.search(r'<(?:summary|content)[^>]*>(?:<!\[CDATA\[)?([^\]<]*)(?:\]\]>)?</(?:summary|content)>', entry, re.DOTALL)
-                        if title_match and link_match:
-                            items.append((
-                                title_match.group(1).strip(),
-                                link_match.group(1).strip(),
-                                summary_match.group(1).strip() if summary_match else ""
-                            ))
+                if feed.bozo:
+                    # Parse error occurred but may still have partial data
+                    logger.warning(f"  [{feed_config['name']}] Parse warning: {feed.bozo_exception}")
                 
-                logger.info(f"  [{feed['name']}] Found {len(items)} posts")
+                if not feed.entries:
+                    logger.warning(f"  [{feed_config['name']}] No entries found")
+                    continue
                 
-                for title, url, description in items[:limit_per_feed]:
-                    title = re.sub(r'\s+', ' ', title.strip())
-                    url = url.strip()
-                    description = re.sub(r'<[^>]+>', '', description)[:300] if description else ""
+                logger.info(f"  [{feed_config['name']}] Found {len(feed.entries)} posts")
+                
+                for entry in feed.entries[:limit_per_feed]:
+                    # Extract fields using .get() for missing fields (per skill recommendation)
+                    title = entry.get("title", "")
+                    title = re.sub(r'\s+', ' ', title.strip()) if title else ""
+                    
+                    url = entry.get("link", "")
+                    
+                    # Get summary/description - try multiple fields
+                    summary = entry.get("summary", "")
+                    if not summary and entry.get("content"):
+                        # Some feeds put content in content[0].value
+                        summary = entry.get("content", [{}])[0].get("value", "")
+                    # Strip HTML tags and truncate
+                    summary = re.sub(r'<[^>]+>', '', summary)[:300] if summary else ""
+                    
+                    # Get author
+                    author = entry.get("author", "Unknown")
+                    
+                    # Get published date
+                    published = entry.get("published", "")
                     
                     if url in seen_urls:
                         continue
@@ -1615,23 +1637,25 @@ async def scrape_ai_blogs(limit_per_feed: int = 15) -> list[dict]:
                     if not title or not url:
                         continue
                     
-                    category_str = categorize_content(f"{title} {description}")
+                    category_str = categorize_content(f"{title} {summary}")
                     
                     insights.append({
                         "category": category_str,
-                        "content": f"[{feed['name']}] {title}",
-                        "summary": f"{title}. {description[:200]}" if description else title,
+                        "content": f"[{feed_config['name']}] {title}",
+                        "summary": f"{title}. {summary[:200]}" if summary else title,
                         "source_url": url,
                         "source_type": "ai_blog",
                         "confidence_score": 0.85,  # Official blogs are high quality
                         "metadata": {
-                            "blog_name": feed["name"],
-                            "feed_url": feed["url"],
+                            "blog_name": feed_config["name"],
+                            "feed_url": feed_config["url"],
+                            "author": author,
+                            "published": published,
                         }
                     })
                     
             except Exception as e:
-                logger.warning(f"AI blog scrape failed for {feed['name']}: {e}")
+                logger.warning(f"AI blog scrape failed for {feed_config['name']}: {e}")
                 continue
     
     logger.info(f"Scraped {len(insights)} AI blog posts")

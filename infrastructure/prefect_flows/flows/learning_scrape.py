@@ -9,21 +9,35 @@ Each scraper uses TARGETED KEYWORD SEARCHES for maximum relevance.
 Writes to elliot_knowledge table with relevance scoring.
 
 Scrapers use keyword-based searches:
-- HackerNews: Algolia API with 15 targeted keywords (ALL TIME)
-- GitHub: Search API with 15 keywords sorted by stars
-- Reddit: Search across subreddits with 10 keywords (ALL TIME)
-- YouTube: Search queries with 10 keywords + target channels
+- HackerNews: Algolia API with 5 targeted keywords (ALL TIME)
+- GitHub: Search API with 5 keywords sorted by stars
+- Reddit: Search across subreddits with 5 keywords (ALL TIME)
+- YouTube: Search queries with 5 keywords + target channels
 - ProductHunt: Search for AI/automation/sales tools
 - Twitter/X: Keyword searches + thought leader accounts
+
+Rate Limiting Strategy (to prevent bans):
+- HackerNews (Algolia): 1 req/sec
+- Reddit: 1 req/2sec (they ban aggressively)
+- GitHub API: 1 req/2sec (30/min authenticated)
+- ProductHunt: 1 req/3sec (gentle)
+- ArXiv: 1 req/3sec (their policy)
+- Dev.to: 1 req/sec (30/min limit)
+- Indie Hackers: 1 req/5sec (no official API)
+- RSS feeds: 1 req/2sec (standard courtesy)
+- YouTube/Twitter via Apify: Actor handles limits
 """
 
 import asyncio
 import hashlib
 import os
 import re
+import time
+from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from pathlib import Path
+from functools import wraps
 
 import httpx
 from prefect import flow, task, get_run_logger
@@ -32,113 +46,276 @@ from supabase import create_client, Client
 
 
 # ============================================
-# Keywords Configuration
+# Rate Limiting Infrastructure
 # ============================================
 
-# HackerNews Keywords (15) - Searched via Algolia ALL TIME
+# User-Agent header for all requests
+HEADERS = {
+    'User-Agent': 'ElliotBot/1.0 (Research; https://github.com/elliot-agent)'
+}
+
+
+class SourceRateLimiter:
+    """
+    Per-source rate limiter to prevent bans.
+    Conservative delays based on each source's policies.
+    """
+    
+    def __init__(self):
+        self.last_request: dict[str, float] = defaultdict(float)
+        self.delays = {
+            'hackernews': 1.0,      # Algolia is generous but be safe
+            'reddit': 2.0,           # They ban aggressively
+            'github': 2.0,           # 30/min authenticated = 2sec/req
+            'producthunt': 3.0,      # Be gentle
+            'arxiv': 3.0,            # Their policy
+            'devto': 1.0,            # 30/min limit
+            'indiehackers': 5.0,     # Very gentle, no official API
+            'rss': 2.0,              # Standard RSS courtesy
+            'substack': 2.0,         # Standard RSS courtesy
+            'aiblogs': 2.0,          # Standard RSS courtesy
+            # YouTube and Twitter via Apify - actor handles it
+            'apify': 0.0,            # Let Apify manage
+        }
+        self._lock = asyncio.Lock()
+    
+    async def wait(self, source: str):
+        """Wait until rate limit allows next request for source."""
+        async with self._lock:
+            delay = self.delays.get(source.lower(), 2.0)
+            if delay == 0:
+                return
+            
+            now = time.time()
+            elapsed = now - self.last_request[source]
+            if elapsed < delay:
+                wait_time = delay - elapsed
+                logger = get_run_logger()
+                logger.debug(f"Rate limiting {source}: waiting {wait_time:.2f}s")
+                await asyncio.sleep(wait_time)
+            self.last_request[source] = time.time()
+
+
+class RequestTracker:
+    """
+    Track total requests per scrape run.
+    Enforces max request cap to prevent runaway scraping.
+    """
+    
+    def __init__(self, max_requests: int = 500):
+        self.max_requests = max_requests
+        self.request_count = 0
+        self.rate_limit_hits = 0
+        self.server_errors = 0
+        self._lock = asyncio.Lock()
+    
+    async def increment(self) -> bool:
+        """
+        Increment request count. Returns False if cap exceeded.
+        """
+        async with self._lock:
+            if self.request_count >= self.max_requests:
+                return False
+            self.request_count += 1
+            return True
+    
+    async def record_rate_limit(self):
+        """Record a rate limit hit (429)."""
+        async with self._lock:
+            self.rate_limit_hits += 1
+    
+    async def record_server_error(self):
+        """Record a server error (5xx)."""
+        async with self._lock:
+            self.server_errors += 1
+    
+    def get_stats(self) -> dict:
+        """Get current stats."""
+        return {
+            "total_requests": self.request_count,
+            "max_requests": self.max_requests,
+            "rate_limit_hits": self.rate_limit_hits,
+            "server_errors": self.server_errors,
+        }
+    
+    @property
+    def can_continue(self) -> bool:
+        """Check if we can continue making requests."""
+        return self.request_count < self.max_requests
+
+
+# Global instances
+rate_limiter = SourceRateLimiter()
+request_tracker = RequestTracker(max_requests=500)
+
+
+async def make_request(
+    client: httpx.AsyncClient,
+    method: str,
+    url: str,
+    source: str,
+    **kwargs
+) -> httpx.Response:
+    """
+    Make an HTTP request with rate limiting, retries, and tracking.
+    
+    Args:
+        client: httpx client
+        method: HTTP method (GET, POST)
+        url: URL to request
+        source: Source name for rate limiting
+        **kwargs: Additional request arguments
+    
+    Returns:
+        httpx.Response
+    
+    Raises:
+        Exception if cap exceeded or all retries fail
+    """
+    logger = get_run_logger()
+    
+    # Check if we can make more requests
+    if not await request_tracker.increment():
+        raise Exception(f"Request cap exceeded ({request_tracker.max_requests})")
+    
+    # Wait for rate limit
+    await rate_limiter.wait(source)
+    
+    # Merge headers
+    headers = {**HEADERS, **kwargs.pop('headers', {})}
+    
+    # Retry logic with exponential backoff
+    max_retries = 2
+    last_error = None
+    
+    for attempt in range(max_retries + 1):
+        try:
+            if method.upper() == 'GET':
+                response = await client.get(url, headers=headers, **kwargs)
+            else:
+                response = await client.post(url, headers=headers, **kwargs)
+            
+            # Handle rate limiting (429)
+            if response.status_code == 429:
+                await request_tracker.record_rate_limit()
+                if attempt < max_retries:
+                    wait_time = 60  # Wait 60s on rate limit
+                    logger.warning(f"Rate limited (429) on {source}, waiting {wait_time}s (attempt {attempt + 1})")
+                    await asyncio.sleep(wait_time)
+                    continue
+                else:
+                    logger.error(f"Rate limited (429) on {source}, max retries exceeded")
+                    raise httpx.HTTPStatusError(
+                        f"Rate limited after {max_retries} retries",
+                        request=response.request,
+                        response=response
+                    )
+            
+            # Handle server errors (5xx)
+            if 500 <= response.status_code < 600:
+                await request_tracker.record_server_error()
+                if attempt < max_retries:
+                    wait_time = 10 * (attempt + 1)  # 10s, 20s backoff
+                    logger.warning(f"Server error ({response.status_code}) on {source}, waiting {wait_time}s (attempt {attempt + 1})")
+                    await asyncio.sleep(wait_time)
+                    continue
+                else:
+                    logger.error(f"Server error ({response.status_code}) on {source}, max retries exceeded")
+            
+            return response
+            
+        except httpx.TimeoutException as e:
+            last_error = e
+            if attempt < max_retries:
+                wait_time = 5 * (attempt + 1)
+                logger.warning(f"Timeout on {source}, waiting {wait_time}s (attempt {attempt + 1})")
+                await asyncio.sleep(wait_time)
+                continue
+            else:
+                raise
+        except Exception as e:
+            last_error = e
+            if attempt < max_retries:
+                logger.warning(f"Request error on {source}: {e}, retrying...")
+                await asyncio.sleep(2)
+                continue
+            else:
+                raise
+    
+    raise last_error or Exception(f"Request failed after {max_retries} retries")
+
+
+# ============================================
+# Keywords Configuration (Conservative - 5-10 per source)
+# ============================================
+
+# HackerNews Keywords (5) - Searched via Algolia ALL TIME
+# Reduced from 15 to prevent rate limiting
 HACKERNEWS_KEYWORDS = [
-    "cold email",
-    "sales automation",
     "AI agents",
-    "LLM memory",
-    "autonomous agents",
-    "SaaS pricing",
-    "outbound sales",
-    "CRM automation",
-    "lead generation",
+    "sales automation",
+    "cold email",
     "multi-agent",
-    "RAG",
-    "vector database",
-    "Claude",
-    "GPT-4",
-    "email deliverability",
+    "SaaS",
 ]
 
-# GitHub Keywords (15) - Searched via Search API sorted by stars
+# GitHub Keywords (5) - Searched via Search API sorted by stars
+# Reduced from 15 to stay under 30/min rate limit
 GITHUB_KEYWORDS = [
     "ai-agents",
     "sales-automation",
     "cold-email",
-    "llm-memory",
     "multi-agent",
-    "autonomous-agent",
-    "rag",
     "langchain",
-    "email-automation",
-    "crewai",
-    "autogen",
-    "vector-database",
-    "claude",
-    "outbound",
-    "lead-generation",
 ]
 
-# Reddit Keywords (10) - Searched ALL TIME across subreddits
+# Reddit Keywords (5) - Searched ALL TIME across subreddits
+# Reduced from 10 to prevent bans
 REDDIT_KEYWORDS = [
     "AI agents",
     "cold email automation",
     "sales automation",
-    "LLM memory",
-    "autonomous agents",
     "SaaS tools",
-    "multi-agent",
-    "outbound sales",
-    "lead gen",
     "Claude",
 ]
 
-# Reddit Subreddits (includes r/ClaudeAI)
+# Reddit Subreddits (5) - Reduced from 10
 REDDIT_SUBREDDITS = [
     "SaaS",
     "Entrepreneur",
     "sales",
-    "startups",
-    "automation",
     "LocalLLaMA",
-    "ChatGPT",
     "ClaudeAI",
-    "webdev",
-    "smallbusiness",
 ]
 
-# YouTube Keywords (10) - Search queries
+# YouTube Keywords (5) - Search queries
+# Reduced from 10 - Apify handles limits but be conservative
 YOUTUBE_KEYWORDS = [
     "AI agent tutorial",
     "cold email automation",
-    "LLM memory architecture",
     "sales automation demo",
     "multi-agent system",
-    "autonomous AI",
-    "RAG tutorial",
-    "Claude coding",
-    "GPT automation",
     "SaaS growth",
 ]
 
-# ProductHunt Search Terms
+# ProductHunt Search Terms (5)
+# Reduced from 8
 PRODUCTHUNT_KEYWORDS = [
     "AI",
     "automation",
     "sales",
     "email",
-    "CRM",
     "agent",
-    "LLM",
-    "outreach",
 ]
 
-# Twitter/X Keywords
+# Twitter/X Keywords (5)
+# Reduced from 10 - Apify handles limits but be conservative
 TWITTER_KEYWORDS = [
     "AI agents",
     "cold email",
     "sales automation",
-    "LLM memory",
     "multi-agent",
-    "autonomous AI",
-    "RAG",
-    "Claude AI",
-    "SaaS tools",
-    "email deliverability",
+    "SaaS",
 ]
 
 # ============================================
@@ -354,56 +531,29 @@ if ENV_FILE.exists() and not os.environ.get("SUPABASE_URL"):
                 key, _, value = line.partition("=")
                 os.environ.setdefault(key.strip(), value.strip())
 
-RATE_LIMIT_SECONDS = 2  # Reduced for faster scraping
 REQUEST_TIMEOUT = 30
+MAX_REQUESTS_PER_RUN = 500  # Total request cap per scrape run
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
 APIFY_API_KEY = os.environ.get("APIFY_API_KEY")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")  # For higher rate limits
 
-# Target YouTube channels for tech/AI/SaaS content
+# Target YouTube channels for tech/AI/SaaS content (reduced from 6 to 3)
 YOUTUBE_CHANNELS = [
     {"name": "Y Combinator", "handle": "@ycombinator", "url": "https://www.youtube.com/@ycombinator/videos"},
-    {"name": "Lex Fridman", "handle": "@lexfridman", "url": "https://www.youtube.com/@lexfridman/videos"},
     {"name": "My First Million", "handle": "@MyFirstMillionPod", "url": "https://www.youtube.com/@MyFirstMillionPod/videos"},
-    {"name": "All-In Podcast", "handle": "@alaboringpodcast", "url": "https://www.youtube.com/@alaboringpodcast/videos"},
-    {"name": "Lenny's Podcast", "handle": "@LennysPodcast", "url": "https://www.youtube.com/@LennysPodcast/videos"},
     {"name": "Greg Isenberg", "handle": "@gregisenberg", "url": "https://www.youtube.com/@gregisenberg/videos"},
 ]
 
-# Twitter/X thought leader accounts
+# Twitter/X thought leader accounts (reduced from 8 to 5)
 TWITTER_ACCOUNTS = [
     "levelsio",       # Pieter Levels - indie hacker legend
-    "marckohlbrugge", # Marc Köhlbrugge - WIP founder
     "gregisenberg",   # Greg Isenberg - Late Checkout
-    "ycombinator",    # Y Combinator
     "paulg",          # Paul Graham
-    "sama",           # Sam Altman
     "AnthropicAI",    # Anthropic
     "OpenAI",         # OpenAI
 ]
-
-# ============================================
-# Rate Limiter
-# ============================================
-
-class RateLimiter:
-    """Simple async rate limiter."""
-    
-    def __init__(self, min_interval: float = 2.0):
-        self.min_interval = min_interval
-        self.last_request = 0
-    
-    async def wait(self):
-        """Wait until rate limit allows next request."""
-        now = asyncio.get_event_loop().time()
-        elapsed = now - self.last_request
-        if elapsed < self.min_interval:
-            await asyncio.sleep(self.min_interval - elapsed)
-        self.last_request = asyncio.get_event_loop().time()
-
-rate_limiter = RateLimiter(RATE_LIMIT_SECONDS)
 
 # ============================================
 # Supabase Client
@@ -420,13 +570,15 @@ def get_supabase() -> Client:
 # ============================================
 
 @task(retries=2, retry_delay_seconds=10)
-async def scrape_hackernews(limit_per_keyword: int = 100) -> list[dict]:
+async def scrape_hackernews(limit_per_keyword: int = 50) -> list[dict]:
     """
     Scrape HackerNews using Algolia API with targeted keyword searches.
     Searches ALL TIME for comprehensive coverage.
     
+    Rate limit: 1 req/sec (conservative for Algolia)
+    
     Args:
-        limit_per_keyword: Max results per keyword (100)
+        limit_per_keyword: Max results per keyword (50, reduced from 100)
     """
     logger = get_run_logger()
     logger.info(f"Scraping HackerNews via Algolia API with {len(HACKERNEWS_KEYWORDS)} keywords...")
@@ -436,7 +588,11 @@ async def scrape_hackernews(limit_per_keyword: int = 100) -> list[dict]:
     
     async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
         for keyword in HACKERNEWS_KEYWORDS:
-            await rate_limiter.wait()
+            # Check request cap before making request
+            if not request_tracker.can_continue:
+                logger.warning("Request cap reached, stopping HackerNews scrape")
+                break
+                
             try:
                 # Algolia API - search ALL TIME (no date filter)
                 params = {
@@ -444,8 +600,10 @@ async def scrape_hackernews(limit_per_keyword: int = 100) -> list[dict]:
                     "tags": "story",
                     "hitsPerPage": limit_per_keyword,
                 }
-                response = await client.get(
+                response = await make_request(
+                    client, 'GET',
                     "http://hn.algolia.com/api/v1/search",
+                    source='hackernews',
                     params=params
                 )
                 response.raise_for_status()
@@ -500,13 +658,15 @@ async def scrape_hackernews(limit_per_keyword: int = 100) -> list[dict]:
 
 
 @task(retries=2, retry_delay_seconds=10)
-async def scrape_github(limit_per_keyword: int = 50) -> list[dict]:
+async def scrape_github(limit_per_keyword: int = 30) -> list[dict]:
     """
     Scrape GitHub using Search API with targeted keyword searches.
     Sorted by stars for quality signal.
     
+    Rate limit: 1 req/2sec (30/min authenticated)
+    
     Args:
-        limit_per_keyword: Max results per keyword (50)
+        limit_per_keyword: Max results per keyword (30, reduced from 50)
     """
     logger = get_run_logger()
     logger.info(f"Scraping GitHub via Search API with {len(GITHUB_KEYWORDS)} keywords...")
@@ -516,14 +676,17 @@ async def scrape_github(limit_per_keyword: int = 50) -> list[dict]:
     
     headers = {
         "Accept": "application/vnd.github.v3+json",
-        "User-Agent": "Elliot-Learning-Bot/1.0"
     }
     if GITHUB_TOKEN:
         headers["Authorization"] = f"token {GITHUB_TOKEN}"
     
     async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
         for keyword in GITHUB_KEYWORDS:
-            await rate_limiter.wait()
+            # Check request cap before making request
+            if not request_tracker.can_continue:
+                logger.warning("Request cap reached, stopping GitHub scrape")
+                break
+                
             try:
                 params = {
                     "q": keyword,
@@ -531,8 +694,10 @@ async def scrape_github(limit_per_keyword: int = 50) -> list[dict]:
                     "order": "desc",
                     "per_page": min(limit_per_keyword, 100),  # GitHub max is 100
                 }
-                response = await client.get(
+                response = await make_request(
+                    client, 'GET',
                     "https://api.github.com/search/repositories",
+                    source='github',
                     params=params,
                     headers=headers
                 )
@@ -599,13 +764,15 @@ async def scrape_github(limit_per_keyword: int = 50) -> list[dict]:
 
 
 @task(retries=2, retry_delay_seconds=10)
-async def scrape_reddit(limit_per_search: int = 50) -> list[dict]:
+async def scrape_reddit(limit_per_search: int = 25) -> list[dict]:
     """
     Scrape Reddit using search API across subreddits with keyword searches.
     Searches ALL TIME for comprehensive coverage.
     
+    Rate limit: 1 req/2sec (Reddit bans aggressively)
+    
     Args:
-        limit_per_search: Max results per subreddit/keyword combo
+        limit_per_search: Max results per subreddit/keyword combo (25, reduced from 50)
     """
     logger = get_run_logger()
     logger.info(f"Scraping Reddit with {len(REDDIT_KEYWORDS)} keywords across {len(REDDIT_SUBREDDITS)} subreddits...")
@@ -613,14 +780,14 @@ async def scrape_reddit(limit_per_search: int = 50) -> list[dict]:
     insights = []
     seen_ids = set()
     
-    headers = {
-        "User-Agent": "Elliot-Learning-Bot/1.0 (by /u/elliot_agent)"
-    }
-    
     async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
         for subreddit in REDDIT_SUBREDDITS:
             for keyword in REDDIT_KEYWORDS:
-                await rate_limiter.wait()
+                # Check request cap before making request
+                if not request_tracker.can_continue:
+                    logger.warning("Request cap reached, stopping Reddit scrape")
+                    break
+                    
                 try:
                     # Reddit search API - ALL TIME
                     url = f"https://www.reddit.com/r/{subreddit}/search.json"
@@ -631,11 +798,14 @@ async def scrape_reddit(limit_per_search: int = 50) -> list[dict]:
                         "limit": limit_per_search,
                         "restrict_sr": "on",  # Restrict to subreddit
                     }
-                    response = await client.get(url, params=params, headers=headers)
+                    response = await make_request(
+                        client, 'GET', url,
+                        source='reddit',
+                        params=params
+                    )
                     
                     if response.status_code == 429:
-                        logger.warning(f"Reddit rate limit hit, waiting...")
-                        await asyncio.sleep(60)
+                        logger.warning(f"Reddit rate limit hit (will be handled by retry logic)")
                         continue
                     
                     response.raise_for_status()
@@ -691,24 +861,35 @@ async def scrape_reddit(limit_per_search: int = 50) -> list[dict]:
                 except Exception as e:
                     logger.warning(f"Reddit search failed for r/{subreddit} '{keyword}': {e}")
                     continue
+            
+            # Check cap after each subreddit
+            if not request_tracker.can_continue:
+                break
     
     logger.info(f"Scraped {len(insights)} unique Reddit posts (from {len(REDDIT_SUBREDDITS)} subreddits x {len(REDDIT_KEYWORDS)} keywords)")
     return insights
 
 
 @task(retries=2, retry_delay_seconds=30)
-async def scrape_youtube(limit_per_keyword: int = 20) -> list[dict]:
+async def scrape_youtube(limit_per_keyword: int = 15) -> list[dict]:
     """
     Scrape YouTube using Apify with keyword searches + target channels.
     
+    Rate limit: Apify handles internal rate limits
+    
     Args:
-        limit_per_keyword: Max results per search query
+        limit_per_keyword: Max results per search query (15, reduced from 20)
     """
     logger = get_run_logger()
     logger.info(f"Scraping YouTube with {len(YOUTUBE_KEYWORDS)} keywords + {len(YOUTUBE_CHANNELS)} channels...")
     
     if not APIFY_API_KEY:
         logger.warning("APIFY_API_KEY not set, skipping YouTube scrape")
+        return []
+    
+    # Check request cap (Apify calls count as requests)
+    if not request_tracker.can_continue:
+        logger.warning("Request cap reached, skipping YouTube scrape")
         return []
     
     insights = []
@@ -729,12 +910,12 @@ async def scrape_youtube(limit_per_keyword: int = 20) -> list[dict]:
     total_limit = limit_per_keyword * len(YOUTUBE_KEYWORDS) + 10 * len(YOUTUBE_CHANNELS)
     
     async with httpx.AsyncClient(timeout=300) as client:
-        await rate_limiter.wait()
-        
         try:
-            # Use streamers/youtube-scraper actor
-            run_response = await client.post(
+            # Use streamers/youtube-scraper actor (Apify handles rate limits)
+            run_response = await make_request(
+                client, 'POST',
                 "https://api.apify.com/v2/acts/streamers~youtube-scraper/runs",
+                source='apify',
                 headers={"Authorization": f"Bearer {APIFY_API_KEY}"},
                 json={
                     "startUrls": start_urls,
@@ -759,9 +940,11 @@ async def scrape_youtube(limit_per_keyword: int = 20) -> list[dict]:
             # Poll for completion (max 300 seconds for larger scrape)
             for _ in range(60):
                 await asyncio.sleep(5)
+                
+                # Don't count polling as requests toward cap
                 status_response = await client.get(
                     f"https://api.apify.com/v2/actor-runs/{run_id}",
-                    headers={"Authorization": f"Bearer {APIFY_API_KEY}"}
+                    headers={**HEADERS, "Authorization": f"Bearer {APIFY_API_KEY}"}
                 )
                 status_data = status_response.json()
                 status = status_data.get("data", {}).get("status")
@@ -782,7 +965,7 @@ async def scrape_youtube(limit_per_keyword: int = 20) -> list[dict]:
             
             results_response = await client.get(
                 f"https://api.apify.com/v2/datasets/{dataset_id}/items",
-                headers={"Authorization": f"Bearer {APIFY_API_KEY}"}
+                headers={**HEADERS, "Authorization": f"Bearer {APIFY_API_KEY}"}
             )
             
             videos = results_response.json() if results_response.status_code == 200 else []
@@ -845,27 +1028,34 @@ async def scrape_youtube(limit_per_keyword: int = 20) -> list[dict]:
 
 
 @task(retries=2, retry_delay_seconds=10)
-async def scrape_producthunt(limit: int = 100) -> list[dict]:
+async def scrape_producthunt(limit: int = 50) -> list[dict]:
     """
     Scrape ProductHunt for AI, automation, sales, and email tools.
-    Uses web scraping for search results.
+    Uses RSS feed (JavaScript search is limited).
+    
+    Rate limit: 1 req/3sec (gentle)
     
     Args:
-        limit: Total max products to scrape
+        limit: Total max products to scrape (50, reduced from 100)
     """
     logger = get_run_logger()
-    logger.info(f"Scraping ProductHunt with {len(PRODUCTHUNT_KEYWORDS)} keyword searches...")
+    logger.info(f"Scraping ProductHunt via RSS feed...")
+    
+    # Check request cap
+    if not request_tracker.can_continue:
+        logger.warning("Request cap reached, skipping ProductHunt scrape")
+        return []
     
     insights = []
     seen_slugs = set()
     
     async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-        # First get RSS feed for today's launches
-        await rate_limiter.wait()
+        # Get RSS feed for today's launches
         try:
-            response = await client.get(
+            response = await make_request(
+                client, 'GET',
                 "https://www.producthunt.com/feed",
-                headers={"User-Agent": "Elliot-Learning-Bot/1.0"}
+                source='producthunt'
             )
             response.raise_for_status()
             content = response.text
@@ -877,7 +1067,7 @@ async def scrape_producthunt(limit: int = 100) -> list[dict]:
                 re.DOTALL
             )
             
-            for title, url, description in items:
+            for title, url, description in items[:limit]:
                 title = title.strip()
                 url = url.strip()
                 description = re.sub(r'<[^>]+>', '', description.strip()[:500])
@@ -892,7 +1082,7 @@ async def scrape_producthunt(limit: int = 100) -> list[dict]:
                 text_to_check = f"{title} {description}".lower()
                 is_relevant = any(kw.lower() in text_to_check for kw in PRODUCTHUNT_KEYWORDS)
                 
-                if is_relevant or len(insights) < 20:  # Always include top 20
+                if is_relevant or len(insights) < 15:  # Always include top 15
                     insights.append({
                         "category": "tool_discovery",
                         "content": f"[ProductHunt] {title}",
@@ -909,44 +1099,32 @@ async def scrape_producthunt(limit: int = 100) -> list[dict]:
                     
         except Exception as e:
             logger.warning(f"ProductHunt RSS failed: {e}")
-        
-        # Also search for specific keywords on ProductHunt
-        for keyword in PRODUCTHUNT_KEYWORDS[:4]:  # Top 4 keywords
-            await rate_limiter.wait()
-            try:
-                search_url = f"https://www.producthunt.com/search?q={keyword}"
-                response = await client.get(
-                    search_url,
-                    headers={
-                        "User-Agent": "Elliot-Learning-Bot/1.0",
-                        "Accept": "text/html"
-                    },
-                    follow_redirects=True
-                )
-                # Note: ProductHunt search requires JavaScript, so limited results via HTML scraping
-                # The RSS feed above provides better coverage
-            except Exception as e:
-                logger.warning(f"ProductHunt search failed for '{keyword}': {e}")
-                continue
     
     logger.info(f"Scraped {len(insights)} ProductHunt products")
     return insights
 
 
 @task(retries=2, retry_delay_seconds=30)
-async def scrape_twitter(limit_per_keyword: int = 50) -> list[dict]:
+async def scrape_twitter(limit_per_keyword: int = 25) -> list[dict]:
     """
     Scrape Twitter/X using Apify with keyword searches + thought leader accounts.
     Uses apidojo/tweet-scraper actor which supports searchTerms.
     
+    Rate limit: Apify handles internal rate limits
+    
     Args:
-        limit_per_keyword: Max tweets per search term
+        limit_per_keyword: Max tweets per search term (25, reduced from 50)
     """
     logger = get_run_logger()
     logger.info(f"Scraping Twitter/X with {len(TWITTER_KEYWORDS)} keywords + {len(TWITTER_ACCOUNTS)} accounts...")
     
     if not APIFY_API_KEY:
         logger.warning("APIFY_API_KEY not set, skipping Twitter scrape")
+        return []
+    
+    # Check request cap
+    if not request_tracker.can_continue:
+        logger.warning("Request cap reached, skipping Twitter scrape")
         return []
     
     insights = []
@@ -965,12 +1143,12 @@ async def scrape_twitter(limit_per_keyword: int = 50) -> list[dict]:
     total_limit = limit_per_keyword * (len(TWITTER_KEYWORDS) + len(TWITTER_ACCOUNTS))
     
     async with httpx.AsyncClient(timeout=300) as client:
-        await rate_limiter.wait()
-        
         try:
             # Use apidojo/tweet-scraper actor (Tweet Scraper V2)
-            run_response = await client.post(
+            run_response = await make_request(
+                client, 'POST',
                 "https://api.apify.com/v2/acts/apidojo~tweet-scraper/runs",
+                source='apify',
                 headers={"Authorization": f"Bearer {APIFY_API_KEY}"},
                 json={
                     "searchTerms": search_terms,
@@ -995,11 +1173,12 @@ async def scrape_twitter(limit_per_keyword: int = 50) -> list[dict]:
             logger.info(f"Twitter scraper started: run_id={run_id}")
             
             # Poll for completion (max 300 seconds)
+            # Don't count polling as requests toward cap
             for _ in range(60):
                 await asyncio.sleep(5)
                 status_response = await client.get(
                     f"https://api.apify.com/v2/actor-runs/{run_id}",
-                    headers={"Authorization": f"Bearer {APIFY_API_KEY}"}
+                    headers={**HEADERS, "Authorization": f"Bearer {APIFY_API_KEY}"}
                 )
                 status_data = status_response.json()
                 status = status_data.get("data", {}).get("status")
@@ -1020,7 +1199,7 @@ async def scrape_twitter(limit_per_keyword: int = 50) -> list[dict]:
             
             results_response = await client.get(
                 f"https://api.apify.com/v2/datasets/{dataset_id}/items",
-                headers={"Authorization": f"Bearer {APIFY_API_KEY}"}
+                headers={**HEADERS, "Authorization": f"Bearer {APIFY_API_KEY}"}
             )
             
             tweets = results_response.json() if results_response.status_code == 200 else []
@@ -1270,28 +1449,38 @@ async def update_learning_stats(stored_count: int):
     log_prints=True
 )
 async def daily_learning_scrape(
-    hn_limit_per_keyword: int = 100,
-    gh_limit_per_keyword: int = 50,
-    reddit_limit_per_search: int = 50,
-    yt_limit_per_keyword: int = 20,
-    ph_limit: int = 100,
-    twitter_limit_per_keyword: int = 50
+    hn_limit_per_keyword: int = 50,
+    gh_limit_per_keyword: int = 30,
+    reddit_limit_per_search: int = 25,
+    yt_limit_per_keyword: int = 15,
+    ph_limit: int = 50,
+    twitter_limit_per_keyword: int = 25
 ):
     """
     Main flow: Scrape multiple sources with targeted keyword searches and store insights.
     
-    This is a BIG INITIAL SCRAPE - higher limits to build comprehensive knowledge base.
+    Conservative rate limits to prevent bans:
+    - Total request cap: 500 per run
+    - Per-source delays (HN: 1s, Reddit: 2s, GitHub: 2s, etc.)
+    - Retry with exponential backoff on 429/5xx
+    - Reduced keyword counts (5 per source)
     
     Args:
-        hn_limit_per_keyword: HackerNews results per keyword (100 x 15 keywords)
-        gh_limit_per_keyword: GitHub repos per keyword (50 x 15 keywords)
-        reddit_limit_per_search: Reddit posts per subreddit/keyword combo
-        yt_limit_per_keyword: YouTube videos per keyword (20 x 10 keywords)
-        ph_limit: ProductHunt products total
-        twitter_limit_per_keyword: Tweets per keyword/account (50 x 18 terms)
+        hn_limit_per_keyword: HackerNews results per keyword (50 x 5 keywords)
+        gh_limit_per_keyword: GitHub repos per keyword (30 x 5 keywords)
+        reddit_limit_per_search: Reddit posts per subreddit/keyword combo (25 x 5 x 5)
+        yt_limit_per_keyword: YouTube videos per keyword (15 x 5 keywords)
+        ph_limit: ProductHunt products total (50)
+        twitter_limit_per_keyword: Tweets per keyword/account (25 x 10 terms)
     """
     logger = get_run_logger()
-    logger.info("Starting targeted keyword learning scrape (BIG INITIAL SCRAPE)...")
+    
+    # Reset request tracker for this run
+    global request_tracker
+    request_tracker = RequestTracker(max_requests=MAX_REQUESTS_PER_RUN)
+    
+    logger.info("Starting rate-limited learning scrape...")
+    logger.info(f"Max requests: {MAX_REQUESTS_PER_RUN}")
     logger.info(f"Keywords: HN={len(HACKERNEWS_KEYWORDS)}, GH={len(GITHUB_KEYWORDS)}, Reddit={len(REDDIT_KEYWORDS)}, YT={len(YOUTUBE_KEYWORDS)}, Twitter={len(TWITTER_KEYWORDS)}")
     
     # Run all scrapers in parallel
@@ -1341,7 +1530,11 @@ async def daily_learning_scrape(
     medium_relevance = len([i for i in scored_insights if 0.5 <= i.get('relevance_score', 0) < 0.8])
     low_relevance = len([i for i in scored_insights if i.get('relevance_score', 0) < 0.5])
     
-    logger.info(f"Targeted keyword scrape complete: {stored_count} new insights stored")
+    # Get rate limiting stats
+    rate_stats = request_tracker.get_stats()
+    
+    logger.info(f"Rate-limited scrape complete: {stored_count} new insights stored")
+    logger.info(f"Request stats: {rate_stats}")
     
     return {
         "total_scraped": len(all_insights),
@@ -1359,7 +1552,8 @@ async def daily_learning_scrape(
             "reddit": len(REDDIT_KEYWORDS),
             "youtube": len(YOUTUBE_KEYWORDS),
             "twitter": len(TWITTER_KEYWORDS),
-        }
+        },
+        "rate_limiting": rate_stats,
     }
 
 

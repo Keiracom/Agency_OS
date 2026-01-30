@@ -602,7 +602,7 @@ async def scrape_hackernews(limit_per_keyword: int = 50) -> list[dict]:
                 }
                 response = await make_request(
                     client, 'GET',
-                    "http://hn.algolia.com/api/v1/search",
+                    "https://hn.algolia.com/api/v1/search",
                     source='hackernews',
                     params=params
                 )
@@ -768,6 +768,7 @@ async def scrape_reddit(limit_per_search: int = 25) -> list[dict]:
     """
     Scrape Reddit using search API across subreddits with keyword searches.
     Searches ALL TIME for comprehensive coverage.
+    Uses old.reddit.com with browser User-Agent to avoid 403 blocks.
     
     Rate limit: 1 req/2sec (Reddit bans aggressively)
     
@@ -780,6 +781,11 @@ async def scrape_reddit(limit_per_search: int = 25) -> list[dict]:
     insights = []
     seen_ids = set()
     
+    # Reddit requires browser-like User-Agent to avoid 403
+    reddit_headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
+    
     async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
         for subreddit in REDDIT_SUBREDDITS:
             for keyword in REDDIT_KEYWORDS:
@@ -789,8 +795,8 @@ async def scrape_reddit(limit_per_search: int = 25) -> list[dict]:
                     break
                     
                 try:
-                    # Reddit search API - ALL TIME
-                    url = f"https://www.reddit.com/r/{subreddit}/search.json"
+                    # Use old.reddit.com with browser UA to avoid 403 blocks
+                    url = f"https://old.reddit.com/r/{subreddit}/search.json"
                     params = {
                         "q": keyword,
                         "sort": "relevance",
@@ -801,8 +807,13 @@ async def scrape_reddit(limit_per_search: int = 25) -> list[dict]:
                     response = await make_request(
                         client, 'GET', url,
                         source='reddit',
-                        params=params
+                        params=params,
+                        headers=reddit_headers
                     )
+                    
+                    if response.status_code == 403:
+                        logger.warning(f"Reddit 403 forbidden for r/{subreddit} - skipping")
+                        continue
                     
                     if response.status_code == 429:
                         logger.warning(f"Reddit rate limit hit (will be handled by retry logic)")
@@ -926,7 +937,12 @@ async def scrape_youtube(limit_per_keyword: int = 15) -> list[dict]:
             )
             
             if run_response.status_code != 201:
-                logger.warning(f"YouTube scraper start failed: {run_response.status_code} - {run_response.text[:200]}")
+                error_text = run_response.text[:200] if run_response.text else ""
+                # Check for Apify billing/limit errors
+                if run_response.status_code == 402 or "limit" in error_text.lower() or "exceeded" in error_text.lower():
+                    logger.warning(f"YouTube scraper: Apify monthly limit exceeded - returning empty results")
+                    return []
+                logger.warning(f"YouTube scraper start failed: {run_response.status_code} - {error_text}")
                 return []
             
             run_data = run_response.json()
@@ -1060,12 +1076,32 @@ async def scrape_producthunt(limit: int = 50) -> list[dict]:
             response.raise_for_status()
             content = response.text
             
-            # Parse RSS feed
+            # Parse RSS feed - try multiple patterns for flexibility
+            # Pattern 1: CDATA wrapped content
             items = re.findall(
                 r'<item>.*?<title><!\[CDATA\[(.*?)\]\]></title>.*?<link>(.*?)</link>.*?<description><!\[CDATA\[(.*?)\]\]></description>.*?</item>',
                 content,
                 re.DOTALL
             )
+            
+            # Pattern 2: Non-CDATA wrapped (fallback)
+            if not items:
+                items = re.findall(
+                    r'<item>.*?<title>([^<]+)</title>.*?<link>([^<]+)</link>.*?<description>([^<]*)</description>.*?</item>',
+                    content,
+                    re.DOTALL
+                )
+            
+            # Pattern 3: guid as link fallback
+            if not items:
+                items = re.findall(
+                    r'<item>.*?<title>(?:<!\[CDATA\[)?([^\]<]+)(?:\]\]>)?</title>.*?<guid[^>]*>([^<]+)</guid>.*?</item>',
+                    content,
+                    re.DOTALL
+                )
+                items = [(t, u, "") for t, u in items]  # Add empty description
+            
+            logger.info(f"ProductHunt RSS parsed {len(items)} items from feed")
             
             for title, url, description in items[:limit]:
                 title = title.strip()
@@ -1161,7 +1197,12 @@ async def scrape_twitter(limit_per_keyword: int = 25) -> list[dict]:
             )
             
             if run_response.status_code != 201:
-                logger.warning(f"Twitter scraper start failed: {run_response.status_code} - {run_response.text[:200]}")
+                error_text = run_response.text[:200] if run_response.text else ""
+                # Check for Apify billing/limit errors
+                if run_response.status_code == 402 or "limit" in error_text.lower() or "exceeded" in error_text.lower():
+                    logger.warning(f"Twitter scraper: Apify monthly limit exceeded - returning empty results")
+                    return []
+                logger.warning(f"Twitter scraper start failed: {run_response.status_code} - {error_text}")
                 return []
             
             run_data = run_response.json()
@@ -1277,6 +1318,323 @@ async def scrape_twitter(limit_per_keyword: int = 25) -> list[dict]:
             logger.error(f"Twitter scrape failed: {e}")
     
     logger.info(f"Scraped {len(insights)} tweets from X/Twitter")
+    return insights
+
+
+# ============================================
+# NEW SOURCES (No Apify Required)
+# ============================================
+
+# ArXiv categories for AI/ML research
+ARXIV_CATEGORIES = ["cs.AI", "cs.LG", "cs.CL", "cs.MA"]  # AI, ML, NLP, Multi-agent
+
+# Dev.to tags for relevant content
+DEVTO_TAGS = ["ai", "machinelearning", "automation", "saas", "python"]
+
+# AI/Tech blogs RSS feeds
+AI_BLOG_FEEDS = [
+    {"name": "OpenAI Blog", "url": "https://openai.com/blog/rss.xml"},
+    {"name": "Anthropic Research", "url": "https://www.anthropic.com/research/rss.xml"},
+    {"name": "LangChain Blog", "url": "https://blog.langchain.dev/rss/"},
+    {"name": "Hugging Face Blog", "url": "https://huggingface.co/blog/feed.xml"},
+    {"name": "The Batch (DeepLearning.AI)", "url": "https://www.deeplearning.ai/the-batch/feed/"},
+]
+
+
+@task(retries=2, retry_delay_seconds=10)
+async def scrape_arxiv(limit_per_category: int = 25) -> list[dict]:
+    """
+    Scrape ArXiv for AI/ML research papers via their API.
+    Uses direct Atom API - no Apify needed.
+    
+    Rate limit: 1 req/3sec (ArXiv policy)
+    
+    Args:
+        limit_per_category: Max results per category (25)
+    """
+    logger = get_run_logger()
+    logger.info(f"Scraping ArXiv with {len(ARXIV_CATEGORIES)} categories...")
+    
+    insights = []
+    seen_ids = set()
+    
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+        for category in ARXIV_CATEGORIES:
+            if not request_tracker.can_continue:
+                logger.warning("Request cap reached, stopping ArXiv scrape")
+                break
+                
+            try:
+                # ArXiv API query
+                params = {
+                    "search_query": f"cat:{category}",
+                    "sortBy": "submittedDate",
+                    "sortOrder": "descending",
+                    "max_results": limit_per_category,
+                }
+                response = await make_request(
+                    client, 'GET',
+                    "http://export.arxiv.org/api/query",
+                    source='arxiv',
+                    params=params
+                )
+                response.raise_for_status()
+                content = response.text
+                
+                # Parse Atom feed entries
+                entries = re.findall(
+                    r'<entry>(.*?)</entry>',
+                    content,
+                    re.DOTALL
+                )
+                
+                logger.info(f"  [{category}] Found {len(entries)} papers")
+                
+                for entry in entries:
+                    # Extract paper ID
+                    id_match = re.search(r'<id>([^<]+)</id>', entry)
+                    paper_id = id_match.group(1) if id_match else ""
+                    
+                    if paper_id in seen_ids:
+                        continue
+                    seen_ids.add(paper_id)
+                    
+                    # Extract title (clean whitespace)
+                    title_match = re.search(r'<title>([^<]+)</title>', entry, re.DOTALL)
+                    title = re.sub(r'\s+', ' ', title_match.group(1).strip()) if title_match else ""
+                    
+                    # Extract summary/abstract
+                    summary_match = re.search(r'<summary>([^<]+)</summary>', entry, re.DOTALL)
+                    summary = re.sub(r'\s+', ' ', summary_match.group(1).strip())[:500] if summary_match else ""
+                    
+                    # Extract authors
+                    authors = re.findall(r'<name>([^<]+)</name>', entry)
+                    author_str = ", ".join(authors[:3])
+                    if len(authors) > 3:
+                        author_str += f" et al. ({len(authors)} authors)"
+                    
+                    # Extract published date
+                    published_match = re.search(r'<published>([^<]+)</published>', entry)
+                    published = published_match.group(1) if published_match else ""
+                    
+                    # Get abstract page URL
+                    url = paper_id.replace("/abs/", "/abs/") if "/abs/" in paper_id else paper_id
+                    
+                    if not title:
+                        continue
+                    
+                    category_str = categorize_content(f"{title} {summary}")
+                    
+                    insights.append({
+                        "category": category_str,
+                        "content": f"[ArXiv {category}] {title}",
+                        "summary": f"{title} by {author_str}. {summary[:250]}",
+                        "source_url": url,
+                        "source_type": "arxiv",
+                        "confidence_score": 0.80,  # Research papers are high quality
+                        "metadata": {
+                            "arxiv_id": paper_id,
+                            "category": category,
+                            "authors": authors[:5],
+                            "published": published,
+                        }
+                    })
+                    
+            except Exception as e:
+                logger.warning(f"ArXiv scrape failed for {category}: {e}")
+                continue
+    
+    logger.info(f"Scraped {len(insights)} ArXiv papers")
+    return insights
+
+
+@task(retries=2, retry_delay_seconds=10)
+async def scrape_devto(limit_per_tag: int = 20) -> list[dict]:
+    """
+    Scrape Dev.to for AI/automation articles via their public API.
+    Uses direct API - no Apify needed.
+    
+    Rate limit: 1 req/sec (30/min limit)
+    
+    Args:
+        limit_per_tag: Max results per tag (20)
+    """
+    logger = get_run_logger()
+    logger.info(f"Scraping Dev.to with {len(DEVTO_TAGS)} tags...")
+    
+    insights = []
+    seen_ids = set()
+    
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+        for tag in DEVTO_TAGS:
+            if not request_tracker.can_continue:
+                logger.warning("Request cap reached, stopping Dev.to scrape")
+                break
+                
+            try:
+                # Dev.to public API
+                response = await make_request(
+                    client, 'GET',
+                    f"https://dev.to/api/articles",
+                    source='devto',
+                    params={
+                        "tag": tag,
+                        "per_page": limit_per_tag,
+                        "top": 30,  # Top articles from last 30 days
+                    }
+                )
+                response.raise_for_status()
+                articles = response.json()
+                
+                logger.info(f"  [{tag}] Found {len(articles)} articles")
+                
+                for article in articles:
+                    article_id = article.get("id", "")
+                    
+                    if article_id in seen_ids:
+                        continue
+                    seen_ids.add(article_id)
+                    
+                    title = article.get("title", "")
+                    description = article.get("description", "")[:300]
+                    url = article.get("url", "")
+                    reactions = article.get("positive_reactions_count", 0)
+                    comments = article.get("comments_count", 0)
+                    author = article.get("user", {}).get("username", "")
+                    reading_time = article.get("reading_time_minutes", 0)
+                    published = article.get("published_at", "")
+                    tags = article.get("tag_list", [])
+                    
+                    if not title or not url:
+                        continue
+                    
+                    # Minimum engagement
+                    if reactions < 5:
+                        continue
+                    
+                    # Confidence based on reactions
+                    confidence = min(0.90, 0.5 + (reactions / 200))
+                    category_str = categorize_content(f"{title} {description}")
+                    
+                    insights.append({
+                        "category": category_str,
+                        "content": f"[Dev.to {reactions}❤️] {title}",
+                        "summary": f"{title} by @{author}. {description}",
+                        "source_url": url,
+                        "source_type": "devto",
+                        "confidence_score": round(confidence, 2),
+                        "metadata": {
+                            "article_id": article_id,
+                            "author": author,
+                            "reactions": reactions,
+                            "comments": comments,
+                            "reading_time": reading_time,
+                            "tags": tags[:5],
+                            "published": published,
+                        }
+                    })
+                    
+            except Exception as e:
+                logger.warning(f"Dev.to scrape failed for tag '{tag}': {e}")
+                continue
+    
+    logger.info(f"Scraped {len(insights)} Dev.to articles")
+    return insights
+
+
+@task(retries=2, retry_delay_seconds=10)
+async def scrape_ai_blogs(limit_per_feed: int = 15) -> list[dict]:
+    """
+    Scrape AI company blogs and newsletters via RSS.
+    Uses direct RSS - no Apify needed.
+    
+    Rate limit: 1 req/2sec (standard RSS courtesy)
+    
+    Args:
+        limit_per_feed: Max results per RSS feed (15)
+    """
+    logger = get_run_logger()
+    logger.info(f"Scraping {len(AI_BLOG_FEEDS)} AI blog RSS feeds...")
+    
+    insights = []
+    seen_urls = set()
+    
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, follow_redirects=True) as client:
+        for feed in AI_BLOG_FEEDS:
+            if not request_tracker.can_continue:
+                logger.warning("Request cap reached, stopping AI blogs scrape")
+                break
+                
+            try:
+                response = await make_request(
+                    client, 'GET',
+                    feed["url"],
+                    source='aiblogs'
+                )
+                
+                if response.status_code != 200:
+                    logger.warning(f"  [{feed['name']}] HTTP {response.status_code}")
+                    continue
+                    
+                content = response.text
+                
+                # Try multiple RSS/Atom patterns
+                # Pattern 1: RSS item format
+                items = re.findall(
+                    r'<item>.*?<title>(?:<!\[CDATA\[)?([^\]<]+)(?:\]\]>)?</title>.*?<link>([^<]+)</link>.*?(?:<description>(?:<!\[CDATA\[)?([^\]<]*)(?:\]\]>)?</description>)?.*?</item>',
+                    content,
+                    re.DOTALL
+                )
+                
+                # Pattern 2: Atom entry format
+                if not items:
+                    atom_entries = re.findall(r'<entry>(.*?)</entry>', content, re.DOTALL)
+                    items = []
+                    for entry in atom_entries:
+                        title_match = re.search(r'<title[^>]*>(?:<!\[CDATA\[)?([^\]<]+)(?:\]\]>)?</title>', entry)
+                        link_match = re.search(r'<link[^>]*href=["\']([^"\']+)["\']', entry)
+                        summary_match = re.search(r'<(?:summary|content)[^>]*>(?:<!\[CDATA\[)?([^\]<]*)(?:\]\]>)?</(?:summary|content)>', entry, re.DOTALL)
+                        if title_match and link_match:
+                            items.append((
+                                title_match.group(1).strip(),
+                                link_match.group(1).strip(),
+                                summary_match.group(1).strip() if summary_match else ""
+                            ))
+                
+                logger.info(f"  [{feed['name']}] Found {len(items)} posts")
+                
+                for title, url, description in items[:limit_per_feed]:
+                    title = re.sub(r'\s+', ' ', title.strip())
+                    url = url.strip()
+                    description = re.sub(r'<[^>]+>', '', description)[:300] if description else ""
+                    
+                    if url in seen_urls:
+                        continue
+                    seen_urls.add(url)
+                    
+                    if not title or not url:
+                        continue
+                    
+                    category_str = categorize_content(f"{title} {description}")
+                    
+                    insights.append({
+                        "category": category_str,
+                        "content": f"[{feed['name']}] {title}",
+                        "summary": f"{title}. {description[:200]}" if description else title,
+                        "source_url": url,
+                        "source_type": "ai_blog",
+                        "confidence_score": 0.85,  # Official blogs are high quality
+                        "metadata": {
+                            "blog_name": feed["name"],
+                            "feed_url": feed["url"],
+                        }
+                    })
+                    
+            except Exception as e:
+                logger.warning(f"AI blog scrape failed for {feed['name']}: {e}")
+                continue
+    
+    logger.info(f"Scraped {len(insights)} AI blog posts")
     return insights
 
 
@@ -1482,6 +1840,7 @@ async def daily_learning_scrape(
     logger.info("Starting rate-limited learning scrape...")
     logger.info(f"Max requests: {MAX_REQUESTS_PER_RUN}")
     logger.info(f"Keywords: HN={len(HACKERNEWS_KEYWORDS)}, GH={len(GITHUB_KEYWORDS)}, Reddit={len(REDDIT_KEYWORDS)}, YT={len(YOUTUBE_KEYWORDS)}, Twitter={len(TWITTER_KEYWORDS)}")
+    logger.info(f"New sources: ArXiv={len(ARXIV_CATEGORIES)} cats, Dev.to={len(DEVTO_TAGS)} tags, AI Blogs={len(AI_BLOG_FEEDS)} feeds")
     
     # Run all scrapers in parallel
     logger.info("Launching all scrapers in parallel...")
@@ -1492,11 +1851,14 @@ async def daily_learning_scrape(
         scrape_youtube(yt_limit_per_keyword),
         scrape_producthunt(ph_limit),
         scrape_twitter(twitter_limit_per_keyword),
+        scrape_arxiv(25),         # NEW: ArXiv direct API
+        scrape_devto(20),         # NEW: Dev.to direct API
+        scrape_ai_blogs(15),      # NEW: AI blogs RSS
         return_exceptions=True
     )
     
     # Unpack results, handling any exceptions
-    scraper_names = ["hackernews", "github", "reddit", "youtube", "producthunt", "twitter"]
+    scraper_names = ["hackernews", "github", "reddit", "youtube", "producthunt", "twitter", "arxiv", "devto", "ai_blogs"]
     all_results = {name: [] for name in scraper_names}
     
     for i, result in enumerate(results):
@@ -1552,6 +1914,9 @@ async def daily_learning_scrape(
             "reddit": len(REDDIT_KEYWORDS),
             "youtube": len(YOUTUBE_KEYWORDS),
             "twitter": len(TWITTER_KEYWORDS),
+            "arxiv": len(ARXIV_CATEGORIES),
+            "devto": len(DEVTO_TAGS),
+            "ai_blogs": len(AI_BLOG_FEEDS),
         },
         "rate_limiting": rate_stats,
     }

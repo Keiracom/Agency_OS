@@ -12,7 +12,7 @@ Usage:
     python run_knowledge_pipeline.py --dry-run         # Show what would run
 
 Pipeline Steps:
-    1. Run learning_scrape_flow (all sources: HN, PH, GitHub, YouTube, Reddit)
+    1. Run learning_scrape_flow (all sources: HN, PH, GitHub, YouTube, Reddit, Twitter)
     2. Run action_engine.py process (create sign-off requests for high-value items)
     3. Report summary
 
@@ -80,15 +80,17 @@ async def run_scrape() -> dict:
         print("  - GitHub Trending (Python, TypeScript, Collections)")
         print("  - YouTube (target channels + AI/SaaS topics)")
         print("  - Reddit (r/SaaS, r/Entrepreneur, r/sales, r/startups, etc.)")
+        print("  - Twitter (AI/SaaS topics)")
         print()
         
         # Run the flow
         result = await daily_learning_scrape(
-            hn_limit=50,
+            hn_limit_per_keyword=50,
+            gh_limit_per_keyword=15,
+            reddit_limit_per_search=50,
+            yt_limit_per_keyword=30,
             ph_limit=10,
-            gh_limit=15,
-            yt_limit=30,
-            reddit_limit=50
+            twitter_limit_per_keyword=25
         )
         
         print("\n✅ Scrape Complete!")
@@ -305,6 +307,7 @@ Examples:
             print("     - GitHub Trending (Python, TypeScript, Collections)")
             print("     - YouTube (target channels + AI/SaaS)")
             print("     - Reddit (r/SaaS, r/Entrepreneur, r/sales, etc.)")
+            print("     - Twitter (AI/SaaS topics)")
         if run_process_step:
             print("  2. Action Engine Processing")
             print("     - Scan for high-value knowledge (relevance >= 0.8)")

@@ -14,7 +14,7 @@ Scrapers use keyword-based searches:
 - Reddit: Search across subreddits with 5 keywords (ALL TIME)
 - YouTube: Search queries with 5 keywords + target channels
 - ProductHunt: Search for AI/automation/sales tools
-- Twitter/X: Keyword searches + thought leader accounts
+- Twitter/X: Native scraping via nitter RSS (no API key needed)
 
 Rate Limiting Strategy (to prevent bans):
 - HackerNews (Algolia): 1 req/sec
@@ -25,7 +25,8 @@ Rate Limiting Strategy (to prevent bans):
 - Dev.to: 1 req/sec (30/min limit)
 - Indie Hackers: 1 req/5sec (no official API)
 - RSS feeds: 1 req/2sec (standard courtesy)
-- YouTube/Twitter via Apify: Actor handles limits
+- Twitter/X: 1 req/sec via nitter RSS
+- YouTube via Apify: Actor handles limits
 """
 
 import asyncio
@@ -174,7 +175,8 @@ class SourceRateLimiter:
             'rss': 2.0,              # Standard RSS courtesy
             'substack': 2.0,         # Standard RSS courtesy
             'aiblogs': 2.0,          # Standard RSS courtesy
-            # YouTube and Twitter via Apify - actor handles it
+            'twitter': 1.0,          # Native scraping via nitter RSS
+            # YouTube via Apify - actor handles it
             'apify': 0.0,            # Let Apify manage
         }
         self._lock = asyncio.Lock()
@@ -1009,22 +1011,32 @@ async def scrape_youtube(limit_per_keyword: int = 10) -> list[dict]:
     Scrape YouTube using native Python libraries (no API key needed).
     Uses yt-dlp for search and youtube-transcript-api for transcripts.
     
+    Anti-ban safety measures:
+    - Randomized delays (1-3s) instead of fixed delays
+    - Block detection with graceful stop after 3 consecutive errors
+    - Conservative limits (5 keywords × 10 videos = 50 max)
+    - Detects RequestBlocked/IpBlocked exceptions
+    
     Note: Transcripts may be unavailable from cloud IPs due to YouTube blocking.
     Video metadata (title, views, channel) is still captured.
-    
-    Rate limit: 0.5s between requests (self-imposed)
     
     Args:
         limit_per_keyword: Max results per search query (10)
     """
     logger = get_run_logger()
-    logger.info(f"Scraping YouTube (native) with {len(YOUTUBE_KEYWORDS)} keywords...")
+    
+    # Conservative limit: max 5 keywords for safety
+    keywords_to_use = YOUTUBE_KEYWORDS[:5]
+    logger.info(f"Scraping YouTube (native) with {len(keywords_to_use)} keywords (conservative limit)...")
     
     insights = []
     seen_ids = set()
     transcripts_found = 0
     transcripts_blocked = 0
     transcripts_unavailable = 0
+    
+    # Block detection for graceful stop
+    detector = BlockDetector(max_errors=3, source_name="YouTube")
     
     # yt-dlp options for search
     ydl_opts = {
@@ -1037,7 +1049,12 @@ async def scrape_youtube(limit_per_keyword: int = 10) -> list[dict]:
     # Track if transcripts are being blocked (stop trying after 3 blocks)
     ip_blocked = False
     
-    for keyword in YOUTUBE_KEYWORDS:
+    for keyword in keywords_to_use:
+        # Check for block detection
+        if detector.should_stop():
+            logger.warning("YouTube scraper stopped due to possible block")
+            break
+            
         # Check request cap
         if not request_tracker.can_continue:
             logger.warning("Request cap reached, stopping YouTube scrape")
@@ -1052,12 +1069,21 @@ async def scrape_youtube(limit_per_keyword: int = 10) -> list[dict]:
             
             if not search_result or 'entries' not in search_result:
                 logger.warning(f"  [{keyword}] No results")
+                detector.record_error(Exception("No results returned"))
+                await safe_delay(2.0, 4.0)  # Longer delay on empty results
                 continue
+            
+            # Record success for search
+            detector.record_success()
                 
             videos = [e for e in search_result['entries'] if e]
             logger.info(f"  [{keyword}] Found {len(videos)} videos")
             
             for video in videos:
+                # Check block detection between videos
+                if detector.should_stop():
+                    break
+                    
                 video_id = video.get('id') or video.get('url', '').split('=')[-1]
                 if not video_id or video_id in seen_ids:
                     continue
@@ -1080,15 +1106,22 @@ async def scrape_youtube(limit_per_keyword: int = 10) -> list[dict]:
                         if len(transcript_text) > 5000:
                             transcript_text = transcript_text[:5000] + "..."
                         transcripts_found += 1
+                        detector.record_success()  # Transcript fetch succeeded
                     except (RequestBlocked, IpBlocked):
                         transcripts_blocked += 1
                         if transcripts_blocked >= 3:
                             ip_blocked = True
+                            detector.blocked = True  # Also mark block detector
                             logger.warning("YouTube IP blocked - skipping transcript fetches for remaining videos")
                     except (TranscriptsDisabled, NoTranscriptFound, CouldNotRetrieveTranscript):
                         transcripts_unavailable += 1
+                        # Not an error - just no transcript available
                     except Exception as e:
                         transcripts_unavailable += 1
+                        error_str = str(e).lower()
+                        # Check for block indicators in error message
+                        if any(kw in error_str for kw in ["blocked", "captcha", "too many", "429"]):
+                            detector.record_error(e)
                         logger.debug(f"Transcript error for {video_id}: {e}")
                 
                 # Get description as fallback
@@ -1136,19 +1169,33 @@ async def scrape_youtube(limit_per_keyword: int = 10) -> list[dict]:
                     }
                 })
                 
-                # Rate limit between requests
-                await asyncio.sleep(0.5)
+                # Randomized delay between requests (anti-ban)
+                await safe_delay(1.0, 3.0)
                 
         except Exception as e:
+            detector.record_error(e)
             logger.warning(f"YouTube search failed for '{keyword}': {e}")
+            if detector.should_stop():
+                break
+            # Extended delay after error
+            delay = jittered_delay(3.0, 1.0)
+            logger.info(f"Rate limiting: waiting {delay:.1f}s after error")
+            await asyncio.sleep(delay)
             continue
+        
+        # Randomized delay between keywords
+        await safe_delay(1.5, 3.5)
+    
+    # Log block detection stats
+    stats = detector.get_stats()
+    if stats["total_errors"] > 0:
+        logger.info(f"YouTube block detector stats: {stats}")
     
     transcript_status = f"found={transcripts_found}, unavailable={transcripts_unavailable}"
     if transcripts_blocked > 0:
         transcript_status += f", blocked={transcripts_blocked} (cloud IP)"
     logger.info(f"Scraped {len(insights)} YouTube videos (transcripts: {transcript_status})")
     return insights
-
 
 @task(retries=2, retry_delay_seconds=10)
 async def scrape_producthunt(limit: int = 50) -> list[dict]:
@@ -1248,14 +1295,20 @@ async def scrape_producthunt(limit: int = 50) -> list[dict]:
 
 
 @task(retries=2, retry_delay_seconds=30)
-async def scrape_twitter(limit_per_keyword: int = 50) -> list[dict]:
+async def scrape_twitter(limit_per_keyword: int = 20) -> list[dict]:
     """
     Native Twitter/X scraper using nitter RSS feeds (no API key needed).
+    
+    Anti-ban safety measures:
+    - Randomized delays (1-3s) instead of fixed delays
+    - Block detection with graceful stop after 3 consecutive errors
+    - Conservative limits (5 accounts × 20 tweets = 100 max)
+    - Graceful instance failover
     
     Strategy:
     1. Scrape target thought leader accounts via nitter RSS
     2. Try multiple nitter instances with fallback
-    3. Rate limited to 1 request/second between nitter calls
+    3. Rate limited with randomized delays between nitter calls
     
     Note: Native Twitter scraping is inherently unreliable due to:
     - Nitter instances frequently go down
@@ -1264,13 +1317,14 @@ async def scrape_twitter(limit_per_keyword: int = 50) -> list[dict]:
     
     This implementation gracefully fails if all methods are exhausted.
     
-    Rate limit: 1 req/sec between requests
-    
     Args:
-        limit_per_keyword: Max tweets per account (50)
+        limit_per_keyword: Max tweets per account (20, conservative)
     """
     logger = get_run_logger()
-    logger.info(f"Scraping Twitter/X natively with {len(TWITTER_ACCOUNTS)} accounts...")
+    
+    # Conservative limit: max 5 accounts for safety
+    accounts_to_use = TWITTER_ACCOUNTS[:5]
+    logger.info(f"Scraping Twitter/X natively with {len(accounts_to_use)} accounts (conservative limit)...")
     
     # Check request cap
     if not request_tracker.can_continue:
@@ -1281,10 +1335,15 @@ async def scrape_twitter(limit_per_keyword: int = 50) -> list[dict]:
     seen_ids = set()
     working_instance = None
     
+    # Block detection for graceful stop
+    detector = BlockDetector(max_errors=3, source_name="Twitter")
+    
     async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
         # First, find a working nitter instance
         for instance in NITTER_INSTANCES:
             if not request_tracker.can_continue:
+                break
+            if detector.should_stop():
                 break
             try:
                 # Test with a known active account
@@ -1303,14 +1362,23 @@ async def scrape_twitter(limit_per_keyword: int = 50) -> list[dict]:
                     feed = feedparser.parse(response.text)
                     if feed.entries and len(feed.entries) > 0:
                         working_instance = instance
+                        detector.record_success()
                         logger.info(f"Found working nitter instance: {instance}")
                         break
                     else:
                         logger.debug(f"Nitter {instance} returned empty feed")
+                        detector.record_error(Exception("Empty feed"))
+                elif response.status_code in [403, 429]:
+                    detector.record_error(Exception(f"HTTP {response.status_code}"))
+                    logger.debug(f"Nitter {instance} returned {response.status_code} (possible block)")
                 else:
                     logger.debug(f"Nitter {instance} returned {response.status_code}")
+                
+                # Randomized delay between instance tests
+                await safe_delay(1.0, 2.0)
                     
             except Exception as e:
+                detector.record_error(e)
                 logger.debug(f"Nitter {instance} failed: {type(e).__name__}: {e}")
                 continue
         
@@ -1318,8 +1386,20 @@ async def scrape_twitter(limit_per_keyword: int = 50) -> list[dict]:
             logger.warning("No working nitter instance found - Twitter scrape returning empty")
             return []
         
+        if detector.should_stop():
+            logger.warning("Twitter scraper stopped due to possible block during instance discovery")
+            return []
+        
+        # Reset detector for account scraping phase
+        detector = BlockDetector(max_errors=3, source_name="Twitter-accounts")
+        
         # Scrape each target account
-        for account in TWITTER_ACCOUNTS:
+        for account in accounts_to_use:
+            # Check for block detection
+            if detector.should_stop():
+                logger.warning("Twitter scraper stopped due to possible block")
+                break
+                
             if not request_tracker.can_continue:
                 logger.warning("Request cap reached, stopping Twitter scrape")
                 break
@@ -1336,16 +1416,31 @@ async def scrape_twitter(limit_per_keyword: int = 50) -> list[dict]:
                     }
                 )
                 
+                if response.status_code == 403 or response.status_code == 429:
+                    detector.record_error(Exception(f"HTTP {response.status_code}"))
+                    logger.warning(f"  [@{account}] HTTP {response.status_code} (possible block)")
+                    if detector.should_stop():
+                        break
+                    # Extended delay after block-like response
+                    delay = jittered_delay(5.0, 2.0)
+                    logger.info(f"Rate limiting: waiting {delay:.1f}s after possible block")
+                    await asyncio.sleep(delay)
+                    continue
+                
                 if response.status_code != 200:
                     logger.warning(f"  [@{account}] HTTP {response.status_code}")
+                    await safe_delay(1.0, 2.0)
                     continue
                 
                 feed = feedparser.parse(response.text)
                 
                 if not feed.entries:
                     logger.info(f"  [@{account}] No entries in feed")
+                    await safe_delay(1.0, 2.0)
                     continue
                 
+                # Record success
+                detector.record_success()
                 logger.info(f"  [@{account}] Found {len(feed.entries)} tweets")
                 
                 for entry in feed.entries[:limit_per_keyword]:
@@ -1403,14 +1498,28 @@ async def scrape_twitter(limit_per_keyword: int = 50) -> list[dict]:
                             "nitter_instance": working_instance,
                         }
                     })
+                
+                # Randomized delay between accounts (anti-ban)
+                await safe_delay(1.5, 3.5)
                     
             except Exception as e:
+                detector.record_error(e)
                 logger.warning(f"Twitter scrape failed for @{account}: {type(e).__name__}: {e}")
+                if detector.should_stop():
+                    break
+                # Extended delay after error
+                delay = jittered_delay(3.0, 1.0)
+                logger.info(f"Rate limiting: waiting {delay:.1f}s after error")
+                await asyncio.sleep(delay)
                 continue
+    
+    # Log block detection stats
+    stats = detector.get_stats()
+    if stats["total_errors"] > 0:
+        logger.info(f"Twitter block detector stats: {stats}")
     
     logger.info(f"Scraped {len(insights)} tweets from X/Twitter (native, no API)")
     return insights
-
 
 # ============================================
 # NEW SOURCES (No Apify Required)

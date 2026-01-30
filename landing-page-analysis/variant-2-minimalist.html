@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EQTY Lab — Verify to Trust AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        serif: ['Instrument Serif', 'Georgia', 'serif'],
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        mint: {
+                            50: '#f0fdf8',
+                            100: '#ccfce8',
+                            200: '#99f6d4',
+                            300: '#5eebb8',
+                            400: '#2dd498',
+                            500: '#0eb77a',
+                            600: '#059562',
+                            700: '#047652',
+                            800: '#065d43',
+                            900: '#054d38',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .serif {
+            font-family: 'Instrument Serif', Georgia, serif;
+        }
+
+        /* Fade in from bottom on scroll */
+        .fade-up {
+            opacity: 0;
+            transform: translateY(60px);
+            transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1), 
+                        transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .fade-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Staggered children animation */
+        .stagger-children > * {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), 
+                        transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .stagger-children.visible > *:nth-child(1) { transition-delay: 0.1s; }
+        .stagger-children.visible > *:nth-child(2) { transition-delay: 0.2s; }
+        .stagger-children.visible > *:nth-child(3) { transition-delay: 0.3s; }
+        .stagger-children.visible > *:nth-child(4) { transition-delay: 0.4s; }
+        .stagger-children.visible > *:nth-child(5) { transition-delay: 0.5s; }
+        
+        .stagger-children.visible > * {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Parallax layers */
+        .parallax-slow {
+            will-change: transform;
+        }
+
+        /* Smooth line draw */
+        .line-draw {
+            stroke-dasharray: 300;
+            stroke-dashoffset: 300;
+            transition: stroke-dashoffset 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .line-draw.visible {
+            stroke-dashoffset: 0;
+        }
+
+        /* Glow effect */
+        .glow {
+            box-shadow: 0 0 60px rgba(46, 212, 152, 0.15);
+        }
+        
+        .glow-text {
+            text-shadow: 0 0 40px rgba(46, 212, 152, 0.3);
+        }
+
+        /* Subtle gradient mesh */
+        .gradient-mesh {
+            background: 
+                radial-gradient(ellipse at 20% 80%, rgba(46, 212, 152, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(46, 212, 152, 0.05) 0%, transparent 50%);
+        }
+
+        /* Hero chip animation */
+        .chip-glow {
+            animation: pulse-glow 3s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { filter: drop-shadow(0 0 20px rgba(46, 212, 152, 0.4)); }
+            50% { filter: drop-shadow(0 0 40px rgba(46, 212, 152, 0.7)); }
+        }
+
+        /* Floating dots */
+        .floating-dot {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .floating-dot:nth-child(odd) {
+            animation-delay: -3s;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        /* Magnetic button effect */
+        .magnetic-btn {
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                        box-shadow 0.3s ease;
+        }
+        
+        .magnetic-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(46, 212, 152, 0.25);
+        }
+
+        /* Counter animation */
+        .counter {
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Scroll indicator */
+        .scroll-indicator {
+            animation: bounce 2s ease-in-out infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0) translateX(-50%); }
+            40% { transform: translateY(10px) translateX(-50%); }
+            60% { transform: translateY(5px) translateX(-50%); }
+        }
+
+        /* Horizontal scroll for threats */
+        .threats-scroll {
+            animation: scroll-left 30s linear infinite;
+        }
+        
+        @keyframes scroll-left {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        
+        .threats-scroll:hover {
+            animation-play-state: paused;
+        }
+
+        /* Reveal mask */
+        .reveal-mask {
+            clip-path: inset(100% 0 0 0);
+            transition: clip-path 1s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .reveal-mask.visible {
+            clip-path: inset(0 0 0 0);
+        }
+
+        /* Nav blur */
+        .nav-blur {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="bg-neutral-50 text-neutral-900 antialiased overflow-x-hidden">
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 nav-blur bg-white/70 border-b border-neutral-200/50">
+        <div class="max-w-7xl mx-auto px-6 lg:px-12">
+            <div class="flex items-center justify-between h-20">
+                <!-- Logo -->
+                <a href="#" class="flex items-center space-x-2 group">
+                    <div class="w-8 h-8 bg-gradient-to-br from-mint-400 to-mint-600 rounded-lg flex items-center justify-center">
+                        <span class="text-white font-semibold text-sm">E</span>
+                    </div>
+                    <span class="font-semibold text-lg tracking-tight">EQTY Lab</span>
+                </a>
+                
+                <!-- Nav Links -->
+                <div class="hidden md:flex items-center space-x-12">
+                    <a href="#problem" class="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">The Problem</a>
+                    <a href="#solutions" class="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">Solutions</a>
+                    <a href="#technology" class="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">Technology</a>
+                </div>
+                
+                <!-- CTA -->
+                <div class="flex items-center space-x-4">
+                    <a href="#" class="text-sm text-neutral-600 hover:text-neutral-900 transition-colors hidden sm:block">Log In</a>
+                    <a href="#" class="magnetic-btn bg-neutral-900 text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-neutral-800 transition-colors">
+                        Get Started
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="min-h-screen flex items-center justify-center relative gradient-mesh pt-20">
+        <!-- Floating decorative dots -->
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+            <div class="floating-dot absolute top-1/4 left-[15%] w-3 h-3 bg-mint-200 rounded-full opacity-60"></div>
+            <div class="floating-dot absolute top-1/3 right-[20%] w-2 h-2 bg-mint-300 rounded-full opacity-40"></div>
+            <div class="floating-dot absolute bottom-1/4 left-[25%] w-4 h-4 bg-mint-100 rounded-full opacity-50"></div>
+            <div class="floating-dot absolute top-1/2 right-[10%] w-2 h-2 bg-mint-400 rounded-full opacity-30"></div>
+            <div class="floating-dot absolute bottom-1/3 right-[30%] w-3 h-3 bg-mint-200 rounded-full opacity-40"></div>
+        </div>
+
+        <div class="max-w-5xl mx-auto px-6 lg:px-12 text-center relative z-10">
+            <!-- Chip Icon -->
+            <div class="mb-12 fade-up">
+                <div class="chip-glow inline-block p-6 bg-white rounded-3xl shadow-lg shadow-mint-200/30">
+                    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="16" y="16" width="48" height="48" rx="8" fill="#0D0D0D"/>
+                        <rect x="24" y="24" width="32" height="32" rx="4" fill="#2DD498"/>
+                        <text x="40" y="45" text-anchor="middle" fill="#0D0D0D" font-size="10" font-weight="600">EQTY</text>
+                        <!-- Connection lines -->
+                        <rect x="36" y="4" width="8" height="12" rx="2" fill="#2DD498" opacity="0.6"/>
+                        <rect x="36" y="64" width="8" height="12" rx="2" fill="#2DD498" opacity="0.6"/>
+                        <rect x="4" y="36" width="12" height="8" rx="2" fill="#2DD498" opacity="0.6"/>
+                        <rect x="64" y="36" width="12" height="8" rx="2" fill="#2DD498" opacity="0.6"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Main Headline -->
+            <h1 class="fade-up serif text-5xl sm:text-6xl lg:text-7xl font-normal leading-tight mb-8">
+                <span class="block">Verify to</span>
+                <span class="text-mint-500 glow-text">Trust AI</span>
+            </h1>
+
+            <!-- Subheadline -->
+            <p class="fade-up text-lg sm:text-xl text-neutral-500 max-w-2xl mx-auto mb-12 font-light leading-relaxed">
+                Introducing Verifiable Compute.<br class="hidden sm:block">
+                Ready for the Agentic AI Era.
+            </p>
+
+            <!-- CTA Buttons -->
+            <div class="fade-up flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+                <a href="#" class="magnetic-btn bg-mint-500 text-white px-8 py-4 rounded-full text-sm font-medium flex items-center gap-3 hover:bg-mint-600 transition-colors">
+                    <span>Schedule Demo</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                    </svg>
+                </a>
+                <a href="#technology" class="px-8 py-4 text-sm text-neutral-600 hover:text-neutral-900 transition-colors flex items-center gap-2">
+                    <span>Learn More</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </a>
+            </div>
+
+            <!-- Availability Badge -->
+            <div class="fade-up">
+                <span class="inline-block text-xs tracking-widest text-neutral-400 uppercase mb-6">
+                    Preorders Q4 · Ship 2025
+                </span>
+                <div class="flex flex-wrap items-center justify-center gap-3">
+                    <span class="px-4 py-2 bg-white rounded-full text-sm text-neutral-600 shadow-sm border border-neutral-100">Dell Appliance</span>
+                    <span class="px-4 py-2 bg-white rounded-full text-sm text-neutral-600 shadow-sm border border-neutral-100">Cloud Provider</span>
+                    <span class="px-4 py-2 bg-white rounded-full text-sm text-neutral-600 shadow-sm border border-neutral-100">Accenture AIP</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scroll Indicator -->
+        <div class="scroll-indicator absolute bottom-8 left-1/2 -translate-x-1/2">
+            <div class="w-6 h-10 border-2 border-neutral-300 rounded-full flex justify-center pt-2">
+                <div class="w-1.5 h-3 bg-neutral-400 rounded-full"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section id="problem" class="py-32 lg:py-40 bg-white relative overflow-hidden">
+        <div class="max-w-7xl mx-auto px-6 lg:px-12">
+            <!-- Section Label -->
+            <div class="text-center mb-16 fade-up">
+                <span class="inline-block px-4 py-1.5 border border-neutral-200 rounded-full text-xs tracking-widest uppercase text-neutral-500 mb-8">
+                    The Problem
+                </span>
+                <h2 class="serif text-4xl sm:text-5xl lg:text-6xl font-normal leading-tight">
+                    New AI workflows equal<br>
+                    <span class="text-mint-500">New Threats</span>
+                </h2>
+            </div>
+
+            <!-- Threats Marquee -->
+            <div class="relative mb-20 py-8 overflow-hidden">
+                <div class="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-white to-transparent z-10"></div>
+                <div class="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-white to-transparent z-10"></div>
+                
+                <div class="threats-scroll flex whitespace-nowrap">
+                    <!-- Threat items repeated for infinite scroll effect -->
+                    <div class="flex items-center gap-8 px-4">
+                        <span class="threat-item px-6 py-3 bg-neutral-100 rounded-full text-sm text-neutral-600">Backdoors in AI Models</span>
+                        <span class="threat-item px-6 py-3 bg-red-50 rounded-full text-sm text-red-600">Jailbreaks</span>
+                        <span class="threat-item px-6 py-3 bg-neutral-100 rounded-full text-sm text-neutral-600">Data Extraction</span>
+                        <span class="threat-item px-6 py-3 bg-amber-50 rounded-full text-sm text-amber-600">Hallucination</span>
+                        <span class="threat-item px-6 py-3 bg-neutral-100 rounded-full text-sm text-neutral-600">Model DoS Attacks</span>
+                        <span class="threat-item px-6 py-3 bg-red-50 rounded-full text-sm text-red-600">Social Engineering</span>
+                        <span class="threat-item px-6 py-3 bg-neutral-100 rounded-full text-sm text-neutral-600">Bias & Discrimination</span>
+                        <span class="threat-item px-6 py-3 bg-amber-50 rounded-full text-sm text-amber-600">Toxicity</span>
+                    </div>
+                    <!-- Duplicate for seamless loop -->
+                    <div class="flex items-center gap-8 px-4">
+                        <span class="threat-item px-6 py-3 bg-neutral-100 rounded-full text-sm text-neutral-600">Backdoors in AI Models</span>
+                        <span class="threat-item px-6 py-3 bg-red-50 rounded-full text-sm text-red-600">Jailbreaks</span>
+                        <span class="threat-item px-6 py-3 bg-neutral-100 rounded-full text-sm text-neutral-600">Data Extraction</span>
+                        <span class="threat-item px-6 py-3 bg-amber-50 rounded-full text-sm text-amber-600">Hallucination</span>
+                        <span class="threat-item px-6 py-3 bg-neutral-100 rounded-full text-sm text-neutral-600">Model DoS Attacks</span>
+                        <span class="threat-item px-6 py-3 bg-red-50 rounded-full text-sm text-red-600">Social Engineering</span>
+                        <span class="threat-item px-6 py-3 bg-neutral-100 rounded-full text-sm text-neutral-600">Bias & Discrimination</span>
+                        <span class="threat-item px-6 py-3 bg-amber-50 rounded-full text-sm text-amber-600">Toxicity</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Problem Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12 stagger-children">
+                <div class="text-center p-8">
+                    <div class="serif text-5xl lg:text-6xl text-mint-500 mb-4 counter" data-target="78">78%</div>
+                    <p class="text-neutral-500 text-sm">of enterprises report AI security incidents</p>
+                </div>
+                <div class="text-center p-8 border-y md:border-y-0 md:border-x border-neutral-100">
+                    <div class="serif text-5xl lg:text-6xl text-mint-500 mb-4 counter" data-target="3.2">$3.2B</div>
+                    <p class="text-neutral-500 text-sm">lost annually to AI-related breaches</p>
+                </div>
+                <div class="text-center p-8">
+                    <div class="serif text-5xl lg:text-6xl text-mint-500 mb-4 counter" data-target="94">94%</div>
+                    <p class="text-neutral-500 text-sm">of AI systems lack verifiable safeguards</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Solutions Section -->
+    <section id="solutions" class="py-32 lg:py-40 bg-neutral-900 text-white relative overflow-hidden">
+        <!-- Subtle gradient overlay -->
+        <div class="absolute inset-0 bg-gradient-to-br from-mint-900/10 via-transparent to-transparent pointer-events-none"></div>
+        
+        <div class="max-w-7xl mx-auto px-6 lg:px-12 relative z-10">
+            <!-- Section Header -->
+            <div class="mb-20 fade-up">
+                <span class="inline-block px-4 py-1.5 border border-neutral-700 rounded-full text-xs tracking-widest uppercase text-neutral-400 mb-8">
+                    Solutions
+                </span>
+                <h2 class="serif text-4xl sm:text-5xl lg:text-6xl font-normal leading-tight max-w-3xl">
+                    Evolving trust for AI with<br>
+                    <span class="text-mint-400">Verifiable</span> proof
+                </h2>
+            </div>
+
+            <!-- Solutions Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 stagger-children">
+                <!-- Solution 1 -->
+                <div class="group p-8 lg:p-10 bg-neutral-800/50 rounded-3xl border border-neutral-800 hover:border-mint-500/30 transition-all duration-500 hover:bg-neutral-800/80">
+                    <div class="w-12 h-12 bg-mint-500/10 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-mint-500/20 transition-colors">
+                        <svg class="w-6 h-6 text-mint-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-medium mb-4">AI Training & Inference</h3>
+                    <p class="text-neutral-400 leading-relaxed mb-8">
+                        Cryptographic proof that AI deployments are untampered throughout the entire pipeline.
+                    </p>
+                    <div class="flex items-center text-mint-400 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span>Learn more</span>
+                        <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Solution 2 -->
+                <div class="group p-8 lg:p-10 bg-neutral-800/50 rounded-3xl border border-neutral-800 hover:border-mint-500/30 transition-all duration-500 hover:bg-neutral-800/80">
+                    <div class="w-12 h-12 bg-mint-500/10 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-mint-500/20 transition-colors">
+                        <svg class="w-6 h-6 text-mint-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-medium mb-4">AI Privacy</h3>
+                    <p class="text-neutral-400 leading-relaxed mb-8">
+                        Verifiable proof that AI models and data remain confidential during processing.
+                    </p>
+                    <div class="flex items-center text-mint-400 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span>Learn more</span>
+                        <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Solution 3 -->
+                <div class="group p-8 lg:p-10 bg-neutral-800/50 rounded-3xl border border-neutral-800 hover:border-mint-500/30 transition-all duration-500 hover:bg-neutral-800/80">
+                    <div class="w-12 h-12 bg-mint-500/10 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-mint-500/20 transition-colors">
+                        <svg class="w-6 h-6 text-mint-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-medium mb-4">AI Safeguards</h3>
+                    <p class="text-neutral-400 leading-relaxed mb-8">
+                        Auditable proof that AI guardrails are properly implemented and enforced.
+                    </p>
+                    <div class="flex items-center text-mint-400 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span>Learn more</span>
+                        <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Technology Section -->
+    <section id="technology" class="py-32 lg:py-40 bg-white relative overflow-hidden">
+        <div class="max-w-7xl mx-auto px-6 lg:px-12">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
+                <!-- Left: Content -->
+                <div class="fade-up">
+                    <span class="inline-block px-4 py-1.5 border border-neutral-200 rounded-full text-xs tracking-widest uppercase text-neutral-500 mb-8">
+                        Technology
+                    </span>
+                    <h2 class="serif text-4xl sm:text-5xl font-normal leading-tight mb-8">
+                        Verifiable Compute for the<br>
+                        <span class="text-mint-500">Agentic Era</span>
+                    </h2>
+                    <p class="text-neutral-500 text-lg leading-relaxed mb-8">
+                        Our hardware-rooted verification system provides cryptographic attestation for every AI operation, 
+                        ensuring trust without sacrificing performance.
+                    </p>
+                    
+                    <!-- Features list -->
+                    <div class="space-y-6">
+                        <div class="flex items-start gap-4">
+                            <div class="w-6 h-6 rounded-full bg-mint-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <svg class="w-3.5 h-3.5 text-mint-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="font-medium mb-1">Hardware Security Module Integration</h4>
+                                <p class="text-sm text-neutral-500">Tamper-resistant cryptographic key storage</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-4">
+                            <div class="w-6 h-6 rounded-full bg-mint-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <svg class="w-3.5 h-3.5 text-mint-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="font-medium mb-1">Zero-Knowledge Proofs</h4>
+                                <p class="text-sm text-neutral-500">Verify without revealing sensitive data</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-4">
+                            <div class="w-6 h-6 rounded-full bg-mint-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <svg class="w-3.5 h-3.5 text-mint-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="font-medium mb-1">Audit Trail Immutability</h4>
+                                <p class="text-sm text-neutral-500">Blockchain-anchored verification records</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Visual -->
+                <div class="relative fade-up">
+                    <div class="aspect-square bg-gradient-to-br from-neutral-100 to-neutral-50 rounded-3xl p-12 flex items-center justify-center glow">
+                        <!-- Animated connection lines -->
+                        <svg class="w-full h-full" viewBox="0 0 300 300">
+                            <!-- Central node -->
+                            <circle cx="150" cy="150" r="40" fill="#0D0D0D"/>
+                            <text x="150" y="155" text-anchor="middle" fill="#2DD498" font-size="12" font-weight="600">EQTY</text>
+                            
+                            <!-- Outer nodes -->
+                            <circle cx="150" cy="50" r="20" fill="#2DD498" opacity="0.2"/>
+                            <circle cx="150" cy="50" r="10" fill="#2DD498"/>
+                            
+                            <circle cx="250" cy="150" r="20" fill="#2DD498" opacity="0.2"/>
+                            <circle cx="250" cy="150" r="10" fill="#2DD498"/>
+                            
+                            <circle cx="150" cy="250" r="20" fill="#2DD498" opacity="0.2"/>
+                            <circle cx="150" cy="250" r="10" fill="#2DD498"/>
+                            
+                            <circle cx="50" cy="150" r="20" fill="#2DD498" opacity="0.2"/>
+                            <circle cx="50" cy="150" r="10" fill="#2DD498"/>
+                            
+                            <!-- Connection lines -->
+                            <line x1="150" y1="110" x2="150" y2="70" stroke="#2DD498" stroke-width="2" class="line-draw"/>
+                            <line x1="190" y1="150" x2="230" y2="150" stroke="#2DD498" stroke-width="2" class="line-draw"/>
+                            <line x1="150" y1="190" x2="150" y2="230" stroke="#2DD498" stroke-width="2" class="line-draw"/>
+                            <line x1="110" y1="150" x2="70" y2="150" stroke="#2DD498" stroke-width="2" class="line-draw"/>
+                            
+                            <!-- Labels -->
+                            <text x="150" y="30" text-anchor="middle" fill="#737373" font-size="10">Training</text>
+                            <text x="280" y="155" text-anchor="start" fill="#737373" font-size="10">Inference</text>
+                            <text x="150" y="285" text-anchor="middle" fill="#737373" font-size="10">Privacy</text>
+                            <text x="20" y="155" text-anchor="start" fill="#737373" font-size="10">Safeguards</text>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-32 lg:py-40 bg-neutral-50">
+        <div class="max-w-4xl mx-auto px-6 lg:px-12 text-center fade-up">
+            <h2 class="serif text-4xl sm:text-5xl lg:text-6xl font-normal leading-tight mb-8">
+                Ready to build<br>
+                <span class="text-mint-500">verifiable trust?</span>
+            </h2>
+            <p class="text-lg text-neutral-500 mb-12 max-w-2xl mx-auto">
+                Join enterprises worldwide in securing their AI infrastructure with cryptographic verification.
+            </p>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <a href="#" class="magnetic-btn bg-neutral-900 text-white px-8 py-4 rounded-full text-sm font-medium flex items-center gap-3 hover:bg-neutral-800 transition-colors">
+                    <span>Schedule Demo</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                    </svg>
+                </a>
+                <a href="#" class="px-8 py-4 text-sm text-neutral-600 hover:text-neutral-900 transition-colors border border-neutral-200 rounded-full hover:border-neutral-300">
+                    Contact Sales
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-16 bg-white border-t border-neutral-100">
+        <div class="max-w-7xl mx-auto px-6 lg:px-12">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-8">
+                <!-- Logo -->
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-gradient-to-br from-mint-400 to-mint-600 rounded-lg flex items-center justify-center">
+                        <span class="text-white font-semibold text-sm">E</span>
+                    </div>
+                    <span class="font-semibold text-lg tracking-tight">EQTY Lab</span>
+                </div>
+
+                <!-- Links -->
+                <div class="flex items-center gap-8 text-sm text-neutral-500">
+                    <a href="#" class="hover:text-neutral-900 transition-colors">Privacy</a>
+                    <a href="#" class="hover:text-neutral-900 transition-colors">Terms</a>
+                    <a href="#" class="hover:text-neutral-900 transition-colors">Security</a>
+                </div>
+
+                <!-- Copyright -->
+                <p class="text-sm text-neutral-400">
+                    © 2025 EQTY Lab. All rights reserved.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scroll Animation Script -->
+    <script>
+        // Intersection Observer for scroll animations
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        // Observe all animated elements
+        document.querySelectorAll('.fade-up, .stagger-children, .line-draw, .reveal-mask').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Parallax effect on scroll
+        let ticking = false;
+        window.addEventListener('scroll', () => {
+            if (!ticking) {
+                window.requestAnimationFrame(() => {
+                    const scrolled = window.pageYOffset;
+                    
+                    // Parallax for floating dots
+                    document.querySelectorAll('.floating-dot').forEach((dot, i) => {
+                        const speed = 0.05 + (i * 0.02);
+                        dot.style.transform = `translateY(${scrolled * speed}px)`;
+                    });
+                    
+                    ticking = false;
+                });
+                ticking = true;
+            }
+        });
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Add visible class to hero elements on load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.querySelectorAll('.fade-up').forEach((el, i) => {
+                    setTimeout(() => {
+                        el.classList.add('visible');
+                    }, i * 100);
+                });
+            }, 200);
+        });
+    </script>
+
+</body>
+</html>

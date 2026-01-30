@@ -23,13 +23,22 @@ import {
 import { useTaskStats, useSignoffQueue, useRealtimeStatus } from "@/hooks/use-elliot";
 import { Badge } from "@/components/ui/badge";
 
+const statusConfig = {
+  connecting: { label: "Connecting...", className: "text-yellow-600 border-yellow-600/50" },
+  connected: { label: "LIVE", className: "text-green-600 border-green-600/50" },
+  disconnected: { label: "Offline", className: "text-gray-600 border-gray-600/50" },
+  error: { label: "Error", className: "text-red-600 border-red-600/50" },
+};
+
 export default function ElliotDashboardPage() {
   const [activeTab, setActiveTab] = useState("tasks");
   const { data: taskStats } = useTaskStats();
   const { data: signoffItems } = useSignoffQueue("pending");
+  const realtimeStatus = useRealtimeStatus();
 
   const pendingSignoffs = signoffItems?.length || 0;
   const runningTasks = taskStats?.running || 0;
+  const statusInfo = statusConfig[realtimeStatus];
 
   return (
     <div className="space-y-6">
@@ -45,9 +54,9 @@ export default function ElliotDashboardPage() {
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Badge variant="outline" className="flex items-center gap-1 text-green-600 border-green-600/50">
-            <Radio className="h-3 w-3 animate-pulse" />
-            LIVE
+          <Badge variant="outline" className={`flex items-center gap-1 ${statusInfo.className}`}>
+            <Radio className={`h-3 w-3 ${realtimeStatus === "connected" ? "animate-pulse" : ""}`} />
+            {statusInfo.label}
           </Badge>
           {runningTasks > 0 && (
             <Badge variant="secondary" className="flex items-center gap-1">

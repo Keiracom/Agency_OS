@@ -1,6 +1,6 @@
 """
 FILE: src/integrations/anthropic.py
-PURPOSE: Anthropic/Claude API integration with spend limiter
+PURPOSE: Anthropic/Claude API integration with spend limiter and prompt caching
 PHASE: 3 (Integrations)
 TASK: INT-012
 DEPENDENCIES:
@@ -10,6 +10,7 @@ DEPENDENCIES:
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 15: AI spend limiter (daily circuit breaker)
+UPDATED: 2026-01-30 - Added prompt caching (90% cost reduction on repeated system prompts)
 """
 
 from typing import Any
@@ -24,15 +25,32 @@ from src.integrations.redis import ai_spend_tracker
 
 class AnthropicClient:
     """
-    Anthropic/Claude API client with spend limiting.
+    Anthropic/Claude API client with spend limiting and prompt caching.
 
     All AI calls go through this client to enforce the daily
-    spend limit (Rule 15).
+    spend limit (Rule 15). Supports prompt caching for up to 90% cost
+    reduction on repeated system prompts.
     """
 
-    # Cost per 1M tokens (approximate, in AUD)
-    COST_PER_M_INPUT_TOKENS = 3.00  # Claude 3 Sonnet
-    COST_PER_M_OUTPUT_TOKENS = 15.00
+    # Cost per 1M tokens (AUD, Jan 2026)
+    # Model-specific pricing
+    MODEL_PRICING = {
+        "claude-3-5-haiku-20241022": {
+            "input": 1.24,  # $0.80 USD × 1.55
+            "output": 6.20,  # $4 USD × 1.55
+            "cached": 0.124,  # 90% discount on cached
+        },
+        "claude-sonnet-4-20250514": {
+            "input": 4.65,  # $3 USD × 1.55
+            "output": 23.25,  # $15 USD × 1.55
+            "cached": 0.465,
+        },
+    }
+    
+    # Fallback pricing (Haiku rates)
+    COST_PER_M_INPUT_TOKENS = 1.24
+    COST_PER_M_OUTPUT_TOKENS = 6.20
+    COST_PER_M_CACHED_TOKENS = 0.124  # 90% discount
 
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key or settings.anthropic_api_key
@@ -63,20 +81,39 @@ class AnthropicClient:
                 message=f"AI spend limit exceeded: ${spent:.2f} of ${self.daily_limit:.2f}",
             )
 
-    async def _record_spend(self, input_tokens: int, output_tokens: int) -> float:
+    async def _record_spend(
+        self, 
+        input_tokens: int, 
+        output_tokens: int,
+        cached_tokens: int = 0,
+        model: str = "claude-3-5-haiku-20241022",
+    ) -> float:
         """
         Record spend from API call.
 
         Args:
             input_tokens: Input tokens used
             output_tokens: Output tokens used
+            cached_tokens: Cached input tokens (90% discount)
+            model: Model used for pricing lookup
 
         Returns:
             Cost in AUD
         """
-        cost = (input_tokens / 1_000_000) * self.COST_PER_M_INPUT_TOKENS + (
-            output_tokens / 1_000_000
-        ) * self.COST_PER_M_OUTPUT_TOKENS
+        pricing = self.MODEL_PRICING.get(model, {
+            "input": self.COST_PER_M_INPUT_TOKENS,
+            "output": self.COST_PER_M_OUTPUT_TOKENS,
+            "cached": self.COST_PER_M_CACHED_TOKENS,
+        })
+        
+        # Regular input tokens (minus cached)
+        regular_input = max(0, input_tokens - cached_tokens)
+        
+        cost = (
+            (regular_input / 1_000_000) * pricing["input"] +
+            (cached_tokens / 1_000_000) * pricing["cached"] +
+            (output_tokens / 1_000_000) * pricing["output"]
+        )
         await ai_spend_tracker.add_spend(cost)
         return cost
 
@@ -104,16 +141,18 @@ class AnthropicClient:
         max_tokens: int = 1024,
         temperature: float = 0.7,
         model: str = "claude-3-5-haiku-20241022",
+        enable_caching: bool = True,
     ) -> dict[str, Any]:
         """
-        Generate a completion.
+        Generate a completion with optional prompt caching.
 
         Args:
             prompt: User prompt
-            system: System prompt
+            system: System prompt (will be cached if enable_caching=True)
             max_tokens: Maximum output tokens
             temperature: Sampling temperature
             model: Model to use
+            enable_caching: Whether to cache system prompt (90% cost reduction)
 
         Returns:
             Completion result with content and usage
@@ -128,18 +167,40 @@ class AnthropicClient:
         try:
             messages: list[anthropic.types.MessageParam] = [{"role": "user", "content": prompt}]
 
+            # Build system prompt with caching if enabled
+            system_param: str | list[dict] = ""
+            if system:
+                if enable_caching:
+                    # Use array format with cache_control for caching
+                    system_param = [
+                        {
+                            "type": "text",
+                            "text": system,
+                            "cache_control": {"type": "ephemeral"}
+                        }
+                    ]
+                else:
+                    system_param = system
+
             response = await self._client.messages.create(
                 model=model,
                 max_tokens=max_tokens,
                 temperature=temperature,
-                system=system or "",
+                system=system_param,
                 messages=messages,
             )
 
-            # Record actual spend
+            # Check for cached tokens
+            cached_tokens = 0
+            if hasattr(response.usage, "cache_read_input_tokens"):
+                cached_tokens = response.usage.cache_read_input_tokens
+
+            # Record actual spend with caching discount
             cost = await self._record_spend(
                 response.usage.input_tokens,
                 response.usage.output_tokens,
+                cached_tokens=cached_tokens,
+                model=model,
             )
 
             # Extract text content from response
@@ -154,6 +215,7 @@ class AnthropicClient:
                 "model": response.model,
                 "input_tokens": response.usage.input_tokens,
                 "output_tokens": response.usage.output_tokens,
+                "cached_tokens": cached_tokens,
                 "cost_aud": cost,
                 "stop_reason": response.stop_reason,
             }
@@ -220,6 +282,7 @@ Return JSON with: {"intent": "category", "confidence": 0.0-1.0, "reasoning": "br
                 "confidence": classification.get("confidence", 0.8),
                 "reasoning": classification.get("reasoning"),
                 "cost_aud": result["cost_aud"],
+                "cached_tokens": result.get("cached_tokens", 0),
             }
         except json.JSONDecodeError:
             return {
@@ -227,6 +290,7 @@ Return JSON with: {"intent": "category", "confidence": 0.0-1.0, "reasoning": "br
                 "confidence": 0.5,
                 "reasoning": "Could not parse classification",
                 "cost_aud": result["cost_aud"],
+                "cached_tokens": result.get("cached_tokens", 0),
             }
 
     async def generate_email(

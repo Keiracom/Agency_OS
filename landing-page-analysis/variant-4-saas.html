@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EQTY Lab - Verifiable Compute for AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;1,500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --bg-glass: rgba(255, 255, 255, 0.03);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-glass: rgba(255, 255, 255, 0.1);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --text-muted: rgba(255, 255, 255, 0.5);
+            --accent-green: #00d97e;
+            --accent-green-glow: rgba(0, 217, 126, 0.3);
+            --accent-teal: #0d9488;
+            --gradient-green: linear-gradient(135deg, #00d97e 0%, #0d9488 100%);
+            --shadow-glow: 0 0 60px rgba(0, 217, 126, 0.15);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Noise texture overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.02;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 1rem 2rem;
+            background: rgba(10, 10, 10, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-weight: 700;
+            font-size: 1.25rem;
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-icon {
+            width: 28px;
+            height: 28px;
+            background: var(--gradient-green);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            background: var(--bg-glass);
+            padding: 0.25rem;
+            border-radius: 100px;
+            border: 1px solid var(--border-glass);
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 100px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+            background: var(--bg-glass);
+        }
+
+        .nav-cta {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.25rem;
+            border-radius: 100px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .btn-ghost:hover {
+            color: var(--text-primary);
+        }
+
+        .btn-primary {
+            background: var(--text-primary);
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-accent {
+            background: var(--accent-green);
+            color: var(--bg-primary);
+        }
+
+        .btn-accent:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8rem 2rem 4rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Animated gradient background */
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150%;
+            height: 100%;
+            background: 
+                radial-gradient(ellipse 50% 50% at 50% 0%, rgba(0, 217, 126, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse 80% 40% at 50% 100%, rgba(13, 148, 136, 0.06) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        /* Grid pattern */
+        .hero-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(ellipse 60% 60% at 50% 30%, black 0%, transparent 70%);
+        }
+
+        .chip-container {
+            position: relative;
+            margin-bottom: 3rem;
+        }
+
+        .chip {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(145deg, #1a1a1a 0%, #0a0a0a 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 
+                0 0 0 1px var(--border-subtle),
+                0 20px 50px -10px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .chip-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            padding: 20px;
+        }
+
+        .chip-cell {
+            width: 16px;
+            height: 16px;
+            background: rgba(0, 217, 126, 0.1);
+            border: 1px solid var(--accent-green);
+            border-radius: 3px;
+            animation: pulse-cell 2s ease-in-out infinite;
+        }
+
+        .chip-cell:nth-child(2) { animation-delay: 0.2s; }
+        .chip-cell:nth-child(3) { animation-delay: 0.4s; }
+        .chip-cell:nth-child(4) { animation-delay: 0.1s; }
+        .chip-cell:nth-child(5) { animation-delay: 0.3s; }
+        .chip-cell:nth-child(6) { animation-delay: 0.5s; }
+        .chip-cell:nth-child(7) { animation-delay: 0.15s; }
+        .chip-cell:nth-child(8) { animation-delay: 0.35s; }
+        .chip-cell:nth-child(9) { animation-delay: 0.25s; }
+
+        @keyframes pulse-cell {
+            0%, 100% { opacity: 0.4; box-shadow: none; }
+            50% { opacity: 1; box-shadow: 0 0 10px var(--accent-green-glow); }
+        }
+
+        .chip-glow {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, var(--accent-green-glow) 0%, transparent 70%);
+            pointer-events: none;
+            animation: glow-pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes glow-pulse {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.1); }
+        }
+
+        /* Circuit lines */
+        .circuit-lines {
+            position: absolute;
+            width: 400px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .circuit-line {
+            position: absolute;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-green), transparent);
+            opacity: 0.3;
+        }
+
+        .circuit-line-left {
+            width: 150px;
+            right: 100%;
+            top: 50%;
+            margin-right: 60px;
+        }
+
+        .circuit-line-right {
+            width: 150px;
+            left: 100%;
+            top: 50%;
+            margin-left: 60px;
+        }
+
+        .hero-content {
+            text-align: center;
+            max-width: 800px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-title {
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 600;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-title span {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+        }
+
+        .hero-subtitle {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin: 0 auto 2.5rem;
+        }
+
+        .hero-cta {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 4rem;
+        }
+
+        .btn-demo {
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            padding: 0.875rem 1.75rem;
+            font-size: 1rem;
+        }
+
+        .btn-demo svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Preorder Section */
+        .preorder {
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .preorder-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .preorder-cards {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .preorder-card {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            padding: 1.25rem 2rem;
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .preorder-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: var(--accent-green);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+        }
+
+        .preorder-card svg {
+            width: 14px;
+            height: 14px;
+            opacity: 0.5;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 8rem 2rem;
+            position: relative;
+        }
+
+        .features::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border-subtle), transparent);
+        }
+
+        .section-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-label {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent-green);
+            background: rgba(0, 217, 126, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 100px;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        .section-title .accent {
+            color: var(--accent-green);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-green), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .feature-card:hover {
+            border-color: rgba(0, 217, 126, 0.3);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(0, 217, 126, 0.1);
+            border: 1px solid rgba(0, 217, 126, 0.2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-icon svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--accent-green);
+        }
+
+        .feature-card h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.9375rem;
+        }
+
+        /* Problem Section */
+        .problem {
+            padding: 8rem 2rem;
+            background: var(--bg-secondary);
+        }
+
+        .problem-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+        }
+
+        .problem-visual {
+            position: relative;
+            aspect-ratio: 1;
+            background: linear-gradient(145deg, #0a0a0a 0%, #050505 100%);
+            border-radius: 24px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hourglass {
+            position: relative;
+            width: 200px;
+            height: 300px;
+        }
+
+        .hourglass-shape {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .hourglass-top, .hourglass-bottom {
+            position: absolute;
+            width: 100%;
+            height: 50%;
+            border: 2px solid var(--accent-green);
+            filter: drop-shadow(0 0 20px var(--accent-green-glow));
+        }
+
+        .hourglass-top {
+            top: 0;
+            border-radius: 100px 100px 0 0;
+            border-bottom: none;
+            clip-path: polygon(10% 0, 90% 0, 50% 100%);
+        }
+
+        .hourglass-bottom {
+            bottom: 0;
+            border-radius: 0 0 100px 100px;
+            border-top: none;
+            clip-path: polygon(50% 0, 90% 100%, 10% 100%);
+        }
+
+        .threat-orb {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            animation: orbit 8s linear infinite;
+        }
+
+        .threat-orb:nth-child(1) { top: 20%; left: 10%; animation-delay: 0s; }
+        .threat-orb:nth-child(2) { top: 20%; right: 10%; animation-delay: 2s; }
+        .threat-orb:nth-child(3) { bottom: 30%; left: 20%; animation-delay: 4s; }
+        .threat-orb:nth-child(4) { bottom: 20%; right: 15%; animation-delay: 6s; }
+
+        @keyframes orbit {
+            0%, 100% { transform: translateY(0) scale(1); opacity: 0.6; }
+            50% { transform: translateY(-10px) scale(1.05); opacity: 1; }
+        }
+
+        .threat-orb svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--accent-green);
+            opacity: 0.7;
+        }
+
+        .problem-text {
+            padding: 2rem;
+        }
+
+        .problem-text .section-label {
+            background: rgba(255, 107, 107, 0.1);
+            color: #ff6b6b;
+        }
+
+        .problem-list {
+            list-style: none;
+            margin-top: 2rem;
+        }
+
+        .problem-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .problem-list li:last-child {
+            border-bottom: none;
+        }
+
+        .problem-list svg {
+            width: 20px;
+            height: 20px;
+            stroke: #ff6b6b;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .problem-list strong {
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .problem-list span {
+            color: var(--text-secondary);
+            font-size: 0.9375rem;
+        }
+
+        /* Solutions Section */
+        .solutions {
+            padding: 8rem 2rem;
+            position: relative;
+        }
+
+        .solutions-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 4rem;
+            align-items: start;
+            margin-top: 4rem;
+        }
+
+        .solutions-visual {
+            position: sticky;
+            top: 120px;
+        }
+
+        .verifiable-text {
+            font-size: clamp(3rem, 5vw, 5rem);
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-weight: 500;
+            color: var(--accent-green);
+            line-height: 1;
+            position: relative;
+        }
+
+        .verifiable-dots {
+            position: absolute;
+            right: -40px;
+            top: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+        }
+
+        .verifiable-dot {
+            width: 12px;
+            height: 12px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            opacity: 0.3;
+        }
+
+        .verifiable-dot.active {
+            opacity: 1;
+            box-shadow: 0 0 20px var(--accent-green-glow);
+        }
+
+        .solutions-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .solution-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 1.5rem 2rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .solution-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--accent-green);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .solution-item:hover,
+        .solution-item.active {
+            border-color: rgba(0, 217, 126, 0.3);
+            background: rgba(0, 217, 126, 0.02);
+        }
+
+        .solution-item:hover::before,
+        .solution-item.active::before {
+            opacity: 1;
+        }
+
+        .solution-item h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--accent-green);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .solution-item h3::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+        }
+
+        .solution-item p {
+            color: var(--text-secondary);
+            font-size: 0.9375rem;
+            padding-left: 1.5rem;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 8rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-section::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150%;
+            height: 100%;
+            background: radial-gradient(ellipse 50% 80% at 50% 100%, rgba(0, 217, 126, 0.08) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .cta-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .cta-title {
+            font-size: clamp(2rem, 4vw, 3.5rem);
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin-bottom: 1rem;
+        }
+
+        .cta-subtitle {
+            color: var(--text-secondary);
+            font-size: 1.125rem;
+            max-width: 500px;
+            margin: 0 auto 2.5rem;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 4rem 2rem;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-logo {
+            font-weight: 600;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: color 0.2s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .footer-copy {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 968px) {
+            .nav-links {
+                display: none;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .problem-content {
+                grid-template-columns: 1fr;
+            }
+
+            .problem-visual {
+                aspect-ratio: 16/9;
+                order: 2;
+            }
+
+            .solutions-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .solutions-visual {
+                position: static;
+            }
+
+            .preorder-cards {
+                flex-wrap: wrap;
+            }
+
+            .footer-container {
+                flex-direction: column;
+                gap: 2rem;
+                text-align: center;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-in {
+            animation: fadeInUp 0.6s ease forwards;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-container">
+            <div class="logo">
+                <div class="logo-icon">E</div>
+                <span>EQTY LAB</span>
+            </div>
+            <div class="nav-links">
+                <a href="#features">Overview</a>
+                <a href="#solutions">Technology</a>
+                <a href="#testimonials">Testimonials</a>
+                <a href="#resources">Resources</a>
+            </div>
+            <div class="nav-cta">
+                <a href="#" class="btn btn-ghost">Log In</a>
+                <a href="#" class="btn btn-primary">Get Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-grid"></div>
+        
+        <div class="chip-container">
+            <div class="chip-glow"></div>
+            <div class="circuit-lines">
+                <div class="circuit-line circuit-line-left"></div>
+                <div class="circuit-line circuit-line-right"></div>
+            </div>
+            <div class="chip">
+                <div class="chip-grid">
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hero-content">
+            <h1 class="hero-title">
+                <span>Verify</span> to Trust AI
+            </h1>
+            <p class="hero-subtitle">
+                Introducing Verifiable Compute. Ready for the Agentic AI Era.
+            </p>
+            <div class="hero-cta">
+                <a href="#demo" class="btn btn-demo btn-primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                    Schedule Demo
+                </a>
+            </div>
+        </div>
+
+        <div class="preorder">
+            <p class="preorder-label">Preorders Q4 Ship 2025</p>
+            <div class="preorder-cards">
+                <a href="#" class="preorder-card">
+                    Dell Appliance
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M7 17L17 7M17 7H7M17 7v10"/>
+                    </svg>
+                </a>
+                <a href="#" class="preorder-card">
+                    Cloud Provider
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M7 17L17 7M17 7H7M17 7v10"/>
+                    </svg>
+                </a>
+                <a href="#" class="preorder-card">
+                    Accenture AIP Platform
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M7 17L17 7M17 7H7M17 7v10"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="section-container">
+            <div class="section-header">
+                <span class="section-label">Verifiable Compute</span>
+                <h2 class="section-title">
+                    What We <span class="accent">Verify</span>
+                </h2>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                            <path d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7c-2 0-3 1-3 3z"/>
+                            <path d="M12 4v16M4 12h16"/>
+                        </svg>
+                    </div>
+                    <h3>Data Integrity</h3>
+                    <p>Verify what data goes into an AI system with cryptographic proof of origin and authenticity.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                            <path d="M12 2L4 7v10l8 5 8-5V7l-8-5z"/>
+                            <path d="M12 22V12M12 12L4 7M12 12l8-5"/>
+                        </svg>
+                    </div>
+                    <h3>Model Verification</h3>
+                    <p>Prove which AI model processed your data and ensure it hasn't been tampered with.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                            <path d="M9 12l2 2 4-4"/>
+                            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"/>
+                        </svg>
+                    </div>
+                    <h3>Output Attestation</h3>
+                    <p>Cryptographically attest what outputs an AI generates for complete audit trails.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section class="problem" id="problem">
+        <div class="section-container">
+            <div class="problem-content">
+                <div class="problem-visual">
+                    <div class="threat-orb">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                        </svg>
+                    </div>
+                    <div class="threat-orb">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                    </div>
+                    <div class="threat-orb">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 8v4M12 16h.01"/>
+                        </svg>
+                    </div>
+                    <div class="threat-orb">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                            <path d="M12 9v4M12 17h.01"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="problem-text">
+                    <span class="section-label">The Problem</span>
+                    <h2 class="section-title">
+                        New AI workflows equal<br><span class="accent">New Threats</span>
+                    </h2>
+                    <p style="color: var(--text-secondary); margin-top: 1rem;">
+                        As AI systems become more autonomous and integrated into critical workflows, the attack surface expands exponentially.
+                    </p>
+
+                    <ul class="problem-list">
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                <path d="M18 6L6 18M6 6l12 12"/>
+                            </svg>
+                            <div>
+                                <strong>Supply Chain Attacks</strong>
+                                <span>Compromised models and poisoned training data</span>
+                            </div>
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                <path d="M18 6L6 18M6 6l12 12"/>
+                            </svg>
+                            <div>
+                                <strong>Model Tampering</strong>
+                                <span>Unauthorized modifications to production models</span>
+                            </div>
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                <path d="M18 6L6 18M6 6l12 12"/>
+                            </svg>
+                            <div>
+                                <strong>Data Exfiltration</strong>
+                                <span>Sensitive data leaking through AI pipelines</span>
+                            </div>
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                <path d="M18 6L6 18M6 6l12 12"/>
+                            </svg>
+                            <div>
+                                <strong>Compliance Gaps</strong>
+                                <span>Inability to prove AI governance adherence</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Solutions Section -->
+    <section class="solutions" id="solutions">
+        <div class="section-container">
+            <div class="section-header">
+                <span class="section-label">Solutions</span>
+                <h2 class="section-title">
+                    Evolving trust for<br><span class="accent">AI with</span>
+                </h2>
+            </div>
+
+            <div class="solutions-grid">
+                <div class="solutions-visual">
+                    <div class="verifiable-text">
+                        Verifiable
+                        <div class="verifiable-dots">
+                            <div class="verifiable-dot"></div>
+                            <div class="verifiable-dot active"></div>
+                            <div class="verifiable-dot"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="solutions-list">
+                    <div class="solution-item active">
+                        <h3>AI Training and Inference</h3>
+                        <p>Cryptographic proof that AI deployments are untampered and running exactly as intended.</p>
+                    </div>
+                    <div class="solution-item">
+                        <h3>AI Privacy</h3>
+                        <p>Mathematical guarantees that AI models and sensitive data remain confidential throughout processing.</p>
+                    </div>
+                    <div class="solution-item">
+                        <h3>AI Safeguards</h3>
+                        <p>Verifiable proof that AI guardrails and safety measures are properly implemented and active.</p>
+                    </div>
+                    <div class="solution-item">
+                        <h3>AI Governance</h3>
+                        <p>Auditable compliance trails that prove adherence to regulations and internal policies.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="section-container">
+            <div class="cta-content">
+                <h2 class="cta-title">Ready to verify your AI?</h2>
+                <p class="cta-subtitle">
+                    Join leading enterprises building trustworthy AI systems with verifiable compute.
+                </p>
+                <a href="#" class="btn btn-accent btn-demo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                    Schedule Demo
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-logo">
+                <div class="logo-icon" style="width: 20px; height: 20px; font-size: 0.625rem;">E</div>
+                EQTY LAB
+            </div>
+            <div class="footer-links">
+                <a href="#">Privacy</a>
+                <a href="#">Terms</a>
+                <a href="#">Security</a>
+                <a href="#">Documentation</a>
+                <a href="#">Contact</a>
+            </div>
+            <div class="footer-copy">
+                © 2025 EQTY Lab. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Intersection Observer for scroll animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate-in');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.feature-card, .solution-item').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Solution items interaction
+        const solutionItems = document.querySelectorAll('.solution-item');
+        const dots = document.querySelectorAll('.verifiable-dot');
+
+        solutionItems.forEach((item, index) => {
+            item.addEventListener('mouseenter', () => {
+                solutionItems.forEach(i => i.classList.remove('active'));
+                dots.forEach(d => d.classList.remove('active'));
+                item.classList.add('active');
+                if (dots[Math.min(index, dots.length - 1)]) {
+                    dots[Math.min(index, dots.length - 1)].classList.add('active');
+                }
+            });
+        });
+
+        // Smooth scroll for nav links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

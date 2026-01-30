@@ -1095,7 +1095,7 @@ async def scrape_youtube(limit_per_keyword: int = 10) -> list[dict]:
                 channel_name = video.get('channel', '') or video.get('uploader', '')
                 view_count = video.get('view_count', 0) or 0
                 duration = video.get('duration', 0)
-                duration_str = f"{duration // 60}:{duration % 60:02d}" if duration else ''
+                duration_str = f"{int(duration) // 60}:{int(duration) % 60:02d}" if duration else ''
                 
                 # Try to get transcript (skip if IP is blocked)
                 transcript_text = None

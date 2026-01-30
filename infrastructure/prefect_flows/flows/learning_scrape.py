@@ -945,6 +945,514 @@ async def scrape_twitter(limit: int = 50) -> list[dict]:
     return insights
 
 
+@task(retries=2, retry_delay_seconds=10)
+async def scrape_arxiv(keywords: list = None, limit: int = 50) -> list[dict]:
+    """
+    Scrape ArXiv for AI/ML research papers.
+    Uses ArXiv API (free, no auth required).
+    
+    Categories: cs.AI, cs.CL, cs.LG
+    Keywords: agent memory, multi-agent systems, LLM reasoning, tool use
+    """
+    logger = get_run_logger()
+    logger.info(f"Scraping ArXiv papers (limit: {limit})...")
+    
+    if keywords is None:
+        keywords = [
+            "agent memory",
+            "multi-agent systems", 
+            "LLM reasoning",
+            "tool use language models",
+            "autonomous agents",
+            "agentic AI",
+            "retrieval augmented generation"
+        ]
+    
+    # ArXiv categories for AI research
+    categories = ["cs.AI", "cs.CL", "cs.LG"]
+    
+    insights = []
+    
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+        # Search by keywords
+        for keyword in keywords[:5]:  # Limit to avoid rate limiting
+            await rate_limiter.wait()
+            
+            try:
+                # Build query: search in title/abstract, filter by categories
+                cat_query = "+OR+".join([f"cat:{cat}" for cat in categories])
+                search_query = f"all:{keyword.replace(' ', '+AND+all:')}+AND+({cat_query})"
+                
+                response = await client.get(
+                    f"http://export.arxiv.org/api/query",
+                    params={
+                        "search_query": search_query,
+                        "max_results": limit // len(keywords),
+                        "sortBy": "submittedDate",
+                        "sortOrder": "descending"
+                    }
+                )
+                response.raise_for_status()
+                
+                content = response.text
+                
+                # Parse XML response - extract entries
+                entries = re.findall(
+                    r'<entry>(.*?)</entry>',
+                    content,
+                    re.DOTALL
+                )
+                
+                for entry in entries:
+                    # Extract fields
+                    title_match = re.search(r'<title>(.*?)</title>', entry, re.DOTALL)
+                    summary_match = re.search(r'<summary>(.*?)</summary>', entry, re.DOTALL)
+                    link_match = re.search(r'<id>(.*?)</id>', entry)
+                    published_match = re.search(r'<published>(.*?)</published>', entry)
+                    authors_matches = re.findall(r'<author>.*?<name>(.*?)</name>.*?</author>', entry, re.DOTALL)
+                    categories_matches = re.findall(r'<category[^>]*term="([^"]+)"', entry)
+                    
+                    if not title_match or not link_match:
+                        continue
+                    
+                    title = title_match.group(1).strip().replace('\n', ' ')
+                    summary = summary_match.group(1).strip().replace('\n', ' ')[:500] if summary_match else ""
+                    url = link_match.group(1).strip()
+                    published = published_match.group(1).strip() if published_match else ""
+                    authors = authors_matches[:3]  # First 3 authors
+                    paper_categories = categories_matches[:5]
+                    
+                    # Skip if already seen (ArXiv IDs are unique)
+                    arxiv_id = url.split('/')[-1] if url else ""
+                    
+                    category = categorize_content(f"{title} {summary}")
+                    confidence = 0.85  # Research papers are high quality
+                    
+                    insights.append({
+                        "category": category,
+                        "content": f"[ArXiv {arxiv_id}] {title}",
+                        "summary": f"{title}. {summary[:300]}",
+                        "source_url": url,
+                        "source_type": "arxiv",
+                        "confidence_score": round(confidence, 2),
+                        "metadata": {
+                            "arxiv_id": arxiv_id,
+                            "authors": authors,
+                            "categories": paper_categories,
+                            "published": published,
+                            "search_keyword": keyword
+                        }
+                    })
+                    
+            except Exception as e:
+                logger.warning(f"ArXiv search failed for '{keyword}': {e}")
+                continue
+    
+    # Dedupe by arxiv_id
+    seen_ids = set()
+    unique_insights = []
+    for insight in insights:
+        arxiv_id = insight.get("metadata", {}).get("arxiv_id", "")
+        if arxiv_id and arxiv_id not in seen_ids:
+            seen_ids.add(arxiv_id)
+            unique_insights.append(insight)
+    
+    logger.info(f"Scraped {len(unique_insights)} ArXiv papers")
+    return unique_insights
+
+
+@task(retries=2, retry_delay_seconds=10)
+async def scrape_devto(keywords: list = None, limit: int = 50) -> list[dict]:
+    """
+    Scrape Dev.to for tech articles.
+    Uses Dev.to API (free, no auth required).
+    
+    Tags: ai, llm, automation, python, agents
+    """
+    logger = get_run_logger()
+    logger.info(f"Scraping Dev.to articles (limit: {limit})...")
+    
+    if keywords is None:
+        keywords = ["ai", "llm", "automation", "python", "agents", "machinelearning", "webdev"]
+    
+    insights = []
+    
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+        # Search by tags
+        for tag in keywords[:6]:
+            await rate_limiter.wait()
+            
+            try:
+                response = await client.get(
+                    "https://dev.to/api/articles",
+                    params={
+                        "tag": tag,
+                        "per_page": min(30, limit // len(keywords)),
+                        "state": "rising"  # Get trending/fresh content
+                    },
+                    headers={"User-Agent": "Elliot-Learning-Bot/1.0"}
+                )
+                response.raise_for_status()
+                
+                articles = response.json()
+                
+                for article in articles:
+                    title = article.get("title", "")
+                    description = article.get("description", "")[:300]
+                    url = article.get("url", "")
+                    author = article.get("user", {}).get("username", "")
+                    reactions = article.get("positive_reactions_count", 0)
+                    comments = article.get("comments_count", 0)
+                    reading_time = article.get("reading_time_minutes", 0)
+                    published = article.get("published_at", "")
+                    tags = article.get("tag_list", [])
+                    
+                    if not title or not url:
+                        continue
+                    
+                    # Minimum engagement threshold
+                    if reactions < 10:
+                        continue
+                    
+                    # Confidence based on engagement
+                    confidence = min(0.9, 0.5 + (reactions / 200) + (comments / 50))
+                    category = categorize_content(f"{title} {description} {' '.join(tags)}")
+                    
+                    insights.append({
+                        "category": category,
+                        "content": f"[Dev.to {reactions}❤️] {title}",
+                        "summary": f"{title} by @{author}. {description}",
+                        "source_url": url,
+                        "source_type": "devto",
+                        "confidence_score": round(confidence, 2),
+                        "metadata": {
+                            "author": author,
+                            "reactions": reactions,
+                            "comments": comments,
+                            "reading_time": reading_time,
+                            "tags": tags,
+                            "published": published,
+                            "search_tag": tag
+                        }
+                    })
+                    
+            except Exception as e:
+                logger.warning(f"Dev.to search failed for tag '{tag}': {e}")
+                continue
+    
+    # Dedupe by URL
+    seen_urls = set()
+    unique_insights = []
+    for insight in insights:
+        url = insight.get("source_url", "")
+        if url and url not in seen_urls:
+            seen_urls.add(url)
+            unique_insights.append(insight)
+    
+    logger.info(f"Scraped {len(unique_insights)} Dev.to articles")
+    return unique_insights
+
+
+@task(retries=2, retry_delay_seconds=10)
+async def scrape_indiehackers(limit: int = 30) -> list[dict]:
+    """
+    Scrape Indie Hackers RSS feed.
+    Filters for SaaS, automation, AI keywords.
+    """
+    logger = get_run_logger()
+    logger.info(f"Scraping Indie Hackers (limit: {limit})...")
+    
+    insights = []
+    
+    # Keywords to filter for relevant content
+    relevant_keywords = [
+        'saas', 'ai', 'automation', 'startup', 'mrr', 'revenue',
+        'launch', 'product', 'bootstrap', 'indie', 'growth', 'marketing',
+        'sales', 'b2b', 'llm', 'gpt', 'agent', 'api'
+    ]
+    
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+        await rate_limiter.wait()
+        
+        try:
+            response = await client.get(
+                "https://www.indiehackers.com/feed.xml",
+                headers={"User-Agent": "Elliot-Learning-Bot/1.0"}
+            )
+            response.raise_for_status()
+            
+            content = response.text
+            
+            # Parse RSS items
+            items = re.findall(
+                r'<item>(.*?)</item>',
+                content,
+                re.DOTALL
+            )[:limit * 2]  # Get more to filter
+            
+            for item in items:
+                title_match = re.search(r'<title><!\[CDATA\[(.*?)\]\]></title>', item)
+                if not title_match:
+                    title_match = re.search(r'<title>(.*?)</title>', item)
+                    
+                link_match = re.search(r'<link>(.*?)</link>', item)
+                desc_match = re.search(r'<description><!\[CDATA\[(.*?)\]\]></description>', item, re.DOTALL)
+                if not desc_match:
+                    desc_match = re.search(r'<description>(.*?)</description>', item, re.DOTALL)
+                pub_date_match = re.search(r'<pubDate>(.*?)</pubDate>', item)
+                
+                if not title_match or not link_match:
+                    continue
+                
+                title = title_match.group(1).strip()
+                url = link_match.group(1).strip()
+                description = desc_match.group(1).strip()[:500] if desc_match else ""
+                pub_date = pub_date_match.group(1).strip() if pub_date_match else ""
+                
+                # Clean HTML from description
+                description = re.sub(r'<[^>]+>', '', description)
+                
+                # Check if content is relevant (contains any relevant keyword)
+                text_to_check = f"{title} {description}".lower()
+                if not any(kw in text_to_check for kw in relevant_keywords):
+                    continue
+                
+                category = categorize_content(f"{title} {description}")
+                confidence = 0.7  # Indie Hackers has quality discussions
+                
+                insights.append({
+                    "category": category,
+                    "content": f"[Indie Hackers] {title}",
+                    "summary": f"{title}. {description[:200]}",
+                    "source_url": url,
+                    "source_type": "indiehackers",
+                    "confidence_score": round(confidence, 2),
+                    "metadata": {
+                        "published": pub_date,
+                        "feed": "main"
+                    }
+                })
+                
+                if len(insights) >= limit:
+                    break
+                    
+        except Exception as e:
+            logger.warning(f"Indie Hackers RSS failed: {e}")
+    
+    logger.info(f"Scraped {len(insights)} Indie Hackers posts")
+    return insights
+
+
+@task(retries=2, retry_delay_seconds=10)
+async def scrape_substacks(limit: int = 50) -> list[dict]:
+    """
+    Scrape Substack newsletters via RSS feeds.
+    
+    Known newsletters:
+    - Lenny's Newsletter
+    - Latent Space (AI)
+    - One Useful Thing (AI/productivity)
+    """
+    logger = get_run_logger()
+    logger.info(f"Scraping Substack newsletters (limit: {limit})...")
+    
+    # Newsletter RSS feeds
+    newsletters = [
+        {"name": "Lenny's Newsletter", "feed": "https://www.lennysnewsletter.com/feed"},
+        {"name": "Latent Space", "feed": "https://www.latent.space/feed"},
+        {"name": "One Useful Thing", "feed": "https://www.oneusefulthing.org/feed"},
+        {"name": "The Pragmatic Engineer", "feed": "https://newsletter.pragmaticengineer.com/feed"},
+        {"name": "Simon Willison", "feed": "https://simonwillison.net/atom/entries/"},
+    ]
+    
+    insights = []
+    per_feed_limit = max(5, limit // len(newsletters))
+    
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+        for newsletter in newsletters:
+            await rate_limiter.wait()
+            
+            try:
+                response = await client.get(
+                    newsletter["feed"],
+                    headers={"User-Agent": "Elliot-Learning-Bot/1.0"},
+                    follow_redirects=True
+                )
+                response.raise_for_status()
+                
+                content = response.text
+                
+                # Parse RSS/Atom items
+                # Try RSS format first
+                items = re.findall(r'<item>(.*?)</item>', content, re.DOTALL)
+                is_atom = False
+                
+                # Fall back to Atom format
+                if not items:
+                    items = re.findall(r'<entry>(.*?)</entry>', content, re.DOTALL)
+                    is_atom = True
+                
+                items = items[:per_feed_limit]
+                
+                for item in items:
+                    if is_atom:
+                        title_match = re.search(r'<title[^>]*>(.*?)</title>', item, re.DOTALL)
+                        link_match = re.search(r'<link[^>]*href="([^"]+)"', item)
+                        desc_match = re.search(r'<content[^>]*>(.*?)</content>', item, re.DOTALL)
+                        if not desc_match:
+                            desc_match = re.search(r'<summary[^>]*>(.*?)</summary>', item, re.DOTALL)
+                        pub_match = re.search(r'<published>(.*?)</published>', item)
+                        if not pub_match:
+                            pub_match = re.search(r'<updated>(.*?)</updated>', item)
+                    else:
+                        title_match = re.search(r'<title><!\[CDATA\[(.*?)\]\]></title>', item)
+                        if not title_match:
+                            title_match = re.search(r'<title>(.*?)</title>', item)
+                        link_match = re.search(r'<link>(.*?)</link>', item)
+                        desc_match = re.search(r'<description><!\[CDATA\[(.*?)\]\]></description>', item, re.DOTALL)
+                        if not desc_match:
+                            desc_match = re.search(r'<description>(.*?)</description>', item, re.DOTALL)
+                        pub_match = re.search(r'<pubDate>(.*?)</pubDate>', item)
+                    
+                    if not title_match or not link_match:
+                        continue
+                    
+                    title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip()
+                    url = link_match.group(1).strip()
+                    description = ""
+                    if desc_match:
+                        description = re.sub(r'<[^>]+>', '', desc_match.group(1)).strip()[:500]
+                    pub_date = pub_match.group(1).strip() if pub_match else ""
+                    
+                    category = categorize_content(f"{title} {description}")
+                    confidence = 0.8  # Substacks are curated, high quality
+                    
+                    insights.append({
+                        "category": category,
+                        "content": f"[{newsletter['name']}] {title}",
+                        "summary": f"{title}. {description[:200]}",
+                        "source_url": url,
+                        "source_type": "substack",
+                        "confidence_score": round(confidence, 2),
+                        "metadata": {
+                            "newsletter": newsletter["name"],
+                            "published": pub_date
+                        }
+                    })
+                    
+            except Exception as e:
+                logger.warning(f"Substack RSS failed for {newsletter['name']}: {e}")
+                continue
+    
+    logger.info(f"Scraped {len(insights)} Substack posts")
+    return insights
+
+
+@task(retries=2, retry_delay_seconds=10)
+async def scrape_ai_blogs(limit: int = 30) -> list[dict]:
+    """
+    Scrape AI company/project blogs via RSS.
+    
+    Sources:
+    - Anthropic
+    - OpenAI
+    - LangChain
+    """
+    logger = get_run_logger()
+    logger.info(f"Scraping AI blogs (limit: {limit})...")
+    
+    # Blog RSS feeds
+    blogs = [
+        {"name": "Anthropic", "feed": "https://www.anthropic.com/feed.xml", "fallback": "https://www.anthropic.com/research"},
+        {"name": "OpenAI", "feed": "https://openai.com/blog/rss.xml", "fallback": None},
+        {"name": "LangChain", "feed": "https://blog.langchain.dev/rss/", "fallback": None},
+        {"name": "Hugging Face", "feed": "https://huggingface.co/blog/feed.xml", "fallback": None},
+        {"name": "Google AI", "feed": "https://blog.google/technology/ai/rss/", "fallback": None},
+    ]
+    
+    insights = []
+    per_blog_limit = max(5, limit // len(blogs))
+    
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+        for blog in blogs:
+            await rate_limiter.wait()
+            
+            try:
+                response = await client.get(
+                    blog["feed"],
+                    headers={"User-Agent": "Elliot-Learning-Bot/1.0"},
+                    follow_redirects=True
+                )
+                response.raise_for_status()
+                
+                content = response.text
+                
+                # Parse RSS/Atom items
+                items = re.findall(r'<item>(.*?)</item>', content, re.DOTALL)
+                is_atom = False
+                
+                if not items:
+                    items = re.findall(r'<entry>(.*?)</entry>', content, re.DOTALL)
+                    is_atom = True
+                
+                items = items[:per_blog_limit]
+                
+                for item in items:
+                    if is_atom:
+                        title_match = re.search(r'<title[^>]*>(.*?)</title>', item, re.DOTALL)
+                        link_match = re.search(r'<link[^>]*href="([^"]+)"', item)
+                        if not link_match:
+                            link_match = re.search(r'<link>(.*?)</link>', item)
+                        desc_match = re.search(r'<content[^>]*>(.*?)</content>', item, re.DOTALL)
+                        if not desc_match:
+                            desc_match = re.search(r'<summary[^>]*>(.*?)</summary>', item, re.DOTALL)
+                        pub_match = re.search(r'<published>(.*?)</published>', item)
+                        if not pub_match:
+                            pub_match = re.search(r'<updated>(.*?)</updated>', item)
+                    else:
+                        title_match = re.search(r'<title><!\[CDATA\[(.*?)\]\]></title>', item)
+                        if not title_match:
+                            title_match = re.search(r'<title>(.*?)</title>', item)
+                        link_match = re.search(r'<link>(.*?)</link>', item)
+                        desc_match = re.search(r'<description><!\[CDATA\[(.*?)\]\]></description>', item, re.DOTALL)
+                        if not desc_match:
+                            desc_match = re.search(r'<description>(.*?)</description>', item, re.DOTALL)
+                        pub_match = re.search(r'<pubDate>(.*?)</pubDate>', item)
+                    
+                    if not title_match or not link_match:
+                        continue
+                    
+                    title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip()
+                    url = link_match.group(1).strip()
+                    description = ""
+                    if desc_match:
+                        description = re.sub(r'<[^>]+>', '', desc_match.group(1)).strip()[:500]
+                    pub_date = pub_match.group(1).strip() if pub_match else ""
+                    
+                    category = "tech_trend"  # AI blogs are always tech trends
+                    confidence = 0.9  # Primary sources from AI labs
+                    
+                    insights.append({
+                        "category": category,
+                        "content": f"[{blog['name']} Blog] {title}",
+                        "summary": f"{title}. {description[:200]}",
+                        "source_url": url,
+                        "source_type": "ai_blog",
+                        "confidence_score": round(confidence, 2),
+                        "metadata": {
+                            "blog": blog["name"],
+                            "published": pub_date
+                        }
+                    })
+                    
+            except Exception as e:
+                logger.warning(f"AI blog RSS failed for {blog['name']}: {e}")
+                continue
+    
+    logger.info(f"Scraped {len(insights)} AI blog posts")
+    return insights
+
+
 @task(retries=2, retry_delay_seconds=30)
 async def scrape_reddit(limit: int = 50) -> list[dict]:
     """
@@ -1257,7 +1765,7 @@ async def update_learning_stats(stored_count: int):
 
 @flow(
     name="daily_learning_scrape",
-    description="Scrape HackerNews, ProductHunt, GitHub Trending, YouTube, Reddit, and X/Twitter for insights",
+    description="Scrape HackerNews, ProductHunt, GitHub Trending, YouTube, Reddit, X/Twitter, ArXiv, Dev.to, Indie Hackers, Substack, and AI blogs for insights",
     retries=1,
     retry_delay_seconds=300,
     log_prints=True
@@ -1268,7 +1776,12 @@ async def daily_learning_scrape(
     gh_limit: int = 15,
     yt_limit: int = 30,
     reddit_limit: int = 50,
-    twitter_limit: int = 50
+    twitter_limit: int = 50,
+    arxiv_limit: int = 50,
+    devto_limit: int = 50,
+    indiehackers_limit: int = 30,
+    substack_limit: int = 50,
+    aiblogs_limit: int = 30
 ):
     """
     Main flow: Scrape multiple sources and store insights.
@@ -1280,6 +1793,11 @@ async def daily_learning_scrape(
         yt_limit: Number of YouTube videos to scrape
         reddit_limit: Number of Reddit posts to scrape
         twitter_limit: Number of X/Twitter posts to scrape
+        arxiv_limit: Number of ArXiv papers to scrape
+        devto_limit: Number of Dev.to articles to scrape
+        indiehackers_limit: Number of Indie Hackers posts to scrape
+        substack_limit: Number of Substack posts to scrape
+        aiblogs_limit: Number of AI blog posts to scrape
     """
     logger = get_run_logger()
     logger.info("Starting daily learning scrape...")
@@ -1294,13 +1812,18 @@ async def daily_learning_scrape(
         scrape_youtube(yt_limit),
         scrape_reddit(reddit_limit),
         scrape_twitter(twitter_limit),
+        scrape_arxiv(limit=arxiv_limit),
+        scrape_devto(limit=devto_limit),
+        scrape_indiehackers(limit=indiehackers_limit),
+        scrape_substacks(limit=substack_limit),
+        scrape_ai_blogs(limit=aiblogs_limit),
         return_exceptions=True
     )
     
     # Unpack results, handling any exceptions
-    scraper_names = ["hackernews", "producthunt", "github", "youtube", "reddit", "twitter"]
-    hn_insights, ph_insights, gh_insights, yt_insights, reddit_insights, twitter_insights = [], [], [], [], [], []
-    insights_list = [hn_insights, ph_insights, gh_insights, yt_insights, reddit_insights, twitter_insights]
+    scraper_names = ["hackernews", "producthunt", "github", "youtube", "reddit", "twitter", "arxiv", "devto", "indiehackers", "substack", "aiblogs"]
+    hn_insights, ph_insights, gh_insights, yt_insights, reddit_insights, twitter_insights, arxiv_insights, devto_insights, ih_insights, substack_insights, aiblogs_insights = [], [], [], [], [], [], [], [], [], [], []
+    insights_list = [hn_insights, ph_insights, gh_insights, yt_insights, reddit_insights, twitter_insights, arxiv_insights, devto_insights, ih_insights, substack_insights, aiblogs_insights]
     
     for i, result in enumerate(results):
         if isinstance(result, Exception):
@@ -1310,7 +1833,11 @@ async def daily_learning_scrape(
             logger.info(f"Scraper {scraper_names[i]} returned {len(result or [])} insights")
     
     # Combine all insights
-    all_insights = hn_insights + ph_insights + gh_insights + yt_insights + reddit_insights + twitter_insights
+    all_insights = (
+        hn_insights + ph_insights + gh_insights + yt_insights + 
+        reddit_insights + twitter_insights + arxiv_insights + 
+        devto_insights + ih_insights + substack_insights + aiblogs_insights
+    )
     logger.info(f"Total raw insights: {len(all_insights)}")
     
     # Deduplicate
@@ -1347,7 +1874,12 @@ async def daily_learning_scrape(
             "github": len(gh_insights),
             "youtube": len(yt_insights),
             "reddit": len(reddit_insights),
-            "twitter": len(twitter_insights)
+            "twitter": len(twitter_insights),
+            "arxiv": len(arxiv_insights),
+            "devto": len(devto_insights),
+            "indiehackers": len(ih_insights),
+            "substack": len(substack_insights),
+            "aiblogs": len(aiblogs_insights)
         }
     }
 

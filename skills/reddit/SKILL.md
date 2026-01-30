@@ -1,3 +1,9 @@
+---
+name: reddit
+description: Use when scraping Reddit posts or searching subreddits. Get top/hot/new posts, search by keyword, read comments. Triggers on "reddit", "r/", "subreddit", "what are people saying about", community discussions and opinions.
+metadata: {"clawdbot":{"emoji":"🤖"}}
+---
+
 # Reddit Scraping Skill
 
 Public JSON endpoints for scraping Reddit without authentication.

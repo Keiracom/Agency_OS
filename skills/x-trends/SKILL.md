@@ -1,6 +1,6 @@
 ---
 name: x-trends
-description: "Fetches current top trending topics on X (Twitter) for any country using public aggregators."
+description: Use when checking what's trending on X/Twitter. Fetches top trending topics by country via public aggregators. Triggers on "trending on x", "twitter trends", "what's viral", "trending topics", social media pulse.
 version: 1.2.0
 author: Ani
 license: MIT

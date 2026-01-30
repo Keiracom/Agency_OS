@@ -1,3 +1,9 @@
+---
+name: github-search
+description: Use when searching GitHub for repos, code, or users. Find repos by stars, language, topic. Search code patterns across GitHub. Triggers on "find repos", "github search", "code search", "popular libraries", open source discovery.
+metadata: {"clawdbot":{"emoji":"🔍"}}
+---
+
 # GitHub Search API Skill
 
 Search GitHub repositories, code, issues, and users via REST API.

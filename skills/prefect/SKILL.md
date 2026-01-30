@@ -1,6 +1,6 @@
 ---
 name: prefect
-description: Prefect workflow orchestration. Manage flows, flow runs, deployments, and monitoring.
+description: Use when managing scheduled workflows or background jobs. Check flow runs, trigger deployments, monitor pipeline health. Triggers on "flow run", "prefect", "workflow", "scheduled job", "pipeline status", "cron job".
 metadata: {"clawdbot":{"emoji":"🔷","always":true,"requires":{"bins":["curl","jq"],"env":["PREFECT_API_URL"]}}}
 ---
 

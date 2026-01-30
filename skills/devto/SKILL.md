@@ -1,3 +1,9 @@
+---
+name: devto
+description: Use when scraping Dev.to articles or finding developer content. Search by tag, get trending posts, top articles this week/month. Triggers on "dev.to", "dev articles", "developer blog posts", tech content trends.
+metadata: {"clawdbot":{"emoji":"📝"}}
+---
+
 # Dev.to Scraping Skill
 
 Fetch and analyze articles from Dev.to using the Forem API v1.

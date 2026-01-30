@@ -1,3 +1,9 @@
+---
+name: arxiv
+description: Use when searching academic papers or research. ArXiv API for finding papers by topic, author, category. Triggers on "papers about", "research on", "arxiv", "academic", "citations", latest ML/AI/CS research.
+metadata: {"clawdbot":{"emoji":"📚"}}
+---
+
 # ArXiv API Skill
 
 Search and retrieve academic papers from ArXiv's open-access repository.

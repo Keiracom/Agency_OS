@@ -1,6 +1,6 @@
 ---
 name: apify
-description: Interact with Apify API (web scraping actors, datasets, runs).
+description: Use when running web scrapers at scale. Apify actors for scraping websites, extracting structured data, handling anti-bot measures. Triggers on "scrape", "crawl", "extract data from site", "apify", bulk web data collection.
 metadata: {"clawdbot":{"emoji":"🕷️","os":["darwin","linux"]}}
 ---
 

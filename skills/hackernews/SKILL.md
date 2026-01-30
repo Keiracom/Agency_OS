@@ -1,3 +1,9 @@
+---
+name: hackernews
+description: Use when scraping HackerNews via Algolia API. Search stories, comments, Show HN, Ask HN by keyword or author. Filter by points, date, comments. Triggers on "hackernews", "hn", "what's trending tech", "show hn", tech discussions.
+metadata: {"clawdbot":{"emoji":"🔶"}}
+---
+
 # HackerNews Algolia API
 
 ## Overview

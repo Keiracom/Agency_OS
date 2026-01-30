@@ -1,6 +1,6 @@
 ---
 name: email
-description: Email management and automation. Send, read, search, and organize emails across multiple providers.
+description: Use when sending, reading, or managing emails. Send transactional emails, check inbox, search messages, organize with labels. Triggers on "send email", "check mail", "email automation", "inbox", "resend", bulk email operations.
 metadata: {"clawdbot":{"emoji":"📧","always":true,"requires":{"bins":["curl","jq"]}}}
 ---
 

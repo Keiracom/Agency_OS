@@ -1,3 +1,9 @@
+---
+name: rss-feeds
+description: Use when fetching RSS/Atom feeds or monitoring newsletters. Parse Substack, blogs, company feeds. Get latest posts from feeds. Triggers on "rss", "feed", "substack", "newsletter", "blog updates", content syndication.
+metadata: {"clawdbot":{"emoji":"📰"}}
+---
+
 # RSS & Substack Feed Scraping
 
 ## Overview

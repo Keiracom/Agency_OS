@@ -1,3 +1,9 @@
+---
+name: twitter
+description: Use when scraping Twitter/X without API key. Search tweets, get user timelines, filter by likes/RTs/date. Uses snscrape + Nitter fallback. Triggers on "tweets about", "twitter search", "x posts", "scrape twitter", social monitoring.
+metadata: {"clawdbot":{"emoji":"🐦"}}
+---
+
 # Twitter/X Scraping (Native, No API Key)
 
 ## 1. Overview

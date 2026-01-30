@@ -1,3 +1,9 @@
+---
+name: youtube
+description: Use when searching YouTube or scraping video data without API key. Search videos, get channel content, extract transcripts. Triggers on "youtube search", "find videos about", "video content", "youtube channel", scraping video metadata.
+metadata: {"clawdbot":{"emoji":"📺"}}
+---
+
 # YouTube Scraping (Native, No API Key)
 
 ## 1. Overview

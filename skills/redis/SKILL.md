@@ -1,6 +1,6 @@
 ---
 name: redis
-description: Redis database management. Key-value operations, caching, pub/sub, and data structure commands.
+description: Use when working with Redis cache or key-value store. Get/set keys, manage lists/sets/hashes, pub/sub messaging, caching. Triggers on "redis", "cache", "upstash", "key-value", "rate limiting", session storage.
 metadata: {"clawdbot":{"emoji":"🔴","always":true,"requires":{"bins":["curl","jq"]}}}
 ---
 

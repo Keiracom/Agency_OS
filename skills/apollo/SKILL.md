@@ -1,6 +1,6 @@
 ---
 name: apollo
-description: Interact with Apollo.io REST API (people/org enrichment, search, lists).
+description: Use when finding leads or enriching contact data. Apollo.io for people/company search, email enrichment, job titles, industries. Triggers on "find leads", "enrich contacts", "apollo", "who works at", prospecting and lead generation.
 metadata: {"clawdbot":{"emoji":"🛰️","os":["darwin","linux"]}}
 ---
 

@@ -1,3 +1,9 @@
+---
+name: youtube-transcript
+description: Use when extracting YouTube video transcripts via OAuth API. Get captions with timestamps, works from cloud servers. Triggers on "youtube transcript", "video captions", "what did they say in", extracting spoken content from videos.
+metadata: {"clawdbot":{"emoji":"📜"}}
+---
+
 # YouTube Transcript Skill
 
 Fetch transcripts from YouTube videos using YouTube Data API v3 with OAuth authentication.

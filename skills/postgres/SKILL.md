@@ -1,6 +1,6 @@
 ---
 name: postgres
-description: PostgreSQL database management. Run queries, manage schemas, and monitor performance.
+description: Use when running SQL queries or managing PostgreSQL databases. Query data, create tables, manage schemas, monitor performance. Triggers on "run query", "sql", "postgres", "database", "create table", schema migrations.
 metadata: {"clawdbot":{"emoji":"🐘","always":true,"requires":{"bins":["curl","jq"]}}}
 ---
 

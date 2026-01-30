@@ -1,6 +1,6 @@
 ---
 name: agency-os
-description: Internal knowledge about Agency OS - our multi-channel client acquisition SaaS for Australian marketing agencies. Use for architecture, database, deployments, and operational context.
+description: Use when working on Agency OS - our multi-channel client acquisition SaaS. Covers architecture, deployments, database schema, APIs, and operational context. Triggers on "agency os", "saas", "dashboard", or marketing automation features.
 metadata: {"clawdbot":{"emoji":"🏢"}}
 ---
 

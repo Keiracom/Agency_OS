@@ -1,6 +1,6 @@
 ---
 name: anthropic
-description: Anthropic Claude API. Text generation, vision, tool use, and structured output via Messages API.
+description: Use when calling Claude API directly via REST. Text generation, vision, tool use, streaming, structured outputs. Triggers on "claude api", "anthropic", "messages api", "batch api", direct LLM calls outside Clawdbot.
 metadata: {"clawdbot":{"emoji":"🧠","always":true,"requires":{"env":["ANTHROPIC_API_KEY"],"bins":["curl","jq"]}}}
 ---
 

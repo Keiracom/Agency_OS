@@ -1731,6 +1731,7 @@ async def score_insights(insights: list[dict]) -> list[dict]:
 @task
 async def store_insights(insights: list[dict]) -> int:
     """Store insights in Supabase elliot_knowledge table."""
+    # TODO: Add HTML sanitization with bleach before storing scraped content
     logger = get_run_logger()
     
     if not insights:

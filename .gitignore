@@ -22,3 +22,9 @@ canvas/
 .clawdhub/
 projects/elliot-mobile/
 projects/elliot-status/
+
+# Environment files
+.env
+.env.*
+.env.local
+!.env.example

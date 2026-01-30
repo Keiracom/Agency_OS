@@ -243,11 +243,15 @@ def update_supabase(data: dict):
                     os.environ[key] = value
     
     # Connect to database
+    password = os.environ.get("DB_PASSWORD")
+    if not password:
+        raise ValueError("DB_PASSWORD environment variable must be set")
+    
     conn = psycopg2.connect(
         host="aws-1-ap-southeast-1.pooler.supabase.com",
         port=5432,
         user="postgres.jatzvazlbusedwsnqxzr",
-        password="110883Biteme12!",
+        password=password,
         dbname="postgres"
     )
     cur = conn.cursor()

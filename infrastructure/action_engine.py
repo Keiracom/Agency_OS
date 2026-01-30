@@ -39,7 +39,7 @@ from infrastructure.task_tracker import (
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://jatzvazlbusedwsnqxzr.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_ANON_KEY", "")
 CLAWDBOT_PATH = os.getenv("CLAWDBOT_PATH", "clawdbot")
-RELEVANCE_THRESHOLD = 0.8
+RELEVANCE_THRESHOLD = 0.6
 TELEGRAM_TARGET = os.getenv("TELEGRAM_NOTIFY_TARGET", "dave")
 
 

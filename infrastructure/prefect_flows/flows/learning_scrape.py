@@ -669,14 +669,16 @@ TWITTER_ACCOUNTS = [
 ]
 
 # Nitter instances (public Twitter frontends with RSS) - ordered by reliability
+# Source: https://status.d420.de/ - check for instances with RSS ✅
 # Note: Nitter instances frequently go down. This list should be updated periodically.
+# Last verified: 2026-01-30
 NITTER_INSTANCES = [
-    "https://nitter.net",
-    "https://nitter.poast.org",
-    "https://nitter.privacydev.net",
-    "https://nitter.cz",
-    "https://nitter.unixfox.eu",
-    "https://n.opnxng.com",
+    "https://xcancel.com",              # 97% uptime, RSS working
+    "https://nitter.privacyredirect.com", # 94% uptime, RSS working  
+    "https://nitter.space",              # 96% uptime
+    "https://nitter.catsarch.com",       # 60% uptime
+    "https://nitter.tiekoetter.com",     # 37% uptime
+    "https://nitter.net",                # Official instance
 ]
 
 # ============================================
@@ -1302,20 +1304,28 @@ async def scrape_twitter(limit_per_keyword: int = 20) -> list[dict]:
     Anti-ban safety measures:
     - Randomized delays (1-3s) instead of fixed delays
     - Block detection with graceful stop after 3 consecutive errors
+    - Content validation to filter block/error messages in RSS
     - Conservative limits (5 accounts × 20 tweets = 100 max)
     - Graceful instance failover
     
     Strategy:
-    1. Scrape target thought leader accounts via nitter RSS
-    2. Try multiple nitter instances with fallback
-    3. Rate limited with randomized delays between nitter calls
+    1. Find a working nitter instance from NITTER_INSTANCES list
+    2. Validate RSS content is real tweets (not error messages)
+    3. Scrape target thought leader accounts via nitter RSS
+    4. Rate limited with randomized delays between nitter calls
     
-    Note: Native Twitter scraping is inherently unreliable due to:
-    - Nitter instances frequently go down
-    - Twitter/X actively blocks scrapers
-    - No official public API without authentication
+    IMPORTANT LIMITATIONS (as of Jan 2026):
+    - Most nitter instances are dead, blocked, or require whitelisting
+    - Many instances return "whitelist" error messages in RSS
+    - Twitter/X actively blocks scrapers and rate limits aggressively
+    - snscrape is broken on Python 3.12+
+    - This scraper may return 0 results - that's expected behavior
     
-    This implementation gracefully fails if all methods are exhausted.
+    For reliable Twitter data, consider:
+    - Using APIFY_API_KEY with the Apify tweet-scraper actor
+    - Twitter's official API (requires paid developer access)
+    
+    Nitter instance health: https://status.d420.de/
     
     Args:
         limit_per_keyword: Max tweets per account (20, conservative)
@@ -1361,6 +1371,21 @@ async def scrape_twitter(limit_per_keyword: int = 20) -> list[dict]:
                 if response.status_code == 200:
                     feed = feedparser.parse(response.text)
                     if feed.entries and len(feed.entries) > 0:
+                        # Check if content is real tweets or error/block messages
+                        first_entry = feed.entries[0]
+                        desc = (first_entry.get("description", "") or "").lower()
+                        title = (first_entry.get("title", "") or "").lower()
+                        
+                        # Common block/error indicators in nitter RSS
+                        block_indicators = ["whitelist", "blocked", "rate limit", "not available", 
+                                          "error", "forbidden", "unauthorized", "plain request"]
+                        is_blocked = any(indicator in desc or indicator in title for indicator in block_indicators)
+                        
+                        if is_blocked:
+                            logger.debug(f"Nitter {instance} returned block/error message in RSS")
+                            detector.record_error(Exception("Block message in RSS"))
+                            continue
+                        
                         working_instance = instance
                         detector.record_success()
                         logger.info(f"Found working nitter instance: {instance}")
@@ -1439,11 +1464,26 @@ async def scrape_twitter(limit_per_keyword: int = 20) -> list[dict]:
                     await safe_delay(1.0, 2.0)
                     continue
                 
+                # Filter out blocked/error entries
+                block_indicators = ["whitelist", "blocked", "rate limit", "not available", 
+                                  "error", "forbidden", "unauthorized", "plain request"]
+                valid_entries = []
+                for entry in feed.entries:
+                    desc = (entry.get("description", "") or "").lower()
+                    if not any(indicator in desc for indicator in block_indicators):
+                        valid_entries.append(entry)
+                
+                if not valid_entries:
+                    logger.info(f"  [@{account}] All entries were block/error messages")
+                    detector.record_error(Exception("All entries blocked"))
+                    await safe_delay(1.0, 2.0)
+                    continue
+                
                 # Record success
                 detector.record_success()
-                logger.info(f"  [@{account}] Found {len(feed.entries)} tweets")
+                logger.info(f"  [@{account}] Found {len(valid_entries)} tweets")
                 
-                for entry in feed.entries[:limit_per_keyword]:
+                for entry in valid_entries[:limit_per_keyword]:
                     # Extract tweet ID from link
                     # Nitter links look like: https://nitter.net/username/status/1234567890
                     link = entry.get("link", "")

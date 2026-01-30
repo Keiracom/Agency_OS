@@ -47,6 +47,10 @@ from src.orchestration.flows.marketing_automation_flow import (
     milestone_content_flow,
     preview_daily_content_flow,
 )
+from src.orchestration.flows.persona_buffer_flow import (
+    persona_buffer_flow,
+    get_buffer_status,
+)
 
 __all__ = [
     # Core flows
@@ -69,13 +73,13 @@ __all__ = [
     # Phase H, Item 44: Daily Digest
     "daily_digest_flow",
     "send_client_digest_flow",
-
     # Phase 19: Marketing Automation
     "daily_content_flow",
     "milestone_content_flow",
     "preview_daily_content_flow",
-
     # Resource Pool: Warmup Monitor
     "warmup_monitor_flow",
-
+    # Resource Pool: Persona Buffer
+    "persona_buffer_flow",
+    "get_buffer_status",
 ]

@@ -47,6 +47,8 @@ class ActionType(str, Enum):
     """Action types that can be routed from knowledge."""
     EVALUATE_TOOL = "evaluate_tool"
     RESEARCH = "research"
+    ABSORB = "absorb"
+    COMPETITIVE_INTEL = "competitive_intel"
     AUDIT = "audit"
     ANALYZE = "analyze"
 
@@ -55,16 +57,43 @@ class ActionType(str, Enum):
 CATEGORY_TO_ACTION = {
     "tool_discovery": ActionType.EVALUATE_TOOL,
     "tech_trend": ActionType.RESEARCH,
-    "pattern_recognition": ActionType.AUDIT,
-    "competitor_intel": ActionType.ANALYZE,
+    "pattern_recognition": ActionType.ABSORB,
+    "best_practice": ActionType.ABSORB,
+    "technique": ActionType.ABSORB,
+    "competitor_intel": ActionType.COMPETITIVE_INTEL,
+    "market_intel": ActionType.COMPETITIVE_INTEL,
+    "audit": ActionType.AUDIT,
+    "analysis": ActionType.ANALYZE,
 }
 
-# Action type descriptions for sign-off messages
+# Action type descriptions for sign-off messages (legacy, used as fallback)
 ACTION_DESCRIPTIONS = {
     ActionType.EVALUATE_TOOL: "Spawn agent to assess tool fit with our stack",
     ActionType.RESEARCH: "Spawn agent to deep-dive into this trend",
+    ActionType.ABSORB: "Extract pattern/technique and add to knowledge base",
+    ActionType.COMPETITIVE_INTEL: "Analyze competitor and add to competitive tracking",
     ActionType.AUDIT: "Spawn agent to check if we follow this pattern",
     ActionType.ANALYZE: "Spawn agent to compare against our approach",
+}
+
+# Emojis for each action type
+ACTION_EMOJIS = {
+    ActionType.EVALUATE_TOOL: "📦",
+    ActionType.RESEARCH: "🔬",
+    ActionType.ABSORB: "🧠",
+    ActionType.COMPETITIVE_INTEL: "🎯",
+    ActionType.AUDIT: "📋",
+    ActionType.ANALYZE: "📊",
+}
+
+# Headers for each action type
+ACTION_HEADERS = {
+    ActionType.EVALUATE_TOOL: "TOOL EVALUATION",
+    ActionType.RESEARCH: "RESEARCH REQUEST",
+    ActionType.ABSORB: "KNOWLEDGE TO ABSORB",
+    ActionType.COMPETITIVE_INTEL: "COMPETITOR INTELLIGENCE",
+    ActionType.AUDIT: "CODE AUDIT",
+    ActionType.ANALYZE: "ANALYSIS REQUEST",
 }
 
 # Agent prompts for each action type
@@ -105,6 +134,44 @@ Your task:
 5. Recommend concrete next steps
 
 Output your findings to MEMORY.md with actionable insights.
+""",
+    
+    ActionType.ABSORB: """
+Extract and absorb this knowledge into our systems:
+
+**Topic:** {title}
+**Source:** {source}
+
+**Context:**
+{content}
+
+Your task:
+1. Understand the core pattern/technique/insight
+2. Identify how it applies to Elliot or Agency OS
+3. Extract actionable takeaways
+4. Determine where to store (MEMORY.md patterns, SOUL.md behaviors, or knowledge/)
+5. Add the distilled knowledge to the appropriate location
+
+Output confirmation of what was absorbed and where.
+""",
+    
+    ActionType.COMPETITIVE_INTEL: """
+Analyze this competitive intelligence:
+
+**Subject:** {title}
+**Source:** {source}
+
+**Context:**
+{content}
+
+Your task:
+1. Research the competitor/product mentioned
+2. Understand what they announced or changed
+3. Assess impact on Agency OS competitive position
+4. Identify threats and opportunities
+5. Recommend strategic response if needed
+
+Output your analysis to MEMORY.md competitive tracking section.
 """,
     
     ActionType.AUDIT: """
@@ -329,36 +396,283 @@ def route_to_action(knowledge: KnowledgeItem) -> Optional[ActionType]:
     return CATEGORY_TO_ACTION.get(knowledge.category)
 
 
-def generate_summary(knowledge: KnowledgeItem, action_type: ActionType) -> str:
+def _extract_metadata_field(content: dict, *keys: str, default: str = "") -> str:
+    """Extract a field from content dict, trying multiple key names."""
+    for key in keys:
+        if key in content and content[key]:
+            return str(content[key])
+    return default
+
+
+def _format_engagement(content: dict) -> str:
+    """Format engagement metrics from content metadata."""
+    parts = []
+    
+    stars = _extract_metadata_field(content, "stars", "github_stars", "stargazers_count")
+    if stars:
+        parts.append(f"⭐ {stars}")
+    
+    points = _extract_metadata_field(content, "points", "score", "upvotes")
+    if points:
+        parts.append(f"{points} points")
+    
+    comments = _extract_metadata_field(content, "comments", "comment_count", "num_comments")
+    if comments:
+        parts.append(f"{comments} comments")
+    
+    return " | ".join(parts) if parts else ""
+
+
+def _truncate_text(text: str, max_chars: int = 200) -> str:
+    """Truncate text to max chars, adding ellipsis if needed."""
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars - 3].rsplit(" ", 1)[0] + "..."
+
+
+def generate_description(knowledge: KnowledgeItem, action_type: ActionType) -> str:
     """
-    Generate a summary for the sign-off request.
+    Generate a detailed, plain-English description for sign-off.
+    
+    Creates human-readable descriptions that explain:
+    - What the item is
+    - Why it matters to Dave/Agency OS
+    - What happens if approved
     
     Args:
         knowledge: The knowledge item
         action_type: The determined action type
         
     Returns:
-        Summary text explaining why this matters and what we'd do
+        Rich description string formatted for Telegram
     """
-    action_desc = ACTION_DESCRIPTIONS.get(action_type, "Take action on this knowledge")
-    
-    # Extract key details from content
     content = knowledge.content or {}
-    source_detail = f"Source: {knowledge.source}"
-    if knowledge.source_url:
-        source_detail += f" ({knowledge.source_url})"
+    emoji = ACTION_EMOJIS.get(action_type, "📋")
+    header = ACTION_HEADERS.get(action_type, "ACTION REQUEST")
     
-    summary_parts = [
-        f"**Relevance Score:** {knowledge.relevance_score:.2f}",
-        "",
-        knowledge.summary or "No summary available.",
-        "",
-        source_detail,
-        "",
-        f"**Proposed Action:** {action_desc}",
-    ]
+    # Extract common metadata
+    engagement = _format_engagement(content)
+    source_display = knowledge.source or "Unknown"
     
-    return "\n".join(summary_parts)
+    # Build the description based on action type
+    if action_type == ActionType.EVALUATE_TOOL:
+        return _generate_tool_description(knowledge, content, emoji, header, engagement, source_display)
+    elif action_type == ActionType.RESEARCH:
+        return _generate_research_description(knowledge, content, emoji, header, engagement, source_display)
+    elif action_type == ActionType.ABSORB:
+        return _generate_absorb_description(knowledge, content, emoji, header, source_display)
+    elif action_type == ActionType.COMPETITIVE_INTEL:
+        return _generate_competitive_description(knowledge, content, emoji, header, source_display)
+    else:
+        # Fallback for AUDIT, ANALYZE, etc.
+        return _generate_generic_description(knowledge, content, emoji, header, source_display)
+
+
+def _generate_tool_description(
+    knowledge: KnowledgeItem, 
+    content: dict, 
+    emoji: str, 
+    header: str, 
+    engagement: str,
+    source_display: str
+) -> str:
+    """Generate description for tool evaluation."""
+    # Extract tool-specific info
+    tool_name = knowledge.title or "Unknown Tool"
+    description = _extract_metadata_field(content, "description", "summary", "about")
+    
+    # Build what it does section
+    what_it_does = knowledge.summary or description
+    if not what_it_does:
+        what_it_does = f"A tool discovered via {source_display}. Needs evaluation to understand capabilities."
+    what_it_does = _truncate_text(what_it_does, 250)
+    
+    # Build why it matters - translate to business value
+    why_matters = _extract_metadata_field(content, "relevance_reason", "why_relevant")
+    if not why_matters:
+        # Generate generic but useful why
+        why_matters = "Could streamline development, reduce costs, or add new capabilities to our stack."
+    
+    # Build the stats line
+    stats_line = f"Source: {source_display}"
+    if engagement:
+        stats_line = f"{engagement} | {stats_line}"
+    
+    return f"""{emoji} **{header}**
+
+**{tool_name}**
+{stats_line}
+
+**WHAT IT DOES:**
+{what_it_does}
+
+**WHY IT MATTERS:**
+{why_matters}
+
+**IF APPROVED:**
+I'll evaluate integration complexity, pricing, and fit with our stack. Recommend adopt/skip with reasoning."""
+
+
+def _generate_research_description(
+    knowledge: KnowledgeItem,
+    content: dict,
+    emoji: str,
+    header: str,
+    engagement: str,
+    source_display: str
+) -> str:
+    """Generate description for research request."""
+    topic = knowledge.title or "Research Topic"
+    
+    # What it's about
+    about = knowledge.summary
+    if not about:
+        about = _extract_metadata_field(content, "description", "text", "content")
+    if not about:
+        about = f"A topic that surfaced from {source_display} worth deeper investigation."
+    about = _truncate_text(about, 250)
+    
+    # Why research this
+    why_research = _extract_metadata_field(content, "relevance_reason", "why_relevant")
+    if not why_research:
+        why_research = "Understanding this could inform our technical decisions or reveal opportunities."
+    
+    # Build stats line
+    stats_line = f"Source: {source_display}"
+    if engagement:
+        stats_line = f"{stats_line} | {engagement}"
+    
+    return f"""{emoji} **{header}**
+
+**{topic}**
+{stats_line}
+
+**WHAT IT'S ABOUT:**
+{about}
+
+**WHY RESEARCH THIS:**
+{why_research}
+
+**IF APPROVED:**
+I'll deep dive, extract key insights, and add findings to knowledge base."""
+
+
+def _generate_absorb_description(
+    knowledge: KnowledgeItem,
+    content: dict,
+    emoji: str,
+    header: str,
+    source_display: str
+) -> str:
+    """Generate description for knowledge absorption."""
+    title = knowledge.title or "Knowledge Item"
+    
+    # The insight - what it teaches
+    insight = knowledge.summary
+    if not insight:
+        insight = _extract_metadata_field(content, "description", "content", "text")
+    if not insight:
+        insight = "A pattern or technique that could enhance our systems."
+    insight = _truncate_text(insight, 250)
+    
+    # How it helps
+    how_helps = _extract_metadata_field(content, "relevance_reason", "why_relevant", "application")
+    if not how_helps:
+        how_helps = "Could improve Elliot's capabilities or Agency OS architecture."
+    
+    return f"""{emoji} **{header}**
+
+**{title}**
+Source: {source_display}
+
+**THE INSIGHT:**
+{insight}
+
+**HOW IT HELPS:**
+{how_helps}
+
+**IF APPROVED:**
+I'll extract the pattern/technique and add to MEMORY.md or SOUL.md."""
+
+
+def _generate_competitive_description(
+    knowledge: KnowledgeItem,
+    content: dict,
+    emoji: str,
+    header: str,
+    source_display: str
+) -> str:
+    """Generate description for competitive intelligence."""
+    subject = knowledge.title or "Competitor Update"
+    
+    # What happened
+    what_happened = knowledge.summary
+    if not what_happened:
+        what_happened = _extract_metadata_field(content, "description", "news", "update")
+    if not what_happened:
+        what_happened = f"Competitive movement detected via {source_display}."
+    what_happened = _truncate_text(what_happened, 250)
+    
+    # Why it matters to competitive position
+    why_matters = _extract_metadata_field(content, "relevance_reason", "impact", "why_relevant")
+    if not why_matters:
+        why_matters = "May affect our market position or reveal strategic opportunities."
+    
+    return f"""{emoji} **{header}**
+
+**{subject}**
+Source: {source_display}
+
+**WHAT HAPPENED:**
+{what_happened}
+
+**WHY IT MATTERS:**
+{why_matters}
+
+**IF APPROVED:**
+I'll analyze and add to competitive tracking."""
+
+
+def _generate_generic_description(
+    knowledge: KnowledgeItem,
+    content: dict,
+    emoji: str,
+    header: str,
+    source_display: str
+) -> str:
+    """Generate generic description for unmapped action types."""
+    title = knowledge.title or "Action Item"
+    
+    summary = knowledge.summary or "Item requires review and action."
+    summary = _truncate_text(summary, 250)
+    
+    return f"""{emoji} **{header}**
+
+**{title}**
+Source: {source_display}
+
+**SUMMARY:**
+{summary}
+
+**IF APPROVED:**
+I'll analyze this item and take appropriate action."""
+
+
+def generate_summary(knowledge: KnowledgeItem, action_type: ActionType) -> str:
+    """
+    Generate a detailed summary for the sign-off request.
+    
+    Uses generate_description() to create rich, human-readable descriptions
+    that help Dave understand what he's approving.
+    
+    Args:
+        knowledge: The knowledge item
+        action_type: The determined action type
+        
+    Returns:
+        Rich description text formatted for Telegram
+    """
+    return generate_description(knowledge, action_type)
 
 
 def create_signoff_request(
@@ -386,13 +700,14 @@ def create_signoff_request(
         summary=summary,
     )
     
-    # Map to notification ActionType (extend if needed)
+    # Map to notification ActionType
     notify_action_map = {
         ActionType.EVALUATE_TOOL: NotifyActionType.EVALUATE_TOOL,
         ActionType.RESEARCH: NotifyActionType.RESEARCH,
-        # Fallback for unmapped types
-        ActionType.AUDIT: NotifyActionType.RESEARCH,
-        ActionType.ANALYZE: NotifyActionType.RESEARCH,
+        ActionType.ABSORB: NotifyActionType.ABSORB,
+        ActionType.COMPETITIVE_INTEL: NotifyActionType.COMPETITIVE_INTEL,
+        ActionType.AUDIT: NotifyActionType.AUDIT,
+        ActionType.ANALYZE: NotifyActionType.ANALYZE,
     }
     
     # Send Telegram notification

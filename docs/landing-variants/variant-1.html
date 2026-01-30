@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agency OS - AI Agents That Actually Work</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --black: #0a0a0a;
+            --dark: #111111;
+            --emerald: #10b981;
+            --emerald-light: #34d399;
+            --emerald-glow: rgba(16, 185, 129, 0.3);
+            --mint: #ecfdf5;
+            --mint-dark: #d1fae5;
+            --white: #ffffff;
+            --gray: #9ca3af;
+            --gray-dark: #4b5563;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--black);
+            color: var(--white);
+            overflow-x: hidden;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(10, 10, 10, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .logo span {
+            color: var(--gray);
+            font-weight: 400;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.5rem;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-links a {
+            color: var(--gray);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--white);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.6rem 1.25rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            border: none;
+            color: var(--gray);
+        }
+
+        .btn-ghost:hover {
+            color: var(--white);
+        }
+
+        .btn-primary {
+            background: var(--white);
+            color: var(--black);
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background: var(--mint);
+            transform: translateY(-2px);
+        }
+
+        .btn-cta {
+            background: var(--white);
+            color: var(--black);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+        }
+
+        .btn-cta svg {
+            width: 20px;
+            height: 20px;
+            background: var(--emerald);
+            padding: 4px;
+            border-radius: 6px;
+        }
+
+        .btn-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px var(--emerald-glow);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8rem 2rem 4rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Aurora Effect */
+        .aurora {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 400px;
+            pointer-events: none;
+        }
+
+        .aurora::before {
+            content: '';
+            position: absolute;
+            bottom: -50%;
+            left: 10%;
+            width: 80%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, var(--emerald-glow) 0%, transparent 70%);
+            animation: aurora-pulse 8s ease-in-out infinite;
+        }
+
+        .aurora::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: 20%;
+            width: 60%;
+            height: 80%;
+            background: radial-gradient(ellipse at center, rgba(52, 211, 153, 0.15) 0%, transparent 60%);
+            animation: aurora-pulse 6s ease-in-out infinite reverse;
+        }
+
+        @keyframes aurora-pulse {
+            0%, 100% { transform: scale(1) translateY(0); opacity: 0.6; }
+            50% { transform: scale(1.1) translateY(-20px); opacity: 1; }
+        }
+
+        /* Wave lines */
+        .wave-lines {
+            position: absolute;
+            bottom: 50px;
+            left: 0;
+            right: 0;
+            height: 200px;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .wave-line {
+            position: absolute;
+            width: 200%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--emerald), var(--emerald-light), var(--emerald), transparent);
+            opacity: 0.3;
+            animation: wave-flow 15s linear infinite;
+        }
+
+        .wave-line:nth-child(1) { bottom: 30%; animation-delay: 0s; }
+        .wave-line:nth-child(2) { bottom: 50%; animation-delay: -5s; opacity: 0.2; }
+        .wave-line:nth-child(3) { bottom: 70%; animation-delay: -10s; opacity: 0.1; }
+
+        @keyframes wave-flow {
+            0% { transform: translateX(-50%) rotate(-2deg); }
+            100% { transform: translateX(0%) rotate(2deg); }
+        }
+
+        /* Product Graphic */
+        .product-graphic {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin-bottom: 2rem;
+        }
+
+        .chip {
+            width: 140px;
+            height: 140px;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            border: 2px solid rgba(16, 185, 129, 0.3);
+            border-radius: 20px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 
+                0 0 60px var(--emerald-glow),
+                inset 0 0 40px rgba(16, 185, 129, 0.1);
+            animation: chip-float 6s ease-in-out infinite;
+        }
+
+        @keyframes chip-float {
+            0%, 100% { transform: translate(-50%, -50%) translateY(0); }
+            50% { transform: translate(-50%, -50%) translateY(-10px); }
+        }
+
+        .chip-inner {
+            width: 90px;
+            height: 90px;
+            background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .chip-text {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--emerald);
+            letter-spacing: 2px;
+        }
+
+        .chip-glow {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 40px;
+            background: var(--emerald);
+            border-radius: 50%;
+            filter: blur(20px);
+            opacity: 0.6;
+            animation: glow-pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes glow-pulse {
+            0%, 100% { opacity: 0.4; transform: translateX(-50%) scale(1); }
+            50% { opacity: 0.8; transform: translateX(-50%) scale(1.2); }
+        }
+
+        /* Circuit Lines */
+        .circuit-lines {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .circuit-line {
+            position: absolute;
+            background: linear-gradient(90deg, var(--emerald), transparent);
+            height: 1px;
+            animation: circuit-glow 3s ease-in-out infinite;
+        }
+
+        .circuit-line.left {
+            width: 100px;
+            left: -80px;
+            top: 50%;
+        }
+
+        .circuit-line.right {
+            width: 100px;
+            right: -80px;
+            top: 50%;
+            background: linear-gradient(-90deg, var(--emerald), transparent);
+        }
+
+        @keyframes circuit-glow {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.8; }
+        }
+
+        /* Floating Chips */
+        .floating-chip {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: float-chip 8s ease-in-out infinite;
+        }
+
+        .floating-chip svg {
+            width: 20px;
+            height: 20px;
+            color: var(--emerald);
+            opacity: 0.6;
+        }
+
+        .floating-chip:nth-child(1) { top: 20%; left: 15%; animation-delay: 0s; }
+        .floating-chip:nth-child(2) { top: 30%; left: 8%; animation-delay: -2s; }
+        .floating-chip:nth-child(3) { top: 15%; right: 15%; animation-delay: -4s; }
+        .floating-chip:nth-child(4) { top: 35%; right: 8%; animation-delay: -6s; }
+
+        @keyframes float-chip {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(5deg); }
+        }
+
+        /* Hero Content */
+        .hero-content {
+            text-align: center;
+            max-width: 800px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(180deg, #ffffff 0%, #a0a0a0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--gray);
+            margin-bottom: 2rem;
+            font-style: italic;
+        }
+
+        .hero-cta {
+            margin-bottom: 3rem;
+        }
+
+        .preorder-text {
+            color: var(--gray);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .platform-cards {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .platform-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            min-width: 120px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .platform-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: var(--emerald);
+            transform: translateY(-2px);
+        }
+
+        .platform-card svg {
+            width: 24px;
+            height: 24px;
+            color: var(--gray);
+            margin-bottom: 0.5rem;
+        }
+
+        .platform-card span {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--white);
+        }
+
+        /* Features Section */
+        .features {
+            padding: 6rem 2rem;
+            background: var(--black);
+            position: relative;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-tag {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50px;
+            font-size: 0.85rem;
+            color: var(--gray);
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .section-title .highlight {
+            color: var(--emerald);
+        }
+
+        .features-grid {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 2rem;
+            max-width: 1000px;
+            margin: 0 auto;
+            flex-wrap: wrap;
+        }
+
+        .feature-item {
+            text-align: center;
+            flex: 1;
+            min-width: 200px;
+            max-width: 280px;
+            position: relative;
+        }
+
+        .feature-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 40px;
+            right: -1rem;
+            width: 2rem;
+            height: 1px;
+            background: var(--emerald);
+            opacity: 0.3;
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .feature-item:hover .feature-icon {
+            box-shadow: 0 0 30px var(--emerald-glow);
+            transform: translateY(-5px);
+        }
+
+        .feature-icon svg {
+            width: 36px;
+            height: 36px;
+            color: var(--emerald);
+        }
+
+        .feature-item h3 {
+            font-size: 1rem;
+            color: var(--gray);
+            font-weight: 400;
+            line-height: 1.5;
+        }
+
+        /* Problem Section */
+        .problem {
+            padding: 6rem 2rem;
+            background: var(--white);
+            color: var(--black);
+        }
+
+        .problem .section-tag {
+            border-color: rgba(0, 0, 0, 0.2);
+            color: var(--gray-dark);
+        }
+
+        .problem .section-title {
+            color: var(--black);
+        }
+
+        .problem .section-subtitle {
+            color: var(--gray-dark);
+            max-width: 600px;
+            margin: 1rem auto 3rem;
+            line-height: 1.6;
+        }
+
+        .problem-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 768px) {
+            .problem-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .problem-visual {
+            background: var(--black);
+            border-radius: 20px;
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            min-height: 300px;
+        }
+
+        .problem-visual::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 300px;
+            background: radial-gradient(ellipse at center, var(--emerald) 0%, transparent 70%);
+            opacity: 0.4;
+        }
+
+        .problem-visual h3 {
+            font-size: 2rem;
+            color: var(--white);
+            position: relative;
+            z-index: 1;
+            border-bottom: 2px solid var(--emerald);
+            padding-bottom: 0.5rem;
+        }
+
+        .problem-visual .orb {
+            width: 60px;
+            height: 60px;
+            background: var(--white);
+            border-radius: 50%;
+            margin-top: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .problem-list {
+            background: var(--mint);
+            border-radius: 20px;
+            padding: 2.5rem;
+        }
+
+        .problem-list h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--black);
+        }
+
+        .problem-list ul {
+            list-style: none;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 600px) {
+            .problem-list ul {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .problem-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--gray-dark);
+        }
+
+        .problem-list li::before {
+            content: '›';
+            color: var(--emerald);
+            font-weight: 700;
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+
+        /* Solutions Section */
+        .solutions {
+            padding: 6rem 2rem;
+            background: var(--white);
+            color: var(--black);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .floating-dots {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+        }
+
+        .dot {
+            position: absolute;
+            border-radius: 50%;
+            background: var(--emerald);
+            animation: float-dot 20s ease-in-out infinite;
+        }
+
+        @keyframes float-dot {
+            0%, 100% { transform: translateY(0) translateX(0); }
+            25% { transform: translateY(-20px) translateX(10px); }
+            50% { transform: translateY(10px) translateX(-10px); }
+            75% { transform: translateY(-10px) translateX(5px); }
+        }
+
+        .solutions-content {
+            position: relative;
+            z-index: 10;
+        }
+
+        .solutions .section-title {
+            margin-bottom: 3rem;
+        }
+
+        .solutions-card {
+            background: #065f46;
+            border-radius: 20px;
+            padding: 3rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .solutions-card h3 {
+            font-size: 2.5rem;
+            color: var(--mint);
+            margin-bottom: 2rem;
+        }
+
+        .solution-items {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .solution-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .solution-dot {
+            width: 16px;
+            height: 16px;
+            background: var(--emerald-light);
+            border-radius: 50%;
+            margin-top: 4px;
+            flex-shrink: 0;
+        }
+
+        .solution-item h4 {
+            font-size: 1.25rem;
+            color: var(--emerald-light);
+            margin-bottom: 0.25rem;
+        }
+
+        .solution-item p {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 6rem 2rem;
+            background: var(--black);
+            text-align: center;
+        }
+
+        .cta-section h2 {
+            font-size: clamp(2rem, 4vw, 3rem);
+            margin-bottom: 1rem;
+        }
+
+        .cta-section p {
+            color: var(--gray);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+
+        /* Footer */
+        footer {
+            padding: 3rem 2rem;
+            background: var(--black);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            text-align: center;
+        }
+
+        footer p {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        /* Mobile Navigation */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--white);
+            cursor: pointer;
+            padding: 0.5rem;
+        }
+
+        .mobile-menu-btn svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .nav-links {
+                display: none;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            .nav-buttons .btn-ghost {
+                display: none;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .floating-chip {
+                display: none;
+            }
+            
+            .feature-item:not(:last-child)::after {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <div class="logo">AGENCY<span>OS</span></div>
+        <div class="nav-links">
+            <a href="#features" class="active">Overview</a>
+            <a href="#problem">Technology</a>
+            <a href="#solutions">Solutions</a>
+            <a href="#cta">Resources</a>
+        </div>
+        <div class="nav-buttons">
+            <button class="btn btn-ghost">Log In</button>
+            <a href="#cta" class="btn btn-primary">Get Started</a>
+        </div>
+        <button class="mobile-menu-btn">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+        </button>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <!-- Floating Chips -->
+        <div class="floating-chip">
+            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        </div>
+        <div class="floating-chip">
+            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        </div>
+        <div class="floating-chip">
+            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="floating-chip">
+            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+
+        <!-- Product Graphic -->
+        <div class="product-graphic">
+            <div class="chip-glow"></div>
+            <div class="circuit-lines">
+                <div class="circuit-line left"></div>
+                <div class="circuit-line right"></div>
+            </div>
+            <div class="chip">
+                <div class="chip-inner">
+                    <span class="chip-text">AOS</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hero Content -->
+        <div class="hero-content">
+            <h1>AI Agents That Actually Work</h1>
+            <p>Introducing Autonomous Agency Operations. Built for the Agentic AI Era.</p>
+            
+            <div class="hero-cta">
+                <a href="#cta" class="btn btn-cta">
+                    <svg fill="none" stroke="white" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                    </svg>
+                    Schedule Demo
+                </a>
+            </div>
+
+            <p class="preorder-text">Deploy Across Any Platform</p>
+            <div class="platform-cards">
+                <div class="platform-card">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                    </svg>
+                    <span>Lead Gen<br>Agents</span>
+                </div>
+                <div class="platform-card">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                    </svg>
+                    <span>Outreach<br>Automation</span>
+                </div>
+                <div class="platform-card">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                    </svg>
+                    <span>Workflow<br>Intelligence</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Aurora Effect -->
+        <div class="aurora"></div>
+        <div class="wave-lines">
+            <div class="wave-line"></div>
+            <div class="wave-line"></div>
+            <div class="wave-line"></div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="section-header">
+            <span class="section-tag">How It Works</span>
+            <h2 class="section-title">Agency OS <span class="highlight">Automates</span></h2>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-item">
+                <div class="feature-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
+                    </svg>
+                </div>
+                <h3>What data flows<br>through your pipeline</h3>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
+                    </svg>
+                </div>
+                <h3>Which agents run and<br>how they coordinate</h3>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                </div>
+                <h3>Outputs are verified<br>and actionable</h3>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section class="problem" id="problem">
+        <div class="section-header">
+            <span class="section-tag">The Challenge</span>
+            <h2 class="section-title">Manual Processes Create<br><span class="highlight">Revenue Leaks</span></h2>
+            <p class="section-subtitle">Traditional agency operations waste hours on repetitive tasks. Your team is stuck in spreadsheets instead of closing deals.</p>
+        </div>
+
+        <div class="problem-grid">
+            <div class="problem-visual">
+                <h3>Revenue Leaks</h3>
+                <div class="orb"></div>
+            </div>
+            <div class="problem-list">
+                <h3>The Problems</h3>
+                <ul>
+                    <li>Manual lead research taking hours</li>
+                    <li>Inconsistent outreach quality</li>
+                    <li>Missed follow-ups and opportunities</li>
+                    <li>No visibility into pipeline health</li>
+                    <li>Scattered tools and data silos</li>
+                    <li>Scaling requires more headcount</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Solutions Section -->
+    <section class="solutions" id="solutions">
+        <!-- Floating Dots -->
+        <div class="floating-dots">
+            <div class="dot" style="width: 12px; height: 12px; top: 10%; left: 15%; animation-delay: 0s; opacity: 0.8;"></div>
+            <div class="dot" style="width: 8px; height: 8px; top: 20%; left: 35%; animation-delay: -2s; opacity: 0.5;"></div>
+            <div class="dot" style="width: 14px; height: 14px; top: 15%; right: 25%; animation-delay: -4s; opacity: 0.7;"></div>
+            <div class="dot" style="width: 6px; height: 6px; top: 30%; right: 15%; animation-delay: -6s; opacity: 0.4;"></div>
+            <div class="dot" style="width: 10px; height: 10px; top: 25%; left: 10%; animation-delay: -8s; opacity: 0.6;"></div>
+            <div class="dot" style="width: 16px; height: 16px; top: 8%; left: 50%; animation-delay: -3s; opacity: 0.9;"></div>
+            <div class="dot" style="width: 5px; height: 5px; top: 35%; left: 60%; animation-delay: -5s; opacity: 0.3;"></div>
+            <div class="dot" style="width: 12px; height: 12px; top: 12%; right: 40%; animation-delay: -7s; opacity: 0.6;"></div>
+        </div>
+
+        <div class="solutions-content">
+            <div class="section-header">
+                <span class="section-tag">Solutions</span>
+                <h2 class="section-title">Evolving Agencies with<br><span class="highlight">Intelligent Automation</span></h2>
+            </div>
+
+            <div class="solutions-card">
+                <h3>Verifiable Results</h3>
+                <div class="solution-items">
+                    <div class="solution-item">
+                        <div class="solution-dot"></div>
+                        <div>
+                            <h4>Autonomous Lead Generation</h4>
+                            <p>AI agents that find and qualify prospects 24/7 without manual intervention</p>
+                        </div>
+                    </div>
+                    <div class="solution-item">
+                        <div class="solution-dot"></div>
+                        <div>
+                            <h4>Intelligent Outreach</h4>
+                            <p>Personalized multi-channel sequences that adapt based on engagement signals</p>
+                        </div>
+                    </div>
+                    <div class="solution-item">
+                        <div class="solution-dot"></div>
+                        <div>
+                            <h4>Workflow Orchestration</h4>
+                            <p>Coordinate complex operations with AI agents that work together seamlessly</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section" id="cta">
+        <h2>Ready to Automate Your Agency?</h2>
+        <p>Join forward-thinking agencies already using Agency OS</p>
+        <a href="#" class="btn btn-cta">
+            <svg fill="none" stroke="white" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+            </svg>
+            Schedule Demo
+        </a>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2025 Agency OS. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Smooth scroll for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Navbar background on scroll
+        const nav = document.querySelector('nav');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                nav.style.background = 'rgba(10, 10, 10, 0.95)';
+            } else {
+                nav.style.background = 'rgba(10, 10, 10, 0.8)';
+            }
+        });
+
+        // Intersection Observer for scroll animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Animate sections on scroll
+        document.querySelectorAll('.feature-item, .problem-grid > *, .solution-item').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(30px)';
+            el.style.transition = 'all 0.6s ease-out';
+            observer.observe(el);
+        });
+
+        // Parallax effect for floating dots
+        window.addEventListener('scroll', () => {
+            const scrollY = window.scrollY;
+            document.querySelectorAll('.dot').forEach((dot, index) => {
+                const speed = 0.1 + (index * 0.02);
+                dot.style.transform = `translateY(${scrollY * speed}px)`;
+            });
+        });
+
+        // Animated text rotation (simplified version)
+        const animatedWords = ['Automates', 'Orchestrates', 'Accelerates'];
+        let wordIndex = 0;
+        const highlightEl = document.querySelector('.features .highlight');
+        
+        if (highlightEl) {
+            setInterval(() => {
+                highlightEl.style.opacity = '0';
+                setTimeout(() => {
+                    wordIndex = (wordIndex + 1) % animatedWords.length;
+                    highlightEl.textContent = animatedWords[wordIndex];
+                    highlightEl.style.opacity = '1';
+                }, 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

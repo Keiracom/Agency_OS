@@ -31,14 +31,14 @@ export function CelebrationBanner({ title, subtitle, onDismiss }: CelebrationBan
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="relative bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-2xl p-5 flex items-center gap-4 text-white shadow-lg"
+      className="relative bg-gradient-to-r from-mint-500 to-mint-600 rounded-2xl p-5 flex items-center gap-4 text-white shadow-lg shadow-mint-500/25"
     >
       <div className="flex-shrink-0 text-3xl">
         <PartyPopper className="h-8 w-8" />
       </div>
       <div className="flex-1">
         <p className="text-lg font-semibold">{title}</p>
-        <p className="text-sm text-emerald-100">{subtitle}</p>
+        <p className="text-sm text-mint-100">{subtitle}</p>
       </div>
       {onDismiss && (
         <button

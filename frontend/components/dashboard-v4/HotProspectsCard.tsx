@@ -35,7 +35,7 @@ function ProspectItem({ prospect }: { prospect: HotProspect }) {
       className={`flex items-center gap-4 p-4 rounded-xl border-l-4 ${bgColor} hover:shadow-md transition-shadow`}
     >
       <Avatar className="h-11 w-11">
-        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-violet-500 text-white font-bold">
+        <AvatarFallback className="bg-gradient-to-br from-mint-500 to-mint-600 text-white font-bold">
           {prospect.initials}
         </AvatarFallback>
       </Avatar>

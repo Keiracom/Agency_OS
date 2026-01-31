@@ -1,12 +1,14 @@
 /**
  * FILE: frontend/components/dashboard-v4/HeroMeetingsCard.tsx
  * PURPOSE: Hero metric card showing meetings vs goal with gauge
- * PHASE: Dashboard V4 Implementation
+ * PHASE: Dashboard V4 Implementation + Mint Theme Premium Effects
  */
 
 "use client";
 
 import { Card } from "@/components/ui/card";
+import { ShineBorder } from "@/components/ui/shine-border";
+import { NumberTicker } from "@/components/ui/number-ticker";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import type { MeetingsGoalData, MomentumData } from "./types";
 
@@ -27,18 +29,20 @@ function MeetingsGauge({ percent }: { percent: number }) {
     : `${clampedPercent}% of goal`;
 
   const statusColor = clampedPercent >= 100 
-    ? "text-emerald-500" 
+    ? "text-mint-500" 
     : clampedPercent >= 70 
-      ? "text-blue-500" 
+      ? "text-mint-400" 
       : "text-amber-500";
 
   return (
     <div className="w-[200px]">
       <svg viewBox="0 0 200 120" width="200" height="120">
         <defs>
+          {/* Mint gradient for gauge */}
           <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#10B981" />
-            <stop offset="100%" stopColor="#3B82F6" />
+            <stop offset="0%" stopColor="#0eb77a" />
+            <stop offset="50%" stopColor="#2dd498" />
+            <stop offset="100%" stopColor="#5eebb8" />
           </linearGradient>
         </defs>
         {/* Background arc */}
@@ -50,7 +54,7 @@ function MeetingsGauge({ percent }: { percent: number }) {
           strokeLinecap="round"
           className="text-muted"
         />
-        {/* Filled arc */}
+        {/* Filled arc with mint gradient */}
         <path
           d="M 20 100 A 80 80 0 0 1 180 100"
           fill="none"
@@ -59,7 +63,7 @@ function MeetingsGauge({ percent }: { percent: number }) {
           strokeLinecap="round"
           strokeDasharray={arcLength}
           strokeDashoffset={strokeDashoffset}
-          style={{ transition: "stroke-dashoffset 0.5s ease-out" }}
+          style={{ transition: "stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1)" }}
         />
       </svg>
       <div className="text-center mt-3">
@@ -79,25 +83,32 @@ export function HeroMeetingsCard({ meetingsGoal, momentum }: HeroMeetingsCardPro
       : Minus;
 
   const momentumColor = momentum.direction === "up" 
-    ? "text-emerald-500" 
+    ? "text-mint-500" 
     : momentum.direction === "down" 
       ? "text-red-500" 
       : "text-muted-foreground";
 
   return (
-    <Card className="p-8 shadow-sm">
-      <div className="flex items-center gap-12">
+    <Card className="p-8 shadow-sm relative overflow-hidden border-border/50">
+      {/* Premium shine border effect */}
+      <ShineBorder 
+        shineColor={["#2dd498", "#0eb77a", "#5eebb8"]} 
+        borderWidth={1}
+        duration={8}
+      />
+      
+      <div className="flex items-center gap-12 relative">
         {/* Main metric */}
         <div className="flex-1">
           <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
             Meetings This Month
           </p>
-          <p className="text-7xl font-extrabold text-foreground leading-none">
-            {meetingsGoal.current}
-          </p>
+          <div className="text-7xl font-extrabold text-foreground leading-none">
+            <NumberTicker value={meetingsGoal.current} delay={0.2} />
+          </div>
           <p className="text-lg text-muted-foreground mt-2">
             Goal: {meetingsGoal.target} •{" "}
-            <span className={meetingsGoal.targetHit ? "text-emerald-500 font-semibold" : ""}>
+            <span className={meetingsGoal.targetHit ? "text-mint-500 font-semibold" : ""}>
               {meetingsGoal.targetHit 
                 ? `Target hit${meetingsGoal.daysEarly ? ` ${meetingsGoal.daysEarly} days early` : ""} ✓` 
                 : `${meetingsGoal.target - meetingsGoal.current} to go`}
@@ -105,7 +116,7 @@ export function HeroMeetingsCard({ meetingsGoal, momentum }: HeroMeetingsCardPro
           </p>
           
           {/* Momentum indicator */}
-          <div className="flex items-center gap-3 mt-5 pt-5 border-t">
+          <div className="flex items-center gap-3 mt-5 pt-5 border-t border-border/50">
             <MomentumIcon className={`h-6 w-6 ${momentumColor}`} />
             <p className="text-sm text-muted-foreground">
               <span className={`font-semibold ${momentumColor}`}>

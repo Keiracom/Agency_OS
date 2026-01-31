@@ -31,7 +31,7 @@ export function InsightCard({ insight }: InsightCardProps) {
   };
 
   return (
-    <Card className="p-6 bg-gradient-to-br from-blue-50 to-violet-50 dark:from-blue-950/30 dark:to-violet-950/30 border-blue-100 dark:border-blue-900">
+    <Card className="p-6 bg-gradient-to-br from-mint-50 to-mint-100/50 dark:from-mint-950/30 dark:to-mint-900/20 border-mint-200 dark:border-mint-800">
       <div className="text-4xl mb-4">{insight.icon}</div>
       <h3 className="text-xl font-bold text-foreground mb-2">{insight.headline}</h3>
       {renderDetail()}

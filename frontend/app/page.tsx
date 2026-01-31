@@ -164,7 +164,7 @@ export default function LandingPage() {
         }
         
         .gradient-text {
-          background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
+          background: linear-gradient(135deg, #0eb77a 0%, #2dd498 50%, #5eebb8 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -179,13 +179,13 @@ export default function LandingPage() {
         }
 
         .btn-gradient {
-          background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+          background: linear-gradient(135deg, #0eb77a 0%, #2dd498 100%);
           transition: all 0.3s ease;
         }
         .btn-gradient:hover {
           opacity: 0.95;
           transform: translateY(-2px);
-          box-shadow: 0 20px 40px rgba(59, 130, 246, 0.35);
+          box-shadow: 0 20px 40px rgba(46, 212, 152, 0.35);
         }
       `}</style>
 

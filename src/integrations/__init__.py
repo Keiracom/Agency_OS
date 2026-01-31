@@ -31,6 +31,11 @@ __all__ = [
     "get_elevenlabs_client",
     "ClickSendClient",
     "get_clicksend_client",
+
     "HeyGenClient",
     "get_heygen_client",
+
+    "TwitterClient",
+    "get_twitter_client",
+
 ]

@@ -1,0 +1,1435 @@
+{
+    "schemes": ["https"],
+    "swagger": "2.0",
+    "info": {
+        "description": "Warmforge Public API",
+        "title": "Warmforge API",
+        "termsOfService": "https://www.warmforge.ai/terms",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "api.warmforge.ai",
+    "basePath": "/public/v1",
+    "paths": {
+        "/mailboxes": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get mailboxes",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Mailboxes"
+                ],
+                "summary": "Get mailboxes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "External reference",
+                        "name": "external_reference",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "warm",
+                            "pending",
+                            "disconnected",
+                            "suspended",
+                            "all"
+                        ],
+                        "type": "string",
+                        "description": "Status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "page_size",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.PaginatedMailboxesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/mailboxes/bulk-update": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update mailboxes",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Mailboxes"
+                ],
+                "summary": "Update mailboxes",
+                "parameters": [
+                    {
+                        "description": "Mailboxes updates",
+                        "name": "mailbox",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.UpdateMailboxesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated mailboxes",
+                        "schema": {
+                            "$ref": "#/definitions/response.MailboxesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Mailbox not found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/mailboxes/connect-oauth2": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Connect a mailbox using OAuth2",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Mailboxes"
+                ],
+                "summary": "Connect OAuth2 mailbox",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Connect OAuth2 mailbox request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.ConnectOAuth2MailboxAlternativeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Connected mailbox",
+                        "schema": {
+                            "$ref": "#/definitions/response.MailboxResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "409": {
+                        "description": "Mailbox already connected in another workspace",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/mailboxes/connect-smtp": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Connect an SMTP mailbox to Warmforge",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Mailboxes"
+                ],
+                "summary": "Connect SMTP mailbox",
+                "parameters": [
+                    {
+                        "description": "SMTP mailbox details",
+                        "name": "mailbox",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.ConnectSMTPMailboxRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.MailboxResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Mailbox not found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "409": {
+                        "description": "Mailbox already connected in another workspace",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/mailboxes/{address}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get a mailbox",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Mailboxes"
+                ],
+                "summary": "Get mailbox",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Mailbox address",
+                        "name": "address",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.MailboxResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Mailbox not found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Delete a mailbox",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Mailboxes"
+                ],
+                "summary": "Delete mailbox",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Mailbox address",
+                        "name": "address",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Mailbox deleted"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Mailbox not found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update a mailbox",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Mailboxes"
+                ],
+                "summary": "Update mailbox",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Mailbox address",
+                        "name": "address",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Mailbox updates",
+                        "name": "mailbox",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.UpdateMailboxRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated mailbox",
+                        "schema": {
+                            "$ref": "#/definitions/response.MailboxResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Mailbox not found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/mailboxes/{address}/warmup/stats": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get warmup stats",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Mailboxes"
+                ],
+                "summary": "Get warmup stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Mailbox address",
+                        "name": "address",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2025-09-01",
+                        "description": "From date",
+                        "name": "from",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2025-09-11",
+                        "description": "To date",
+                        "name": "to",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.WarmupStatsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Mailbox not found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/placement-tests": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get all placement tests",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Placement Tests"
+                ],
+                "summary": "Get placement tests",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "size",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "External reference",
+                        "name": "external_reference",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.PlacementTestsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Create a placement test",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Placement Tests"
+                ],
+                "summary": "Create placement test",
+                "parameters": [
+                    {
+                        "description": "Placement test payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.CreatePlacementTestRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.PlacementTestResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Mailbox not found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/placement-tests/{placementTestID}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get a placement test",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Placement Tests"
+                ],
+                "summary": "Get placement test",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Placement test ID",
+                        "name": "placementTestID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.PlacementTestResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Placement test not found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Delete a placement test",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Placement Tests"
+                ],
+                "summary": "Delete placement test",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Placement test ID",
+                        "name": "placementTestID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Placement test deleted"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Placement test not found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "errors.Error": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "mail.Header": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.MailboxDNSStatus": {
+            "type": "string",
+            "enum": [
+                "valid",
+                "invalid",
+                "missing",
+                "unknown"
+            ],
+            "x-enum-varnames": [
+                "MailboxDNSStatusValid",
+                "MailboxDNSStatusInvalid",
+                "MailboxDNSStatusMissing",
+                "MailboxDNSStatusUnknown"
+            ]
+        },
+        "models.MailboxProvider": {
+            "type": "string",
+            "enum": [
+                "gmail",
+                "outlook",
+                "smtp"
+            ],
+            "x-enum-varnames": [
+                "MailboxProviderGmail",
+                "MailboxProviderOutlook",
+                "MailboxProviderSMTP"
+            ]
+        },
+        "models.MailboxSpecialStatus": {
+            "type": "string",
+            "enum": [
+                "warm",
+                "pending",
+                "disconnected",
+                "suspended",
+                "all"
+            ],
+            "x-enum-varnames": [
+                "MailboxSpecialStatusWarm",
+                "MailboxSpecialStatusPending",
+                "MailboxSpecialStatusDisconnected",
+                "MailboxSpecialStatusSuspended",
+                "MailboxSpecialStatusAll"
+            ]
+        },
+        "models.MailboxStatus": {
+            "type": "string",
+            "enum": [
+                "active",
+                "access_lost",
+                "pending",
+                "suspended"
+            ],
+            "x-enum-varnames": [
+                "MailboxStatusActive",
+                "MailboxStatusAccessLost",
+                "MailboxStatusPending",
+                "MailboxStatusSuspended"
+            ]
+        },
+        "models.MailboxWarmupStatsProviderStats": {
+            "type": "object",
+            "properties": {
+                "primaryCount": {
+                    "type": "integer"
+                },
+                "replyCount": {
+                    "type": "integer"
+                },
+                "spamCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.PlacementTestResult": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "inbox",
+                "spam",
+                "unknown",
+                "missing"
+            ],
+            "x-enum-varnames": [
+                "PlacementTestResultPending",
+                "PlacementTestResultInbox",
+                "PlacementTestResultSpam",
+                "PlacementTestResultUnknown",
+                "PlacementTestResultMissing"
+            ]
+        },
+        "request.ConnectOAuth2MailboxAlternativeRequest": {
+            "type": "object",
+            "required": [
+                "accessToken",
+                "clientId",
+                "clientSecret",
+                "email",
+                "expiresIn",
+                "provider",
+                "refreshToken"
+            ],
+            "properties": {
+                "accessToken": {
+                    "type": "string"
+                },
+                "clientId": {
+                    "type": "string"
+                },
+                "clientSecret": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "expiresIn": {
+                    "type": "integer"
+                },
+                "externalReference": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                },
+                "provider": {
+                    "type": "string",
+                    "enum": [
+                        "gmail",
+                        "outlook"
+                    ]
+                },
+                "refreshToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "request.ConnectSMTPMailboxRequest": {
+            "type": "object",
+            "required": [
+                "address",
+                "firstName",
+                "imapHost",
+                "imapPassword",
+                "imapPort",
+                "imapUsername",
+                "lastName",
+                "smtpHost",
+                "smtpPassword",
+                "smtpPort",
+                "smtpUsername"
+            ],
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "externalReference": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "imapHost": {
+                    "type": "string"
+                },
+                "imapPassword": {
+                    "type": "string"
+                },
+                "imapPort": {
+                    "type": "integer"
+                },
+                "imapUsername": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "signature": {
+                    "type": "string",
+                    "maxLength": 1000
+                },
+                "smtpHost": {
+                    "type": "string"
+                },
+                "smtpPassword": {
+                    "type": "string"
+                },
+                "smtpPort": {
+                    "type": "integer"
+                },
+                "smtpUsername": {
+                    "type": "string"
+                },
+                "warmupEnabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "request.CreatePlacementTestRequest": {
+            "type": "object",
+            "required": [
+                "body",
+                "subject"
+            ],
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "externalReference": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                },
+                "mailboxes": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                }
+            }
+        },
+        "request.UpdateMailboxRequest": {
+            "type": "object",
+            "properties": {
+                "emailRampUp": {
+                    "type": "integer",
+                    "maximum": 20,
+                    "minimum": 0
+                },
+                "firstName": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                },
+                "lastName": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                },
+                "maxEmailsPerDay": {
+                    "type": "integer",
+                    "maximum": 20
+                },
+                "minEmailsPerDay": {
+                    "type": "integer",
+                    "maximum": 20,
+                    "minimum": 1
+                },
+                "replyRatePercent": {
+                    "type": "integer",
+                    "maximum": 50,
+                    "minimum": 0
+                },
+                "signature": {
+                    "type": "string",
+                    "maxLength": 1000
+                },
+                "warmupEnabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "request.UpdateMailboxesFilters": {
+            "type": "object",
+            "properties": {
+                "excludedIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "includedIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "search": {
+                    "type": "string"
+                },
+                "specialStatus": {
+                    "$ref": "#/definitions/models.MailboxSpecialStatus"
+                }
+            }
+        },
+        "request.UpdateMailboxesRequest": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/request.UpdateMailboxRequest"
+                },
+                "filters": {
+                    "$ref": "#/definitions/request.UpdateMailboxesFilters"
+                }
+            }
+        },
+        "response.BlacklistChecks": {
+            "type": "object",
+            "properties": {
+                "detected": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "significant": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "response.Blacklists": {
+            "type": "object",
+            "properties": {
+                "checks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/response.BlacklistChecks"
+                    }
+                },
+                "detectedCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "response.MailboxHealthDKIM": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "selector": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.MailboxDNSStatus"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.MailboxHealthDNSRecord": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.MailboxDNSStatus"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.MailboxHealthResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "blacklists": {
+                    "$ref": "#/definitions/response.Blacklists"
+                },
+                "dkim": {
+                    "$ref": "#/definitions/response.MailboxHealthDKIM"
+                },
+                "dmarc": {
+                    "$ref": "#/definitions/response.MailboxHealthDNSRecord"
+                },
+                "domain": {
+                    "type": "string"
+                },
+                "heatScore": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lastCheckedAt": {
+                    "type": "string"
+                },
+                "mx": {
+                    "$ref": "#/definitions/response.MailboxHealthDNSRecord"
+                },
+                "reverseDNS": {
+                    "$ref": "#/definitions/response.MailboxHealthReverseDNS"
+                },
+                "spf": {
+                    "$ref": "#/definitions/response.MailboxHealthDNSRecord"
+                },
+                "warmupDays": {
+                    "type": "integer"
+                }
+            }
+        },
+        "response.MailboxHealthReverseDNS": {
+            "type": "object",
+            "properties": {
+                "domainActual": {
+                    "type": "string"
+                },
+                "domainReported": {
+                    "type": "string"
+                },
+                "ipAddress": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.MailboxDNSStatus"
+                }
+            }
+        },
+        "response.MailboxResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "emailRampUp": {
+                    "type": "integer"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "healthReport": {
+                    "$ref": "#/definitions/response.MailboxHealthResponse"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "maxEmailsPerDay": {
+                    "type": "integer"
+                },
+                "minEmailsPerDay": {
+                    "type": "integer"
+                },
+                "provider": {
+                    "$ref": "#/definitions/models.MailboxProvider"
+                },
+                "replyRatePercent": {
+                    "type": "integer"
+                },
+                "signature": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.MailboxStatus"
+                },
+                "warm": {
+                    "type": "boolean"
+                },
+                "warmupDaysCompleted": {
+                    "type": "integer"
+                },
+                "warmupDaysLeft": {
+                    "type": "integer"
+                },
+                "warmupEnabled": {
+                    "type": "boolean"
+                },
+                "workspaceID": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.MailboxWarmupStats": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "providerStats": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/models.MailboxWarmupStatsProviderStats"
+                    }
+                },
+                "replyCount": {
+                    "type": "integer"
+                },
+                "sentCount": {
+                    "type": "integer"
+                },
+                "spamCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "response.MailboxesResponse": {
+            "type": "object",
+            "properties": {
+                "mailboxes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/response.MailboxResponse"
+                    }
+                }
+            }
+        },
+        "response.PaginatedMailboxesResponse": {
+            "type": "object",
+            "properties": {
+                "mailboxes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/response.MailboxResponse"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "pageSize": {
+                    "type": "integer"
+                },
+                "totalPages": {
+                    "type": "integer"
+                }
+            }
+        },
+        "response.PlacementTestResponse": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "emailSent": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "inboxCountGmail": {
+                    "type": "integer"
+                },
+                "inboxCountOutlook": {
+                    "type": "integer"
+                },
+                "mailboxCount": {
+                    "type": "integer"
+                },
+                "missingCount": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "pendingCount": {
+                    "type": "integer"
+                },
+                "result": {
+                    "type": "integer"
+                },
+                "spamCountGmail": {
+                    "type": "integer"
+                },
+                "spamCountOutlook": {
+                    "type": "integer"
+                },
+                "tests": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/response.PlacementTestsTestResponse"
+                    }
+                },
+                "workspaceId": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.PlacementTestsResponse": {
+            "type": "object",
+            "properties": {
+                "currentPage": {
+                    "type": "integer"
+                },
+                "placementTests": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/response.PlacementTestResponse"
+                    }
+                },
+                "totalCount": {
+                    "type": "integer"
+                },
+                "totalPages": {
+                    "type": "integer"
+                }
+            }
+        },
+        "response.PlacementTestsTestResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "body": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "emailSent": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "inboxCountGmail": {
+                    "type": "integer"
+                },
+                "inboxCountOutlook": {
+                    "type": "integer"
+                },
+                "mailboxId": {
+                    "type": "string"
+                },
+                "missingCount": {
+                    "type": "integer"
+                },
+                "pendingCount": {
+                    "type": "integer"
+                },
+                "provider": {
+                    "$ref": "#/definitions/models.MailboxProvider"
+                },
+                "result": {
+                    "type": "integer"
+                },
+                "spamCountGmail": {
+                    "type": "integer"
+                },
+                "spamCountOutlook": {
+                    "type": "integer"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "targets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/response.PlacementTestsTestTargetResponse"
+                    }
+                }
+            }
+        },
+        "response.PlacementTestsTestTargetResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "headers": {
+                    "$ref": "#/definitions/mail.Header"
+                },
+                "provider": {
+                    "$ref": "#/definitions/models.MailboxProvider"
+                },
+                "receivedAt": {
+                    "type": "string"
+                },
+                "result": {
+                    "$ref": "#/definitions/models.PlacementTestResult"
+                }
+            }
+        },
+        "response.WarmupStatsResponse": {
+            "type": "object",
+            "properties": {
+                "stats": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/response.MailboxWarmupStats"
+                    }
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

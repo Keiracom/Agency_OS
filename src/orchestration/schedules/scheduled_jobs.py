@@ -260,6 +260,29 @@ def get_crm_sync_schedule() -> IntervalSchedule:
 
 
 # ============================================
+# Warmup Monitor Schedule (Domain Warmup Completion)
+# ============================================
+
+
+def get_warmup_monitor_schedule() -> CronSchedule:
+    """
+    Daily warmup monitor at 6 AM AEST (19:00 UTC previous day).
+
+    Checks WarmForge for completed domain warmups and marks
+    domains as AVAILABLE when heat score >= 85.
+
+    Runs early morning so domains are ready for daily operations.
+
+    Returns:
+        CronSchedule: Daily at 19:00 UTC (6 AM AEST)
+    """
+    return CronSchedule(
+        cron="0 19 * * *",  # 19:00 UTC = 6 AM AEST
+        timezone="UTC",
+    )
+
+
+# ============================================
 # Phase H, Item 44: Daily Digest Schedule
 # ============================================
 
@@ -452,6 +475,14 @@ SCHEDULE_REGISTRY: dict[str, Any] = {
         "parameters": {
             "target_hour": 7,  # Process clients configured for 7 AM send time
         },
+    },
+    # Warmup Monitor: Domain warmup completion check
+    "warmup_monitor": {
+        "schedule": get_warmup_monitor_schedule(),
+        "description": "Daily warmup monitor at 6 AM AEST (19:00 UTC) - marks warmed domains as AVAILABLE",
+        "work_queue": "agency-os-queue",
+        "tags": ["warmup", "domains", "daily", "resource-pool"],
+        "parameters": {},
     },
     # Item 14: Voice Recording Cleanup (90-day retention)
     "recording_cleanup": {

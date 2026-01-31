@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EQTY Lab | Verify to Trust AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --black: #000000;
+            --dark: #0a0a0a;
+            --dark-alt: #111111;
+            --green: #00FF88;
+            --green-bright: #00ffaa;
+            --green-dim: #00cc6a;
+            --teal: #00D4AA;
+            --white: #ffffff;
+            --gray: #888888;
+            --gray-light: #cccccc;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--dark);
+            color: var(--white);
+            overflow-x: hidden;
+            cursor: none;
+        }
+
+        /* Custom Cursor */
+        .cursor {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--green);
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 10000;
+            transition: transform 0.15s ease, background 0.15s ease, width 0.15s ease, height 0.15s ease;
+            mix-blend-mode: difference;
+        }
+
+        .cursor.hover {
+            transform: scale(2.5);
+            background: var(--green);
+            mix-blend-mode: normal;
+        }
+
+        .cursor-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--green);
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 10001;
+            transition: opacity 0.15s ease;
+        }
+
+        /* Noise Overlay */
+        .noise {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 1.5rem 4rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: transparent;
+            transition: all 0.4s ease;
+        }
+
+        nav.scrolled {
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(20px);
+            padding: 1rem 4rem;
+        }
+
+        .logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo span {
+            color: var(--green);
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--green) 0%, var(--teal) 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--black);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .logo:hover .logo-icon {
+            transform: rotate(10deg) scale(1.1);
+            box-shadow: 0 0 30px var(--green);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 3rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--gray-light);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            position: relative;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--green);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--white);
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        .nav-cta {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.9rem 2rem;
+            border-radius: 100px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            border: none;
+            color: var(--white);
+        }
+
+        .btn-ghost:hover {
+            color: var(--green);
+        }
+
+        .btn-primary {
+            background: var(--green);
+            color: var(--black);
+            border: none;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 10px 40px rgba(0, 255, 136, 0.4);
+        }
+
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 8rem 4rem 4rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-bg {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at 50% 0%, rgba(0, 255, 136, 0.15) 0%, transparent 60%);
+        }
+
+        .hero-grid {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(0, 255, 136, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 136, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+        }
+
+        .hero-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            animation: float 10s ease-in-out infinite;
+        }
+
+        .hero-orb-1 {
+            width: 600px;
+            height: 600px;
+            background: rgba(0, 255, 136, 0.2);
+            top: -200px;
+            left: -100px;
+        }
+
+        .hero-orb-2 {
+            width: 400px;
+            height: 400px;
+            background: rgba(0, 212, 170, 0.15);
+            bottom: -100px;
+            right: -100px;
+            animation-delay: -5s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(30px, -30px) scale(1.1); }
+        }
+
+        .hero-chip {
+            position: relative;
+            margin-bottom: 3rem;
+            animation: chipFloat 6s ease-in-out infinite;
+        }
+
+        @keyframes chipFloat {
+            0%, 100% { transform: translateY(0) rotateX(0deg); }
+            50% { transform: translateY(-20px) rotateX(5deg); }
+        }
+
+        .chip-visual {
+            width: 200px;
+            height: 200px;
+            background: linear-gradient(145deg, #1a1a1a 0%, #0a0a0a 100%);
+            border-radius: 30px;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 
+                0 0 60px rgba(0, 255, 136, 0.2),
+                inset 0 0 40px rgba(0, 255, 136, 0.1);
+        }
+
+        .chip-core {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, var(--green) 0%, var(--teal) 100%);
+            border-radius: 15px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 4px;
+            padding: 10px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 20px var(--green); }
+            50% { box-shadow: 0 0 50px var(--green), 0 0 80px rgba(0, 255, 136, 0.5); }
+        }
+
+        .chip-cell {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 2px;
+        }
+
+        .chip-line {
+            position: absolute;
+            background: var(--green);
+            opacity: 0.5;
+        }
+
+        .chip-line-h { height: 1px; width: 60px; }
+        .chip-line-v { width: 1px; height: 60px; }
+
+        .chip-line-1 { top: 50%; left: -60px; }
+        .chip-line-2 { top: 50%; right: -60px; }
+        .chip-line-3 { left: 50%; top: -60px; }
+        .chip-line-4 { left: 50%; bottom: -60px; }
+
+        .chip-node {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: var(--dark);
+            border: 2px solid var(--green);
+            border-radius: 50%;
+            animation: nodePulse 2s ease-in-out infinite;
+        }
+
+        @keyframes nodePulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 10px var(--green); }
+            50% { transform: scale(1.3); box-shadow: 0 0 20px var(--green); }
+        }
+
+        .chip-node-1 { top: -80px; left: 50%; transform: translateX(-50%); }
+        .chip-node-2 { bottom: -80px; left: 50%; transform: translateX(-50%); animation-delay: -0.5s; }
+        .chip-node-3 { left: -80px; top: 50%; transform: translateY(-50%); animation-delay: -1s; }
+        .chip-node-4 { right: -80px; top: 50%; transform: translateY(-50%); animation-delay: -1.5s; }
+
+        .hero-content {
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.2rem;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 100px;
+            font-size: 0.85rem;
+            color: var(--green);
+            margin-bottom: 2rem;
+            animation: badgeGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes badgeGlow {
+            0%, 100% { box-shadow: 0 0 10px rgba(0, 255, 136, 0.2); }
+            50% { box-shadow: 0 0 25px rgba(0, 255, 136, 0.4); }
+        }
+
+        .hero-badge-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--green);
+            border-radius: 50%;
+            animation: blink 1s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .hero-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(4rem, 12vw, 9rem);
+            font-weight: 700;
+            line-height: 0.95;
+            letter-spacing: -0.04em;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-title span {
+            display: block;
+        }
+
+        .hero-title .verify {
+            color: var(--white);
+            opacity: 0;
+            transform: translateY(80px);
+            animation: slideUp 1s ease forwards 0.2s;
+        }
+
+        .hero-title .to-trust {
+            color: var(--gray-light);
+            opacity: 0;
+            transform: translateY(80px);
+            animation: slideUp 1s ease forwards 0.4s;
+        }
+
+        .hero-title .ai {
+            background: linear-gradient(135deg, var(--green) 0%, var(--teal) 50%, var(--green-bright) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            opacity: 0;
+            transform: translateY(80px);
+            animation: slideUp 1s ease forwards 0.6s;
+        }
+
+        @keyframes slideUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hero-subtitle {
+            font-size: 1.5rem;
+            color: var(--gray);
+            max-width: 600px;
+            margin: 0 auto 3rem;
+            line-height: 1.6;
+            opacity: 0;
+            animation: fadeIn 1s ease forwards 0.8s;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            opacity: 0;
+            animation: fadeIn 1s ease forwards 1s;
+        }
+
+        .btn-mega {
+            padding: 1.2rem 3rem;
+            font-size: 1.1rem;
+            background: var(--green);
+            color: var(--black);
+            border: none;
+            border-radius: 100px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .btn-mega:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 20px 60px rgba(0, 255, 136, 0.5);
+        }
+
+        .btn-mega svg {
+            transition: transform 0.3s ease;
+        }
+
+        .btn-mega:hover svg {
+            transform: translateX(5px);
+        }
+
+        .btn-outline-mega {
+            padding: 1.2rem 3rem;
+            font-size: 1.1rem;
+            background: transparent;
+            color: var(--white);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 100px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-outline-mega:hover {
+            border-color: var(--green);
+            color: var(--green);
+            transform: translateY(-3px);
+        }
+
+        .hero-scroll {
+            position: absolute;
+            bottom: 3rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--gray);
+            font-size: 0.85rem;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(10px); }
+        }
+
+        .scroll-line {
+            width: 1px;
+            height: 60px;
+            background: linear-gradient(to bottom, var(--green), transparent);
+        }
+
+        /* Problem Section */
+        .problem {
+            padding: 10rem 4rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .section-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 100px;
+            font-size: 0.85rem;
+            color: var(--gray-light);
+            margin-bottom: 2rem;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease;
+        }
+
+        .section-label.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .problem-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6rem;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .problem-text {
+            opacity: 0;
+            transform: translateX(-50px);
+            transition: all 1s ease;
+        }
+
+        .problem-text.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .problem-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(3rem, 6vw, 5rem);
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 2rem;
+        }
+
+        .problem-title .highlight {
+            color: #FF4444;
+            position: relative;
+        }
+
+        .problem-title .highlight::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: #FF4444;
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.6s ease 0.5s;
+        }
+
+        .problem-text.visible .problem-title .highlight::after {
+            transform: scaleX(1);
+        }
+
+        .problem-desc {
+            font-size: 1.2rem;
+            color: var(--gray);
+            line-height: 1.8;
+            margin-bottom: 2rem;
+        }
+
+        .threat-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .threat-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: rgba(255, 68, 68, 0.05);
+            border: 1px solid rgba(255, 68, 68, 0.2);
+            border-radius: 12px;
+            font-size: 0.95rem;
+            color: var(--gray-light);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.4s ease, background 0.3s ease, border-color 0.3s ease;
+        }
+
+        .threat-item.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .threat-item:hover {
+            background: rgba(255, 68, 68, 0.1);
+            border-color: rgba(255, 68, 68, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .threat-icon {
+            width: 24px;
+            height: 24px;
+            color: #FF4444;
+        }
+
+        .problem-visual {
+            position: relative;
+            opacity: 0;
+            transform: translateX(50px);
+            transition: all 1s ease 0.3s;
+        }
+
+        .problem-visual.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .problem-graphic {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+            background: radial-gradient(ellipse at center, rgba(255, 68, 68, 0.2) 0%, transparent 60%);
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .warning-symbol {
+            font-size: 10rem;
+            color: #FF4444;
+            animation: warningPulse 2s ease-in-out infinite;
+            text-shadow: 0 0 60px rgba(255, 68, 68, 0.5);
+        }
+
+        @keyframes warningPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        .threat-orbits {
+            position: absolute;
+            inset: 0;
+        }
+
+        .orbit {
+            position: absolute;
+            border: 1px dashed rgba(255, 68, 68, 0.3);
+            border-radius: 50%;
+            animation: rotate 20s linear infinite;
+        }
+
+        .orbit-1 {
+            inset: 20%;
+        }
+
+        .orbit-2 {
+            inset: 5%;
+            animation-direction: reverse;
+            animation-duration: 30s;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Solutions Section */
+        .solutions {
+            padding: 10rem 4rem;
+            background: linear-gradient(180deg, var(--dark) 0%, var(--black) 100%);
+            position: relative;
+        }
+
+        .solutions-header {
+            text-align: center;
+            margin-bottom: 6rem;
+        }
+
+        .solutions-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(3rem, 8vw, 6rem);
+            font-weight: 700;
+            line-height: 1.1;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 1s ease;
+        }
+
+        .solutions-title.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .solutions-title .evolving {
+            color: var(--white);
+        }
+
+        .solutions-title .trust {
+            color: var(--gray);
+        }
+
+        .solutions-title .ai-with {
+            color: var(--green);
+        }
+
+        .type-wrapper {
+            display: inline-block;
+            position: relative;
+        }
+
+        .type-text {
+            display: inline-block;
+            color: var(--green);
+            border-right: 3px solid var(--green);
+            animation: blink 0.8s step-end infinite;
+        }
+
+        .solutions-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .solution-card {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 3rem;
+            position: relative;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(60px);
+            transition: all 0.6s ease, transform 0.4s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .solution-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .solution-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--green);
+            box-shadow: 0 30px 80px rgba(0, 255, 136, 0.15);
+        }
+
+        .solution-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--green), var(--teal));
+            transform: scaleX(0);
+            transition: transform 0.4s ease;
+        }
+
+        .solution-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .solution-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2rem;
+            transition: all 0.4s ease;
+        }
+
+        .solution-card:hover .solution-icon {
+            background: var(--green);
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .solution-icon svg {
+            width: 40px;
+            height: 40px;
+            color: var(--green);
+            transition: color 0.4s ease;
+        }
+
+        .solution-card:hover .solution-icon svg {
+            color: var(--black);
+        }
+
+        .solution-label {
+            font-size: 0.9rem;
+            color: var(--green);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1rem;
+        }
+
+        .solution-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--white);
+        }
+
+        .solution-desc {
+            color: var(--gray);
+            line-height: 1.7;
+            font-size: 1.05rem;
+        }
+
+        .solution-number {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 6rem;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.03);
+            line-height: 1;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 10rem 4rem;
+            position: relative;
+        }
+
+        .features-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 6rem;
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 0.8s ease;
+        }
+
+        .features-title.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .features-flow {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .feature-step {
+            flex: 1;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 0.6s ease;
+        }
+
+        .feature-step.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .feature-icon-wrap {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 2rem;
+            background: rgba(0, 255, 136, 0.05);
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: all 0.4s ease;
+        }
+
+        .feature-step:hover .feature-icon-wrap {
+            transform: scale(1.1);
+            background: rgba(0, 255, 136, 0.15);
+            border-color: var(--green);
+            box-shadow: 0 0 40px rgba(0, 255, 136, 0.3);
+        }
+
+        .feature-icon-wrap svg {
+            width: 50px;
+            height: 50px;
+            color: var(--green);
+        }
+
+        .feature-connector {
+            position: absolute;
+            top: 60px;
+            width: 100%;
+            height: 2px;
+            z-index: -1;
+        }
+
+        .feature-connector::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 15%;
+            right: 15%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--green), var(--teal), var(--green));
+            opacity: 0.3;
+        }
+
+        .feature-step-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: var(--white);
+        }
+
+        .feature-step-desc {
+            color: var(--gray);
+            line-height: 1.6;
+            font-size: 1rem;
+        }
+
+        /* Platforms Section */
+        .platforms {
+            padding: 6rem 4rem;
+            background: var(--dark-alt);
+        }
+
+        .platforms-inner {
+            max-width: 1000px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .platforms-label {
+            font-size: 0.9rem;
+            color: var(--gray);
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+
+        .platforms-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 3rem;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease;
+        }
+
+        .platforms-title.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .platforms-title .highlight {
+            color: var(--green);
+        }
+
+        .platform-cards {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+        }
+
+        .platform-card {
+            padding: 1.5rem 2.5rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: var(--gray-light);
+            font-weight: 500;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .platform-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .platform-card:hover {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: var(--green);
+            transform: translateY(-5px);
+            color: var(--white);
+        }
+
+        .platform-card svg {
+            width: 24px;
+            height: 24px;
+            color: var(--green);
+        }
+
+        /* CTA Section */
+        .cta {
+            padding: 12rem 4rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-bg {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at 50% 100%, rgba(0, 255, 136, 0.2) 0%, transparent 60%);
+        }
+
+        .cta-content {
+            position: relative;
+            z-index: 1;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 1s ease;
+        }
+
+        .cta-content.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .cta-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(3rem, 8vw, 6rem);
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 2rem;
+        }
+
+        .cta-title .gradient {
+            background: linear-gradient(135deg, var(--green) 0%, var(--teal) 50%, var(--green-bright) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .cta-desc {
+            font-size: 1.3rem;
+            color: var(--gray);
+            max-width: 600px;
+            margin: 0 auto 3rem;
+            line-height: 1.7;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+        }
+
+        /* Footer */
+        footer {
+            padding: 4rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--white);
+        }
+
+        .footer-logo span {
+            color: var(--green);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .footer-links a {
+            color: var(--gray);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--green);
+        }
+
+        .footer-copy {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 1024px) {
+            nav {
+                padding: 1rem 2rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .hero {
+                padding: 6rem 2rem 4rem;
+            }
+
+            .problem-content {
+                grid-template-columns: 1fr;
+                gap: 4rem;
+            }
+
+            .solutions-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .features-flow {
+                flex-direction: column;
+                gap: 3rem;
+            }
+
+            .feature-connector {
+                display: none;
+            }
+
+            .platform-cards {
+                flex-direction: column;
+            }
+
+            footer {
+                flex-direction: column;
+                gap: 2rem;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .cursor, .cursor-dot {
+                display: none;
+            }
+
+            body {
+                cursor: auto;
+            }
+
+            .hero-title {
+                font-size: 3rem;
+            }
+
+            .hero-cta {
+                flex-direction: column;
+            }
+
+            .threat-list {
+                grid-template-columns: 1fr;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Custom Cursor -->
+    <div class="cursor"></div>
+    <div class="cursor-dot"></div>
+    
+    <!-- Noise Overlay -->
+    <div class="noise"></div>
+
+    <!-- Navigation -->
+    <nav>
+        <a href="#" class="logo">
+            <div class="logo-icon">E</div>
+            EQTY<span>LAB</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="#solutions">Solutions</a></li>
+            <li><a href="#technology">Technology</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#platforms">Platforms</a></li>
+        </ul>
+        <div class="nav-cta">
+            <a href="#" class="btn btn-ghost">Log In</a>
+            <a href="#" class="btn btn-primary">Get Started</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-bg"></div>
+        <div class="hero-grid"></div>
+        <div class="hero-orb hero-orb-1"></div>
+        <div class="hero-orb hero-orb-2"></div>
+        
+        <div class="hero-chip">
+            <div class="chip-visual">
+                <div class="chip-core">
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                    <div class="chip-cell"></div>
+                </div>
+                <div class="chip-line chip-line-h chip-line-1"></div>
+                <div class="chip-line chip-line-h chip-line-2"></div>
+                <div class="chip-line chip-line-v chip-line-3"></div>
+                <div class="chip-line chip-line-v chip-line-4"></div>
+                <div class="chip-node chip-node-1"></div>
+                <div class="chip-node chip-node-2"></div>
+                <div class="chip-node chip-node-3"></div>
+                <div class="chip-node chip-node-4"></div>
+            </div>
+        </div>
+        
+        <div class="hero-content">
+            <div class="hero-badge">
+                <div class="hero-badge-dot"></div>
+                Introducing Verifiable Compute
+            </div>
+            <h1 class="hero-title">
+                <span class="verify">Verify</span>
+                <span class="to-trust">to Trust</span>
+                <span class="ai">AI</span>
+            </h1>
+            <p class="hero-subtitle">Ready for the Agentic AI Era. Cryptographic proof that your AI systems are secure, private, and uncompromised.</p>
+            <div class="hero-cta">
+                <a href="#" class="btn-mega">
+                    Schedule Demo
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </a>
+                <a href="#solutions" class="btn-outline-mega">Explore Solutions</a>
+            </div>
+        </div>
+
+        <div class="hero-scroll">
+            <span>Scroll to explore</span>
+            <div class="scroll-line"></div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section class="problem" id="problem">
+        <div class="section-label">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
+            </svg>
+            The Problem
+        </div>
+        <div class="problem-content">
+            <div class="problem-text">
+                <h2 class="problem-title">
+                    New AI workflows equal<br>
+                    <span class="highlight">New Threats</span>
+                </h2>
+                <p class="problem-desc">As AI becomes more autonomous and integrated into critical systems, traditional security measures fall short. The attack surface expands exponentially.</p>
+                <div class="threat-list">
+                    <div class="threat-item">
+                        <svg class="threat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        Backdoors in AI Models
+                    </div>
+                    <div class="threat-item">
+                        <svg class="threat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        Data Extraction
+                    </div>
+                    <div class="threat-item">
+                        <svg class="threat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        Jailbreaks
+                    </div>
+                    <div class="threat-item">
+                        <svg class="threat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        Model DoS Attacks
+                    </div>
+                    <div class="threat-item">
+                        <svg class="threat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        Hallucinations
+                    </div>
+                    <div class="threat-item">
+                        <svg class="threat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        Social Engineering
+                    </div>
+                </div>
+            </div>
+            <div class="problem-visual">
+                <div class="problem-graphic">
+                    <div class="threat-orbits">
+                        <div class="orbit orbit-1"></div>
+                        <div class="orbit orbit-2"></div>
+                    </div>
+                    <div class="warning-symbol">⚠</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Solutions Section -->
+    <section class="solutions" id="solutions">
+        <div class="solutions-header">
+            <div class="section-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                Solutions
+            </div>
+            <h2 class="solutions-title">
+                <span class="evolving">Evolving trust for</span><br>
+                <span class="ai-with">AI with </span>
+                <span class="type-wrapper">
+                    <span class="type-text" id="typeText">Verifiable Compute</span>
+                </span>
+            </h2>
+        </div>
+        
+        <div class="solutions-grid">
+            <div class="solution-card">
+                <div class="solution-number">01</div>
+                <div class="solution-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="4" y="4" width="16" height="16" rx="2"/>
+                        <rect x="9" y="9" width="6" height="6"/>
+                        <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 15h3M1 9h3M1 15h3"/>
+                    </svg>
+                </div>
+                <div class="solution-label">Training & Inference</div>
+                <h3 class="solution-title">Verified AI Deployments</h3>
+                <p class="solution-desc">Cryptographic proof that your AI deployments are untampered from training through production inference.</p>
+            </div>
+            
+            <div class="solution-card">
+                <div class="solution-number">02</div>
+                <div class="solution-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <path d="M12 8v4M12 16h.01"/>
+                    </svg>
+                </div>
+                <div class="solution-label">AI Privacy</div>
+                <h3 class="solution-title">Confidential Compute</h3>
+                <p class="solution-desc">Proof that your AI models and data remain confidential throughout the entire computation lifecycle.</p>
+            </div>
+            
+            <div class="solution-card">
+                <div class="solution-number">03</div>
+                <div class="solution-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                        <path d="M12 6v6l4 2"/>
+                    </svg>
+                </div>
+                <div class="solution-label">AI Safeguards</div>
+                <h3 class="solution-title">Guardrail Enforcement</h3>
+                <p class="solution-desc">Verifiable proof that AI guardrails are properly implemented and enforced in real-time.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <h2 class="features-title">How Verifiable Compute Works</h2>
+        <div class="features-flow">
+            <div class="feature-connector"></div>
+            <div class="feature-step">
+                <div class="feature-icon-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                    </svg>
+                </div>
+                <h3 class="feature-step-title">Data Verification</h3>
+                <p class="feature-step-desc">Verify what data goes into your AI workflow with cryptographic attestation</p>
+            </div>
+            
+            <div class="feature-step">
+                <div class="feature-icon-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="4" y="4" width="16" height="16" rx="2"/>
+                        <rect x="9" y="9" width="6" height="6"/>
+                        <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 15h3M1 9h3M1 15h3"/>
+                    </svg>
+                </div>
+                <h3 class="feature-step-title">Execution Proof</h3>
+                <p class="feature-step-desc">Know exactly what code ran and where it was executed with full transparency</p>
+            </div>
+            
+            <div class="feature-step">
+                <div class="feature-icon-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 10V2M8 10V4M16 10V6"/>
+                        <rect x="2" y="10" width="20" height="12" rx="2"/>
+                        <path d="M12 14v4"/>
+                    </svg>
+                </div>
+                <h3 class="feature-step-title">Output Authenticity</h3>
+                <p class="feature-step-desc">Guarantee the output is genuine, secure, and hasn't been tampered with</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Platforms Section -->
+    <section class="platforms" id="platforms">
+        <div class="platforms-inner">
+            <p class="platforms-label">Preorders Ship Q4 2025</p>
+            <h2 class="platforms-title">Available on <span class="highlight">your infrastructure</span></h2>
+            <div class="platform-cards">
+                <div class="platform-card">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+                    </svg>
+                    Dell Appliance
+                </div>
+                <div class="platform-card">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+                    </svg>
+                    Cloud Provider
+                </div>
+                <div class="platform-card">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 7h-9M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>
+                    </svg>
+                    Accenture AIP Platform
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="cta-bg"></div>
+        <div class="cta-content">
+            <h2 class="cta-title">
+                Ready to<br><span class="gradient">Trust Your AI?</span>
+            </h2>
+            <p class="cta-desc">Join the enterprises already building with verifiable compute. The future of AI is transparent, secure, and provable.</p>
+            <div class="cta-buttons">
+                <a href="#" class="btn-mega">
+                    Schedule Demo
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </a>
+                <a href="#" class="btn-outline-mega">Contact Sales</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-logo">EQTY<span>LAB</span></div>
+        <div class="footer-links">
+            <a href="#">Privacy</a>
+            <a href="#">Terms</a>
+            <a href="#">Security</a>
+            <a href="#">Documentation</a>
+        </div>
+        <div class="footer-copy">© 2025 EQTY Lab. All rights reserved.</div>
+    </footer>
+
+    <script>
+        // Custom Cursor
+        const cursor = document.querySelector('.cursor');
+        const cursorDot = document.querySelector('.cursor-dot');
+
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX - 10 + 'px';
+            cursor.style.top = e.clientY - 10 + 'px';
+            cursorDot.style.left = e.clientX - 3 + 'px';
+            cursorDot.style.top = e.clientY - 3 + 'px';
+        });
+
+        // Cursor hover effect
+        const hoverElements = document.querySelectorAll('a, button, .solution-card, .platform-card, .feature-step');
+        hoverElements.forEach(el => {
+            el.addEventListener('mouseenter', () => cursor.classList.add('hover'));
+            el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
+        });
+
+        // Navbar scroll effect
+        const nav = document.querySelector('nav');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 100) {
+                nav.classList.add('scrolled');
+            } else {
+                nav.classList.remove('scrolled');
+            }
+        });
+
+        // Scroll-triggered animations
+        const observerOptions = {
+            threshold: 0.2,
+            rootMargin: '0px 0px -100px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        // Observe elements
+        document.querySelectorAll('.section-label, .problem-text, .problem-visual, .solutions-title, .solution-card, .features-title, .feature-step, .platforms-title, .platform-card, .cta-content').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Staggered animations for threat items
+        const threatItems = document.querySelectorAll('.threat-item');
+        const threatObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry, index) => {
+                if (entry.isIntersecting) {
+                    setTimeout(() => {
+                        entry.target.classList.add('visible');
+                    }, index * 100);
+                }
+            });
+        }, { threshold: 0.3 });
+
+        threatItems.forEach(item => threatObserver.observe(item));
+
+        // Staggered animations for solution cards
+        const solutionCards = document.querySelectorAll('.solution-card');
+        const cardObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    const index = Array.from(solutionCards).indexOf(entry.target);
+                    setTimeout(() => {
+                        entry.target.classList.add('visible');
+                    }, index * 200);
+                }
+            });
+        }, { threshold: 0.2 });
+
+        solutionCards.forEach(card => cardObserver.observe(card));
+
+        // Staggered animations for feature steps
+        const featureSteps = document.querySelectorAll('.feature-step');
+        const featureObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    const index = Array.from(featureSteps).indexOf(entry.target);
+                    setTimeout(() => {
+                        entry.target.classList.add('visible');
+                    }, index * 250);
+                }
+            });
+        }, { threshold: 0.3 });
+
+        featureSteps.forEach(step => featureObserver.observe(step));
+
+        // Staggered animations for platform cards
+        const platformCards = document.querySelectorAll('.platform-card');
+        const platformObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    const index = Array.from(platformCards).indexOf(entry.target);
+                    setTimeout(() => {
+                        entry.target.classList.add('visible');
+                    }, index * 150);
+                }
+            });
+        }, { threshold: 0.3 });
+
+        platformCards.forEach(card => platformObserver.observe(card));
+
+        // Typewriter effect
+        const typeText = document.getElementById('typeText');
+        const words = ['Verifiable Compute', 'Cryptographic Proof', 'Zero Trust AI', 'Secure Inference'];
+        let wordIndex = 0;
+        let charIndex = 0;
+        let isDeleting = false;
+        let typeSpeed = 100;
+
+        function type() {
+            const currentWord = words[wordIndex];
+            
+            if (isDeleting) {
+                typeText.textContent = currentWord.substring(0, charIndex - 1);
+                charIndex--;
+                typeSpeed = 50;
+            } else {
+                typeText.textContent = currentWord.substring(0, charIndex + 1);
+                charIndex++;
+                typeSpeed = 100;
+            }
+
+            if (!isDeleting && charIndex === currentWord.length) {
+                typeSpeed = 2000;
+                isDeleting = true;
+            } else if (isDeleting && charIndex === 0) {
+                isDeleting = false;
+                wordIndex = (wordIndex + 1) % words.length;
+                typeSpeed = 500;
+            }
+
+            setTimeout(type, typeSpeed);
+        }
+
+        // Start typewriter after page load
+        setTimeout(type, 2000);
+
+        // Parallax effect on hero orbs
+        document.addEventListener('mousemove', (e) => {
+            const moveX = (e.clientX - window.innerWidth / 2) * 0.02;
+            const moveY = (e.clientY - window.innerHeight / 2) * 0.02;
+            
+            document.querySelector('.hero-orb-1').style.transform = `translate(${moveX}px, ${moveY}px)`;
+            document.querySelector('.hero-orb-2').style.transform = `translate(${-moveX}px, ${-moveY}px)`;
+        });
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

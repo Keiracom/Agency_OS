@@ -24,6 +24,13 @@ from src.integrations.infraforge import get_infraforge_client, WORKSPACE_IDS
 from src.models.persona import Persona
 from src.models.resource_pool import ResourcePool, ResourceType, ResourceStatus
 from src.services.resource_assignment_service import add_resource_to_pool
+from src.services.spending_guard import (
+    check_can_purchase,
+    record_purchase,
+    SpendingLimitExceeded,
+    requires_approval,
+    queue_for_approval,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -160,11 +167,31 @@ async def purchase_domains(domains: list[str]) -> list[dict[str, Any]]:
         List of purchase results with domain info
 
     Raises:
+        SpendingLimitExceeded: If purchase would exceed safety limits
         Exception: If purchase fails (propagated from InfraForge client)
     """
     if not domains:
         logger.warning("No domains to purchase")
         return []
+
+    # ============================================
+    # SAFEGUARD: Check spending limits BEFORE purchase
+    # ============================================
+    check_can_purchase(len(domains))  # Raises SpendingLimitExceeded if over limit
+    
+    # Optional: Queue for approval if large purchase
+    if requires_approval(len(domains)):
+        request_id = queue_for_approval(
+            domain_count=len(domains),
+            domains=domains,
+            reason="bulk_purchase",
+        )
+        logger.warning(
+            f"Large purchase ({len(domains)} domains) queued for approval. "
+            f"Request ID: {request_id}"
+        )
+        # In production, you might want to raise here and wait for approval
+        # For now, we log and continue (approval queue is informational)
 
     client = get_infraforge_client()
     results = await client.purchase_domains_bulk(domains)
@@ -175,6 +202,12 @@ async def purchase_domains(domains: list[str]) -> list[dict[str, Any]]:
     if failed:
         for f in failed:
             logger.warning(f"Failed to purchase domain {f.get('domain')}: {f.get('error')}")
+
+    # ============================================
+    # SAFEGUARD: Record successful purchases
+    # ============================================
+    if successful:
+        record_purchase(len(successful))
 
     logger.info(f"Purchased {len(successful)}/{len(domains)} domains")
     return successful

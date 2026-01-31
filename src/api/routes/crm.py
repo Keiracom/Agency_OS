@@ -38,6 +38,7 @@ from src.api.dependencies import (
     get_current_user_from_token,
     get_db_session,
 )
+from src.config.settings import settings
 from src.services.crm_push_service import (
     CRMConfig,
     CRMPushService,
@@ -368,9 +369,8 @@ async def hubspot_oauth_callback(
         await crm_service.close()
 
     # Redirect to frontend settings page
-    frontend_url = "https://agency-os-liart.vercel.app"  # TODO: Make configurable
     return RedirectResponse(
-        url=f"{frontend_url}/settings/integrations?crm=hubspot&status=connected",
+        url=f"{settings.frontend_url}/settings/integrations?crm=hubspot&status=connected",
         status_code=status.HTTP_302_FOUND,
     )
 

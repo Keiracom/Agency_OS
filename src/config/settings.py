@@ -86,6 +86,13 @@ class Settings(BaseSettings):
         alias="BASE_URL",
     )
 
+    # === Frontend URL ===
+    frontend_url: str = Field(
+        default="http://localhost:3000",
+        description="Frontend application URL (for OAuth callbacks, CRM redirects)",
+        alias="FRONTEND_URL",
+    )
+
     # === Prefect (Workflow Orchestration) ===
     prefect_api_url: str = Field(
         default="http://localhost:4200/api", description="Prefect server API URL"

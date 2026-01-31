@@ -573,7 +573,7 @@ async def crm_sync_flow(
     Returns:
         Summary of sync results
     """
-    print(f"Starting CRM sync flow (since_hours={since_hours})")
+    logger.info(f"Starting CRM sync flow (since_hours={since_hours})")
 
     total_synced = 0
     total_errors = 0
@@ -591,7 +591,7 @@ async def crm_sync_flow(
             client_uuid = client["id"]
             client_results = []
 
-            print(f"Syncing CRMs for client: {client['company_name']}")
+            logger.info(f"Syncing CRMs for client: {client['company_name']}")
 
             for crm_config in client["crm_configs"]:
                 crm_type = crm_config["type"]
@@ -652,7 +652,7 @@ async def crm_sync_flow(
         "since_hours": since_hours,
     }
 
-    print(f"CRM sync complete: {summary}")
+    logger.info(f"CRM sync complete: {summary}")
     return summary
 
 

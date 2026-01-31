@@ -51,6 +51,20 @@ module.exports = {
   				DEFAULT: 'hsl(var(--card))',
   				foreground: 'hsl(var(--card-foreground))'
   			},
+  			// Mint palette - EQTY Lab theme
+  			mint: {
+  				50: '#f0fdf8',
+  				100: '#ccfce8',
+  				200: '#99f6d4',
+  				300: '#5eebb8',
+  				400: '#2dd498',
+  				500: '#0eb77a',
+  				600: '#059562',
+  				700: '#047652',
+  				800: '#065d43',
+  				900: '#054d38',
+  			},
+  			// ALS Tier colors (kept for lead scoring)
   			hot: {
   				DEFAULT: '#ef4444',
   				light: '#fecaca'
@@ -60,8 +74,8 @@ module.exports = {
   				light: '#fed7aa'
   			},
   			cool: {
-  				DEFAULT: '#3b82f6',
-  				light: '#bfdbfe'
+  				DEFAULT: '#0eb77a',  // Updated to mint
+  				light: '#ccfce8'
   			},
   			cold: {
   				DEFAULT: '#6b7280',

@@ -2,8 +2,8 @@
 """
 FILE: src/orchestration/flows/__init__.py
 PURPOSE: Prefect flows package - Campaign activation, enrichment, outreach flows
-PHASE: 5 (Orchestration), modified Phase 16, 24A for Lead Pool
-TASK: ORC-002 to ORC-005, 16F-001, POOL-011
+PHASE: 5 (Orchestration), modified Phase 16, 24A for Lead Pool, Phase 19 Marketing Automation
+TASK: ORC-002 to ORC-005, 16F-001, POOL-011, MKT-001
 DEPENDENCIES:
   - src/engines/*
   - src/integrations/*
@@ -41,6 +41,11 @@ from src.orchestration.flows.stale_lead_refresh_flow import (
     daily_outreach_prep_flow,
     refresh_stale_leads_flow,
 )
+from src.orchestration.flows.marketing_automation_flow import (
+    daily_content_flow,
+    milestone_content_flow,
+    preview_daily_content_flow,
+)
 
 __all__ = [
     # Core flows
@@ -63,4 +68,8 @@ __all__ = [
     # Phase H, Item 44: Daily Digest
     "daily_digest_flow",
     "send_client_digest_flow",
+    # Phase 19: Marketing Automation
+    "daily_content_flow",
+    "milestone_content_flow",
+    "preview_daily_content_flow",
 ]

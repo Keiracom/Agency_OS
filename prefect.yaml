@@ -334,6 +334,37 @@ deployments:
       work_queue_name: agency-os-queue
     schedules: []
 
+  # ============================================
+  # RESOURCE POOL FLOWS
+  # ============================================
+
+  # Warmup monitor flow - checks WarmForge for completed warmups
+  - name: warmup-monitor-flow
+    version: 1.0.0
+    paused: true  # PAUSED - enable when domain provisioning funded
+    tags: [resource-pool, warmup, daily]
+    description: "Daily check of WarmForge for completed domain warmups (6 AM AEST)"
+    entrypoint: src/orchestration/flows/warmup_monitor_flow.py:warmup_monitor_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    schedules:
+      - cron: "0 6 * * *"
+        timezone: Australia/Sydney
+        active: false  # Inactive until funded
+
+  # Persona buffer flow - replenishes persona pool (webhook-triggered by Stripe)
+  - name: persona-buffer-flow
+    version: 1.0.0
+    paused: true  # PAUSED - enable when domain provisioning funded
+    tags: [resource-pool, personas, webhook-triggered]
+    description: "Replenish persona buffer when below 40% (Stripe webhook trigger)"
+    entrypoint: src/orchestration/flows/persona_buffer_flow.py:persona_buffer_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    schedules: []
+
 # Environment variables reference
 # These should be set in Railway/environment, not hardcoded here
 # Required environment variables:

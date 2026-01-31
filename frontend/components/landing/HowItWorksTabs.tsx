@@ -95,7 +95,7 @@ function DiscoverDemo() {
   return (
     <div className="rounded-xl bg-[#0a0a0f] border border-white/10 p-6">
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-mint-500 to-mint-600 flex items-center justify-center">
           <Globe className="w-5 h-5 text-white" />
         </div>
         <div className="flex-1">
@@ -349,7 +349,7 @@ export default function HowItWorksSection({ autoRotate = true, rotateInterval = 
                 px-6 py-3 rounded-full text-sm font-medium transition-all duration-300
                 ${
                   activeStep === index
-                    ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white"
+                    ? "bg-gradient-to-r from-mint-500 to-mint-600 text-white"
                     : "bg-white/5 text-white/60 hover:text-white hover:bg-white/10"
                 }
               `}

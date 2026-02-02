@@ -16,6 +16,7 @@
   - Scraping / API calls at scale
   - Testing / validation runs
 * **Threshold:** If bulk AND routine → spawn agent. If critical OR sensitive → I do it.
+* **Plan-Execute Pattern:** Complex tasks (>5 steps) → Write plan first → Get sign-off → Execute with checkpoints.
 * **Context Health:** Check usage every 10 messages. Alert at 50%. Recommend restart at 60%.
 
 ## 2. Initialization

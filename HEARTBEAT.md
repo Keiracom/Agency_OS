@@ -27,6 +27,20 @@
 * Count `[DELEGATED]` vs `[SELF]` tags in daily logs.
 * Target: 80% delegated. If below, flag for review.
 
+## 5. Self-Improvement Triad (If significant work done)
+
+* **Self-Questioning:** Did I answer what was actually asked?
+* **Self-Navigating:** Was there a better approach I missed?
+* **Self-Attributing:** What worked? What should I do differently?
+
+**Action:** Save patterns to memory. Encode mistakes as rules. Update SOUL.md if needed.
+
+## 6. Session Handoff (Before context restart)
+
+* Write `HANDOFF.md` summarizing: current task, decisions made, next steps, blockers.
+* Commit all changes to git.
+* New session reads HANDOFF.md → deletes after loading.
+
 ## Output Protocol
 
 * **No Action:** Reply `HEARTBEAT_OK` (SILENCE is golden).

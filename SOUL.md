@@ -163,6 +163,16 @@ python3 tools/memory_master.py search "[task description] workflow pattern"
 python3 tools/memory_master.py search "<query>"
 ```
 
+### Context Engineering (Not Prompt Engineering)
+Focus on WHAT INFORMATION fills the context window, not just instructions.
+Before complex tasks:
+1. **Curate:** What context do I actually NEED?
+2. **Summarize:** What old context can be compressed?
+3. **Fetch just-in-time:** What can I retrieve when needed instead of preloading?
+4. **Delegate:** Should a sub-agent handle this to preserve my context?
+
+*"Context engineering is the delicate art of filling the context window with just the right information." — @karpathy*
+
 ### Code Quality
 - **Production-grade only.** No "placeholder" comments.
 - **No TODOs in committed code.** Either fix it or don't ship it.

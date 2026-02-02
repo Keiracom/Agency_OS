@@ -5,15 +5,22 @@ The brain that turns knowledge into action.
 
 Watches for high-value knowledge items, routes them to appropriate actions,
 creates sign-off requests, and spawns agents on approval.
+
+INTELLIGENCE PROTOCOL (v2):
+- LLM-based CTO Filter: Is it Novel? High Impact? Actionable?
+- Zero-Stop Mandate: Retry/fallback on all external calls
+- 100% Completion Standard: No partial wins, no corner cutting
 """
 
 import os
 import json
 import subprocess
 import uuid
+import time
+import functools
 from datetime import datetime, timezone
-from typing import Optional, Literal
-from dataclasses import dataclass, asdict
+from typing import Optional, Callable, TypeVar, Any
+from dataclasses import dataclass
 from enum import Enum
 
 from supabase import create_client, Client
@@ -39,14 +46,62 @@ from infrastructure.task_tracker import (
 WORKSPACE_PATH = Path("/home/elliotbot/clawd")
 
 # ============================================
+# Stealth Browser Integration (PRIMARY WEB ACCESS)
+# ============================================
+# DEPRECATED: requests, urllib for scraping
+# USE: autonomous_browser for ALL web content fetching
+
+try:
+    from tools.autonomous_browser import fetch_sync as stealth_fetch
+    HAS_STEALTH_BROWSER = True
+except ImportError:
+    HAS_STEALTH_BROWSER = False
+    stealth_fetch = None
+
+
+def fetch_url_content(url: str, extract_selector: str = None) -> dict:
+    """
+    Fetch URL content using the Stealth Browser.
+    
+    This is the ONLY approved method for web scraping.
+    Uses 215k rotating proxies + fingerprint randomization.
+    
+    Args:
+        url: Target URL
+        extract_selector: Optional CSS selector for extraction
+        
+    Returns:
+        dict with success, content, and metadata
+    """
+    if not HAS_STEALTH_BROWSER:
+        return {
+            "success": False,
+            "error": "Stealth browser not available. Install with: pip install playwright fake-useragent",
+        }
+    
+    return stealth_fetch(
+        url,
+        extract_selector=extract_selector,
+        stealth=True,
+        use_cache=True,
+        cache_hours=24,
+    )
+
+
+# ============================================
 # Configuration
 # ============================================
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://jatzvazlbusedwsnqxzr.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_ANON_KEY", "")
 CLAWDBOT_PATH = os.getenv("CLAWDBOT_PATH", "clawdbot")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 RELEVANCE_THRESHOLD = 0.6
 TELEGRAM_TARGET = os.getenv("TELEGRAM_NOTIFY_TARGET", "dave")
+
+# Resilience settings
+MAX_RETRIES = 3
+RETRY_DELAYS = [2, 5, 10]  # Exponential-ish backoff
 
 
 class ActionType(str, Enum):
@@ -57,6 +112,207 @@ class ActionType(str, Enum):
     COMPETITIVE_INTEL = "competitive_intel"
     AUDIT = "audit"
     ANALYZE = "analyze"
+
+
+# ============================================
+# ZERO-STOP MANDATE: Resilience Layer
+# ============================================
+
+T = TypeVar('T')
+
+
+class ResilienceError(Exception):
+    """Raised when all retry attempts exhausted."""
+    def __init__(self, operation: str, attempts: int, last_error: Exception):
+        self.operation = operation
+        self.attempts = attempts
+        self.last_error = last_error
+        super().__init__(f"{operation} failed after {attempts} attempts: {last_error}")
+
+
+def resilient_call(
+    operation_name: str,
+    max_retries: int = MAX_RETRIES,
+    retry_delays: list[int] = None,
+    fallback: Callable[[], T] = None,
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    """
+    Decorator implementing Zero-Stop Mandate.
+    
+    Wraps any external call (DB, API, subprocess) with:
+    - Automatic retry with exponential backoff
+    - Optional fallback function
+    - Detailed error logging for debugging
+    
+    Usage:
+        @resilient_call("database_query")
+        def get_data():
+            return client.table("x").select("*").execute()
+    """
+    delays = retry_delays or RETRY_DELAYS
+    
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> T:
+            last_error = None
+            
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    last_error = e
+                    
+                    # Log the attempt
+                    print(f"[RESILIENCE] {operation_name} attempt {attempt + 1}/{max_retries} failed: {e}")
+                    
+                    # If not the last attempt, wait and retry
+                    if attempt < max_retries - 1:
+                        delay = delays[min(attempt, len(delays) - 1)]
+                        print(f"[RESILIENCE] Retrying {operation_name} in {delay}s...")
+                        time.sleep(delay)
+            
+            # All retries exhausted - try fallback
+            if fallback:
+                print(f"[RESILIENCE] {operation_name} exhausted retries, using fallback")
+                try:
+                    return fallback()
+                except Exception as fb_error:
+                    print(f"[RESILIENCE] Fallback also failed: {fb_error}")
+            
+            # No fallback or fallback failed
+            raise ResilienceError(operation_name, max_retries, last_error)
+        
+        return wrapper
+    return decorator
+
+
+def resilient_db_call(func: Callable[..., T]) -> Callable[..., T]:
+    """Shorthand decorator for database operations."""
+    return resilient_call(f"db:{func.__name__}")(func)
+
+
+# ============================================
+# CTO INTELLIGENCE FILTER (LLM-Powered)
+# ============================================
+
+CTO_FILTER_PROMPT = """You are the CTO filter for a knowledge pipeline. Your job is to ruthlessly filter knowledge items to only allow through what is truly valuable.
+
+EVALUATE THIS ITEM:
+Title: {title}
+Category: {category}
+Source: {source}
+Summary: {summary}
+
+FILTER CRITERIA (ALL must be YES to pass):
+
+1. **NOVEL?** - Is this genuinely new information we likely don't already know? 
+   - NO if it's basic/common knowledge
+   - NO if it's a rehash of well-known concepts
+   - YES if it introduces something we haven't seen before
+
+2. **HIGH IMPACT?** - Would acting on this meaningfully improve our systems, products, or competitive position?
+   - NO if the benefit is marginal
+   - NO if it's interesting but not actionable for us
+   - YES if it could significantly improve Agency OS or Elliot's capabilities
+
+3. **ACTIONABLE?** - Can we actually do something concrete with this within the next 30 days?
+   - NO if it requires resources we don't have
+   - NO if it's theoretical without practical application
+   - YES if there's a clear next step we can take
+
+RESPOND IN THIS EXACT FORMAT:
+```
+NOVEL: YES/NO - [one sentence reason]
+HIGH_IMPACT: YES/NO - [one sentence reason]
+ACTIONABLE: YES/NO - [one sentence reason]
+VERDICT: PASS/DISCARD
+```
+
+Be ruthless. We only want the top 10% of knowledge. When in doubt, DISCARD."""
+
+
+@resilient_call("llm_filter", max_retries=2, retry_delays=[3, 5])
+def llm_filter_knowledge(
+    title: str,
+    category: str,
+    source: str,
+    summary: str,
+) -> dict:
+    """
+    Use Claude to apply CTO-level filtering to knowledge items.
+    
+    Returns:
+        dict with keys: novel, high_impact, actionable, verdict, reasoning
+    """
+    import requests
+    
+    if not ANTHROPIC_API_KEY:
+        # Fallback: pass everything if no API key (but log warning)
+        print("[WARNING] No ANTHROPIC_API_KEY - LLM filter bypassed")
+        return {
+            "novel": True,
+            "high_impact": True, 
+            "actionable": True,
+            "verdict": "PASS",
+            "reasoning": "LLM filter bypassed (no API key)",
+            "bypassed": True,
+        }
+    
+    prompt = CTO_FILTER_PROMPT.format(
+        title=title,
+        category=category,
+        source=source,
+        summary=summary[:500] if summary else "No summary provided",
+    )
+    
+    response = requests.post(
+        "https://api.anthropic.com/v1/messages",
+        headers={
+            "x-api-key": ANTHROPIC_API_KEY,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        },
+        json={
+            "model": "claude-sonnet-4-20250514",
+            "max_tokens": 300,
+            "messages": [{"role": "user", "content": prompt}],
+        },
+        timeout=30,
+    )
+    
+    response.raise_for_status()
+    result = response.json()
+    content = result["content"][0]["text"]
+    
+    # Parse the response
+    return _parse_filter_response(content)
+
+
+def _parse_filter_response(content: str) -> dict:
+    """Parse the structured LLM filter response."""
+    result = {
+        "novel": False,
+        "high_impact": False,
+        "actionable": False,
+        "verdict": "DISCARD",
+        "reasoning": content,
+        "bypassed": False,
+    }
+    
+    lines = content.strip().split("\n")
+    for line in lines:
+        line_upper = line.upper().strip()
+        
+        if line_upper.startswith("NOVEL:"):
+            result["novel"] = "YES" in line_upper.split("-")[0]
+        elif line_upper.startswith("HIGH_IMPACT:"):
+            result["high_impact"] = "YES" in line_upper.split("-")[0]
+        elif line_upper.startswith("ACTIONABLE:"):
+            result["actionable"] = "YES" in line_upper.split("-")[0]
+        elif line_upper.startswith("VERDICT:"):
+            result["verdict"] = "PASS" if "PASS" in line_upper else "DISCARD"
+    
+    return result
 
 
 # ============================================
@@ -184,7 +440,7 @@ Create a new skill from this knowledge:
 {content}
 
 Your task:
-1. **Read the full source** - If a URL is provided, fetch and read the full content
+1. **Read the full source** - Use `python tools/autonomous_browser.py fetch "<url>"` to read any URL (stealth browser with proxy rotation)
 2. **Extract key patterns/techniques** - What are the core actionable insights?
 3. **Create skill file** at `{skill_path}` with this structure:
 
@@ -310,16 +566,23 @@ class SignoffQueueItem:
 
 
 # ============================================
-# Database Operations
+# Database Operations (with Resilience)
 # ============================================
 
+_client_cache: Optional[Client] = None
+
+
 def get_client() -> Client:
-    """Get Supabase client."""
-    if not SUPABASE_KEY:
-        raise ValueError("SUPABASE_SERVICE_KEY or SUPABASE_ANON_KEY required")
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
+    """Get Supabase client with caching."""
+    global _client_cache
+    if _client_cache is None:
+        if not SUPABASE_KEY:
+            raise ValueError("SUPABASE_SERVICE_KEY or SUPABASE_ANON_KEY required")
+        _client_cache = create_client(SUPABASE_URL, SUPABASE_KEY)
+    return _client_cache
 
 
+@resilient_call("get_high_value_knowledge")
 def get_high_value_knowledge(
     threshold: float = RELEVANCE_THRESHOLD,
     limit: int = 10
@@ -328,7 +591,7 @@ def get_high_value_knowledge(
     Query elliot_knowledge for high-value unapplied items.
     
     Args:
-        threshold: Minimum relevance_score (default: 0.8)
+        threshold: Minimum relevance_score (default: 0.6)
         limit: Maximum items to return
         
     Returns:
@@ -349,6 +612,7 @@ def get_high_value_knowledge(
     return [_row_to_knowledge(row) for row in result.data]
 
 
+@resilient_call("get_knowledge_by_id")
 def get_knowledge_by_id(knowledge_id: str) -> Optional[KnowledgeItem]:
     """Get a specific knowledge item by ID."""
     client = get_client()
@@ -360,6 +624,7 @@ def get_knowledge_by_id(knowledge_id: str) -> Optional[KnowledgeItem]:
     return None
 
 
+@resilient_call("mark_knowledge_applied")
 def mark_knowledge_applied(knowledge_id: str) -> bool:
     """Mark a knowledge item as applied."""
     client = get_client()
@@ -372,6 +637,24 @@ def mark_knowledge_applied(knowledge_id: str) -> bool:
     return len(result.data) > 0
 
 
+@resilient_call("mark_knowledge_filtered")
+def mark_knowledge_filtered(knowledge_id: str, filter_result: dict) -> bool:
+    """Mark a knowledge item as filtered out by CTO filter."""
+    client = get_client()
+    
+    result = client.table("elliot_knowledge").update({
+        "applied": True,  # Mark as processed
+        "applied_at": datetime.now(timezone.utc).isoformat(),
+        "metadata": {
+            "cto_filtered": True,
+            "filter_result": filter_result,
+        }
+    }).eq("id", knowledge_id).execute()
+    
+    return len(result.data) > 0
+
+
+@resilient_call("create_signoff_queue_item")
 def create_signoff_queue_item(
     knowledge_id: str,
     action_type: ActionType,
@@ -411,6 +694,7 @@ def create_signoff_queue_item(
     return _row_to_signoff(result.data[0])
 
 
+@resilient_call("get_signoff_by_id")
 def get_signoff_by_id(signoff_id: str) -> Optional[SignoffQueueItem]:
     """Get a signoff queue item by ID."""
     client = get_client()
@@ -422,6 +706,7 @@ def get_signoff_by_id(signoff_id: str) -> Optional[SignoffQueueItem]:
     return None
 
 
+@resilient_call("update_signoff_status")
 def update_signoff_status(signoff_id: str, status: str) -> bool:
     """Update the status of a signoff queue item."""
     client = get_client()
@@ -436,6 +721,7 @@ def update_signoff_status(signoff_id: str, status: str) -> bool:
     return len(result.data) > 0
 
 
+@resilient_call("get_pending_signoffs")
 def get_pending_signoffs() -> list[SignoffQueueItem]:
     """Get all pending signoff requests."""
     client = get_client()
@@ -445,6 +731,18 @@ def get_pending_signoffs() -> list[SignoffQueueItem]:
     ).order("created_at", desc=True).execute()
     
     return [_row_to_signoff(row) for row in result.data]
+
+
+@resilient_call("check_existing_signoff")
+def check_existing_signoff(knowledge_id: str) -> bool:
+    """Check if knowledge item already has a pending/active signoff."""
+    client = get_client()
+    
+    result = client.table("elliot_signoff_queue").select("id").eq(
+        "knowledge_id", knowledge_id
+    ).in_("status", ["pending", "approved", "executing"]).execute()
+    
+    return len(result.data) > 0
 
 
 # ============================================
@@ -746,6 +1044,7 @@ def generate_summary(knowledge: KnowledgeItem, action_type: ActionType) -> str:
     return generate_description(knowledge, action_type)
 
 
+@resilient_call("create_signoff_request")
 def create_signoff_request(
     knowledge: KnowledgeItem,
     action_type: ActionType
@@ -781,7 +1080,7 @@ def create_signoff_request(
         ActionType.ANALYZE: NotifyActionType.ANALYZE,
     }
     
-    # Send Telegram notification
+    # Send Telegram notification (with resilience)
     notify_request = NotifySignoffRequest(
         id=signoff.id,
         knowledge_id=knowledge.id,
@@ -790,7 +1089,7 @@ def create_signoff_request(
         summary=summary,
     )
     
-    notification_result = send_signoff_notification(notify_request, target=TELEGRAM_TARGET)
+    notification_result = _send_notification_resilient(notify_request)
     
     return {
         "signoff_id": signoff.id,
@@ -800,6 +1099,13 @@ def create_signoff_request(
     }
 
 
+@resilient_call("send_notification", max_retries=3, retry_delays=[2, 5, 10])
+def _send_notification_resilient(request: NotifySignoffRequest) -> dict:
+    """Send notification with resilience wrapper."""
+    return send_signoff_notification(request, target=TELEGRAM_TARGET)
+
+
+@resilient_call("spawn_agent", max_retries=2, retry_delays=[3, 5])
 def spawn_action_agent(
     knowledge: KnowledgeItem,
     action_type: ActionType,
@@ -840,46 +1146,37 @@ def spawn_action_agent(
     label = f"{action_type.value}-{knowledge.id[:8]}"
     
     # Spawn agent via clawdbot
-    try:
-        result = subprocess.run(
-            [CLAWDBOT_PATH, "spawn", "-l", label, prompt],
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-        
-        if result.returncode != 0:
-            return {
-                "success": False,
-                "error": result.stderr.strip() or "Failed to spawn agent",
-            }
-        
-        # Parse session key from output (format varies by clawdbot version)
-        output = result.stdout.strip()
-        session_key = output  # Assume output is session key
-        
-        # Track the task
-        task_info = track_task(
-            label=label,
-            session_key=session_key,
-            description=f"{action_type.value}: {knowledge.title}",
-            max_retries=2,
-        )
-        
-        # Update signoff status
-        update_signoff_status(signoff_id, "executing")
-        
-        return {
-            "success": True,
-            "session_key": session_key,
-            "task_id": task_info.id,
-            "label": label,
-        }
-        
-    except subprocess.TimeoutExpired:
-        return {"success": False, "error": "Timeout spawning agent"}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+    result = subprocess.run(
+        [CLAWDBOT_PATH, "spawn", "-l", label, prompt],
+        capture_output=True,
+        text=True,
+        timeout=30
+    )
+    
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or "Failed to spawn agent")
+    
+    # Parse session key from output (format varies by clawdbot version)
+    output = result.stdout.strip()
+    session_key = output  # Assume output is session key
+    
+    # Track the task
+    task_info = track_task(
+        label=label,
+        session_key=session_key,
+        description=f"{action_type.value}: {knowledge.title}",
+        max_retries=2,
+    )
+    
+    # Update signoff status
+    update_signoff_status(signoff_id, "executing")
+    
+    return {
+        "success": True,
+        "session_key": session_key,
+        "task_id": task_info.id,
+        "label": label,
+    }
 
 
 def handle_approval(signoff_id: str) -> dict:
@@ -916,10 +1213,9 @@ def handle_approval(signoff_id: str) -> dict:
     # Update status to approved
     update_signoff_status(signoff_id, "approved")
     
-    # Spawn the agent
-    spawn_result = spawn_action_agent(knowledge, action_type, signoff_id)
-    
-    if spawn_result.get("success"):
+    # Spawn the agent (with resilience built in)
+    try:
+        spawn_result = spawn_action_agent(knowledge, action_type, signoff_id)
         return {
             "success": True,
             "action": "agent_spawned",
@@ -928,14 +1224,14 @@ def handle_approval(signoff_id: str) -> dict:
             "action_type": action_type.value,
             **spawn_result,
         }
-    else:
-        # Mark as failed if spawn failed
+    except ResilienceError as e:
+        # Mark as failed after all retries exhausted
         update_signoff_status(signoff_id, "failed")
         return {
             "success": False,
             "action": "spawn_failed",
             "signoff_id": signoff_id,
-            **spawn_result,
+            "error": str(e),
         }
 
 
@@ -1012,10 +1308,14 @@ def process_new_knowledge() -> dict:
     """
     Main function: Process new high-value knowledge items.
     
-    1. Query for high-value knowledge (score >= 0.8, not applied)
-    2. Route each to an action type
-    3. Create sign-off requests
-    4. Send Telegram notifications
+    INTELLIGENCE PROTOCOL:
+    1. Query for high-value knowledge (score >= threshold, not applied)
+    2. Apply CTO Filter (LLM): Novel? High Impact? Actionable?
+    3. Route passing items to action types
+    4. Create sign-off requests
+    5. Send Telegram notifications
+    
+    Zero-Stop Mandate: All external calls are wrapped with retry logic.
     
     Returns:
         dict with processing results
@@ -1023,41 +1323,71 @@ def process_new_knowledge() -> dict:
     results = {
         "processed": 0,
         "signoffs_created": [],
+        "filtered_out": [],
         "skipped": [],
         "errors": [],
     }
     
-    # Get high-value knowledge
-    knowledge_items = get_high_value_knowledge()
+    # Get high-value knowledge (with resilience)
+    try:
+        knowledge_items = get_high_value_knowledge()
+    except ResilienceError as e:
+        results["errors"].append({
+            "stage": "fetch_knowledge",
+            "error": str(e),
+        })
+        return results
     
     for knowledge in knowledge_items:
-        # Check if already has pending signoff
-        client = get_client()
-        existing = client.table("elliot_signoff_queue").select("id").eq(
-            "knowledge_id", knowledge.id
-        ).in_("status", ["pending", "approved", "executing"]).execute()
-        
-        if existing.data:
-            results["skipped"].append({
-                "knowledge_id": knowledge.id,
-                "title": knowledge.title,
-                "reason": "Already has pending signoff",
-            })
-            continue
-        
-        # Route to action type
-        action_type = route_to_action(knowledge)
-        
-        if not action_type:
-            results["skipped"].append({
-                "knowledge_id": knowledge.id,
-                "title": knowledge.title,
-                "reason": f"Unknown category: {knowledge.category}",
-            })
-            continue
-        
-        # Create signoff request
         try:
+            # Check if already has pending signoff
+            if check_existing_signoff(knowledge.id):
+                results["skipped"].append({
+                    "knowledge_id": knowledge.id,
+                    "title": knowledge.title,
+                    "reason": "Already has pending signoff",
+                })
+                continue
+            
+            # ================================================
+            # CTO INTELLIGENCE FILTER (LLM-Powered)
+            # ================================================
+            filter_result = llm_filter_knowledge(
+                title=knowledge.title,
+                category=knowledge.category,
+                source=knowledge.source,
+                summary=knowledge.summary,
+            )
+            
+            if filter_result["verdict"] == "DISCARD":
+                # Mark as filtered and skip
+                mark_knowledge_filtered(knowledge.id, filter_result)
+                results["filtered_out"].append({
+                    "knowledge_id": knowledge.id,
+                    "title": knowledge.title,
+                    "reason": filter_result["reasoning"][:200],
+                    "novel": filter_result["novel"],
+                    "high_impact": filter_result["high_impact"],
+                    "actionable": filter_result["actionable"],
+                })
+                continue
+            
+            # ================================================
+            # Route to action type
+            # ================================================
+            action_type = route_to_action(knowledge)
+            
+            if not action_type:
+                results["skipped"].append({
+                    "knowledge_id": knowledge.id,
+                    "title": knowledge.title,
+                    "reason": f"Unknown category: {knowledge.category}",
+                })
+                continue
+            
+            # ================================================
+            # Create signoff request
+            # ================================================
             signoff_result = create_signoff_request(knowledge, action_type)
             results["processed"] += 1
             results["signoffs_created"].append({
@@ -1066,6 +1396,14 @@ def process_new_knowledge() -> dict:
                 "action_type": action_type.value,
                 "signoff_id": signoff_result["signoff_id"],
                 "notification_sent": signoff_result["notification_result"].get("success", False),
+                "filter_passed": True,
+            })
+            
+        except ResilienceError as e:
+            results["errors"].append({
+                "knowledge_id": knowledge.id,
+                "title": knowledge.title,
+                "error": str(e),
             })
         except Exception as e:
             results["errors"].append({
@@ -1152,11 +1490,12 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python action_engine.py <command> [args]")
         print("Commands:")
-        print("  process         - Process new high-value knowledge")
+        print("  process         - Process new high-value knowledge (with CTO filter)")
         print("  pending         - List pending signoff requests")
         print("  approve <id>    - Approve a signoff request")
         print("  reject <id>     - Reject a signoff request")
         print("  callback <data> - Handle callback (signoff:action:id)")
+        print("  test-filter     - Test CTO filter with sample data")
         sys.exit(1)
     
     cmd = sys.argv[1]
@@ -1190,6 +1529,17 @@ if __name__ == "__main__":
             sys.exit(1)
         result = handle_callback(sys.argv[2])
         print(json.dumps(result, indent=2))
+    
+    elif cmd == "test-filter":
+        # Test the CTO filter with sample data
+        test_result = llm_filter_knowledge(
+            title="Yet Another To-Do App Framework",
+            category="tool_discovery",
+            source="hackernews",
+            summary="A new JavaScript framework for building to-do apps. Uses React under the hood.",
+        )
+        print("Test Filter Result:")
+        print(json.dumps(test_result, indent=2))
     
     else:
         print(f"Unknown command: {cmd}")

@@ -18,14 +18,12 @@
   },
   
   "voice": {
-    "provider": "11labs",
-    "voiceId": "21m00Tcm4TlvDq8ikWAM",
-    "model": "eleven_flash_v2_5",
-    "stability": 0.5,
-    "similarityBoost": 0.75,
-    "style": 0,
-    "useSpeakerBoost": false,
-    "optimizeStreamingLatency": 4
+    "provider": "cartesia",
+    "voiceId": "a0e99841-438c-4a64-b679-ae501e7d6091",
+    "model": "sonic-2",
+    "language": "en",
+    "emotion": ["positivity:high", "curiosity"],
+    "speed": 1.0
   },
   
   "startSpeakingPlan": {
@@ -58,11 +56,18 @@
   
   "metadata": {
     "optimizedFor": "latency",
-    "targetLatency": "465ms",
+    "targetLatency": "380ms",
     "stack": {
       "stt": "AssemblyAI Universal-Streaming (90ms)",
       "llm": "Groq Llama 4 Maverick (200ms)", 
-      "tts": "ElevenLabs Flash v2.5 (75ms)"
+      "tts": "Cartesia Sonic-2 (90ms)"
+    },
+    "notes": {
+      "tts_options": {
+        "primary": "Cartesia sonic-2 (90ms latency, cost-effective)",
+        "ultra_low_latency": "Cartesia sonic-turbo (40ms latency)",
+        "fallback": "ElevenLabs Flash v2.5 (75ms, legacy)"
+      }
     }
   }
 }

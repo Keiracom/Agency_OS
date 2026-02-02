@@ -68,7 +68,8 @@ Agency OS is an AI-powered lead generation and outreach automation platform targ
 | API | Purpose | Cost Estimate | Notes |
 |-----|---------|---------------|-------|
 | **Vapi** | Voice AI orchestration | Per-call + per-minute | Orchestrates STT → LLM → TTS |
-| **ElevenLabs** | Text-to-Speech synthesis | Per-character | High-quality voice synthesis |
+| **Cartesia** | Text-to-Speech synthesis (Primary) | Per-character | Low-latency TTS (sonic-2: 90ms, sonic-turbo: 40ms) |
+| **ElevenLabs** | Text-to-Speech synthesis (Fallback) | Per-character | Fallback voice synthesis |
 | **Twilio** | Telephony backbone | Per-minute | Provides phone numbers for Vapi |
 
 **Voice Call Limits:**

@@ -26,7 +26,7 @@
 ### Key Integrations (15+)
 - **Email:** Salesforge ecosystem (InfraForge → Warmforge → Salesforge), Resend (transactional)
 - **LinkedIn:** Unipile (primary), HeyReach (deprecated)
-- **Voice:** Vapi (AI calls), ElevenLabs (synthesis)
+- **Voice:** Vapi (AI calls), Cartesia (TTS), ElevenLabs (fallback)
 - **SMS:** Twilio, ClickSend
 - **Data:** Apollo, Prospeo, DataForSEO, Apify
 

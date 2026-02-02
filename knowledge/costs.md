@@ -15,7 +15,7 @@
 | Lead Enrichment | $30 | $300+ | Per-lead costs vary (Prospeo removed) |
 | Email Channel | $120 | $350+ | Salesforge + InfraForge + Resend |
 | LinkedIn Channel | $55 | $275+ | Unipile per-account |
-| Voice Channel | $50 | $400+ | Vapi + Twilio + ElevenLabs |
+| Voice Channel | $50 | $400+ | Vapi + Twilio + Cartesia |
 | SMS/Mail | $20 | $100+ | ClickSend usage-based |
 | **Total Estimated** | **$375** | **$2,075+** | Scales with client volume |
 
@@ -244,8 +244,27 @@
 - **Source:** https://www.twilio.com/en-us/voice/pricing/au
 - **Config:** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`
 
-### ElevenLabs (TTS) [VERIFIED 2026-01-30]
-- **Use:** High-quality voice synthesis
+### Cartesia (Primary TTS) [NEW 2026-01]
+- **Use:** Low-latency voice synthesis for Vapi calls
+- **Pricing:**
+  
+  | Plan | Price | Characters/mo | Notes |
+  |------|-------|---------------|-------|
+  | Free | $0 | 10,000 | Testing only |
+  | Starter | $29/mo | 500,000 | sonic-2 model |
+  | Growth | $99/mo | 2,000,000 | Priority support |
+  | Enterprise | Custom | Unlimited | SLA, dedicated |
+  
+  - **sonic-2 model:** 90ms latency, balanced quality/speed
+  - **sonic-turbo model:** 40ms latency, fastest available
+  - ~150 characters/second of speech
+- **Likely Plan:** Starter ($29/mo) or Growth ($99/mo)
+- **Estimated:** $29-99/month
+- **Source:** https://cartesia.ai/pricing
+- **Config:** `CARTESIA_API_KEY`, `CARTESIA_VOICE_MODEL`
+
+### ElevenLabs (Fallback TTS) [VERIFIED 2026-01-30]
+- **Use:** Fallback voice synthesis if Cartesia unavailable
 - **Pricing (credit-based, 1 credit ≈ 2 characters):**
   
   | Plan | Price | Credits/mo | Characters | Notes |
@@ -259,8 +278,7 @@
   
   - Flash/Turbo models: 50% cheaper (0.5-1 credit per character)
   - ~30 chars/second of speech ≈ ~1 min = ~1,800 chars
-- **Likely Plan:** Creator ($22/mo) or Pro ($99/mo)
-- **Estimated:** $22-99/month
+- **Status:** FALLBACK ONLY (Cartesia is primary)
 - **Source:** https://elevenlabs.io/pricing (via withorb.com analysis)
 - **Config:** `ELEVENLABS_API_KEY`
 
@@ -340,7 +358,7 @@ From `src/config/tiers.py`:
 3. **Tiered enrichment** - Only use expensive sources when needed
 4. **Warmup included** - WarmForge free with Salesforge
 5. **Annual billing** - Most services offer 15-20% discount
-6. **ElevenLabs Flash** - 50% cheaper for voice synthesis
+6. **Cartesia sonic-2** - Lower latency TTS than ElevenLabs at competitive pricing
 
 ### Usage Monitoring
 - Anthropic: `ANTHROPIC_DAILY_SPEND_LIMIT=50.0`
@@ -368,7 +386,8 @@ From `src/config/tiers.py`:
 | ClickSend | ✅ VERIFIED | 2026-01-30 | clicksend.com/au/pricing |
 | Twilio | ✅ VERIFIED | 2026-01-30 | twilio.com/en-us/voice/pricing/au |
 | Vapi | ✅ VERIFIED | 2026-01-30 | vapi.ai/pricing (via synthflow.ai) |
-| ElevenLabs | ✅ VERIFIED | 2026-01-30 | elevenlabs.io/pricing (via withorb.com) |
+| Cartesia | ✅ NEW | 2026-01 | cartesia.ai/pricing |
+| ElevenLabs | ✅ VERIFIED | 2026-01-30 | elevenlabs.io/pricing (fallback) |
 | Unipile | ✅ VERIFIED | 2026-01-30 | unipile.com/pricing-api |
 | DataForSEO | ✅ VERIFIED | 2026-01-30 | dataforseo.com/apis/serp-api/pricing |
 | Apify | ✅ VERIFIED | 2026-01-30 | apify.com/pricing |
@@ -385,7 +404,8 @@ From `src/config/tiers.py`:
   - Apollo: Clarified credit system (credits don't roll over)
   - Salesforge: Updated to $40/$80 pricing (was $40/$80 - confirmed)
   - Vapi: Added detailed plan breakdown ($400-$800/mo plans)
-  - ElevenLabs: Complete credit-based pricing overhaul
+  - ElevenLabs: Complete credit-based pricing overhaul (now fallback)
+- **2026-01:** Migrated primary TTS from ElevenLabs to Cartesia for lower latency
   - Unipile: Confirmed €5/account pricing
   - DataForSEO: Added detailed SERP pricing ($0.0006/request)
   - Apify: Updated tier pricing with compute unit costs

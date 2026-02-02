@@ -24,7 +24,7 @@
 | Transactional | Resend | - |
 | LinkedIn | Unipile (Automation) | ~~HeyReach~~ (Deprecated) |
 | SMS/Phone | Twilio (+61240126220) | ClickSend |
-| Voice | Vapi (Calls) | ElevenLabs (Synthesis) |
+| Voice | Vapi (Orchestration) | Cartesia TTS + Groq LLM (90%) + Claude Haiku (10%) |
 
 ### Data & Intelligence
 | Category | Services |

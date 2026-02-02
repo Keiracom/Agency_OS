@@ -1,4 +1,8 @@
-# MEMORY.md — Core Identity & Context
+# MEMORY.md — L1 Hot Memory (Always In Context)
+
+> **Role:** Core identity, active decisions, validated wisdom. Always loaded.
+> **Promotion:** Patterns/learnings from Supabase (L3) get promoted here after 3+ uses.
+> **Updates:** Manual only. This is curated, not auto-generated.
 
 ## 1. The Prime Directive
 

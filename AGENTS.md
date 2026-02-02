@@ -30,14 +30,54 @@ On session start:
 
 ## 3. Memory & I/O
 
-**Memory is DATABASE-BACKED.** No file-based memory.
+**DUAL MEMORY SYSTEM.** Two stores, clear hierarchy.
 
+### Memory Hierarchy
+
+| Layer | Store | Contents | Access |
+| :--- | :--- | :--- | :--- |
+| L1 (Hot) | MEMORY.md | Identity, rules, active decisions, wisdom | Always in context |
+| L2 (Warm) | memory/*.md | Daily logs, weekly learnings | Clawdbot `memory_search` |
+| L3 (Cold) | Supabase | Patterns, code, docs, reference | `memory_master.py search` |
+
+### What Goes Where
+
+| Content Type | Destination | Promotion Path |
+| :--- | :--- | :--- |
+| Identity, philosophy | MEMORY.md §1-4 | — (static) |
+| Active decisions | MEMORY.md §5 | — (manual update) |
+| Hard-won lessons | MEMORY.md §6 | From L3 after 3+ uses |
+| Daily work logs | memory/daily/*.md | Extract → L3 patterns |
+| Patterns & workflows | Supabase (`--type pattern`) | → L1 if critical |
+| Learnings | Supabase (`--type learning`) | → L1 §6 if validated |
+| Code & docs | Supabase | — (reference only) |
+
+### Retrieval Protocol
+
+**Before answering questions about prior work:**
+```bash
+# Step 1: Check hot memory (already in context via MEMORY.md)
+# Step 2: Search warm memory
+memory_search "<query>"  # Clawdbot native tool
+
+# Step 3: Search cold memory
+python3 tools/memory_master.py search "<query>"
+```
+
+**When saving new knowledge:**
+```bash
+# Patterns/learnings → Supabase first
+python3 tools/memory_master.py save "<content>" --type pattern|learning
+
+# Promote to MEMORY.md §6 only after validation (used 3+ times, proved valuable)
+```
+
+### Rules & Constraints
 | Type | Location |
 | :--- | :--- |
-| Long-term memory | `elliot_internal.memories` (Supabase) |
-| Retrieval | `python3 tools/memory_master.py search "<query>"` |
-| Storage | `python3 tools/memory_master.py save "<content>" --type <type>` |
-| Rules | `knowledge/RULES.md` (Non-negotiable constraints) |
+| Hard constraints | `knowledge/RULES.md` |
+| Behavioral rules | `SOUL.md` |
+| Operational rules | `AGENTS.md` (this file) |
 
 **Heartbeat Protocol:**
 * Check `HEARTBEAT.md` (if exists).

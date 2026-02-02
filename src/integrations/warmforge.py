@@ -1,7 +1,8 @@
 """
 WarmForge Integration - Domain Warmup Status Monitoring
-API: https://api.warmforge.ai/public
-Auth: Authorization header (plain key)
+API: https://api.warmforge.ai/public/v1 (NOT v2!)
+Auth: Authorization header (plain key, no Bearer)
+Required params: page, page_size for list endpoints
 
 Purpose: Check domain warmup status to determine when domains are ready for production use.
 Consumed by: warmup_monitor_flow

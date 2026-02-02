@@ -207,7 +207,7 @@ class Settings(BaseSettings):
     # Warmforge - Email warmup (free with Salesforge)
     warmforge_api_key: str = Field(default="", description="Warmforge API key")
     warmforge_api_url: str = Field(
-        default="https://api.warmforge.ai/public", description="Warmforge API URL"
+        default="https://api.warmforge.ai/public/v1", description="Warmforge API URL (v1 endpoint)"
     )
 
     # Salesforge - Campaign sending, reply tracking, sender rotation

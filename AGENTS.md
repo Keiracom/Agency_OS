@@ -52,6 +52,24 @@ On session start:
 | Learnings | Supabase (`--type learning`) | → L1 §6 if validated |
 | Code & docs | Supabase | — (reference only) |
 
+### Save Decision Flow
+
+```
+I learned something. Where does it go?
+│
+├─ About my identity/behavior? → Edit MEMORY.md directly
+│
+├─ A reusable workflow (>3 steps)? → memory_master.py save --type pattern
+│
+├─ A correction/lesson? → memory_master.py save --type learning
+│
+├─ Reference code/docs? → memory_master.py save --type code_*
+│
+└─ Just session notes? → memory/daily/YYYY-MM-DD.md
+```
+
+**Promotion trigger:** If I reference a L3 pattern 3+ times → move to MEMORY.md §6
+
 ### Retrieval Protocol
 
 **Before answering questions about prior work:**

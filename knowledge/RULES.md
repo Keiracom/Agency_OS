@@ -85,3 +85,14 @@ Skip reflection for: simple answers, status updates, confirmations.
 
 * **Protocol:** Do not ping/notify unless the server is literally on fire.
 * **Background Work:** Permitted (Organize memory, document code) but stay silent.
+
+## Scraping Hierarchy (2026-02-02)
+
+**Before engaging browser automation, check endpoints in this order:**
+
+1. **JSON/API endpoint** — Fastest, lowest resistance (e.g., Reddit `.json` suffix)
+2. **RSS feed** — Structured, no JS required
+3. **Mobile/lite version** — `old.reddit.com`, `lite.` subdomains
+4. **Full browser + stealth** — Last resort for JS-heavy sites
+
+**Lesson:** Reddit scrape failed with 30s Playwright timeout. Switched to `.json` endpoint → 2s success, zero proxies burned.

@@ -42,11 +42,13 @@ I am Elliot. I am not a code generator; I am a CEO/Orchestrator.
 | Decision | Status |
 | :--- | :--- |
 | Persona Provisioning System | ⏳ PR ready (`feature/persona-provisioning`) |
-| Dashboard V4: Customer-first redesign | ⏳ PR #8 ready |
+| Dashboard V4: Customer-first redesign | ✅ Live + Intelligence/Meetings pages added |
+| HTML Prototype Suite | ✅ 7 pages built (`agency-os-html/`) — demo-ready |
 | Ignition Campaign: $1K budget, 1,250 leads | ⏳ Ready to launch |
 | YouTube OAuth: Replace Apify dependency | ⚠️ Needs API enabled |
 | Knowledge Pipeline | ✅ Built (scrape→score→signoff→process) |
 | Skills System | ✅ 6 agent skills created, descriptions improved |
+| Voice AI (Vapi) Stack | 📋 Spec'd (Groq+Cartesia+Squads) — needs implementation |
 | Goal: $8K/mo MRR = quit day job | 🎯 Target |
 
 ## 6. Cumulative Wisdom
@@ -84,12 +86,29 @@ I am Elliot. I am not a code generator; I am a CEO/Orchestrator.
 * **yek:** Fast file serializer for LLM context.
 * **context7 MCP:** Real-time library docs.
 * **n8n > Zapier:** Self-hosted, no per-task pricing.
+* **Mobile Previews:** LocalTunnel unreliable (sessions die). Use Vercel preview or Cloudflare Pages instead.
 
 ### Salesforge Ecosystem
 * **Auth:** Plain `Authorization: {api_key}` header (NOT Bearer) for InfraForge, Salesforge, WarmForge.
 * **WarmForge:** No webhooks — must poll daily for warmup completion.
 * **Heat Score:** ≥85 = ready for production sending.
 * **Workspace IDs:** InfraForge `wks_cho0dp6wypzgzkou1c0p4`, WarmForge `wks_8wuh9f3b74o7o930ocoie`, Salesforge `wks_b86a0iopxkzx2u3gvz9et`
+
+### Market Intelligence (Updated 2026-02-01)
+* **MCP is Standard:** Model Context Protocol becoming universal LLM tool integration layer. Consider MCP exposure for Agency OS.
+* **Browser Automation Wave:** browser-use (77K⭐), Stagehand (20K⭐), Skyvern (20K⭐) — AI controlling browsers, not just APIs.
+* **LangChain Fatigue:** Industry moving to simpler patterns. Direct API + custom orchestration preferred. Our approach is correct.
+* **Reliability > Capability:** Market wants consistent agents, not occasionally impressive ones. Our guardrails are the moat.
+* **"AI Eating SaaS" Narrative:** Position Agency OS as orchestrating agents, not competing with them. Human-in-the-loop is the value.
+
+### Voice AI Stack (Research 2026-02-01)
+* **Optimal Stack:** Vapi + Groq + Cartesia = lowest latency (~465ms) at lowest cost (~$0.32/call)
+* **Latency Breakdown:** STT 90ms (AssemblyAI) + LLM 200ms (Groq Llama 4) + TTS 75ms (Cartesia) + Network 100-600ms
+* **Cartesia > ElevenLabs:** 10x cheaper ($0.03/min vs $0.30/min), same latency. Vapi's default TTS now.
+* **Turn Detection Critical:** Default Vapi settings add 1.5s delay. Must tune `startSpeakingPlan` to 0.1s.
+* **Hybrid Model Strategy:** Use fast LLM (Groq) for 90%, route complex objections to Claude via Vapi Squads + Silent Handoffs.
+* **Detection Pattern:** Explicit keyword rules in prompt ("pricing", "competitor", "how is this different") → trigger handoff. Don't rely on self-awareness.
+* **Realism Threshold:** ElevenLabs/Cartesia at "Turing test threshold" (~50% can't tell). 3-min cold calls very passable if tuned.
 
 ### Doc Standards
 * **High Density:** Tables, bullets, fragments. No prose.

@@ -30,8 +30,66 @@
 | Category | Services |
 | :--- | :--- |
 | Enrichment | Apollo (Leads), Prospeo (Emails), DataForSEO (SEO) |
-| Scraping | Apify |
+| Scraping | **Autonomous Stealth Browser** (Primary) |
 | AI | Anthropic (Primary), OpenRouter (Fallback) |
+
+## 🕵️ Autonomous Stealth Browser (PRIMARY WEB ACCESS)
+
+**⚠️ MANDATORY:** This is the ONLY approved method for web access. NEVER use `requests`, `urllib`, or raw HTTP calls for scraping.
+
+### Tool Location
+```
+tools/autonomous_browser.py   # Main browser tool
+tools/proxy_manager.py        # Proxy swarm management
+```
+
+### Capabilities
+| Feature | Status |
+| :--- | :--- |
+| Proxy Rotation | 215,084 residential proxies (Webshare) |
+| User-Agent Spoofing | Chrome/Firefox/Safari/Edge rotation |
+| Fingerprint Randomization | Viewport, timezone, locale per request |
+| Burner Protocol | Auto-retry on 403/429/503 with new identity |
+| JavaScript Rendering | Full Chromium browser via Playwright |
+| Anti-Detection | webdriver flag spoofed, chrome.runtime injected |
+
+### Usage
+```python
+# Async (preferred)
+from tools.autonomous_browser import autonomous_fetch
+result = await autonomous_fetch("https://example.com", stealth=True)
+
+# Sync wrapper
+from tools.autonomous_browser import fetch_sync
+result = fetch_sync("https://example.com")
+
+# CLI
+python tools/autonomous_browser.py fetch "https://example.com"
+```
+
+### When to Use
+- ✅ **ALWAYS** for any website scraping
+- ✅ **ALWAYS** for sites with bot protection
+- ✅ **ALWAYS** for JavaScript-heavy pages
+- ❌ **NEVER** use `requests.get()` for scraping
+- ❌ **NEVER** use `urllib` for web content
+- ❌ ~~Apify~~ (Deprecated - cost savings)
+
+### Proxy Management
+```bash
+python tools/proxy_manager.py sync      # Refresh proxy list (auto-weekly)
+python tools/proxy_manager.py verify    # Confirm IP is hidden
+python tools/proxy_manager.py test      # Test random proxies
+```
+
+### Scraping Hierarchy (Check First!)
+Before full browser automation, try in order:
+1. **JSON/API endpoint** — e.g., Reddit: add `.json` to any URL
+2. **RSS feed** — Structured XML, no JS
+3. **Old/lite version** — `old.reddit.com`, mobile sites
+4. **Full browser** — Last resort
+
+*Lesson: Reddit Playwright = 30s timeout. Reddit JSON = 2s success.*
 
 ## 🚀 Projects & Deployment
 

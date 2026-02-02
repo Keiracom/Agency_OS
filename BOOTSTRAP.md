@@ -1,38 +1,56 @@
-# BOOTSTRAP.md - Session Handoff (2026-01-30 10:02 UTC)
+# BOOTSTRAP.md — Next Session Priorities
 
-**DELETE THIS FILE AFTER READING**
+**Created:** 2026-02-02 03:27 UTC
+**Context:** Power-level upgrades identified, queued for implementation
 
-## Just Completed
+---
 
-### Persona & Domain Provisioning System
-**Branch:** `feature/persona-provisioning` — Ready for PR
-- All files created and pushed
-- See `memory/learnings/persona-domain-provisioning.md` for full details
+## 🎯 PRIORITY UPGRADES (Execute in Order)
 
-### Knowledge Pipeline
-- `run_knowledge_pipeline.py` master trigger script exists
-- YouTube + Reddit scrapers added (may duplicate existing)
-- Action engine working: `python infrastructure/action_engine.py process`
+### 1. LiteLLM Cost Routing (2h)
+- Route simple tasks → Haiku ($0.25/1M)
+- Route complex tasks → Opus ($15/1M)
+- Expected: 60% cost reduction
+- Repo: github.com/BerriAI/litellm (34k⭐)
 
-### Enforce Rules Hook
-- Agent spawned to create hook at `~/.clawdbot/hooks/enforce-rules/`
-- Purpose: Inject ENFORCE.md per-message (not just session start)
-- Check if completed: `clawdbot hooks list`
+### 2. Self-Verification Loop (2h)
+- Add `verify()` decorator to critical operations
+- Review own output before returning to user
+- Expected: 50% error reduction
 
-## Key Learning This Session
+### 3. Proactive Intel Sweep (3h)
+- Schedule morning scan: HN, Reddit, ArXiv
+- Auto-surface relevant developments
+- Use existing action_engine + CTO filter
 
-**Bootstrap files (AGENTS.md, SOUL.md, etc.) are cached after session start.**
-The `agent:bootstrap` hook fires per-message and CAN mutate `context.bootstrapFiles`.
-Solution for per-message rule injection: create hook that reads ENFORCE.md fresh each run.
+### 4. Multi-Agent Orchestration (8h)
+- LangGraph supervisor pattern
+- Spawn specialized agents in parallel
+- Roles: Researcher, Scraper, Builder
+- Expected: 3x throughput on complex tasks
 
-## Pending
+---
 
-1. [ ] PR `feature/persona-provisioning` → `main`
-2. [ ] Apply migration 054 in Supabase
-3. [ ] Verify enforce-rules hook installed
-4. [ ] Seed initial persona buffer
+## ✅ ALREADY DONE (Don't Re-implement)
 
-## Mistakes to Avoid
+- **Vector Memory** — `elliot_internal.memories` (1,376 items, pgvector)
+- **MCP Integration** — Clawdbot skills system (50+ skills loaded)
+- **Stealth Browser** — `tools/autonomous_browser.py` (215k proxies)
+- **CTO Filter** — `infrastructure/action_engine.py` (LLM-powered)
+- **Behavior Cache** — `tools/behavior_cache.py` (basic version)
 
-- Don't rebuild infrastructure that already exists — CHECK FIRST
-- Read core files (ENFORCE.md) and FOLLOW them mid-session
+---
+
+## 📝 LESSONS LEARNED (This Session)
+
+1. **Scraping Hierarchy:** JSON/API > RSS > old.* > Full browser
+   - Reddit .json = 2s success
+   - Reddit Playwright = 30s timeout
+
+2. **Don't recommend buying what we own**
+   - Skills system = MCP equivalent
+   - Memory system already has vectors
+
+---
+
+**DELETE THIS FILE AFTER READING AND EXECUTING**

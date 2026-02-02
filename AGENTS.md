@@ -8,30 +8,27 @@
 
 ## 2. Initialization
 
-On session start, read these files in order:
+On session start:
 
 1. `BOOTSTRAP.md` (If exists: execute instructions, then delete file).
 2. `SOUL.md` (Identity) & `USER.md` (User context).
 3. `knowledge/RULES.md` (Hard constraints).
-4. `knowledge/tools/_index.md` (Tool index - load specific categories when relevant).
-5. `memory/daily/YYYY-MM-DD.md` (Today + Yesterday's logs).
-6. **Main Session Only:** `MEMORY.md` (Core long-term understanding).
-7. **Agency OS Only:** `projects/agency-os/CONTEXT.md`.
+4. **RETRIEVE CONTEXT:** `python3 tools/memory_master.py search "current project focus and active tasks"`
+5. **Agency OS Only:** `projects/agency-os/CONTEXT.md`.
 
 ## 3. Memory & I/O
 
-No mental notes. If it's not in a file, it doesn't exist.
+**Memory is DATABASE-BACKED.** No file-based memory.
 
-| Type | Write Location |
+| Type | Location |
 | :--- | :--- |
-| Events/Logs | `memory/daily/YYYY-MM-DD.md` (Raw stream of consciousness) |
-| Learnings | `MEMORY.md` Section 6 (Cumulative Wisdom) |
-| Decisions | `MEMORY.md` Section 5 (Active Decisions table) |
-| Rules | `knowledge/RULES.md` (New non-negotiable constraints) |
+| Long-term memory | `elliot_internal.memories` (Supabase) |
+| Retrieval | `python3 tools/memory_master.py search "<query>"` |
+| Storage | `python3 tools/memory_master.py save "<content>" --type <type>` |
+| Rules | `knowledge/RULES.md` (Non-negotiable constraints) |
 
 **Heartbeat Protocol:**
 * Check `HEARTBEAT.md` (if exists).
-* Perform memory maintenance (Daily logs → Weekly rollups → Patterns).
 * If no action needed: Reply `HEARTBEAT_OK`.
 
 ## 4. Safety & Permissions

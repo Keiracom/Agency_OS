@@ -1,0 +1,68 @@
+{
+  "name": "Agency OS - Low Latency Cold Caller",
+  "description": "Optimized for ~465ms end-to-end latency",
+  
+  "transcriber": {
+    "provider": "assembly-ai",
+    "model": "universal",
+    "language": "en",
+    "formatTurns": false
+  },
+  
+  "model": {
+    "provider": "groq",
+    "model": "llama-4-maverick-17b-128e-instruct",
+    "temperature": 0.7,
+    "maxTokens": 150,
+    "systemPrompt": "You are Emma, a friendly and professional outreach specialist for Agency OS. You're calling to follow up on an email about helping agencies scale their client acquisition.\n\nRules:\n- Keep responses SHORT (1-2 sentences max)\n- Sound natural, use contractions\n- If they're busy, offer to call back\n- Goal: Book a 20-minute demo call\n- Handle objections briefly, don't over-explain\n- If they ask if you're AI, be honest: 'I'm an AI assistant, but I can definitely help you or connect you with our team.'"
+  },
+  
+  "voice": {
+    "provider": "11labs",
+    "voiceId": "21m00Tcm4TlvDq8ikWAM",
+    "model": "eleven_flash_v2_5",
+    "stability": 0.5,
+    "similarityBoost": 0.75,
+    "style": 0,
+    "useSpeakerBoost": false,
+    "optimizeStreamingLatency": 4
+  },
+  
+  "startSpeakingPlan": {
+    "waitSeconds": 0.1,
+    "smartEndpointingEnabled": true,
+    "transcriptionEndpointingPlan": {
+      "onPunctuationSeconds": 0,
+      "onNoPunctuationSeconds": 0.5,
+      "onNumberSeconds": 0
+    }
+  },
+  
+  "stopSpeakingPlan": {
+    "numWords": 2,
+    "voiceSeconds": 0.2,
+    "backoffSeconds": 1
+  },
+  
+  "silenceTimeoutSeconds": 30,
+  "maxDurationSeconds": 300,
+  "backgroundSound": "off",
+  "backchannelingEnabled": true,
+  "backgroundDenoisingEnabled": true,
+  
+  "serverMessages": [
+    "end-of-call-report",
+    "status-update",
+    "transcript"
+  ],
+  
+  "metadata": {
+    "optimizedFor": "latency",
+    "targetLatency": "465ms",
+    "stack": {
+      "stt": "AssemblyAI Universal-Streaming (90ms)",
+      "llm": "Groq Llama 4 Maverick (200ms)", 
+      "tts": "ElevenLabs Flash v2.5 (75ms)"
+    }
+  }
+}

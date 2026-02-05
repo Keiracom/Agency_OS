@@ -162,10 +162,14 @@ class Settings(BaseSettings):
     dataforseo_login: str = Field(default="", description="DataForSEO login email")
     dataforseo_password: str = Field(default="", description="DataForSEO API password")
 
-    # === Voice AI Stack (Vapi + ElevenLabs) ===
+    # === Voice AI Stack (Vapi + Cartesia) ===
     vapi_api_key: str = Field(default="", description="Vapi API key")
     vapi_phone_number_id: str = Field(default="", description="Twilio number linked in Vapi")
-    elevenlabs_api_key: str = Field(default="", description="ElevenLabs API key")
+    # Primary TTS: Cartesia (sonic-2 model, 90ms latency)
+    cartesia_api_key: str = Field(default="", description="Cartesia API key (primary TTS)")
+    cartesia_voice_model: str = Field(default="sonic-2", description="Cartesia voice model (sonic-2 or sonic-turbo)")
+    # Fallback TTS: ElevenLabs (kept for compatibility)
+    elevenlabs_api_key: str = Field(default="", description="ElevenLabs API key (fallback TTS)")
 
     # === Stripe ===
     stripe_api_key: str = Field(default="", description="Stripe secret key")

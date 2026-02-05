@@ -154,6 +154,51 @@ class LeadPool(Base, UUIDMixin, TimestampMixin):
     last_enriched_at: Mapped[datetime | None] = mapped_column(nullable=True)
     enrichment_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
+    # ===== ENRICHMENT LINEAGE (Phase WF-001: Waterfall Reliability Shift) =====
+    enrichment_lineage: Mapped[list[dict] | None] = mapped_column(
+        JSONB,
+        default=list,
+        nullable=True,
+        comment="Full audit trail: [{step, source, timestamp, cost_aud, data_added}]",
+    )
+
+    # ===== INTENT SIGNALS (Phase WF-001) =====
+    intent_ad_volume: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment=">50 ads = high intent signal",
+    )
+    intent_ad_longevity_days: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment=">60 days = sustained spend",
+    )
+    intent_ad_first_seen: Mapped[date | None] = mapped_column(Date, nullable=True)
+    intent_ad_last_seen: Mapped[date | None] = mapped_column(Date, nullable=True)
+    intent_ad_platforms: Mapped[list[str] | None] = mapped_column(
+        ARRAY(Text),
+        nullable=True,
+    )
+    intent_score: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment="0-100 composite intent score from all signals",
+    )
+    intent_signals: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    # ===== TRIPLE-CHECK VERIFICATION (Phase WF-001) =====
+    verification_method: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Method: single_source | dual_match | triple_check",
+    )
+    verification_sources: Mapped[list[str] | None] = mapped_column(
+        ARRAY(Text),
+        nullable=True,
+    )
+    verification_consensus: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    verification_escalated: Mapped[bool] = mapped_column(Boolean, default=False)
+
     # DataForSEO Metrics
     dataforseo_domain_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
     dataforseo_organic_traffic: Mapped[int | None] = mapped_column(Integer, nullable=True)

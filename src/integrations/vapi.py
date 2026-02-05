@@ -13,11 +13,19 @@ RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 11: No hardcoded credentials
 
-Orchestrates voice calls using:
-- Twilio for telephony
-- ElevenLabs for TTS
-- Vapi's built-in STT
-- Anthropic Claude for LLM
+VOICE AI STACK:
+- STT: AssemblyAI Universal (via Vapi, 90ms)
+- LLM: Hybrid architecture via Vapi Squads
+  - Primary (90%): Groq Llama 4 Maverick (200ms) - fast responses
+  - Complex (10%): Claude 3.5 Haiku (400ms) - objection handling
+- TTS: Cartesia Sonic-2 (90ms), ElevenLabs fallback
+- Telephony: Twilio
+
+HYBRID LLM HANDOFF:
+- FastResponder (Groq) handles simple responses, booking flow
+- ComplexHandler (Claude) handles competitor comparisons, ROI questions
+- Silent handoff via Vapi Squads - no audible transition
+- Triggers: [HANDOFF_COMPLEX] / [HANDOFF_SIMPLE] keywords in prompts
 
 API Docs: https://docs.vapi.ai/
 """
@@ -46,11 +54,35 @@ class VapiAssistantConfig(BaseModel):
     name: str
     first_message: str
     system_prompt: str
-    voice_id: str = "pNInz6obpgDQGcFmaJgB"  # ElevenLabs "Adam" default
-    model: str = "claude-sonnet-4-20250514"
+    # Voice settings - Cartesia is primary, ElevenLabs fallback
+    voice_id: str = "a0e99841-438c-4a64-b679-ae501e7d6091"  # Cartesia professional
+    voice_provider: str = "cartesia"  # "cartesia" or "11labs"
+    voice_model: str = "sonic-2"  # "sonic-2" (90ms) or "sonic-turbo" (40ms)
+    # LLM settings - defaults to Groq for speed (squad handles complex)
+    model_provider: str = "groq"
+    model: str = "llama-4-maverick-17b-128e-instruct"
     temperature: float = 0.7
+    max_tokens: int = 150
     max_duration_seconds: int = 300  # 5 min max call
     language: str = "en-AU"  # Australian English
+    # Squad mode for hybrid LLM
+    use_squad: bool = False  # Enable for Groq/Claude hybrid
+
+
+class VapiSquadConfig(BaseModel):
+    """Configuration for Vapi Squad (hybrid LLM architecture)."""
+
+    name: str
+    first_message: str
+    # FastResponder (Groq) - 90% of responses
+    fast_system_prompt: str
+    # ComplexHandler (Claude) - 10% complex objections
+    complex_system_prompt: str
+    # Shared voice settings
+    voice_id: str = "a0e99841-438c-4a64-b679-ae501e7d6091"
+    voice_provider: str = "cartesia"
+    voice_model: str = "sonic-2"
+    max_duration_seconds: int = 300
 
 
 class VapiCallRequest(BaseModel):
@@ -157,21 +189,33 @@ class VapiClient:
         Returns:
             dict with 'id' key for assistant_id
         """
-        payload = {
-            "name": config.name,
-            "firstMessage": config.first_message,
-            "model": {
-                "provider": "anthropic",
-                "model": config.model,
-                "temperature": config.temperature,
-                "systemPrompt": config.system_prompt,
-            },
-            "voice": {
+        # Build voice config based on provider
+        if config.voice_provider == "cartesia":
+            voice_config = {
+                "provider": "cartesia",
+                "voiceId": config.voice_id,
+                "model": config.voice_model,
+            }
+        else:
+            # ElevenLabs fallback
+            voice_config = {
                 "provider": "11labs",
                 "voiceId": config.voice_id,
                 "stability": 0.5,
                 "similarityBoost": 0.75,
+            }
+
+        payload = {
+            "name": config.name,
+            "firstMessage": config.first_message,
+            "model": {
+                "provider": config.model_provider,
+                "model": config.model,
+                "temperature": config.temperature,
+                "maxTokens": config.max_tokens,
+                "systemPrompt": config.system_prompt,
             },
+            "voice": voice_config,
             "maxDurationSeconds": config.max_duration_seconds,
             "endCallFunctionEnabled": True,
             "recordingEnabled": True,
@@ -185,6 +229,89 @@ class VapiClient:
         except (httpx.RequestError, httpx.TimeoutException) as e:
             logger.error(f"Vapi create_assistant failed after retries: {e}")
             raise IntegrationError(f"Vapi create_assistant failed: {e}") from e
+
+    async def create_squad(self, config: VapiSquadConfig) -> dict:
+        """
+        Create a Vapi Squad for hybrid LLM architecture.
+
+        Squad enables silent handoffs between:
+        - FastResponder (Groq): 90% of responses, fast and simple
+        - ComplexHandler (Claude): 10% for complex objections
+
+        Returns:
+            dict with 'id' key for squad_id (use as assistant_id in calls)
+        """
+        # Voice config (shared across squad members)
+        voice_config = {
+            "provider": config.voice_provider,
+            "voiceId": config.voice_id,
+            "model": config.voice_model,
+        } if config.voice_provider == "cartesia" else {
+            "provider": "11labs",
+            "voiceId": config.voice_id,
+            "stability": 0.5,
+            "similarityBoost": 0.75,
+        }
+
+        payload = {
+            "name": config.name,
+            "members": [
+                {
+                    "assistantOverrides": {
+                        "name": "FastResponder",
+                        "firstMessage": config.first_message,
+                        "model": {
+                            "provider": "groq",
+                            "model": "llama-4-maverick-17b-128e-instruct",
+                            "temperature": 0.7,
+                            "maxTokens": 150,
+                            "systemPrompt": config.fast_system_prompt,
+                        },
+                        "voice": voice_config,
+                    },
+                    "assistantDestinations": [
+                        {
+                            "type": "assistant",
+                            "assistantName": "ComplexHandler",
+                            "message": "",
+                            "description": "Transfer for complex objections",
+                        }
+                    ],
+                },
+                {
+                    "assistantOverrides": {
+                        "name": "ComplexHandler",
+                        "model": {
+                            "provider": "anthropic",
+                            "model": "claude-3-5-haiku-20241022",
+                            "temperature": 0.7,
+                            "maxTokens": 300,
+                            "systemPrompt": config.complex_system_prompt,
+                        },
+                        "voice": voice_config,
+                    },
+                    "assistantDestinations": [
+                        {
+                            "type": "assistant",
+                            "assistantName": "FastResponder",
+                            "message": "",
+                            "description": "Return after handling complex objection",
+                        }
+                    ],
+                },
+            ],
+            "maxDurationSeconds": config.max_duration_seconds,
+        }
+
+        try:
+            response = await self._request("POST", "/squad", json=payload)
+            if response.status_code != 201:
+                raise IntegrationError(f"Vapi create_squad failed: {response.text}")
+            logger.info(f"Created Vapi squad: {config.name}")
+            return response.json()
+        except (httpx.RequestError, httpx.TimeoutException) as e:
+            logger.error(f"Vapi create_squad failed after retries: {e}")
+            raise IntegrationError(f"Vapi create_squad failed: {e}") from e
 
     async def get_assistant(self, assistant_id: str) -> dict:
         """Get assistant details by ID."""

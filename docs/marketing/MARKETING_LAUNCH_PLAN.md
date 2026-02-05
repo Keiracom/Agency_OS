@@ -343,7 +343,7 @@ video_template_educational:
   
   topics:
     - "How we get 35%+ email open rates"
-    - "The YES Score: How we prioritize leads"
+    - "The ALS: How we prioritize leads"
     - "Why we don't use polymorphic messaging"
     - "Our email warmup process explained"
     - "How we handle LinkedIn without getting banned"

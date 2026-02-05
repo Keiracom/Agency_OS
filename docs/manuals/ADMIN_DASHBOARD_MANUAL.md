@@ -154,7 +154,7 @@ Platform-wide lead management.
 ### Views
 - All leads across clients
 - Enrichment status (pending, enriched, failed)
-- YES Score distribution
+- ALS distribution
 - Lead quality tiers (Hot, Warm, Cool, Cold, Dead)
 
 ### Actions
@@ -271,7 +271,7 @@ Platform configuration.
 
 ## Key Concepts
 
-### YES Score
+### ALS (Lead Score)
 The platform's proprietary lead qualification algorithm (0-100):
 - **90-100**: Ideal fit, high intent
 - **70-89**: Strong match

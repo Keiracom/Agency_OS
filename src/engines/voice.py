@@ -1,12 +1,12 @@
 """
 Contract: src/engines/voice.py
-Purpose: Voice engine using Vapi and ElevenLabs for AI voice calls
+Purpose: Voice engine using Vapi and Cartesia for AI voice calls
 Layer: 3 - engines
 Imports: models, integrations, services
 Consumers: orchestration only
 
 FILE: src/engines/voice.py
-PURPOSE: Voice engine using Vapi + Twilio + ElevenLabs for AI voice calls
+PURPOSE: Voice engine using Vapi + Twilio + Cartesia for AI voice calls
 PHASE: 4 (Engines), modified Phase 16 for Conversion Intelligence, Phase 17 for Vapi
 TASK: ENG-008, 16E-003, CRED-007
 DEPENDENCIES:
@@ -26,8 +26,22 @@ PHASE 16 CHANGES:
   - Added content_snapshot capture for WHAT Detector learning
   - Tracks touch_number, sequence context, outcome, and duration
 PHASE 17 CHANGES:
-  - Replaced Synthflow with Vapi + ElevenLabs stack
-  - Vapi orchestrates: STT (built-in) -> LLM (Claude) -> TTS (ElevenLabs)
+  - Replaced Synthflow with Vapi + Cartesia stack
+  - Vapi orchestrates: STT (built-in) -> LLM (Claude) -> TTS (Cartesia)
+TTS MIGRATION (2026-01):
+  - Primary TTS: Cartesia (sonic-2 model, 90ms latency)
+  - Fallback TTS: ElevenLabs (kept for compatibility)
+HYBRID LLM ARCHITECTURE (2026-01):
+  - Primary LLM (90%): Groq Llama 4 Maverick (200ms) - fast responses, booking flow
+  - Complex LLM (10%): Claude 3.5 Haiku (400ms) - objection handling, competitor comparisons
+  - Implementation: Vapi Squads with silent handoffs
+  - Handoff triggers: [HANDOFF_COMPLEX] / [HANDOFF_SIMPLE] keywords in prompts
+  - Use cases for Claude handoff:
+    * Competitor comparison questions
+    * Past failure objections ("we tried this before")
+    * ROI/business case requests
+    * Technical integration questions
+    * AI ethics/trust concerns
 """
 
 import logging
@@ -62,6 +76,7 @@ from src.integrations.vapi import (
     VapiAssistantConfig,
     VapiCallRequest,
     VapiClient,
+    VapiSquadConfig,
     get_vapi_client,
 )
 from src.models.activity import Activity
@@ -197,13 +212,21 @@ class VoiceEngine(OutreachEngine):
     Flow:
     1. Create/get assistant for campaign
     2. Initiate outbound call via Twilio (through Vapi)
-    3. Vapi orchestrates: STT (built-in) -> LLM (Claude) -> TTS (ElevenLabs)
+    3. Vapi orchestrates: STT (built-in) -> LLM (Claude) -> TTS (Cartesia)
     4. Webhook receives call result
     5. Log activity + transcript
     """
 
-    # Default voice - ElevenLabs "Adam" (professional male)
-    DEFAULT_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
+    # Default voice - Cartesia "professional-female" (sonic-2 model)
+    # Fallback: ElevenLabs "Adam" voice ID: pNInz6obpgDQGcFmaJgB
+    DEFAULT_VOICE_ID = "a0e99841-438c-4a64-b679-ae501e7d6091"  # Cartesia professional voice
+    DEFAULT_VOICE_PROVIDER = "cartesia"
+    DEFAULT_VOICE_MODEL = "sonic-2"  # 90ms latency, or use "sonic-turbo" for 40ms
+
+    # Hybrid LLM configuration
+    # Primary (90%): Groq for fast responses
+    # Complex (10%): Claude Haiku for objection handling
+    USE_HYBRID_LLM = True  # Set False to use single LLM mode
 
     def __init__(self, vapi_client: VapiClient | None = None):
         """
@@ -310,6 +333,8 @@ class VoiceEngine(OutreachEngine):
         script: str,
         first_message: str,
         voice_id: str = None,
+        voice_provider: str = None,
+        voice_model: str = None,
     ) -> str:
         """
         Create a Vapi assistant for a campaign.
@@ -319,7 +344,9 @@ class VoiceEngine(OutreachEngine):
             campaign_id: Campaign UUID
             script: System prompt/script for the assistant
             first_message: Opening message for calls
-            voice_id: ElevenLabs voice ID (optional, uses default)
+            voice_id: Voice ID (optional, uses Cartesia default)
+            voice_provider: TTS provider ("cartesia" or "11labs" for fallback)
+            voice_model: Voice model (e.g., "sonic-2", "sonic-turbo")
 
         Returns:
             assistant_id to store in campaign record
@@ -329,10 +356,110 @@ class VoiceEngine(OutreachEngine):
             first_message=first_message,
             system_prompt=self._build_system_prompt(script),
             voice_id=voice_id or self.DEFAULT_VOICE_ID,
+            voice_provider=voice_provider or self.DEFAULT_VOICE_PROVIDER,
+            voice_model=voice_model or self.DEFAULT_VOICE_MODEL,
         )
 
         result = await self.vapi.create_assistant(config)
         return result["id"]
+
+    async def create_campaign_squad(
+        self,
+        db: AsyncSession,
+        campaign_id: str,
+        script: str,
+        first_message: str,
+        voice_id: str = None,
+        voice_provider: str = None,
+        voice_model: str = None,
+    ) -> str:
+        """
+        Create a Vapi Squad for hybrid LLM architecture.
+
+        Uses two assistants with silent handoff:
+        - FastResponder (Groq Llama 4 Maverick): 90% of responses
+          * Simple objections, booking flow, quick answers
+          * 200ms response time
+        - ComplexHandler (Claude 3.5 Haiku): 10% of responses
+          * Competitor comparisons, ROI questions, technical queries
+          * 400ms response time, better reasoning
+
+        Handoff triggers (embedded in prompts):
+        - [HANDOFF_COMPLEX]: FastResponder → ComplexHandler
+        - [HANDOFF_SIMPLE]: ComplexHandler → FastResponder
+
+        Args:
+            db: Database session (passed by caller)
+            campaign_id: Campaign UUID
+            script: Base script for the assistant
+            first_message: Opening message for calls
+            voice_id: Voice ID (optional, uses Cartesia default)
+            voice_provider: TTS provider ("cartesia" or "11labs")
+            voice_model: Voice model (e.g., "sonic-2", "sonic-turbo")
+
+        Returns:
+            squad_id to use as assistant_id in calls
+        """
+        # Build prompts with handoff triggers
+        fast_prompt = self._build_fast_responder_prompt(script)
+        complex_prompt = self._build_complex_handler_prompt(script)
+
+        config = VapiSquadConfig(
+            name=f"AgencyOS-Squad-{campaign_id[:8]}",
+            first_message=first_message,
+            fast_system_prompt=fast_prompt,
+            complex_system_prompt=complex_prompt,
+            voice_id=voice_id or self.DEFAULT_VOICE_ID,
+            voice_provider=voice_provider or self.DEFAULT_VOICE_PROVIDER,
+            voice_model=voice_model or self.DEFAULT_VOICE_MODEL,
+        )
+
+        result = await self.vapi.create_squad(config)
+        return result["id"]
+
+    def _build_fast_responder_prompt(self, script: str) -> str:
+        """Build prompt for FastResponder (Groq) with handoff triggers."""
+        return f"""You are a friendly, professional sales development representative.
+
+SCRIPT GUIDANCE:
+{script}
+
+RULES:
+- Keep responses SHORT (1-2 sentences max)
+- Be conversational and natural, not robotic
+- If they seem busy, offer to call back
+- Goal: Book a meeting or gather objection data
+- Use Australian English
+
+**HANDOFF TRIGGERS** - Respond with [HANDOFF_COMPLEX] if prospect says:
+- "What makes you different from..." (competitor comparison)
+- "We tried something like this before and..." (past failure)
+- "Our situation is unique because..." (complex context)
+- "I need to understand the ROI..." (business case request)
+- "How does this integrate with..." (technical question)
+- "We have concerns about AI..." (trust/ethics question)
+- Any detailed question requiring nuanced explanation
+
+For simple objections (too busy, not interested, wrong person), handle briefly yourself."""
+
+    def _build_complex_handler_prompt(self, script: str) -> str:
+        """Build prompt for ComplexHandler (Claude) with handoff back."""
+        return f"""You are continuing a sales call. The prospect raised a complex question.
+
+SCRIPT CONTEXT:
+{script}
+
+YOUR ROLE:
+- Address their specific concern directly and thoroughly
+- Use social proof if relevant (case studies, results)
+- Keep it conversational but comprehensive
+- Goal: Resolve the objection and guide back to booking
+
+AFTER RESOLVING (1-2 exchanges):
+- Transition: "Does that help clarify things?"
+- Then include [HANDOFF_SIMPLE] to return to fast responder for booking
+
+Use Australian English. Be empathetic but confident."""
 
     async def send(
         self,
@@ -976,6 +1103,8 @@ Be specific and actionable. Return valid JSON only."""
         script: str,
         first_message: str,
         voice_id: str = None,
+        voice_provider: str = None,
+        voice_model: str = None,
         sdk_enrichment: dict[str, Any] | None = None,
     ) -> EngineResult[dict[str, Any]]:
         """
@@ -992,7 +1121,9 @@ Be specific and actionable. Return valid JSON only."""
             lead_id: Lead UUID for KB generation
             script: Base system prompt/script
             first_message: Opening message
-            voice_id: ElevenLabs voice ID (optional)
+            voice_id: Voice ID (optional, uses Cartesia default)
+            voice_provider: TTS provider ("cartesia" or "11labs" for fallback)
+            voice_model: Voice model (e.g., "sonic-2", "sonic-turbo")
             sdk_enrichment: Pre-fetched SDK enrichment data
 
         Returns:
@@ -1027,6 +1158,8 @@ Be specific and actionable. Return valid JSON only."""
                 first_message=personalized_first_message,
                 system_prompt=self._build_system_prompt(enhanced_script),
                 voice_id=voice_id or self.DEFAULT_VOICE_ID,
+                voice_provider=voice_provider or self.DEFAULT_VOICE_PROVIDER,
+                voice_model=voice_model or self.DEFAULT_VOICE_MODEL,
             )
 
             result = await self.vapi.create_assistant(config)
@@ -1160,7 +1293,7 @@ def get_voice_engine() -> VoiceEngine:
 # [x] Phase 16: content_snapshot captured for WHAT Detector
 # [x] Phase 16: outcome, duration, touch_number tracked
 # [x] Phase 16: led_to_booking flag for converting touches
-# [x] Phase 17: Vapi + ElevenLabs stack (STT handled by Vapi)
+# [x] Phase 17: Vapi + Cartesia stack (STT handled by Vapi, ElevenLabs fallback available)
 # [x] Voice retry: busy=2hr, no_answer=next business day (TODO.md #3)
 # [x] Voice retry: MAX_RETRIES=3 enforced
 # [x] Voice retry: VoiceRetryService integration in process_call_webhook

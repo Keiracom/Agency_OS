@@ -144,7 +144,7 @@ BEFORE AGENCY OS                    AFTER AGENCY OS
 - Phase-based visualization:
   1. **Discover** → ICP extraction from your website
   2. **Find** → AI scouts leads matching your ICP
-  3. **Score** → YES Score prioritizes hot prospects
+  3. **Score** → ALS prioritizes hot prospects
   4. **Reach** → Multi-channel (Email, SMS, LinkedIn, Voice, Mail)
   5. **Convert** → AI learns what converts → optimizes
 

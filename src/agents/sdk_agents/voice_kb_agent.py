@@ -1,4 +1,10 @@
 """
+DEPRECATED: FCO-002 (2026-02-05)
+This module is deprecated. Use Smart Prompts (src/engines/smart_prompts.py) instead.
+SDK enrichment replaced by Siege Waterfall data.
+Kept for reference only - do not use in new code.
+
+---
 Contract: src/agents/sdk_agents/voice_kb_agent.py
 Purpose: SDK-powered voice knowledge base for Hot leads
 Layer: 3 - agents
@@ -22,8 +28,10 @@ The KB includes:
 - Topics to avoid
 - Competitor intelligence
 """
-
 from __future__ import annotations
+
+import warnings
+warnings.warn("This SDK agent is deprecated. Use Smart Prompts instead.", DeprecationWarning)
 
 import logging
 from typing import Any

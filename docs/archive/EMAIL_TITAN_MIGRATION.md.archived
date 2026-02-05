@@ -1,0 +1,224 @@
+# EMAIL_TITAN_MIGRATION.md
+## Outreach Burner Email Migration to Titan/Neo
+
+**Phase:** FIXED_COST_OPTIMIZATION_PHASE_1
+**Savings:** ~$80 AUD/month (80% email seat reduction)
+**Status:** APPROVED — Migration plan ready
+
+---
+
+## 1. CURRENT STATE
+
+### Google Workspace Accounts
+
+| Account Type | Count | Cost/User | Monthly Total |
+|--------------|-------|-----------|---------------|
+| Admin (admin@, ceo@) | 2 | $10 AUD | $20 AUD |
+| Outreach Burners | 20 | $10 AUD | $200 AUD |
+| **Total** | **22** | — | **$220 AUD** |
+
+### Why We Have 20 Burners
+- **Sender Rotation:** Distribute outreach across multiple addresses
+- **Deliverability:** Avoid volume limits per sender
+- **Domain Separation:** Different domains for different campaigns
+- **Warmup:** Gradual reputation building per address
+
+---
+
+## 2. PROPOSED STATE
+
+### Account Distribution
+
+| Account Type | Provider | Count | Cost/User | Monthly Total |
+|--------------|----------|-------|-----------|---------------|
+| Admin (admin@, ceo@) | Google Workspace | 2 | $10 AUD | $20 AUD |
+| Outreach Burners | Titan Email | 20 | $1 AUD | $20 AUD |
+| **Total** | — | **22** | — | **$40 AUD** |
+
+**Savings: $180 AUD/month → Conservative estimate $80/month (accounting for Titan's actual pricing)**
+
+---
+
+## 3. PROVIDER COMPARISON
+
+### Titan Email (Recommended)
+
+| Feature | Status |
+|---------|--------|
+| **Cost** | $1.50-2 USD/user/mo (~$2.50 AUD) |
+| **Deliverability** | Managed (DKIM/SPF/DMARC handled) |
+| **Custom Domain** | ✅ Supported |
+| **SMTP/IMAP** | ✅ Full access |
+| **API** | ✅ Available |
+| **Australian Support** | Via Hostinger/partners |
+
+**Pros:**
+- 80% cheaper than Google
+- Deliverability managed (no self-hosting risk)
+- Full SMTP/IMAP for Salesforge integration
+- White-label domains supported
+
+**Cons:**
+- Slightly lower deliverability than Google (but acceptable for cold outreach)
+- Less feature-rich webmail
+
+### Neo Mail (Alternative)
+
+| Feature | Status |
+|---------|--------|
+| **Cost** | $1.67 USD/user/mo (~$2.60 AUD) |
+| **Deliverability** | Managed |
+| **Custom Domain** | ✅ Supported |
+| **SMTP/IMAP** | ✅ Full access |
+
+Similar to Titan, slightly newer.
+
+---
+
+## 4. MIGRATION PLAN
+
+### Phase 1: Pilot (Week 1)
+- [ ] Create 2 Titan accounts on new test domain
+- [ ] Configure DKIM/SPF/DMARC
+- [ ] Run warmup via WarmForge (2 weeks)
+- [ ] Monitor deliverability vs Google baseline
+
+### Phase 2: Gradual Migration (Weeks 3-6)
+- [ ] Migrate 5 burner accounts per week
+- [ ] Monitor bounce rates and spam placement
+- [ ] Roll back if deliverability drops >5%
+
+### Phase 3: Full Cutover (Week 7+)
+- [ ] All 20 burners on Titan
+- [ ] Maintain Google for admin@, ceo@ only
+- [ ] Document any deliverability differences
+
+---
+
+## 5. TECHNICAL INTEGRATION
+
+### Salesforge SMTP Configuration
+
+```yaml
+# For each Titan burner account
+smtp_host: smtp.titan.email
+smtp_port: 587
+smtp_user: outreach1@clientdomain.com
+smtp_password: ${TITAN_PASSWORD}
+smtp_tls: true
+
+imap_host: imap.titan.email
+imap_port: 993
+imap_user: outreach1@clientdomain.com
+imap_password: ${TITAN_PASSWORD}
+```
+
+### DNS Records (Per Domain)
+
+```dns
+; DKIM (provided by Titan)
+default._domainkey  IN  TXT  "v=DKIM1; k=rsa; p=..."
+
+; SPF
+@  IN  TXT  "v=spf1 include:_spf.titan.email ~all"
+
+; DMARC
+_dmarc  IN  TXT  "v=DMARC1; p=quarantine; rua=mailto:dmarc@clientdomain.com"
+```
+
+---
+
+## 6. RISK MITIGATION
+
+### Deliverability Monitoring
+
+| Metric | Google Baseline | Titan Threshold | Action |
+|--------|-----------------|-----------------|--------|
+| Inbox Rate | 92% | >85% | Continue |
+| Inbox Rate | — | 80-85% | Investigate |
+| Inbox Rate | — | <80% | Roll back |
+| Bounce Rate | 2% | <5% | Continue |
+| Spam Complaints | 0.1% | <0.3% | Continue |
+
+### Rollback Plan
+
+If Titan deliverability is unacceptable:
+1. Keep domains warm on Titan (maintain reputation)
+2. Route high-value campaigns through Google
+3. Use Titan for lower-tier outreach only
+4. Re-evaluate after 30 days
+
+---
+
+## 7. COST PROJECTION
+
+### Conservative Estimate
+
+| Item | Current | Proposed | Savings |
+|------|---------|----------|---------|
+| Google Admin (2) | $20/mo | $20/mo | $0 |
+| Google Burners (20) | $200/mo | $0 | $200/mo |
+| Titan Burners (20) | $0 | $50/mo | — |
+| **Total** | **$220/mo** | **$70/mo** | **$150/mo** |
+
+### Actual Savings (Conservative)
+
+Accounting for:
+- Titan pricing variance: ~$2.50 AUD/user
+- Some burners may need Google for high-value domains
+- Migration buffer
+
+**Realistic savings: ~$80-120 AUD/month**
+
+---
+
+## 8. ACCOUNTS TO MIGRATE
+
+### Keep on Google Workspace
+1. admin@keiracom.com.au
+2. ceo@keiracom.com.au
+
+### Migrate to Titan
+All outreach burner accounts:
+- outreach1@domain1.com.au
+- outreach2@domain1.com.au
+- ...
+- outreach20@domain20.com.au
+
+---
+
+## 9. DECISION MATRIX
+
+| Factor | Google | Titan | Winner |
+|--------|--------|-------|--------|
+| **Cost** | $10/user | $2.50/user | Titan |
+| **Deliverability** | 95% | 88% | Google |
+| **For Cold Outreach** | Overkill | Sufficient | Titan |
+| **For Admin/Client** | Required | Insufficient | Google |
+| **Maintenance** | Zero | Zero | Tie |
+
+**Recommendation:** Hybrid approach — Google for admin, Titan for outreach.
+
+---
+
+## 10. ACTION ITEMS
+
+### Immediate
+- [ ] Sign up for Titan Email trial
+- [ ] Create 2 test accounts
+- [ ] Configure on test domain
+
+### Week 1
+- [ ] Run warmup on test accounts
+- [ ] Baseline deliverability metrics
+- [ ] Document SMTP integration
+
+### Week 3+
+- [ ] Begin gradual migration
+- [ ] Monitor metrics daily
+- [ ] Full cutover by end of month
+
+---
+
+*Document prepared: 2026-02-04*
+*Approved by: Dave (CEO)*

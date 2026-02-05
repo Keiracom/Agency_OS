@@ -255,7 +255,7 @@ Cons: Extra API calls, slower processing, potential rate limits on profile views
 Option 3: Hybrid (Recommended)
 
 Apify scrape at enrichment — Get baseline profile data
-Score leads — YES Score determines priority
+Score leads — ALS determines priority
 Just-in-time post fetch — Only for high-priority leads, right before sending
 Fallback — Use pre-generated icebreaker if fresh fetch fails
 

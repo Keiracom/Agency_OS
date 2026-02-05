@@ -1,4 +1,10 @@
 """
+DEPRECATED: FCO-002 (2026-02-05)
+This module is deprecated. Use Smart Prompts (src/engines/smart_prompts.py) instead.
+SDK enrichment replaced by Siege Waterfall data.
+Kept for reference only - do not use in new code.
+
+---
 Contract: src/agents/sdk_agents/enrichment_agent.py
 Purpose: SDK-powered deep research for Hot leads with signals
 Layer: 3 - agents
@@ -9,8 +15,10 @@ This agent performs deep web research for Hot leads that have priority signals
 (recent funding, actively hiring, etc.). It uses web_search and web_fetch tools
 to gather current, specific information for hyper-personalization.
 """
-
 from __future__ import annotations
+
+import warnings
+warnings.warn("This SDK agent is deprecated. Use Smart Prompts instead.", DeprecationWarning)
 
 import logging
 from dataclasses import dataclass, field

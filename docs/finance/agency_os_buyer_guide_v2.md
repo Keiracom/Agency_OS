@@ -37,7 +37,7 @@ Not all leads are equal. That's why we score them.
 
 ---
 
-### Step 2: We Score and Prioritise (The YES Score)
+### Step 2: We Score and Prioritise (ALS)
 
 Every lead gets a score from 0-100 based on:
 - **Data quality** — Do we have verified email, phone, LinkedIn?
@@ -409,7 +409,7 @@ Good news: Agency OS handles most of the work.
 |-----------|----------|
 | Lead sourcing | ✅ Matched to your ICP |
 | Data enrichment | ✅ Email, phone, LinkedIn verified |
-| Lead scoring | ✅ YES Score prioritisation |
+| Lead scoring | ✅ ALS prioritisation |
 | Email sequences | ✅ AI-written, A/B tested |
 | LinkedIn automation | ✅ Connection + messaging |
 | Voice AI calls | ✅ Warm/Hot leads called automatically |

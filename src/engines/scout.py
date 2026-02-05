@@ -45,8 +45,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-from src.agents.sdk_agents.enrichment_agent import run_sdk_enrichment
-from src.agents.sdk_agents.sdk_eligibility import should_use_sdk_enrichment
+# DEPRECATED: FCO-002 (2026-02-05) - SDK enrichment removed, using Siege Waterfall data only
+# from src.agents.sdk_agents.enrichment_agent import run_sdk_enrichment
+from src.agents.sdk_agents.sdk_eligibility import should_use_sdk_enrichment  # Kept for objection routing
 from src.agents.skills.research_skills import DeepResearchSkill
 from src.engines.base import BaseEngine, EngineResult
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
@@ -444,6 +445,8 @@ class ScoutEngine(BaseEngine):
 
     # ============================================
     # SDK ENRICHMENT (Hot Leads with Signals)
+    # DEPRECATED: FCO-002 (2026-02-05)
+    # SDK enrichment removed - using Siege Waterfall data only
     # ============================================
 
     async def _sdk_enrich(
@@ -453,13 +456,11 @@ class ScoutEngine(BaseEngine):
         signals: list[str],
     ) -> dict[str, Any] | None:
         """
-        Run SDK enrichment for Hot lead with priority signals.
-
-        SDK enrichment performs deep web research to find:
-        - Recent funding announcements
-        - Current hiring activity
-        - Recent news and press releases
-        - Pain points and personalization hooks
+        DEPRECATED: FCO-002 (2026-02-05)
+        SDK enrichment has been removed. Use Siege Waterfall data instead.
+        
+        This method now returns None immediately. Kept for backwards compatibility
+        with existing code that may call enrich_lead_with_sdk().
 
         Args:
             lead: Lead model instance
@@ -467,75 +468,16 @@ class ScoutEngine(BaseEngine):
             signals: Priority signals that triggered SDK eligibility
 
         Returns:
-            Merged enrichment data with SDK findings, or None if SDK fails
+            None - SDK enrichment is no longer performed
         """
-        try:
-            # Build lead data dict for SDK agent
-            lead_data = {
-                "first_name": lead.first_name,
-                "last_name": lead.last_name,
-                "title": lead.title,
-                "company_name": lead.company or enrichment_data.get("company"),
-                "company_domain": lead.domain or enrichment_data.get("domain"),
-                "company_industry": lead.organization_industry
-                or enrichment_data.get("organization_industry"),
-                "company_employee_count": lead.organization_employee_count
-                or enrichment_data.get("organization_employee_count"),
-                "linkedin_url": lead.linkedin_url or enrichment_data.get("linkedin_url"),
-                "linkedin_headline": enrichment_data.get("linkedin_headline"),
-                "linkedin_about": enrichment_data.get("linkedin_about"),
-                "linkedin_recent_posts": enrichment_data.get("linkedin_recent_posts"),
-            }
-
-            logger.info(
-                "Running SDK enrichment for Hot lead",
-                extra={
-                    "lead_id": str(lead.id),
-                    "signals": signals,
-                    "company": lead_data.get("company_name"),
-                },
-            )
-
-            # Run SDK enrichment agent
-            result = await run_sdk_enrichment(lead_data)
-
-            if result.success and result.data:
-                logger.info(
-                    "SDK enrichment succeeded",
-                    extra={
-                        "lead_id": str(lead.id),
-                        "cost_aud": result.cost_aud,
-                        "turns": result.turns_used,
-                        "tool_calls": len(result.tool_calls),
-                    },
-                )
-
-                # Convert Pydantic model to dict if needed
-                sdk_data = result.data
-                if hasattr(sdk_data, "model_dump"):
-                    sdk_data = sdk_data.model_dump()
-
-                return {
-                    "sdk_enrichment": sdk_data,
-                    "sdk_signals": signals,
-                    "sdk_cost_aud": result.cost_aud,
-                    "sdk_turns_used": result.turns_used,
-                    "sdk_tool_calls": result.tool_calls,
-                }
-            else:
-                logger.warning(
-                    "SDK enrichment failed",
-                    extra={
-                        "lead_id": str(lead.id),
-                        "error": result.error,
-                    },
-                )
-                return None
-
-        except Exception as e:
-            logger.exception(f"SDK enrichment error: {e}")
-            capture_exception(e)
-            return None
+        logger.info(
+            "SDK enrichment skipped (deprecated FCO-002) - using Siege Waterfall data only",
+            extra={
+                "lead_id": str(lead.id),
+                "signals": signals,
+            },
+        )
+        return None
 
     async def enrich_lead_with_sdk(
         self,
@@ -545,127 +487,36 @@ class ScoutEngine(BaseEngine):
         force_refresh: bool = False,
     ) -> EngineResult[dict[str, Any]]:
         """
-        Enrich a lead with optional SDK enhancement for Hot leads.
-
-        This method:
-        1. Runs standard waterfall enrichment (cache -> Apollo+Apify -> Clay)
-        2. If lead is Hot (ALS >= 85) AND has priority signals, runs SDK enrichment
-        3. Merges SDK findings into enrichment data
+        DEPRECATED: FCO-002 (2026-02-05)
+        SDK enrichment has been removed. This method now just calls standard enrichment.
+        
+        Enrich a lead using Siege Waterfall data only.
+        Kept for backwards compatibility with existing orchestration flows.
 
         Args:
             db: Database session (passed by caller)
             lead_id: Lead UUID to enrich
-            als_score: Pre-calculated ALS score (optional, will be inferred from enrichment)
+            als_score: Pre-calculated ALS score (optional, not used)
             force_refresh: Skip cache and force re-enrichment
 
         Returns:
-            EngineResult with enrichment data (including SDK data if applicable)
+            EngineResult with enrichment data (SDK data no longer included)
         """
-        # Run standard enrichment first
+        # Run standard enrichment only - SDK is deprecated
         standard_result = await self.enrich_lead(db, lead_id, force_refresh)
 
         if not standard_result.success:
             return standard_result
 
-        # Get the lead to check for SDK eligibility
-        lead = await self.get_lead_by_id(db, lead_id)
-        enrichment_data = standard_result.data
-
-        # Determine ALS score
-        effective_als_score = als_score or lead.als_score or enrichment_data.get("als_score", 0)
-
-        # Build lead data for eligibility check
-        lead_data_for_check = {
-            "als_score": effective_als_score,
-            "company_latest_funding_date": enrichment_data.get("company_latest_funding_date"),
-            "company_open_roles": enrichment_data.get("company_is_hiring")
-            or enrichment_data.get("organization_is_hiring"),
-            "company_employee_count": enrichment_data.get("organization_employee_count"),
-            "linkedin_engagement_score": enrichment_data.get("linkedin_engagement_score"),
-            "source": lead.source if hasattr(lead, "source") else None,
-            "tech_stack_match_score": enrichment_data.get("tech_stack_match_score"),
-        }
-
-        # Check SDK eligibility
-        sdk_eligible, signals = should_use_sdk_enrichment(lead_data_for_check)
-
-        if sdk_eligible:
-            logger.info(
-                "Lead qualifies for SDK enrichment",
-                extra={
-                    "lead_id": str(lead_id),
-                    "als_score": effective_als_score,
-                    "signals": signals,
-                },
-            )
-
-            # Run SDK enrichment
-            sdk_result = await self._sdk_enrich(lead, enrichment_data, signals)
-
-            # Log SDK usage to database for cost tracking
-            if sdk_result:
-                try:
-                    await log_sdk_usage(
-                        db,
-                        client_id=lead.client_id,
-                        agent_type="enrichment",
-                        model_used="claude-sonnet-4-20250514",
-                        input_tokens=sdk_result.get("sdk_tool_calls", [{}])[0].get(
-                            "input_tokens", 0
-                        )
-                        if sdk_result.get("sdk_tool_calls")
-                        else 0,
-                        output_tokens=0,  # Not tracked at this level
-                        cost_aud=sdk_result.get("sdk_cost_aud", 0),
-                        turns_used=sdk_result.get("sdk_turns_used", 1),
-                        tool_calls=sdk_result.get("sdk_tool_calls", []),
-                        success=True,
-                        lead_id=lead_id,
-                    )
-                except Exception as log_err:
-                    logger.warning(f"Failed to log SDK usage: {log_err}")
-
-            if sdk_result:
-                # Merge SDK data into enrichment result
-                enrichment_data["sdk_enrichment"] = sdk_result.get("sdk_enrichment")
-                enrichment_data["sdk_signals"] = sdk_result.get("sdk_signals")
-                enrichment_data["sdk_cost_aud"] = sdk_result.get("sdk_cost_aud", 0)
-                enrichment_data["enrichment_source"] = (
-                    f"{enrichment_data.get('source', 'unknown')}+sdk"
-                )
-
-                # Update the lead with SDK data
-                await self._update_lead_sdk_enrichment(db, lead, sdk_result)
-
-                return EngineResult.ok(
-                    data=enrichment_data,
-                    metadata={
-                        **standard_result.metadata,
-                        "sdk_enhanced": True,
-                        "sdk_signals": signals,
-                        "sdk_cost_aud": sdk_result.get("sdk_cost_aud", 0),
-                    },
-                )
-            else:
-                # SDK failed but standard enrichment succeeded
-                return EngineResult.ok(
-                    data=enrichment_data,
-                    metadata={
-                        **standard_result.metadata,
-                        "sdk_enhanced": False,
-                        "sdk_eligible": True,
-                        "sdk_signals": signals,
-                        "sdk_error": "SDK enrichment failed",
-                    },
-                )
-
-        # Not eligible for SDK - return standard result
+        # Return standard result with SDK-related metadata for backwards compatibility
         return EngineResult.ok(
-            data=enrichment_data,
+            data=standard_result.data,
             metadata={
                 **standard_result.metadata,
                 "sdk_enhanced": False,
                 "sdk_eligible": False,
+                "sdk_deprecated": True,
+                "deprecation_notice": "FCO-002: SDK enrichment removed, using Siege Waterfall data only",
             },
         )
 

@@ -1,8 +1,8 @@
 # PROJECT_BLUEPRINT.md — Agency OS v3.0
 
 **Status:** APPROVED
-**Version:** 3.2 (Phase Reorganization)
-**Last Updated:** January 7, 2026  
+**Version:** 4.0 (Siege Waterfall + Smart Prompts)
+**Last Updated:** February 5, 2026  
 **Owner:** CEO  
 **Purpose:** Quick reference for Claude Code. Detailed specs in `/docs/`.
 
@@ -31,8 +31,10 @@
 | Auth | Supabase Auth |
 | Orchestration | Prefect (self-hosted) |
 | Cache | Redis (Upstash) |
-| Voice AI | Vapi + Twilio + ElevenLabs |
-| Agent Framework | Pydantic AI |
+| Voice AI | Vapi + **Telnyx** + **Cartesia** (Groq 90% / Claude 10%) |
+| Content Engine | **Smart Prompts** (SDK deprecated per FCO-002) |
+| Cold Email | **Salesforge Ecosystem** (InfraForge + WarmForge + Salesforge) |
+| Data Enrichment | **Siege Waterfall** (5-tier) |
 
 **Full details:** `docs/architecture/DECISIONS.md`
 
@@ -66,8 +68,8 @@ Layer 1: src/models/         ─► exceptions only
 | Order | Phase | Name | Status | Blocked By | Spec |
 |-------|-------|------|--------|------------|------|
 | 1 | 17 | Launch Prerequisites | 🟡 | — | `docs/phases/PHASE_17_LAUNCH_PREREQ.md` |
-| 2 | 18 | Email Infrastructure | 🟡 | Phase 17 | `docs/phases/PHASE_18_EMAIL_INFRA.md` |
-| 3 | 19 | Scraper Waterfall | 🔴 | Phase 18 | `docs/specs/integrations/SCRAPER_WATERFALL.md` |
+| 2 | 18 | Email Infrastructure | ✅ | — | Salesforge Ecosystem validated (FCO-001) |
+| 3 | 19 | Siege Waterfall | 🟡 | — | `AGENCY_OS_STRATEGY.md` |
 | 4 | 20 | Landing Page + UI Wiring | 🟡 | Phase 19 | `docs/phases/PHASE_20_UI_OVERHAUL.md` |
 | 5 | 21 | E2E Journey Test | 🔴 | Phase 20 | `docs/phases/PHASE_21_E2E_JOURNEY.md` |
 | 6 | 22 | Marketing Automation | 🔴 | Phase 21 | `docs/phases/PHASE_22_MARKETING_AUTO.md` |
@@ -78,16 +80,16 @@ Layer 1: src/models/         ─► exceptions only
 ```
 Phase 17 (Prerequisites)
     ↓ Health checks, Sentry, seed prod DB
-Phase 18 (Email Infra)
-    ↓ InfraForge/Smartlead — CRITICAL for cold outreach
-Phase 19 (Scraper Waterfall)
-    ↓ Cost-efficient enrichment + Deep Research capability
+Phase 18 (Email Infra) ✅
+    ↓ Salesforge Ecosystem validated — DONE
+Phase 19 (Siege Waterfall)
+    ↓ 5-tier enrichment: ABN → GMB → Hunter → Proxycurl → Kaspr
 Phase 20 (UI Wiring)
-    ↓ Wire automation (ALS > 85 → Deep Research trigger)
+    ↓ Maya + Simplified Onboarding + Campaign Allocation
 Phase 21 (E2E Tests)
     ↓ Full journey testable with real infrastructure
 Phase 22 (Marketing Automation)
-    ↓ Smartlead, Infraforge, content generation
+    ↓ Smart Prompts content generation
 Phase 23 (Platform Intel)
     ↓ Post-launch, needs 10+ clients with data
 ```
@@ -126,21 +128,88 @@ Phase 23 (Platform Intel)
 
 ---
 
+## Siege Waterfall (Data Enrichment)
+
+5-tier pipeline — escalate cost only when needed:
+
+| Tier | Source | Cost (AUD) | Gate |
+|------|--------|------------|------|
+| 1 | ABN Bulk (data.gov.au) | FREE | Always |
+| 2 | GMB/Ads Signals | $0.006 | Always |
+| 3 | Hunter.io | $0.012 | Email needed |
+| 4 | LinkedIn Pulse (Proxycurl) | $0.024 | Social context |
+| 5 | Identity Gold (Kaspr/Lusha) | $0.45 | **ALS ≥ 85 ONLY** |
+
+**Weighted cost per lead: ~$0.14 AUD**
+
+**Full spec:** `AGENCY_OS_STRATEGY.md`
+
+---
+
+## Maya (Digital Employee UI)
+
+Internal-facing AI assistant (users only, leads never see her).
+
+| Surface | Technology | Cost |
+|---------|------------|------|
+| Onboarding Walkthrough | Pre-rendered video | ~$100 one-time |
+| Daily Updates | LLM + Cartesia TTS | ~$0.013/user/day |
+| Support Chat | LLM text only | Minimal |
+
+**Location:** Dashboard hologram (bottom-right)
+
+---
+
+## Resource Pool (Buffer System)
+
+Pre-warmed resources assigned JIT during onboarding:
+
+| Resource | Buffer | Pre-Warmed |
+|----------|--------|------------|
+| Email domains | 50 domains | 28-day warmup |
+| Phone numbers | 20 DIDs | Telnyx Sydney |
+| LinkedIn seats | Per-user | Unipile OAuth |
+
+User never sees provisioning — it's "kitchen talk."
+
+---
+
+## Onboarding (Simplified)
+
+Single page:
+1. Website URL (triggers ICP extraction)
+2. Connect CRM (optional)
+3. Connect LinkedIn
+
+Email/phone auto-assigned from buffer. Maya walkthrough on dashboard.
+
+---
+
+## Campaign Lead Allocation
+
+- Sliders share 100% pool (can't exceed total)
+- Tier determines max campaigns (Ignition = 5)
+- AI suggests campaigns based on ICP
+- **LOCKED after launch** — machine turns on
+- Channels determined by ALS, NOT user selection
+
+---
+
 ## Key Reference Files
 
 | Topic | Location |
 |-------|----------|
+| **Master Strategy** | `AGENCY_OS_STRATEGY.md` |
 | Architecture Decisions | `docs/architecture/DECISIONS.md` |
 | Import Rules | `docs/architecture/IMPORT_HIERARCHY.md` |
 | Claude Code Rules | `docs/architecture/RULES.md` |
-| File Structure | `docs/architecture/FILE_STRUCTURE.md` |
 | Database Schema | `docs/specs/database/SCHEMA_OVERVIEW.md` |
 | Engine Specs | `docs/specs/engines/ENGINE_INDEX.md` |
-| Integration Specs | `docs/specs/integrations/INTEGRATION_INDEX.md` |
-| **Scraper Waterfall** | `docs/specs/integrations/SCRAPER_WATERFALL.md` |
+| **Siege Waterfall** | `AGENCY_OS_STRATEGY.md` |
+| **Voice AI Personality** | `docs/VOICE_AI_PERSONALITY.md` |
+| **Cost Analysis** | `docs/IGNITION_FULL_COST_ANALYSIS.md` |
 | Phase Details | `docs/phases/PHASE_INDEX.md` |
 | Task Tracking | `PROGRESS.md` |
-| Skills | `skills/SKILL_INDEX.md` |
 
 ---
 
@@ -228,8 +297,13 @@ Perform these steps sequentially. Do not skip verification.
 
 ## Current Focus
 
-**Phase 17:** Finish launch prerequisites (health checks, Sentry, seed prod DB)  
-**Phase 18:** Email infrastructure (InfraForge/Smartlead) — CRITICAL BLOCKER  
+**Phase 19:** Siege Waterfall implementation (API clients for Hunter, Proxycurl, Kaspr)  
+**Phase 20:** UI Wiring — Maya + Simplified Onboarding + Campaign Allocation  
+
+**Formal Change Orders (FCO):**
+- FCO-001: Fixed-Cost Fortress ($116/mo savings) ✅
+- FCO-002: SDK Deprecation → Smart Prompts ✅
+- FCO-003: Apify Deprecation → DIY GMB Scraper ✅
 
 Check `PROGRESS.md` for detailed task status.
 

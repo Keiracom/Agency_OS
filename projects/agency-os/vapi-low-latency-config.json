@@ -1,6 +1,6 @@
 {
   "name": "Agency OS - Low Latency Cold Caller",
-  "description": "Optimized for ~465ms end-to-end latency",
+  "description": "Optimized for ~380ms end-to-end latency with hybrid LLM architecture",
   
   "transcriber": {
     "provider": "assembly-ai",
@@ -9,7 +9,77 @@
     "formatTurns": false
   },
   
+  "squad": {
+    "name": "AgencyOS-HybridSquad",
+    "members": [
+      {
+        "assistantId": null,
+        "assistantOverrides": {
+          "name": "FastResponder",
+          "model": {
+            "provider": "groq",
+            "model": "llama-4-maverick-17b-128e-instruct",
+            "temperature": 0.7,
+            "maxTokens": 150,
+            "systemPrompt": "You are Emma, a friendly and professional outreach specialist for Agency OS. You're calling to follow up on an email about helping agencies scale their client acquisition.\n\nRules:\n- Keep responses SHORT (1-2 sentences max)\n- Sound natural, use contractions\n- If they're busy, offer to call back\n- Goal: Book a 20-minute demo call\n- Handle simple objections briefly, don't over-explain\n- If they ask if you're AI, be honest: 'I'm an AI assistant, but I can definitely help you or connect you with our team.'\n\n**HANDOFF TRIGGERS** - If prospect says ANY of these, respond with [HANDOFF_COMPLEX]:\n- 'What makes you different from...' (competitor comparison)\n- 'We tried something like this before and...' (past failure objection)\n- 'Our situation is unique because...' (complex context)\n- 'I need to understand the ROI...' (detailed business case)\n- 'How does this integrate with...' (technical questions)\n- 'We have concerns about AI...' (AI ethics/trust objection)\n- Any response longer than 30 words indicating complexity"
+          },
+          "voice": {
+            "provider": "cartesia",
+            "voiceId": "a0e99841-438c-4a64-b679-ae501e7d6091",
+            "model": "sonic-2"
+          }
+        },
+        "assistantDestinations": [
+          {
+            "type": "assistant",
+            "assistantName": "ComplexHandler",
+            "message": "",
+            "description": "Transfer to Claude for complex objections - triggered by [HANDOFF_COMPLEX] in response"
+          }
+        ]
+      },
+      {
+        "assistantId": null,
+        "assistantOverrides": {
+          "name": "ComplexHandler",
+          "model": {
+            "provider": "anthropic",
+            "model": "claude-3-5-haiku-20241022",
+            "temperature": 0.7,
+            "maxTokens": 300,
+            "systemPrompt": "You are Emma, continuing a sales call. The prospect just raised a complex objection or question that requires nuanced handling.\n\nContext: You're calling about Agency OS - an AI-powered client acquisition platform for marketing agencies.\n\nRules:\n- Address their specific concern directly\n- Use social proof if relevant (mention case studies, results)\n- Keep it conversational but thorough\n- Goal: Resolve the objection and guide back to booking a demo\n- If you've addressed their concern, transition back to booking: 'Does that help clarify things? Should we look at a quick 20-minute demo?'\n\n**HANDOFF BACK** - After resolving the objection (1-2 exchanges), include [HANDOFF_SIMPLE] to return to fast responder for booking."
+          },
+          "voice": {
+            "provider": "cartesia",
+            "voiceId": "a0e99841-438c-4a64-b679-ae501e7d6091",
+            "model": "sonic-2"
+          }
+        },
+        "assistantDestinations": [
+          {
+            "type": "assistant",
+            "assistantName": "FastResponder",
+            "message": "",
+            "description": "Return to Groq for simple responses after handling complex objection"
+          }
+        ]
+      }
+    ],
+    "membersOverrides": {
+      "transcriber": {
+        "provider": "assembly-ai",
+        "model": "universal"
+      },
+      "voice": {
+        "provider": "cartesia",
+        "voiceId": "a0e99841-438c-4a64-b679-ae501e7d6091",
+        "model": "sonic-2"
+      }
+    }
+  },
+  
   "model": {
+    "_comment": "Default model when not using squad - Groq for speed",
     "provider": "groq",
     "model": "llama-4-maverick-17b-128e-instruct",
     "temperature": 0.7,
@@ -51,7 +121,8 @@
   "serverMessages": [
     "end-of-call-report",
     "status-update",
-    "transcript"
+    "transcript",
+    "assistant-request"
   ],
   
   "metadata": {
@@ -59,8 +130,32 @@
     "targetLatency": "380ms",
     "stack": {
       "stt": "AssemblyAI Universal-Streaming (90ms)",
-      "llm": "Groq Llama 4 Maverick (200ms)", 
+      "llm_primary": "Groq Llama 4 Maverick (200ms) - 90% of responses", 
+      "llm_complex": "Claude 3.5 Haiku (400ms) - 10% complex objections",
       "tts": "Cartesia Sonic-2 (90ms)"
+    },
+    "hybridLLM": {
+      "architecture": "Vapi Squads with silent handoff",
+      "primaryModel": {
+        "provider": "groq",
+        "model": "llama-4-maverick-17b-128e-instruct",
+        "useCase": "Fast responses, simple objections, booking flow",
+        "estimatedUsage": "90%"
+      },
+      "complexModel": {
+        "provider": "anthropic", 
+        "model": "claude-3-5-haiku-20241022",
+        "useCase": "Complex objections, competitor comparisons, technical questions",
+        "estimatedUsage": "10%"
+      },
+      "handoffTriggers": [
+        "Competitor comparison questions",
+        "Past failure objections",
+        "Complex business context",
+        "ROI/business case requests",
+        "Technical integration questions",
+        "AI ethics/trust concerns"
+      ]
     },
     "notes": {
       "tts_options": {

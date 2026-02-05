@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Billing | Agency OS</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f9fafb; color: #111827; display: flex; min-height: 100vh; }
+    
+    /* Sidebar */
+    .sidebar { width: 72px; background: #fff; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; align-items: center; padding: 20px 0; position: fixed; height: 100vh; z-index: 10; }
+    .logo { width: 40px; height: 40px; background: linear-gradient(135deg, #0eb77a, #2dd498); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 18px; margin-bottom: 32px; }
+    .nav-item { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; margin-bottom: 8px; color: #6b7280; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+    .nav-item:hover { background: #f3f4f6; color: #374151; }
+    .nav-item.active { background: #ecfdf5; color: #0eb77a; }
+    .nav-item svg { width: 22px; height: 22px; }
+    
+    /* Main */
+    .main { flex: 1; margin-left: 72px; }
+    
+    /* Header */
+    .header { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
+    .header h1 { font-size: 24px; font-weight: 700; }
+    .header-actions { display: flex; gap: 8px; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 14px; font-weight: 500; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+    .btn svg { width: 16px; height: 16px; }
+    .btn-secondary { background: #f3f4f6; color: #374151; }
+    .btn-secondary:hover { background: #e5e7eb; }
+    
+    /* Content */
+    .content { padding: 32px; max-width: 1000px; }
+    
+    /* Current Plan */
+    .plan-card { background: #fff; border-radius: 16px; border: 1px solid #e5e7eb; padding: 32px; margin-bottom: 24px; position: relative; overflow: hidden; }
+    .plan-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #0eb77a, #2dd498, #5eebb8); }
+    .plan-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .plan-info h2 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+    .plan-info p { font-size: 14px; color: #6b7280; }
+    .plan-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: linear-gradient(135deg, #0eb77a, #2dd498); color: #fff; font-size: 12px; font-weight: 600; border-radius: 20px; }
+    .plan-price { text-align: right; }
+    .plan-price-value { font-size: 36px; font-weight: 800; color: #111827; }
+    .plan-price-period { font-size: 14px; color: #6b7280; }
+    .plan-features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .plan-feature { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: #f9fafb; border-radius: 10px; }
+    .plan-feature svg { width: 18px; height: 18px; color: #0eb77a; }
+    .plan-feature-text { font-size: 14px; color: #374151; }
+    .plan-feature-text strong { font-weight: 600; color: #111827; }
+    .plan-actions { display: flex; gap: 12px; }
+    .btn-primary { background: #0eb77a; color: #fff; }
+    .btn-primary:hover { background: #0a8f5d; }
+    .btn-outline { background: #fff; color: #374151; border: 1px solid #e5e7eb; }
+    .btn-outline:hover { background: #f9fafb; }
+    
+    /* Usage Meters */
+    .usage-section { background: #fff; border-radius: 16px; border: 1px solid #e5e7eb; padding: 24px; margin-bottom: 24px; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .section-header h2 { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .section-header h2 svg { width: 20px; height: 20px; color: #0eb77a; }
+    .usage-meters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .usage-meter { }
+    .meter-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .meter-label { font-size: 14px; font-weight: 500; color: #374151; }
+    .meter-value { font-size: 14px; color: #6b7280; }
+    .meter-value strong { color: #111827; font-weight: 600; }
+    .meter-bar { height: 10px; background: #e5e7eb; border-radius: 5px; overflow: hidden; }
+    .meter-fill { height: 100%; border-radius: 5px; transition: all 0.3s; }
+    .meter-fill.green { background: linear-gradient(90deg, #0eb77a, #2dd498); }
+    .meter-fill.yellow { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .meter-fill.red { background: linear-gradient(90deg, #ef4444, #f87171); }
+    .meter-hint { font-size: 12px; color: #9ca3af; margin-top: 6px; }
+    
+    /* Invoice Table */
+    .invoice-section { background: #fff; border-radius: 16px; border: 1px solid #e5e7eb; overflow: hidden; margin-bottom: 24px; }
+    .invoice-header { padding: 16px 24px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; }
+    .invoice-header h3 { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .invoice-header h3 svg { width: 18px; height: 18px; color: #0eb77a; }
+    .invoice-table { width: 100%; border-collapse: collapse; }
+    .invoice-table th { text-align: left; padding: 12px 24px; font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
+    .invoice-table td { padding: 16px 24px; font-size: 14px; border-bottom: 1px solid #f3f4f6; }
+    .invoice-table tr:last-child td { border-bottom: none; }
+    .invoice-table tr:hover { background: #f9fafb; }
+    .invoice-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+    .invoice-status.paid { background: #dcfce7; color: #16a34a; }
+    .invoice-status.pending { background: #fef3c7; color: #d97706; }
+    .invoice-link { color: #0eb77a; text-decoration: none; font-weight: 500; }
+    .invoice-link:hover { text-decoration: underline; }
+    
+    /* Upgrade Options */
+    .upgrade-section { background: #fff; border-radius: 16px; border: 1px solid #e5e7eb; padding: 24px; }
+    .upgrade-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .upgrade-card { border: 2px solid #e5e7eb; border-radius: 12px; padding: 24px; text-align: center; transition: all 0.2s; cursor: pointer; }
+    .upgrade-card:hover { border-color: #d1d5db; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .upgrade-card.popular { border-color: #0eb77a; background: #ecfdf5; }
+    .upgrade-card.current { border-color: #e5e7eb; background: #f9fafb; opacity: 0.7; cursor: default; }
+    .upgrade-popular-badge { display: inline-block; padding: 4px 12px; background: #0eb77a; color: #fff; font-size: 11px; font-weight: 600; border-radius: 20px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .upgrade-name { font-size: 18px; font-weight: 700; color: #111827; margin-bottom: 4px; }
+    .upgrade-price { font-size: 32px; font-weight: 800; color: #111827; margin-bottom: 4px; }
+    .upgrade-price span { font-size: 14px; font-weight: 400; color: #6b7280; }
+    .upgrade-features { list-style: none; margin: 16px 0; text-align: left; }
+    .upgrade-features li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #4b5563; padding: 6px 0; }
+    .upgrade-features li svg { width: 16px; height: 16px; color: #0eb77a; flex-shrink: 0; }
+    .upgrade-btn { width: 100%; padding: 12px; font-size: 14px; font-weight: 500; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s; }
+    .upgrade-btn.primary { background: #0eb77a; color: #fff; }
+    .upgrade-btn.primary:hover { background: #0a8f5d; }
+    .upgrade-btn.secondary { background: #f3f4f6; color: #6b7280; }
+    .upgrade-card.current .upgrade-btn { cursor: default; }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="logo">A</div>
+    <a href="dashboard.html" class="nav-item" title="Dashboard">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+    </a>
+    <a href="leads.html" class="nav-item" title="Leads">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+    </a>
+    <a href="campaigns.html" class="nav-item" title="Campaigns">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+    </a>
+    <a href="replies.html" class="nav-item" title="Replies">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+    </a>
+    <a href="reports.html" class="nav-item" title="Reports">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+    </a>
+    <a href="settings.html" class="nav-item active" title="Settings">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    </a>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+    <header class="header">
+      <h1>Billing & Subscription</h1>
+      <div class="header-actions">
+        <a href="#" class="btn btn-secondary">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Help
+        </a>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- Current Plan -->
+      <div class="plan-card">
+        <div class="plan-header">
+          <div class="plan-info">
+            <h2>Growth Plan</h2>
+            <p>Your current subscription • Renews February 15, 2026</p>
+          </div>
+          <div class="plan-price">
+            <div class="plan-price-value">$497</div>
+            <div class="plan-price-period">per month</div>
+          </div>
+        </div>
+        <div class="plan-features">
+          <div class="plan-feature">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            <span class="plan-feature-text"><strong>2,500</strong> leads / month</span>
+          </div>
+          <div class="plan-feature">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            <span class="plan-feature-text"><strong>10,000</strong> emails / month</span>
+          </div>
+          <div class="plan-feature">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            <span class="plan-feature-text"><strong>500</strong> AI calls / month</span>
+          </div>
+          <div class="plan-feature">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            <span class="plan-feature-text">Multi-channel sequences</span>
+          </div>
+          <div class="plan-feature">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            <span class="plan-feature-text">LinkedIn automation</span>
+          </div>
+          <div class="plan-feature">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            <span class="plan-feature-text">Priority support</span>
+          </div>
+        </div>
+        <div class="plan-actions">
+          <button class="btn btn-primary">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            Upgrade Plan
+          </button>
+          <button class="btn btn-outline">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+            Update Payment
+          </button>
+          <button class="btn btn-outline">
+            Cancel Subscription
+          </button>
+        </div>
+      </div>
+
+      <!-- Usage Meters -->
+      <div class="usage-section">
+        <div class="section-header">
+          <h2>
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            This Month's Usage
+          </h2>
+          <span style="font-size: 14px; color: #6b7280;">Resets Feb 1, 2026</span>
+        </div>
+        <div class="usage-meters">
+          <div class="usage-meter">
+            <div class="meter-header">
+              <span class="meter-label">Leads</span>
+              <span class="meter-value"><strong>1,847</strong> / 2,500</span>
+            </div>
+            <div class="meter-bar">
+              <div class="meter-fill green" style="width: 74%;"></div>
+            </div>
+            <div class="meter-hint">653 leads remaining</div>
+          </div>
+          <div class="usage-meter">
+            <div class="meter-header">
+              <span class="meter-label">Emails Sent</span>
+              <span class="meter-value"><strong>8,234</strong> / 10,000</span>
+            </div>
+            <div class="meter-bar">
+              <div class="meter-fill yellow" style="width: 82%;"></div>
+            </div>
+            <div class="meter-hint">1,766 emails remaining</div>
+          </div>
+          <div class="usage-meter">
+            <div class="meter-header">
+              <span class="meter-label">AI Calls</span>
+              <span class="meter-value"><strong>127</strong> / 500</span>
+            </div>
+            <div class="meter-bar">
+              <div class="meter-fill green" style="width: 25%;"></div>
+            </div>
+            <div class="meter-hint">373 calls remaining</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Invoice History -->
+      <div class="invoice-section">
+        <div class="invoice-header">
+          <h3>
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Invoice History
+          </h3>
+          <a href="#" class="invoice-link">Download all →</a>
+        </div>
+        <table class="invoice-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Description</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Jan 15, 2026</td>
+              <td>Growth Plan — Monthly</td>
+              <td>$497.00</td>
+              <td><span class="invoice-status paid">✓ Paid</span></td>
+              <td><a href="#" class="invoice-link">Download</a></td>
+            </tr>
+            <tr>
+              <td>Dec 15, 2025</td>
+              <td>Growth Plan — Monthly</td>
+              <td>$497.00</td>
+              <td><span class="invoice-status paid">✓ Paid</span></td>
+              <td><a href="#" class="invoice-link">Download</a></td>
+            </tr>
+            <tr>
+              <td>Nov 15, 2025</td>
+              <td>Growth Plan — Monthly</td>
+              <td>$497.00</td>
+              <td><span class="invoice-status paid">✓ Paid</span></td>
+              <td><a href="#" class="invoice-link">Download</a></td>
+            </tr>
+            <tr>
+              <td>Oct 15, 2025</td>
+              <td>Starter Plan — Monthly</td>
+              <td>$197.00</td>
+              <td><span class="invoice-status paid">✓ Paid</span></td>
+              <td><a href="#" class="invoice-link">Download</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Upgrade Options -->
+      <div class="upgrade-section">
+        <div class="section-header">
+          <h2>
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            Available Plans
+          </h2>
+        </div>
+        <div class="upgrade-grid">
+          <div class="upgrade-card">
+            <div class="upgrade-name">Starter</div>
+            <div class="upgrade-price">$197<span>/mo</span></div>
+            <ul class="upgrade-features">
+              <li>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                1,000 leads / month
+              </li>
+              <li>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                5,000 emails / month
+              </li>
+              <li>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                100 AI calls / month
+              </li>
+              <li>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                Email sequences only
+              </li>
+            </ul>
+            <button class="upgrade-btn secondary">Downgrade</button>
+          </div>
+          <div class="upgrade-card current">
+            <div class="upgrade-popular-badge">Current Plan</div>
+            <div class="upgrade-name">Growth</div>
+            <div class="upgrade-price">$497<span>/mo</span></div>
+            <ul class="upgrade-features">
+              <li>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                2,500 leads / month
+              </li>
+              <li>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                10,000 emails / month
+              </li>
+              <li>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                500 AI calls / month
+              </li>
+              <li>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                Multi-channel + LinkedIn
+              </li>
+            </ul>
+            <button class="upgrade-btn secondary">Current Plan</button>
+          </div>
+          <div class="upgrade-card popular">
+            <div class="upgrade-popular-badge">Most Popular</div>
+            <div class="upgrade-name">Scale</div>
+            <div class="upgrade-price">$997<span>/mo</span></div>
+            <ul class="upgrade-features">
+              <li>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                Unlimited leads
+              </li>
+              <li>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                50,000 emails / month
+              </li>
+              <li>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                2,000 AI calls / month
+              </li>
+              <li>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                Dedicated success manager
+              </li>
+            </ul>
+            <button class="upgrade-btn primary">Upgrade Now</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

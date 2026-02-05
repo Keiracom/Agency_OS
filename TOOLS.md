@@ -91,6 +91,32 @@ Before full browser automation, try in order:
 
 *Lesson: Reddit Playwright = 30s timeout. Reddit JSON = 2s success.*
 
+## 🔍 Web Search & Knowledge Retrieval
+
+### Stack Clarification (SSOT)
+| Component | Technology | Purpose |
+| :--- | :--- | :--- |
+| **Browser Engine** | Chromium via Playwright | JavaScript rendering, stealth scraping |
+| **Proxy Layer** | Webshare (215k residential IPs) | IP rotation, anti-detection |
+| **Web Search API** | Brave Search API | Knowledge retrieval, research queries |
+
+**⚠️ IMPORTANT:** There is NO "Brave Browser" in this stack. Brave Search API is a REST endpoint for web queries — completely separate from browser automation.
+
+### Brave Search API
+- **Location:** `infrastructure/smart_context.py`
+- **Function:** `brave_search(query)` 
+- **Purpose:** Mid-session context retrieval when Supabase has no match
+- **Env Var:** `BRAVE_API_KEY`
+- **Cost:** Free tier available
+
+### Architecture Flow
+```
+Scraping:    Request → Webshare Proxy → Chromium (Playwright) → Parse
+Research:    Query → Brave Search API → JSON results → Context injection
+```
+
+*Corrected: 2026-02-03 — Audit revealed verbal "Brave browser" references were inaccurate.*
+
 ## 🚀 Projects & Deployment
 
 | Project | Strategy | Live URL / Notes |

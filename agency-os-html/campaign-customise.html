@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customise Campaign | Agency OS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #0A0A12;
+            --bg-secondary: #12121A;
+            --bg-tertiary: #1A1A24;
+            --border-color: #2A2A3A;
+            --text-primary: #FFFFFF;
+            --text-secondary: #A0A0B0;
+            --text-muted: #6B6B7B;
+            --accent-purple: #7C3AED;
+            --accent-purple-light: #9D5CFF;
+            --accent-green: #10B981;
+            --accent-blue: #3B82F6;
+            --accent-orange: #F59E0B;
+            --accent-red: #EF4444;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Sidebar - same as campaigns */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 240px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            padding: 20px 0;
+            z-index: 100;
+            overflow-y: auto;
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 20px;
+            margin-bottom: 32px;
+        }
+
+        .sidebar-logo svg { width: 36px; height: 36px; }
+        .sidebar-logo span { font-weight: 700; font-size: 18px; }
+
+        .nav-section { margin-bottom: 24px; }
+        .nav-section-title {
+            padding: 0 20px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .nav-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .nav-item.active { background: rgba(124, 58, 237, 0.1); color: var(--accent-purple-light); border-right: 2px solid var(--accent-purple); }
+        .nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+        .nav-parent { position: relative; }
+        .nav-parent .nav-item { justify-content: space-between; }
+        .nav-parent .nav-item .nav-left { display: flex; align-items: center; gap: 12px; }
+        .nav-parent .expand-icon { width: 16px; height: 16px; transition: transform 0.2s; }
+        .nav-parent.expanded .expand-icon { transform: rotate(180deg); }
+        .nav-children { display: none; padding-left: 20px; }
+        .nav-parent.expanded .nav-children { display: block; }
+
+        .nav-child {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px 10px 32px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .nav-child:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+        .nav-child.active { color: var(--accent-purple-light); background: rgba(124, 58, 237, 0.05); }
+        .nav-child::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--border-color); }
+        .nav-child.active::before { background: var(--accent-purple); }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 240px;
+            padding: 24px 32px;
+            min-height: 100vh;
+            max-width: 900px;
+        }
+
+        /* Breadcrumb */
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+
+        .breadcrumb a {
+            color: var(--text-muted);
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover { color: var(--accent-purple); }
+        .breadcrumb span { color: var(--text-muted); }
+        .breadcrumb .current { color: var(--text-primary); }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .page-header p {
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+
+        /* Form Sections */
+        .form-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .section-number {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--accent-purple);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .section-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group:last-child { margin-bottom: 0; }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 15px;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-purple);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+        }
+
+        .form-input::placeholder { color: var(--text-muted); }
+
+        textarea.form-input {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        /* Checkbox Grid */
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .checkbox-item:hover {
+            border-color: var(--accent-purple);
+        }
+
+        .checkbox-item.selected {
+            border-color: var(--accent-purple);
+            background: rgba(124, 58, 237, 0.1);
+        }
+
+        .checkbox-item input {
+            display: none;
+        }
+
+        .checkbox-box {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .checkbox-item.selected .checkbox-box {
+            background: var(--accent-purple);
+            border-color: var(--accent-purple);
+        }
+
+        .checkbox-box svg {
+            width: 12px;
+            height: 12px;
+            color: white;
+            opacity: 0;
+        }
+
+        .checkbox-item.selected .checkbox-box svg { opacity: 1; }
+        .checkbox-label { font-size: 14px; }
+
+        /* Tag Input */
+        .tag-input-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            min-height: 56px;
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(124, 58, 237, 0.15);
+            border-radius: 20px;
+            font-size: 13px;
+            color: var(--accent-purple-light);
+        }
+
+        .tag-remove {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .tag-remove:hover { background: rgba(255,255,255,0.2); }
+        .tag-remove svg { width: 10px; height: 10px; }
+
+        .tag-input {
+            flex: 1;
+            min-width: 120px;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+        }
+
+        .tag-input::placeholder { color: var(--text-muted); }
+
+        /* Channel Selector */
+        .channel-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+        }
+
+        .channel-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 20px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .channel-item:hover { border-color: var(--accent-purple); }
+
+        .channel-item.selected {
+            border-color: var(--accent-green);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .channel-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .channel-icon.email { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); }
+        .channel-icon.linkedin { background: rgba(10, 102, 194, 0.15); color: #0A66C2; }
+        .channel-icon.sms { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
+        .channel-icon.voice { background: rgba(124, 58, 237, 0.15); color: var(--accent-purple); }
+        .channel-icon.mail { background: rgba(245, 158, 11, 0.15); color: var(--accent-orange); }
+
+        .channel-icon svg { width: 22px; height: 22px; }
+        .channel-name { font-size: 13px; font-weight: 500; }
+
+        .channel-item.selected .channel-name { color: var(--accent-green); }
+
+        /* Actions */
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+            margin-top: 32px;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-purple) 0%, var(--accent-purple-light) 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 8px 24px rgba(124, 58, 237, 0.35);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-purple);
+            color: var(--text-primary);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        /* Preview Card */
+        .preview-card {
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+            border: 1px solid rgba(124, 58, 237, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .preview-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--accent-purple-light);
+        }
+
+        .preview-stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(124, 58, 237, 0.2);
+        }
+
+        .preview-stat:last-child { border-bottom: none; }
+        .preview-stat .label { font-size: 13px; color: var(--text-secondary); }
+        .preview-stat .value { font-size: 13px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <svg viewBox="0 0 36 36" fill="none">
+                <rect width="36" height="36" rx="10" fill="url(#logo-grad)"/>
+                <path d="M10 18L15 23L26 12" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <defs>
+                    <linearGradient id="logo-grad" x1="0" y1="0" x2="36" y2="36">
+                        <stop stop-color="#7C3AED"/>
+                        <stop offset="1" stop-color="#9D5CFF"/>
+                    </linearGradient>
+                </defs>
+            </svg>
+            <span>Agency OS</span>
+        </div>
+
+        <nav class="nav-section">
+            <div class="nav-section-title">Main</div>
+            <a href="dashboard-v3.html" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                Dashboard
+            </a>
+            <a href="leads-v2.html" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Leads
+            </a>
+            
+            <!-- Expandable Campaigns Nav -->
+            <div class="nav-parent expanded">
+                <div class="nav-item active" onclick="this.parentElement.classList.toggle('expanded')">
+                    <span class="nav-left">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        Campaigns
+                    </span>
+                    <svg class="expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="nav-children">
+                    <a href="campaigns-v4.html" class="nav-child">All Campaigns</a>
+                    <a href="campaign-customise.html" class="nav-child active">Create New</a>
+                    <a href="#" class="nav-child">Templates</a>
+                    <a href="#" class="nav-child">Analytics</a>
+                </div>
+            </div>
+
+            <a href="replies-v2.html" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                Replies
+            </a>
+        </nav>
+
+        <nav class="nav-section">
+            <div class="nav-section-title">Analytics</div>
+            <a href="reports-v2.html" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                Reports
+            </a>
+        </nav>
+
+        <nav class="nav-section">
+            <div class="nav-section-title">Settings</div>
+            <a href="settings-v2.html" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Settings
+            </a>
+            <a href="billing-v2.html" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                Billing
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Breadcrumb -->
+        <div class="breadcrumb">
+            <a href="campaigns-v4.html">Campaigns</a>
+            <span>/</span>
+            <span class="current">Customise Campaign</span>
+        </div>
+
+        <div class="page-header">
+            <h1>Customise Campaign</h1>
+            <p>Define your target audience and outreach strategy</p>
+        </div>
+
+        <!-- Section 1: Basic Info -->
+        <div class="form-section">
+            <div class="section-header">
+                <span class="section-number">1</span>
+                <div>
+                    <div class="section-title">Campaign Details</div>
+                    <div class="section-subtitle">Name and describe your campaign</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Campaign Name</label>
+                <input type="text" class="form-input" placeholder="e.g. Automotive Dealers - NSW" value="Automotive Dealers - NSW">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea class="form-input" placeholder="Describe the campaign objective...">Target car dealerships in Sydney and regional NSW. Based on your portfolio analysis showing 60% automotive clients.</textarea>
+            </div>
+        </div>
+
+        <!-- Section 2: Target Industries -->
+        <div class="form-section">
+            <div class="section-header">
+                <span class="section-number">2</span>
+                <div>
+                    <div class="section-title">Target Industries</div>
+                    <div class="section-subtitle">Select industries to target</div>
+                </div>
+            </div>
+
+            <div class="checkbox-grid">
+                <label class="checkbox-item selected">
+                    <input type="checkbox" checked>
+                    <span class="checkbox-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <span class="checkbox-label">Automotive</span>
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox">
+                    <span class="checkbox-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <span class="checkbox-label">Healthcare</span>
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox">
+                    <span class="checkbox-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <span class="checkbox-label">Real Estate</span>
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox">
+                    <span class="checkbox-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <span class="checkbox-label">Hospitality</span>
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox">
+                    <span class="checkbox-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <span class="checkbox-label">Retail</span>
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox">
+                    <span class="checkbox-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <span class="checkbox-label">Professional Services</span>
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox">
+                    <span class="checkbox-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <span class="checkbox-label">Manufacturing</span>
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox">
+                    <span class="checkbox-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <span class="checkbox-label">Technology</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Section 3: Target Titles -->
+        <div class="form-section">
+            <div class="section-header">
+                <span class="section-number">3</span>
+                <div>
+                    <div class="section-title">Target Job Titles</div>
+                    <div class="section-subtitle">Who should we reach out to?</div>
+                </div>
+            </div>
+
+            <div class="tag-input-container" onclick="this.querySelector('input').focus()">
+                <span class="tag">CEO <span class="tag-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></span>
+                <span class="tag">Dealer Principal <span class="tag-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></span>
+                <span class="tag">Marketing Director <span class="tag-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></span>
+                <input type="text" class="tag-input" placeholder="Add job title...">
+            </div>
+        </div>
+
+        <!-- Section 4: Geography -->
+        <div class="form-section">
+            <div class="section-header">
+                <span class="section-number">4</span>
+                <div>
+                    <div class="section-title">Geography</div>
+                    <div class="section-subtitle">Select target locations</div>
+                </div>
+            </div>
+
+            <div class="checkbox-grid">
+                <label class="checkbox-item">
+                    <input type="checkbox">
+                    <span class="checkbox-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <span class="checkbox-label">All Australia</span>
+                </label>
+                <label class="checkbox-item selected">
+                    <input type="checkbox" checked>
+                    <span class="checkbox-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <span class="checkbox-label">NSW</span>
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox">
+                    <span class="checkbox-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <span class="checkbox-label">VIC</span>
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox">
+                    <span class="checkbox-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <span class="checkbox-label">QLD</span>
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox">
+                    <span class="checkbox-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <span class="checkbox-label">WA</span>
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox">
+                    <span class="checkbox-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <span class="checkbox-label">SA</span>
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox">
+                    <span class="checkbox-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <span class="checkbox-label">TAS</span>
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox">
+                    <span class="checkbox-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <span class="checkbox-label">ACT</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Section 5: Channels -->
+        <div class="form-section">
+            <div class="section-header">
+                <span class="section-number">5</span>
+                <div>
+                    <div class="section-title">Outreach Channels</div>
+                    <div class="section-subtitle">Select channels for this campaign</div>
+                </div>
+            </div>
+
+            <div class="channel-grid">
+                <div class="channel-item selected" onclick="this.classList.toggle('selected')">
+                    <div class="channel-icon email">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    </div>
+                    <span class="channel-name">Email</span>
+                </div>
+                <div class="channel-item selected" onclick="this.classList.toggle('selected')">
+                    <div class="channel-icon linkedin">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+                    </div>
+                    <span class="channel-name">LinkedIn</span>
+                </div>
+                <div class="channel-item" onclick="this.classList.toggle('selected')">
+                    <div class="channel-icon sms">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    </div>
+                    <span class="channel-name">SMS</span>
+                </div>
+                <div class="channel-item" onclick="this.classList.toggle('selected')">
+                    <div class="channel-icon voice">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    </div>
+                    <span class="channel-name">Voice AI</span>
+                </div>
+                <div class="channel-item" onclick="this.classList.toggle('selected')">
+                    <div class="channel-icon mail">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8V7l-3 2-3-2v1l3 2 3-2zM22 6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6z"/></svg>
+                    </div>
+                    <span class="channel-name">Direct Mail</span>
+                </div>
+            </div>
+
+            <!-- Preview -->
+            <div class="preview-card">
+                <div class="preview-title">Campaign Preview</div>
+                <div class="preview-stat">
+                    <span class="label">Estimated Leads</span>
+                    <span class="value">~625</span>
+                </div>
+                <div class="preview-stat">
+                    <span class="label">Lead Allocation</span>
+                    <span class="value">50%</span>
+                </div>
+                <div class="preview-stat">
+                    <span class="label">Active Channels</span>
+                    <span class="value">2</span>
+                </div>
+                <div class="preview-stat">
+                    <span class="label">Est. Monthly Touchpoints</span>
+                    <span class="value">~3,750</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="form-actions">
+            <button class="btn btn-secondary" onclick="window.location.href='campaigns-v4.html'">Cancel</button>
+            <div class="btn-group">
+                <button class="btn btn-secondary">Save as Draft</button>
+                <button class="btn btn-primary" onclick="alert('Campaign saved! Return to campaigns to launch.')">Save Campaign</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Toggle checkbox selection
+        document.querySelectorAll('.checkbox-item').forEach(item => {
+            item.addEventListener('click', function() {
+                this.classList.toggle('selected');
+                this.querySelector('input').checked = this.classList.contains('selected');
+            });
+        });
+    </script>
+</body>
+</html>

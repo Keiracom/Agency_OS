@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard | Agency OS</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f9fafb; color: #111827; display: flex; min-height: 100vh; }
+    
+    /* Sidebar */
+    .sidebar { width: 72px; background: #fff; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; align-items: center; padding: 20px 0; position: fixed; height: 100vh; }
+    .logo { width: 40px; height: 40px; background: linear-gradient(135deg, #0eb77a, #2dd498); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 18px; margin-bottom: 32px; }
+    .nav-item { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; margin-bottom: 8px; color: #6b7280; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+    .nav-item:hover { background: #f3f4f6; color: #374151; }
+    .nav-item.active { background: #ecfdf5; color: #0eb77a; }
+    .nav-item svg { width: 22px; height: 22px; }
+    
+    /* Main */
+    .main { flex: 1; margin-left: 72px; }
+    
+    /* Header */
+    .header { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
+    .header-date { font-size: 14px; color: #6b7280; }
+    .header-actions { display: flex; gap: 8px; }
+    .header-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: none; background: transparent; color: #6b7280; cursor: pointer; }
+    .header-btn:hover { background: #f3f4f6; color: #374151; }
+    
+    /* Content */
+    .content { padding: 32px 48px; }
+    
+    /* Greeting */
+    .greeting h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; }
+    .greeting p { color: #6b7280; margin-top: 4px; }
+    
+    /* Celebration */
+    .celebration { background: linear-gradient(135deg, #0eb77a, #10b981); border-radius: 16px; padding: 20px; display: flex; align-items: center; gap: 16px; color: #fff; margin-top: 24px; box-shadow: 0 4px 20px rgba(14, 183, 122, 0.3); }
+    .celebration-icon { font-size: 32px; }
+    .celebration-content { flex: 1; }
+    .celebration-title { font-size: 18px; font-weight: 600; }
+    .celebration-sub { font-size: 14px; opacity: 0.9; margin-top: 2px; }
+    .celebration-close { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.1); border: none; color: #fff; cursor: pointer; }
+    
+    /* Hero Card */
+    .hero-card { background: #fff; border-radius: 16px; padding: 32px; margin-top: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 48px; position: relative; overflow: hidden; }
+    .hero-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #0eb77a, #2dd498, #5eebb8); }
+    .hero-main { flex: 1; }
+    .hero-label { font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .hero-value { font-size: 72px; font-weight: 800; color: #111827; line-height: 1; }
+    .hero-goal { font-size: 18px; color: #6b7280; margin-top: 8px; }
+    .hero-goal span { color: #0eb77a; font-weight: 600; }
+    .hero-momentum { display: flex; align-items: center; gap: 12px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #f3f4f6; }
+    .hero-momentum svg { color: #0eb77a; }
+    .hero-momentum span { color: #0eb77a; font-weight: 600; }
+    
+    /* Gauge */
+    .gauge-wrap { width: 200px; text-align: center; }
+    .gauge-label { font-size: 14px; font-weight: 600; color: #0eb77a; margin-top: 12px; }
+    
+    /* Quick Stats */
+    .quick-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 24px; }
+    .stat-card { background: #fff; border-radius: 12px; padding: 20px; text-align: center; border: 1px solid #f3f4f6; transition: all 0.2s; }
+    .stat-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); transform: translateY(-2px); }
+    .stat-value { font-size: 28px; font-weight: 800; color: #111827; }
+    .stat-label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; margin-top: 4px; }
+    .stat-change { font-size: 12px; font-weight: 500; color: #0eb77a; margin-top: 8px; }
+    
+    /* Grid */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin-top: 24px; }
+    
+    /* Card */
+    .card { background: #fff; border-radius: 12px; border: 1px solid #f3f4f6; overflow: hidden; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid #f3f4f6; display: flex; align-items: center; justify-content: space-between; }
+    .card-header-left { display: flex; align-items: center; gap: 8px; }
+    .card-header h3 { font-size: 16px; font-weight: 600; }
+    .card-link { font-size: 14px; color: #0eb77a; font-weight: 500; text-decoration: none; }
+    .card-link:hover { text-decoration: underline; }
+    
+    /* Prospects */
+    .prospect { display: flex; align-items: center; gap: 16px; padding: 16px 20px; border-bottom: 1px solid #f9fafb; transition: all 0.2s; }
+    .prospect:last-child { border-bottom: none; }
+    .prospect.very-hot { background: #fef2f2; border-left: 4px solid #ef4444; }
+    .prospect.hot { background: #fff7ed; border-left: 4px solid #f97316; }
+    .avatar { width: 44px; height: 44px; background: linear-gradient(135deg, #0eb77a, #2dd498); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 14px; }
+    .prospect-info { flex: 1; min-width: 0; }
+    .prospect-name { font-weight: 600; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .prospect-company { font-size: 14px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .prospect-signal { font-size: 12px; font-weight: 500; margin-top: 4px; }
+    .prospect.very-hot .prospect-signal { color: #dc2626; }
+    .prospect.hot .prospect-signal { color: #ea580c; }
+    .prospect-score { text-align: right; }
+    .score-value { font-size: 24px; font-weight: 800; }
+    .prospect.very-hot .score-value { color: #ef4444; }
+    .prospect.hot .score-value { color: #f97316; }
+    .score-label { font-size: 10px; color: #6b7280; text-transform: uppercase; }
+    
+    /* Meetings */
+    .meeting { padding: 16px 20px; border-bottom: 1px solid #f9fafb; transition: all 0.2s; }
+    .meeting:last-child { border-bottom: none; }
+    .meeting:hover { background: #f9fafb; }
+    .meeting-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .meeting-time { font-size: 12px; font-weight: 600; text-transform: uppercase; }
+    .meeting-time.today { color: #0eb77a; }
+    .meeting-time.upcoming { color: #6b7280; }
+    .meeting-deal { font-size: 12px; background: #ecfdf5; color: #047857; padding: 2px 8px; border-radius: 12px; font-weight: 500; }
+    .meeting-title { font-weight: 500; color: #111827; }
+    .meeting-details { font-size: 14px; color: #6b7280; }
+    
+    /* Insight */
+    .insight-card { background: linear-gradient(135deg, #ecfdf5, rgba(236,253,245,0.5)); border-radius: 12px; padding: 24px; border: 1px solid #a7f3d0; }
+    .insight-icon { font-size: 40px; margin-bottom: 16px; }
+    .insight-headline { font-size: 20px; font-weight: 700; color: #111827; margin-bottom: 8px; }
+    .insight-detail { font-size: 14px; color: #4b5563; line-height: 1.6; }
+    
+    /* Replies */
+    .reply { display: block; padding: 16px 20px; border-bottom: 1px solid #f9fafb; transition: all 0.2s; text-decoration: none; }
+    .reply:last-child { border-bottom: none; }
+    .reply:hover { background: #f9fafb; }
+    .reply-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .reply-avatar { width: 32px; height: 32px; background: linear-gradient(135deg, #0eb77a, #2dd498); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 11px; }
+    .reply-meta { flex: 1; min-width: 0; }
+    .reply-name { font-weight: 500; font-size: 14px; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .reply-company { font-size: 12px; color: #6b7280; }
+    .reply-time { font-size: 12px; color: #9ca3af; }
+    .reply-preview { font-size: 14px; color: #4b5563; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    
+    /* Pulse */
+    .pulse-dot { position: relative; width: 8px; height: 8px; }
+    .pulse-dot::before { content: ''; position: absolute; width: 100%; height: 100%; background: #0eb77a; border-radius: 50%; animation: pulse 2s infinite; }
+    .pulse-dot::after { content: ''; position: absolute; width: 100%; height: 100%; background: #0eb77a; border-radius: 50%; }
+    @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(2); opacity: 0; } }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="logo">A</div>
+    <a href="dashboard.html" class="nav-item active" title="Dashboard">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+    </a>
+    <a href="leads.html" class="nav-item" title="Leads">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+    </a>
+    <a href="campaigns.html" class="nav-item" title="Campaigns">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+    </a>
+    <a href="replies.html" class="nav-item" title="Replies">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+    </a>
+    <a href="reports.html" class="nav-item" title="Reports">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+    </a>
+    <a href="settings.html" class="nav-item" title="Settings">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    </a>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+    <header class="header">
+      <span class="header-date">Friday, January 31, 2026</span>
+      <div class="header-actions">
+        <button class="header-btn"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg></button>
+        <button class="header-btn"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></button>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- Greeting -->
+      <div class="greeting">
+        <h1>Good morning, Dave 👋</h1>
+        <p>Here's how your pipeline is performing this month.</p>
+      </div>
+
+      <!-- Celebration -->
+      <div class="celebration">
+        <div class="celebration-icon">🎉</div>
+        <div class="celebration-content">
+          <div class="celebration-title">Target hit 3 days early!</div>
+          <div class="celebration-sub">You've booked 12 meetings this month. Keep the momentum going!</div>
+        </div>
+        <button class="celebration-close">×</button>
+      </div>
+
+      <!-- Hero Card -->
+      <div class="hero-card">
+        <div class="hero-main">
+          <div class="hero-label">Meetings This Month</div>
+          <div class="hero-value">12</div>
+          <div class="hero-goal">Goal: 10 • <span>Target hit 3 days early ✓</span></div>
+          <div class="hero-momentum">
+            <svg width="24" height="24" fill="none" stroke="#0eb77a" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            <span>↑ 25% vs last month</span> • Strong momentum
+          </div>
+        </div>
+        <div class="gauge-wrap">
+          <svg viewBox="0 0 200 120" width="200" height="120">
+            <defs>
+              <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#0eb77a"/>
+                <stop offset="50%" stop-color="#2dd498"/>
+                <stop offset="100%" stop-color="#5eebb8"/>
+              </linearGradient>
+            </defs>
+            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#e5e7eb" stroke-width="20" stroke-linecap="round"/>
+            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#gaugeGradient)" stroke-width="20" stroke-linecap="round"/>
+          </svg>
+          <div class="gauge-label">120% — Target Exceeded!</div>
+        </div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="quick-stats">
+        <div class="stat-card">
+          <div class="stat-value">68%</div>
+          <div class="stat-label">Show Rate</div>
+          <div class="stat-change">↑ 5% vs avg</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">4</div>
+          <div class="stat-label">Deals Started</div>
+          <div class="stat-change">↑ 2 this week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">$47K</div>
+          <div class="stat-label">Pipeline Value</div>
+          <div class="stat-change">↑ $12K added</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">8.2x</div>
+          <div class="stat-label">ROI</div>
+          <div class="stat-change" style="color:#9ca3af;">Lifetime</div>
+        </div>
+      </div>
+
+      <!-- Hot Prospects + Week Ahead -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <span style="color:#f97316;">🔥</span>
+              <h3>Hot Right Now</h3>
+            </div>
+            <a href="leads.html" class="card-link">View all →</a>
+          </div>
+          <div class="prospect very-hot">
+            <div class="avatar">SC</div>
+            <div class="prospect-info">
+              <div class="prospect-name">Sarah Chen</div>
+              <div class="prospect-company">Bloom Digital • Marketing Director</div>
+              <div class="prospect-signal">Opened 5 emails in 2 hours</div>
+            </div>
+            <div class="prospect-score">
+              <div class="score-value">94</div>
+              <div class="score-label">Score</div>
+            </div>
+          </div>
+          <div class="prospect hot">
+            <div class="avatar">MJ</div>
+            <div class="prospect-info">
+              <div class="prospect-name">Michael Jones</div>
+              <div class="prospect-company">Growth Labs • CEO</div>
+              <div class="prospect-signal">Visited pricing page twice</div>
+            </div>
+            <div class="prospect-score">
+              <div class="score-value">87</div>
+              <div class="score-label">Score</div>
+            </div>
+          </div>
+          <div class="prospect hot">
+            <div class="avatar">LW</div>
+            <div class="prospect-info">
+              <div class="prospect-name">Lisa Wong</div>
+              <div class="prospect-company">Pixel Perfect • Founder</div>
+              <div class="prospect-signal">Replied to LinkedIn message</div>
+            </div>
+            <div class="prospect-score">
+              <div class="score-value">82</div>
+              <div class="score-label">Score</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <span style="color:#0eb77a;">📅</span>
+              <h3>Week Ahead</h3>
+            </div>
+            <span style="font-size:14px;color:#6b7280;">3 meetings</span>
+          </div>
+          <div class="meeting">
+            <div class="meeting-header">
+              <span class="meeting-time today">Today • 2:00 PM</span>
+              <span class="meeting-deal">$8K deal</span>
+            </div>
+            <div class="meeting-title">Discovery Call</div>
+            <div class="meeting-details">James Cooper • Creative Co</div>
+          </div>
+          <div class="meeting">
+            <div class="meeting-header">
+              <span class="meeting-time upcoming">Monday • 10:00 AM</span>
+              <span class="meeting-deal">$15K deal</span>
+            </div>
+            <div class="meeting-title">Proposal Review</div>
+            <div class="meeting-details">Emma Wilson • Brand Forward</div>
+          </div>
+          <div class="meeting">
+            <div class="meeting-header">
+              <span class="meeting-time upcoming">Wednesday • 3:30 PM</span>
+            </div>
+            <div class="meeting-title">Intro Call</div>
+            <div class="meeting-details">Tom Brown • Scale Agency</div>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <span style="color:#8b5cf6;">⚡</span>
+              <h3>Recent Activity</h3>
+            </div>
+            <span style="font-size:14px;color:#6b7280;">Live</span>
+          </div>
+          <div class="activity-item" style="padding:12px 0;border-bottom:1px solid #f3f4f6;display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:8px;height:8px;border-radius:50%;background:#22c55e;margin-top:6px;"></div>
+            <div style="flex:1;">
+              <div style="font-size:14px;color:#111827;">Sarah Chen opened email</div>
+              <div style="font-size:12px;color:#6b7280;">2 minutes ago</div>
+            </div>
+          </div>
+          <div class="activity-item" style="padding:12px 0;border-bottom:1px solid #f3f4f6;display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:8px;height:8px;border-radius:50%;background:#3b82f6;margin-top:6px;"></div>
+            <div style="flex:1;">
+              <div style="font-size:14px;color:#111827;">Michael Jones visited pricing</div>
+              <div style="font-size:12px;color:#6b7280;">15 minutes ago</div>
+            </div>
+          </div>
+          <div class="activity-item" style="padding:12px 0;border-bottom:1px solid #f3f4f6;display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:8px;height:8px;border-radius:50%;background:#f59e0b;margin-top:6px;"></div>
+            <div style="flex:1;">
+              <div style="font-size:14px;color:#111827;">Lisa Wong replied on LinkedIn</div>
+              <div style="font-size:12px;color:#6b7280;">1 hour ago</div>
+            </div>
+          </div>
+          <div class="activity-item" style="padding:12px 0;display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:8px;height:8px;border-radius:50%;background:#22c55e;margin-top:6px;"></div>
+            <div style="flex:1;">
+              <div style="font-size:14px;color:#111827;">New lead added: James Cooper</div>
+              <div style="font-size:12px;color:#6b7280;">2 hours ago</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Insight + Warm Replies -->
+      <div class="grid-2">
+        <div class="insight-card">
+          <div class="insight-icon">💡</div>
+          <div class="insight-headline">Tuesday is your best day</div>
+          <div class="insight-detail">Prospects are most responsive on Tuesdays — your pipeline momentum is strongest mid-week.</div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <div class="pulse-dot"></div>
+              <h3>Warm Replies</h3>
+            </div>
+            <a href="replies.html" class="card-link">View inbox →</a>
+          </div>
+          <a href="#" class="reply">
+            <div class="reply-header">
+              <div class="reply-avatar">DP</div>
+              <div class="reply-meta">
+                <div class="reply-name">David Park</div>
+                <div class="reply-company">Momentum Media</div>
+              </div>
+              <span class="reply-time">2h ago</span>
+            </div>
+            <div class="reply-preview">"Yes, I'd be interested in learning more. Can we schedule a call next week?"</div>
+          </a>
+          <a href="#" class="reply">
+            <div class="reply-header">
+              <div class="reply-avatar">AS</div>
+              <div class="reply-meta">
+                <div class="reply-name">Anna Smith</div>
+                <div class="reply-company">Digital First</div>
+              </div>
+              <span class="reply-time">5h ago</span>
+            </div>
+            <div class="reply-preview">"This looks relevant. Send me more information about pricing."</div>
+          </a>
+        </div>
+
+        <!-- Channel Performance -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <span style="color:#0eb77a;">📊</span>
+              <h3>Channel Performance</h3>
+            </div>
+            <span style="font-size:14px;color:#6b7280;">This month</span>
+          </div>
+          <div style="padding:8px 0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #f3f4f6;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:32px;height:32px;background:#ecfdf5;border-radius:8px;display:flex;align-items:center;justify-content:center;">📧</div>
+                <span style="font-weight:500;">Email</span>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-weight:600;color:#111827;">8 meetings</div>
+                <div style="font-size:12px;color:#22c55e;">↑ 23%</div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #f3f4f6;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:32px;height:32px;background:#eff6ff;border-radius:8px;display:flex;align-items:center;justify-content:center;">💼</div>
+                <span style="font-weight:500;">LinkedIn</span>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-weight:600;color:#111827;">3 meetings</div>
+                <div style="font-size:12px;color:#22c55e;">↑ 15%</div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:32px;height:32px;background:#fef3c7;border-radius:8px;display:flex;align-items:center;justify-content:center;">📞</div>
+                <span style="font-weight:500;">Phone</span>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-weight:600;color:#111827;">1 meeting</div>
+                <div style="font-size:12px;color:#6b7280;">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

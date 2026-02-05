@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Get Started | Agency OS</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f9fafb; color: #111827; min-height: 100vh; display: flex; flex-direction: column; }
+    
+    /* Header */
+    .onboarding-header { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
+    .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+    .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, #0eb77a, #2dd498); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 18px; }
+    .logo-text { font-size: 20px; font-weight: 700; color: #111827; }
+    .header-help { font-size: 14px; color: #6b7280; display: flex; align-items: center; gap: 6px; }
+    .header-help a { color: #0eb77a; text-decoration: none; font-weight: 500; }
+    .header-help a:hover { text-decoration: underline; }
+    
+    /* Main */
+    .main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 48px 32px; }
+    .wizard-container { width: 100%; max-width: 640px; }
+    
+    /* Progress */
+    .progress-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 48px; }
+    .progress-step { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; position: relative; }
+    .progress-step::after { content: ''; position: absolute; top: 16px; left: 50%; width: 100%; height: 2px; background: #e5e7eb; z-index: 0; }
+    .progress-step:last-child::after { display: none; }
+    .progress-step.completed::after { background: #0eb77a; }
+    .progress-dot { width: 32px; height: 32px; border-radius: 50%; background: #fff; border: 2px solid #e5e7eb; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; color: #9ca3af; z-index: 1; transition: all 0.2s; }
+    .progress-step.active .progress-dot { border-color: #0eb77a; background: #0eb77a; color: #fff; }
+    .progress-step.completed .progress-dot { border-color: #0eb77a; background: #0eb77a; color: #fff; }
+    .progress-label { font-size: 12px; color: #9ca3af; font-weight: 500; }
+    .progress-step.active .progress-label { color: #0eb77a; }
+    .progress-step.completed .progress-label { color: #0eb77a; }
+    
+    /* Wizard Card */
+    .wizard-card { background: #fff; border-radius: 16px; border: 1px solid #e5e7eb; padding: 40px; box-shadow: 0 4px 24px rgba(0,0,0,0.04); }
+    .wizard-header { text-align: center; margin-bottom: 32px; }
+    .wizard-header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    .wizard-header p { font-size: 16px; color: #6b7280; }
+    
+    /* Wizard Content */
+    .wizard-content { margin-bottom: 32px; }
+    
+    /* Connection Options */
+    .connection-options { display: flex; flex-direction: column; gap: 12px; }
+    .connection-option { display: flex; align-items: center; gap: 16px; padding: 16px 20px; border: 2px solid #e5e7eb; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+    .connection-option:hover { border-color: #d1d5db; background: #f9fafb; }
+    .connection-option.selected { border-color: #0eb77a; background: #ecfdf5; }
+    .connection-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+    .connection-icon.google { background: #fef2f2; }
+    .connection-icon.microsoft { background: #eff6ff; }
+    .connection-icon.other { background: #f3f4f6; }
+    .connection-info { flex: 1; }
+    .connection-name { font-size: 16px; font-weight: 600; color: #111827; margin-bottom: 2px; }
+    .connection-desc { font-size: 14px; color: #6b7280; }
+    .connection-check { width: 24px; height: 24px; border: 2px solid #e5e7eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .connection-option.selected .connection-check { border-color: #0eb77a; background: #0eb77a; color: #fff; }
+    .connection-check svg { width: 14px; height: 14px; display: none; }
+    .connection-option.selected .connection-check svg { display: block; }
+    
+    /* Import Options */
+    .import-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .import-option { padding: 24px 20px; border: 2px solid #e5e7eb; border-radius: 12px; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .import-option:hover { border-color: #d1d5db; background: #f9fafb; }
+    .import-option.selected { border-color: #0eb77a; background: #ecfdf5; }
+    .import-icon { font-size: 32px; margin-bottom: 12px; }
+    .import-name { font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 4px; }
+    .import-desc { font-size: 12px; color: #6b7280; }
+    
+    /* Targeting Form */
+    .targeting-form { display: flex; flex-direction: column; gap: 20px; }
+    .form-group { }
+    .form-label { display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 8px; }
+    .form-input { width: 100%; padding: 12px 16px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: inherit; transition: all 0.2s; }
+    .form-input:focus { outline: none; border-color: #0eb77a; box-shadow: 0 0 0 3px rgba(14,183,122,0.1); }
+    .form-input::placeholder { color: #9ca3af; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-hint { font-size: 12px; color: #6b7280; margin-top: 6px; }
+    .tag-input { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 8px; min-height: 48px; }
+    .tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: #ecfdf5; color: #0eb77a; border-radius: 20px; font-size: 13px; font-weight: 500; }
+    .tag-remove { width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0.6; }
+    .tag-remove:hover { opacity: 1; }
+    .tag-add { border: none; background: none; font-size: 14px; color: #6b7280; cursor: text; flex: 1; min-width: 100px; }
+    .tag-add:focus { outline: none; }
+    
+    /* Launch Summary */
+    .launch-summary { display: flex; flex-direction: column; gap: 16px; }
+    .summary-card { background: #f9fafb; border-radius: 12px; padding: 20px; }
+    .summary-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .summary-icon { width: 40px; height: 40px; background: #ecfdf5; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .summary-title { font-size: 14px; font-weight: 600; color: #111827; }
+    .summary-content { font-size: 14px; color: #6b7280; line-height: 1.6; }
+    .summary-content strong { color: #111827; }
+    .celebration-banner { background: linear-gradient(135deg, #0eb77a, #2dd498); border-radius: 12px; padding: 24px; text-align: center; color: #fff; }
+    .celebration-emoji { font-size: 48px; margin-bottom: 12px; }
+    .celebration-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .celebration-text { font-size: 14px; opacity: 0.9; }
+    
+    /* Wizard Actions */
+    .wizard-actions { display: flex; align-items: center; justify-content: space-between; padding-top: 24px; border-top: 1px solid #f3f4f6; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; font-size: 14px; font-weight: 500; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s; }
+    .btn svg { width: 16px; height: 16px; }
+    .btn-ghost { background: transparent; color: #6b7280; }
+    .btn-ghost:hover { background: #f3f4f6; color: #374151; }
+    .btn-primary { background: #0eb77a; color: #fff; }
+    .btn-primary:hover { background: #0a8f5d; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    /* Hide/Show Steps */
+    .wizard-step { display: none; }
+    .wizard-step.active { display: block; }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="onboarding-header">
+    <a href="#" class="logo">
+      <div class="logo-icon">A</div>
+      <span class="logo-text">Agency OS</span>
+    </a>
+    <div class="header-help">
+      Need help? <a href="#">Contact support</a>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="wizard-container">
+      <!-- Progress -->
+      <div class="progress-bar">
+        <div class="progress-step active" id="step1-indicator">
+          <div class="progress-dot">1</div>
+          <span class="progress-label">Connect Email</span>
+        </div>
+        <div class="progress-step" id="step2-indicator">
+          <div class="progress-dot">2</div>
+          <span class="progress-label">Import Leads</span>
+        </div>
+        <div class="progress-step" id="step3-indicator">
+          <div class="progress-dot">3</div>
+          <span class="progress-label">Set Targeting</span>
+        </div>
+        <div class="progress-step" id="step4-indicator">
+          <div class="progress-dot">4</div>
+          <span class="progress-label">Launch</span>
+        </div>
+      </div>
+
+      <!-- Wizard Card -->
+      <div class="wizard-card">
+        <!-- Step 1: Connect Email -->
+        <div class="wizard-step active" id="step1">
+          <div class="wizard-header">
+            <h1>Connect your email 📧</h1>
+            <p>We'll use this to send personalized outreach on your behalf.</p>
+          </div>
+          <div class="wizard-content">
+            <div class="connection-options">
+              <div class="connection-option selected" onclick="selectConnection(this)">
+                <div class="connection-icon google">📧</div>
+                <div class="connection-info">
+                  <div class="connection-name">Google Workspace</div>
+                  <div class="connection-desc">Connect your Gmail or Google Workspace account</div>
+                </div>
+                <div class="connection-check">
+                  <svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                </div>
+              </div>
+              <div class="connection-option" onclick="selectConnection(this)">
+                <div class="connection-icon microsoft">📨</div>
+                <div class="connection-info">
+                  <div class="connection-name">Microsoft 365</div>
+                  <div class="connection-desc">Connect your Outlook or Microsoft 365 account</div>
+                </div>
+                <div class="connection-check">
+                  <svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                </div>
+              </div>
+              <div class="connection-option" onclick="selectConnection(this)">
+                <div class="connection-icon other">⚙️</div>
+                <div class="connection-info">
+                  <div class="connection-name">Other / SMTP</div>
+                  <div class="connection-desc">Connect via SMTP settings</div>
+                </div>
+                <div class="connection-check">
+                  <svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="wizard-actions">
+            <button class="btn btn-ghost" disabled>
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+              Back
+            </button>
+            <button class="btn btn-primary" onclick="nextStep(2)">
+              Connect & Continue
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2: Import Leads -->
+        <div class="wizard-step" id="step2">
+          <div class="wizard-header">
+            <h1>Import your leads 📋</h1>
+            <p>Bring in your existing prospects or we'll help you find new ones.</p>
+          </div>
+          <div class="wizard-content">
+            <div class="import-options">
+              <div class="import-option selected" onclick="selectImport(this)">
+                <div class="import-icon">📄</div>
+                <div class="import-name">Upload CSV</div>
+                <div class="import-desc">Import from a spreadsheet</div>
+              </div>
+              <div class="import-option" onclick="selectImport(this)">
+                <div class="import-icon">🔗</div>
+                <div class="import-name">Connect CRM</div>
+                <div class="import-desc">Sync from HubSpot, Salesforce</div>
+              </div>
+              <div class="import-option" onclick="selectImport(this)">
+                <div class="import-icon">💼</div>
+                <div class="import-name">LinkedIn</div>
+                <div class="import-desc">Import from Sales Navigator</div>
+              </div>
+              <div class="import-option" onclick="selectImport(this)">
+                <div class="import-icon">🔍</div>
+                <div class="import-name">Find Leads</div>
+                <div class="import-desc">We'll source leads for you</div>
+              </div>
+            </div>
+          </div>
+          <div class="wizard-actions">
+            <button class="btn btn-ghost" onclick="prevStep(1)">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+              Back
+            </button>
+            <button class="btn btn-primary" onclick="nextStep(3)">
+              Continue
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 3: Set Targeting -->
+        <div class="wizard-step" id="step3">
+          <div class="wizard-header">
+            <h1>Define your ideal customer 🎯</h1>
+            <p>Tell us who you want to reach so we can optimize your outreach.</p>
+          </div>
+          <div class="wizard-content">
+            <div class="targeting-form">
+              <div class="form-group">
+                <label class="form-label">What industries do you target?</label>
+                <div class="tag-input">
+                  <span class="tag">Digital Marketing <span class="tag-remove">×</span></span>
+                  <span class="tag">Agencies <span class="tag-remove">×</span></span>
+                  <input type="text" class="tag-add" placeholder="Add industry...">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Company size</label>
+                  <select class="form-input">
+                    <option>10-50 employees</option>
+                    <option>51-200 employees</option>
+                    <option>201-500 employees</option>
+                    <option>500+ employees</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Target titles</label>
+                  <input type="text" class="form-input" placeholder="e.g., CEO, Marketing Director">
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Geographic focus</label>
+                <input type="text" class="form-input" placeholder="e.g., Australia, United States">
+                <div class="form-hint">Leave blank to target globally</div>
+              </div>
+            </div>
+          </div>
+          <div class="wizard-actions">
+            <button class="btn btn-ghost" onclick="prevStep(2)">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+              Back
+            </button>
+            <button class="btn btn-primary" onclick="nextStep(4)">
+              Continue
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 4: Launch -->
+        <div class="wizard-step" id="step4">
+          <div class="wizard-header">
+            <h1>Ready to launch! 🚀</h1>
+            <p>Review your setup and start booking meetings.</p>
+          </div>
+          <div class="wizard-content">
+            <div class="launch-summary">
+              <div class="summary-card">
+                <div class="summary-header">
+                  <div class="summary-icon">📧</div>
+                  <div class="summary-title">Email Connected</div>
+                </div>
+                <div class="summary-content">
+                  <strong>dave@agencyos.com</strong> is connected and ready to send.
+                </div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-header">
+                  <div class="summary-icon">📋</div>
+                  <div class="summary-title">Leads Imported</div>
+                </div>
+                <div class="summary-content">
+                  <strong>248 leads</strong> imported and ready for outreach.
+                </div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-header">
+                  <div class="summary-icon">🎯</div>
+                  <div class="summary-title">Targeting Set</div>
+                </div>
+                <div class="summary-content">
+                  Targeting <strong>Digital Marketing Agencies</strong> with <strong>10-50 employees</strong> in <strong>Australia</strong>.
+                </div>
+              </div>
+              <div class="celebration-banner">
+                <div class="celebration-emoji">🎉</div>
+                <div class="celebration-title">You're all set!</div>
+                <div class="celebration-text">Your first campaign will start sending tomorrow at 9am.</div>
+              </div>
+            </div>
+          </div>
+          <div class="wizard-actions">
+            <button class="btn btn-ghost" onclick="prevStep(3)">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+              Back
+            </button>
+            <button class="btn btn-primary" onclick="window.location.href='dashboard.html'">
+              Go to Dashboard
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function selectConnection(el) {
+      document.querySelectorAll('.connection-option').forEach(opt => opt.classList.remove('selected'));
+      el.classList.add('selected');
+    }
+    
+    function selectImport(el) {
+      document.querySelectorAll('.import-option').forEach(opt => opt.classList.remove('selected'));
+      el.classList.add('selected');
+    }
+    
+    function nextStep(step) {
+      // Hide all steps
+      document.querySelectorAll('.wizard-step').forEach(s => s.classList.remove('active'));
+      // Show target step
+      document.getElementById('step' + step).classList.add('active');
+      
+      // Update progress indicators
+      for (let i = 1; i <= 4; i++) {
+        const indicator = document.getElementById('step' + i + '-indicator');
+        indicator.classList.remove('active', 'completed');
+        if (i < step) {
+          indicator.classList.add('completed');
+        } else if (i === step) {
+          indicator.classList.add('active');
+        }
+      }
+    }
+    
+    function prevStep(step) {
+      nextStep(step);
+    }
+  </script>
+</body>
+</html>

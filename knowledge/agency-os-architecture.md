@@ -67,9 +67,11 @@ Agency OS is an AI-powered lead generation and outreach automation platform targ
 
 | API | Purpose | Cost Estimate | Notes |
 |-----|---------|---------------|-------|
-| **Vapi** | Voice AI orchestration | Per-call + per-minute | Orchestrates STT → LLM → TTS |
+| **Vapi** | Voice AI orchestration | Per-call + per-minute | Orchestrates STT → LLM → TTS via Squads |
 | **Cartesia** | Text-to-Speech synthesis (Primary) | Per-character | Low-latency TTS (sonic-2: 90ms, sonic-turbo: 40ms) |
 | **ElevenLabs** | Text-to-Speech synthesis (Fallback) | Per-character | Fallback voice synthesis |
+| **Groq** | LLM for voice (Primary) | Per-token | Llama 4 Maverick - 90% of responses, fast |
+| **Claude Haiku** | LLM for voice (Complex) | Per-token | 10% of responses - objection handling |
 | **Twilio** | Telephony backbone | Per-minute | Provides phone numbers for Vapi |
 
 **Voice Call Limits:**

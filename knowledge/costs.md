@@ -87,6 +87,22 @@
 - **Estimated:** $50-500/month (heavily usage-dependent)
 - **Source:** https://claude.com/pricing
 - **Config:** `ANTHROPIC_API_KEY`
+- **Voice Usage:** Claude Haiku handles ~10% of voice call responses (complex objections)
+
+### Groq (Voice LLM - Primary) [NEW 2026-01]
+- **Use:** Primary LLM for voice calls (90% of responses via Vapi Squads)
+- **Pricing:** Free tier available, then pay-as-you-go
+  
+  | Model | Input | Output | Speed |
+  |-------|-------|--------|-------|
+  | Llama 4 Maverick | $0.05/MTok | $0.10/MTok | ~200ms |
+  | Llama 4 Scout | $0.11/MTok | $0.34/MTok | ~150ms |
+  
+- **Voice architecture:** Groq handles fast responses (booking, simple objections)
+- **Handoff:** Complex objections route to Claude Haiku via Vapi Squads
+- **Estimated:** $5-30/month (voice calls only)
+- **Source:** https://groq.com/pricing
+- **Config:** Via Vapi (no separate API key needed)
 
 ---
 

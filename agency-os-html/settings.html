@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings | Agency OS</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f9fafb; color: #111827; display: flex; min-height: 100vh; }
+    
+    /* Sidebar */
+    .sidebar { width: 72px; background: #fff; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; align-items: center; padding: 20px 0; position: fixed; height: 100vh; }
+    .logo { width: 40px; height: 40px; background: linear-gradient(135deg, #0eb77a, #2dd498); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 18px; margin-bottom: 32px; }
+    .nav-item { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; margin-bottom: 8px; color: #6b7280; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+    .nav-item:hover { background: #f3f4f6; color: #374151; }
+    .nav-item.active { background: #ecfdf5; color: #0eb77a; }
+    .nav-item svg { width: 22px; height: 22px; }
+    
+    /* Main */
+    .main { flex: 1; margin-left: 72px; }
+    
+    /* Header */
+    .header { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 24px 32px; }
+    .header h1 { font-size: 24px; font-weight: 700; }
+    .header p { font-size: 14px; color: #6b7280; margin-top: 4px; }
+    
+    /* Content */
+    .content { padding: 32px; max-width: 896px; }
+    
+    /* Section */
+    .section { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; padding: 24px; margin-bottom: 24px; }
+    .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .section-header svg { width: 20px; height: 20px; color: #0eb77a; }
+    .section-header h2 { font-size: 18px; font-weight: 600; }
+    
+    /* Profile */
+    .profile-header { display: flex; align-items: center; gap: 24px; margin-bottom: 24px; }
+    .profile-avatar { width: 80px; height: 80px; background: linear-gradient(135deg, #0eb77a, #2dd498); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 28px; }
+    .profile-info h3 { font-size: 20px; font-weight: 600; }
+    .profile-info p { font-size: 14px; color: #6b7280; }
+    .profile-info .plan { font-size: 14px; color: #0eb77a; font-weight: 500; margin-top: 4px; }
+    
+    /* Form */
+    .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 14px; font-weight: 500; color: #374151; }
+    .form-group input, .form-group select { padding: 10px 16px; font-size: 14px; border: 1px solid #d1d5db; border-radius: 8px; outline: none; font-family: inherit; }
+    .form-group input:focus, .form-group select:focus { border-color: #0eb77a; box-shadow: 0 0 0 3px rgba(14,183,122,0.1); }
+    .form-actions { display: flex; justify-content: flex-end; margin-top: 24px; }
+    .btn { padding: 10px 16px; font-size: 14px; font-weight: 500; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: #0eb77a; color: #fff; }
+    .btn-primary:hover { background: #0a8f5d; }
+    
+    /* Integrations */
+    .integrations-list { display: flex; flex-direction: column; gap: 16px; }
+    .integration { display: flex; align-items: center; justify-content: space-between; padding: 16px; border: 1px solid #e5e7eb; border-radius: 12px; transition: all 0.2s; }
+    .integration:hover { background: #f9fafb; }
+    .integration-left { display: flex; align-items: center; gap: 16px; }
+    .integration-icon { width: 48px; height: 48px; background: #f3f4f6; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+    .integration-name { font-weight: 500; color: #111827; }
+    .integration-status { display: flex; align-items: center; gap: 6px; font-size: 14px; color: #6b7280; margin-top: 2px; }
+    .status-icon { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .status-icon.connected { background: #dcfce7; color: #16a34a; }
+    .status-icon.pending { background: #fef9c3; color: #ca8a04; }
+    .status-icon.disconnected { background: #fee2e2; color: #dc2626; }
+    .status-icon svg { width: 12px; height: 12px; }
+    .integration-btn { padding: 8px 16px; font-size: 14px; font-weight: 500; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s; }
+    .integration-btn.disconnect { background: #fef2f2; color: #dc2626; }
+    .integration-btn.disconnect:hover { background: #fee2e2; }
+    .integration-btn.complete { background: #fef9c3; color: #ca8a04; }
+    .integration-btn.complete:hover { background: #fef08a; }
+    .integration-btn.connect { background: #ecfdf5; color: #0eb77a; }
+    .integration-btn.connect:hover { background: #d1fae5; }
+    
+    /* Quick Settings */
+    .quick-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+    .quick-section { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; padding: 24px; }
+    .quick-section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .quick-section-header svg { width: 20px; height: 20px; color: #0eb77a; }
+    .quick-section-header h2 { font-size: 18px; font-weight: 600; }
+    .toggle-list { display: flex; flex-direction: column; gap: 12px; }
+    .toggle-item { display: flex; align-items: center; justify-content: space-between; }
+    .toggle-item label { font-size: 14px; color: #374151; }
+    .toggle { width: 44px; height: 24px; background: #e5e7eb; border-radius: 12px; position: relative; cursor: pointer; transition: all 0.2s; }
+    .toggle.active { background: #0eb77a; }
+    .toggle::after { content: ''; width: 20px; height: 20px; background: #fff; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .toggle.active::after { left: 22px; }
+    .billing-info { font-size: 14px; color: #4b5563; line-height: 1.6; margin-bottom: 16px; }
+    .billing-info strong { color: #0eb77a; }
+    .billing-link { font-size: 14px; color: #0eb77a; font-weight: 500; text-decoration: none; }
+    .billing-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="logo">A</div>
+    <a href="dashboard.html" class="nav-item" title="Dashboard">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+    </a>
+    <a href="leads.html" class="nav-item" title="Leads">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+    </a>
+    <a href="campaigns.html" class="nav-item" title="Campaigns">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+    </a>
+    <a href="replies.html" class="nav-item" title="Replies">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+    </a>
+    <a href="reports.html" class="nav-item" title="Reports">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+    </a>
+    <a href="settings.html" class="nav-item active" title="Settings">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    </a>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+    <header class="header">
+      <h1>Settings</h1>
+      <p>Manage your account and integrations</p>
+    </header>
+
+    <div class="content">
+      <!-- Profile -->
+      <div class="section">
+        <div class="section-header">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          <h2>Profile</h2>
+        </div>
+        
+        <div class="profile-header">
+          <div class="profile-avatar">DK</div>
+          <div class="profile-info">
+            <h3>Dave K.</h3>
+            <p>dave@example.com</p>
+            <p class="plan">Velocity Plan</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" value="Dave K.">
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" value="dave@example.com">
+          </div>
+          <div class="form-group">
+            <label>Company</label>
+            <input type="text" value="Growth Agency">
+          </div>
+          <div class="form-group">
+            <label>Timezone</label>
+            <select>
+              <option selected>Australia/Sydney (AEST)</option>
+              <option>Australia/Melbourne</option>
+              <option>Australia/Brisbane</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-primary">Save Changes</button>
+        </div>
+      </div>
+
+      <!-- Integrations -->
+      <div class="section">
+        <div class="section-header">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+          <h2>Integrations</h2>
+        </div>
+
+        <div class="integrations-list">
+          <div class="integration">
+            <div class="integration-left">
+              <div class="integration-icon">📧</div>
+              <div>
+                <div class="integration-name">Gmail</div>
+                <div class="integration-status">
+                  <span class="status-icon connected">
+                    <svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                  </span>
+                  Connected
+                </div>
+              </div>
+            </div>
+            <button class="integration-btn disconnect">Disconnect</button>
+          </div>
+
+          <div class="integration">
+            <div class="integration-left">
+              <div class="integration-icon">💼</div>
+              <div>
+                <div class="integration-name">LinkedIn</div>
+                <div class="integration-status">
+                  <span class="status-icon connected">
+                    <svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                  </span>
+                  Connected
+                </div>
+              </div>
+            </div>
+            <button class="integration-btn disconnect">Disconnect</button>
+          </div>
+
+          <div class="integration">
+            <div class="integration-left">
+              <div class="integration-icon">📱</div>
+              <div>
+                <div class="integration-name">SMS</div>
+                <div class="integration-status">
+                  <span class="status-icon connected">
+                    <svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                  </span>
+                  Connected
+                </div>
+              </div>
+            </div>
+            <button class="integration-btn disconnect">Disconnect</button>
+          </div>
+
+          <div class="integration">
+            <div class="integration-left">
+              <div class="integration-icon">📞</div>
+              <div>
+                <div class="integration-name">Voice Calling</div>
+                <div class="integration-status">
+                  <span class="status-icon pending">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </span>
+                  Pending
+                </div>
+              </div>
+            </div>
+            <button class="integration-btn complete">Complete Setup</button>
+          </div>
+
+          <div class="integration">
+            <div class="integration-left">
+              <div class="integration-icon">☁️</div>
+              <div>
+                <div class="integration-name">Salesforce</div>
+                <div class="integration-status">
+                  <span class="status-icon disconnected">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </span>
+                  Disconnected
+                </div>
+              </div>
+            </div>
+            <button class="integration-btn connect">Connect</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Settings -->
+      <div class="quick-grid">
+        <div class="quick-section">
+          <div class="quick-section-header">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            <h2>Notifications</h2>
+          </div>
+          <div class="toggle-list">
+            <div class="toggle-item">
+              <label>Email notifications</label>
+              <div class="toggle active" onclick="this.classList.toggle('active')"></div>
+            </div>
+            <div class="toggle-item">
+              <label>New reply alerts</label>
+              <div class="toggle active" onclick="this.classList.toggle('active')"></div>
+            </div>
+            <div class="toggle-item">
+              <label>Weekly digest</label>
+              <div class="toggle" onclick="this.classList.toggle('active')"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="quick-section">
+          <div class="quick-section-header">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+            <h2>Billing</h2>
+          </div>
+          <p class="billing-info">
+            You're on the <strong>Velocity</strong> plan.<br>
+            Next billing date: <strong>Feb 15, 2026</strong>
+          </p>
+          <a href="#" class="billing-link">Manage subscription →</a>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

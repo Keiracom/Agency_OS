@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi-Channel Sequence | Agency OS</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f9fafb; color: #111827; display: flex; min-height: 100vh; }
+    
+    /* Sidebar */
+    .sidebar { width: 72px; background: #fff; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; align-items: center; padding: 20px 0; position: fixed; height: 100vh; z-index: 10; }
+    .logo { width: 40px; height: 40px; background: linear-gradient(135deg, #0eb77a, #2dd498); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 18px; margin-bottom: 32px; }
+    .nav-item { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; margin-bottom: 8px; color: #6b7280; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+    .nav-item:hover { background: #f3f4f6; color: #374151; }
+    .nav-item.active { background: #ecfdf5; color: #0eb77a; }
+    .nav-item svg { width: 22px; height: 22px; }
+    
+    /* Main */
+    .main { flex: 1; margin-left: 72px; }
+    
+    /* Header */
+    .header { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 16px 32px; display: flex; align-items: center; gap: 16px; }
+    .back-btn { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #6b7280; text-decoration: none; padding: 8px 12px; border-radius: 8px; transition: all 0.2s; }
+    .back-btn:hover { background: #f3f4f6; color: #374151; }
+    .back-btn svg { width: 16px; height: 16px; }
+    .header-divider { width: 1px; height: 24px; background: #e5e7eb; }
+    .header-title { font-size: 14px; color: #6b7280; }
+    
+    /* Content */
+    .content { padding: 32px; max-width: 1200px; }
+    
+    /* Campaign Header */
+    .campaign-header { background: #fff; border-radius: 16px; border: 1px solid #e5e7eb; padding: 32px; margin-bottom: 24px; position: relative; overflow: hidden; }
+    .campaign-header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #0eb77a, #2dd498, #5eebb8); }
+    .campaign-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .campaign-info h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+    .campaign-badge { font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 20px; }
+    .campaign-badge.active { background: #dcfce7; color: #16a34a; }
+    .campaign-badge.paused { background: #fef3c7; color: #d97706; }
+    .campaign-badge.completed { background: #e5e7eb; color: #6b7280; }
+    .campaign-meta { display: flex; gap: 24px; }
+    .campaign-meta-item { display: flex; align-items: center; gap: 6px; font-size: 14px; color: #6b7280; }
+    .campaign-meta-item svg { width: 16px; height: 16px; }
+    .campaign-actions { display: flex; gap: 8px; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 14px; font-weight: 500; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s; }
+    .btn svg { width: 16px; height: 16px; }
+    .btn-primary { background: #0eb77a; color: #fff; }
+    .btn-primary:hover { background: #0a8f5d; }
+    .btn-secondary { background: #f3f4f6; color: #374151; }
+    .btn-secondary:hover { background: #e5e7eb; }
+    .btn-danger { background: #fef2f2; color: #dc2626; }
+    .btn-danger:hover { background: #fee2e2; }
+    
+    /* Metrics Grid */
+    .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .metric-card { background: #fff; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; text-align: center; transition: all 0.2s; }
+    .metric-card:hover { box-shadow: 0 4px 12px rgba(14,183,122,0.1); transform: translateY(-2px); }
+    .metric-value { font-size: 32px; font-weight: 800; color: #111827; }
+    .metric-label { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+    .metric-rate { font-size: 13px; font-weight: 500; color: #0eb77a; margin-top: 8px; }
+    .metric-rate.neutral { color: #6b7280; }
+    
+    /* Funnel */
+    .funnel-section { background: #fff; border-radius: 16px; border: 1px solid #e5e7eb; padding: 24px; margin-bottom: 24px; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .section-header h2 { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .section-header h2 svg { width: 20px; height: 20px; color: #0eb77a; }
+    .funnel { display: flex; align-items: center; gap: 0; }
+    .funnel-step { flex: 1; text-align: center; position: relative; }
+    .funnel-bar { height: 48px; background: linear-gradient(135deg, #0eb77a, #2dd498); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 18px; position: relative; }
+    .funnel-step:first-child .funnel-bar { border-radius: 8px 0 0 8px; }
+    .funnel-step:last-child .funnel-bar { border-radius: 0 8px 8px 0; }
+    .funnel-step:nth-child(2) .funnel-bar { background: linear-gradient(135deg, #10b981, #34d399); }
+    .funnel-step:nth-child(3) .funnel-bar { background: linear-gradient(135deg, #14b8a6, #2dd4bf); }
+    .funnel-step:nth-child(4) .funnel-bar { background: linear-gradient(135deg, #06b6d4, #22d3ee); }
+    .funnel-arrow { position: absolute; right: -12px; top: 50%; transform: translateY(-50%); z-index: 1; color: #fff; font-size: 20px; }
+    .funnel-step:last-child .funnel-arrow { display: none; }
+    .funnel-label { font-size: 13px; font-weight: 500; color: #374151; margin-top: 12px; }
+    .funnel-percent { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    
+    /* Grid */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    
+    /* Sequence Steps */
+    .sequence-section { background: #fff; border-radius: 16px; border: 1px solid #e5e7eb; padding: 24px; }
+    .sequence-list { display: flex; flex-direction: column; gap: 12px; }
+    .sequence-step { display: flex; align-items: flex-start; gap: 16px; padding: 16px; background: #f9fafb; border-radius: 12px; position: relative; }
+    .sequence-step.active { background: #ecfdf5; border: 1px solid #a7f3d0; }
+    .step-number { width: 32px; height: 32px; background: #e5e7eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #6b7280; flex-shrink: 0; }
+    .sequence-step.active .step-number { background: #0eb77a; color: #fff; }
+    .sequence-step.completed .step-number { background: #0eb77a; color: #fff; }
+    .step-content { flex: 1; }
+    .step-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .step-type { font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 4px; }
+    .step-type.email { background: #ecfdf5; color: #0eb77a; }
+    .step-type.linkedin { background: #e0f2fe; color: #0284c7; }
+    .step-type.call { background: #fef3c7; color: #d97706; }
+    .step-type.sms { background: #f3e8ff; color: #7c3aed; }
+    .step-delay { font-size: 12px; color: #9ca3af; }
+    .step-title { font-size: 14px; font-weight: 500; color: #111827; }
+    .step-stats { display: flex; gap: 16px; margin-top: 8px; font-size: 12px; color: #6b7280; }
+    .step-stats span { display: flex; align-items: center; gap: 4px; }
+    
+    /* Leads Table */
+    .leads-section { background: #fff; border-radius: 16px; border: 1px solid #e5e7eb; overflow: hidden; }
+    .leads-header { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; }
+    .leads-header h3 { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .leads-header h3 svg { width: 18px; height: 18px; color: #0eb77a; }
+    .leads-count { font-size: 14px; color: #6b7280; }
+    .leads-table { width: 100%; border-collapse: collapse; }
+    .leads-table th { text-align: left; padding: 12px 20px; font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
+    .leads-table td { padding: 12px 20px; font-size: 14px; border-bottom: 1px solid #f3f4f6; }
+    .leads-table tr:last-child td { border-bottom: none; }
+    .leads-table tr:hover { background: #f9fafb; }
+    .lead-name { font-weight: 500; color: #111827; }
+    .lead-company { font-size: 13px; color: #6b7280; }
+    .lead-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+    .lead-status.replied { background: #dcfce7; color: #16a34a; }
+    .lead-status.opened { background: #e0f2fe; color: #0284c7; }
+    .lead-status.sent { background: #f3f4f6; color: #6b7280; }
+    .lead-status.meeting { background: #ecfdf5; color: #0eb77a; }
+    .lead-avatar { width: 32px; height: 32px; background: linear-gradient(135deg, #0eb77a, #2dd498); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 600; font-size: 11px; }
+    .lead-info { display: flex; align-items: center; gap: 12px; }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="logo">A</div>
+    <a href="dashboard.html" class="nav-item" title="Dashboard">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+    </a>
+    <a href="leads.html" class="nav-item" title="Leads">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+    </a>
+    <a href="campaigns.html" class="nav-item active" title="Campaigns">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+    </a>
+    <a href="replies.html" class="nav-item" title="Replies">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+    </a>
+    <a href="reports.html" class="nav-item" title="Reports">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+    </a>
+    <a href="settings.html" class="nav-item" title="Settings">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    </a>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+    <header class="header">
+      <a href="campaigns.html" class="back-btn">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        Back to Campaigns
+      </a>
+      <div class="header-divider"></div>
+      <span class="header-title">Campaign Details</span>
+    </header>
+
+    <div class="content">
+      <!-- Campaign Header -->
+      <div class="campaign-header">
+        <div class="campaign-top">
+          <div class="campaign-info">
+            <h1>
+              Multi-Channel Sequence
+              <span class="campaign-badge active">Active</span>
+            </h1>
+            <div class="campaign-meta">
+              <div class="campaign-meta-item">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                Jan 15 – Mar 31, 2026
+              </div>
+              <div class="campaign-meta-item">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                248 leads enrolled
+              </div>
+              <div class="campaign-meta-item">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6"/></svg>
+                Multi-channel sequence
+              </div>
+            </div>
+          </div>
+          <div class="campaign-actions">
+            <button class="btn btn-secondary">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+              Edit
+            </button>
+            <button class="btn btn-secondary">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              Pause
+            </button>
+            <button class="btn btn-primary">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+              Add Leads
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-value">1,842</div>
+          <div class="metric-label">Emails Sent</div>
+          <div class="metric-rate neutral">Across all steps</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">812</div>
+          <div class="metric-label">Opened</div>
+          <div class="metric-rate">44.1% open rate</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">67</div>
+          <div class="metric-label">Replied</div>
+          <div class="metric-rate">3.6% reply rate</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">18</div>
+          <div class="metric-label">Meetings Booked</div>
+          <div class="metric-rate">26.9% of replies</div>
+        </div>
+      </div>
+
+      <!-- Funnel -->
+      <div class="funnel-section">
+        <div class="section-header">
+          <h2>
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+            Lead Funnel
+          </h2>
+        </div>
+        <div class="funnel">
+          <div class="funnel-step">
+            <div class="funnel-bar">
+              248
+              <span class="funnel-arrow">→</span>
+            </div>
+            <div class="funnel-label">Total Leads</div>
+            <div class="funnel-percent">100%</div>
+          </div>
+          <div class="funnel-step">
+            <div class="funnel-bar">
+              812
+              <span class="funnel-arrow">→</span>
+            </div>
+            <div class="funnel-label">Opened</div>
+            <div class="funnel-percent">44.1%</div>
+          </div>
+          <div class="funnel-step">
+            <div class="funnel-bar">
+              67
+              <span class="funnel-arrow">→</span>
+            </div>
+            <div class="funnel-label">Replied</div>
+            <div class="funnel-percent">3.6%</div>
+          </div>
+          <div class="funnel-step">
+            <div class="funnel-bar">
+              18
+            </div>
+            <div class="funnel-label">Meetings</div>
+            <div class="funnel-percent">0.98%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Sequence Steps -->
+        <div class="sequence-section">
+          <div class="section-header">
+            <h2>
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+              Sequence Steps
+            </h2>
+          </div>
+          <div class="sequence-list">
+            <div class="sequence-step completed">
+              <div class="step-number">✓</div>
+              <div class="step-content">
+                <div class="step-header">
+                  <span class="step-type email">Email</span>
+                  <span class="step-delay">Day 0</span>
+                </div>
+                <div class="step-title">Initial outreach — personalized intro</div>
+                <div class="step-stats">
+                  <span>📤 248 sent</span>
+                  <span>👀 142 opened</span>
+                  <span>↩️ 12 replied</span>
+                </div>
+              </div>
+            </div>
+            <div class="sequence-step completed">
+              <div class="step-number">✓</div>
+              <div class="step-content">
+                <div class="step-header">
+                  <span class="step-type linkedin">LinkedIn</span>
+                  <span class="step-delay">Day 1</span>
+                </div>
+                <div class="step-title">Connection request with note</div>
+                <div class="step-stats">
+                  <span>📤 236 sent</span>
+                  <span>✅ 89 accepted</span>
+                </div>
+              </div>
+            </div>
+            <div class="sequence-step active">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                <div class="step-header">
+                  <span class="step-type email">Email</span>
+                  <span class="step-delay">Day 3</span>
+                </div>
+                <div class="step-title">Follow-up with case study</div>
+                <div class="step-stats">
+                  <span>📤 198 sent</span>
+                  <span>👀 112 opened</span>
+                  <span>↩️ 28 replied</span>
+                </div>
+              </div>
+            </div>
+            <div class="sequence-step">
+              <div class="step-number">4</div>
+              <div class="step-content">
+                <div class="step-header">
+                  <span class="step-type call">AI Call</span>
+                  <span class="step-delay">Day 5</span>
+                </div>
+                <div class="step-title">Warm call to engaged leads</div>
+                <div class="step-stats">
+                  <span style="color:#9ca3af;">Pending...</span>
+                </div>
+              </div>
+            </div>
+            <div class="sequence-step">
+              <div class="step-number">5</div>
+              <div class="step-content">
+                <div class="step-header">
+                  <span class="step-type email">Email</span>
+                  <span class="step-delay">Day 7</span>
+                </div>
+                <div class="step-title">Break-up email — last touch</div>
+                <div class="step-stats">
+                  <span style="color:#9ca3af;">Pending...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Leads in Campaign -->
+        <div class="leads-section">
+          <div class="leads-header">
+            <h3>
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              Recent Activity
+            </h3>
+            <span class="leads-count">248 leads</span>
+          </div>
+          <table class="leads-table">
+            <thead>
+              <tr>
+                <th>Lead</th>
+                <th>Status</th>
+                <th>Step</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="lead-info">
+                    <div class="lead-avatar">SC</div>
+                    <div>
+                      <div class="lead-name">Sarah Chen</div>
+                      <div class="lead-company">Bloom Digital</div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="lead-status meeting">📅 Meeting</span></td>
+                <td>Step 3</td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="lead-info">
+                    <div class="lead-avatar">MJ</div>
+                    <div>
+                      <div class="lead-name">Michael Jones</div>
+                      <div class="lead-company">Growth Labs</div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="lead-status replied">↩️ Replied</span></td>
+                <td>Step 3</td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="lead-info">
+                    <div class="lead-avatar">LW</div>
+                    <div>
+                      <div class="lead-name">Lisa Wong</div>
+                      <div class="lead-company">Pixel Perfect</div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="lead-status opened">👀 Opened</span></td>
+                <td>Step 3</td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="lead-info">
+                    <div class="lead-avatar">DP</div>
+                    <div>
+                      <div class="lead-name">David Park</div>
+                      <div class="lead-company">Momentum Media</div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="lead-status replied">↩️ Replied</span></td>
+                <td>Step 2</td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="lead-info">
+                    <div class="lead-avatar">AS</div>
+                    <div>
+                      <div class="lead-name">Anna Smith</div>
+                      <div class="lead-company">Digital First</div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="lead-status sent">📤 Sent</span></td>
+                <td>Step 3</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

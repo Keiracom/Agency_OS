@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leads | Agency OS</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f9fafb; color: #111827; display: flex; min-height: 100vh; }
+    
+    /* Sidebar */
+    .sidebar { width: 72px; background: #fff; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; align-items: center; padding: 20px 0; position: fixed; height: 100vh; }
+    .logo { width: 40px; height: 40px; background: linear-gradient(135deg, #0eb77a, #2dd498); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 18px; margin-bottom: 32px; }
+    .nav-item { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; margin-bottom: 8px; color: #6b7280; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+    .nav-item:hover { background: #f3f4f6; color: #374151; }
+    .nav-item.active { background: #ecfdf5; color: #0eb77a; }
+    .nav-item svg { width: 22px; height: 22px; }
+    
+    /* Main */
+    .main { flex: 1; margin-left: 72px; }
+    
+    /* Header */
+    .header { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 24px 32px; }
+    .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .header h1 { font-size: 24px; font-weight: 700; }
+    .header p { font-size: 14px; color: #6b7280; margin-top: 4px; }
+    .header-actions { display: flex; gap: 12px; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 14px; font-weight: 500; border-radius: 8px; cursor: pointer; transition: all 0.2s; border: none; }
+    .btn-secondary { background: #fff; color: #374151; border: 1px solid #d1d5db; }
+    .btn-secondary:hover { background: #f9fafb; }
+    .btn-primary { background: #0eb77a; color: #fff; }
+    .btn-primary:hover { background: #0a8f5d; }
+    
+    /* Filters */
+    .filters { display: flex; align-items: center; gap: 16px; }
+    .search-wrap { flex: 1; position: relative; }
+    .search-wrap input { width: 100%; padding: 10px 16px 10px 40px; font-size: 14px; border: 1px solid #d1d5db; border-radius: 8px; outline: none; }
+    .search-wrap input:focus { border-color: #0eb77a; box-shadow: 0 0 0 3px rgba(14,183,122,0.1); }
+    .search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; width: 18px; height: 18px; }
+    .tier-tabs { display: flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+    .tier-tab { padding: 8px 16px; font-size: 14px; font-weight: 500; background: #fff; border: none; cursor: pointer; color: #4b5563; transition: all 0.2s; }
+    .tier-tab:hover { background: #f3f4f6; }
+    .tier-tab.active { background: #ecfdf5; color: #0eb77a; }
+    
+    /* Content */
+    .content { padding: 32px; }
+    
+    /* Table */
+    .table-wrap { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f9fafb; padding: 12px 24px; text-align: left; font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e5e7eb; }
+    td { padding: 16px 24px; border-bottom: 1px solid #f3f4f6; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover { background: #f9fafb; }
+    
+    /* Lead cell */
+    .lead-cell { display: flex; align-items: center; gap: 12px; }
+    .avatar { width: 40px; height: 40px; background: linear-gradient(135deg, #0eb77a, #2dd498); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 600; font-size: 14px; }
+    .lead-name { font-weight: 500; color: #111827; }
+    .lead-title { font-size: 14px; color: #6b7280; }
+    
+    /* Company cell */
+    .company-name { color: #111827; }
+    .company-email { font-size: 14px; color: #6b7280; }
+    
+    /* Score */
+    .score { font-size: 18px; font-weight: 700; color: #111827; }
+    
+    /* Tier badge */
+    .tier { display: inline-block; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 20px; text-transform: capitalize; }
+    .tier.hot { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .tier.warm { background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; }
+    .tier.cool { background: #ecfdf5; color: #0eb77a; border: 1px solid #a7f3d0; }
+    .tier.cold { background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
+    
+    /* Channel */
+    .channel { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #4b5563; text-transform: capitalize; }
+    .channel svg { width: 16px; height: 16px; color: #6b7280; }
+    
+    /* Activity */
+    .activity { font-size: 14px; color: #6b7280; }
+    
+    /* Action */
+    .action-link { font-size: 14px; color: #0eb77a; font-weight: 500; text-decoration: none; }
+    .action-link:hover { text-decoration: underline; }
+    
+    /* Pagination */
+    .pagination { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
+    .pagination-info { font-size: 14px; color: #6b7280; }
+    .pagination-btns { display: flex; gap: 8px; }
+    .page-btn { padding: 6px 12px; font-size: 14px; font-weight: 500; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; color: #4b5563; cursor: pointer; }
+    .page-btn:hover { background: #f9fafb; }
+    .page-btn.active { background: #0eb77a; color: #fff; border-color: #0eb77a; }
+    
+    /* Checkbox */
+    input[type="checkbox"] { width: 16px; height: 16px; border-radius: 4px; border: 1px solid #d1d5db; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="logo">A</div>
+    <a href="dashboard.html" class="nav-item" title="Dashboard">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+    </a>
+    <a href="leads.html" class="nav-item active" title="Leads">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+    </a>
+    <a href="campaigns.html" class="nav-item" title="Campaigns">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+    </a>
+    <a href="replies.html" class="nav-item" title="Replies">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+    </a>
+    <a href="reports.html" class="nav-item" title="Reports">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+    </a>
+    <a href="settings.html" class="nav-item" title="Settings">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    </a>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+    <header class="header">
+      <div class="header-top">
+        <div>
+          <h1>Leads</h1>
+          <p>Manage and track your prospects</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Export
+          </button>
+          <button class="btn btn-primary">+ Add Lead</button>
+        </div>
+      </div>
+      <div class="filters">
+        <div class="search-wrap">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input type="text" placeholder="Search leads...">
+        </div>
+        <button class="btn btn-secondary">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+          Filters
+        </button>
+        <div class="tier-tabs">
+          <button class="tier-tab active">All</button>
+          <button class="tier-tab">Hot</button>
+          <button class="tier-tab">Warm</button>
+          <button class="tier-tab">Cool</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th><input type="checkbox"></th>
+              <th>Lead</th>
+              <th>Company</th>
+              <th>Score</th>
+              <th>Tier</th>
+              <th>Channel</th>
+              <th>Last Activity</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="checkbox"></td>
+              <td>
+                <div class="lead-cell">
+                  <div class="avatar">SC</div>
+                  <div>
+                    <div class="lead-name">Sarah Chen</div>
+                    <div class="lead-title">Marketing Director</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="company-name">Bloom Digital</div>
+                <div class="company-email">sarah@bloomdigital.com.au</div>
+              </td>
+              <td><span class="score">94</span></td>
+              <td><span class="tier hot">Hot</span></td>
+              <td>
+                <div class="channel">
+                  <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                  Email
+                </div>
+              </td>
+              <td><span class="activity">2 hours ago</span></td>
+              <td><a href="lead-detail.html" class="action-link">View →</a></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"></td>
+              <td>
+                <div class="lead-cell">
+                  <div class="avatar">MJ</div>
+                  <div>
+                    <div class="lead-name">Michael Jones</div>
+                    <div class="lead-title">CEO</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="company-name">Growth Labs</div>
+                <div class="company-email">michael@growthlabs.com.au</div>
+              </td>
+              <td><span class="score">87</span></td>
+              <td><span class="tier hot">Hot</span></td>
+              <td>
+                <div class="channel">
+                  <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                  LinkedIn
+                </div>
+              </td>
+              <td><span class="activity">1 day ago</span></td>
+              <td><a href="lead-detail.html" class="action-link">View →</a></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"></td>
+              <td>
+                <div class="lead-cell">
+                  <div class="avatar">LW</div>
+                  <div>
+                    <div class="lead-name">Lisa Wong</div>
+                    <div class="lead-title">Founder</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="company-name">Pixel Perfect</div>
+                <div class="company-email">lisa@pixelperfect.com.au</div>
+              </td>
+              <td><span class="score">82</span></td>
+              <td><span class="tier warm">Warm</span></td>
+              <td>
+                <div class="channel">
+                  <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                  LinkedIn
+                </div>
+              </td>
+              <td><span class="activity">3 hours ago</span></td>
+              <td><a href="lead-detail.html" class="action-link">View →</a></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"></td>
+              <td>
+                <div class="lead-cell">
+                  <div class="avatar">JC</div>
+                  <div>
+                    <div class="lead-name">James Cooper</div>
+                    <div class="lead-title">Managing Director</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="company-name">Creative Co</div>
+                <div class="company-email">james@creativeco.com.au</div>
+              </td>
+              <td><span class="score">76</span></td>
+              <td><span class="tier warm">Warm</span></td>
+              <td>
+                <div class="channel">
+                  <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                  Email
+                </div>
+              </td>
+              <td><span class="activity">1 day ago</span></td>
+              <td><a href="lead-detail.html" class="action-link">View →</a></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"></td>
+              <td>
+                <div class="lead-cell">
+                  <div class="avatar">EW</div>
+                  <div>
+                    <div class="lead-name">Emma Wilson</div>
+                    <div class="lead-title">Head of Marketing</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="company-name">Brand Forward</div>
+                <div class="company-email">emma@brandforward.com.au</div>
+              </td>
+              <td><span class="score">71</span></td>
+              <td><span class="tier warm">Warm</span></td>
+              <td>
+                <div class="channel">
+                  <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                  SMS
+                </div>
+              </td>
+              <td><span class="activity">2 days ago</span></td>
+              <td><a href="lead-detail.html" class="action-link">View →</a></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"></td>
+              <td>
+                <div class="lead-cell">
+                  <div class="avatar">TB</div>
+                  <div>
+                    <div class="lead-name">Tom Brown</div>
+                    <div class="lead-title">Director</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="company-name">Scale Agency</div>
+                <div class="company-email">tom@scaleagency.com.au</div>
+              </td>
+              <td><span class="score">58</span></td>
+              <td><span class="tier cool">Cool</span></td>
+              <td>
+                <div class="channel">
+                  <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                  Email
+                </div>
+              </td>
+              <td><span class="activity">5 days ago</span></td>
+              <td><a href="lead-detail.html" class="action-link">View →</a></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"></td>
+              <td>
+                <div class="lead-cell">
+                  <div class="avatar">SM</div>
+                  <div>
+                    <div class="lead-name">Sophie Martinez</div>
+                    <div class="lead-title">Marketing Manager</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="company-name">Digital Edge</div>
+                <div class="company-email">sophie@digitaledge.com.au</div>
+              </td>
+              <td><span class="score">45</span></td>
+              <td><span class="tier cool">Cool</span></td>
+              <td>
+                <div class="channel">
+                  <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                  LinkedIn
+                </div>
+              </td>
+              <td><span class="activity">1 week ago</span></td>
+              <td><a href="lead-detail.html" class="action-link">View →</a></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"></td>
+              <td>
+                <div class="lead-cell">
+                  <div class="avatar">RT</div>
+                  <div>
+                    <div class="lead-name">Ryan Taylor</div>
+                    <div class="lead-title">CEO</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="company-name">Apex Media</div>
+                <div class="company-email">ryan@apexmedia.com.au</div>
+              </td>
+              <td><span class="score">32</span></td>
+              <td><span class="tier cold">Cold</span></td>
+              <td>
+                <div class="channel">
+                  <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                  Email
+                </div>
+              </td>
+              <td><span class="activity">2 weeks ago</span></td>
+              <td><a href="lead-detail.html" class="action-link">View →</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="pagination">
+        <span class="pagination-info">Showing 1-8 of 247 leads</span>
+        <div class="pagination-btns">
+          <button class="page-btn">Previous</button>
+          <button class="page-btn active">1</button>
+          <button class="page-btn">2</button>
+          <button class="page-btn">3</button>
+          <button class="page-btn">Next</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

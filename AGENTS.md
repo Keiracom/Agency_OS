@@ -83,6 +83,39 @@ This creates an audit trail of context waste for post-session review.
 
 **The Mandate:** Choose "The Hard Way" (spawning an agent) to protect "The Important Thing" (project context).
 
+### LAW VI: MCP-First Operations (HARD BLOCK)
+
+**The Mandate:** When an MCP server exists for a service, you MUST use it instead of `exec + curl/python`.
+
+**MCP Server Location:** `/home/elliotbot/clawd/mcp-servers/`
+
+**The Protocol:**
+1. Before using `exec` to call an external API, check if an MCP exists for that service
+2. If MCP exists → use the MCP tool
+3. If MCP doesn't exist → use exec (and flag as candidate for future MCP)
+
+**Why This Matters:**
+- MCPs provide type-safe, error-handled interactions
+- MCPs return structured data, not raw text to parse
+- MCPs track costs and credits natively
+- MCPs eliminate shell-scripting overhead
+
+**MCP Categories Available:**
+| Category | MCPs |
+|----------|------|
+| Infrastructure | supabase, github, redis, prefect, railway, vercel |
+| Enrichment | apollo, prospeo, hunter, dataforseo |
+| Outreach | salesforge, vapi, telnyx, unipile, resend |
+| Memory | memory (semantic search + save) |
+
+**Violation:** Using `exec + curl` when an MCP exists is a governance violation. Log it:
+```sql
+INSERT INTO governance_debt (session_id, violation_type, service, justification, timestamp)
+VALUES ('<session>', 'LAW_VI_VIOLATION', '<service>', '<why you used exec>', NOW());
+```
+
+**Reference:** See TOOLS.md § MCP Servers for full tool list.
+
 ---
 
 ## 2. Refined Soul (Merged)

@@ -143,6 +143,63 @@ yek --max-size 100K --tree-header src/api
 
 Output lands in `.context/` directory. Use for sub-agent context injection.
 
+## 🔌 MCP Servers (LAW VI: Use First)
+
+**Location:** `/home/elliotbot/clawd/mcp-servers/`
+
+When an MCP exists for a service, USE IT instead of exec/curl. MCPs provide type-safe, error-handled, native tool access.
+
+### Ready to Deploy (Existing)
+
+| MCP | Package | Status |
+| :--- | :--- | :--- |
+| Supabase | `@supabase/mcp-server` | ✅ Ready |
+| GitHub | `@modelcontextprotocol/server-github` | ✅ Ready |
+| Redis | `@modelcontextprotocol/server-redis` | ✅ Ready |
+| Brave Search | `brave/brave-search-mcp-server` | ✅ Ready |
+
+### Custom Built (Infrastructure)
+
+| MCP | Tools | Use Instead Of |
+| :--- | :--- | :--- |
+| `prefect-mcp` | list_flows, trigger_run, get_failed_runs, etc. | `exec + curl` to Prefect API |
+| `railway-mcp` | list_projects, get_logs, redeploy, rollback, etc. | `exec + curl` to Railway GraphQL |
+| `vercel-mcp` | list_deployments, create_deployment, promote, etc. | `exec + vercel` CLI |
+
+### Custom Built (Enrichment)
+
+| MCP | Tools | Use Instead Of |
+| :--- | :--- | :--- |
+| `apollo-mcp` | search_people, enrich_person, get_credits, etc. | `python tools/enrichment_master.py` |
+| `prospeo-mcp` | find_email, verify_email, linkedin_to_email, etc. | `python tools/enrichment_master.py` |
+| `hunter-mcp` | domain_search, email_finder, email_verifier | ⚠️ Needs `HUNTER_API_KEY` |
+| `dataforseo-mcp` | serp_google, keyword_data, backlinks, etc. | `exec + curl` |
+
+### Custom Built (Outreach)
+
+| MCP | Tools | Use Instead Of |
+| :--- | :--- | :--- |
+| `salesforge-mcp` | list_campaigns, create_campaign, add_leads, etc. | `exec + curl` to Salesforge |
+| `vapi-mcp` | list_assistants, start_call, get_transcript, etc. | `exec + curl` to Vapi |
+| `telnyx-mcp` | send_sms, list_phone_numbers, make_call, etc. | `exec + curl` to Telnyx |
+| `unipile-mcp` | search_profiles, send_connection, send_message, etc. | Manual LinkedIn |
+| `resend-mcp` | send_email, list_domains, get_analytics, etc. | `exec + curl` to Resend |
+
+### Custom Built (Memory)
+
+| MCP | Tools | Use Instead Of |
+| :--- | :--- | :--- |
+| `memory-mcp` | search, save, bulk_save, get_stats, etc. | `python tools/memory_master.py` |
+
+### Missing API Keys
+
+| Key | Service | Get From |
+| :--- | :--- | :--- |
+| `HUNTER_API_KEY` | Hunter.io | https://hunter.io/api (free tier: 25/mo) |
+| `SLACK_BOT_TOKEN` | Slack | https://api.slack.com/apps |
+| `NOTION_API_KEY` | Notion | https://www.notion.so/my-integrations |
+| `LINEAR_API_KEY` | Linear | https://linear.app/settings/api |
+
 ## 🩺 Quick Diagnostics
 
 ```bash

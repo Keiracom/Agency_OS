@@ -1,0 +1,118 @@
+{
+  "channels": [
+    {
+      "name": "ThePrimeagen",
+      "handle": "@ThePrimeagen",
+      "videos": [
+        {"title": "Musician turned Programmer turned Musician", "videoId": "taoAAcS5PSw"},
+        {"title": "I was wrong btw", "videoId": "ZH3iKbEiks0"},
+        {"title": "the worst man in tech", "videoId": "A_XGsAl-LqY"},
+        {"title": "I Went To DEFCON!", "videoId": "GwcFxTuMYmU"},
+        {"title": "1000 Players - One Game of Doom", "videoId": "3f9tbqSIm-E"},
+        {"title": "This Is Goodbye", "videoId": "UWb1dw_kbvo"},
+        {"title": "FULL Introduction To HTMX Using Golang", "videoId": "x7v6SNIgJpE"},
+        {"title": "Are Developers Ok?", "videoId": "SCPVDpyApgQ"},
+        {"title": "What You Need To Learn 2023 (as a software engineer)", "videoId": "6jPiuOXmxEc"},
+        {"title": "I Fixed Git", "videoId": "o462tY758CY"},
+        {"title": "How To Learn A New Programming Language", "videoId": "E8cM12jRH7k"},
+        {"title": "Stepping Down From RustConf and Rust Project Controversy", "videoId": "TB0cXGvuw9A"},
+        {"title": "This Lesson Taught Me How To Do Better Benchmarks", "videoId": "PHvbLmLPX6s"},
+        {"title": "Rust Foundation IS DOING WHAT????", "videoId": "gutR_LNoZw0"}
+      ]
+    },
+    {
+      "name": "Fireship",
+      "handle": "@Fireship",
+      "videos": [
+        {"title": "The wild rise of OpenClaw...", "videoId": "ssYt09bCgUY"},
+        {"title": "A brief history of programming...", "videoId": "M4TufsFlv_o"},
+        {"title": ".NET in 100 Seconds", "videoId": "9uW6B9LPntY"},
+        {"title": "The unhinged world of tech in 2026...", "videoId": "MFsYaRnrcPQ"},
+        {"title": "OpenAI was dead… Then GPT-5.2 dropped", "videoId": "EKOU3JWDNLI"},
+        {"title": "React.js shell shocked by 10.0 critical vulnerability…", "videoId": "rEvEXQvo-F8"},
+        {"title": "Anthropic just bought your favorite JS runtime...", "videoId": "QLK9G5zyU-Q"},
+        {"title": "AI agents are paying each other now…", "videoId": "5JMiNsV7P3Y"},
+        {"title": "Did Google just kill OpenAI?", "videoId": "S6wc6yvoZLY"},
+        {"title": "The entire internet just crashed... again", "videoId": "bsL7ZnKIAhs"},
+        {"title": "The gaming console wars just got weird...", "videoId": "tF_4baiIUiQ"},
+        {"title": "This neural interface writes code from my brain waves…", "videoId": "Q8QdKRbC1O0"},
+        {"title": "This new JS framework wants you to quit React…", "videoId": "4bQ2qhfJUjA"},
+        {"title": "Cursor 2.0 is here... 5 things you didn't know it can do", "videoId": "IIj9UWpvSFI"},
+        {"title": "The humanoid-robot dystopia arrived early...", "videoId": "HIp8sFB2GGw"},
+        {"title": "OpenAI's new browser feels familiar…", "videoId": "q2czJLPJ4nA"},
+        {"title": "US-EAST-1 is humanity's weakest link…", "videoId": "5uSboan45Zg"},
+        {"title": "React wants to win you back…", "videoId": "HqL0xhwDz9s"},
+        {"title": "Apple and Google won't like this...", "videoId": "yl0YWA2K2B0"},
+        {"title": "How to make vibe coding not suck…", "videoId": "qJle6Bki4Og"}
+      ]
+    },
+    {
+      "name": "AI Jason",
+      "handle": "@AIJasonZ",
+      "videos": [
+        {"title": "Why MCP is dead & How I vibe now", "videoId": "fG95XsBO5U4"},
+        {"title": "Secrets to unlock Gemini 3's hidden power...", "videoId": "oL6bLQOXwAY"},
+        {"title": "Nano Banana + Gemini 3 = S-TIER UI DESIGNER", "videoId": "RYnxU_MTVvU"},
+        {"title": "Unknown Title", "videoId": "UuyaeSLRTkE"},
+        {"title": "The Design Mode for Claude Code...", "videoId": "vcJVnyhmLS4"},
+        {"title": "Claude Skills - the SOP for your agent that is bigger than MCP", "videoId": "1WImBwiA7RA"},
+        {"title": ".agent folder is making claude code 10x better...", "videoId": "MW3t6jP9AOs"},
+        {"title": "Vibe Design is much better than I thought...", "videoId": "4j51FMU-SUQ"},
+        {"title": "I was using sub-agents wrong... Here is my way after 20+ hrs test", "videoId": "LCYBVpSB0Wo"},
+        {"title": "I was using Claude Code wrong... The Ultimate Workflow", "videoId": "UZb0if-7wGE"},
+        {"title": "Claude Killer? My review on Kimi K2 after hrs of testing...", "videoId": "Y4VEAI04W_U"},
+        {"title": "Tired of AI-ish UI? Here is how to make it better...", "videoId": "Nocg_8ECs6w"},
+        {"title": "Claude Designer is insane...Ultimate vibe coding UI workflow", "videoId": "YJ3Z9XhlF5w"},
+        {"title": "Vibe Versioning - Iterate UI in Cursor 10x faster", "videoId": "JfMcFjD-tIA"}
+      ]
+    },
+    {
+      "name": "MattVidPro AI",
+      "handle": "@MattVidPro",
+      "videos": [
+        {"title": "Kimi drops Open Claude? | AI workflows to Supercharge your Setup!", "videoId": "CjdHj85zVI0"},
+        {"title": "I Can't Believe This Open Source AI Music ACTUALLY Runs Locally!", "videoId": "vsYkYGbv3QM"},
+        {"title": "They Have Better AI Than They're Shipping!", "videoId": "ff1SwJAwGM8"},
+        {"title": "Truncated", "videoId": "9LSS7hL2IEc"},
+        {"title": "I Built my OWN Custom Research Agent with AI", "videoId": "27UAb_Tlv4E"},
+        {"title": "Everyone Just Shipped?!", "videoId": "gijQVM5V-QY"},
+        {"title": "GPT 5.2 and Image-gen-2 from Open AI", "videoId": "IRWp2NKkg4Y"},
+        {"title": "Four Video Models VS Real Usecases", "videoId": "sNf3wP3Xg7o"},
+        {"title": "Generative Video Drops!", "videoId": "PLmFM_v1Psg"},
+        {"title": "AI Video Agents vs Reality", "videoId": "0UP4l9kKlrU"},
+        {"title": "Gemini 3 Is Cool But Nano Banana Pro Is TERRIFYING", "videoId": "1DcF7fbw84Y"},
+        {"title": "Gemini 3 is THE building Agent!", "videoId": "DTYD-ddOwAY"},
+        {"title": "Google SIMA 2 AI Plays Games!", "videoId": "3j-uF7poStI"},
+        {"title": "AI Weather Warning", "videoId": "iJmhcBzeqN4"},
+        {"title": "AI Music Lawsuit Situation", "videoId": "ply0RPuEfB4"},
+        {"title": "Gemini 3 Pro testing is unbelievable", "videoId": "PSwaq8pboGQ"},
+        {"title": "SORA 2 Storyboard mode", "videoId": "otCljnQlMIc"},
+        {"title": "Open AI Sora 2 made me rethink", "videoId": "VgRkRtCGoTE"},
+        {"title": "AI Video Models Are Getting Out of Control!", "videoId": "s1ykViUikTU"},
+        {"title": "You Have To Hear Suno V5", "videoId": "vFXe3uXb75k"}
+      ]
+    },
+    {
+      "name": "All About AI",
+      "handle": "@AllAboutAI",
+      "videos": [
+        {"title": "How To Train Your AI Agent's Skills (Claude Code / OpenClaw)", "videoId": "KkJZY5Klymw"},
+        {"title": "My Most INSANE AI Agent Ever (OpenClaw Clone)", "videoId": "_KN5iAQfz6I"},
+        {"title": "I Trained Claude Code To Run My X Account", "videoId": "zA0b1okr2og"},
+        {"title": "Claude Code Let's Build: The AI Video Oracle", "videoId": "Vbws3a_OmBM"},
+        {"title": "Skills.sh - LEVEL UP Your Claude Code Agents!", "videoId": "vDBUf533e_M"},
+        {"title": "Local AI on a Laptop in 2026", "videoId": "UApd-gjQ6nM"},
+        {"title": "Claude Code Let's Build: The Ralph Loop", "videoId": "eD4CEZ-_-sk"},
+        {"title": "Claude Code Let's Build: AI Video Editor", "videoId": "dMpaPgLYj_U"},
+        {"title": "Solo Building an AI Native Business Week 2", "videoId": "pdQTLbPAkgc"},
+        {"title": "Claude Code Q&A", "videoId": "663aUMIZsYE"},
+        {"title": "Solo Building an AI Native Business Week 1", "videoId": "vslYkSGWUmM"},
+        {"title": "All About AI In 2026 - What Now?", "videoId": "6iyhM6_7I6g"},
+        {"title": "The AI Awards 2025", "videoId": "y__qEgqXcF4"},
+        {"title": "Shipmas Day 18: Claude Code Max $200", "videoId": "5P13mzNX7CQ"}
+      ]
+    }
+  ],
+  "scraped_at": "2026-02-02T17:03:00Z",
+  "total_videos": 82
+}

@@ -1,0 +1,33 @@
+# OpenClaw Reddit Discussions
+# Scraped: 2026-02-06 via Brave Search API
+# Note: Reddit blocked direct JSON fetch; stats estimated from search snippets
+
+📱 OpenClaw has been running on my machine for 4 days. Here's what actually works and what doesn't — r/AI_Agents — 679 pts — 206 comments
+   Summary: Real-world experience report after running OpenClaw with Gmail, Telegram, calendar integrations
+
+📱 The Ultimate Guide to OpenClaw (Formerly Clawdbot -> Moltbot) — r/ThinkingDeeplyAI — ~500 pts — ~150 comments
+   Summary: Comprehensive guide covering setup, use cases, and security risks of the viral AI agent
+
+📱 Everyone talks about Clawdbot (openClaw), but here's how it works — r/ChatGPT — ~300 pts — ~100 comments
+   Summary: Deep dive on OpenClaw internals, tracking the rebrand from Clawdbot → Moltbot → OpenClaw
+
+📱 Clawdbot → Moltbot → OpenClaw. The Fastest Triple Rebrand in Open Source History — r/LocalLLM — ~250 pts — ~80 comments
+   Summary: Discussion of creator's rapid rebranding strategy and viral marketing approach
+
+📱 The real problem with OpenClaw isn't the hype, it's the architecture — r/AI_Agents — ~200 pts — ~90 comments
+   Summary: Critical analysis of installation complexity and security model vs alternatives like memu
+
+📱 OpenClaw is god-awful. It's either, you have to spend a fortune for APIs or have a NASA-level PC to run it local — r/ArtificialInteligence — ~180 pts — ~120 comments
+   Summary: Complaint about speed and cost; suggests VPS + Slack agent as leaner alternative
+
+📱 OpenClaw (AI assistant gateway) now available on Community Apps — r/unRAID — ~150 pts — ~40 comments
+   Summary: Announcement of OpenClaw availability on unRAID Community Apps for easy self-hosting
+
+📱 What Is OpenClaw And Why It Matters For Crypto's Next Phase? — r/CryptoCurrency — ~140 pts — ~60 comments
+   Summary: Analysis of OpenClaw as AI execution engine for crypto workflows with 100k+ GitHub stars
+
+📱 Has anyone here used OpenClaw (formerly ClawdBot) for web tasks or data entry? — r/LocalLLaMA — ~120 pts — ~70 comments
+   Summary: Discussion of browser automation for form filling and data extraction tasks
+
+📱 Moltbook launches an AI-only social network for autonomous agents — r/singularity — ~200 pts — ~90 comments
+   Summary: Coverage of Moltbook social network launch alongside OpenClaw rebrand announcement

@@ -1,0 +1,18 @@
+# Missing API Keys for MCP Servers
+# Generated: 2025-01-28
+
+## Enrichment MCPs
+
+HUNTER_API_KEY - Required for hunter-mcp
+  - Get from: https://hunter.io/api
+  - Used for: Email finder and verification
+  - Pricing: Free tier available (25 searches/month)
+
+## Outreach MCPs (All keys present ✅)
+# - SALESFORGE_API_KEY ✅
+# - WARMFORGE_API_KEY ✅
+# - INFRAFORGE_API_KEY ✅
+# - VAPI_API_KEY ✅
+# - TELNYX_API_KEY ✅
+# - UNIPILE_API_KEY ✅
+# - RESEND_API_KEY ✅

@@ -1,0 +1,22 @@
+[
+  {"channel_name": "Tina Huang", "youtube_handle": "@TinaHuang1", "subscriber_count": "1.1M+", "main_topic_focus": "AI productivity, vibe coding, career growth", "recent_video_frequency": "2-3/week"},
+  {"channel_name": "Matthew Berman", "youtube_handle": "@matthew_berman", "subscriber_count": "500K+", "main_topic_focus": "AI news, open source LLMs, Cursor, vibe coding", "recent_video_frequency": "Daily"},
+  {"channel_name": "Fireship", "youtube_handle": "@Fireship", "subscriber_count": "3.5M+", "main_topic_focus": "Fast-paced code tutorials, AI tools", "recent_video_frequency": "3-5/week"},
+  {"channel_name": "AI Jason", "youtube_handle": "@AIJasonZ", "subscriber_count": "300K+", "main_topic_focus": "AI agents, LangChain, automation workflows", "recent_video_frequency": "1-2/week"},
+  {"channel_name": "Greg Isenberg", "youtube_handle": "@GregIsenberg", "subscriber_count": "350K+", "main_topic_focus": "Startup ideas with AI, indie hackers", "recent_video_frequency": "2-3/week"},
+  {"channel_name": "The AI Advantage", "youtube_handle": "@aiadvantage", "subscriber_count": "400K+", "main_topic_focus": "Practical AI workflows, prompt engineering", "recent_video_frequency": "2-4/week"},
+  {"channel_name": "Dave Ebbelaar", "youtube_handle": "@daveebbelaar", "subscriber_count": "200K+", "main_topic_focus": "Production AI systems, AI agents, Cursor, MCP", "recent_video_frequency": "1-2/week"},
+  {"channel_name": "Tech With Tim", "youtube_handle": "@TechWithTim", "subscriber_count": "1.9M+", "main_topic_focus": "Python AI projects, Cursor IDE tutorials", "recent_video_frequency": "2-3/week"},
+  {"channel_name": "AI Foundations", "youtube_handle": "@ai-foundations", "subscriber_count": "150K+", "main_topic_focus": "Vibe coding, AI agents, n8n automation", "recent_video_frequency": "2-3/week"},
+  {"channel_name": "Cole Medin", "youtube_handle": "@ColeMedin", "subscriber_count": "100K+", "main_topic_focus": "AI agents masterclass, context engineering, RAG", "recent_video_frequency": "2-3/week"},
+  {"channel_name": "Sam Witteveen", "youtube_handle": "@samwitteveenai", "subscriber_count": "80K+", "main_topic_focus": "LLMs, autonomous agents, Google AI tools", "recent_video_frequency": "1-2/week"},
+  {"channel_name": "IndyDevDan", "youtube_handle": "@indydevdan", "subscriber_count": "75K+", "main_topic_focus": "Agentic engineering, Claude Code, Cursor mastery", "recent_video_frequency": "1-2/week"},
+  {"channel_name": "WorldofAI", "youtube_handle": "@intheworldofai", "subscriber_count": "180K+", "main_topic_focus": "AI tools for daily tasks, productivity automation", "recent_video_frequency": "2-3/week"},
+  {"channel_name": "Matt Wolfe", "youtube_handle": "@mreflow", "subscriber_count": "900K+", "main_topic_focus": "AI tool reviews, FutureTools.io, generative AI", "recent_video_frequency": "3-4/week"},
+  {"channel_name": "AI Explained", "youtube_handle": "@aiexplained-official", "subscriber_count": "600K+", "main_topic_focus": "Deep analysis of GPT-5, Claude, AI safety", "recent_video_frequency": "1-2/week"},
+  {"channel_name": "Sentdex", "youtube_handle": "@sentdex", "subscriber_count": "1.3M+", "main_topic_focus": "Python ML from scratch, AI finance, robotics", "recent_video_frequency": "1/week"},
+  {"channel_name": "Prompt Engineering", "youtube_handle": "@engineerprompt", "subscriber_count": "200K+", "main_topic_focus": "AI/ML tutorials, prompt engineering, AI agents", "recent_video_frequency": "2-3/week"},
+  {"channel_name": "freeCodeCamp", "youtube_handle": "@freeCodeCamp", "subscriber_count": "10M+", "main_topic_focus": "Comprehensive AI/ML courses, Python", "recent_video_frequency": "Daily"},
+  {"channel_name": "Two Minute Papers", "youtube_handle": "@TwoMinutePapers", "subscriber_count": "1.7M+", "main_topic_focus": "AI research paper summaries, ML breakthroughs", "recent_video_frequency": "2-3/week"},
+  {"channel_name": "Robin Evers", "youtube_handle": "@itsbyrobin", "subscriber_count": "30K+", "main_topic_focus": "Vibe coding for non-tech founders, no-code AI", "recent_video_frequency": "1-2/week"}
+]

@@ -1,0 +1,47 @@
+# OpenClaw YouTube Coverage
+# Scraped: 2026-02-05
+# Query: "OpenClaw" OR "Open Claw AI" OR "OpenClaw agent"
+# Note: View counts unavailable (YouTube requires JS rendering)
+
+🎬 OpenClaw Full Tutorial for Beginners – How to Set Up and Use OpenClaw (ClawdBot / MoltBot) — Unknown Channel — N/A — 2 days ago
+   Summary: Comprehensive introduction to OpenClaw for automating digital tasks as a proactive autonomous agent.
+
+🎬 What is Clawdbot (OpenClaw)? | AI Agent That Actually Does Work — Unknown Channel — N/A — 3 days ago
+   Summary: Explainer on Clawdbot/Moltbot/OpenClaw - an AI agent that takes action, not just a chatbot.
+
+🎬 Master OpenClaw/Clawdbot in 35 minutes — Unknown Channel — N/A — 1 week ago
+   Summary: 100-hour deep-dive condensed into complete guide on OpenClaw as an action-taking AI agent.
+
+🎬 How OpenClaw's Creator Uses AI to Run His Life in 40 Minutes | Peter Steinberger — Unknown Channel — N/A — 4 days ago
+   Summary: Interview with Peter Steinberger, OpenClaw creator, on how he uses AI personally (2M visitors in a week mentioned).
+
+🎬 OpenClaw Step by Step: Setup Your AI Assistant 100% Locally (Telegram + Ollama) — Unknown Channel — N/A — 4 days ago
+   Summary: Tutorial for setting up OpenClaw with Telegram and Ollama for fully local, private AI assistant.
+
+🎬 OpenClaw Skills Tutorial - Build Local AI Agent Skills + MoltBook Integration — Unknown Channel — N/A — 5 days ago
+   Summary: Step-by-step guide for creating OpenClaw skills with Ollama and MoltBook integration.
+
+🎬 This OpenSource AI Assistant broke the Internet | OpenClaw — Abhishek Veeramalla — N/A — 4 days ago
+   Summary: OpenClaw tutorial by Abhishek Veeramalla covering the viral open-source AI assistant.
+
+🎬 Full OpenClaw Setup Tutorial: Step-by-Step Walkthrough (Clawdbot) — Unknown Channel — N/A — 1 day ago
+   Summary: Complete installation and configuration walkthrough to get OpenClaw AI assistant running.
+
+🎬 Openclaw AI explained - What is OpenClaw and how it works? (SHORT) — Unknown Channel — N/A — 3 days ago
+   Summary: YouTube Short explaining OpenClaw fundamentals, setup, and use cases.
+
+🎬 Run AI CoWork Locally with OpenClaw & Ollama (Complete Setup) — Unknown Channel — N/A — 4 days ago
+   Summary: Free local AI setup with OpenClaw + Ollama for computer control with no API costs and 100% privacy.
+
+---
+URLs:
+1. https://www.youtube.com/watch?v=n1sfrc-RjyM
+2. https://www.youtube.com/watch?v=KQmOXU2e8NU
+3. https://www.youtube.com/watch?v=4evf5YqVzOM
+4. https://www.youtube.com/watch?v=AcwK1Uuwc0U
+5. https://www.youtube.com/watch?v=eDIDysgEHUU
+6. https://www.youtube.com/watch?v=CENnPXxVUAc
+7. https://www.youtube.com/watch?v=C-_ngZTKmGs
+8. https://www.youtube.com/watch?v=fcZMmP5dsl4
+9. https://www.youtube.com/shorts/l51qziR8lLA
+10. https://www.youtube.com/watch?v=V6Mp0fUh-OM

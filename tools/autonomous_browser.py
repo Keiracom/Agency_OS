@@ -258,7 +258,7 @@ def set_cached(url: str, task: str, result: dict) -> None:
 async def create_stealth_context(
     playwright,
     identity: StealthIdentity,
-) -> Tuple[Browser, BrowserContext]:
+) -> Tuple["Browser", "BrowserContext"]:
     """
     Create a browser context with full stealth configuration.
     """
@@ -270,7 +270,14 @@ async def create_stealth_context(
     # Add proxy if configured
     if identity.proxy:
         # Parse proxy URL (supports http://user:pass@host:port)
-        launch_opts["proxy"] = {"server": identity.proxy}
+        from urllib.parse import urlparse
+        parsed = urlparse(identity.proxy)
+        proxy_config = {"server": f"{parsed.scheme}://{parsed.hostname}:{parsed.port}"}
+        if parsed.username:
+            proxy_config["username"] = parsed.username
+        if parsed.password:
+            proxy_config["password"] = parsed.password
+        launch_opts["proxy"] = proxy_config
     
     browser = await playwright.chromium.launch(**launch_opts)
     

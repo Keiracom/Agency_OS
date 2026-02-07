@@ -1075,10 +1075,12 @@ Respond in JSON format only:
                 logger.warning(f"LinkedIn enrichment failed for {company_name}: {e}")
 
         # Tier 3: Google Business (excellent for local Australian businesses)
-        if not enrichment_source and self.apify:
+        # FCO-003: Uses GMB Scraper instead of Apify (~70% cost reduction)
+        if not enrichment_source:
             try:
                 logger.info(f"Tier 3: Google Business search for {company_name}")
-                google_data = await self.apify.scrape_google_business(company_name, "Australia")
+                from src.integrations.gmb_scraper import scrape_google_business
+                google_data = await scrape_google_business(company_name, "Australia")
 
                 if google_data.get("found"):
                     enriched.location = google_data.get("address") or enriched.location

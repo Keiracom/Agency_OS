@@ -64,7 +64,7 @@ class UnipileClient:
             self._client = httpx.AsyncClient(
                 base_url=f"{self.api_url}/api/v1",
                 headers={
-                    "X-API-KEY": self.api_key,
+                    "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json",
                     "Accept": "application/json",
                 },

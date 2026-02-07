@@ -23,6 +23,10 @@ from src.integrations.serper import SerperClient, get_serper_client
 from src.integrations.siege_waterfall import SiegeWaterfall, get_siege_waterfall
 from src.integrations.vapi import VapiClient, get_vapi_client
 
+# Billing & Booking
+from src.integrations.stripe_billing import router as stripe_billing_router
+from src.integrations.calendar_booking import router as calendar_booking_router
+
 __all__ = [
     "ABNClient",
     "get_abn_client",
@@ -42,4 +46,7 @@ __all__ = [
     "get_proxycurl_client",
     "SiegeWaterfall",
     "get_siege_waterfall",
+    # Routers for FastAPI
+    "stripe_billing_router",
+    "calendar_booking_router",
 ]

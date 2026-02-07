@@ -63,11 +63,11 @@ export default function AgencyOSHero() {
 
   return (
     <section className="relative min-h-screen bg-[#0a0a0f] overflow-hidden">
-      {/* Floating gradient orbs */}
+      {/* Floating gradient orbs - Mint theme */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/30 rounded-full blur-[120px] animate-float" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-[120px] animate-float-delayed" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-400/20 rounded-full blur-[100px] animate-pulse-slow" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-mint-500/30 rounded-full blur-[120px] animate-float" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-mint-400/30 rounded-full blur-[120px] animate-float-delayed" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-mint-300/20 rounded-full blur-[100px] animate-pulse-slow" />
       </div>
 
       {/* Content */}
@@ -89,14 +89,14 @@ export default function AgencyOSHero() {
               <span className="text-sm text-white/90 font-medium">Only 17 of 20 founding spots remaining</span>
             </div>
 
-            {/* Headline */}
+            {/* Headline - Mint gradient */}
             <h1
               className={`text-5xl lg:text-7xl font-bold leading-tight transition-all duration-700 ${
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
               }`}
               style={{ transitionDelay: "100ms" }}
             >
-              <span className="bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-mint-400 to-mint-500 bg-clip-text text-transparent">
                 Stop chasing clients.
                 <br />
                 Let them find you.
@@ -120,9 +120,9 @@ export default function AgencyOSHero() {
               }`}
               style={{ transitionDelay: "300ms" }}
             >
-              <button className="group relative px-8 py-4 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold text-lg overflow-hidden transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(139,92,246,0.5)]">
+              <button className="group relative px-8 py-4 rounded-lg bg-gradient-to-r from-mint-500 to-mint-600 text-white font-semibold text-lg overflow-hidden transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(46,212,152,0.5)]">
                 <span className="relative z-10">See It In Action</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-700 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute inset-0 bg-gradient-to-r from-mint-600 to-mint-700 opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
 
               <button className="group flex items-center gap-2 px-8 py-4 text-white/90 font-semibold text-lg hover:text-white transition-colors">
@@ -181,8 +181,8 @@ export default function AgencyOSHero() {
                 </div>
               </div>
 
-              {/* Glow effect */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 to-purple-600/20 rounded-lg blur-xl -z-10" />
+              {/* Glow effect - Mint */}
+              <div className="absolute -inset-1 bg-gradient-to-r from-mint-500/20 to-mint-400/20 rounded-lg blur-xl -z-10" />
             </div>
           </div>
         </div>

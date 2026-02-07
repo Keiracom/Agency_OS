@@ -1,0 +1,4254 @@
+{
+    "schemes": ["https"],
+    "swagger": "2.0",
+    "info": {
+        "description": "Salesforge Public API",
+        "title": "Saleforge API",
+        "termsOfService": "https://www.salesforge.ai/terms",
+        "contact": {},
+        "version": "2.0"
+    },
+    "host": "api.salesforge.ai",
+    "basePath": "/public/v2",
+    "paths": {
+        "/me": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Validates the provided API key and returns basic information about it.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Get current user info",
+                "responses": {
+                    "200": {
+                        "description": "API key is valid",
+                        "schema": {
+                            "$ref": "#/definitions/api.CheckAPIKeyResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid API key",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get workspaces associated with the account.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "Get workspaces",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of workspaces",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.ListResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/api.WorkspaceResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Create a new workspace for the account.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "Create workspace",
+                "parameters": [
+                    {
+                        "description": "Workspace to create",
+                        "name": "workspace",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateWorkspaceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created workspace",
+                        "schema": {
+                            "$ref": "#/definitions/api.WorkspaceResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get workspace information.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "Get workspace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Workspace",
+                        "schema": {
+                            "$ref": "#/definitions/api.WorkspaceResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Workspace Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/contacts": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get contacts associated with the workspace.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "contacts"
+                ],
+                "summary": "Get contacts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Filter by tag ids",
+                        "name": "tag_ids[]",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by contacts not in sequence",
+                        "name": "not_in_sequence_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "safe",
+                                "invalid",
+                                "disabled",
+                                "disposable",
+                                "inbox_full",
+                                "catch_all",
+                                "role_account",
+                                "spamtrap",
+                                "unknown",
+                                "unvalidated"
+                            ],
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Filter by validation statuses",
+                        "name": "validation_statuses[]",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of contacts",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.ListResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/api.ContactResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Create a new contact.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "contacts"
+                ],
+                "summary": "Create contact",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateSimpleLeadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Contact",
+                        "schema": {
+                            "$ref": "#/definitions/api.ContactResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/contacts/bulk": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Create up to 100 contacts in bulk.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "contacts"
+                ],
+                "summary": "Bulk create contacts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.BulkCreateContactsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Contacts",
+                        "schema": {
+                            "$ref": "#/definitions/api.BulkCreateContactsResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/contacts/{contactID}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get contact information.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "contacts"
+                ],
+                "summary": "Get contact",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Contact ID",
+                        "name": "contactID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Contact",
+                        "schema": {
+                            "$ref": "#/definitions/api.ContactResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Contact Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/custom-vars": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get a list of custom variables associated to a workspace.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "custom vars"
+                ],
+                "summary": "Get Custom Variables",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of custom variables",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.ListResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/api.CustomVarResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/dnc/bulk": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Create multiple DNC entries for a workspace.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dnc"
+                ],
+                "summary": "Bulk create DNCs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.BulkCreateDNCRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created DNCs",
+                        "schema": {
+                            "$ref": "#/definitions/api.BulkCreateDNCResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/integrations/webhooks": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get registered webhooks associated with the workspace.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "webhooks"
+                ],
+                "summary": "Get webhooks",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of webhooks",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.ListResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/api.WebhookResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Create a new webhook.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "webhooks"
+                ],
+                "summary": "Create webhook",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateWebhookRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created webhook",
+                        "schema": {
+                            "$ref": "#/definitions/api.WebhookResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/integrations/webhooks/{webhookID}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get webhook information.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "webhooks"
+                ],
+                "summary": "Get webhook",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Webhook ID",
+                        "name": "webhookID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Webhook",
+                        "schema": {
+                            "$ref": "#/definitions/api.WebhookResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Webhook not found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/mailboxes": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get mailboxes associated with the workspace.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mailboxes"
+                ],
+                "summary": "Get mailboxes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "active",
+                                "access_lost",
+                                "pending"
+                            ],
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Filter by status",
+                        "name": "statuses[]",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Filter by mailbox IDs",
+                        "name": "mailbox_ids[]",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Exclude mailbox IDs",
+                        "name": "excluded_mailbox_ids[]",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search query",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Filter by tag IDs",
+                        "name": "tag_ids[]",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Exclude tag IDs",
+                        "name": "not_tag_ids[]",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Filter by mailbox addresses",
+                        "name": "addresses[]",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "all",
+                            "active",
+                            "warm",
+                            "pending",
+                            "suspended",
+                            "disconnected",
+                            "recommendations"
+                        ],
+                        "type": "string",
+                        "default": "all",
+                        "description": "Status criteria",
+                        "name": "status_criteria",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "all",
+                                "active",
+                                "warm",
+                                "pending",
+                                "suspended",
+                                "disconnected",
+                                "recommendations"
+                            ],
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "default": "all",
+                        "description": "Statuses criteria",
+                        "name": "statuses_criteria",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of mailboxes",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.ListResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/api.MailboxResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/mailboxes/{mailboxID}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get mailbox information.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mailboxes"
+                ],
+                "summary": "Get mailbox",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Mailbox ID",
+                        "name": "mailboxID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Mailbox",
+                        "schema": {
+                            "$ref": "#/definitions/api.MailboxResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Mailbox not found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/mailboxes/{mailboxID}/emails/{emailID}/reply": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Create a new Email Reply.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "email"
+                ],
+                "summary": "Create Email Reply",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Mailbox ID",
+                        "name": "mailboxID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Email ID",
+                        "name": "emailID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.ReplyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/mailboxes/{mailboxID}/threads/{threadID}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get thread information.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "threads"
+                ],
+                "summary": "Get thread",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Mailbox ID",
+                        "name": "mailboxID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Thread ID",
+                        "name": "threadID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Thread",
+                        "schema": {
+                            "$ref": "#/definitions/api.ThreadResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Thread Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/products": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get products associated with the workspace.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "products"
+                ],
+                "summary": "Get products",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of products",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.ListResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/api.ProductResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Create a new product.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "products"
+                ],
+                "summary": "Create Product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateProductRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created product",
+                        "schema": {
+                            "$ref": "#/definitions/api.ProductResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/products/{productID}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get product information.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "products"
+                ],
+                "summary": "Get product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Product ID",
+                        "name": "productID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Product",
+                        "schema": {
+                            "$ref": "#/definitions/api.ProductResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Product Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/sending-data": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get sending data for sequences in a workspace.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Get sequence contact sending data",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "maximum": 1000,
+                        "type": "integer",
+                        "default": 100,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Filter by sequences",
+                        "name": "sequence_ids[]",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of sequence contact sending data",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.ListResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/api.SequenceContactSendingDataResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/sequence-metrics": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get sequence metrics associated with the workspace.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Get workspace sequence metrics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by product ID",
+                        "name": "product_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Filter by sequence IDs",
+                        "name": "sequence_ids[]",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sequence metrics",
+                        "schema": {
+                            "$ref": "#/definitions/api.WorkspaceSequenceMetricsResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/sequences": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns every sequence in the workspace. Multichannel sequences appear first, and legacy sequences fill the rest of the requested page.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Get workspace sequences",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "active",
+                                "paused",
+                                "draft",
+                                "completed"
+                            ],
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Filter by status",
+                        "name": "statuses[]",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by product ID",
+                        "name": "product_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Filter by sequence IDs",
+                        "name": "sequence_ids[]",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "enum": [
+                            "legacy",
+                            "multichannel"
+                        ],
+                        "description": "Filter by sequence type",
+                        "name": "type",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of sequences",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.ListResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/api.SequenceResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Create a new sequence.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Create sequence",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateSequenceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created sequence",
+                        "schema": {
+                            "$ref": "#/definitions/api.SequenceResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/sequences/{sequenceID}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get a specific sequence by ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Get sequence by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sequence ID",
+                        "name": "sequenceID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sequence",
+                        "schema": {
+                            "$ref": "#/definitions/api.SequenceResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Sequence Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update an existing sequence.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Update sequence",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sequence ID",
+                        "name": "sequenceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateSequenceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated sequence",
+                        "schema": {
+                            "$ref": "#/definitions/api.SequenceResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Delete a sequence.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Delete sequence",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sequence ID",
+                        "name": "sequenceID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Sequence deleted successfully"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/sequences/{sequenceID}/analytics": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get analytics for a sequence.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Get sequence analytics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sequence ID",
+                        "name": "sequenceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "date",
+                        "description": "From date",
+                        "name": "from_date",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "date",
+                        "description": "To date",
+                        "name": "to_date",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "default": "UTC",
+                        "description": "Timezone",
+                        "name": "timezone",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sequence analytics",
+                        "schema": {
+                            "$ref": "#/definitions/api.SequenceAnalyticsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Sequence Does Not Exist",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/sequences/{sequenceID}/contacts": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Assign contacts to a sequence.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Assign contacts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sequence ID",
+                        "name": "sequenceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.AssignContactsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Contacts assigned successfully"
+                    },
+                    "402": {
+                        "description": "Not Enough Contact Credits",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/errors.Error"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/http.leadCreditsNeededError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/sequences/{sequenceID}/contacts/count": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get the number of contacts assigned to a sequence.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Get sequence contacts count",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sequence ID",
+                        "name": "sequenceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "ooo",
+                                "bounced",
+                                "replied",
+                                "failed",
+                                "active",
+                                "paused",
+                                "finished",
+                                "dnc",
+                                "deleted",
+                                "unsubscribed"
+                            ],
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Filter by status",
+                        "name": "statuses[]",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Contacts count",
+                        "schema": {
+                            "$ref": "#/definitions/api.SequenceContactsCountResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/sequences/{sequenceID}/contacts/validation/confirm": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Confirm validation results for contacts assigned to a sequence.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Confirm validation results",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sequence ID",
+                        "name": "sequenceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.ConfirmSequenceContactValidationResultRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Validation results confirmed"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/sequences/{sequenceID}/contacts/validation/result": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get sequence contact validation results.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Get sequence contact validation results",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sequence ID",
+                        "name": "sequenceID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Validation result",
+                        "schema": {
+                            "$ref": "#/definitions/api.SequenceContactValidationResultsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "No validation is currently in progress",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/sequences/{sequenceID}/contacts/validation/skip": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Skip validation results for contacts assigned to a sequence.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Skip validation results",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sequence ID",
+                        "name": "sequenceID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Validation results skipped"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/sequences/{sequenceID}/contacts/validation/start": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Start sequence contact validation.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Start sequence contact validation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sequence ID",
+                        "name": "sequenceID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Validation started"
+                    },
+                    "400": {
+                        "description": "Nothing to validate",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "402": {
+                        "description": "Not Enough Contact Validation Credits",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/sequences/{sequenceID}/contacts/validation/validate": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Validate contacts assigned to a sequence.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Validate sequence contacts",
+                "deprecated": true,
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sequence ID",
+                        "name": "sequenceID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Validation result",
+                        "schema": {
+                            "$ref": "#/definitions/models.GetValidatedLeadsResponseDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Nothing to validate",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "402": {
+                        "description": "Not Enough Contact Validation Credits",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "408": {
+                        "description": "Request Timeout",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/sequences/{sequenceID}/import-lead": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Import lead to a sequence.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Import lead",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sequence ID",
+                        "name": "sequenceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateSimpleLeadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Lead imported successfully"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/sequences/{sequenceID}/mailboxes": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Assign mailboxes to a sequence.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Assign mailboxes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sequence ID",
+                        "name": "sequenceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.AssignMailboxesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Mailboxes assigned successfully"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/sequences/{sequenceID}/schedules": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update an existing sequence's schedules.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Update sequence schedules",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sequence ID",
+                        "name": "sequenceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateSequenceSchedulesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated sequence schedules",
+                        "schema": {
+                            "$ref": "#/definitions/api.SequenceSchedulesResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/sequences/{sequenceID}/status": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update a sequence's status.",
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Update sequence status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sequence ID",
+                        "name": "sequenceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateSequenceStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Sequence status updated successfully"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/sequences/{sequenceID}/steps": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update an existing sequence's steps.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sequences"
+                ],
+                "summary": "Update sequence steps",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sequence ID",
+                        "name": "sequenceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateSequenceStepsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated sequence steps",
+                        "schema": {
+                            "$ref": "#/definitions/api.SequenceStepsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/threads": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get a list of threads associated with the workspace.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "threads"
+                ],
+                "summary": "Get workspace threads",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Filter by mailboxes",
+                        "name": "mailbox_ids[]",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Filter by agents",
+                        "name": "agent_ids[]",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Filter by sequences",
+                        "name": "sequence_ids[]",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of threads",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.ListResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/api.PrimeboxThreadResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.Error"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "api.AssignContactsRequest": {
+            "type": "object",
+            "required": [
+                "contactIds"
+            ],
+            "properties": {
+                "contactIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "api.AssignMailboxesRequest": {
+            "type": "object",
+            "required": [
+                "mailboxIds"
+            ],
+            "properties": {
+                "mailboxIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "api.BulkCreateContactsRequest": {
+            "type": "object",
+            "properties": {
+                "contacts": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/api.CreateSimpleLeadRequest"
+                    }
+                }
+            }
+        },
+        "api.BulkCreateContactsResponse": {
+            "type": "object",
+            "properties": {
+                "contacts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ContactResponse"
+                    }
+                }
+            }
+        },
+        "api.BulkCreateDNCRequest": {
+            "type": "object",
+            "required": [
+                "dncs"
+            ],
+            "properties": {
+                "dncs": {
+                    "type": "array",
+                    "maxItems": 1000,
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "api.BulkCreateDNCResponse": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.CheckAPIKeyResponse": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "apiKeyName": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ConfirmSequenceContactValidationResultRequest": {
+            "type": "object",
+            "required": [
+                "esps"
+            ],
+            "properties": {
+                "esps": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/models.LeadESP"
+                    },
+                    "example": [
+                        "gsuite",
+                        "ms365"
+                    ]
+                },
+                "statuses": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/models.ReonEmailStatus"
+                    },
+                    "example": [
+                        "safe"
+                    ]
+                }
+            }
+        },
+        "api.ContactResponse": {
+            "type": "object",
+            "properties": {
+                "company": {
+                    "type": "string"
+                },
+                "customVars": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "email": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "linkedinUrl": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "api.CreateProductRequest": {
+            "type": "object",
+            "properties": {
+                "product": {
+                    "$ref": "#/definitions/api.ProductRequest"
+                },
+                "translation": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ProductRequest"
+                    }
+                }
+            }
+        },
+        "api.CreateSequenceRequest": {
+            "type": "object",
+            "required": [
+                "language",
+                "name",
+                "productId",
+                "timezone"
+            ],
+            "properties": {
+                "language": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Language"
+                        }
+                    ],
+                    "example": "american_english"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "My Sequence"
+                },
+                "productId": {
+                    "type": "string",
+                    "example": "prod_123456"
+                },
+                "timezone": {
+                    "type": "string",
+                    "example": "America/New_York"
+                }
+            }
+        },
+        "api.CreateSimpleLeadRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "firstName"
+            ],
+            "properties": {
+                "company": {
+                    "type": "string",
+                    "minLength": 1,
+                    "example": "Salesforge"
+                },
+                "customVars": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "example": {
+                        "key1": "value1",
+                        "key2": "value2"
+                    }
+                },
+                "email": {
+                    "type": "string",
+                    "example": "johndoe@salesforge.ai"
+                },
+                "firstName": {
+                    "type": "string",
+                    "example": "John"
+                },
+                "lastName": {
+                    "type": "string",
+                    "example": "Doe"
+                },
+                "linkedinUrl": {
+                    "type": "string",
+                    "example": "https://www.linkedin.com/in/johndoe"
+                },
+                "tagIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "tag1",
+                        "tag2"
+                    ]
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "tag1",
+                        "tag2"
+                    ]
+                }
+            }
+        },
+        "api.CreateWebhookRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "type",
+                "url"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "sequenceID": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "type": {
+                    "enum": [
+                        "email_sent",
+                        "email_opened",
+                        "link_clicked",
+                        "email_replied",
+                        "linkedin_replied",
+                        "contact_unsubscribed",
+                        "email_bounced",
+                        "positive_reply",
+                        "negative_reply",
+                        "label_changed"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/webhooks.WebhookType"
+                        }
+                    ]
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.CreateWorkspaceRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "example": "My Workspace"
+                }
+            }
+        },
+        "api.CustomVarResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.MailboxResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "dailyEmailLimit": {
+                    "type": "integer"
+                },
+                "disconnectReason": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "signature": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.MailboxStatus"
+                },
+                "trackingDomain": {
+                    "type": "string"
+                },
+                "trackingDomainStatus": {
+                    "$ref": "#/definitions/models.TrackingDomainStatus"
+                }
+            }
+        },
+        "api.PrimeboxThreadResponse": {
+            "type": "object",
+            "properties": {
+                "agentId": {
+                    "type": "string"
+                },
+                "agentReply": {
+                    "type": "string"
+                },
+                "agentStatus": {
+                    "$ref": "#/definitions/models.ThreadAgentStatus"
+                },
+                "contactEmail": {
+                    "type": "string"
+                },
+                "contactFirstName": {
+                    "type": "string"
+                },
+                "contactLastName": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isUnread": {
+                    "type": "boolean"
+                },
+                "labelId": {
+                    "type": "string"
+                },
+                "mailboxId": {
+                    "type": "string"
+                },
+                "replyType": {
+                    "$ref": "#/definitions/models.ReplyType"
+                },
+                "subject": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ProductRequest": {
+            "type": "object",
+            "properties": {
+                "costOfInaction": {
+                    "type": "string"
+                },
+                "idealCustomerProfile": {
+                    "type": "string"
+                },
+                "industry": {
+                    "type": "string"
+                },
+                "internalName": {
+                    "type": "string"
+                },
+                "language": {
+                    "$ref": "#/definitions/models.Language"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "pain": {
+                    "type": "string"
+                },
+                "proofPoints": {
+                    "type": "string"
+                },
+                "solution": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ProductResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "internalName": {
+                    "type": "string"
+                },
+                "translations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ProductTranslationResponse"
+                    }
+                }
+            }
+        },
+        "api.ProductTranslationResponse": {
+            "type": "object",
+            "properties": {
+                "costOfInaction": {
+                    "type": "string"
+                },
+                "idealCustomerProfile": {
+                    "type": "string"
+                },
+                "industry": {
+                    "type": "string"
+                },
+                "language": {
+                    "$ref": "#/definitions/models.Language"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "pain": {
+                    "type": "string"
+                },
+                "proofPoints": {
+                    "type": "string"
+                },
+                "solution": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ReplyRequest": {
+            "type": "object",
+            "properties": {
+                "bccs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ccs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "content": {
+                    "type": "string",
+                    "example": "Reply to the email content"
+                },
+                "includeHistory": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "api.SequenceAnalyticsDayResponse": {
+            "type": "object",
+            "properties": {
+                "replied": {
+                    "type": "integer"
+                },
+                "sent": {
+                    "type": "integer"
+                },
+                "totalClicked": {
+                    "type": "integer"
+                },
+                "totalOpened": {
+                    "type": "integer"
+                },
+                "uniqueClicked": {
+                    "type": "integer"
+                },
+                "uniqueOpened": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.SequenceAnalyticsResponse": {
+            "type": "object",
+            "properties": {
+                "days": {
+                    "description": "key is date in format \"2006-01-02\"",
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/api.SequenceAnalyticsDayResponse"
+                    }
+                },
+                "stats": {
+                    "$ref": "#/definitions/api.SequenceAnalyticsStatsResponse"
+                }
+            }
+        },
+        "api.SequenceAnalyticsStatsResponse": {
+            "type": "object",
+            "properties": {
+                "clicked": {
+                    "type": "integer"
+                },
+                "clickedPercent": {
+                    "type": "number"
+                },
+                "contacted": {
+                    "type": "integer"
+                },
+                "opened": {
+                    "type": "integer"
+                },
+                "openedPercent": {
+                    "type": "number"
+                },
+                "replied": {
+                    "type": "integer"
+                },
+                "repliedPercent": {
+                    "type": "number"
+                },
+                "repliedPositive": {
+                    "type": "integer"
+                },
+                "repliedPositivePercent": {
+                    "type": "number"
+                }
+            }
+        },
+        "api.SequenceContactSendingDataResponse": {
+            "type": "object",
+            "properties": {
+                "clicked": {
+                    "type": "string"
+                },
+                "contactId": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "opened": {
+                    "type": "string"
+                },
+                "scheduled": {
+                    "type": "string"
+                },
+                "sent": {
+                    "type": "string"
+                },
+                "sequenceId": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.SequenceContactValidationResultsResponse": {
+            "type": "object",
+            "properties": {
+                "progress": {
+                    "type": "integer"
+                },
+                "result": {
+                    "$ref": "#/definitions/models.LeadsESPValidationResult"
+                },
+                "status": {
+                    "$ref": "#/definitions/api.ValidationStatus"
+                }
+            }
+        },
+        "api.SequenceContactsCountResponse": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.SequenceMailboxResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.SequenceResponse": {
+            "type": "object",
+            "properties": {
+                "agentId": {
+                    "type": "string"
+                },
+                "bouncedCount": {
+                    "type": "integer"
+                },
+                "bouncedPercent": {
+                    "type": "number"
+                },
+                "clickTrackingEnabled": {
+                    "type": "boolean"
+                },
+                "clickedCount": {
+                    "type": "integer"
+                },
+                "clickedPercent": {
+                    "type": "number"
+                },
+                "companyOutreachLimitCount": {
+                    "type": "integer"
+                },
+                "companyOutreachLimitEnabled": {
+                    "type": "boolean"
+                },
+                "completedCount": {
+                    "type": "integer"
+                },
+                "completedPercent": {
+                    "type": "number"
+                },
+                "contactedCount": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "leadCount": {
+                    "type": "integer"
+                },
+                "localizedOptOutEnabled": {
+                    "type": "boolean"
+                },
+                "mailboxes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.SequenceMailboxResponse"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "openTrackingEnabled": {
+                    "type": "boolean"
+                },
+                "openedCount": {
+                    "type": "integer"
+                },
+                "openedPercent": {
+                    "type": "number"
+                },
+                "productId": {
+                    "type": "string"
+                },
+                "repliedCount": {
+                    "type": "integer"
+                },
+                "repliedPercent": {
+                    "type": "number"
+                },
+                "repliedPositiveCount": {
+                    "type": "integer"
+                },
+                "repliedPositivePercent": {
+                    "type": "number"
+                },
+                "sequentialCompanySendingEnabled": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.SequenceStatus"
+                },
+                "steps": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.SequenceStepResponse"
+                    }
+                },
+                "workspaceId": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.SequenceScheduleResponse": {
+            "type": "object",
+            "properties": {
+                "fromHour": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "toHour": {
+                    "type": "integer"
+                },
+                "weekday": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.SequenceSchedulesResponse": {
+            "type": "object",
+            "properties": {
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.SequenceScheduleResponse"
+                    }
+                }
+            }
+        },
+        "api.SequenceStepResponse": {
+            "type": "object",
+            "properties": {
+                "distributionStrategy": {
+                    "$ref": "#/definitions/models.ABTestDistributionStrategy"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "variants": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.SequenceStepVariantResponse"
+                    }
+                },
+                "waitDays": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.SequenceStepVariantResponse": {
+            "type": "object",
+            "properties": {
+                "contactInformationSource": {
+                    "$ref": "#/definitions/models.ContactInformationSource"
+                },
+                "distributionWeight": {
+                    "type": "number"
+                },
+                "dynamicLanguageEnabled": {
+                    "type": "boolean"
+                },
+                "emailContent": {
+                    "type": "string"
+                },
+                "emailSubject": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isGenerated": {
+                    "type": "boolean"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "overdriveEnabled": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.SequenceStepVariantStatus"
+                },
+                "tonality": {
+                    "$ref": "#/definitions/models.AIGenerationTonality"
+                }
+            }
+        },
+        "api.SequenceStepsResponse": {
+            "type": "object",
+            "properties": {
+                "steps": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.SequenceStepResponse"
+                    }
+                }
+            }
+        },
+        "api.ThreadContactResponse": {
+            "type": "object",
+            "properties": {
+                "company": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "linkedinUrl": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ThreadEmailResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "emailId": {
+                    "type": "string"
+                },
+                "fromAddress": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "toAddress": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ThreadResponse": {
+            "type": "object",
+            "properties": {
+                "contact": {
+                    "$ref": "#/definitions/api.ThreadContactResponse"
+                },
+                "emails": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ThreadEmailResponse"
+                    }
+                },
+                "sequence": {
+                    "$ref": "#/definitions/api.ThreadSequenceResponse"
+                }
+            }
+        },
+        "api.ThreadSequenceResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "product": {
+                    "$ref": "#/definitions/api.ProductResponse"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.SequenceStatus"
+                }
+            }
+        },
+        "api.UpdateSequenceSchedulesRequest": {
+            "type": "object",
+            "properties": {
+                "schedules": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/api.UpsertSequenceScheduleRequest"
+                    }
+                }
+            }
+        },
+        "api.UpdateSequenceStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "active",
+                        "paused"
+                    ]
+                }
+            }
+        },
+        "api.UpdateSequenceStepsRequest": {
+            "type": "object",
+            "properties": {
+                "steps": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/api.UpsertStepRequest"
+                    }
+                }
+            }
+        },
+        "api.UpsertSequenceScheduleRequest": {
+            "type": "object",
+            "properties": {
+                "fromHour": {
+                    "type": "integer",
+                    "maximum": 23,
+                    "minimum": 0
+                },
+                "toHour": {
+                    "type": "integer",
+                    "maximum": 24,
+                    "minimum": 1
+                },
+                "weekday": {
+                    "type": "integer",
+                    "maximum": 6,
+                    "minimum": 0
+                }
+            }
+        },
+        "api.UpsertStepRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "distributionStrategy": {
+                    "enum": [
+                        "equal",
+                        "custom"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ABTestDistributionStrategy"
+                        }
+                    ]
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "variants": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/api.UpsertStepRequestVariant"
+                    }
+                },
+                "waitDays": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
+        "api.UpsertStepRequestVariant": {
+            "type": "object",
+            "required": [
+                "label"
+            ],
+            "properties": {
+                "contactInformationSource": {
+                    "enum": [
+                        "linkedin",
+                        "website",
+                        "all"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ContactInformationSource"
+                        }
+                    ]
+                },
+                "distributionWeight": {
+                    "type": "number",
+                    "maximum": 100,
+                    "minimum": 0
+                },
+                "dynamicLanguageEnabled": {
+                    "type": "boolean"
+                },
+                "emailContent": {
+                    "type": "string"
+                },
+                "emailSubject": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "isGenerated": {
+                    "type": "boolean"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "overdriveEnabled": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "enum": [
+                        "active",
+                        "paused"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.SequenceStepVariantStatus"
+                        }
+                    ]
+                },
+                "tonality": {
+                    "minLength": 1,
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.AIGenerationTonality"
+                        }
+                    ]
+                }
+            }
+        },
+        "api.ValidationStatus": {
+            "type": "string",
+            "enum": [
+                "in_progress",
+                "completed"
+            ],
+            "x-enum-varnames": [
+                "ValidationStatusInProgress",
+                "ValidationStatusCompleted"
+            ]
+        },
+        "api.WebhookResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "sentCount": {
+                    "type": "integer"
+                },
+                "sequenceId": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/webhooks.WebhookType"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.WorkspaceResponse": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.WorkspaceSequenceMetricsResponse": {
+            "type": "object",
+            "properties": {
+                "bounced": {
+                    "type": "integer"
+                },
+                "bouncedPercent": {
+                    "type": "number"
+                },
+                "clicked": {
+                    "type": "integer"
+                },
+                "clickedPercent": {
+                    "type": "number"
+                },
+                "contacted": {
+                    "type": "integer"
+                },
+                "opened": {
+                    "type": "integer"
+                },
+                "openedPercent": {
+                    "type": "number"
+                },
+                "replied": {
+                    "type": "integer"
+                },
+                "repliedPercent": {
+                    "type": "number"
+                },
+                "repliedPositive": {
+                    "type": "integer"
+                },
+                "repliedPositivePercent": {
+                    "type": "number"
+                }
+            }
+        },
+        "errors.Error": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "http.leadCreditsNeededError": {
+            "type": "object",
+            "properties": {
+                "leadCreditsNeeded": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.ABTestDistributionStrategy": {
+            "type": "string",
+            "enum": [
+                "equal",
+                "custom"
+            ],
+            "x-enum-varnames": [
+                "ABTestDistributionStrategyEqual",
+                "ABTestDistributionStrategyCustom"
+            ]
+        },
+        "models.AIGenerationTonality": {
+            "type": "string",
+            "enum": [
+                "playful",
+                "hilarious",
+                "formal",
+                "curious",
+                "urgent",
+                "appreciative",
+                "polite",
+                "enthusiastic",
+                "warm",
+                "empathetic",
+                "direct",
+                "persuasive",
+                "confident",
+                "respectful",
+                "helpful",
+                "sincere",
+                "encouraging",
+                "informal",
+                "caring",
+                "diplomatic",
+                "assertive",
+                "reassuring",
+                "authoritative"
+            ],
+            "x-enum-varnames": [
+                "AIGenerationTonalityPlayful",
+                "AIGenerationTonalityHilarious",
+                "AIGenerationTonalityFormal",
+                "AIGenerationTonalityCurious",
+                "AIGenerationTonalityUrgent",
+                "AIGenerationTonalityAppreciative",
+                "AIGenerationTonalityPolite",
+                "AIGenerationTonalityEnthusiastic",
+                "AIGenerationTonalityWarm",
+                "AIGenerationTonalityEmpathetic",
+                "AIGenerationTonalityDirect",
+                "AIGenerationTonalityPersuasive",
+                "AIGenerationTonalityConfident",
+                "AIGenerationTonalityRespectful",
+                "AIGenerationTonalityHelpful",
+                "AIGenerationTonalitySincere",
+                "AIGenerationTonalityEncouraging",
+                "AIGenerationTonalityInformal",
+                "AIGenerationTonalityCaring",
+                "AIGenerationTonalityDiplomatic",
+                "AIGenerationTonalityAssertive",
+                "AIGenerationTonalityReassuring",
+                "AIGenerationTonalityAuthoritative"
+            ]
+        },
+        "models.ContactInformationSource": {
+            "type": "string",
+            "enum": [
+                "linkedin",
+                "website",
+                "all"
+            ],
+            "x-enum-varnames": [
+                "ContactInformationSourceLinkedin",
+                "ContactInformationSourceWebsite",
+                "ContactInformationSourceAll"
+            ]
+        },
+        "models.GetValidatedLeadsResponseDTO": {
+            "type": "object",
+            "properties": {
+                "processedPercentage": {
+                    "type": "integer"
+                },
+                "result": {
+                    "$ref": "#/definitions/models.LeadsESPValidationResult"
+                }
+            }
+        },
+        "models.Language": {
+            "type": "string",
+            "enum": [
+                "russian",
+                "ukrainian",
+                "finnish",
+                "american_english",
+                "british_english",
+                "french",
+                "spanish",
+                "polish",
+                "romanian",
+                "german",
+                "lithuanian",
+                "dutch",
+                "latvian",
+                "italian",
+                "czech",
+                "hungarian",
+                "japanese",
+                "brazilian_portugese",
+                "swedish",
+                "danish",
+                "norwegian",
+                "estonian"
+            ],
+            "x-enum-varnames": [
+                "LanguageRussian",
+                "LanguageUkrainian",
+                "LanguageFinnish",
+                "LanguageAmericanEnglish",
+                "LanguageBritishEnglish",
+                "LanguageFrench",
+                "LanguageSpanish",
+                "LanguagePolish",
+                "LanguageRomanian",
+                "LanguageGerman",
+                "LanguageLithuanian",
+                "LanguageDutch",
+                "LanguageLatvian",
+                "LanguageItalian",
+                "LanguageCzech",
+                "LanguageHungarian",
+                "LanguageJapanese",
+                "LanguageBrazilianPortugese",
+                "LanguageSwedish",
+                "LanguageDanish",
+                "LanguageNorwegian",
+                "LanguageEstonian"
+            ]
+        },
+        "models.LeadESP": {
+            "type": "string",
+            "enum": [
+                "empty",
+                "gmail",
+                "gsuite",
+                "icloud",
+                "outlook",
+                "ms365",
+                "yandex",
+                "yahoo",
+                "unknown",
+                "mailcom",
+                "proofpoint",
+                "antispamsoftware"
+            ],
+            "x-enum-varnames": [
+                "LeadESPEmpty",
+                "LeadESPGmail",
+                "LeadESPGSuite",
+                "LeadESPICloud",
+                "LeadESPOutlook",
+                "LeadESPMS365",
+                "LeadESPYandex",
+                "LeadESPYahoo",
+                "LeadESPUnknown",
+                "LeadESPMailCom",
+                "LeadESPProofPoint",
+                "LeadESPAntiSpamSoftware"
+            ]
+        },
+        "models.LeadsESPValidationResult": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/models.LeadsValidationResult"
+            }
+        },
+        "models.LeadsValidationResult": {
+            "type": "object",
+            "properties": {
+                "catch_all": {
+                    "type": "integer"
+                },
+                "disabled": {
+                    "type": "integer"
+                },
+                "disposable": {
+                    "type": "integer"
+                },
+                "inbox_full": {
+                    "type": "integer"
+                },
+                "invalid": {
+                    "type": "integer"
+                },
+                "role_account": {
+                    "type": "integer"
+                },
+                "safe": {
+                    "type": "integer"
+                },
+                "spam_trap": {
+                    "type": "integer"
+                },
+                "unknown": {
+                    "type": "integer"
+                },
+                "unvalidated": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.MailboxStatus": {
+            "type": "string",
+            "enum": [
+                "active",
+                "frozen",
+                "access_lost",
+                "deleted",
+                "inactive",
+                "pending",
+                "suspended"
+            ],
+            "x-enum-varnames": [
+                "MailboxStatusActive",
+                "MailboxStatusFrozen",
+                "MailboxStatusAccessLost",
+                "MailboxStatusDeleted",
+                "MailboxStatusInactive",
+                "MailboxStatusPending",
+                "MailboxStatusSuspended"
+            ]
+        },
+        "models.ReonEmailStatus": {
+            "type": "string",
+            "enum": [
+                "safe",
+                "invalid",
+                "disabled",
+                "disposable",
+                "inbox_full",
+                "catch_all",
+                "role_account",
+                "spamtrap",
+                "unknown",
+                "unvalidated"
+            ],
+            "x-enum-varnames": [
+                "ReonEmailStatusSafe",
+                "ReonEmailStatusInvalid",
+                "ReonEmailStatusDisabled",
+                "ReonEmailStatusDisposable",
+                "ReonEmailStatusInboxFull",
+                "ReonEmailStatusCatchAll",
+                "ReonEmailStatusRoleAccount",
+                "ReonEmailStatusSpamTrap",
+                "ReonEmailStatusUnknown",
+                "ReonEmailStatusUnvalidated"
+            ]
+        },
+        "models.ReplyType": {
+            "type": "string",
+            "enum": [
+                "ooo",
+                "bounced",
+                "lead_replied"
+            ],
+            "x-enum-varnames": [
+                "ReplyTypeOutOfOffice",
+                "ReplyTypeBounce",
+                "ReplyTypeLeadReplied"
+            ]
+        },
+        "models.SequenceStatus": {
+            "type": "string",
+            "enum": [
+                "active",
+                "draft",
+                "paused",
+                "deleted",
+                "completed",
+                "video_pending"
+            ],
+            "x-enum-varnames": [
+                "SequenceStatusActive",
+                "SequenceStatusDraft",
+                "SequenceStatusPaused",
+                "SequenceStatusDeleted",
+                "SequenceStatusCompleted",
+                "SequenceStatusVideoPending"
+            ]
+        },
+        "models.SequenceStepVariantStatus": {
+            "type": "string",
+            "enum": [
+                "active",
+                "paused",
+                "deleted"
+            ],
+            "x-enum-varnames": [
+                "SequenceStepVariantStatusActive",
+                "SequenceStepVariantStatusPaused",
+                "SequenceStepVariantStatusDeleted"
+            ]
+        },
+        "models.ThreadAgentStatus": {
+            "type": "string",
+            "enum": [
+                "replied",
+                "action_required",
+                "action_dismissed"
+            ],
+            "x-enum-varnames": [
+                "ThreadAgentStatusReplied",
+                "ThreadAgentStatusActionRequired",
+                "ThreadAgentStatusActionDismissed"
+            ]
+        },
+        "models.TrackingDomainStatus": {
+            "type": "string",
+            "enum": [
+                "active",
+                "pending"
+            ],
+            "x-enum-varnames": [
+                "TrackingDomainStatusActive",
+                "TrackingDomainStatusPending"
+            ]
+        },
+        "models.UpdateSequenceRequest": {
+            "type": "object",
+            "properties": {
+                "bcc": {
+                    "type": "string"
+                },
+                "bounceProtectorEnabled": {
+                    "type": "boolean"
+                },
+                "cc": {
+                    "type": "string"
+                },
+                "clickTrackingEnabled": {
+                    "type": "boolean"
+                },
+                "companyOutreachLimitCount": {
+                    "type": "integer"
+                },
+                "companyOutreachLimitEnabled": {
+                    "type": "boolean"
+                },
+                "espMatchingEnabled": {
+                    "type": "boolean"
+                },
+                "finishOnClick": {
+                    "type": "boolean"
+                },
+                "finishOnOpen": {
+                    "type": "boolean"
+                },
+                "language": {
+                    "type": "string"
+                },
+                "listUnsubscribeEnabled": {
+                    "type": "boolean"
+                },
+                "localizedOptOutEnabled": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "openTrackingEnabled": {
+                    "type": "boolean"
+                },
+                "opportunitiesValue": {
+                    "type": "number"
+                },
+                "optOutText": {
+                    "type": "string"
+                },
+                "plainTextEmailsEnabled": {
+                    "type": "boolean"
+                },
+                "productId": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "sequentialCompanySendingEnabled": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "enum": [
+                        "active",
+                        "paused"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.SequenceStatus"
+                        }
+                    ]
+                },
+                "stopOnDomainReplyEnabled": {
+                    "type": "boolean"
+                },
+                "subsequencePrimeboxLabelId": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "trackOpportunitiesEnabled": {
+                    "type": "boolean"
+                },
+                "trackingDomainEnabled": {
+                    "type": "string"
+                },
+                "unsubscribeLinkEnabled": {
+                    "type": "boolean"
+                },
+                "unsubscribeLinkText": {
+                    "type": "string"
+                }
+            }
+        },
+        "webhooks.WebhookType": {
+            "type": "string",
+            "enum": [
+                "email_sent",
+                "email_opened",
+                "link_clicked",
+                "email_replied",
+                "linkedin_replied",
+                "contact_unsubscribed",
+                "email_bounced",
+                "positive_reply",
+                "negative_reply",
+                "label_changed",
+                "dnc_added"
+            ],
+            "x-enum-varnames": [
+                "WebhookTypeEmailSent",
+                "WebhookTypeEmailOpened",
+                "WebhookTypeLinkClicked",
+                "WebhookTypeEmailReplied",
+                "WebhookTypeLinkedinReplied",
+                "WebhookTypeContactUnsubscribed",
+                "WebhookTypeEmailBounced",
+                "WebhookTypePositiveReply",
+                "WebhookTypeNegativeReply",
+                "WebhookTypeLabelChanged",
+                "WebhookTypeDNCAdded"
+            ]
+        }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

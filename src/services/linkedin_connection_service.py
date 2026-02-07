@@ -93,14 +93,8 @@ class LinkedInConnectionService:
         await db.refresh(credential)
 
         # Determine redirect URLs based on environment
-        frontend_url = (
-            settings.ALLOWED_ORIGINS[0] if settings.ALLOWED_ORIGINS else "http://localhost:3000"
-        )
-        api_url = (
-            "https://agency-os-production.up.railway.app"
-            if settings.is_production
-            else "http://localhost:8000"
-        )
+        frontend_url = settings.frontend_url
+        api_url = settings.base_url
 
         try:
             # Generate hosted auth URL from Unipile

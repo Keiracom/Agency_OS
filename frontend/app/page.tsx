@@ -164,7 +164,7 @@ export default function LandingPage() {
         }
         
         .gradient-text {
-          background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
+          background: linear-gradient(135deg, #0eb77a 0%, #2dd498 50%, #5eebb8 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -179,13 +179,13 @@ export default function LandingPage() {
         }
 
         .btn-gradient {
-          background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+          background: linear-gradient(135deg, #0eb77a 0%, #2dd498 100%);
           transition: all 0.3s ease;
         }
         .btn-gradient:hover {
           opacity: 0.95;
           transform: translateY(-2px);
-          box-shadow: 0 20px 40px rgba(59, 130, 246, 0.35);
+          box-shadow: 0 20px 40px rgba(46, 212, 152, 0.35);
         }
       `}</style>
 
@@ -194,7 +194,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-mint-500 to-mint-600 flex items-center justify-center shadow-lg shadow-mint-500/25">
                 <span className="text-white font-bold text-sm">A</span>
               </div>
               <span className="font-bold text-xl tracking-tight">Agency OS</span>
@@ -223,9 +223,9 @@ export default function LandingPage() {
       <section className="relative overflow-hidden pt-32 pb-20 md:pt-40 md:pb-32 bg-gradient-to-b from-white via-gray-50/50 to-gray-50">
         {/* Floating orbs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-10 w-[500px] h-[500px] bg-gradient-to-r from-blue-400/20 to-purple-500/20 rounded-full blur-3xl animate-float" />
-          <div className="absolute top-40 right-10 w-[600px] h-[600px] bg-gradient-to-r from-purple-400/15 to-pink-500/15 rounded-full blur-3xl animate-float-delayed" />
-          <div className="absolute bottom-0 left-1/3 w-[400px] h-[400px] bg-gradient-to-r from-cyan-400/10 to-blue-500/10 rounded-full blur-3xl animate-float" style={{ animationDelay: "-5s" }} />
+          <div className="absolute top-20 left-10 w-[500px] h-[500px] bg-gradient-to-r from-mint-400/20 to-mint-500/20 rounded-full blur-3xl animate-float" />
+          <div className="absolute top-40 right-10 w-[600px] h-[600px] bg-gradient-to-r from-mint-400/15 to-mint-300/15 rounded-full blur-3xl animate-float-delayed" />
+          <div className="absolute bottom-0 left-1/3 w-[400px] h-[400px] bg-gradient-to-r from-mint-300/10 to-mint-400/10 rounded-full blur-3xl animate-float" style={{ animationDelay: "-5s" }} />
         </div>
 
         <div className="max-w-7xl mx-auto px-6 relative z-10">
@@ -319,8 +319,8 @@ export default function LandingPage() {
       <section className="py-20 md:py-28 bg-[#0a0a0f] text-white relative overflow-hidden">
         {/* Subtle background orbs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[120px]" />
-          <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-[120px]" />
+          <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-mint-500/20 rounded-full blur-[120px]" />
+          <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-mint-400/20 rounded-full blur-[120px]" />
         </div>
 
         <div className="max-w-7xl mx-auto px-6 relative z-10">
@@ -392,7 +392,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-8">
             <ScrollReveal delay={0}>
               <div className="bg-white rounded-2xl p-8 border border-gray-200 card-hover h-full">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mb-6 shadow-lg">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-mint-400 to-mint-500 flex items-center justify-center mb-6 shadow-lg">
                   <Globe className="w-7 h-7 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold mb-4">Australian-First</h3>
@@ -401,7 +401,7 @@ export default function LandingPage() {
             </ScrollReveal>
             <ScrollReveal delay={100}>
               <div className="bg-white rounded-2xl p-8 border border-gray-200 card-hover h-full">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-6 shadow-lg">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-mint-500 to-mint-600 flex items-center justify-center mb-6 shadow-lg">
                   <Brain className="w-7 h-7 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold mb-4">Conversion Intelligence</h3>
@@ -495,8 +495,8 @@ export default function LandingPage() {
             </ScrollReveal>
 
             <ScrollReveal delay={300}>
-              <div className="p-8 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/30">
-                <h3 className="text-lg font-semibold text-blue-300 mb-4">Year 1: Agency OS Velocity (founding)</h3>
+              <div className="p-8 rounded-2xl bg-gradient-to-br from-mint-500/20 to-mint-400/20 border border-mint-500/30">
+                <h3 className="text-lg font-semibold text-mint-300 mb-4">Year 1: Agency OS Velocity (founding)</h3>
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between"><span className="text-white/60">Total cost</span><span className="text-white font-semibold">$30,000</span></div>
                   <div className="flex justify-between"><span className="text-white/60">Total meetings</span><span className="text-green-400 font-semibold">~187</span></div>
@@ -545,9 +545,9 @@ export default function LandingPage() {
               { name: "Dominance", originalPrice: "$7,500", foundingPrice: "$3,750", savings: "Save $45K/year", expectedMeetings: "31-32 meetings/month expected", desc: "Maximum pipeline capacity", limits: ["4,500 leads/month", "20 campaigns", "5 LinkedIn seats"], cta: "Get Started", popular: false },
             ].map((tier, i) => (
               <ScrollReveal key={i} delay={i * 100}>
-                <div className={`rounded-2xl p-8 card-hover flex flex-col h-full relative ${tier.popular ? "bg-white border-2 border-blue-500 shadow-xl shadow-blue-500/10 scale-105" : "bg-white border border-gray-200"}`}>
+                <div className={`rounded-2xl p-8 card-hover flex flex-col h-full relative ${tier.popular ? "bg-white border-2 border-mint-500 shadow-xl shadow-mint-500/10 scale-105" : "bg-white border border-gray-200"}`}>
                   {tier.popular && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-1.5 rounded-full text-sm font-semibold shadow-lg flex items-center gap-1">
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-mint-500 to-mint-600 text-white px-6 py-1.5 rounded-full text-sm font-semibold shadow-lg flex items-center gap-1">
                       <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
                       Most Popular
                     </div>
@@ -564,24 +564,24 @@ export default function LandingPage() {
                       <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded">{tier.savings}</span>
                     </div>
                     {/* Expected Meetings Highlight */}
-                    <div className={`p-3 rounded-xl ${tier.popular ? "bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-200" : "bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200"}`}>
+                    <div className={`p-3 rounded-xl ${tier.popular ? "bg-gradient-to-r from-mint-500/10 to-mint-400/10 border border-mint-200" : "bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200"}`}>
                       <div className="flex items-center gap-2">
-                        <Calendar className={`w-5 h-5 ${tier.popular ? "text-blue-600" : "text-green-600"}`} />
-                        <span className={`text-sm font-bold ${tier.popular ? "text-blue-700" : "text-green-700"}`}>{tier.expectedMeetings}</span>
+                        <Calendar className={`w-5 h-5 ${tier.popular ? "text-mint-600" : "text-green-600"}`} />
+                        <span className={`text-sm font-bold ${tier.popular ? "text-mint-700" : "text-green-700"}`}>{tier.expectedMeetings}</span>
                       </div>
                     </div>
                   </div>
                   <ul className="space-y-3 mb-8 flex-grow">
                     {tier.limits.map((limit, j) => (
                       <li key={j} className="flex items-start gap-3">
-                        <svg className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-mint-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
                         </svg>
                         <span className="text-sm text-gray-700 font-medium">{limit}</span>
                       </li>
                     ))}
                   </ul>
-                  <a href="#waitlist" className={`w-full py-3 px-6 rounded-xl font-semibold text-center transition-all ${tier.popular ? "btn-gradient text-white" : "border-2 border-gray-200 text-gray-700 hover:border-blue-500 hover:text-blue-600"}`}>
+                  <a href="#waitlist" className={`w-full py-3 px-6 rounded-xl font-semibold text-center transition-all ${tier.popular ? "btn-gradient text-white" : "border-2 border-gray-200 text-gray-700 hover:border-mint-500 hover:text-mint-600"}`}>
                     {tier.cta}
                   </a>
                 </div>
@@ -603,7 +603,7 @@ export default function LandingPage() {
                   { icon: Shield, label: "Priority support", sub: "We're here when you need us" },
                 ].map((feature, i) => (
                   <div key={i} className="flex items-start gap-3 p-4 rounded-xl bg-gray-50 border border-gray-100">
-                    <feature.icon className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+                    <feature.icon className="w-5 h-5 text-mint-500 shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-gray-900">{feature.label}</p>
                       <p className="text-xs text-gray-500">{feature.sub}</p>
@@ -616,9 +616,9 @@ export default function LandingPage() {
 
           <ScrollReveal delay={300}>
             <div className="max-w-3xl mx-auto mt-16">
-              <div className="rounded-2xl p-8 bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-100 text-center">
+              <div className="rounded-2xl p-8 bg-gradient-to-br from-mint-50 to-mint-100 border border-mint-100 text-center">
                 <h3 className="text-xl font-bold mb-4">The ROI Math</h3>
-                <p className="text-3xl font-bold text-blue-600 mb-3">Close ONE new client → Pay for an entire year</p>
+                <p className="text-3xl font-bold text-mint-600 mb-3">Close ONE new client → Pay for an entire year</p>
                 <p className="text-gray-600">At $2,500/month with a typical agency retainer of $5,000/month, one new client covers more than 2 years of Agency OS.</p>
               </div>
             </div>
@@ -683,19 +683,19 @@ export default function LandingPage() {
                 <div className="mt-6 pt-6 border-t border-gray-100">
                   <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
                     <div className="flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-blue-500" />
+                      <Shield className="w-4 h-4 text-mint-500" />
                       <span>Australian Privacy Compliant</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-blue-500" />
+                      <Phone className="w-4 h-4 text-mint-500" />
                       <span>DNCR Integrated</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Unlock className="w-4 h-4 text-blue-500" />
+                      <Unlock className="w-4 h-4 text-mint-500" />
                       <span>Cancel Anytime</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Globe className="w-4 h-4 text-blue-500" />
+                      <Globe className="w-4 h-4 text-mint-500" />
                       <span>Built in Australia</span>
                     </div>
                   </div>
@@ -712,7 +712,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div className="md:col-span-2">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-mint-500 to-mint-600 flex items-center justify-center">
                   <span className="text-white font-bold text-sm">A</span>
                 </div>
                 <span className="font-bold text-xl text-white">Agency OS</span>

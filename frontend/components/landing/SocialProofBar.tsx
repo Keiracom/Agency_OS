@@ -34,7 +34,7 @@ export default function SocialProofBar({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
           {stats.map((stat, index) => (
             <div key={index} className="flex flex-col items-center text-center">
-              <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+              <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-mint-400 to-mint-500 bg-clip-text text-transparent">
                 {stat.value}
               </div>
               <div className="text-sm font-medium text-white mt-2">

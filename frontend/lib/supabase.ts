@@ -100,6 +100,52 @@ export type Database = {
           created_at: string;
         };
       };
+      // Elliot Tables
+      elliot_tasks: {
+        Row: {
+          id: string;
+          label: string;
+          session_key: string;
+          task_description: string;
+          status: "running" | "completed" | "failed" | "retry";
+          retry_count: number;
+          max_retries: number;
+          output_summary: string | null;
+          parent_session_key: string | null;
+          created_at: string;
+          completed_at: string | null;
+          last_checked_at: string | null;
+        };
+      };
+      elliot_signoff_queue: {
+        Row: {
+          id: string;
+          knowledge_id: string;
+          action_type: "evaluate_tool" | "build_poc" | "research";
+          title: string;
+          summary: string;
+          status: "pending" | "approved" | "rejected";
+          created_at: string;
+          decided_at: string | null;
+        };
+      };
+      elliot_knowledge: {
+        Row: {
+          id: string;
+          category: string;
+          content: string;
+          summary: string | null;
+          source_url: string | null;
+          source_type: string | null;
+          learned_at: string;
+          applied: boolean;
+          applied_at: string | null;
+          confidence_score: number;
+          relevance_score: number | null;
+          tags: string[] | null;
+          deleted_at: string | null;
+        };
+      };
     };
   };
 };

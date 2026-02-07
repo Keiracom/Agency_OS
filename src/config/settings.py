@@ -86,6 +86,13 @@ class Settings(BaseSettings):
         alias="BASE_URL",
     )
 
+    # === Frontend URL ===
+    frontend_url: str = Field(
+        default="http://localhost:3000",
+        description="Frontend application URL (for OAuth callbacks, CRM redirects)",
+        alias="FRONTEND_URL",
+    )
+
     # === Prefect (Workflow Orchestration) ===
     prefect_api_url: str = Field(
         default="http://localhost:4200/api", description="Prefect server API URL"
@@ -148,6 +155,17 @@ class Settings(BaseSettings):
         default="", description="HeyReach API key (deprecated, use Unipile)"
     )
 
+    # === Twitter/X API v2 ===
+    twitter_api_key: str = Field(default="", description="Twitter API key (consumer key)")
+    twitter_api_secret: str = Field(default="", description="Twitter API secret (consumer secret)")
+    twitter_access_token: str = Field(default="", description="Twitter OAuth 1.0a access token")
+    twitter_access_secret: str = Field(
+        default="", description="Twitter OAuth 1.0a access token secret"
+    )
+    twitter_bearer_token: str = Field(
+        default="", description="Twitter OAuth 2.0 bearer token (read-only)"
+    )
+
     # === Unipile (LinkedIn Automation - replacing HeyReach) ===
     unipile_api_url: str = Field(default="", description="Unipile API base URL")
     unipile_api_key: str = Field(default="", description="Unipile API key")
@@ -188,6 +206,14 @@ class Settings(BaseSettings):
     # Fallback TTS: ElevenLabs (kept for compatibility)
     elevenlabs_api_key: str = Field(default="", description="ElevenLabs API key (fallback TTS)")
 
+    # === Video AI (HeyGen) ===
+    heygen_api_key: str = Field(default="", description="HeyGen API key for AI avatar videos")
+
+    # === YouTube Data API v3 ===
+    youtube_client_id: str = Field(default="", description="YouTube OAuth 2.0 client ID")
+    youtube_client_secret: str = Field(default="", description="YouTube OAuth 2.0 client secret")
+    youtube_refresh_token: str = Field(default="", description="YouTube OAuth 2.0 refresh token")
+
     # === Stripe ===
     stripe_api_key: str = Field(default="", description="Stripe secret key")
     stripe_publishable_key: str = Field(default="", description="Stripe publishable key")
@@ -197,6 +223,9 @@ class Settings(BaseSettings):
     stripe_price_dominance: str = Field(
         default="", description="Stripe Price ID for Dominance tier"
     )
+
+    # === Social Media Scheduling ===
+    buffer_api_key: str = Field(default="", description="Buffer API access token")
 
     # === Calendar/Meetings ===
     calcom_api_key: str = Field(default="", description="Cal.com API key")

@@ -13,7 +13,7 @@
 | Tier | Monthly Price (AUD) | Founding Price | Leads/Month | Max Campaigns | LinkedIn Seats | Daily Outreach |
 |------|---------------------|----------------|-------------|---------------|----------------|----------------|
 | Ignition | $2,500 | $1,250 | 1,250 | 5 (3 AI + 2 custom) | 1 | 50 |
-| Velocity | $5,000 | $2,500 | 2,250 | 10 (6 AI + 4 custom) | 3 | 100 |
+| Velocity | $4,000 | $2,000 | 2,250 | 10 (6 AI + 4 custom) | 3 | 100 |
 | Dominance | $7,500 | $3,750 | 4,500 | 20 (12 AI + 8 custom) | 5 | 200 |
 
 ### Key Principles

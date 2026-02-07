@@ -74,7 +74,7 @@ class SMSEngine(OutreachEngine):
     - DNCR compliance check for Australian numbers
     - Resource-level rate limiting (100/day/number - Rule 17)
     - Activity logging
-    - ALS >= 85 requirement (enforced by allocator)
+    - ALS >= 60 requirement (Hot + Warm tiers, enforced by allocator)
     - Native Australian phone number support
     """
 

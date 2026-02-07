@@ -1,3 +1,7 @@
+> ⚠️ **DEPRECATED (FCO-002):** SDK has been replaced by Smart Prompts as of 2026-02-05.
+> For current margin calculations, see: `MARGIN_RECALCULATION_POST_SIEGE.md`
+> This document is retained for historical reference only.
+
 # SDK Option D: Tiered Service Levels
 
 **Document Type:** Financial Analysis
@@ -11,7 +15,7 @@
 
 **Concept:** Create explicit service tiers within each subscription. Customers choose (and pay for) their desired level of AI personalization.
 
-**Example:** Velocity base ($5,000/mo) includes standard enrichment. "Velocity Intelligence" add-on (+$1,000/mo) unlocks SDK for all Hot leads.
+**Example:** Velocity base ($4,000/mo) includes standard enrichment. "Velocity Intelligence" add-on (+$1,000/mo) unlocks SDK for all Hot leads.
 
 **Margin Protection:** Guaranteed — Customer pays for SDK
 **Customer Impact:** Tiered — Customers choose their experience
@@ -37,7 +41,7 @@
 | Tier | Price | Hot Treatment |
 |------|-------|---------------|
 | Ignition | $2,500/mo | Standard (no SDK) |
-| Velocity | $5,000/mo | Standard (no SDK) |
+| Velocity | $4,000/mo | Standard (no SDK) |
 | Dominance | $7,500/mo | Standard (no SDK) |
 
 **Intelligence Add-ons:**
@@ -57,9 +61,9 @@
 
 | Customer Segment | Count | Revenue |
 |------------------|-------|---------|
-| Velocity Base only | 70% | $5,000 × 0.70 = $3,500 |
-| Velocity + Intelligence | 30% | $6,000 × 0.30 = $1,800 |
-| **Blended Average** | | **$5,300** |
+| Velocity Base only | 70% | $4,000 × 0.70 = $2,800 |
+| Velocity + Intelligence | 30% | $5,000 × 0.30 = $1,500 |
+| **Blended Average** | | **$4,300** |
 
 ### COGS for Intelligence Customers
 
@@ -75,15 +79,15 @@
 
 | Customer Type | Revenue | COGS | Margin |
 |---------------|---------|------|--------|
-| Velocity Base | $5,000 | $2,168 | **56.6%** |
-| Velocity + Intelligence | $6,000 | $3,168 | **47.2%** |
+| Velocity Base | $4,000 | $2,168 | **45.8%** |
+| Velocity + Intelligence | $5,000 | $3,168 | **36.6%** |
 
 ### Blended Margin (30% Adoption)
 
 | Tier | Blended Revenue | Blended COGS | Blended Margin |
 |------|-----------------|--------------|----------------|
 | Ignition blend | $2,650 | $1,258 | **52.5%** |
-| Velocity blend | $5,300 | $2,468 | **53.4%** |
+| Velocity blend | $4,300 | $2,468 | **42.6%** |
 | Dominance blend | $7,950 | $4,224 | **46.9%** |
 
 ---
@@ -95,7 +99,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ IGNITION        VELOCITY         DOMINANCE                  │
-│ $2,500/mo       $5,000/mo        $7,500/mo                 │
+│ $2,500/mo       $4,000/mo        $7,500/mo                 │
 │                                                             │
 │ 1,250 leads     2,250 leads      4,500 leads               │
 │ 1 LinkedIn      3 LinkedIn       5 LinkedIn                │
@@ -108,7 +112,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ IGNITION         VELOCITY          DOMINANCE                │
-│ $2,500/mo        $5,000/mo         $7,500/mo                │
+│ $2,500/mo        $4,000/mo         $7,500/mo                │
 │                                                             │
 │ 1,250 leads      2,250 leads       4,500 leads              │
 │ 1 LinkedIn       3 LinkedIn        5 LinkedIn               │

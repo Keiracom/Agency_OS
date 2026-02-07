@@ -118,6 +118,23 @@ class Settings(BaseSettings):
     apify_api_key: str = Field(default="", description="Apify API key")
     clay_api_key: str = Field(default="", description="Clay API key")
 
+    # === ABN Lookup (Tier 1 Siege Waterfall - FREE) ===
+    # Australian Business Register lookup. Register for free at:
+    # https://abr.business.gov.au/Tools/WebServices
+    abn_lookup_guid: str = Field(
+        default="",
+        description="ABN Lookup authentication GUID (free registration required)",
+        validation_alias=AliasChoices("ABN_LOOKUP_GUID", "ABN_GUID"),
+    )
+
+    # === Kaspr (Tier 5 Identity Enrichment) ===
+    # Mobile number enrichment for HOT leads (ALS >= 85)
+    kaspr_api_key: str = Field(default="", description="Kaspr API key for mobile enrichment")
+
+    # === Hunter.io (Tier 3 Email Discovery) ===
+    # Email finder and verification for outreach
+    hunter_api_key: str = Field(default="", description="Hunter.io API key for email discovery")
+
     resend_api_key: str = Field(default="", description="Resend API key")
     postmark_server_token: str = Field(default="", description="Postmark server token")
 

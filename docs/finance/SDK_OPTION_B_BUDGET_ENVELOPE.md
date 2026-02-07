@@ -1,3 +1,7 @@
+> ⚠️ **DEPRECATED (FCO-002):** SDK has been replaced by Smart Prompts as of 2026-02-05.
+> For current margin calculations, see: `MARGIN_RECALCULATION_POST_SIEGE.md`
+> This document is retained for historical reference only.
+
 # SDK Option B: Monthly Budget Envelope
 
 **Document Type:** Financial Analysis
@@ -219,9 +223,9 @@ async def reset_sdk_budgets_flow():
 
 | Metric | No SDK | Option B | Delta |
 |--------|--------|----------|-------|
-| Revenue | $5,000 | $5,000 | — |
+| Revenue | $4,000 | $4,000 | — |
 | COGS | $2,168 | $2,454 | +$286 |
-| Margin | 56.6% | **50.9%** | -5.7% |
+| Margin | 45.8% | **38.7%** | -7.1% |
 
 ---
 
@@ -230,7 +234,7 @@ async def reset_sdk_budgets_flow():
 | Tier | Revenue | COGS | SDK Budget | Margin |
 |------|---------|------|------------|--------|
 | Ignition | $2,500 | $1,189 | $75 | **52.4%** |
-| Velocity | $5,000 | $2,454 | $150 | **50.9%** |
+| Velocity | $4,000 | $2,454 | $150 | **38.7%** |
 | Dominance | $7,500 | $4,612 | $300 | **38.5%** |
 
 ---

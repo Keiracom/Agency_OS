@@ -55,6 +55,7 @@ from src.integrations.apify import ApifyClient, get_apify_client
 from src.integrations.apollo import ApolloClient, get_apollo_client
 from src.integrations.clay import ClayClient, get_clay_client
 from src.integrations.redis import enrichment_cache
+from src.integrations.siege_waterfall import SiegeWaterfall, get_siege_waterfall, EnrichmentTier
 from src.models.base import LeadStatus
 from src.models.lead import Lead
 from src.models.lead_social_post import LeadSocialPost
@@ -120,6 +121,7 @@ class ScoutEngine(BaseEngine):
         apollo_client: ApolloClient | None = None,
         apify_client: ApifyClient | None = None,
         clay_client: ClayClient | None = None,
+        siege_waterfall: SiegeWaterfall | None = None,
     ):
         """
         Initialize Scout engine with integration clients.
@@ -128,10 +130,12 @@ class ScoutEngine(BaseEngine):
             apollo_client: Optional Apollo client (uses singleton if not provided)
             apify_client: Optional Apify client (uses singleton if not provided)
             clay_client: Optional Clay client (uses singleton if not provided)
+            siege_waterfall: Optional SiegeWaterfall (uses singleton if not provided)
         """
         self._apollo = apollo_client
         self._apify = apify_client
         self._clay = clay_client
+        self._siege_waterfall = siege_waterfall
 
     @property
     def name(self) -> str:
@@ -154,6 +158,12 @@ class ScoutEngine(BaseEngine):
         if self._clay is None:
             self._clay = get_clay_client()
         return self._clay
+
+    @property
+    def siege_waterfall(self) -> SiegeWaterfall:
+        if self._siege_waterfall is None:
+            self._siege_waterfall = get_siege_waterfall()
+        return self._siege_waterfall
 
     async def enrich_lead(
         self,
@@ -381,36 +391,83 @@ class ScoutEngine(BaseEngine):
         domain: str | None,
     ) -> dict[str, Any] | None:
         """
-        Tier 1 enrichment using Apollo + Apify.
+        Tier 1 enrichment using Siege Waterfall (for AU) or Apollo + Apify (fallback).
 
-        Tries Apollo first, then supplements with Apify if needed.
+        For Australian businesses (detected by .au domain or AU country),
+        uses the 5-tier Siege Waterfall for cost-efficient enrichment:
+        - Tier 1: ABN Bulk (FREE)
+        - Tier 2: GMB/Ads Signals ($0.006)
+        - Tier 3: Hunter.io ($0.012)
+        - Tier 4: Proxycurl ($0.024)
+        - Tier 5: Kaspr (ALS >= 85 only)
+
+        For non-AU businesses, falls back to Apollo + Apify.
         """
         result = None
 
-        # Try Apollo first
-        try:
-            apollo_result = await self.apollo.enrich_person(
-                email=lead.email,
-                linkedin_url=lead.linkedin_url,
-                first_name=lead.first_name,
-                last_name=lead.last_name,
-                domain=domain,
-            )
+        # Detect if this is an Australian lead
+        is_australian = self._is_australian_lead(lead, domain)
 
-            if apollo_result.get("found"):
-                result = apollo_result
-        except Exception:
-            pass
+        if is_australian:
+            # Use Siege Waterfall for AU leads
+            try:
+                lead_data = {
+                    "email": lead.email,
+                    "first_name": lead.first_name,
+                    "last_name": lead.last_name,
+                    "company_name": lead.company,
+                    "linkedin_url": lead.linkedin_url,
+                    "domain": domain,
+                    "abn": getattr(lead, "abn", None),
+                    "title": lead.title,
+                    "city": getattr(lead, "city", None),
+                    "state": getattr(lead, "state", None),
+                    "country": "Australia",
+                }
 
-        # If Apollo didn't find enough, try to supplement with Apify
+                # Run Siege Waterfall (skip Tier 5 unless already high ALS)
+                siege_result = await self.siege_waterfall.enrich_lead(
+                    lead_data,
+                    skip_tiers=[EnrichmentTier.IDENTITY],  # Skip expensive Tier 5
+                )
+
+                if siege_result.sources_used > 0:
+                    result = siege_result.enriched_data
+                    result["found"] = True
+                    result["confidence"] = 0.75 + (siege_result.sources_used * 0.05)  # Higher confidence with more sources
+                    result["source"] = f"siege_waterfall_{siege_result.sources_used}sources"
+                    result["enrichment_cost_aud"] = siege_result.total_cost_aud
+                    logger.info(
+                        f"[Scout] Siege Waterfall enriched lead with {siege_result.sources_used} sources, "
+                        f"cost: ${siege_result.total_cost_aud:.3f} AUD"
+                    )
+            except Exception as e:
+                logger.warning(f"[Scout] Siege Waterfall failed, falling back to Apollo: {e}")
+                result = None
+
+        # Fallback to Apollo (for non-AU or if Siege failed)
+        if not result:
+            try:
+                apollo_result = await self.apollo.enrich_person(
+                    email=lead.email,
+                    linkedin_url=lead.linkedin_url,
+                    first_name=lead.first_name,
+                    last_name=lead.last_name,
+                    domain=domain,
+                )
+
+                if apollo_result.get("found"):
+                    result = apollo_result
+            except Exception:
+                pass
+
+        # If still not enough, supplement with Apify LinkedIn scrape
         if not result or not self._validate_enrichment(result):
             try:
-                # If we have LinkedIn URL, scrape profile
                 if lead.linkedin_url:
                     apify_results = await self.apify.scrape_linkedin_profiles([lead.linkedin_url])
                     if apify_results:
                         apify_data = apify_results[0]
-                        # Merge with Apollo result if available
                         if result:
                             result = self._merge_enrichment(result, apify_data)
                         else:
@@ -420,6 +477,36 @@ class ScoutEngine(BaseEngine):
                 pass
 
         return result
+
+    def _is_australian_lead(self, lead: Lead, domain: str | None) -> bool:
+        """
+        Detect if a lead is Australian based on available signals.
+
+        Checks:
+        - .au domain suffix
+        - Country field set to Australia/AU
+        - ABN present
+        - Phone number with +61
+        """
+        # Check domain
+        if domain and domain.endswith(".au"):
+            return True
+
+        # Check country field
+        country = getattr(lead, "organization_country", None) or getattr(lead, "country", None)
+        if country and country.lower() in ("australia", "au", "aus"):
+            return True
+
+        # Check if ABN is present (Australian Business Number)
+        if getattr(lead, "abn", None):
+            return True
+
+        # Check phone number
+        phone = getattr(lead, "phone", None)
+        if phone and (phone.startswith("+61") or phone.startswith("61")):
+            return True
+
+        return False
 
     async def _enrich_tier2(
         self,

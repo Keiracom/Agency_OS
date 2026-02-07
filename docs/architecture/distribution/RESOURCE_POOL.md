@@ -151,7 +151,7 @@ Based on:
 | Tier | Leads | Domains | Mailboxes | Phone Numbers | LinkedIn Seats |
 |------|-------|---------|-----------|---------------|----------------|
 | Ignition ($2,500) | 1,250 | 3 | 6 | 1 | 4 |
-| Velocity ($5,000) | 2,250 | 5 | 10 | 2 | 7 |
+| Velocity ($4,000) | 2,250 | 5 | 10 | 2 | 7 |
 | Dominance ($7,500) | 4,500 | 9 | 18 | 3 | 14 |
 
 ### Calculation Breakdown

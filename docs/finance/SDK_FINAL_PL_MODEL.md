@@ -1,3 +1,7 @@
+> ⚠️ **DEPRECATED (FCO-002):** SDK has been replaced by Smart Prompts as of 2026-02-05.
+> For current margin calculations, see: `MARGIN_RECALCULATION_POST_SIEGE.md`
+> This document is retained for historical reference only.
+
 # SDK Integration — Final P&L Model
 
 **Document Type:** Comprehensive Financial Model
@@ -26,7 +30,7 @@ This document presents the complete Profit & Loss model for Agency OS subscripti
 | Tier | Monthly Price | Leads/Month | Meeting Guarantee |
 |------|---------------|-------------|-------------------|
 | Ignition | $2,500 | 1,250 | 10 meetings |
-| Velocity | $5,000 | 2,250 | 25 meetings |
+| Velocity | $4,000 | 2,250 | 25 meetings |
 | Dominance | $7,500 | 4,500 | 60 meetings |
 
 ---
@@ -273,8 +277,8 @@ This document presents the complete Profit & Loss model for Agency OS subscripti
 ### Revenue
 | Item | Amount |
 |------|--------|
-| Monthly subscription | $5,000 |
-| **Total Revenue** | **$5,000** |
+| Monthly subscription | $4,000 |
+| **Total Revenue** | **$4,000** |
 
 ### Cost of Goods Sold (COGS)
 
@@ -308,14 +312,14 @@ This document presents the complete Profit & Loss model for Agency OS subscripti
 
 | Line Item | Amount | % of Revenue |
 |-----------|--------|--------------|
-| **Revenue** | **$5,000** | 100.0% |
+| **Revenue** | **$4,000** | 100.0% |
 | | | |
-| Lead Processing | $2,377 | 47.5% |
-| Infrastructure | $178 | 3.6% |
-| Reply Handling | $20 | 0.4% |
-| **Total COGS** | **$2,575** | **51.5%** |
+| Lead Processing | $2,377 | 59.4% |
+| Infrastructure | $178 | 4.5% |
+| Reply Handling | $20 | 0.5% |
+| **Total COGS** | **$2,575** | **64.4%** |
 | | | |
-| **Gross Profit** | **$2,425** | **48.5%** |
+| **Gross Profit** | **$1,425** | **35.6%** |
 
 ---
 
@@ -377,26 +381,26 @@ This document presents the complete Profit & Loss model for Agency OS subscripti
 | Tier | Price | Projected Customers (Y1) | Monthly Revenue |
 |------|-------|--------------------------|-----------------|
 | Ignition | $2,500 | 40% | Variable |
-| Velocity | $5,000 | 45% | Variable |
+| Velocity | $4,000 | 45% | Variable |
 | Dominance | $7,500 | 15% | Variable |
 
 ### Per-Customer Economics
 
 | Metric | Ignition | Velocity | Dominance |
 |--------|----------|----------|-----------|
-| Revenue | $2,500 | $5,000 | $7,500 |
+| Revenue | $2,500 | $4,000 | $7,500 |
 | COGS | $1,415 | $2,575 | $5,116 |
-| **Gross Profit** | **$1,085** | **$2,425** | **$2,384** |
-| **Gross Margin** | **43.4%** | **48.5%** | **31.8%** |
+| **Gross Profit** | **$1,085** | **$1,425** | **$2,384** |
+| **Gross Margin** | **43.4%** | **35.6%** | **31.8%** |
 
 ### Blended Economics (Weighted by Customer Mix)
 
 | Metric | Calculation | Amount |
 |--------|-------------|--------|
-| Blended Revenue | (0.40 × $2,500) + (0.45 × $5,000) + (0.15 × $7,500) | $4,375 |
+| Blended Revenue | (0.40 × $2,500) + (0.45 × $4,000) + (0.15 × $7,500) | $3,925 |
 | Blended COGS | (0.40 × $1,415) + (0.45 × $2,575) + (0.15 × $5,116) | $2,492 |
-| **Blended Gross Profit** | | **$1,883** |
-| **Blended Gross Margin** | | **43.0%** |
+| **Blended Gross Profit** | | **$1,433** |
+| **Blended Gross Margin** | | **36.5%** |
 
 ---
 
@@ -423,7 +427,7 @@ This document presents the complete Profit & Loss model for Agency OS subscripti
 | Tier | Revenue | SDK Cost | SDK % of Revenue |
 |------|---------|----------|------------------|
 | Ignition | $2,500 | $285 | 11.4% |
-| Velocity | $5,000 | $513 | 10.3% |
+| Velocity | $4,000 | $513 | 12.8% |
 | Dominance | $7,500 | $1,028 | 13.7% |
 
 ---
@@ -434,20 +438,20 @@ This document presents the complete Profit & Loss model for Agency OS subscripti
 
 | Line Item | Without SDK | With SDK | Delta |
 |-----------|-------------|----------|-------|
-| Revenue | $5,000 | $5,000 | — |
+| Revenue | $4,000 | $4,000 | — |
 | Lead Processing | $1,864 | $2,377 | +$513 |
 | Infrastructure | $178 | $178 | — |
 | Reply Handling | $17 | $20 | +$3 |
 | **Total COGS** | **$2,059** | **$2,575** | **+$516** |
-| **Gross Profit** | **$2,941** | **$2,425** | **-$516** |
-| **Gross Margin** | **58.8%** | **48.5%** | **-10.3%** |
+| **Gross Profit** | **$1,941** | **$1,425** | **-$516** |
+| **Gross Margin** | **48.5%** | **35.6%** | **-12.9%** |
 
 ### All Tiers Comparison
 
 | Tier | Margin (No SDK) | Margin (With SDK) | Delta |
 |------|-----------------|-------------------|-------|
 | Ignition | 57.2% | 43.4% | -13.8% |
-| Velocity | 58.8% | 48.5% | -10.3% |
+| Velocity | 48.5% | 35.6% | -12.9% |
 | Dominance | 49.2% | 31.8% | -17.4% |
 
 ---
@@ -458,19 +462,19 @@ This document presents the complete Profit & Loss model for Agency OS subscripti
 
 | Hot % | Velocity COGS | Velocity Margin |
 |-------|---------------|-----------------|
-| 10% (base) | $2,575 | 48.5% |
-| 12% | $2,776 | 44.5% |
-| 15% | $3,078 | 38.4% |
-| 20% | $3,582 | 28.4% |
+| 10% (base) | $2,575 | 35.6% |
+| 12% | $2,776 | 30.6% |
+| 15% | $3,078 | 23.1% |
+| 20% | $3,582 | 10.5% |
 
 ### If SDK Signal Rate Changes
 
 | Signal Rate | SDK-Eligible Hot | Velocity COGS | Margin |
 |-------------|------------------|---------------|--------|
-| 10% | 23 | $2,546 | 49.1% |
-| 20% (base) | 45 | $2,575 | 48.5% |
-| 30% | 68 | $2,604 | 47.9% |
-| 50% | 113 | $2,663 | 46.7% |
+| 10% | 23 | $2,546 | 36.4% |
+| 20% (base) | 45 | $2,575 | 35.6% |
+| 30% | 68 | $2,604 | 34.9% |
+| 50% | 113 | $2,663 | 33.4% |
 
 ---
 
@@ -540,7 +544,7 @@ These caps ensure SDK spend cannot exceed 20% of COGS under any scenario.
 |------|--------|
 | SDK Hybrid Model | ☐ Approved |
 | Ignition P&L ($1,085 profit, 43.4% margin) | ☐ Approved |
-| Velocity P&L ($2,425 profit, 48.5% margin) | ☐ Approved |
+| Velocity P&L ($1,425 profit, 35.6% margin) | ☐ Approved |
 | Dominance P&L ($2,384 profit, 31.8% margin) | ☐ Approved |
 | Budget Safeguard Implementation | ☐ Yes / ☐ No |
 

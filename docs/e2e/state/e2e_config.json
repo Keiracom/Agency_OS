@@ -154,7 +154,7 @@
     },
     "tiers": {
       "hot": {"min": 85, "max": 100, "channels": ["email", "sms", "linkedin", "voice", "mail"]},
-      "warm": {"min": 60, "max": 84, "channels": ["email", "linkedin", "voice"]},
+      "warm": {"min": 60, "max": 84, "channels": ["email", "sms", "linkedin", "voice"]},
       "cool": {"min": 35, "max": 59, "channels": ["email", "linkedin"]},
       "cold": {"min": 20, "max": 34, "channels": ["email"]},
       "dead": {"min": 0, "max": 19, "channels": []}

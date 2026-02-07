@@ -48,7 +48,7 @@ Automated system for pre-creating professional personas with matching domains, w
 | Tier | Personas | Domains | Mailboxes | Monthly Price |
 |------|----------|---------|-----------|---------------|
 | Ignition | 2 | 3 | 6 | $2,500 |
-| Velocity | 3 | 5 | 10 | $5,000 |
+| Velocity | 3 | 5 | 10 | $4,000 |
 | Dominance | 4 | 9 | 18 | $7,500 |
 
 *2 mailboxes per domain, ~1.5 domains per persona*

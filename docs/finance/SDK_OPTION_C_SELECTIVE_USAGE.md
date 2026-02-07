@@ -1,3 +1,7 @@
+> ⚠️ **DEPRECATED (FCO-002):** SDK has been replaced by Smart Prompts as of 2026-02-05.
+> For current margin calculations, see: `MARGIN_RECALCULATION_POST_SIEGE.md`
+> This document is retained for historical reference only.
+
 # SDK Option C: Selective Usage (Signal-Gated)
 
 **Document Type:** Financial Analysis
@@ -231,11 +235,11 @@ Many leads have multiple signals. Conservative estimate:
 
 | Metric | No SDK | Option C | Delta |
 |--------|--------|----------|-------|
-| Revenue | $5,000 | $5,000 | — |
+| Revenue | $4,000 | $4,000 | — |
 | COGS | $2,168 | $2,421 | +$253 |
-| Margin | 56.6% | **51.6%** | -5.0% |
+| Margin | 45.8% | **39.5%** | -6.3% |
 
-**Only 5% margin reduction** vs 14% for Option A or 6% for Option B.
+**Only 6.3% margin reduction** vs 18% for Option A or similar for Option B.
 
 ---
 
@@ -244,7 +248,7 @@ Many leads have multiple signals. Conservative estimate:
 | Tier | Revenue | COGS | SDK Spend | Margin |
 |------|---------|------|-----------|--------|
 | Ignition | $2,500 | $1,175 | $77 | **53.0%** |
-| Velocity | $5,000 | $2,421 | $137 | **51.6%** |
+| Velocity | $4,000 | $2,421 | $137 | **39.5%** |
 | Dominance | $7,500 | $4,538 | $274 | **39.5%** |
 
 ---

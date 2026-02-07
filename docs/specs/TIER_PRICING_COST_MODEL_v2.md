@@ -22,7 +22,7 @@ This document defines the canonical pricing, COGS, and margin model for Agency O
 | Tier | Price | COGS | Margin | Leads |
 |------|-------|------|--------|-------|
 | **Ignition** | $2,500 | $666 | **73.4%** | 1,250 |
-| **Velocity** | $5,000 | $1,323 | **73.5%** | 2,250 |
+| **Velocity** | $4,000 | $1,323 | **66.9%** | 2,250 |
 | **Dominance** | $7,500 | $2,502 | **66.6%** | 4,500 |
 
 ---
@@ -32,7 +32,7 @@ This document defines the canonical pricing, COGS, and margin model for Agency O
 | Tier | Monthly Price | Lead Pool | Max Campaigns | HeyReach Seats |
 |------|---------------|-----------|---------------|----------------|
 | Ignition | $2,500 | 1,250 | 5 | 1 |
-| Velocity | $5,000 | 2,250 | 10 | 3 |
+| Velocity | $4,000 | 2,250 | 10 | 3 |
 | Dominance | $7,500 | 4,500 | 20 | **5** |
 
 ---
@@ -152,7 +152,7 @@ Clay's built-in waterfall automatically cascades through 75+ providers:
 | Tier | Price | COGS | Gross Profit | Margin % |
 |------|-------|------|--------------|----------|
 | Ignition | $2,500 | $666 | $1,834 | **73.4%** |
-| Velocity | $5,000 | $1,323 | $3,677 | **73.5%** |
+| Velocity | $4,000 | $1,323 | $2,677 | **66.9%** |
 | Dominance | $7,500 | $2,502 | $4,998 | **66.6%** |
 
 All tiers now exceed **65% gross margin**. ✅
@@ -248,7 +248,7 @@ Higher tiers deliver better value per lead — incentivises upgrades.
 | Platform | Price/mo | Leads | Price/Lead | Channels |
 |----------|----------|-------|------------|----------|
 | **Agency OS Ignition** | $2,500 | 1,250 | $2.00 | ✅ All 5 |
-| **Agency OS Velocity** | $5,000 | 2,250 | $2.22 | ✅ All 5 |
+| **Agency OS Velocity** | $4,000 | 2,250 | $1.78 | ✅ All 5 |
 | **Agency OS Dominance** | $7,500 | 4,500 | $1.67 | ✅ All 5 |
 | AiSDR Starter | ~$1,400 | 1,000 | $1.40 | ❌ Email only |
 | AiSDR Pro | ~$3,100 | 3,000 | $1.03 | ❌ Email only |

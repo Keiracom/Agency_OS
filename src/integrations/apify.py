@@ -1,4 +1,6 @@
 """
+⚠️ DEPRECATED: Use GMBScraper for AU businesses. Apify kept as fallback only.
+
 FILE: src/integrations/apify.py
 PURPOSE: Apify API integration for bulk scraping with waterfall architecture
 PHASE: 3 (Integrations)

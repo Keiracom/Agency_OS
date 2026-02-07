@@ -58,8 +58,8 @@ IGNITION = TierConfig(
 
 VELOCITY = TierConfig(
     name=TierName.VELOCITY,
-    price_aud=5000,
-    founding_price_aud=2500,
+    price_aud=4000,  # Updated 2026-02-06 per CEO confirmation
+    founding_price_aud=2000,
     leads_per_month=2250,
     max_campaigns=10,
     ai_suggested_campaigns=6,
@@ -143,8 +143,8 @@ ALS_TIER_THRESHOLDS = {
 }
 
 CHANNEL_ACCESS_BY_ALS = {
-    "hot": ["email", "linkedin", "voice", "sms", "mail"],
-    "warm": ["email", "linkedin", "voice"],
+    "hot": ["email", "sms", "linkedin", "voice", "mail"],
+    "warm": ["email", "sms", "linkedin", "voice"],  # SMS added 2026-02-06 per CEO approval
     "cool": ["email", "linkedin"],
     "cold": ["email"],
     "dead": [],

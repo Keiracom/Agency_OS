@@ -9,12 +9,12 @@
 | Plan | Monthly Cost | Meetings You'll Get | Clients You'll Close |
 |------|--------------|---------------------|---------------------|
 | **Ignition** | $2,500 | 8-9 | 1-2 |
-| **Velocity** | $5,000 | 15-16 | 3-4 |
+| **Velocity** | $4,000 | 15-16 | 3-4 |
 | **Dominance** | $7,500 | 31-32 | 9-10 |
 
 **At $4K average client value:**
 - **Ignition:** 1-2 clients = $4-8K revenue from $2,500 spend
-- **Velocity:** 3-4 clients = $12-16K revenue from $5,000 spend
+- **Velocity:** 3-4 clients = $12-16K revenue from $4,000 spend
 - **Dominance:** 9-10 clients = $36-40K revenue from $7,500 spend
 
 **Every tier is profitable from month one. The only question is how fast you want to grow.**
@@ -124,7 +124,7 @@ Not everyone who replies books a meeting. We're conservative here:
 
 ---
 
-### Velocity ($5,000/month)
+### Velocity ($4,000/month)
 
 ```
 2,250 leads
@@ -136,9 +136,9 @@ Not everyone who replies books a meeting. We're conservative here:
 
 **Monthly ROI:**
 - Revenue: 3-4 clients × $4,000 = **$12,000-16,000**
-- Cost: $5,000
-- **Net profit: $7,000-11,000**
-- **ROI: 2.4-3.2x**
+- Cost: $4,000
+- **Net profit: $8,000-12,000**
+- **ROI: 3.0-4.0x**
 
 ---
 
@@ -291,7 +291,7 @@ Junior SDR then:
 |--------|--------------|----------|--------------|
 | **Junior SDR (ramped)** | $6,500-8,750 | 8-12 | **$600-900** |
 | **Agency OS Ignition** | $2,500 | 8-9 | **$312** |
-| **Agency OS Velocity** | $5,000 | 15-16 | **$333** |
+| **Agency OS Velocity** | $4,000 | 15-16 | **$267** |
 | **Agency OS Dominance** | $7,500 | 31-32 | **$242** |
 
 **Agency OS delivers meetings at 30-50% of the cost of a junior SDR.**
@@ -406,7 +406,7 @@ Good news: Agency OS handles most of the work.
 | Tools + management | $500-1,000 | — |
 | **Total** | **$3,500-6,000** | **8-12 meetings** |
 
-| Agency OS Velocity | $5,000 | **15-16 meetings** |
+| Agency OS Velocity | $4,000 | **15-16 meetings** |
 
 **Similar cost, 30-50% more meetings, no quality variance.**
 
@@ -446,7 +446,7 @@ Good news: Agency OS handles most of the work.
 | Plan | Break-even | Expected Clients | Expected Revenue |
 |------|------------|------------------|------------------|
 | Ignition ($2,500) | 1 client | 1-2 | $4,000-8,000 |
-| Velocity ($5,000) | 1 client | 3-4 | $12,000-16,000 |
+| Velocity ($4,000) | 1 client | 3-4 | $12,000-16,000 |
 | Dominance ($7,500) | 2 clients | 9-10 | $36,000-40,000 |
 
 If yes → Agency OS pays for itself.
@@ -472,7 +472,7 @@ The math gets even easier.
 
 | Metric | Junior SDR | Agency OS Velocity |
 |--------|------------|-------------------|
-| Monthly cost | $6,500-8,750 | $5,000 |
+| Monthly cost | $6,500-8,750 | $4,000 |
 | Meetings/month | 8-12 | 15-16 |
 | Cost per meeting | $600-900 | $333 |
 | Ramp time | 3-4 months | Instant |

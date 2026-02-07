@@ -60,6 +60,11 @@ from src.integrations.camoufox_scraper import (
     is_camoufox_available,
 )
 from src.integrations.clay import get_clay_client
+from src.integrations.siege_waterfall import (
+    SiegeWaterfall,
+    get_siege_waterfall,
+    EnrichmentTier,
+)
 
 # Portfolio page paths to fetch directly (ICP-FIX-008)
 PORTFOLIO_PATHS = [
@@ -177,6 +182,7 @@ class ICPScraperEngine(BaseEngine):
         anthropic_client: AnthropicClient | None = None,
         url_validator: URLValidator | None = None,
         camoufox_scraper: CamoufoxScraper | None = None,
+        siege_waterfall: SiegeWaterfall | None = None,
     ):
         """
         Initialize with optional client overrides for testing.
@@ -188,6 +194,7 @@ class ICPScraperEngine(BaseEngine):
             anthropic_client: Optional Anthropic client override
             url_validator: Optional URL validator override
             camoufox_scraper: Optional Camoufox scraper override (Tier 3)
+            siege_waterfall: Optional SiegeWaterfall override
         """
         self._apify = apify_client
         self._apollo = apollo_client
@@ -195,6 +202,7 @@ class ICPScraperEngine(BaseEngine):
         self._anthropic = anthropic_client
         self._url_validator = url_validator
         self._camoufox = camoufox_scraper
+        self._siege_waterfall = siege_waterfall
 
     @property
     def name(self) -> str:
@@ -250,6 +258,13 @@ class ICPScraperEngine(BaseEngine):
 
         return settings.camoufox_enabled and is_camoufox_available()
 
+    @property
+    def siege_waterfall(self) -> SiegeWaterfall:
+        """Get Siege Waterfall for AU business enrichment."""
+        if self._siege_waterfall is None:
+            self._siege_waterfall = get_siege_waterfall()
+        return self._siege_waterfall
+
     def _extract_domain(self, url: str) -> str:
         """Extract domain from URL."""
         if not url.startswith(("http://", "https://")):
@@ -262,6 +277,47 @@ class ICPScraperEngine(BaseEngine):
         if not url.startswith(("http://", "https://")):
             url = f"https://{url}"
         return url
+
+    def _is_australian_company(self, company_name: str, domain: str | None) -> bool:
+        """
+        Detect if a company is likely Australian based on available signals.
+
+        Checks:
+        - .au domain suffix
+        - Australian company name patterns (Pty Ltd, etc.)
+        - Known Australian company name suffixes
+
+        Args:
+            company_name: Company name to check
+            domain: Optional company domain
+
+        Returns:
+            True if company appears to be Australian
+        """
+        # Check domain
+        if domain and domain.endswith(".au"):
+            return True
+
+        # Check Australian company name patterns
+        name_lower = company_name.lower()
+        au_patterns = [
+            "pty ltd",
+            "pty. ltd.",
+            "proprietary limited",
+            "(australia)",
+            "australia",
+            "australian",
+        ]
+        if any(pattern in name_lower for pattern in au_patterns):
+            return True
+
+        # Check for Australian state abbreviations in name
+        au_states = ["nsw", "vic", "qld", "wa", "sa", "tas", "nt", "act"]
+        name_words = name_lower.split()
+        if any(state in name_words for state in au_states):
+            return True
+
+        return False
 
     def _extract_social_links(self, raw_html: str) -> SocialLinks:
         """
@@ -810,6 +866,63 @@ Respond in JSON format only:
                 f"Claude baseline for {company_name}: "
                 f"industry={enriched.industry}, size={enriched.employee_range}"
             )
+
+        # ============================================
+        # TIER 0.5: Siege Waterfall for AU businesses (ABN + GMB)
+        # ============================================
+        # For Australian businesses, use the free/cheap tiers of Siege Waterfall:
+        # - Tier 1 (ABN): FREE - Australian Business Register data
+        # - Tier 2 (GMB): $0.006/lead - Google Maps Business signals
+        # This provides phone, website, address, rating, category cheaply.
+        is_australian = self._is_australian_company(company_name, domain)
+        if is_australian:
+            try:
+                logger.info(f"Tier 0.5 (Siege): ABN+GMB enrichment for AU company {company_name}")
+                
+                # Build minimal lead data for Siege Waterfall
+                siege_data = {
+                    "company_name": company_name,
+                    "domain": domain,
+                    "country": "Australia",
+                }
+                
+                # Run only ABN and GMB tiers (skip expensive tiers)
+                siege_result = await self.siege_waterfall.enrich_lead(
+                    siege_data,
+                    skip_tiers=[
+                        EnrichmentTier.HUNTER,      # Skip email (no person data)
+                        EnrichmentTier.PROXYCURL,   # Skip LinkedIn (no person data)
+                        EnrichmentTier.IDENTITY,    # Skip Kaspr (expensive)
+                    ],
+                )
+                
+                if siege_result.sources_used > 0:
+                    siege_enriched = siege_result.enriched_data
+                    
+                    # Extract useful company data from Siege results
+                    if siege_enriched.get("phone") and not enriched.location:
+                        enriched.location = siege_enriched.get("address")
+                    if siege_enriched.get("category") and not enriched.industry:
+                        enriched.industry = siege_enriched.get("category")
+                    if siege_enriched.get("website") and not enriched.domain:
+                        # Extract domain from website
+                        from urllib.parse import urlparse
+                        website = siege_enriched.get("website", "")
+                        parsed = urlparse(website)
+                        if parsed.netloc:
+                            enriched.domain = parsed.netloc.lower().replace("www.", "")
+                            domain = enriched.domain
+                    
+                    enriched.country = "Australia"
+                    enrichment_source = f"siege_waterfall_{siege_result.sources_used}sources"
+                    
+                    logger.info(
+                        f"Siege Waterfall found for {company_name}: "
+                        f"industry={enriched.industry}, sources={siege_result.sources_used}, "
+                        f"cost=${siege_result.total_cost_aud:.3f} AUD"
+                    )
+            except Exception as e:
+                logger.warning(f"Siege Waterfall failed for {company_name}: {e}")
 
         # ============================================
         # TIER 1: Apollo - Confirm/Enrich Claude's baseline

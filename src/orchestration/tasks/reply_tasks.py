@@ -7,7 +7,6 @@ DEPENDENCIES:
   - src/engines/closer.py
   - src/integrations/postmark.py
   - src/integrations/twilio.py
-  - src/integrations/heyreach.py
   - src/models/lead.py
   - src/models/activity.py
   - src/integrations/supabase.py
@@ -29,7 +28,6 @@ from sqlalchemy import and_, desc, select
 
 from src.engines.closer import CloserEngine
 from src.exceptions import ValidationError
-from src.integrations.heyreach import get_heyreach_client
 from src.integrations.postmark import get_postmark_client
 from src.integrations.supabase import get_db_session
 from src.integrations.twilio import get_twilio_client
@@ -410,111 +408,7 @@ async def poll_sms_replies_task(
         raise
 
 
-@task(
-    name="poll_linkedin_replies",
-    description="Poll HeyReach for LinkedIn replies (safety net)",
-    retries=1,
-    retry_delay_seconds=60,
-    tags=["reply", "polling", "linkedin"],
-)
-async def poll_linkedin_replies_task(
-    since: datetime | None = None,
-    limit: int = 100,
-) -> dict[str, Any]:
-    """
-    Poll HeyReach for LinkedIn replies (safety net, webhooks are primary).
-
-    Rule 20: Webhook-first architecture. This is a safety net only.
-
-    Args:
-        since: Poll for replies since this datetime (default: 1 hour ago)
-        limit: Max number of replies to fetch
-
-    Returns:
-        Polling result with:
-            - total: int
-            - processed: int
-            - failed: int
-            - replies: list[dict]
-    """
-    if since is None:
-        since = datetime.utcnow() - timedelta(hours=1)
-
-    logger.info(f"Polling HeyReach for LinkedIn replies since {since}")
-
-    heyreach = get_heyreach_client()
-
-    try:
-        # Fetch conversations
-        conversations = await heyreach.get_conversations(
-            updated_after=since,
-            limit=limit,
-        )
-
-        processed = 0
-        failed = 0
-        replies = []
-
-        async with get_db_session() as db:
-            for conv in conversations:
-                try:
-                    linkedin_url = conv.get("prospect_linkedin_url")
-                    message_content = conv.get("last_message", {}).get("text", "")
-                    conversation_id = conv.get("id")
-
-                    # Find lead by LinkedIn URL
-                    stmt = (
-                        select(Lead)
-                        .where(
-                            and_(
-                                Lead.linkedin_url == linkedin_url,
-                                Lead.deleted_at.is_(None),
-                            )
-                        )
-                        .order_by(desc(Lead.created_at))
-                    )
-                    result = await db.execute(stmt)
-                    lead = result.scalar_one_or_none()
-
-                    if not lead:
-                        logger.warning(f"No lead found for LinkedIn {linkedin_url}")
-                        continue
-
-                    # Process reply
-                    await process_reply_task(
-                        lead_id=lead.id,
-                        message=message_content,
-                        channel=ChannelType.LINKEDIN,
-                        provider_message_id=conversation_id,
-                        metadata={"from_polling": True},
-                    )
-
-                    replies.append(
-                        {
-                            "lead_id": str(lead.id),
-                            "linkedin_url": linkedin_url,
-                            "conversation_id": conversation_id,
-                        }
-                    )
-                    processed += 1
-
-                except Exception as e:
-                    logger.error(f"Failed to process LinkedIn reply: {e}")
-                    failed += 1
-
-        logger.info(f"LinkedIn polling complete. Processed: {processed}, Failed: {failed}")
-
-        return {
-            "total": len(conversations),
-            "processed": processed,
-            "failed": failed,
-            "replies": replies,
-        }
-
-    except Exception as e:
-        logger.error(f"LinkedIn polling failed: {e}")
-        raise
-
+# NOTE: poll_linkedin_replies_task removed - HeyReach deprecated, use Unipile instead
 
 # ============================================
 # VERIFICATION CHECKLIST

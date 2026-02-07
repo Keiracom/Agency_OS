@@ -1,3 +1,7 @@
+> ⚠️ **DEPRECATED (FCO-002):** SDK has been replaced by Smart Prompts as of 2026-02-05.
+> For current margin calculations, see: `MARGIN_RECALCULATION_POST_SIEGE.md`
+> This document is retained for historical reference only.
+
 # SDK Option A: Fixed ALS Tier Caps
 
 **Document Type:** Financial Analysis
@@ -149,17 +153,17 @@ ALTER TABLE clients ADD COLUMN warm_cap_override INTEGER;
 
 | Metric | Value |
 |--------|-------|
-| Revenue | $5,000 |
+| Revenue | $4,000 |
 | COGS | $2,888 |
-| Gross Profit | $2,112 |
-| **Margin** | **42.2%** |
+| Gross Profit | $1,112 |
+| **Margin** | **27.8%** |
 
 ### Comparison to No SDK
 
 | Scenario | COGS | Margin | Delta |
 |----------|------|--------|-------|
-| No SDK | $2,168 | 56.6% | — |
-| Option A (SDK with caps) | $2,888 | 42.2% | -14.4% |
+| No SDK | $2,168 | 45.8% | — |
+| Option A (SDK with caps) | $2,888 | 27.8% | -18.0% |
 
 ---
 
@@ -168,7 +172,7 @@ ALTER TABLE clients ADD COLUMN warm_cap_override INTEGER;
 | Tier | Revenue | COGS (Capped) | Margin |
 |------|---------|---------------|--------|
 | Ignition | $2,500 | $1,478 | **40.9%** |
-| Velocity | $5,000 | $2,888 | **42.2%** |
+| Velocity | $4,000 | $2,888 | **27.8%** |
 | Dominance | $7,500 | $5,775 | **23.0%** |
 
 ---

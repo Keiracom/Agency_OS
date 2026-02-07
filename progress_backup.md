@@ -686,7 +686,7 @@ python tests/live/seed_live_data.py
 | Tier | Price | COGS | Margin | Leads | HeyReach Seats |
 |------|-------|------|--------|-------|----------------|
 | **Ignition** | $2,500 | $666 | **73.4%** | 1,250 | 1 |
-| **Velocity** | $5,000 | $1,323 | **73.5%** | 2,250 | 3 |
+| **Velocity** | $4,000 | $1,323 | **66.9%** | 2,250 | 3 |
 | **Dominance** | $7,500 | $2,502 | **66.6%** | 4,500 | 5 |
 
 ### Provider Costs Verified (AUD)

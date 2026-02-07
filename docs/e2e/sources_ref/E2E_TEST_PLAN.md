@@ -76,7 +76,7 @@ Industry:           Digital Marketing / Performance Marketing
 Location:           Melbourne, VIC, Australia
 Team Size:          30-50
 Estimated MRR:      $100K+
-Tier:               Velocity ($5,000/mo)
+Tier:               Velocity ($4,000/mo)
 ```
 
 ### Target ICP (Expected from Extraction)

@@ -1,4 +1,6 @@
 """
+⚠️ DEPRECATED: Use SiegeWaterfall for AU leads. Apollo kept as international fallback only.
+
 FILE: src/integrations/apollo.py
 PURPOSE: Apollo.io API integration for primary enrichment
 PHASE: 3 (Integrations), updated Phase 24A (Lead Pool)

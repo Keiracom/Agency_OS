@@ -118,7 +118,7 @@ This catches issues like Prefect pointing to Cloud instead of self-hosted.
 | Website | https://sparro.com.au |
 | Industry | Digital Marketing / Performance Marketing |
 | Location | Melbourne, Australia |
-| Tier | Velocity ($5,000/mo) |
+| Tier | Velocity ($4,000/mo) |
 | Test Email | david.stephens@keiracom.com |
 | Test Phone | +61457543392 |
 | Test LinkedIn | https://www.linkedin.com/in/david-stephens-8847a636a/ |
@@ -376,7 +376,7 @@ PREFECT_API_URL=https://prefect-server-production-f9b1.up.railway.app/api
 | Tier | Price | Margin | Leads |
 |------|-------|--------|-------|
 | Ignition | $2,500 | 73.4% | 1,250 |
-| Velocity | $5,000 | 73.5% | 2,250 |
+| Velocity | $4,000 | 66.9% | 2,250 |
 | Dominance | $7,500 | 66.6% | 4,500 |
 
 → Full model: `docs/specs/TIER_PRICING_COST_MODEL_v2.md`

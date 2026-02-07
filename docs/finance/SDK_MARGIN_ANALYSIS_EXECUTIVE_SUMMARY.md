@@ -1,3 +1,7 @@
+> ⚠️ **DEPRECATED (FCO-002):** SDK has been replaced by Smart Prompts as of 2026-02-05.
+> For current margin calculations, see: `MARGIN_RECALCULATION_POST_SIEGE.md`
+> This document is retained for historical reference only.
+
 # SDK Integration Margin Analysis — Executive Summary
 
 **Document Type:** CTO/CFO Joint Analysis
@@ -254,8 +258,8 @@ Target with SDK: **55-65%**
 | Cold (25%) | 562 | $0.29 | $163 |
 | Infrastructure | — | — | $301 |
 | **TOTAL COGS** | | | **$2,168** |
-| Revenue | | | $5,000 |
-| **Margin** | | | **56.6%** |
+| Revenue | | | $4,000 |
+| **Margin** | | | **45.8%** |
 
 ### Scenario B: SDK for All Hot Leads
 
@@ -267,8 +271,8 @@ Target with SDK: **55-65%**
 | Cold (25%) | 562 | $0.29 | $163 |
 | Infrastructure | — | — | $301 |
 | **TOTAL COGS** | | | **$2,888** |
-| Revenue | | | $5,000 |
-| **Margin** | | | **42.2%** |
+| Revenue | | | $4,000 |
+| **Margin** | | | **27.8%** |
 
 ### Scenario C: SDK for All Hot Leads + LinkedIn Boost (15% Hot)
 
@@ -280,8 +284,8 @@ Target with SDK: **55-65%**
 | Cold (23%) | 517 | $0.29 | $150 |
 | Infrastructure | — | — | $301 |
 | **TOTAL COGS** | | | **$3,432** |
-| Revenue | | | $5,000 |
-| **Margin** | | | **31.4%** |
+| Revenue | | | $4,000 |
+| **Margin** | | | **14.2%** |
 
 ---
 
@@ -331,7 +335,7 @@ See detailed analysis in:
 | Tier | Revenue | COGS | Margin |
 |------|---------|------|--------|
 | Ignition | $2,500 | $1,050 | **58.0%** |
-| Velocity | $5,000 | $2,250 | **55.0%** |
+| Velocity | $4,000 | $2,250 | **43.8%** |
 | Dominance | $7,500 | $3,900 | **48.0%** |
 
 ---

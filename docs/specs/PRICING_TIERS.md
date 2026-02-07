@@ -24,7 +24,7 @@ The ONLY differences between tiers are:
 | Tier | Founding Price | Regular Price | Leads/mo | Campaigns | LinkedIn Seats |
 |------|----------------|---------------|----------|-----------|----------------|
 | **Ignition** | $1,250/mo | $2,500/mo | 1,250 | 5 | 1 |
-| **Velocity** | $2,500/mo | $5,000/mo | 2,250 | 10 | 3 |
+| **Velocity** | $2,000/mo | $4,000/mo | 2,250 | 10 | 3 |
 | **Dominance** | $3,750/mo | $7,500/mo | 4,500 | 20 | 5 |
 
 **Founding member terms:**

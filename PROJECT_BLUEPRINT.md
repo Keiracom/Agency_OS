@@ -103,7 +103,7 @@ Phase 23 (Platform Intel)
 | Tier | Founding | Regular | Leads | Campaigns |
 |------|----------|---------|-------|-----------|
 | Ignition | $1,250 | $2,500 | 1,250 | 5 |
-| Velocity | $2,500 | $5,000 | 2,250 | 10 |
+| Velocity | $2,000 | $4,000 | 2,250 | 10 |
 | Dominance | $3,750 | $7,500 | 4,500 | 20 |
 
 **All tiers include ALL features.** Only difference: volume.

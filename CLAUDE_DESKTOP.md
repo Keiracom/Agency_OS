@@ -244,7 +244,7 @@ When Dave asks a question:
 | Tier | Monthly | Lead Target |
 |------|---------|-------------|
 | Ignition | $2,500 AUD | 1,250 |
-| Velocity | $5,000 AUD | 2,250 |
+| Velocity | $4,000 AUD | 2,250 |
 | Dominance | $7,500 AUD | 4,500 |
 
 ### Production URLs

@@ -164,7 +164,7 @@ function ExtractionBarConnected() {
 
   if (!showBanner || !status) return null;
 
-  const progress = status.progress || 0;
+  const progress = status.progress_percent || 0;
   const isComplete = status.status === "completed";
   const statusText = status.current_step || "Analyzing your agency...";
 

@@ -1,82 +1,110 @@
-# HANDOFF.md — Autonomous Session State
+# HANDOFF — 2026-02-07 06:04 UTC
 
-**Last Updated:** 2026-02-06 00:30 UTC
-**Last Session:** Conversation with Dave (autonomous setup)
+## Session Summary
 
----
+**What happened:** Dave requested full sandbox simulation of the master plan (current state → 10 customers). I spawned 9 sub-agents that created documents and files but **failed to actually test the system**.
 
-## Current Mission
-
-**SIEGE: System Overhaul** — Replace Apollo/Apify/SDK with Siege Waterfall + Smart Prompts
+**The failure:** I generated static assets instead of running data through the actual pipeline. No component testing, no integration verification, no proof the system works.
 
 ---
 
-## What's Done
+## What Was Created (Branch: `simulation/autonomous-run`)
 
-### Phase 1: Core Integrations ✅
-- [x] `siege_waterfall.py` — 5-tier enrichment interface (PASS)
-- [x] `gmb_scraper.py` — Google Maps scraper, replaces Apify (PASS)
-- [x] `kaspr.py` — Tier 5 mobile enrichment (PASS)
-- [x] `abn_client.py` — Tier 1 free AU business data (PASS)
+| Agent | Output | Quality |
+|-------|--------|---------|
+| dashboard-wiring | Found APIs already wired | ✅ Valid finding |
+| unipile-debug | Fixed auth header, needs new API key | ✅ Valid fix |
+| prototype-dashboard | React components from HTML | ⚠️ Untested |
+| e2e-tests | 76% passing, quick wins identified | ✅ Valid audit |
+| backend-stream | Confirmed SIEGE wired, Stripe skeleton | ⚠️ Untested |
+| sales-infra | Pipeline schema, billing code | ⚠️ Untested |
+| prospect-list | 54 real AU agencies CSV | ⚠️ Not enriched |
+| outreach-sim | Campaign playbook doc | ❌ Just a doc |
+| content-stream | Email sequences, LinkedIn posts | ❌ Just docs |
 
----
-
-## What's Next (P0)
-
-### Phase 2: Wire Integrations
-- [ ] A1: Wire SIEGE into scout.py
-- [ ] A2: Wire SIEGE into icp_scraper.py
-- [ ] A3: Replace remaining Apollo calls
-- [ ] A4: Replace remaining Apify calls
-
-### Blocked On Dave
-- [ ] Telnyx account + AU mobile number
-- [ ] Run migration 055 in Supabase
-- [ ] ABN Lookup GUID registration
+**Problem:** Created documents instead of proving the system works.
 
 ---
 
-## Active Sub-Agents
+## What Next Session MUST Do
 
-None currently running.
+### 1. System Audit (First)
+Map every integration and understand the data flow:
+```
+Lead Source → SIEGE Enrichment → ALS Scoring → Campaign Assignment → Outreach → Reply Handling → Dashboard
+```
+
+For each component:
+- Does it have credentials configured?
+- Can it connect?
+- What does test input → output look like?
+
+### 2. Component-by-Component Testing
+
+| Component | Test |
+|-----------|------|
+| **ABN Lookup** | Query a real ABN, verify response |
+| **GMB Scraper** | Scrape a real business, verify data |
+| **Hunter.io** | Find email for test domain |
+| **Proxycurl** | Pull LinkedIn profile data |
+| **SIEGE Waterfall** | Run 1 lead through full enrichment |
+| **ALS Scoring** | Score an enriched lead, verify 0-100 |
+| **Salesforge** | Check domain warmup status |
+| **Unipile** | Test LinkedIn connection (needs new key) |
+| **Supabase** | Query leads table, verify schema |
+| **Dashboard** | Load page, verify real data displays |
+
+### 3. Run Real Data Through Pipeline
+Take 5 prospects from the CSV and:
+1. Enrich through SIEGE
+2. Score with ALS
+3. Verify data appears in Supabase
+4. Verify dashboard displays them
+5. Create test campaign
+6. Verify campaign appears in Salesforge (don't send)
+
+### 4. Prove Each Flow Works
+- Onboarding flow: Website URL → ICP extraction → Lead generation
+- Campaign flow: Lead pool → Channel allocation → Sequence creation
+- Reply flow: Incoming reply → Classification → Response suggestion
 
 ---
 
-## Files Modified This Session
+## Blocking Issues
 
-- `src/integrations/siege_waterfall.py` — CREATED
-- `src/integrations/gmb_scraper.py` — CREATED
-- `src/integrations/kaspr.py` — CREATED
-- `src/integrations/abn_client.py` — CREATED
-- `AUTONOMOUS_EXECUTION_PLAN.md` — CREATED
-
----
-
-## Blockers / Issues
-
-1. **Unipile 401** — LinkedIn integration failing, need payment/auth fix
-2. **Telnyx number** — No AU mobile provisioned yet
-3. **ABN GUID** — Not registered yet
+| Issue | Owner | Status |
+|-------|-------|--------|
+| Unipile API key expired | Dave | Needs new key from dashboard.unipile.com |
+| Telnyx not set up | Dave | Account creation + AU number needed |
+| Stripe not configured | Dave | Account + API keys needed |
+| Email domains not warmed | — | Need 2-3 weeks warmup |
 
 ---
 
-## Notes for Next Session
+## Files to Read First
 
-- Builder cron at 09:00 UTC (10am AEST) will pick up Phase 2
-- Start with A1 (wire SIEGE into scout.py)
-- Check if Dave completed any blockers overnight
-
----
-
-## Metrics
-
-| Metric | Value |
-|--------|-------|
-| Lines of code built tonight | ~2,500 |
-| Files created | 4 |
-| Audit pass rate | 100% |
-| Dave interventions needed | 0 |
+1. `/home/elliotbot/clawd/Agency_OS/AUTONOMOUS_EXECUTION_PLAN.md` — Task breakdown
+2. `/home/elliotbot/clawd/Agency_OS/docs/marketing/MARKETING_MASTER_PLAN.md` — GTM plan
+3. `/home/elliotbot/clawd/Agency_OS/src/integrations/` — All integration code
+4. `/home/elliotbot/clawd/Agency_OS/src/engines/` — Core business logic
 
 ---
 
-*This file is updated after every autonomous session. Read this FIRST.*
+## Dave's Feedback
+
+> "Your simulation is supposed to test the whole system. Audit first to see how every aspect works then go piece by piece. This is a huge failure."
+
+**Acknowledged.** Next session must be thorough testing, not document generation.
+
+---
+
+## Git State
+
+- **Branch:** `simulation/autonomous-run`
+- **Latest commits:** Bloomberg dashboard, sales infra, Stripe integration
+- **Uncommitted:** None
+- **Main branch:** Clean, simulation work is isolated
+
+---
+
+*Handoff created: 2026-02-07 06:04 UTC*

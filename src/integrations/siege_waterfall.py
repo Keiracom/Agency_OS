@@ -847,6 +847,13 @@ class SiegeWaterfall:
             )
             
             if enriched.get("found"):
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="abn_lookup",
+                    lead_data=lead,
+                    success=True,
+                    cost_aud=cost,
+                )
                 return TierResult(
                     tier=tier,
                     success=True,
@@ -854,6 +861,13 @@ class SiegeWaterfall:
                     cost_aud=cost,
                 )
             else:
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="abn_lookup",
+                    lead_data=lead,
+                    success=False,
+                    error="ABN enrichment returned no data",
+                )
                 return TierResult(
                     tier=tier,
                     success=False,
@@ -863,6 +877,13 @@ class SiegeWaterfall:
         except Exception as e:
             logger.warning(f"[Siege] Tier 1 ABN failed: {e}")
             sentry_sdk.capture_exception(e)
+            await self._log_enrichment_operation(
+                tier=tier,
+                operation="abn_lookup",
+                lead_data=lead,
+                success=False,
+                error=str(e),
+            )
             return TierResult(
                 tier=tier,
                 success=False,
@@ -924,6 +945,14 @@ class SiegeWaterfall:
             )
             
             if enriched.get("found"):
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="gmb_scrape",
+                    lead_data=lead,
+                    success=True,
+                    cost_aud=cost,
+                    metadata={"location": location},
+                )
                 return TierResult(
                     tier=tier,
                     success=True,
@@ -931,6 +960,13 @@ class SiegeWaterfall:
                     cost_aud=cost,
                 )
             else:
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="gmb_scrape",
+                    lead_data=lead,
+                    success=False,
+                    error="No GMB listing found",
+                )
                 return TierResult(
                     tier=tier,
                     success=False,
@@ -940,6 +976,13 @@ class SiegeWaterfall:
         except Exception as e:
             logger.warning(f"[Siege] Tier 2 GMB failed: {e}")
             sentry_sdk.capture_exception(e)
+            await self._log_enrichment_operation(
+                tier=tier,
+                operation="gmb_scrape",
+                lead_data=lead,
+                success=False,
+                error=str(e),
+            )
             return TierResult(
                 tier=tier,
                 success=False,
@@ -956,13 +999,15 @@ class SiegeWaterfall:
         Tier 3: Hunter.io email verification - $0.012/lead AUD
         
         Verifies email deliverability and finds emails when missing.
+        Also performs domain_search for decision-maker discovery when
+        only company/domain is known.
         Critical for bounce prevention.
         
         Args:
-            lead: Lead data (email or first_name + last_name + domain)
+            lead: Lead data (email or first_name + last_name + domain, or just domain/company)
             
         Returns:
-            TierResult with email verification data
+            TierResult with email verification data or discovered decision-makers
         """
         tier = EnrichmentTier.HUNTER
         cost = TIER_COSTS_AUD[tier]
@@ -977,6 +1022,14 @@ class SiegeWaterfall:
             if email:
                 result = await self.hunter_client.verify_email(email)
                 
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="verify_email",
+                    lead_data=lead,
+                    success=True,
+                    cost_aud=cost,
+                )
+                
                 return TierResult(
                     tier=tier,
                     success=True,
@@ -989,7 +1042,7 @@ class SiegeWaterfall:
                     cost_aud=cost,
                 )
             
-            # Try to find email
+            # Try to find email by name + domain
             elif first_name and last_name and domain:
                 result = await self.hunter_client.find_email(
                     first_name=first_name,
@@ -998,6 +1051,13 @@ class SiegeWaterfall:
                 )
                 
                 if result.get("found"):
+                    await self._log_enrichment_operation(
+                        tier=tier,
+                        operation="find_email",
+                        lead_data=lead,
+                        success=True,
+                        cost_aud=cost,
+                    )
                     return TierResult(
                         tier=tier,
                         success=True,
@@ -1010,18 +1070,116 @@ class SiegeWaterfall:
                         cost_aud=cost,
                     )
                 else:
+                    await self._log_enrichment_operation(
+                        tier=tier,
+                        operation="find_email",
+                        lead_data=lead,
+                        success=False,
+                        cost_aud=cost,
+                        error="Could not find email",
+                    )
                     return TierResult(
                         tier=tier,
                         success=False,
                         error="Could not find email",
                         cost_aud=cost,  # Still charged for attempt
                     )
+            
+            # NEW: Domain search for decision-maker discovery when only company is known
+            elif domain:
+                # Use domain_search to find decision-makers at the company
+                search_result = await self.hunter_client.domain_search(
+                    domain=domain,
+                    limit=5,  # Get top 5 contacts
+                )
+                
+                # Handle both DomainSearchResult object and list formats
+                if hasattr(search_result, "emails"):
+                    # Real Hunter client returns DomainSearchResult
+                    contacts = search_result.emails
+                elif isinstance(search_result, list):
+                    # Mock or direct list
+                    contacts = search_result
+                else:
+                    contacts = []
+                
+                if contacts and len(contacts) > 0:
+                    # Find the best decision-maker (executive/senior seniority)
+                    decision_makers = []
+                    for contact in contacts:
+                        # Handle both HunterEmail objects and dicts
+                        if hasattr(contact, "to_dict"):
+                            contact_dict = contact.to_dict()
+                        elif isinstance(contact, dict):
+                            contact_dict = contact
+                        else:
+                            continue
+                            
+                        seniority = (contact_dict.get("seniority") or "").lower()
+                        department = (contact_dict.get("department") or "").lower()
+                        
+                        # Prioritize executives and senior roles in relevant departments
+                        priority = 0
+                        if seniority in ("executive", "senior"):
+                            priority += 10
+                        if department in ("executive", "management", "marketing", "sales"):
+                            priority += 5
+                        
+                        decision_makers.append((priority, contact_dict))
+                    
+                    # Sort by priority and take the best match
+                    decision_makers.sort(key=lambda x: x[0], reverse=True)
+                    
+                    if decision_makers:
+                        best_contact = decision_makers[0][1]
+                        await self._log_enrichment_operation(
+                            tier=tier,
+                            operation="domain_search",
+                            lead_data=lead,
+                            success=True,
+                            cost_aud=0.15,  # Domain search cost
+                            metadata={"contacts_found": len(decision_makers)},
+                        )
+                        return TierResult(
+                            tier=tier,
+                            success=True,
+                            data={
+                                "email": best_contact.get("email"),
+                                "first_name": best_contact.get("first_name"),
+                                "last_name": best_contact.get("last_name"),
+                                "title": best_contact.get("position"),
+                                "seniority_level": best_contact.get("seniority"),
+                                "linkedin_url": best_contact.get("linkedin_url"),
+                                "phone": best_contact.get("phone_number"),
+                                "email_status": "discovered",
+                                "email_score": best_contact.get("confidence", 70),
+                                "email_source": "hunter_domain_search",
+                                "decision_makers_found": len(decision_makers),
+                            },
+                            cost_aud=0.15,  # Domain search costs more
+                        )
+                
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="domain_search",
+                    lead_data=lead,
+                    success=False,
+                    cost_aud=0.15,
+                    error="No contacts found for domain",
+                )
+                return TierResult(
+                    tier=tier,
+                    success=False,
+                    error="No contacts found for domain",
+                    cost_aud=0.15,  # Still charged for domain search attempt
+                )
+            
             else:
                 return TierResult(
                     tier=tier,
                     success=False,
                     skipped=True,
-                    skip_reason="No email or name+domain available",
+                    skip_reason="No email, name+domain, or domain available",
                 )
                 
         except Exception as e:
@@ -1076,6 +1234,13 @@ class SiegeWaterfall:
             )
             
             if enriched.get("found"):
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="linkedin_enrich",
+                    lead_data=lead,
+                    success=True,
+                    cost_aud=cost,
+                )
                 return TierResult(
                     tier=tier,
                     success=True,
@@ -1083,6 +1248,14 @@ class SiegeWaterfall:
                     cost_aud=cost,
                 )
             else:
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="linkedin_enrich",
+                    lead_data=lead,
+                    success=False,
+                    cost_aud=cost,
+                    error="No LinkedIn profile found",
+                )
                 return TierResult(
                     tier=tier,
                     success=False,
@@ -1093,6 +1266,13 @@ class SiegeWaterfall:
         except Exception as e:
             logger.warning(f"[Siege] Tier 4 Proxycurl failed: {e}")
             sentry_sdk.capture_exception(e)
+            await self._log_enrichment_operation(
+                tier=tier,
+                operation="linkedin_enrich",
+                lead_data=lead,
+                success=False,
+                error=str(e),
+            )
             return TierResult(
                 tier=tier,
                 success=False,
@@ -1167,6 +1347,14 @@ class SiegeWaterfall:
                 logger.info(
                     f"[Siege] Tier 5 Identity Gold success for ALS={als_score} lead"
                 )
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="identity_gold",
+                    lead_data=lead,
+                    success=True,
+                    cost_aud=cost,
+                    metadata={"als_score": als_score},
+                )
                 return TierResult(
                     tier=tier,
                     success=True,
@@ -1174,6 +1362,15 @@ class SiegeWaterfall:
                     cost_aud=cost,
                 )
             else:
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="identity_gold",
+                    lead_data=lead,
+                    success=False,
+                    cost_aud=cost,
+                    error="No identity data found",
+                    metadata={"als_score": als_score},
+                )
                 return TierResult(
                     tier=tier,
                     success=False,
@@ -1184,11 +1381,75 @@ class SiegeWaterfall:
         except Exception as e:
             logger.warning(f"[Siege] Tier 5 Identity failed: {e}")
             sentry_sdk.capture_exception(e)
+            await self._log_enrichment_operation(
+                tier=tier,
+                operation="identity_gold",
+                lead_data=lead,
+                success=False,
+                error=str(e),
+                metadata={"als_score": als_score},
+            )
             return TierResult(
                 tier=tier,
                 success=False,
                 error=str(e),
             )
+
+    # ============================================
+    # AUDIT LOGGING
+    # ============================================
+
+    async def _log_enrichment_operation(
+        self,
+        tier: EnrichmentTier,
+        operation: str,
+        lead_data: dict[str, Any],
+        success: bool,
+        cost_aud: float = 0.0,
+        error: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Log enrichment operation to audit_logs table.
+        
+        Provides full traceability for all enrichment operations,
+        supporting cost tracking and debugging.
+        
+        Args:
+            tier: Which enrichment tier performed the operation
+            operation: Specific operation (verify_email, find_email, domain_search, etc.)
+            lead_data: Lead data being enriched
+            success: Whether operation succeeded
+            cost_aud: Cost in AUD
+            error: Error message if failed
+            metadata: Additional operation metadata
+        """
+        try:
+            # Lazy import to avoid circular dependencies
+            from src.integrations.supabase import get_supabase_client
+            
+            supabase = get_supabase_client()
+            
+            log_entry = {
+                "operation_type": "enrichment",
+                "tier": tier.value,
+                "operation": operation,
+                "service": f"siege_{tier.value}",
+                "success": success,
+                "cost_aud": cost_aud,
+                "error_message": error,
+                "lead_email": lead_data.get("email"),
+                "lead_domain": lead_data.get("domain") or lead_data.get("company_domain"),
+                "lead_company": lead_data.get("company_name"),
+                "metadata": metadata or {},
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            
+            await supabase.table("audit_logs").insert(log_entry).execute()
+            
+        except Exception as e:
+            # Don't fail enrichment if logging fails
+            logger.warning(f"[Siege] Audit log failed: {e}")
 
     # ============================================
     # HELPER METHODS

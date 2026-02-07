@@ -305,6 +305,201 @@ async def check_enrichment_cache_task(
 
 
 # ============================================
+# Multi-Tenant Unipile LinkedIn Enrichment
+# ============================================
+
+
+@task(
+    name="unipile_linkedin_enrichment",
+    description="Enrich lead with LinkedIn data via multi-tenant Unipile",
+    retries=2,
+    retry_delay_seconds=[60, 300],
+    tags=["enrichment", "unipile", "linkedin"],
+)
+async def unipile_linkedin_enrichment_task(
+    lead_id: UUID,
+    campaign_id: UUID,
+    linkedin_url: str | None = None,
+) -> dict[str, Any]:
+    """
+    Enrich lead with LinkedIn data using user's connected Unipile account.
+
+    Multi-Tenant BYOA Model:
+    - Resolves Unipile account via campaign -> client -> user chain
+    - If no account connected or expired, pauses campaign
+    - Uses account holder's LinkedIn for profile lookups
+
+    Args:
+        lead_id: Lead UUID to enrich
+        campaign_id: Campaign UUID (for account resolution)
+        linkedin_url: Optional LinkedIn profile URL
+
+    Returns:
+        Enrichment result with LinkedIn data
+
+    Raises:
+        UnipileAccountRequired: If no Unipile account connected
+        UnipileAccountExpired: If account needs re-authentication
+    """
+    from sqlalchemy import text
+
+    from src.integrations.unipile import get_unipile_client_for_account
+    from src.services.unipile_service import (
+        UnipileAccountExpired,
+        UnipileAccountRequired,
+        unipile_account_service,
+    )
+
+    async with get_db_session() as db:
+        # Resolve multi-tenant Unipile account for this campaign
+        account = await unipile_account_service.get_account_for_campaign(
+            db, campaign_id
+        )
+
+        if not account:
+            # No connected account - pause campaign
+            await _pause_campaign_for_reconnect(
+                db, campaign_id, "No Unipile account connected"
+            )
+            raise UnipileAccountRequired(
+                "User must connect LinkedIn account via Unipile"
+            )
+
+        if account["status"] != "OK":
+            # Account expired - pause campaign
+            await _pause_campaign_for_reconnect(
+                db, campaign_id, f"Unipile account status: {account['status']}"
+            )
+            raise UnipileAccountExpired(
+                f"LinkedIn connection expired: {account.get('error_message', 'Please reconnect')}"
+            )
+
+        # Get Unipile client for this account
+        unipile = get_unipile_client_for_account(account["unipile_account_id"])
+
+        # If no LinkedIn URL provided, try to get from lead
+        if not linkedin_url:
+            result = await db.execute(
+                text("SELECT linkedin_url FROM leads WHERE id = :lead_id"),
+                {"lead_id": str(lead_id)}
+            )
+            row = result.fetchone()
+            linkedin_url = row.linkedin_url if row else None
+
+        if not linkedin_url:
+            logger.warning(f"No LinkedIn URL for lead {lead_id}")
+            return {
+                "success": False,
+                "lead_id": str(lead_id),
+                "error": "No LinkedIn URL available",
+            }
+
+        try:
+            # Fetch LinkedIn profile via Unipile
+            profile = await unipile.get_profile(
+                account_id=account["unipile_account_id"],
+                profile_id=linkedin_url,
+            )
+
+            # Update last_used timestamp
+            await unipile_account_service.update_last_used(
+                db, account["unipile_account_id"]
+            )
+
+            # Update lead with LinkedIn data
+            await db.execute(
+                text("""
+                    UPDATE leads SET
+                        linkedin_headline = :headline,
+                        linkedin_connections = :connections,
+                        company_name = COALESCE(company_name, :company),
+                        enriched_at = NOW(),
+                        updated_at = NOW()
+                    WHERE id = :lead_id
+                """),
+                {
+                    "lead_id": str(lead_id),
+                    "headline": profile.get("headline"),
+                    "connections": profile.get("connections"),
+                    "company": profile.get("company"),
+                }
+            )
+            await db.commit()
+
+            logger.info(
+                f"Enriched lead {lead_id} via Unipile account {account['display_name']}"
+            )
+
+            return {
+                "success": True,
+                "lead_id": str(lead_id),
+                "enrichment_source": "unipile",
+                "account_used": account["display_name"],
+                "fields_enriched": [
+                    k for k, v in profile.items()
+                    if v and k in ("headline", "company", "connections", "location")
+                ],
+            }
+
+        except Exception as e:
+            logger.exception(f"Unipile enrichment failed for lead {lead_id}: {e}")
+            return {
+                "success": False,
+                "lead_id": str(lead_id),
+                "error": str(e),
+            }
+
+
+async def _pause_campaign_for_reconnect(
+    db,
+    campaign_id: UUID,
+    reason: str,
+) -> None:
+    """
+    Pause a campaign due to Unipile account issues.
+
+    Sets campaign status to PAUSED and logs audit event.
+    """
+    from sqlalchemy import text
+
+    await db.execute(
+        text("""
+            UPDATE campaigns SET
+                status = 'paused',
+                pause_reason = 'RECONNECT_REQUIRED',
+                pause_message = :reason,
+                updated_at = NOW()
+            WHERE id = :campaign_id
+              AND status = 'active'
+        """),
+        {"campaign_id": str(campaign_id), "reason": reason}
+    )
+
+    # Log to audit table if it exists
+    try:
+        await db.execute(
+            text("""
+                INSERT INTO audit_log (
+                    entity_type, entity_id, action, details, created_at
+                ) VALUES (
+                    'campaign', :campaign_id, 'PAUSED_RECONNECT_REQUIRED',
+                    :details, NOW()
+                )
+            """),
+            {
+                "campaign_id": str(campaign_id),
+                "details": f'{{"reason": "{reason}"}}',
+            }
+        )
+    except Exception:
+        # Audit table may not exist - that's fine
+        pass
+
+    await db.commit()
+    logger.warning(f"Paused campaign {campaign_id} for reconnect: {reason}")
+
+
+# ============================================
 # VERIFICATION CHECKLIST
 # ============================================
 # [x] Contract comment at top
@@ -319,3 +514,5 @@ async def check_enrichment_cache_task(
 # [x] All functions have docstrings
 # [x] Rule 16: Cache versioning (v1 prefix)
 # [x] Rule 4: Clay fallback max 15%
+# [x] Multi-tenant Unipile account resolution
+# [x] Campaign pause on account issues

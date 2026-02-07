@@ -34,6 +34,7 @@ from src.api.routes.patterns import router as patterns_router
 from src.api.routes.pool import router as pool_router
 from src.api.routes.replies import router as replies_router
 from src.api.routes.reports import router as reports_router
+from src.api.routes.unipile import router as unipile_router
 from src.api.routes.webhooks import router as webhooks_router
 from src.api.routes.webhooks_outbound import router as webhooks_outbound_router
 
@@ -57,4 +58,6 @@ __all__ = [
     "linkedin_router",
     # Phase 24A: Lead Pool
     "pool_router",
+    # Unipile BYOA Multi-Tenancy
+    "unipile_router",
 ]

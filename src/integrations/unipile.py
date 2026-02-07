@@ -775,16 +775,40 @@ class UnipileClient:
             }
 
 
-# Singleton instance
+# Singleton instance (for system-wide operations)
 _unipile_client: UnipileClient | None = None
 
 
 def get_unipile_client() -> UnipileClient:
-    """Get or create Unipile client instance."""
+    """Get or create Unipile client instance (system-wide)."""
     global _unipile_client
     if _unipile_client is None:
         _unipile_client = UnipileClient()
     return _unipile_client
+
+
+def get_unipile_client_for_account(account_id: str) -> UnipileClient:
+    """
+    Get Unipile client configured for a specific account.
+
+    For multi-tenant BYOA model, operations are scoped to the user's
+    connected LinkedIn account via account_id parameter.
+
+    Args:
+        account_id: Unipile account ID from unipile_accounts table
+
+    Returns:
+        UnipileClient instance (same as system client, but caller
+        should pass account_id to individual operations)
+
+    Note:
+        The Unipile API uses account_id as a parameter on each request,
+        not as a client configuration. This function exists for clarity
+        and future-proofing if Unipile adds account-scoped auth.
+    """
+    # Currently Unipile uses the same API key for all accounts,
+    # with account_id passed per-request. Return the singleton.
+    return get_unipile_client()
 
 
 # ============================================

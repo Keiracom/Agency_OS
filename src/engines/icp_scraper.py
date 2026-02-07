@@ -823,9 +823,12 @@ Respond in JSON format only:
         company_name: str,
         domain: str | None = None,
         source: str = "portfolio",
+        icp_config: dict | None = None,
     ) -> EngineResult[EnrichedPortfolioCompany]:
         """
         Enrich a single portfolio company via Claude-first waterfall.
+
+        Phase Dynamic ICP: Now accepts icp_config for dynamic country targeting.
 
         NEW WATERFALL (Claude-first):
         Tier 0: Claude inference (always runs first to establish baseline)
@@ -840,10 +843,14 @@ Respond in JSON format only:
             company_name: Company name
             domain: Optional company domain
             source: How this company was found
+            icp_config: Optional ICP config dict with countries, employee_range, etc.
 
         Returns:
             EngineResult containing enriched company data
         """
+        # Get primary country from ICP config (default to Australia for backward compat)
+        icp_countries = icp_config.get("countries", ["Australia"]) if icp_config else ["Australia"]
+        primary_country = icp_countries[0] if icp_countries else "Australia"
         enriched = EnrichedPortfolioCompany(
             company_name=company_name,
             domain=domain,
@@ -883,7 +890,7 @@ Respond in JSON format only:
                 siege_data = {
                     "company_name": company_name,
                     "domain": domain,
-                    "country": "Australia",
+                    "country": primary_country,
                 }
                 
                 # Run only ABN and GMB tiers (skip expensive tiers)
@@ -913,7 +920,7 @@ Respond in JSON format only:
                             enriched.domain = parsed.netloc.lower().replace("www.", "")
                             domain = enriched.domain
                     
-                    enriched.country = "Australia"
+                    enriched.country = primary_country
                     enrichment_source = f"siege_waterfall_{siege_result.sources_used}sources"
                     
                     logger.info(
@@ -934,7 +941,7 @@ Respond in JSON format only:
                 logger.info(f"Tier 1a: Apollo name search for {company_name}")
                 orgs = await self.apollo.search_organizations(
                     company_name=company_name,
-                    locations=["Australia"],  # Focus on Australian companies
+                    locations=icp_countries,  # Dynamic from ICP config
                     limit=1,
                 )
 
@@ -1080,11 +1087,11 @@ Respond in JSON format only:
             try:
                 logger.info(f"Tier 3: Google Business search for {company_name}")
                 from src.integrations.gmb_scraper import scrape_google_business
-                google_data = await scrape_google_business(company_name, "Australia")
+                google_data = await scrape_google_business(company_name, primary_country)
 
                 if google_data.get("found"):
                     enriched.location = google_data.get("address") or enriched.location
-                    enriched.country = "Australia"  # Inferred from search
+                    enriched.country = primary_country  # Inferred from search
                     # Use category for industry if we don't have one
                     if not enriched.industry and google_data.get("category"):
                         enriched.industry = google_data.get("category")
@@ -1111,7 +1118,7 @@ Respond in JSON format only:
             try:
                 logger.info(f"Tier 4: General Google search for {company_name}")
                 search_results = await self.apify.search_google(
-                    [f'"{company_name}" Australia company'], results_per_query=5
+                    [f'"{company_name}" {primary_country} company'], results_per_query=5
                 )
 
                 if search_results and search_results[0].get("organicResults"):
@@ -1147,7 +1154,7 @@ Respond in JSON format only:
 
                         if potential_domain and "." in potential_domain:
                             enriched.domain = potential_domain
-                            enriched.country = "Australia"
+                            enriched.country = primary_country
 
                             # Try to infer industry from title/description
                             desc_lower = (title + " " + description).lower()
@@ -1382,9 +1389,12 @@ Respond in JSON format only:
         self,
         company_name: str,
         domain: str | None = None,
+        icp_config: dict | None = None,
     ) -> EngineResult[dict[str, Any]]:
         """
         Look up the agency itself in Apollo to get description data.
+
+        Phase Dynamic ICP: Now accepts icp_config for dynamic country targeting.
 
         Used in Portfolio Fallback Discovery (Tier F1) - the agency's Apollo
         description may mention clients they've worked with.
@@ -1392,10 +1402,14 @@ Respond in JSON format only:
         Args:
             company_name: Agency name to search for
             domain: Optional agency domain (more accurate if available)
+            icp_config: Optional ICP config dict with countries, employee_range, etc.
 
         Returns:
             EngineResult containing Apollo data with description, keywords, etc.
         """
+        # Get countries from ICP config (default to Australia for backward compat)
+        icp_countries = icp_config.get("countries", ["Australia"]) if icp_config else ["Australia"]
+        
         logger.info(f"Looking up agency in Apollo: {company_name} (domain={domain})")
 
         # Try domain-based lookup first (more accurate)
@@ -1426,7 +1440,7 @@ Respond in JSON format only:
         try:
             orgs = await self.apollo.search_organizations(
                 company_name=company_name,
-                locations=["Australia"],
+                locations=icp_countries,  # Dynamic from ICP config
                 limit=1,
             )
 

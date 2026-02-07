@@ -152,6 +152,16 @@ TARGET_INDUSTRIES = [
     "manufacturing",
 ]
 
+# Default ICP config (used when no campaign-specific config)
+DEFAULT_ICP_CONFIG = {
+    "employee_range": {"min": 5, "max": 50},
+    "countries": ["Australia"],
+    "states": [],
+    "industries": [],
+    "titles": ["CEO", "Managing Director", "Founder", "Owner"],
+    "timezone": "Australia/Sydney",
+}
+
 
 class ScorerEngine(BaseEngine):
     """
@@ -183,11 +193,14 @@ class ScorerEngine(BaseEngine):
         target_industries: list[str] | None = None,
         competitor_domains: list[str] | None = None,
         use_learned_weights: bool = True,
+        campaign_id: UUID | None = None,
+        icp_config: dict[str, Any] | None = None,
     ) -> EngineResult[dict[str, Any]]:
         """
         Calculate ALS score for a lead.
 
         Phase 16: Now supports learned weights from Conversion Intelligence.
+        Phase Dynamic ICP: Now supports campaign-specific ICP config.
 
         Args:
             db: Database session (passed by caller)
@@ -195,11 +208,19 @@ class ScorerEngine(BaseEngine):
             target_industries: Optional list of target industries
             competitor_domains: Optional list of competitor domains to penalize
             use_learned_weights: Whether to use client's learned weights (default: True)
+            campaign_id: Optional campaign UUID for ICP config lookup
+            icp_config: Optional pre-fetched ICP config (skips DB lookup)
 
         Returns:
             EngineResult with scoring breakdown
         """
         lead = await self.get_lead_by_id(db, lead_id)
+
+        # Phase Dynamic ICP: Get ICP config from campaign
+        if icp_config is None and campaign_id:
+            icp_config = await self._get_icp_config(db, campaign_id)
+        elif icp_config is None:
+            icp_config = DEFAULT_ICP_CONFIG.copy()
 
         # Phase 16: Get learned weights if available
         weights = DEFAULT_WEIGHTS.copy()
@@ -215,7 +236,7 @@ class ScorerEngine(BaseEngine):
         # These are the raw scores before weighting
         raw_data_quality = self._score_data_quality(lead)
         raw_authority = self._score_authority(lead)
-        raw_company_fit = self._score_company_fit(lead, target_industries)
+        raw_company_fit = self._score_company_fit(lead, target_industries, icp_config)
         raw_timing = self._score_timing(lead)
         raw_risk = self._score_risk(lead, competitor_domains)
 
@@ -439,50 +460,80 @@ class ScorerEngine(BaseEngine):
         self,
         lead: Lead,
         target_industries: list[str] | None = None,
+        icp_config: dict[str, Any] | None = None,
     ) -> int:
         """
         Calculate Company Fit score (max 25 points).
 
+        Phase Dynamic ICP: Now uses icp_config for employee_range and countries.
+
         - Industry match: 10 points
-        - Employee count 5-50: 8 points
-        - Australia: 7 points
+        - Employee count in ICP range: 8 points
+        - Country match from ICP: 7 points
         """
         score = 0
-        industries = target_industries or TARGET_INDUSTRIES
+        
+        # Use ICP config or defaults
+        config = icp_config or DEFAULT_ICP_CONFIG
+        employee_range = config.get("employee_range", {"min": 5, "max": 50})
+        emp_min = employee_range.get("min", 5)
+        emp_max = employee_range.get("max", 50)
+        
+        # Get target countries from ICP config
+        icp_countries = config.get("countries", ["Australia"])
+        
+        # Industries from ICP config or fallback to target_industries or defaults
+        industries = config.get("industries") or target_industries or TARGET_INDUSTRIES
 
         # Industry match
-        if lead.organization_industry:
+        if lead.organization_industry and industries:
             industry_lower = lead.organization_industry.lower()
             for target in industries:
                 if target.lower() in industry_lower:
                     score += SCORE_INDUSTRY_MATCH
                     break
 
-        # Employee count (ideal range: 5-50)
+        # Employee count (dynamic range from ICP config)
         if lead.organization_employee_count:
             count = lead.organization_employee_count
-            if 5 <= count <= 50:
+            if emp_min <= count <= emp_max:
                 score += SCORE_EMPLOYEE_COUNT_IDEAL
-            elif 51 <= count <= 200:
+            elif emp_max < count <= emp_max * 4:  # Up to 4x max still gets partial
                 score += 5  # Partial credit
-            elif 1 <= count <= 4:
-                score += 3  # Small startup
+            elif count < emp_min and count >= 1:
+                score += 3  # Small startup - below min but exists
 
-        # Country (Australia preferred)
+        # Country match (dynamic from ICP config)
         if lead.organization_country:
             country = lead.organization_country.lower()
-            if country in ["australia", "au", "aus"]:
-                score += SCORE_COUNTRY_AUSTRALIA
-            elif country in [
-                "new zealand",
-                "nz",
-                "united states",
-                "us",
-                "usa",
-                "united kingdom",
-                "uk",
-                "gb",
-            ]:
+            # Normalize country names for matching
+            country_aliases = {
+                "australia": ["australia", "au", "aus"],
+                "new zealand": ["new zealand", "nz"],
+                "united states": ["united states", "us", "usa"],
+                "united kingdom": ["united kingdom", "uk", "gb", "great britain"],
+            }
+            
+            # Check if country matches any ICP target country
+            country_matched = False
+            for icp_country in icp_countries:
+                icp_lower = icp_country.lower()
+                # Check direct match
+                if country == icp_lower:
+                    country_matched = True
+                    break
+                # Check alias match
+                for canonical, aliases in country_aliases.items():
+                    if icp_lower in aliases and country in aliases:
+                        country_matched = True
+                        break
+                if country_matched:
+                    break
+            
+            if country_matched:
+                score += SCORE_COUNTRY_AUSTRALIA  # Full points for ICP country match
+            elif country in ["new zealand", "nz", "united states", "us", "usa", 
+                           "united kingdom", "uk", "gb"]:
                 score += 4  # Partial credit for English-speaking countries
 
         return min(25, score)
@@ -657,6 +708,83 @@ class ScorerEngine(BaseEngine):
                 return recommended
 
         return None
+
+    async def _get_icp_config(
+        self,
+        db: AsyncSession,
+        campaign_id: UUID | None,
+    ) -> dict[str, Any]:
+        """
+        Get ICP (Ideal Customer Profile) config for a campaign.
+
+        Phase Dynamic ICP: Fetches campaign-specific ICP config from
+        campaigns.icp_config JSONB column for dynamic scoring.
+
+        Args:
+            db: Database session
+            campaign_id: Campaign UUID to get config for
+
+        Returns:
+            ICP config dict with employee_range, countries, states, etc.
+            Falls back to DEFAULT_ICP_CONFIG if no campaign or no config.
+        """
+        if not campaign_id:
+            logger.warning(
+                "No campaign_id provided for ICP config lookup, using default"
+            )
+            # Log to audit_logs for governance tracking
+            await self.log_operation_to_db(
+                db=db,
+                operation="icp_config_fallback",
+                success=True,
+                metadata={"reason": "no_campaign_id", "fallback": "DEFAULT_ICP_CONFIG"},
+            )
+            return DEFAULT_ICP_CONFIG.copy()
+
+        try:
+            result = await db.execute(
+                text("""
+                    SELECT icp_config
+                    FROM campaigns
+                    WHERE id = :campaign_id
+                    AND deleted_at IS NULL
+                """),
+                {"campaign_id": str(campaign_id)},
+            )
+            row = result.fetchone()
+
+            if row and row.icp_config:
+                logger.info(
+                    f"Using dynamic ICP config for campaign {campaign_id}: "
+                    f"employee_range={row.icp_config.get('employee_range')}, "
+                    f"countries={row.icp_config.get('countries')}"
+                )
+                return row.icp_config
+
+            # Campaign exists but no ICP config - use default
+            logger.warning(
+                f"Campaign {campaign_id} has no icp_config, using default"
+            )
+            await self.log_operation_to_db(
+                db=db,
+                operation="icp_config_fallback",
+                campaign_id=campaign_id,
+                success=True,
+                metadata={"reason": "no_icp_config_on_campaign", "fallback": "DEFAULT_ICP_CONFIG"},
+            )
+            return DEFAULT_ICP_CONFIG.copy()
+
+        except Exception as e:
+            logger.error(f"Error fetching ICP config for campaign {campaign_id}: {e}")
+            await self.log_operation_to_db(
+                db=db,
+                operation="icp_config_error",
+                campaign_id=campaign_id,
+                success=False,
+                error_message=str(e),
+                metadata={"fallback": "DEFAULT_ICP_CONFIG"},
+            )
+            return DEFAULT_ICP_CONFIG.copy()
 
     async def _get_buyer_boost(
         self,
@@ -1007,6 +1135,8 @@ class ScorerEngine(BaseEngine):
         target_industries: list[str] | None = None,
         competitor_domains: list[str] | None = None,
         assignment_id: UUID | None = None,
+        campaign_id: UUID | None = None,
+        icp_config: dict[str, Any] | None = None,
     ) -> EngineResult[dict[str, Any]]:
         """
         Calculate ALS score for a lead in the pool.
@@ -1017,12 +1147,16 @@ class ScorerEngine(BaseEngine):
         Phase 24A+: When assignment_id is provided, includes LinkedIn
         engagement boost from enrichment data.
 
+        Phase Dynamic ICP: Now supports campaign-specific ICP config.
+
         Args:
             db: Database session (passed by caller)
             lead_pool_id: Lead pool UUID to score
             target_industries: Optional list of target industries
             competitor_domains: Optional list of competitor domains
             assignment_id: Optional assignment UUID for LinkedIn boost
+            campaign_id: Optional campaign UUID for ICP config lookup
+            icp_config: Optional pre-fetched ICP config (skips DB lookup)
 
         Returns:
             EngineResult with scoring breakdown
@@ -1035,10 +1169,16 @@ class ScorerEngine(BaseEngine):
                 metadata={"lead_pool_id": str(lead_pool_id)},
             )
 
+        # Phase Dynamic ICP: Get ICP config from campaign
+        if icp_config is None and campaign_id:
+            icp_config = await self._get_icp_config(db, campaign_id)
+        elif icp_config is None:
+            icp_config = DEFAULT_ICP_CONFIG.copy()
+
         # Calculate raw component scores
         raw_data_quality = self._score_pool_data_quality(pool_lead)
         raw_authority = self._score_pool_authority(pool_lead)
-        raw_company_fit = self._score_pool_company_fit(pool_lead, target_industries)
+        raw_company_fit = self._score_pool_company_fit(pool_lead, target_industries, icp_config)
         raw_timing = self._score_pool_timing(pool_lead)
         raw_risk = self._score_pool_risk(pool_lead, competitor_domains)
 
@@ -1310,9 +1450,13 @@ class ScorerEngine(BaseEngine):
         weights_source: str = "default",
         target_industries: list[str] | None = None,
         competitor_domains: list[str] | None = None,
+        campaign_id: UUID | None = None,
+        icp_config: dict[str, Any] | None = None,
     ) -> EngineResult[dict[str, Any]]:
         """
         Score a single lead assignment with client-specific weights.
+
+        Phase Dynamic ICP: Now supports campaign-specific ICP config.
 
         Args:
             db: Database session
@@ -1322,6 +1466,8 @@ class ScorerEngine(BaseEngine):
             weights_source: Source of weights ("default" or "learned")
             target_industries: Client's target industries
             competitor_domains: Client's competitor domains
+            campaign_id: Optional campaign UUID for ICP config lookup
+            icp_config: Optional pre-fetched ICP config (skips DB lookup)
 
         Returns:
             EngineResult with scoring breakdown
@@ -1334,6 +1480,12 @@ class ScorerEngine(BaseEngine):
                 metadata={"assignment_id": str(assignment_id)},
             )
 
+        # Phase Dynamic ICP: Get ICP config from campaign
+        if icp_config is None and campaign_id:
+            icp_config = await self._get_icp_config(db, campaign_id)
+        elif icp_config is None:
+            icp_config = DEFAULT_ICP_CONFIG.copy()
+
         # Get weights if not provided
         if weights is None:
             weights = DEFAULT_WEIGHTS.copy()
@@ -1345,7 +1497,7 @@ class ScorerEngine(BaseEngine):
         # Calculate raw component scores using pool data
         raw_data_quality = self._score_pool_data_quality(assignment_data)
         raw_authority = self._score_pool_authority(assignment_data)
-        raw_company_fit = self._score_pool_company_fit(assignment_data, target_industries)
+        raw_company_fit = self._score_pool_company_fit(assignment_data, target_industries, icp_config)
         raw_timing = self._score_pool_timing(assignment_data)
         raw_risk = self._score_pool_risk(assignment_data, competitor_domains)
 
@@ -1624,39 +1776,74 @@ class ScorerEngine(BaseEngine):
         self,
         pool_lead: dict[str, Any],
         target_industries: list[str] | None = None,
+        icp_config: dict[str, Any] | None = None,
     ) -> int:
         """
         Calculate Company Fit score for pool lead (max 25 points).
 
+        Phase Dynamic ICP: Now uses icp_config for employee_range and countries.
         Uses pool-specific company fields.
         """
         score = 0
-        industries = target_industries or TARGET_INDUSTRIES
+        
+        # Use ICP config or defaults
+        config = icp_config or DEFAULT_ICP_CONFIG
+        employee_range = config.get("employee_range", {"min": 5, "max": 50})
+        emp_min = employee_range.get("min", 5)
+        emp_max = employee_range.get("max", 50)
+        
+        # Get target countries from ICP config
+        icp_countries = config.get("countries", ["Australia"])
+        
+        # Industries from ICP config or fallback
+        industries = config.get("industries") or target_industries or TARGET_INDUSTRIES
 
         # Industry match
         industry = pool_lead.get("company_industry", "")
-        if industry:
+        if industry and industries:
             industry_lower = industry.lower()
             for target in industries:
                 if target.lower() in industry_lower:
                     score += SCORE_INDUSTRY_MATCH
                     break
 
-        # Employee count (ideal: 5-50)
+        # Employee count (dynamic range from ICP config)
         employee_count = pool_lead.get("company_employee_count")
         if employee_count:
-            if 5 <= employee_count <= 50:
+            if emp_min <= employee_count <= emp_max:
                 score += SCORE_EMPLOYEE_COUNT_IDEAL
-            elif 51 <= employee_count <= 200:
-                score += 5
-            elif 1 <= employee_count <= 4:
-                score += 3
+            elif emp_max < employee_count <= emp_max * 4:
+                score += 5  # Partial credit
+            elif employee_count < emp_min and employee_count >= 1:
+                score += 3  # Small startup
 
-        # Country (Australia preferred)
+        # Country match (dynamic from ICP config)
         country = pool_lead.get("company_country", "")
         if country:
             country_lower = country.lower()
-            if country_lower in ["australia", "au", "aus"]:
+            # Normalize country names for matching
+            country_aliases = {
+                "australia": ["australia", "au", "aus"],
+                "new zealand": ["new zealand", "nz"],
+                "united states": ["united states", "us", "usa"],
+                "united kingdom": ["united kingdom", "uk", "gb", "great britain"],
+            }
+            
+            # Check if country matches any ICP target country
+            country_matched = False
+            for icp_country in icp_countries:
+                icp_lower = icp_country.lower()
+                if country_lower == icp_lower:
+                    country_matched = True
+                    break
+                for canonical, aliases in country_aliases.items():
+                    if icp_lower in aliases and country_lower in aliases:
+                        country_matched = True
+                        break
+                if country_matched:
+                    break
+            
+            if country_matched:
                 score += SCORE_COUNTRY_AUSTRALIA
             elif country_lower in ["new zealand", "nz", "united states", "us", "usa", "uk", "gb"]:
                 score += 4

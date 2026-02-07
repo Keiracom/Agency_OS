@@ -412,6 +412,86 @@ class BaseEngine(ABC):
 
         return entry
 
+    async def log_operation_to_db(
+        self,
+        db: AsyncSession,
+        operation: str,
+        client_id: UUID | None = None,
+        lead_id: UUID | None = None,
+        campaign_id: UUID | None = None,
+        channel: ChannelType | None = None,
+        success: bool = True,
+        cost_aud: float = 0.0,
+        error_message: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Log engine operation to audit_logs table for full traceability.
+
+        This persists the log entry to the database for audit trail,
+        cost tracking, and debugging.
+
+        Args:
+            db: Database session (passed by caller)
+            operation: Name of the operation
+            client_id: Optional client UUID
+            lead_id: Optional lead UUID
+            campaign_id: Optional campaign UUID
+            channel: Optional channel type
+            success: Whether operation succeeded
+            cost_aud: Cost in AUD (LAW II compliance)
+            error_message: Error message if failed
+            metadata: Additional metadata
+        """
+        try:
+            from sqlalchemy import text as sql_text
+            import json
+
+            entry = self.log_operation(
+                operation=operation,
+                client_id=client_id,
+                lead_id=lead_id,
+                campaign_id=campaign_id,
+                channel=channel,
+                metadata=metadata,
+            )
+            entry["success"] = success
+            entry["cost_aud"] = cost_aud
+            entry["error_message"] = error_message
+
+            # Insert into audit_logs table
+            await db.execute(
+                sql_text("""
+                    INSERT INTO audit_logs (
+                        engine, operation, client_id, lead_id, campaign_id,
+                        channel, success, cost_aud, error_message, metadata,
+                        created_at
+                    ) VALUES (
+                        :engine, :operation, :client_id, :lead_id, :campaign_id,
+                        :channel, :success, :cost_aud, :error_message, 
+                        CAST(:metadata AS jsonb), NOW()
+                    )
+                """),
+                {
+                    "engine": entry.get("engine"),
+                    "operation": entry.get("operation"),
+                    "client_id": entry.get("client_id"),
+                    "lead_id": entry.get("lead_id"),
+                    "campaign_id": entry.get("campaign_id"),
+                    "channel": entry.get("channel"),
+                    "success": success,
+                    "cost_aud": cost_aud,
+                    "error_message": error_message,
+                    "metadata": json.dumps(metadata) if metadata else "{}",
+                },
+            )
+            # Note: Don't commit here - let the caller manage the transaction
+            
+        except Exception as e:
+            # Don't fail the operation if logging fails
+            import logging
+            logging.getLogger(__name__).warning(f"Audit log failed: {e}")
+
 
 class OutreachEngine(BaseEngine):
     """

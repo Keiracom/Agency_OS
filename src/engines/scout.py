@@ -170,14 +170,18 @@ class ScoutEngine(BaseEngine):
         db: AsyncSession,
         lead_id: UUID,
         force_refresh: bool = False,
-    ) -> EngineResult[dict[str, Any]]:
+        icp_config: dict | None = None,
+    ) -> EngineResult[dict]:
         """
         Enrich a single lead using the waterfall approach.
+
+        Phase Dynamic ICP: Now accepts icp_config for dynamic country targeting.
 
         Args:
             db: Database session (passed by caller)
             lead_id: Lead UUID to enrich
             force_refresh: Skip cache and force re-enrichment
+            icp_config: Optional ICP config dict with countries, employee_range, etc.
 
         Returns:
             EngineResult with enrichment data
@@ -202,8 +206,8 @@ class ScoutEngine(BaseEngine):
                     metadata={"source": "cache", "tier": 0},
                 )
 
-        # Tier 1: Apollo + Apify
-        tier1_result = await self._enrich_tier1(lead, domain)
+        # Tier 1: Apollo + Apify (or Siege for AU)
+        tier1_result = await self._enrich_tier1(lead, domain, icp_config)
         if tier1_result and self._validate_enrichment(tier1_result):
             # Cache the result
             if domain:
@@ -389,9 +393,12 @@ class ScoutEngine(BaseEngine):
         self,
         lead: Lead,
         domain: str | None,
+        icp_config: dict | None = None,
     ) -> dict[str, Any] | None:
         """
         Tier 1 enrichment using Siege Waterfall (for AU) or Apollo + Apify (fallback).
+
+        Phase Dynamic ICP: Now uses icp_config.countries for country targeting.
 
         For Australian businesses (detected by .au domain or AU country),
         uses the 5-tier Siege Waterfall for cost-efficient enrichment:
@@ -401,15 +408,22 @@ class ScoutEngine(BaseEngine):
         - Tier 4: Proxycurl ($0.024)
         - Tier 5: Kaspr (ALS >= 85 only)
 
-        For non-AU businesses, falls back to Apollo + Apify.
+        For non-AU businesses, uses Apollo + Apify.
+        
+        NOTE: AU leads do NOT fall back to Apollo - SIEGE is the SSOT for AU.
+        This saves costs and ensures data sovereignty.
         """
         result = None
+
+        # Get primary country from ICP config (default to Australia for backward compat)
+        icp_countries = icp_config.get("countries", ["Australia"]) if icp_config else ["Australia"]
+        primary_country = icp_countries[0] if icp_countries else "Australia"
 
         # Detect if this is an Australian lead
         is_australian = self._is_australian_lead(lead, domain)
 
         if is_australian:
-            # Use Siege Waterfall for AU leads
+            # Use Siege Waterfall for AU leads - NO APOLLO FALLBACK
             try:
                 lead_data = {
                     "email": lead.email,
@@ -422,7 +436,7 @@ class ScoutEngine(BaseEngine):
                     "title": lead.title,
                     "city": getattr(lead, "city", None),
                     "state": getattr(lead, "state", None),
-                    "country": "Australia",
+                    "country": primary_country,
                 }
 
                 # Run Siege Waterfall (skip Tier 5 unless already high ALS)
@@ -437,29 +451,99 @@ class ScoutEngine(BaseEngine):
                     result["confidence"] = 0.75 + (siege_result.sources_used * 0.05)  # Higher confidence with more sources
                     result["source"] = f"siege_waterfall_{siege_result.sources_used}sources"
                     result["enrichment_cost_aud"] = siege_result.total_cost_aud
-                    logger.info(
-                        f"[Scout] Siege Waterfall enriched lead with {siege_result.sources_used} sources, "
-                        f"cost: ${siege_result.total_cost_aud:.3f} AUD"
+                    
+                    # Log successful SIEGE enrichment
+                    await self._log_enrichment_audit(
+                        operation="siege_waterfall",
+                        lead_id=str(lead.id) if hasattr(lead, "id") else None,
+                        lead_email=lead.email,
+                        domain=domain,
+                        success=True,
+                        cost_aud=siege_result.total_cost_aud,
+                        metadata={
+                            "sources_used": siege_result.sources_used,
+                            "is_australian": True,
+                            "tier_results": [
+                                {"tier": tr.tier.value, "success": tr.success}
+                                for tr in siege_result.tier_results
+                            ],
+                        },
                     )
+                    
+                    logger.info(
+                        f"[Scout] Siege Waterfall enriched AU lead with {siege_result.sources_used} sources, "
+                        f"cost: ${siege_result.total_cost_aud:.3f} AUD (no Apollo fallback)"
+                    )
+                else:
+                    # SIEGE found nothing - still don't fall back to Apollo for AU
+                    await self._log_enrichment_audit(
+                        operation="siege_waterfall",
+                        lead_id=str(lead.id) if hasattr(lead, "id") else None,
+                        lead_email=lead.email,
+                        domain=domain,
+                        success=False,
+                        cost_aud=siege_result.total_cost_aud,
+                        metadata={
+                            "sources_used": 0,
+                            "is_australian": True,
+                            "note": "No Apollo fallback for AU leads",
+                        },
+                    )
+                    logger.info(
+                        f"[Scout] Siege Waterfall found no data for AU lead, "
+                        f"NOT falling back to Apollo (SIEGE is SSOT for AU)"
+                    )
+                    
             except Exception as e:
-                logger.warning(f"[Scout] Siege Waterfall failed, falling back to Apollo: {e}")
-                result = None
-
-        # Fallback to Apollo (for non-AU or if Siege failed)
-        if not result:
-            try:
-                apollo_result = await self.apollo.enrich_person(
-                    email=lead.email,
-                    linkedin_url=lead.linkedin_url,
-                    first_name=lead.first_name,
-                    last_name=lead.last_name,
+                # Log SIEGE failure for AU lead
+                await self._log_enrichment_audit(
+                    operation="siege_waterfall",
+                    lead_id=str(lead.id) if hasattr(lead, "id") else None,
+                    lead_email=lead.email,
                     domain=domain,
+                    success=False,
+                    error=str(e),
+                    metadata={"is_australian": True, "note": "SIEGE failed, no Apollo fallback"},
                 )
+                logger.warning(f"[Scout] Siege Waterfall failed for AU lead: {e}")
+                result = None
+            
+            # Return here for AU leads - no Apollo fallback
+            return result
 
-                if apollo_result.get("found"):
-                    result = apollo_result
-            except Exception:
-                pass
+        # Non-AU leads: Use Apollo + Apify
+        try:
+            apollo_result = await self.apollo.enrich_person(
+                email=lead.email,
+                linkedin_url=lead.linkedin_url,
+                first_name=lead.first_name,
+                last_name=lead.last_name,
+                domain=domain,
+            )
+
+            if apollo_result.get("found"):
+                result = apollo_result
+                
+                # Log Apollo enrichment
+                await self._log_enrichment_audit(
+                    operation="apollo_enrich",
+                    lead_id=str(lead.id) if hasattr(lead, "id") else None,
+                    lead_email=lead.email,
+                    domain=domain,
+                    success=True,
+                    cost_aud=0.16,  # Apollo cost estimate
+                    metadata={"is_australian": False},
+                )
+        except Exception as e:
+            await self._log_enrichment_audit(
+                operation="apollo_enrich",
+                lead_id=str(lead.id) if hasattr(lead, "id") else None,
+                lead_email=lead.email,
+                domain=domain,
+                success=False,
+                error=str(e),
+                metadata={"is_australian": False},
+            )
 
         # If still not enough, supplement with Apify LinkedIn scrape
         if not result or not self._validate_enrichment(result):
@@ -473,10 +557,85 @@ class ScoutEngine(BaseEngine):
                         else:
                             result = apify_data
                             result["source"] = "apify"
-            except Exception:
-                pass
+                        
+                        # Log Apify enrichment
+                        await self._log_enrichment_audit(
+                            operation="apify_linkedin_scrape",
+                            lead_id=str(lead.id) if hasattr(lead, "id") else None,
+                            lead_email=lead.email,
+                            domain=domain,
+                            success=True,
+                            cost_aud=0.05,  # Apify cost estimate
+                            metadata={"is_australian": False},
+                        )
+            except Exception as e:
+                await self._log_enrichment_audit(
+                    operation="apify_linkedin_scrape",
+                    lead_id=str(lead.id) if hasattr(lead, "id") else None,
+                    lead_email=lead.email,
+                    domain=domain,
+                    success=False,
+                    error=str(e),
+                    metadata={"is_australian": False},
+                )
 
         return result
+
+    async def _log_enrichment_audit(
+        self,
+        operation: str,
+        lead_id: str | None = None,
+        lead_email: str | None = None,
+        domain: str | None = None,
+        success: bool = False,
+        cost_aud: float = 0.0,
+        error: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Log enrichment operation to audit_logs table.
+        
+        Provides full traceability for all enrichment operations,
+        supporting cost tracking and debugging.
+        
+        Args:
+            operation: Operation name (siege_waterfall, apollo_enrich, apify_linkedin_scrape, etc.)
+            lead_id: Lead UUID if available
+            lead_email: Lead email address
+            domain: Company domain
+            success: Whether operation succeeded
+            cost_aud: Cost in AUD
+            error: Error message if failed
+            metadata: Additional operation metadata
+        """
+        try:
+            # Lazy import to avoid circular dependencies
+            from sqlalchemy import text as sql_text
+            
+            log_entry = {
+                "engine": self.name,
+                "operation_type": "enrichment",
+                "operation": operation,
+                "lead_id": lead_id,
+                "lead_email": lead_email,
+                "domain": domain,
+                "success": success,
+                "cost_aud": cost_aud,
+                "error_message": error,
+                "metadata": metadata or {},
+                "created_at": datetime.utcnow().isoformat(),
+            }
+            
+            # Use raw SQL insert to avoid needing a session
+            # This logs to audit_logs table
+            from src.integrations.supabase import get_supabase_client
+            
+            supabase = get_supabase_client()
+            await supabase.table("audit_logs").insert(log_entry).execute()
+            
+        except Exception as e:
+            # Don't fail enrichment if logging fails - just log to stderr
+            logger.warning(f"[Scout] Audit log failed: {e}")
 
     def _is_australian_lead(self, lead: Lead, domain: str | None) -> bool:
         """

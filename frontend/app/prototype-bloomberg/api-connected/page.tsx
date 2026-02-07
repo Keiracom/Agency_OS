@@ -295,7 +295,7 @@ function StatsGridConnected() {
       />
       <StatCard 
         label="Emails Sent" 
-        value={stats?.emails_sent?.toLocaleString() || stats?.leads_contacted?.toLocaleString() || "0"} 
+        value={stats?.leads_contacted?.toLocaleString() || "0"} 
         color="blue"
         isLoading={isLoading}
       />

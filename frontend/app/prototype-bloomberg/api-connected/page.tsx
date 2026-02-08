@@ -301,7 +301,7 @@ function StatsGridConnected() {
       />
       <StatCard 
         label="Meetings Booked" 
-        value={stats?.meetings_booked?.toLocaleString() || stats?.leads_converted?.toLocaleString() || "0"} 
+        value={stats?.leads_converted?.toLocaleString() || "0"} 
         color="green"
         isLoading={isLoading}
       />

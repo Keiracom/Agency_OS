@@ -279,7 +279,7 @@ export function useSignoffAction() {
         .update({
           status: action,
           decided_at: new Date().toISOString(),
-        })
+        } as Record<string, unknown>)
         .eq("id", id)
         .select()
         .single();

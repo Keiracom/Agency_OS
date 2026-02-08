@@ -5,7 +5,7 @@
 
 export {
   CampaignProvider,
-  CampaignContext,
   useCampaignContext,
   useActiveCampaign,
 } from "./CampaignContext";
+export { default as CampaignContext } from "./CampaignContext";

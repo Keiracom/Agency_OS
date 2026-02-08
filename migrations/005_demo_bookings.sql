@@ -45,7 +45,7 @@ SELECT
     db.duration_minutes,
     db.meeting_url,
     db.provider,
-    l.company_name,
+    l.company,
     sp.deal_value_aud
 FROM demo_bookings db
 LEFT JOIN leads l ON db.lead_id = l.id

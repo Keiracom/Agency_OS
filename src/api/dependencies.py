@@ -211,6 +211,32 @@ async def get_optional_user(
 
 
 # ============================================
+# Client ID Extraction
+# ============================================
+
+
+async def get_current_user_client_id(
+    authorization: Annotated[str | None, Header()] = None,
+    db: AsyncSession = Depends(get_db_session),
+) -> UUID:
+    """
+    Extract client_id from the current authenticated user.
+
+    Args:
+        authorization: Authorization header (Bearer token)
+        db: Database session
+
+    Returns:
+        UUID of the user's client
+
+    Raises:
+        AuthenticationError: If token is invalid or user not found
+    """
+    user = await get_current_user_from_token(authorization, db)
+    return user.client_id
+
+
+# ============================================
 # API Key Authentication (for webhooks)
 # ============================================
 

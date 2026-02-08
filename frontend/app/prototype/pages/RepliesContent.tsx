@@ -189,7 +189,7 @@ export function RepliesContent({ campaignId }: RepliesContentProps) {
                     <span className="text-sm font-medium text-purple-900">AI Suggested Response</span>
                   </div>
                   <p className="text-sm text-purple-800 leading-relaxed mb-3">
-                    Hi {selectedReply.lead_name?.split(" ")[0]}, thank you for your response! I'd be happy to share more details.
+                    Hi {selectedReply.lead?.first_name ?? "there"}, thank you for your response! I'd be happy to share more details.
                   </p>
                   <div className="flex items-center gap-2">
                     <button className="px-3 py-1.5 bg-purple-600 text-white text-xs font-medium rounded-lg hover:bg-purple-700">

@@ -160,11 +160,12 @@ export function RepliesContent({ campaignId }: RepliesContentProps) {
               <div className="p-4 border-b border-slate-100">
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h3 className="font-semibold text-slate-900">{selectedReply.lead_name}</h3>
-                    <p className="text-sm text-slate-500">{selectedReply.lead_company}</p>
+                    <h3 className="font-semibold text-slate-900">
+                      {selectedReply.lead ? `${selectedReply.lead.first_name ?? ""} ${selectedReply.lead.last_name ?? ""}`.trim() || selectedReply.lead.email : "Unknown"}
+                    </h3>
+                    <p className="text-sm text-slate-500">{selectedReply.lead?.company ?? "—"}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <TierBadge tier={selectedReply.tier ?? "cool"} />
                     {selectedReply.intent && (
                       <span className={`px-2 py-1 rounded text-xs font-medium ${intentConfig[selectedReply.intent]?.style ?? "bg-slate-100"}`}>
                         {intentConfig[selectedReply.intent]?.label ?? selectedReply.intent}

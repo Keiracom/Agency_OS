@@ -13,6 +13,18 @@ import {
 } from "lucide-react";
 import { ChannelIcon } from "@/components/dashboard";
 import { useCampaigns } from "@/hooks/use-campaigns";
+import type { Campaign, ChannelType } from "@/lib/api/types";
+
+// Helper to derive active channels from allocation fields
+function getActiveChannels(campaign: Campaign): ChannelType[] {
+  const channels: ChannelType[] = [];
+  if (campaign.allocation_email > 0) channels.push("email");
+  if (campaign.allocation_sms > 0) channels.push("sms");
+  if (campaign.allocation_linkedin > 0) channels.push("linkedin");
+  if (campaign.allocation_voice > 0) channels.push("voice");
+  if (campaign.allocation_mail > 0) channels.push("mail");
+  return channels.length > 0 ? channels : ["email"]; // Default to email
+}
 
 interface CampaignsContentProps {
   campaignId?: string | null;
@@ -138,7 +150,7 @@ export function CampaignsContent({ onNewCampaign }: CampaignsContentProps) {
               </div>
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-1">
-                  {(campaign.channels ?? ["email"]).map((ch) => (
+                  {getActiveChannels(campaign).map((ch) => (
                     <ChannelIcon key={ch} channel={ch} />
                   ))}
                 </div>

@@ -274,8 +274,8 @@ export function useSignoffAction() {
       id: string;
       action: "approved" | "rejected";
     }) => {
-      const { data, error } = await supabase
-        .from("elliot_signoff_queue")
+      const { data, error } = await (supabase
+        .from("elliot_signoff_queue") as any)
         .update({
           status: action,
           decided_at: new Date().toISOString(),

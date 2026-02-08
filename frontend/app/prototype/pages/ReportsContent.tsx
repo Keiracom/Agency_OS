@@ -167,7 +167,7 @@ export function ReportsContent({ campaignId }: ReportsContentProps) {
                   <td className="p-4 font-medium text-slate-900">{campaign.name}</td>
                   <td className="p-4 text-right text-slate-900">{campaign.meetings_booked ?? 0}</td>
                   <td className="p-4 text-right">
-                    <span className="text-slate-600">{campaign.open_rate ?? 0}%</span>
+                    <span className="text-slate-600">—</span>
                   </td>
                   <td className="p-4 text-right">
                     <span className="text-blue-600 font-medium">{campaign.reply_rate ?? 0}%</span>

@@ -85,28 +85,56 @@ This creates an audit trail of context waste for post-session review.
 
 ### LAW VI: MCP-First Operations (HARD BLOCK)
 
-**The Mandate:** When an MCP server exists for a service, you MUST use it instead of `exec + curl/python`.
+**The Mandate:** MCP is your PRIMARY interface to external services. Use the MCP Bridge skill.
 
-**MCP Server Location:** `/home/elliotbot/clawd/mcp-servers/`
+**MCP Bridge Location:** `/home/elliotbot/clawd/skills/mcp-bridge/`
+
+**The Command Pattern:**
+```bash
+cd /home/elliotbot/clawd/skills/mcp-bridge && node scripts/mcp-bridge.js <command>
+```
+
+**Commands:**
+| Command | Description |
+|---------|-------------|
+| `servers` | List all available MCP servers |
+| `tools <server>` | List tools from a specific server |
+| `call <server> <tool> [args_json]` | Call an MCP tool |
+
+**Examples:**
+```bash
+# Query Agency OS database
+mcp-bridge.js call supabase execute_sql '{"project_id":"jatzvazlbusedwsnqxzr","query":"SELECT * FROM leads LIMIT 5"}'
+
+# List Prefect flows
+mcp-bridge.js call prefect list_flows
+
+# Search Apollo for contacts
+mcp-bridge.js call apollo search_people '{"domain":"acme.com"}'
+
+# Trigger a Prefect deployment
+mcp-bridge.js call prefect trigger_run '{"deployment_name":"daily-scrape"}'
+```
 
 **The Protocol:**
-1. Before using `exec` to call an external API, check if an MCP exists for that service
-2. If MCP exists → use the MCP tool
-3. If MCP doesn't exist → use exec (and flag as candidate for future MCP)
+1. ALWAYS check `mcp-bridge.js servers` to see available MCPs
+2. ALWAYS use `mcp-bridge.js call` instead of `exec + curl/python`
+3. If MCP doesn't exist for a service → use exec (and flag for future MCP)
 
-**Why This Matters:**
-- MCPs provide type-safe, error-handled interactions
-- MCPs return structured data, not raw text to parse
-- MCPs track costs and credits natively
-- MCPs eliminate shell-scripting overhead
-
-**MCP Categories Available:**
+**Available MCP Servers:**
 | Category | MCPs |
 |----------|------|
-| Infrastructure | supabase, github, redis, prefect, railway, vercel |
-| Enrichment | apollo, prospeo, hunter, dataforseo |
-| Outreach | salesforge, vapi, telnyx, unipile, resend |
-| Memory | memory (semantic search + save) |
+| **Core Data** | supabase (SQL!), redis |
+| **Infrastructure** | prefect, railway, vercel |
+| **Enrichment** | apollo, prospeo, hunter, dataforseo |
+| **Outreach** | salesforge, vapi, telnyx, unipile, resend |
+| **Memory** | memory (semantic search + save) |
+
+**Why MCP-First:**
+- Structured JSON responses (no stdout parsing)
+- Type-safe tool calls with schema validation
+- Tool discovery via `mcp-bridge.js tools <server>`
+- Consistent interface across 15 services
 
 **Violation:** Using `exec + curl` when an MCP exists is a governance violation. Log it:
 ```sql
@@ -114,7 +142,34 @@ INSERT INTO governance_debt (session_id, violation_type, service, justification,
 VALUES ('<session>', 'LAW_VI_VIOLATION', '<service>', '<why you used exec>', NOW());
 ```
 
-**Reference:** See TOOLS.md § MCP Servers for full tool list.
+### LAW VII: The Timeout Protection Law (HARD BLOCK)
+
+**The Mandate:** Never wait synchronously for external processes that may exceed 60 seconds.
+
+**Long-Running Tasks (MUST use yieldMs + poll pattern):**
+- Vercel/Railway deployments
+- npm/pip installs
+- Build processes (next build, docker build, etc.)
+- Large file downloads
+- Scraping jobs with multiple pages
+
+**The Protocol:**
+```bash
+# WRONG: Waiting synchronously (risks 10-minute timeout)
+exec("vercel deploy --prod", timeout=180)
+
+# RIGHT: Background immediately, poll for results
+exec("vercel deploy --prod", yieldMs=5000, background=true)
+# Then poll with process(action="poll", sessionId=...)
+```
+
+**Why This Matters:**
+- Clawdbot has a 10-minute (600s) timeout on LLM requests
+- If a tool call blocks waiting for a slow external process, the entire request times out
+- Timeout puts the auth profile in cooldown → "no profiles available" error
+- This cascades into failed responses for Dave
+
+**Exception:** Quick commands (<60s expected) can run synchronously.
 
 ---
 

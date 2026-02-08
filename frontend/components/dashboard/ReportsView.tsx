@@ -118,14 +118,14 @@ const colors = {
 // ============================================================================
 
 // Channel Icon Mapper
-const ChannelIcon: React.FC<{ channel: string; className?: string }> = ({ channel, className = 'w-5 h-5' }) => {
+const ChannelIcon: React.FC<{ channel: string; className?: string; style?: React.CSSProperties }> = ({ channel, className = 'w-5 h-5', style }) => {
   switch (channel) {
-    case 'mail': return <Mail className={className} />;
-    case 'briefcase': return <Briefcase className={className} />;
-    case 'message': return <MessageSquare className={className} />;
-    case 'phone': return <Phone className={className} />;
-    case 'package': return <Package className={className} />;
-    default: return <Mail className={className} />;
+    case 'mail': return <Mail className={className} style={style} />;
+    case 'briefcase': return <Briefcase className={className} style={style} />;
+    case 'message': return <MessageSquare className={className} style={style} />;
+    case 'phone': return <Phone className={className} style={style} />;
+    case 'package': return <Package className={className} style={style} />;
+    default: return <Mail className={className} style={style} />;
   }
 };
 

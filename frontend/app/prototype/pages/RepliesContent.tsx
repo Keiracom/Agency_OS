@@ -178,7 +178,7 @@ export function RepliesContent({ campaignId }: RepliesContentProps) {
               <div className="flex-1 p-4 overflow-y-auto">
                 <div className="bg-slate-50 rounded-lg p-4 mb-4">
                   <p className="text-sm text-slate-700 leading-relaxed">
-                    {selectedReply.content_preview}
+                    {selectedReply.content ?? selectedReply.subject}
                   </p>
                 </div>
 

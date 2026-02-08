@@ -214,7 +214,7 @@ export function useTaskStats() {
         total: 0,
       };
 
-      for (const row of data || []) {
+      for (const row of (data as { status: string }[] | null) || []) {
         const status = row.status as TaskStatus;
         stats[status] = (stats[status] || 0) + 1;
         stats.total++;

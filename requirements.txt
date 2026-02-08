@@ -40,6 +40,9 @@ tenacity>=8.2.0
 # === Auth ===
 python-jose>=3.3.0
 
+# === Billing ===
+stripe>=7.0.0
+
 # === Email ===
 # Salesforge uses REST API with httpx, no SDK needed
 

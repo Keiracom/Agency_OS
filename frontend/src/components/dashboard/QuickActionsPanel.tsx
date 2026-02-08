@@ -20,7 +20,7 @@ import {
   IconPlus,
   IconX,
   IconRocket,
-  IconUserPlus,
+  IconUsers,
   IconMail,
   IconPhone,
   IconChartBar,
@@ -52,7 +52,7 @@ const defaultActions: QuickAction[] = [
   {
     id: "add-leads",
     label: "Add Leads",
-    icon: <IconUserPlus className="h-5 w-5" />,
+    icon: <IconUsers className="h-5 w-5" />,
     color: "from-emerald-500 to-teal-500",
     href: "/dashboard/leads/import",
   },

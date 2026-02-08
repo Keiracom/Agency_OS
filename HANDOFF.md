@@ -1,110 +1,109 @@
-# HANDOFF — 2026-02-07 06:04 UTC
+# HANDOFF.md — Session 2026-02-08
 
-## Session Summary
-
-**What happened:** Dave requested full sandbox simulation of the master plan (current state → 10 customers). I spawned 9 sub-agents that created documents and files but **failed to actually test the system**.
-
-**The failure:** I generated static assets instead of running data through the actual pipeline. No component testing, no integration verification, no proof the system works.
+**Last Updated:** 2026-02-08 22:55 UTC
+**Context Used:** 63% (recommend /reset)
 
 ---
 
-## What Was Created (Branch: `simulation/autonomous-run`)
+## 🎯 Session Summary
 
-| Agent | Output | Quality |
-|-------|--------|---------|
-| dashboard-wiring | Found APIs already wired | ✅ Valid finding |
-| unipile-debug | Fixed auth header, needs new API key | ✅ Valid fix |
-| prototype-dashboard | React components from HTML | ⚠️ Untested |
-| e2e-tests | 76% passing, quick wins identified | ✅ Valid audit |
-| backend-stream | Confirmed SIEGE wired, Stripe skeleton | ⚠️ Untested |
-| sales-infra | Pipeline schema, billing code | ⚠️ Untested |
-| prospect-list | 54 real AU agencies CSV | ⚠️ Not enriched |
-| outreach-sim | Campaign playbook doc | ❌ Just a doc |
-| content-stream | Email sequences, LinkedIn posts | ❌ Just docs |
-
-**Problem:** Created documents instead of proving the system works.
+Major wins this session:
+1. **Multi-Agent Orchestration Framework** — 8-agent fleet codified in AGENTS.md
+2. **`/superpowers` command** — Brainstorm → Plan → Execute → Review workflow baked in
+3. **Backend recovered** — Fixed 2 crashes (stripe, get_current_user_client_id)
+4. **DB Migrations applied** — sales_pipeline, founding_members, demo_bookings
+5. **Test suite unblocked** — 0 → 631 tests now collecting
 
 ---
 
-## What Next Session MUST Do
+## 📋 PR Ready to Merge
 
-### 1. System Audit (First)
-Map every integration and understand the data flow:
-```
-Lead Source → SIEGE Enrichment → ALS Scoring → Campaign Assignment → Outreach → Reply Handling → Dashboard
-```
+**Branch:** `fix/p0-blockers`
+**Commits:** 4
+**Link:** https://github.com/Keiracom/Agency_OS/pull/new/fix/p0-blockers
 
-For each component:
-- Does it have credentials configured?
-- Can it connect?
-- What does test input → output look like?
+**Contains:**
+- python-multipart dependency
+- stripe dependency  
+- get_current_user_client_id function
+- prospeo_api_key in settings.py
+- src/config/database.py re-export
+- Migration 005 column fix (company_name → company)
 
-### 2. Component-by-Component Testing
-
-| Component | Test |
-|-----------|------|
-| **ABN Lookup** | Query a real ABN, verify response |
-| **GMB Scraper** | Scrape a real business, verify data |
-| **Hunter.io** | Find email for test domain |
-| **Proxycurl** | Pull LinkedIn profile data |
-| **SIEGE Waterfall** | Run 1 lead through full enrichment |
-| **ALS Scoring** | Score an enriched lead, verify 0-100 |
-| **Salesforge** | Check domain warmup status |
-| **Unipile** | Test LinkedIn connection (needs new key) |
-| **Supabase** | Query leads table, verify schema |
-| **Dashboard** | Load page, verify real data displays |
-
-### 3. Run Real Data Through Pipeline
-Take 5 prospects from the CSV and:
-1. Enrich through SIEGE
-2. Score with ALS
-3. Verify data appears in Supabase
-4. Verify dashboard displays them
-5. Create test campaign
-6. Verify campaign appears in Salesforge (don't send)
-
-### 4. Prove Each Flow Works
-- Onboarding flow: Website URL → ICP extraction → Lead generation
-- Campaign flow: Lead pool → Channel allocation → Sequence creation
-- Reply flow: Incoming reply → Classification → Response suggestion
+**Action:** Merge to main, Railway will auto-deploy.
 
 ---
 
-## Blocking Issues
+## ⏳ Pending Work
 
-| Issue | Owner | Status |
-|-------|-------|--------|
-| Unipile API key expired | Dave | Needs new key from dashboard.unipile.com |
-| Telnyx not set up | Dave | Account creation + AU number needed |
-| Stripe not configured | Dave | Account + API keys needed |
-| Email domains not warmed | — | Need 2-3 weeks warmup |
+### P1 (Next Session)
+| Item | Notes |
+|------|-------|
+| Frontend ISR/SSG migration | build-1 has full audit + plan ready |
+| local-pool Prefect worker | Offline, daily_learning_scrape stuck |
+| 5 test collection errors | test_who_integration, test_weight_optimizer, 3 flow tests |
 
----
-
-## Files to Read First
-
-1. `/home/elliotbot/clawd/Agency_OS/AUTONOMOUS_EXECUTION_PLAN.md` — Task breakdown
-2. `/home/elliotbot/clawd/Agency_OS/docs/marketing/MARKETING_MASTER_PLAN.md` — GTM plan
-3. `/home/elliotbot/clawd/Agency_OS/src/integrations/` — All integration code
-4. `/home/elliotbot/clawd/Agency_OS/src/engines/` — Core business logic
+### P2 (Needs Credentials/Planning)
+| Item | Notes |
+|------|-------|
+| Proxycurl API key | Tier 4 enrichment broken |
+| Kaspr API key | Tier 5 enrichment broken |
+| 21 services with no tests | Backlog |
 
 ---
 
-## Dave's Feedback
+## 🏗️ New Capabilities
 
-> "Your simulation is supposed to test the whole system. Audit first to see how every aspect works then go piece by piece. This is a huge failure."
+### /superpowers Command
+Type `/superpowers` to trigger structured workflow:
+1. **Brainstorm** — Clarify requirements, get sign-off
+2. **Plan** — Break into tasks, assign agents
+3. **Execute** — Spawn agents, track progress
+4. **Review** — Validate, create PR, present summary
 
-**Acknowledged.** Next session must be thorough testing, not document generation.
+Skill file: `/home/elliotbot/clawd/skills/superpowers/SKILL.md`
+
+### 8-Agent Fleet
+| Label | Role |
+|-------|------|
+| build-1 | Frontend (Vercel, Next.js) |
+| build-2 | Backend (Railway, FastAPI) |
+| research-1/2 | Technical/Market research |
+| data-1/2 | Database/ETL operations |
+| test-1 | QA and validation |
+| ops-1 | Infrastructure ops |
 
 ---
 
-## Git State
+## 🔧 Infrastructure Status
 
-- **Branch:** `simulation/autonomous-run`
-- **Latest commits:** Bloomberg dashboard, sales infra, Stripe integration
-- **Uncommitted:** None
-- **Main branch:** Clean, simulation work is isolated
+| Service | Status |
+|---------|--------|
+| agency-os (Railway) | ✅ SUCCESS |
+| prefect-server | ✅ Running |
+| prefect-worker (agency-os-pool) | ✅ Running |
+| prefect-worker (local-pool) | ❌ Offline |
+| Frontend (Vercel) | ✅ Running (needs ISR) |
 
 ---
 
-*Handoff created: 2026-02-07 06:04 UTC*
+## 📊 Test Suite Status
+
+| Metric | Value |
+|--------|-------|
+| Tests collecting | 631 |
+| Collection errors | 5 |
+| Test files | 41 |
+
+---
+
+## 🚀 Next Session Priorities
+
+1. **Merge PR** — `fix/p0-blockers` to main
+2. **Frontend ISR** — Apply build-1's audit recommendations
+3. **Prefect local-pool** — Start worker or migrate flow to Railway
+4. **Fix remaining 5 test errors** — Likely import path issues
+
+---
+
+*Handoff complete. Ready for /reset.*

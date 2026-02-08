@@ -85,8 +85,7 @@ export function LeadsContent({ campaignId }: LeadsContentProps) {
 
       {/* Lead Table - Uses modular component */}
       <LeadTable
-        leads={leads}
-        isLoading={isLoading}
+        campaignId={campaignId ?? undefined}
         onLeadClick={(lead) => console.log("Lead clicked:", lead)}
       />
     </div>

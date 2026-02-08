@@ -42,7 +42,7 @@ export function RepliesContent({ campaignId }: RepliesContentProps) {
   const [showHandled, setShowHandled] = useState(false);
 
   const { data: repliesData, isLoading } = useReplies({
-    campaignId: campaignId ?? undefined,
+    campaign_id: campaignId ?? undefined,
     handled: showHandled ? undefined : false,
   });
 

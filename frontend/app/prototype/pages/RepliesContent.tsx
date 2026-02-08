@@ -128,18 +128,17 @@ export function RepliesContent({ campaignId }: RepliesContentProps) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
                         <span className={`font-medium text-sm ${!reply.handled ? "text-slate-900" : "text-slate-600"}`}>
-                          {reply.lead_name ?? "Unknown"}
+                          {reply.lead ? `${reply.lead.first_name ?? ""} ${reply.lead.last_name ?? ""}`.trim() || reply.lead.email : "Unknown"}
                         </span>
                         <div className="flex items-center gap-2">
                           {reply.handled && <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />}
                           <span className="text-xs text-slate-400">
-                            {new Date(reply.created_at).toLocaleDateString()}
+                            {new Date(reply.received_at).toLocaleDateString()}
                           </span>
                         </div>
                       </div>
-                      <p className="text-xs text-slate-600 truncate">{reply.content_preview}</p>
+                      <p className="text-xs text-slate-600 truncate">{reply.content ?? reply.subject}</p>
                       <div className="flex items-center gap-2 mt-2">
-                        <TierBadge tier={reply.tier ?? "cool"} />
                         {reply.intent && (
                           <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${intentConfig[reply.intent]?.style ?? "bg-slate-100 text-slate-600"}`}>
                             {intentConfig[reply.intent]?.label ?? reply.intent}

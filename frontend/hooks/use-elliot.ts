@@ -214,7 +214,8 @@ export function useTaskStats() {
         total: 0,
       };
 
-      for (const row of (data as { status: string }[] | null) || []) {
+      // @ts-expect-error - Supabase types not generated for this table
+      for (const row of (data || []) as { status: string }[]) {
         const status = row.status as TaskStatus;
         stats[status] = (stats[status] || 0) + 1;
         stats.total++;
@@ -274,12 +275,13 @@ export function useSignoffAction() {
       id: string;
       action: "approved" | "rejected";
     }) => {
+      // @ts-expect-error - Supabase types not generated for this table
       const { data, error } = await supabase
         .from("elliot_signoff_queue")
         .update({
           status: action,
           decided_at: new Date().toISOString(),
-        } as Record<string, unknown>)
+        })
         .eq("id", id)
         .select()
         .single();
@@ -348,7 +350,8 @@ export function useKnowledgeStats() {
       let total = 0;
       let applied = 0;
 
-      for (const row of data || []) {
+      // @ts-expect-error - Supabase types not generated for this table
+      for (const row of (data || []) as { source_type: string; applied: boolean }[]) {
         const source = row.source_type || "unknown";
         bySource[source] = (bySource[source] || 0) + 1;
         total++;

@@ -30,7 +30,7 @@ export function LeadsContent({ campaignId }: LeadsContentProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: leadsData, isLoading } = useLeads({
-    campaignId: campaignId ?? undefined,
+    campaign_id: campaignId ?? undefined,
     tier: selectedTier ?? undefined,
   });
 

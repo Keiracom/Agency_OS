@@ -9,10 +9,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // Routes that require authentication
-const protectedRoutes = ["/dashboard", "/admin", "/onboarding"];
+const protectedRoutes = ["/dashboard", "/admin", "/onboarding", "/prototype"];
 
 // Routes that are always public
-const publicRoutes = ["/", "/login", "/signup", "/about", "/pricing", "/how-it-works", "/api", "/dashboard-v2", "/prototype", "/showroom", "/gallery"];
+const publicRoutes = ["/", "/login", "/signup", "/about", "/pricing", "/how-it-works", "/api", "/dashboard-v2", "/showroom", "/gallery"];
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();

@@ -72,32 +72,32 @@ export function DashboardContent({
       <div className="grid grid-cols-12 gap-6">
         {/* Left Column - Campaigns & Activity */}
         <div className="col-span-8 space-y-6">
-          {/* Active Campaigns */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-lg shadow-black/10">
-            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+          {/* Active Campaigns - Glass styled */}
+          <div className="bg-slate-900/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg shadow-black/20">
+            <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold text-slate-900">Active Campaigns</h2>
-                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-full">
+                <h2 className="text-sm font-semibold text-white drop-shadow-sm">Active Campaigns</h2>
+                <span className="px-2 py-0.5 bg-white/10 text-slate-300 text-xs rounded-full border border-white/10">
                   {campaigns.length} of 5 slots
                 </span>
               </div>
               <button
                 onClick={onNewCampaign}
-                className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                className="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 transition-colors"
               >
                 <Plus className="w-3 h-3" /> Add Campaign
               </button>
             </div>
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-white/5">
               {campaigns.slice(0, 3).map((campaign) => (
-                <div key={campaign.id} className="px-4 py-3 hover:bg-slate-50 transition-colors">
+                <div key={campaign.id} className="px-4 py-3 hover:bg-white/5 transition-colors">
                   <div className="flex items-center gap-4">
                     <div className="w-48">
                       <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${campaign.status === "active" ? "bg-emerald-500" : "bg-slate-300"}`} />
-                        <span className="font-medium text-slate-900 text-sm">{campaign.name}</span>
+                        <span className={`w-2 h-2 rounded-full ${campaign.status === "active" ? "bg-emerald-500 shadow-lg shadow-emerald-500/50" : "bg-slate-500"}`} />
+                        <span className="font-medium text-white text-sm">{campaign.name}</span>
                         {campaign.permission_mode === "autopilot" && (
-                          <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-medium rounded">AI</span>
+                          <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-400 text-[10px] font-medium rounded border border-purple-500/20">AI</span>
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-1">
@@ -108,28 +108,28 @@ export function DashboardContent({
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-500 w-12">Priority</span>
-                        <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <span className="text-xs text-slate-400 w-12">Priority</span>
+                        <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
                           <div className="h-full bg-blue-500 rounded-full" style={{ width: "40%" }} />
                         </div>
-                        <span className="text-xs font-medium text-slate-700 w-10 text-right">40%</span>
+                        <span className="text-xs font-medium text-slate-300 w-10 text-right">40%</span>
                       </div>
                     </div>
-                    <button className="p-1 text-slate-400 hover:text-slate-600">
+                    <button className="p-1 text-slate-400 hover:text-white transition-colors">
                       <MoreHorizontal className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between">
-              <button className="px-3 py-1.5 bg-red-100 text-red-700 text-xs font-medium rounded-lg hover:bg-red-200 flex items-center gap-1.5 border border-red-200">
+            <div className="px-4 py-3 border-t border-white/10 flex items-center justify-between">
+              <button className="px-3 py-1.5 bg-red-500/20 text-red-400 text-xs font-medium rounded-lg hover:bg-red-500/30 flex items-center gap-1.5 border border-red-500/30 transition-colors">
                 <Pause className="w-3 h-3" />
                 Emergency Pause All
               </button>
               <button
                 onClick={onConfirmActivate}
-                className="px-4 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 flex items-center gap-1.5"
+                className="px-4 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-500 flex items-center gap-1.5 shadow-lg shadow-emerald-600/30 transition-colors"
               >
                 <Play className="w-3 h-3" />
                 Confirm & Activate
@@ -137,17 +137,17 @@ export function DashboardContent({
             </div>
           </div>
 
-          {/* Live Activity Feed - Uses modular component */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-lg shadow-black/10">
-            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+          {/* Live Activity Feed - Glass styled wrapper */}
+          <div className="bg-slate-900/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg shadow-black/20">
+            <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold text-slate-900">Live Activity</h2>
-                <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full">
+                <h2 className="text-sm font-semibold text-white drop-shadow-sm">Live Activity</h2>
+                <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full border border-emerald-500/30">
                   <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                   Live
                 </span>
               </div>
-              <button className="text-xs text-slate-500 hover:text-slate-700">View All</button>
+              <button className="text-xs text-slate-400 hover:text-white transition-colors">View All</button>
             </div>
             <div className="p-4">
               <LiveActivityFeed maxVisible={6} />
@@ -157,48 +157,48 @@ export function DashboardContent({
 
         {/* Right Column */}
         <div className="col-span-4 space-y-6">
-          {/* On Track Progress */}
-          <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl p-4 text-white">
+          {/* On Track Progress - Glass with emerald gradient */}
+          <div className="bg-gradient-to-r from-emerald-600/80 to-emerald-500/80 backdrop-blur-md rounded-xl p-4 text-white border border-emerald-400/20 shadow-lg shadow-emerald-900/30">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-emerald-100">Monthly Progress</span>
-              <span className="px-2 py-0.5 bg-white/20 text-white text-xs rounded-full">On Track</span>
+              <span className="px-2 py-0.5 bg-white/20 text-white text-xs rounded-full backdrop-blur-sm">On Track</span>
             </div>
             <div className="flex items-end gap-2">
-              <span className="text-3xl font-bold">12</span>
+              <span className="text-3xl font-bold drop-shadow-sm">12</span>
               <span className="text-emerald-100 mb-1">of 15-20 meetings</span>
             </div>
             <div className="mt-3 h-2 bg-emerald-400/30 rounded-full overflow-hidden">
-              <div className="h-full bg-white rounded-full" style={{ width: "70%" }} />
+              <div className="h-full bg-white rounded-full shadow-lg shadow-white/30" style={{ width: "70%" }} />
             </div>
           </div>
 
-          {/* Upcoming Meetings */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-lg shadow-black/10">
-            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-900">Upcoming Meetings</h2>
-              <span className="text-xs text-slate-500">{meetings.length} scheduled</span>
+          {/* Upcoming Meetings - Glass styled */}
+          <div className="bg-slate-900/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg shadow-black/20">
+            <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-white drop-shadow-sm">Upcoming Meetings</h2>
+              <span className="text-xs text-slate-400">{meetings.length} scheduled</span>
             </div>
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-white/5">
               {meetings.map((meeting) => (
-                <div key={meeting.id} className="px-4 py-3 hover:bg-slate-50">
+                <div key={meeting.id} className="px-4 py-3 hover:bg-white/5 transition-colors">
                   <div className="flex items-start gap-3">
                     <div className="text-center min-w-[50px]">
-                      <div className="text-[10px] text-slate-500 uppercase">{meeting.day}</div>
-                      <div className="text-sm font-semibold text-slate-900">{meeting.time}</div>
+                      <div className="text-[10px] text-slate-400 uppercase">{meeting.day}</div>
+                      <div className="text-sm font-semibold text-white">{meeting.time}</div>
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium text-slate-900 text-sm">{meeting.lead}</div>
-                      <div className="text-xs text-slate-500">{meeting.company}</div>
+                      <div className="font-medium text-white text-sm">{meeting.lead}</div>
+                      <div className="text-xs text-slate-400">{meeting.company}</div>
                     </div>
                     <div className="text-right">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
-                        meeting.type === "Discovery" ? "bg-blue-100 text-blue-700" :
-                        meeting.type === "Demo" ? "bg-emerald-100 text-emerald-700" :
-                        "bg-amber-100 text-amber-700"
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-medium border ${
+                        meeting.type === "Discovery" ? "bg-blue-500/20 text-blue-400 border-blue-500/30" :
+                        meeting.type === "Demo" ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" :
+                        "bg-amber-500/20 text-amber-400 border-amber-500/30"
                       }`}>
                         {meeting.type}
                       </span>
-                      <div className="text-[10px] text-slate-400 mt-1">{meeting.duration}m</div>
+                      <div className="text-[10px] text-slate-500 mt-1">{meeting.duration}m</div>
                     </div>
                   </div>
                 </div>
@@ -206,27 +206,27 @@ export function DashboardContent({
             </div>
           </div>
 
-          {/* Priority Prospects */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-lg shadow-black/10">
-            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+          {/* Priority Prospects - Glass styled */}
+          <div className="bg-slate-900/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg shadow-black/20">
+            <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold text-slate-900">Priority Prospects</h2>
-                <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full">Needs Attention</span>
+                <h2 className="text-sm font-semibold text-white drop-shadow-sm">Priority Prospects</h2>
+                <span className="px-2 py-0.5 bg-orange-500/20 text-orange-400 text-xs rounded-full border border-orange-500/30">Needs Attention</span>
               </div>
             </div>
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-white/5">
               {priorityProspects.map((lead) => (
-                <div key={lead.id} className="px-4 py-3 hover:bg-slate-50">
+                <div key={lead.id} className="px-4 py-3 hover:bg-white/5 transition-colors">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <div className="font-medium text-slate-900 text-sm">{lead.name}</div>
-                      <div className="text-xs text-slate-500">{lead.company}</div>
+                      <div className="font-medium text-white text-sm">{lead.name}</div>
+                      <div className="text-xs text-slate-400">{lead.company}</div>
                     </div>
                     <TierBadge tier={lead.tier} />
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {lead.signals.map((signal, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] rounded">
+                      <span key={i} className="px-2 py-0.5 bg-white/10 text-slate-300 text-[10px] rounded border border-white/10">
                         {signal}
                       </span>
                     ))}

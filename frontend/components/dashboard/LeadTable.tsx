@@ -19,6 +19,7 @@ import { Search } from "lucide-react";
 import { useLeads } from "@/hooks/use-leads";
 import type { Lead, ALSTier, LeadStatus } from "@/lib/api/types";
 import { TierBadge } from "./TierBadge";
+import { LeadDetailModal } from "./LeadDetailModal";
 
 // ============================================
 // Types
@@ -39,24 +40,24 @@ interface LeadTableProps {
 // Configuration
 // ============================================
 
-// Client-friendly status labels per LEADS.md spec
+// Glass-themed status labels per LEADS.md spec
 const statusLabels: Record<LeadStatus, { label: string; style: string }> = {
-  new: { label: "New", style: "bg-slate-100 text-slate-600" },
-  enriched: { label: "Enriched", style: "bg-blue-100 text-blue-700" },
-  scored: { label: "Scored", style: "bg-blue-100 text-blue-700" },
-  in_sequence: { label: "In Sequence", style: "bg-purple-100 text-purple-700" },
-  converted: { label: "Meeting Booked", style: "bg-emerald-100 text-emerald-700" },
-  unsubscribed: { label: "Unsubscribed", style: "bg-slate-100 text-slate-500" },
-  bounced: { label: "Bounced", style: "bg-red-100 text-red-600" },
+  new: { label: "New", style: "bg-slate-500/20 text-slate-300 border border-slate-500/20" },
+  enriched: { label: "Enriched", style: "bg-blue-500/20 text-blue-400 border border-blue-500/20" },
+  scored: { label: "Scored", style: "bg-blue-500/20 text-blue-400 border border-blue-500/20" },
+  in_sequence: { label: "In Sequence", style: "bg-purple-500/20 text-purple-400 border border-purple-500/20" },
+  converted: { label: "Meeting Booked", style: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20" },
+  unsubscribed: { label: "Unsubscribed", style: "bg-slate-500/20 text-slate-400 border border-slate-500/20" },
+  bounced: { label: "Bounced", style: "bg-red-500/20 text-red-400 border border-red-500/20" },
 };
 
-// Tier filter cards configuration
+// Glass-themed tier filter cards configuration
 const tierFilters: { tier: ALSTier; label: string; color: string; textColor: string }[] = [
-  { tier: "hot", label: "High Priority", color: "border-orange-500 bg-orange-50", textColor: "text-orange-700" },
-  { tier: "warm", label: "Engaged", color: "border-yellow-500 bg-yellow-50", textColor: "text-yellow-700" },
-  { tier: "cool", label: "Nurturing", color: "border-blue-500 bg-blue-50", textColor: "text-blue-700" },
-  { tier: "cold", label: "Low Activity", color: "border-slate-400 bg-slate-50", textColor: "text-slate-600" },
-  { tier: "dead", label: "Inactive", color: "border-slate-300 bg-slate-100", textColor: "text-slate-500" },
+  { tier: "hot", label: "High Priority", color: "border-orange-500/40 bg-orange-500/10 backdrop-blur-md", textColor: "text-orange-400" },
+  { tier: "warm", label: "Engaged", color: "border-yellow-500/40 bg-yellow-500/10 backdrop-blur-md", textColor: "text-yellow-400" },
+  { tier: "cool", label: "Nurturing", color: "border-blue-500/40 bg-blue-500/10 backdrop-blur-md", textColor: "text-blue-400" },
+  { tier: "cold", label: "Low Activity", color: "border-slate-400/40 bg-slate-500/10 backdrop-blur-md", textColor: "text-slate-400" },
+  { tier: "dead", label: "Inactive", color: "border-slate-500/40 bg-slate-600/10 backdrop-blur-md", textColor: "text-slate-500" },
 ];
 
 // ============================================
@@ -92,12 +93,12 @@ function TierFilterCard({
   return (
     <button
       onClick={onClick}
-      className={`p-4 rounded-lg border-2 text-left transition-all ${color} ${
-        isSelected ? "ring-2 ring-blue-500 ring-offset-2" : "hover:shadow-md"
+      className={`p-4 rounded-lg border text-left transition-all ${color} ${
+        isSelected ? "ring-2 ring-blue-500/50 ring-offset-2 ring-offset-transparent" : "hover:bg-white/5"
       }`}
     >
-      <div className={`text-2xl font-bold ${textColor}`}>{count}</div>
-      <div className="text-sm text-slate-600">{label}</div>
+      <div className={`text-2xl font-bold ${textColor} drop-shadow-sm`}>{count}</div>
+      <div className="text-sm text-slate-400">{label}</div>
     </button>
   );
 }
@@ -114,6 +115,23 @@ export function LeadTable({
 }: LeadTableProps) {
   const [selectedTier, setSelectedTier] = useState<ALSTier | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Handle row click - open modal or call external handler
+  const handleRowClick = (lead: Lead) => {
+    if (onLeadClick) {
+      onLeadClick(lead);
+    } else {
+      setSelectedLead(lead);
+      setIsModalOpen(true);
+    }
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedLead(null);
+  };
 
   // Fetch leads with filters
   const { data: leadsResponse, isLoading, error } = useLeads({
@@ -156,9 +174,9 @@ export function LeadTable({
   // Loading state
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-lg shadow-black/10 p-8">
+      <div className="bg-slate-900/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg shadow-black/20 p-8">
         <div className="flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
         </div>
       </div>
     );
@@ -167,9 +185,9 @@ export function LeadTable({
   // Error state
   if (error) {
     return (
-      <div className="bg-white rounded-xl border border-red-200 shadow-lg p-8 text-center">
-        <p className="text-red-600">Failed to load leads</p>
-        <p className="text-sm text-slate-500 mt-1">{error.message}</p>
+      <div className="bg-slate-900/40 backdrop-blur-md rounded-xl border border-red-500/30 shadow-lg shadow-black/20 p-8 text-center">
+        <p className="text-red-400">Failed to load leads</p>
+        <p className="text-sm text-slate-400 mt-1">{error.message}</p>
       </div>
     );
   }
@@ -179,8 +197,8 @@ export function LeadTable({
       {/* Header & Search */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">Leads</h2>
-          <p className="text-sm text-slate-500">
+          <h2 className="text-xl font-semibold text-white drop-shadow-sm">Leads</h2>
+          <p className="text-sm text-slate-400">
             {filteredLeads.length} prospects in pipeline
           </p>
         </div>
@@ -192,7 +210,7 @@ export function LeadTable({
               placeholder="Search name, email, company..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-64 pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-64 pl-9 pr-4 py-2 text-sm bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 backdrop-blur-sm"
             />
           </div>
         </div>
@@ -218,11 +236,11 @@ export function LeadTable({
         </div>
       )}
 
-      {/* Lead Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-lg shadow-black/10">
+      {/* Lead Table - Glass themed */}
+      <div className="bg-slate-900/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg shadow-black/20 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-100 text-xs text-slate-500">
+            <tr className="border-b border-white/10 text-xs text-slate-400 bg-white/5">
               <th className="text-left p-4 font-medium">Lead</th>
               <th className="text-left p-4 font-medium">Company</th>
               <th className="text-left p-4 font-medium">Priority</th>
@@ -237,17 +255,17 @@ export function LeadTable({
             {filteredLeads.map((lead) => (
               <tr
                 key={lead.id}
-                className="border-b border-slate-50 hover:bg-slate-50 cursor-pointer"
-                onClick={() => onLeadClick?.(lead)}
+                className="border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors"
+                onClick={() => handleRowClick(lead)}
               >
                 <td className="p-4">
-                  <div className="font-medium text-slate-900">
+                  <div className="font-medium text-white">
                     {lead.first_name} {lead.last_name}
                   </div>
-                  <div className="text-xs text-slate-500">{lead.email}</div>
+                  <div className="text-xs text-slate-400">{lead.email}</div>
                 </td>
                 <td className="p-4">
-                  <div className="text-slate-900">{lead.company}</div>
+                  <div className="text-slate-200">{lead.company}</div>
                   <div className="text-xs text-slate-500">
                     {lead.organization_industry}
                   </div>
@@ -260,14 +278,14 @@ export function LeadTable({
                   <StatusBadge status={lead.status} />
                 </td>
                 {!compact && (
-                  <td className="p-4 text-slate-500 text-xs">
+                  <td className="p-4 text-slate-400 text-xs">
                     {lead.updated_at
                       ? new Date(lead.updated_at).toLocaleDateString()
                       : "—"}
                   </td>
                 )}
                 <td className="p-4 text-right">
-                  <button className="text-blue-600 hover:text-blue-700 text-xs font-medium">
+                  <button className="text-blue-400 hover:text-blue-300 text-xs font-medium transition-colors">
                     View
                   </button>
                 </td>
@@ -277,7 +295,7 @@ export function LeadTable({
               <tr>
                 <td
                   colSpan={compact ? 5 : 6}
-                  className="p-8 text-center text-slate-500"
+                  className="p-8 text-center text-slate-400"
                 >
                   No leads found
                 </td>
@@ -286,6 +304,49 @@ export function LeadTable({
           </tbody>
         </table>
       </div>
+
+      {/* Lead Detail Modal */}
+      <LeadDetailModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        lead={selectedLead ? {
+          id: selectedLead.id,
+          firstName: selectedLead.first_name ?? "",
+          lastName: selectedLead.last_name ?? "",
+          email: selectedLead.email,
+          phone: selectedLead.phone ?? undefined,
+          linkedinUrl: selectedLead.linkedin_url ?? undefined,
+          title: selectedLead.title ?? "Unknown",
+          company: {
+            id: selectedLead.id,
+            name: selectedLead.company ?? "Unknown Company",
+            domain: selectedLead.domain ?? "",
+            logoEmoji: "🏢",
+            employees: selectedLead.organization_employee_count?.toString() ?? "Unknown",
+            industry: selectedLead.organization_industry ?? "Unknown",
+            estimatedRevenue: "Unknown",
+            location: selectedLead.organization_country ?? "Unknown",
+            recentIntelligence: [],
+          },
+          score: selectedLead.als_score ?? 50,
+          tier: selectedLead.als_tier ?? "cool",
+          whyHot: [],
+          engagementProfile: {
+            dataQuality: { label: "Data Quality", value: selectedLead.als_data_quality ?? 15, maxValue: 20, level: "medium" as const },
+            authority: { label: "Authority (Title)", value: selectedLead.als_authority ?? 15, maxValue: 25, level: "medium" as const },
+            companyFit: { label: "Company Fit", value: selectedLead.als_company_fit ?? 15, maxValue: 25, level: "medium" as const },
+            timing: { label: "Timing", value: selectedLead.als_timing ?? 10, maxValue: 15, level: "medium" as const },
+            engagement: { label: "Engagement", value: 10, maxValue: 20, level: "medium" as const },
+          },
+          timeline: [],
+          callLogs: [],
+          emailThread: [],
+          linkedinThread: [],
+          notes: [],
+          createdAt: selectedLead.created_at ?? new Date().toISOString(),
+          updatedAt: selectedLead.updated_at ?? new Date().toISOString(),
+        } : null}
+      />
     </div>
   );
 }

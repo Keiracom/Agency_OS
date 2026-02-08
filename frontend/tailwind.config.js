@@ -17,6 +17,14 @@ module.exports = {
   		}
   	},
   	extend: {
+  		// Glass morphism utilities
+  		backdropBlur: {
+  			xs: '2px',
+  		},
+  		backgroundImage: {
+  			'sydney-night': "url('/images/sydney-cbd-night.jpg')",
+  			'glass-gradient': 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+  		},
   		colors: {
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',

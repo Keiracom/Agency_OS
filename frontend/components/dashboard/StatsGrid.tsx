@@ -54,12 +54,13 @@ interface StatsGridProps {
 // Color Configuration
 // ============================================
 
+// Glass-themed color configuration
 const colorConfig: Record<ColorVariant, string> = {
-  blue: "bg-blue-50 text-blue-600",
-  green: "bg-emerald-50 text-emerald-600",
-  orange: "bg-orange-50 text-orange-600",
-  purple: "bg-purple-50 text-purple-600",
-  red: "bg-red-50 text-red-600",
+  blue: "bg-blue-500/20 text-blue-400",
+  green: "bg-emerald-500/20 text-emerald-400",
+  orange: "bg-orange-500/20 text-orange-400",
+  purple: "bg-purple-500/20 text-purple-400",
+  red: "bg-red-500/20 text-red-400",
 };
 
 // ============================================
@@ -77,40 +78,40 @@ export function StatCard({
 }: StatCardProps) {
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg border border-slate-200 shadow-md shadow-black/10 p-4 animate-pulse">
+      <div className="bg-slate-900/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 animate-pulse">
         <div className="flex items-start justify-between mb-2">
-          <div className="h-3 w-24 bg-slate-200 rounded" />
-          <div className="w-8 h-8 rounded-lg bg-slate-200" />
+          <div className="h-3 w-24 bg-white/10 rounded" />
+          <div className="w-8 h-8 rounded-lg bg-white/10" />
         </div>
-        <div className="h-8 w-16 bg-slate-200 rounded mt-2" />
-        <div className="h-3 w-20 bg-slate-200 rounded mt-2" />
+        <div className="h-8 w-16 bg-white/10 rounded mt-2" />
+        <div className="h-3 w-20 bg-white/10 rounded mt-2" />
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-md shadow-black/10 p-4">
+    <div className="bg-slate-900/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 hover:bg-slate-900/50 transition-colors">
       <div className="flex items-start justify-between mb-2">
-        <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+        <span className="text-xs font-medium text-slate-300 uppercase tracking-wide">
           {label}
         </span>
         <div
-          className={`w-8 h-8 rounded-lg ${colorConfig[color]} flex items-center justify-center`}
+          className={`w-8 h-8 rounded-lg ${colorConfig[color]} flex items-center justify-center backdrop-blur-sm`}
         >
           <Icon className="w-4 h-4" />
         </div>
       </div>
-      <div className="text-2xl font-bold text-slate-900">{value}</div>
+      <div className="text-2xl font-bold text-white drop-shadow-sm">{value}</div>
       {change !== undefined && (
         <div className="flex items-center gap-1 mt-1">
           {change >= 0 ? (
-            <ArrowUpRight className="w-3 h-3 text-emerald-500" />
+            <ArrowUpRight className="w-3 h-3 text-emerald-400" />
           ) : (
-            <ArrowDownRight className="w-3 h-3 text-red-500" />
+            <ArrowDownRight className="w-3 h-3 text-red-400" />
           )}
           <span
             className={`text-xs font-medium ${
-              change >= 0 ? "text-emerald-600" : "text-red-600"
+              change >= 0 ? "text-emerald-400" : "text-red-400"
             }`}
           >
             {change >= 0 ? "+" : ""}
@@ -145,35 +146,40 @@ function StatusCard({
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg border border-slate-200 shadow-md shadow-black/10 p-4 animate-pulse">
+      <div className="bg-slate-900/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 animate-pulse">
         <div className="flex items-start justify-between mb-2">
-          <div className="h-3 w-24 bg-slate-200 rounded" />
-          <div className="w-8 h-8 rounded-lg bg-slate-200" />
+          <div className="h-3 w-24 bg-white/10 rounded" />
+          <div className="w-8 h-8 rounded-lg bg-white/10" />
         </div>
-        <div className="h-8 w-20 bg-slate-200 rounded mt-2" />
-        <div className="h-3 w-32 bg-slate-200 rounded mt-2" />
+        <div className="h-8 w-20 bg-white/10 rounded mt-2" />
+        <div className="h-3 w-32 bg-white/10 rounded mt-2" />
       </div>
     );
   }
 
+  // Map color to glass-friendly variants
+  const glassColor = color.includes('emerald') ? 'text-emerald-400' : 
+                     color.includes('yellow') ? 'text-yellow-400' : 
+                     color.includes('red') ? 'text-red-400' : 'text-white';
+
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-md shadow-black/10 p-4">
+    <div className="bg-slate-900/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 hover:bg-slate-900/50 transition-colors">
       <div className="flex items-start justify-between mb-2">
-        <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+        <span className="text-xs font-medium text-slate-300 uppercase tracking-wide">
           Campaign Status
         </span>
-        <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+        <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center backdrop-blur-sm">
           <Activity className="w-4 h-4" />
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <span className={`text-2xl font-bold ${color}`}>{label}</span>
+        <span className={`text-2xl font-bold ${glassColor} drop-shadow-sm`}>{label}</span>
       </div>
-      <div className="text-xs text-slate-500 mt-1">
+      <div className="text-xs text-slate-400 mt-1">
         {meetingsBooked} of {targetHigh} meetings target
       </div>
-      {/* Progress bar */}
-      <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+      {/* Progress bar with glass effect */}
+      <div className="mt-2 h-1.5 bg-white/10 rounded-full overflow-hidden">
         <div
           className="h-full bg-emerald-500 rounded-full transition-all duration-500"
           style={{ width: `${progressPercent}%` }}

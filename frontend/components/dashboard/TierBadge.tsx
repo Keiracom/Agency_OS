@@ -30,12 +30,13 @@ interface TierBadgeProps {
 // Configuration
 // ============================================
 
+// Glass-themed tier configuration
 const tierConfig: Record<ALSTier, { style: string; clientLabel: string }> = {
-  hot: { style: "bg-orange-100 text-orange-700", clientLabel: "High Priority" },
-  warm: { style: "bg-yellow-100 text-yellow-700", clientLabel: "Engaged" },
-  cool: { style: "bg-blue-100 text-blue-700", clientLabel: "Nurturing" },
-  cold: { style: "bg-slate-100 text-slate-600", clientLabel: "Low Activity" },
-  dead: { style: "bg-slate-100 text-slate-500", clientLabel: "Inactive" },
+  hot: { style: "bg-orange-500/20 text-orange-400 border border-orange-500/30", clientLabel: "High Priority" },
+  warm: { style: "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30", clientLabel: "Engaged" },
+  cool: { style: "bg-blue-500/20 text-blue-400 border border-blue-500/30", clientLabel: "Nurturing" },
+  cold: { style: "bg-slate-500/20 text-slate-400 border border-slate-500/30", clientLabel: "Low Activity" },
+  dead: { style: "bg-slate-600/20 text-slate-500 border border-slate-600/30", clientLabel: "Inactive" },
 };
 
 // ============================================

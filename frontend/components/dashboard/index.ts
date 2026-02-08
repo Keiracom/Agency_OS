@@ -5,19 +5,94 @@
  * Exports all dashboard components for easy importing.
  */
 
-// Navigation
+// Navigation & Layout
 export { Sidebar, type PageKey } from "./Sidebar";
+export { 
+  Header, 
+  type HeaderProps, 
+  type Notification as HeaderNotification, 
+  type UserMenuAction 
+} from "./Header";
+export {
+  UserDropdown,
+  type UserDropdownProps,
+  type UserData,
+} from "./UserDropdown";
+export {
+  NotificationsPanel,
+  useNotifications,
+  mockNotifications,
+  type Notification,
+  type NotificationType,
+  type NotificationsPanelProps,
+} from "./NotificationsPanel";
+export {
+  GlobalSearch,
+  useGlobalSearch,
+  type GlobalSearchProps,
+  type SearchResult,
+  type SearchCategory,
+} from "./GlobalSearch";
 
 // Stats & Metrics
 export { StatsGrid, StatCard } from "./StatsGrid";
 
+// Campaigns
+export {
+  CampaignCards,
+  CampaignCard,
+  CampaignComparison,
+  OverviewStats,
+  MOCK_CAMPAIGNS,
+  MOCK_OVERVIEW_STATS,
+  type Campaign,
+  type CampaignStatus,
+  type CampaignChannel,
+  type CampaignMetrics,
+} from "./CampaignCards";
+
+export {
+  CampaignDetail,
+  type Campaign as CampaignDetailData,
+  type SequenceStep,
+  type ChannelStats,
+  type ABTest,
+  type FunnelStep,
+  type Lead as CampaignLead,
+  type ActivityItem,
+} from "./CampaignDetail";
+
+export {
+  CampaignWizard,
+  type WizardState,
+  type ICPOption,
+  type FilterGroup,
+  type CampaignGoal,
+  type ToneType,
+  type MessageGeneration,
+  type LaunchSchedule,
+} from "./CampaignWizard";
+
 // Activity
 export { ActivityTicker } from "./ActivityTicker";
 export { LiveActivityFeed } from "./LiveActivityFeed";
+export { ActivityFeed } from "./ActivityFeed";
 
 // Leads
 export { LeadTable } from "./LeadTable";
 export { TierBadge } from "./TierBadge";
+export { LeadDetailModal } from "./LeadDetailModal";
+
+// Scheduling
+export {
+  MeetingScheduler,
+  type MeetingSchedulerProps,
+  type ScheduledMeeting,
+  type MeetingType,
+  type MeetingDuration,
+  type LeadInfo,
+  type TimeSlot,
+} from "./MeetingScheduler";
 
 // Shared UI
 export { ChannelIcon } from "./ChannelIcon";
@@ -27,7 +102,51 @@ export { NewCampaignModal } from "./NewCampaignModal";
 export { ProcessingOverlay } from "./ProcessingOverlay";
 
 // Maya Assistant
-export { MayaCompanion } from "./MayaCompanion";
+export {
+  MayaCompanion,
+  type MayaStep,
+  type MayaMessage,
+  type ContextualSuggestion,
+  type PageContext,
+  type MayaCompanionProps,
+} from "./MayaCompanion";
+
+// Quick Actions
+export {
+  QuickActions,
+  type QuickAction,
+  type QuickActionsProps,
+} from "./QuickActions";
+
+// Settings
+export { SettingsPanel } from "./SettingsPanel";
+
+// Channel Integrations
+export { ChannelIntegrations, type ChannelIntegrationsProps } from "./ChannelIntegrations";
+
+// Billing
+export { default as BillingPage } from "./BillingPage";
+
+// Reports & Analytics
+export { ReportsView } from "./ReportsView";
+
+// Replies & Inbox
+export { RepliesInbox } from "./RepliesInbox";
+export { ReplyDetail } from "./ReplyDetail";
+export type {
+  InboxConversation,
+  ConversationMessage,
+  AISuggestion,
+  IntentType,
+  SentimentType,
+} from "./RepliesInbox";
+export type { ConversationDetail } from "./ReplyDetail";
+
+// Main Dashboard View
+export { DashboardMain } from "./DashboardMain";
+export type { 
+  DashboardMainProps,
+} from "./DashboardMain";
 
 // Existing components (from previous implementation)
 export { BestOfShowcase } from "./BestOfShowcase";

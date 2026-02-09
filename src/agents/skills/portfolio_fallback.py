@@ -44,7 +44,7 @@ class FallbackPortfolioCompany(BaseModel):
 
     company_name: str = Field(description="Company/client name")
     source: str = Field(
-        description="Where found: fallback:apollo, fallback:google, fallback:linkedin"
+        description="Where found: fallback:legacy, fallback:google, fallback:linkedin"
     )
     context: str = Field(default="", description="Context where it was mentioned")
     confidence: float = Field(default=0.7, description="Confidence this is a real client (0.0-1.0)")
@@ -72,10 +72,10 @@ class PortfolioFallbackSkill(
         """Input for portfolio fallback extraction."""
 
         company_name: str = Field(description="Agency name (to exclude from results)")
-        apollo_description: str | None = Field(
+        legacy_description: str | None = Field(
             default=None, description="Apollo company description (may mention clients)"
         )
-        apollo_keywords: list[str] = Field(default_factory=list, description="Apollo keywords/tags")
+        legacy_keywords: list[str] = Field(default_factory=list, description="Apollo keywords/tags")
         linkedin_description: str | None = Field(
             default=None, description="LinkedIn company description (may mention clients)"
         )
@@ -98,7 +98,7 @@ class PortfolioFallbackSkill(
             default_factory=list, description="Client companies extracted from fallback sources"
         )
         sources_used: list[str] = Field(
-            default_factory=list, description="Which sources had data: apollo, linkedin, google"
+            default_factory=list, description="Which sources had data: legacy, linkedin, google"
         )
         total_extracted: int = Field(default=0, description="Total companies extracted")
 
@@ -156,14 +156,14 @@ Return empty array [] if no specific clients found."""
                 f"ALREADY KNOWN CLIENTS (exclude duplicates): {', '.join(input_data.existing_portfolio)}"
             )
 
-        if input_data.apollo_description:
+        if input_data.legacy_description:
             sections.append(f"""
 === APOLLO DESCRIPTION ===
-{input_data.apollo_description}
+{input_data.legacy_description}
 """)
 
-        if input_data.apollo_keywords:
-            sections.append(f"APOLLO KEYWORDS: {', '.join(input_data.apollo_keywords)}")
+        if input_data.legacy_keywords:
+            sections.append(f"APOLLO KEYWORDS: {', '.join(input_data.legacy_keywords)}")
 
         if input_data.linkedin_description:
             sections.append(f"""
@@ -220,8 +220,8 @@ Return empty array [] if no specific clients found."""
                         companies.append(company)
                         # Track source
                         source = item.get("source", "")
-                        if "apollo" in source.lower():
-                            sources_used.add("apollo")
+                        if "siege_waterfall" in source.lower():
+                            sources_used.add("siege_waterfall")
                         elif "linkedin" in source.lower():
                             sources_used.add("linkedin")
                         elif "google" in source.lower():
@@ -253,7 +253,7 @@ Return empty array [] if no specific clients found."""
         """
         # Check if we have any data to extract from
         has_data = (
-            input_data.apollo_description
+            input_data.legacy_description
             or input_data.linkedin_description
             or input_data.google_search_results
         )

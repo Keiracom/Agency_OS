@@ -219,7 +219,7 @@ class ScoutEngine(BaseEngine):
             await self._update_lead_from_enrichment(db, lead, tier1_result)
             return EngineResult.ok(
                 data=tier1_result,
-                metadata={"source": tier1_result.get("source", "apollo"), "tier": 1},
+                metadata={"source": tier1_result.get("source", "siege_waterfall"), "tier": 1},
             )
 
         # Tier 2: Clay fallback
@@ -365,7 +365,7 @@ class ScoutEngine(BaseEngine):
             await self._update_lead_from_enrichment(db, lead, tier1_result)
             return EngineResult.ok(
                 data=tier1_result,
-                metadata={"source": tier1_result.get("source", "apollo"), "tier": 1},
+                metadata={"source": tier1_result.get("source", "siege_waterfall"), "tier": 1},
             )
 
         # Tier 2: Clay (if allowed)
@@ -594,7 +594,7 @@ class ScoutEngine(BaseEngine):
         supporting cost tracking and debugging.
         
         Args:
-            operation: Operation name (siege_waterfall, apollo_enrich, apify_linkedin_scrape, etc.)
+            operation: Operation name (siege_waterfall, siege_enrich, camoufox_scrape, etc.)
             lead_id: Lead UUID if available
             lead_email: Lead email address
             domain: Company domain
@@ -1112,7 +1112,7 @@ class ScoutEngine(BaseEngine):
                 "skipped": 0,
                 "suppressed": 0,
                 "total": 0,
-                "apollo_removed": True,
+                "legacy_removed": True,
             },
             metadata={
                 "criteria": icp_criteria,
@@ -1347,7 +1347,7 @@ class ScoutEngine(BaseEngine):
             "company_technologies": lead_data.get("company_technologies", []),
             "company_keywords": lead_data.get("company_keywords", []),
             "email_status": email_status,
-            "enrichment_source": lead_data.get("enrichment_source", "apollo"),
+            "enrichment_source": lead_data.get("enrichment_source", "siege_waterfall"),
             "enrichment_confidence": lead_data.get("confidence")
             or lead_data.get("enrichment_confidence"),
             "enrichment_data": json.dumps(lead_data.get("enrichment_data"))

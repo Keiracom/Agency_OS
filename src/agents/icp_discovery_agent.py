@@ -317,25 +317,25 @@ class ICPDiscoveryAgent(BaseAgent):
         total_cost = 0.0
 
         # Gather data for fallback extraction
-        apollo_description: str | None = None
-        apollo_keywords: list[str] = []
+        legacy_description: str | None = None
+        legacy_keywords: list[str] = []
         linkedin_description: str | None = None
         linkedin_specialties: list[str] = []
         google_results: list[dict] = []
 
         # Tier F1: Apollo agency lookup
         logger.info("Tier F1: Looking up agency in Apollo...")
-        apollo_result = await self.scraper.get_agency_apollo_data(
+        legacy_result = await self.scraper.get_agency_apollo_data(
             company_name=company_name,
             domain=website_domain,
         )
-        if apollo_result.success and apollo_result.data:
-            data = apollo_result.data
+        if legacy_result.success and legacy_result.data:
+            data = legacy_result.data
             if data.get("found"):
-                apollo_description = data.get("description")
-                apollo_keywords = data.get("keywords", [])
+                legacy_description = data.get("description")
+                legacy_keywords = data.get("keywords", [])
                 logger.info(
-                    f"Tier F1: Found Apollo data - description length: {len(apollo_description or '')}"
+                    f"Tier F1: Found Apollo data - description length: {len(legacy_description or '')}"
                 )
             else:
                 logger.info("Tier F1: Agency not found in Apollo")
@@ -390,13 +390,13 @@ class ICPDiscoveryAgent(BaseAgent):
         # google_results remains empty - fallback extraction will use Apollo/LinkedIn data only
 
         # Now use PortfolioFallbackSkill to extract clients from all sources
-        if apollo_description or linkedin_description or google_results:
+        if legacy_description or linkedin_description or google_results:
             logger.info("Extracting clients from fallback sources using Claude...")
             fallback_result = await self.use_skill(
                 "portfolio_fallback",
                 company_name=company_name,
-                apollo_description=apollo_description,
-                apollo_keywords=apollo_keywords,
+                legacy_description=legacy_description,
+                legacy_keywords=legacy_keywords,
                 linkedin_description=linkedin_description,
                 linkedin_specialties=linkedin_specialties,
                 google_search_results=google_results,

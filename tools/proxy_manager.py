@@ -33,9 +33,11 @@ PROXY_CONFIG_FILE = CONFIG_DIR / "proxy_config.json"
 PROXY_CACHE_FILE = CONFIG_DIR / "proxy_list.json"
 
 # Default Webshare API URL
+# Country codes: AU = Australia only (prevents EU consent wall on Google Maps)
+# Format: {token}/{country_codes}/any/{auth}/{mode}/{search}/
 DEFAULT_PROXY_SOURCE = os.getenv(
     "WEBSHARE_PROXY_URL",
-    "https://proxy.webshare.io/api/v2/proxy/list/download/qtlittgilrciykacamwewxkgpmaxnfamwqvjvvkx/-/any/username/backbone/-/?plan_id=12711897"
+    "https://proxy.webshare.io/api/v2/proxy/list/download/qtlittgilrciykacamwewxkgpmaxnfamwqvjvvkx/AU/any/username/backbone/-/?plan_id=12711897"
 )
 
 # Auto-refresh interval

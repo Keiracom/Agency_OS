@@ -954,6 +954,7 @@ Always be respectful of their time."""
     # ============================================
     # VOICE KB GENERATION (Smart Prompt System)
     # Updated 2026-01-20 per SDK_AND_CONTENT_ARCHITECTURE.md
+    # SDK enrichment deprecated per FCO-002
     # ============================================
 
     async def generate_voice_kb(
@@ -961,7 +962,6 @@ Always be respectful of their time."""
         db: AsyncSession,
         lead_id: UUID,
         campaign_id: UUID,
-        sdk_enrichment: dict[str, Any] | None = None,
     ) -> EngineResult[dict[str, Any]]:
         """
         Generate voice knowledge base for a lead using Smart Prompt system.
@@ -973,12 +973,14 @@ Always be respectful of their time."""
         - Open calls with specific, relevant hooks
         - Handle objections with company-specific responses
         - Navigate conversations intelligently
+        
+        Note:
+            sdk_enrichment parameter removed per FCO-002 deprecation.
 
         Args:
             db: Database session (passed by caller)
             lead_id: Lead UUID
             campaign_id: Campaign UUID
-            sdk_enrichment: DEPRECATED - ignored
 
         Returns:
             EngineResult with voice KB dict
@@ -1105,15 +1107,17 @@ Be specific and actionable. Return valid JSON only."""
         voice_id: str = None,
         voice_provider: str = None,
         voice_model: str = None,
-        sdk_enrichment: dict[str, Any] | None = None,
     ) -> EngineResult[dict[str, Any]]:
         """
-        Create a Vapi assistant with SDK voice KB integration.
+        Create a Vapi assistant with voice KB integration.
 
         This method:
-        1. Generates voice KB for the lead (SDK for Hot, basic otherwise)
+        1. Generates voice KB for the lead using Smart Prompt system
         2. Enhances the script with KB data
         3. Creates the Vapi assistant
+        
+        Note:
+            sdk_enrichment parameter removed per FCO-002 deprecation.
 
         Args:
             db: Database session
@@ -1124,7 +1128,6 @@ Be specific and actionable. Return valid JSON only."""
             voice_id: Voice ID (optional, uses Cartesia default)
             voice_provider: TTS provider ("cartesia" or "11labs" for fallback)
             voice_model: Voice model (e.g., "sonic-2", "sonic-turbo")
-            sdk_enrichment: Pre-fetched SDK enrichment data
 
         Returns:
             EngineResult with assistant_id and KB data
@@ -1135,7 +1138,6 @@ Be specific and actionable. Return valid JSON only."""
                 db=db,
                 lead_id=lead_id,
                 campaign_id=UUID(campaign_id),
-                sdk_enrichment=sdk_enrichment,
             )
 
             if not kb_result.success:
@@ -1170,12 +1172,12 @@ Be specific and actionable. Return valid JSON only."""
                     "assistant_id": assistant_id,
                     "voice_kb": kb_data,
                     "first_message_used": personalized_first_message,
-                    "sdk_enhanced": kb_result.metadata.get("sdk", False)
-                    if kb_result.success
-                    else False,
                 },
                 metadata={
                     "cost_aud": kb_result.metadata.get("cost_aud", 0) if kb_result.success else 0,
+                    "smart_prompt": kb_result.metadata.get("smart_prompt", True)
+                    if kb_result.success
+                    else True,
                 },
             )
 

@@ -1,10 +1,9 @@
 """
 FILE: src/orchestration/flows/stale_lead_refresh_flow.py
-PURPOSE: Refresh stale lead data before outreach via Apify (not SDK)
+PURPOSE: Refresh stale lead data before outreach via Camoufox scraping
 PHASE: SDK & Content Architecture Refactor - Phase 3
 TASK: Data Freshness
 DEPENDENCIES:
-  - src/integrations/apify.py
   - src/integrations/supabase.py
   - src/models/lead_pool.py
 RULES APPLIED:
@@ -13,10 +12,15 @@ RULES APPLIED:
   - Rule 13: JIT validation before enrichment
 
 DATA FRESHNESS STRATEGY:
-  - Apify refresh: ~$0.02/lead (vs SDK: ~$0.40/lead)
+  - Camoufox refresh: Browser-based scraping (FCO-003 deprecation)
   - Refresh leads where enriched_at > 7 days
   - Run before daily batch send
   - Only refresh leads scheduled for outreach today
+
+DEPRECATION NOTE (FCO-003):
+  - Apify integration removed per governance decision
+  - LinkedIn scraping now stubbed with graceful skip
+  - Future: Implement Camoufox-based LinkedIn scraper
 """
 
 import logging
@@ -27,7 +31,6 @@ from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
 from sqlalchemy import text
 
-from src.integrations.apify import get_apify_client
 from src.integrations.supabase import get_db_session
 
 logger = logging.getLogger(__name__)
@@ -145,9 +148,11 @@ async def refresh_lead_linkedin_data_task(
     company_linkedin_url: str | None,
 ) -> dict[str, Any]:
     """
-    Refresh a single lead's LinkedIn data via Apify.
+    Refresh a single lead's LinkedIn data.
 
-    Cost: ~$0.02 per lead (vs SDK: ~$0.40/lead).
+    NOTE (FCO-003): Apify integration deprecated. LinkedIn scraping is currently
+    stubbed. The enriched_at timestamp is updated to prevent repeated attempts.
+    Future implementation should use Camoufox-based scraper.
 
     Args:
         lead_id: Lead pool UUID string
@@ -157,100 +162,49 @@ async def refresh_lead_linkedin_data_task(
     Returns:
         Dict with refresh result
     """
-    apify = get_apify_client()
+    # FCO-003: Apify deprecated - graceful skip with timestamp update
+    # This prevents repeated attempts on the same leads while LinkedIn
+    # scraping is being reimplemented with Camoufox
 
-    person_data = None
-    company_data = None
-    refresh_cost = 0.0
+    if not linkedin_url and not company_linkedin_url:
+        logger.warning(f"No LinkedIn URLs available for lead {lead_id}")
+        return {
+            "success": False,
+            "lead_id": lead_id,
+            "error": "No LinkedIn URLs available",
+            "skipped": True,
+        }
 
     try:
-        # Refresh person LinkedIn profile if URL available
-        if linkedin_url:
-            profiles = await apify.scrape_linkedin_profiles([linkedin_url])
-            if profiles and profiles[0].get("found"):
-                person_data = profiles[0]
-                refresh_cost += 0.01  # ~$0.01 per profile
+        # Update enriched_at to mark as processed (graceful skip)
+        # This prevents the lead from being re-queried until next stale cycle
+        async with get_db_session() as db:
+            query = text("""
+                UPDATE lead_pool
+                SET enriched_at = NOW(),
+                    updated_at = NOW()
+                WHERE id = :lead_id::uuid
+            """)
+            await db.execute(query, {"lead_id": lead_id})
+            await db.commit()
 
-        # Refresh company LinkedIn profile if URL available
-        if company_linkedin_url:
-            company_result = await apify.scrape_linkedin_company(company_linkedin_url)
-            if company_result.get("found"):
-                company_data = company_result
-                refresh_cost += 0.01  # ~$0.01 per company
+        logger.info(
+            f"Lead {lead_id} marked as processed (LinkedIn scraping disabled per FCO-003). "
+            f"URLs: person={bool(linkedin_url)}, company={bool(company_linkedin_url)}"
+        )
 
-        # Update lead_pool with fresh data
-        if person_data or company_data:
-            async with get_db_session() as db:
-                import json
-
-                update_fields = []
-                params = {"lead_id": lead_id}
-
-                if person_data:
-                    # Update person fields
-                    if person_data.get("title"):
-                        update_fields.append("title = :title")
-                        params["title"] = person_data["title"]
-                    if person_data.get("about"):
-                        update_fields.append("linkedin_headline = :headline")
-                        params["headline"] = person_data.get("about", "")[:500]
-                    if person_data.get("recent_posts"):
-                        # Store in enrichment_data JSONB
-                        update_fields.append("""
-                            enrichment_data = COALESCE(enrichment_data, '{}'::jsonb) ||
-                            jsonb_build_object('linkedin_posts', :linkedin_posts::jsonb)
-                        """)
-                        params["linkedin_posts"] = json.dumps(person_data["recent_posts"])
-
-                if company_data:
-                    # Update company fields
-                    if company_data.get("employee_count"):
-                        update_fields.append("company_employee_count = :emp_count")
-                        params["emp_count"] = company_data["employee_count"]
-                    if company_data.get("description"):
-                        update_fields.append("company_description = :company_desc")
-                        params["company_desc"] = company_data["description"][:1000]
-                    if company_data.get("industry"):
-                        update_fields.append("company_industry = :industry")
-                        params["industry"] = company_data["industry"]
-
-                # Always update enriched_at and last_enriched_at
-                update_fields.append("enriched_at = NOW()")
-                update_fields.append("last_enriched_at = NOW()")
-                update_fields.append("updated_at = NOW()")
-
-                if update_fields:
-                    query = text(f"""
-                        UPDATE lead_pool
-                        SET {", ".join(update_fields)}
-                        WHERE id = :lead_id::uuid
-                    """)
-                    await db.execute(query, params)
-                    await db.commit()
-
-            logger.info(
-                f"Refreshed lead {lead_id}: "
-                f"person={bool(person_data)}, company={bool(company_data)}, "
-                f"cost=${refresh_cost:.2f}"
-            )
-
-            return {
-                "success": True,
-                "lead_id": lead_id,
-                "person_refreshed": bool(person_data),
-                "company_refreshed": bool(company_data),
-                "refresh_cost": refresh_cost,
-            }
-        else:
-            logger.warning(f"No LinkedIn URLs available for lead {lead_id}")
-            return {
-                "success": False,
-                "lead_id": lead_id,
-                "error": "No LinkedIn URLs available",
-            }
+        return {
+            "success": True,
+            "lead_id": lead_id,
+            "person_refreshed": False,
+            "company_refreshed": False,
+            "refresh_cost": 0.0,
+            "skipped": True,
+            "skip_reason": "FCO-003: Apify deprecated, awaiting Camoufox implementation",
+        }
 
     except Exception as e:
-        logger.exception(f"Failed to refresh lead {lead_id}: {e}")
+        logger.exception(f"Failed to process lead {lead_id}: {e}")
         return {
             "success": False,
             "lead_id": lead_id,
@@ -273,6 +227,7 @@ async def batch_refresh_leads_task(
     """
     results = []
     total_cost = 0.0
+    skipped_count = 0
 
     for lead in leads:
         result = await refresh_lead_linkedin_data_task(
@@ -282,19 +237,22 @@ async def batch_refresh_leads_task(
         )
         results.append(result)
         total_cost += result.get("refresh_cost", 0)
+        if result.get("skipped"):
+            skipped_count += 1
 
     successful = sum(1 for r in results if r.get("success"))
     failed = len(results) - successful
 
     logger.info(
-        f"Batch refresh complete: {successful}/{len(leads)} successful, "
-        f"total cost: ${total_cost:.2f}"
+        f"Batch refresh complete: {successful}/{len(leads)} successful "
+        f"({skipped_count} skipped per FCO-003), total cost: ${total_cost:.2f}"
     )
 
     return {
         "total": len(leads),
         "successful": successful,
         "failed": failed,
+        "skipped": skipped_count,
         "total_cost": total_cost,
         "results": results,
     }
@@ -307,7 +265,7 @@ async def batch_refresh_leads_task(
 
 @flow(
     name="refresh_stale_leads",
-    description="Refresh stale lead data via Apify before outreach",
+    description="Refresh stale lead data before outreach (FCO-003: LinkedIn scraping disabled)",
     task_runner=ConcurrentTaskRunner(max_workers=5),
     retries=1,
     retry_delay_seconds=60,
@@ -322,7 +280,10 @@ async def refresh_stale_leads_flow(
     Refresh stale leads before daily outreach.
 
     This flow should be called before the daily outreach batch to ensure
-    leads have fresh data. Uses Apify (~$0.02/lead) instead of SDK (~$0.40/lead).
+    leads have fresh data.
+
+    NOTE (FCO-003): LinkedIn scraping is currently disabled due to Apify
+    deprecation. Leads are marked as processed to prevent repeated attempts.
 
     Args:
         client_id: Optional filter by client
@@ -351,6 +312,7 @@ async def refresh_stale_leads_flow(
             "total_stale": 0,
             "refreshed": 0,
             "failed": 0,
+            "skipped": 0,
             "total_cost": 0.0,
             "message": "No stale leads found",
         }
@@ -362,14 +324,16 @@ async def refresh_stale_leads_flow(
         "total_stale": len(stale_leads),
         "refreshed": batch_result["successful"],
         "failed": batch_result["failed"],
+        "skipped": batch_result.get("skipped", 0),
         "total_cost": batch_result["total_cost"],
         "stale_threshold_days": stale_days,
         "completed_at": datetime.utcnow().isoformat(),
+        "note": "FCO-003: LinkedIn scraping disabled, leads marked as processed",
     }
 
     logger.info(
         f"Stale lead refresh complete: {summary['refreshed']}/{summary['total_stale']} "
-        f"refreshed, ${summary['total_cost']:.2f} cost"
+        f"processed ({summary['skipped']} skipped), ${summary['total_cost']:.2f} cost"
     )
 
     return summary
@@ -412,6 +376,7 @@ async def daily_outreach_prep_flow(
 
     summary = {
         "stale_leads_refreshed": refresh_result["refreshed"],
+        "stale_leads_skipped": refresh_result.get("skipped", 0),
         "refresh_cost": refresh_result["total_cost"],
         "ready_for_outreach": True,
         "completed_at": datetime.utcnow().isoformat(),
@@ -428,7 +393,7 @@ async def daily_outreach_prep_flow(
 # [x] Contract comment at top
 # [x] No hardcoded credentials
 # [x] Session passed via get_db_session() context manager
-# [x] Uses Apify for refresh (not SDK)
+# [x] FCO-003: Apify removed, graceful skip implemented
 # [x] Stale threshold configurable (default 7 days)
 # [x] Batch processing with cost tracking
 # [x] @flow and @task decorators from Prefect

@@ -480,7 +480,7 @@ Generate a new email that ONLY uses verified facts from the lead context."""
             fields.append("funding_signal")
         if signals.get("technologies"):
             fields.append("tech_stack")
-        if context.get("research") or context.get("sdk_research"):
+        if context.get("research"):
             fields.append("deep_research")
 
         return fields
@@ -630,9 +630,8 @@ Be conservative - if you're unsure whether a claim is supported, mark it as unsu
         }
 
     # ============================================
-    # DEPRECATED: generate_email_with_sdk
-    # Now delegates to generate_email() - SDK removed
-    # per architecture decision (2026-01-20)
+    # DEPRECATED: generate_email_with_sdk (FCO-002)
+    # SDK agents deprecated - delegates to generate_email()
     # ============================================
 
     async def generate_email_with_sdk(
@@ -643,31 +642,15 @@ Be conservative - if you're unsure whether a claim is supported, mark it as unsu
         template: str | None = None,
         tone: str = "professional",
         include_subject: bool = True,
-        sdk_enrichment: dict[str, Any] | None = None,
+        sdk_enrichment: dict[str, Any] | None = None,  # DEPRECATED - ignored
     ) -> EngineResult[dict[str, Any]]:
         """
-        Generate personalized email content for a lead.
-
-        NOTE: SDK routing has been removed per architecture decision (2026-01-20).
-        SDK is for reasoning (reply handling, meeting prep), not content generation.
-        Email personalization now uses Smart Prompt with all DB data.
-
-        This method now simply delegates to generate_email() for backwards
-        compatibility with existing orchestration flows.
-
-        Args:
-            db: Database session (passed by caller)
-            lead_id: Lead UUID
-            campaign_id: Campaign UUID
-            template: Optional email template with placeholders
-            tone: Desired tone (professional, friendly, direct)
-            include_subject: Whether to generate subject line
-            sdk_enrichment: DEPRECATED - ignored
-
-        Returns:
-            EngineResult with email content (subject, body)
+        DEPRECATED: SDK agents removed per FCO-002.
+        
+        This method delegates to generate_email() for backwards compatibility.
+        The sdk_enrichment parameter is ignored.
         """
-        # Delegate to standard email generation
+        logger.info("generate_email_with_sdk called — SDK deprecated (FCO-002), using standard flow")
         return await self.generate_email(
             db=db,
             lead_id=lead_id,
@@ -677,6 +660,10 @@ Be conservative - if you're unsure whether a claim is supported, mark it as unsu
             include_subject=include_subject,
         )
 
+    # ============================================
+    # DEPRECATED: generate_sdk_email_for_pool (FCO-002)
+    # ============================================
+
     async def generate_sdk_email_for_pool(
         self,
         db: AsyncSession,
@@ -684,29 +671,16 @@ Be conservative - if you're unsure whether a claim is supported, mark it as unsu
         campaign_name: str,
         template: str | None = None,
         tone: str = "professional",
-        sdk_enrichment: dict[str, Any] | None = None,
-        client_id: UUID | None = None,
+        sdk_enrichment: dict[str, Any] | None = None,  # DEPRECATED - ignored
+        client_id: UUID | None = None,  # DEPRECATED - ignored
     ) -> EngineResult[dict[str, Any]]:
         """
-        Generate email for a pool lead.
-
-        NOTE: SDK routing has been removed per architecture decision (2026-01-20).
-        This method now simply delegates to generate_email_for_pool() for
-        backwards compatibility with existing orchestration flows.
-
-        Args:
-            db: Database session
-            lead_pool_id: Lead pool UUID
-            campaign_name: Campaign name
-            template: Optional template
-            tone: Desired tone
-            sdk_enrichment: DEPRECATED - ignored
-            client_id: DEPRECATED - ignored
-
-        Returns:
-            EngineResult with email content
+        DEPRECATED: SDK agents removed per FCO-002.
+        
+        This method delegates to generate_email_for_pool() for backwards compatibility.
+        The sdk_enrichment and client_id parameters are ignored.
         """
-        # Delegate to standard pool email generation
+        logger.info("generate_sdk_email_for_pool called — SDK deprecated (FCO-002), using standard flow")
         return await self.generate_email_for_pool(
             db=db,
             lead_pool_id=lead_pool_id,

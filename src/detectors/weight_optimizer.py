@@ -39,6 +39,10 @@ DEFAULT_WEIGHTS = {
 # Component order for array operations
 COMPONENT_ORDER = ["data_quality", "authority", "company_fit", "timing", "risk"]
 
+# Aliases for test compatibility
+COMPONENTS = COMPONENT_ORDER
+WEIGHT_BOUNDS = (0.05, 0.50)  # (min_weight, max_weight) for optimizer constraints
+
 
 class WeightOptimizer:
     """

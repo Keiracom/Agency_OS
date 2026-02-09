@@ -272,3 +272,10 @@ async def cleanup() -> None:
 # [x] Cleanup function
 # [x] All functions have type hints
 # [x] All functions have docstrings
+
+# ============================================
+# Backward Compatibility Aliases
+# ============================================
+# Used by src/config/database.py and other modules
+get_async_engine = get_engine
+AsyncSessionLocal = get_session_factory

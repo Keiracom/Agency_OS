@@ -1,15 +1,17 @@
 /**
  * FILE: app/(marketing)/layout.tsx
- * PURPOSE: Marketing pages layout with ISR configuration
+ * PURPOSE: Marketing pages layout
  * 
  * ISR Strategy:
- * - Revalidate every 60 seconds (founding spots counter updates)
- * - Static shell, dynamic data refreshes periodically
+ * - Each page in this group has its own revalidation config:
+ *   - /pricing: 3600s (hourly)
+ *   - /about: 3600s (hourly)
+ *   - /how-it-works: 3600s (hourly)
+ * - Layout itself has no revalidation (passes through to pages)
+ * 
+ * Note: Page-level revalidation requires Server Components.
+ * All pages use the pattern: page.tsx (Server) -> *Client.tsx (Client)
  */
-
-// Enable ISR for all marketing pages - revalidate every 60 seconds
-// This allows founding spots counter to update without full rebuild
-export const revalidate = 60;
 
 export default function MarketingLayout({
   children,

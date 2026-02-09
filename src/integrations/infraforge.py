@@ -7,6 +7,14 @@ Auth: Authorization header (plain key)
 import httpx
 from src.config.settings import get_settings
 
+# Workspace IDs for InfraForge/Salesforge/WarmForge integration
+# Values are loaded from settings at runtime
+WORKSPACE_IDS = {
+    "infraforge": None,  # Set from settings
+    "salesforge": None,
+    "warmforge": None,
+}
+
 class InfraForgeClient:
     def __init__(self):
         settings = get_settings()

@@ -418,22 +418,23 @@ class ProxycurlClientAdapter:
     """
     Adapter for Proxycurl LinkedIn API.
     
-    Wraps the real ProxycurlClient to match the Siege Waterfall interface.
-    Implements: Tier 4 of Siege Waterfall - LinkedIn Intelligence.
+    NOTE: Proxycurl shutdown July 2025 (LinkedIn lawsuit).
+    This adapter is now a graceful skip - Tier 4 returns empty results.
+    LinkedIn enrichment will migrate to Unipile (CEO Directive #002).
+    
+    Implements: Tier 4 of Siege Waterfall - LinkedIn Intelligence (DEPRECATED).
     """
 
     def __init__(self):
         self._client = None
+        self._deprecated = True
     
     def _get_client(self):
-        """Lazy-load the real Proxycurl client."""
-        if self._client is None:
-            try:
-                from src.integrations.proxycurl import get_proxycurl_client
-                self._client = get_proxycurl_client()
-            except Exception as e:
-                logger.warning(f"[Proxycurl] Could not initialize client: {e}")
-                self._client = None
+        """Proxycurl is deprecated - always returns None."""
+        # Proxycurl shutdown July 2025. Do not attempt to import.
+        # Migration path: Unipile (CEO Directive #002)
+        if self._deprecated:
+            return None
         return self._client
 
     async def get_person_profile(

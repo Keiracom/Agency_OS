@@ -27,19 +27,10 @@ from src.models.base import LeadStatus
 
 
 @pytest.fixture
-def mock_apollo_client():
-    """Create mock Apollo client."""
+def mock_siege_waterfall():
+    """Create mock Siege Waterfall client."""
     client = AsyncMock()
-    client.enrich_person = AsyncMock()
-    client.enrich_company = AsyncMock()
-    return client
-
-
-@pytest.fixture
-def mock_apify_client():
-    """Create mock Apify client."""
-    client = AsyncMock()
-    client.scrape_linkedin_profiles = AsyncMock()
+    client.enrich_lead = AsyncMock()
     return client
 
 
@@ -49,6 +40,14 @@ def mock_clay_client():
     client = AsyncMock()
     client.enrich_person = AsyncMock()
     return client
+
+
+@pytest.fixture
+def mock_camoufox_scraper():
+    """Create mock Camoufox scraper."""
+    scraper = AsyncMock()
+    scraper.scrape_linkedin_profile = AsyncMock()
+    return scraper
 
 
 @pytest.fixture
@@ -101,12 +100,12 @@ def valid_enrichment_data():
 
 
 @pytest.fixture
-def scout_engine(mock_apollo_client, mock_apify_client, mock_clay_client):
+def scout_engine(mock_siege_waterfall, mock_clay_client, mock_camoufox_scraper):
     """Create Scout engine with mock clients."""
     return ScoutEngine(
-        apollo_client=mock_apollo_client,
-        apify_client=mock_apify_client,
+        siege_waterfall=mock_siege_waterfall,
         clay_client=mock_clay_client,
+        camoufox_scraper=mock_camoufox_scraper,
     )
 
 
@@ -202,30 +201,39 @@ class TestCacheBehavior:
                 assert result.success is True
                 assert result.metadata["tier"] == 0
                 assert result.metadata["source"] == "cache"
-                # Apollo should not be called
-                scout_engine.apollo.enrich_person.assert_not_called()
+                # Siege should not be called
+                scout_engine.siege_waterfall.enrich_lead.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_force_refresh_skips_cache(
         self, scout_engine, mock_db_session, mock_lead, valid_enrichment_data
     ):
         """Test that force_refresh=True skips cache."""
+        from unittest.mock import MagicMock
+        from src.integrations.siege_waterfall import EnrichmentTier
+        
         with patch.object(scout_engine, "get_lead_by_id", return_value=mock_lead):
             with patch("src.engines.scout.enrichment_cache") as mock_cache:
                 mock_cache.get = AsyncMock(return_value=valid_enrichment_data)
                 mock_cache.set = AsyncMock()
-                scout_engine.apollo.enrich_person.return_value = valid_enrichment_data
-
-                result = await scout_engine.enrich_lead(
-                    db=mock_db_session,
-                    lead_id=mock_lead.id,
-                    force_refresh=True,
+                # Mock Siege Waterfall to return valid data
+                scout_engine.siege_waterfall.enrich_lead.return_value = MagicMock(
+                    sources_used=2,
+                    enriched_data=valid_enrichment_data,
+                    total_cost_aud=0.018,
+                    tier_results=[],
                 )
+                with patch.object(scout_engine, "_log_enrichment_audit", new_callable=AsyncMock):
+                    result = await scout_engine.enrich_lead(
+                        db=mock_db_session,
+                        lead_id=mock_lead.id,
+                        force_refresh=True,
+                    )
 
                 # Cache get should not be called
                 mock_cache.get.assert_not_called()
-                # Apollo should be called
-                scout_engine.apollo.enrich_person.assert_called_once()
+                # Siege should be called
+                scout_engine.siege_waterfall.enrich_lead.assert_called_once()
 
 
 # ============================================
@@ -237,46 +245,61 @@ class TestWaterfallTiers:
     """Test waterfall tier progression."""
 
     @pytest.mark.asyncio
-    async def test_tier1_apollo_success(
+    async def test_tier1_siege_success(
         self, scout_engine, mock_db_session, mock_lead, valid_enrichment_data
     ):
-        """Test Tier 1 Apollo enrichment success."""
+        """Test Tier 1 Siege Waterfall enrichment success."""
+        from unittest.mock import MagicMock
+        
         with patch.object(scout_engine, "get_lead_by_id", return_value=mock_lead):
             with patch("src.engines.scout.enrichment_cache") as mock_cache:
                 mock_cache.get = AsyncMock(return_value=None)  # Cache miss
                 mock_cache.set = AsyncMock()
-                scout_engine.apollo.enrich_person.return_value = valid_enrichment_data
-
-                result = await scout_engine.enrich_lead(
-                    db=mock_db_session,
-                    lead_id=mock_lead.id,
+                # Siege succeeds
+                scout_engine.siege_waterfall.enrich_lead.return_value = MagicMock(
+                    sources_used=2,
+                    enriched_data=valid_enrichment_data,
+                    total_cost_aud=0.018,
+                    tier_results=[],
                 )
+                with patch.object(scout_engine, "_log_enrichment_audit", new_callable=AsyncMock):
+                    result = await scout_engine.enrich_lead(
+                        db=mock_db_session,
+                        lead_id=mock_lead.id,
+                    )
 
                 assert result.success is True
                 assert result.metadata["tier"] == 1
-                assert "apollo" in result.metadata["source"]
+                assert "siege_waterfall" in result.metadata["source"]
 
     @pytest.mark.asyncio
     async def test_tier2_clay_fallback(
         self, scout_engine, mock_db_session, mock_lead, valid_enrichment_data
     ):
         """Test Tier 2 Clay fallback when Tier 1 fails."""
+        from unittest.mock import MagicMock
+        
         with patch.object(scout_engine, "get_lead_by_id", return_value=mock_lead):
             with patch("src.engines.scout.enrichment_cache") as mock_cache:
                 mock_cache.get = AsyncMock(return_value=None)
                 mock_cache.set = AsyncMock()
-                # Apollo fails
-                scout_engine.apollo.enrich_person.return_value = {"found": False}
-                scout_engine.apify.scrape_linkedin_profiles.return_value = []
+                # Siege fails (no sources found)
+                scout_engine.siege_waterfall.enrich_lead.return_value = MagicMock(
+                    sources_used=0,
+                    enriched_data={},
+                    total_cost_aud=0.0,
+                    tier_results=[],
+                )
                 # Clay succeeds
                 clay_data = valid_enrichment_data.copy()
                 clay_data["source"] = "clay"
                 scout_engine.clay.enrich_person.return_value = clay_data
 
-                result = await scout_engine.enrich_lead(
-                    db=mock_db_session,
-                    lead_id=mock_lead.id,
-                )
+                with patch.object(scout_engine, "_log_enrichment_audit", new_callable=AsyncMock):
+                    result = await scout_engine.enrich_lead(
+                        db=mock_db_session,
+                        lead_id=mock_lead.id,
+                    )
 
                 assert result.success is True
                 assert result.metadata["tier"] == 2
@@ -287,18 +310,25 @@ class TestWaterfallTiers:
         self, scout_engine, mock_db_session, mock_lead
     ):
         """Test failure when all tiers fail."""
+        from unittest.mock import MagicMock
+        
         with patch.object(scout_engine, "get_lead_by_id", return_value=mock_lead):
             with patch("src.engines.scout.enrichment_cache") as mock_cache:
                 mock_cache.get = AsyncMock(return_value=None)
                 # All APIs fail
-                scout_engine.apollo.enrich_person.return_value = {"found": False}
-                scout_engine.apify.scrape_linkedin_profiles.return_value = []
+                scout_engine.siege_waterfall.enrich_lead.return_value = MagicMock(
+                    sources_used=0,
+                    enriched_data={},
+                    total_cost_aud=0.0,
+                    tier_results=[],
+                )
                 scout_engine.clay.enrich_person.return_value = {"found": False}
 
-                result = await scout_engine.enrich_lead(
-                    db=mock_db_session,
-                    lead_id=mock_lead.id,
-                )
+                with patch.object(scout_engine, "_log_enrichment_audit", new_callable=AsyncMock):
+                    result = await scout_engine.enrich_lead(
+                        db=mock_db_session,
+                        lead_id=mock_lead.id,
+                    )
 
                 assert result.success is False
                 assert "failed" in result.error.lower()

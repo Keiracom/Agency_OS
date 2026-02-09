@@ -73,7 +73,7 @@ class TestLeadPoolServiceCreate:
         """Test create_or_update with existing lead."""
         pool_id = uuid4()
 
-        # First call returns existing lead
+        # First call returns existing lead (get_by_email)
         existing_result = MagicMock()
         existing_row = MagicMock()
         existing_row.id = pool_id
@@ -88,19 +88,21 @@ class TestLeadPoolServiceCreate:
 
         mock_session.execute.side_effect = [existing_result, update_result]
 
+        # API takes a single dict with email included
         result = await pool_service.create_or_update(
-            email=sample_pool_lead["email"],
-            data={**sample_pool_lead, "title": "CTO"},
+            lead_data={**sample_pool_lead, "title": "CTO"},
         )
 
         assert result is not None
         mock_session.execute.assert_called()
 
     @pytest.mark.asyncio
-    async def test_create_validates_email(self, pool_service, mock_session):
-        """Test that create validates email."""
-        with pytest.raises(ValueError, match="Email is required"):
-            await pool_service.create({"first_name": "John"})
+    async def test_create_or_update_validates_email(self, pool_service, mock_session):
+        """Test that create_or_update validates email."""
+        from src.services.lead_pool_service import ValidationError
+        
+        with pytest.raises(ValidationError, match="Email is required"):
+            await pool_service.create_or_update({"first_name": "John"})
 
 
 class TestLeadPoolServiceRead:
@@ -160,9 +162,10 @@ class TestLeadPoolServiceRead:
         mock_result.fetchall.return_value = mock_rows
         mock_session.execute.return_value = mock_result
 
+        # API takes singular industry/country, not lists
         results = await pool_service.search_available(
-            industries=["Technology"],
-            countries=["Australia"],
+            industry="Technology",
+            country="Australia",
             limit=10,
         )
 
@@ -259,11 +262,25 @@ class TestLeadPoolServiceBulk:
             {**sample_pool_lead, "email": "lead3@example.com"},
         ]
 
-        mock_result = MagicMock()
-        mock_result.rowcount = 3
-        mock_session.execute.return_value = mock_result
+        # Mock get_by_email to return None (no existing leads)
+        mock_get_result = MagicMock()
+        mock_get_result.fetchone.return_value = None
+        
+        # Mock create to return a result
+        mock_create_result = MagicMock()
+        mock_row = MagicMock()
+        mock_row._mapping = {"id": uuid4(), **sample_pool_lead}
+        mock_create_result.fetchone.return_value = mock_row
+        
+        # Alternate between get_by_email (None) and create calls
+        mock_session.execute.side_effect = [
+            mock_get_result, mock_create_result,  # lead 1
+            mock_get_result, mock_create_result,  # lead 2
+            mock_get_result, mock_create_result,  # lead 3
+        ]
 
-        result = await pool_service.bulk_create(leads)
+        created, updated = await pool_service.bulk_create(leads)
 
-        assert result["inserted"] == 3
-        mock_session.commit.assert_called()
+        # bulk_create returns tuple (created_count, updated_count)
+        assert created == 3
+        assert updated == 0

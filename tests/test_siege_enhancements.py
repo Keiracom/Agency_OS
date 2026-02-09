@@ -201,12 +201,7 @@ class TestAuditLogging:
 
 
 class TestAustralianLeadNoApolloFallback:
-    """Test that AU leads do not fall back to Apollo."""
-    
-    @pytest.fixture
-    def mock_apollo(self):
-        """Mock Apollo client."""
-        return AsyncMock()
+    """Test that AU leads use SIEGE (Apollo removed - FCO-002)."""
     
     @pytest.fixture
     def mock_siege_waterfall(self):
@@ -229,10 +224,10 @@ class TestAustralianLeadNoApolloFallback:
         return mock
     
     @pytest.mark.asyncio
-    async def test_au_lead_uses_siege_no_apollo(
-        self, mock_apollo, mock_siege_waterfall
+    async def test_au_lead_uses_siege(
+        self, mock_siege_waterfall
     ):
-        """Test that Australian leads use SIEGE and don't fall back to Apollo."""
+        """Test that Australian leads use SIEGE waterfall."""
         # Create AU lead
         lead = MockLead(
             email=None,  # No email, needs enrichment
@@ -242,9 +237,8 @@ class TestAustralianLeadNoApolloFallback:
             domain="wayne.com.au",  # .au domain = Australian
         )
         
-        # Create scout engine with mocks
+        # Create scout engine with mocks (Apollo removed - FCO-002)
         engine = ScoutEngine(
-            apollo_client=mock_apollo,
             siege_waterfall=mock_siege_waterfall,
         )
         
@@ -255,16 +249,13 @@ class TestAustralianLeadNoApolloFallback:
         # Verify SIEGE was called
         mock_siege_waterfall.enrich_lead.assert_called_once()
         
-        # Verify Apollo was NOT called
-        mock_apollo.enrich_person.assert_not_called()
-        
         # Verify we got SIEGE result
         assert result["found"] is True
         assert "siege_waterfall" in result["source"]
     
     @pytest.mark.asyncio
-    async def test_au_lead_siege_fails_no_apollo_fallback(self, mock_apollo):
-        """Test that when SIEGE fails for AU lead, we DON'T fall back to Apollo."""
+    async def test_au_lead_siege_fails_returns_none(self):
+        """Test that when SIEGE fails for AU lead, result is None."""
         # Create mock siege that returns no sources
         mock_siege = AsyncMock()
         mock_siege.enrich_lead.return_value = MagicMock(
@@ -282,7 +273,6 @@ class TestAustralianLeadNoApolloFallback:
         )
         
         engine = ScoutEngine(
-            apollo_client=mock_apollo,
             siege_waterfall=mock_siege,
         )
         
@@ -292,25 +282,25 @@ class TestAustralianLeadNoApolloFallback:
         # Verify SIEGE was called
         mock_siege.enrich_lead.assert_called_once()
         
-        # Verify Apollo was NOT called even though SIEGE found nothing
-        mock_apollo.enrich_person.assert_not_called()
-        
         # Result should be None (no data found)
         assert result is None
     
     @pytest.mark.asyncio
-    async def test_non_au_lead_uses_apollo(self, mock_apollo):
-        """Test that non-Australian leads use Apollo (not SIEGE)."""
-        # Mock Apollo success
-        mock_apollo.enrich_person.return_value = {
-            "found": True,
-            "email": "john@acme.com",
-            "first_name": "John",
-            "last_name": "Doe",
-            "company": "Acme Inc",
-        }
-        
+    async def test_non_au_lead_uses_siege(self):
+        """Test that non-Australian leads also use SIEGE (Apollo removed FCO-002)."""
+        # Mock Siege success
         mock_siege = AsyncMock()
+        mock_siege.enrich_lead.return_value = MagicMock(
+            sources_used=2,
+            enriched_data={
+                "email": "john@acme.com",
+                "first_name": "John",
+                "last_name": "Doe",
+                "found": True,
+            },
+            total_cost_aud=0.018,
+            tier_results=[],
+        )
         
         # Non-AU lead
         lead = MockLead(
@@ -323,21 +313,16 @@ class TestAustralianLeadNoApolloFallback:
         )
         
         engine = ScoutEngine(
-            apollo_client=mock_apollo,
             siege_waterfall=mock_siege,
-            apify_client=AsyncMock(),  # Mock Apify to prevent errors
         )
         
         with patch.object(engine, "_log_enrichment_audit", new_callable=AsyncMock):
             result = await engine._enrich_tier1(lead, "acme.com")
         
-        # Verify SIEGE was NOT called
-        mock_siege.enrich_lead.assert_not_called()
+        # Verify SIEGE was called (used for all leads now)
+        mock_siege.enrich_lead.assert_called_once()
         
-        # Verify Apollo WAS called
-        mock_apollo.enrich_person.assert_called_once()
-        
-        # Verify we got Apollo result
+        # Verify we got result
         assert result["found"] is True
 
 

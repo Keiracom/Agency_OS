@@ -12,7 +12,7 @@ PURPOSE: Search Google to find agency social profiles when not found on website
 
 DEPENDENCIES:
 - src/agents/skills/base_skill.py
-- src/integrations/apify.py (search_google)
+NOTE: Apify deprecated (FCO-003). Google search stubbed pending Camoufox.
 
 EXPORTS:
 - SocialProfileDiscoverySkill
@@ -109,94 +109,39 @@ class SocialProfileDiscoverySkill(
         """
         Execute social profile discovery via Google search.
 
+        NOTE: FCO-003 deprecated Apify. Google search stubbed pending Camoufox integration.
+        This skill will return empty results until Camoufox-based search is implemented.
+
         Args:
             input_data: Validated input with company_name and website_domain
             anthropic: Anthropic client (not used but required by interface)
 
         Returns:
-            SkillResult with discovered profile URLs
+            SkillResult with empty profile URLs (search disabled)
         """
-        from src.integrations.apify import get_apify_client
-
         company_name = input_data.company_name
 
-        logger.info(f"Discovering social profiles for: {company_name}")
-
-        # Build search queries
-        queries = [
-            f'"{company_name}" site:linkedin.com/company',
-            f'"{company_name}" site:instagram.com',
-            f'"{company_name}" site:facebook.com/pages OR site:facebook.com/',
-        ]
-
-        apify = get_apify_client()
-
-        # Execute Google search
-        try:
-            search_results = await apify.search_google(queries, results_per_query=5)
-        except Exception as e:
-            logger.warning(f"Google search failed: {e}")
-            return SkillResult.fail(
-                error=f"Google search failed: {e}",
-            )
-
-        # Parse results to extract profile URLs
-        linkedin_url = None
-        instagram_url = None
-        facebook_url = None
-
-        for result in search_results:
-            url = result.get("url", "").lower()
-            title = result.get("title", "").lower()
-            company_lower = company_name.lower()
-
-            # LinkedIn company page
-            if "linkedin.com/company/" in url and not linkedin_url:
-                # Verify it's likely the correct company
-                if company_lower in title or company_lower in url:
-                    linkedin_url = result.get("url")
-                    logger.debug(f"Found LinkedIn: {linkedin_url}")
-
-            # Instagram profile
-            elif "instagram.com/" in url and not instagram_url:
-                # Filter out generic instagram.com results
-                if "/p/" not in url and "/reel/" not in url:
-                    if company_lower in title or self._fuzzy_match(company_name, url):
-                        instagram_url = result.get("url")
-                        logger.debug(f"Found Instagram: {instagram_url}")
-
-            # Facebook page
-            elif "facebook.com/" in url and not facebook_url:
-                # Filter out generic Facebook results
-                if "/posts/" not in url and "/photos/" not in url:
-                    if company_lower in title or self._fuzzy_match(company_name, url):
-                        facebook_url = result.get("url")
-                        logger.debug(f"Found Facebook: {facebook_url}")
-
-        profiles_found = sum(
-            [
-                1 if linkedin_url else 0,
-                1 if instagram_url else 0,
-                1 if facebook_url else 0,
-            ]
+        # FCO-003: Apify deprecated. Google search stubbed pending Camoufox integration.
+        logger.info(
+            f"[STUB] Social profile discovery disabled (FCO-003). "
+            f"Would have searched Google for: {company_name}"
         )
 
+        # Return empty results - downstream code handles missing profiles gracefully
         output = self.Output(
-            linkedin_url=linkedin_url,
-            instagram_url=instagram_url,
-            facebook_url=facebook_url,
-            profiles_found=profiles_found,
-            search_queries_used=queries,
+            linkedin_url=None,
+            instagram_url=None,
+            facebook_url=None,
+            profiles_found=0,
+            search_queries_used=[],
         )
-
-        logger.info(f"Social profile discovery found {profiles_found} profiles for {company_name}")
 
         return SkillResult.ok(
             data=output,
-            confidence=0.8 if profiles_found > 0 else 0.0,
-            tokens_used=0,  # No Claude tokens used
-            cost_aud=0.02,  # Apify Google search cost estimate
-            metadata={"profiles_found": profiles_found},
+            confidence=0.0,
+            tokens_used=0,
+            cost_aud=0.0,
+            metadata={"stub": True, "reason": "FCO-003 Apify deprecated"},
         )
 
     def _fuzzy_match(self, company_name: str, url: str) -> bool:
@@ -230,6 +175,6 @@ VERIFICATION CHECKLIST:
 - [x] Extends BaseSkill
 - [x] Registered with SkillRegistry
 - [x] Input/Output Pydantic models
-- [x] Error handling
+- [x] Google search stubbed (FCO-003: Apify deprecated)
 - [x] Logging at appropriate levels
 """

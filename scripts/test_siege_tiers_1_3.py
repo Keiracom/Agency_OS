@@ -119,9 +119,12 @@ async def test_single_business(
                 "cost_aud": tr.cost_aud,
             }
         
+        # Success = at least one tier succeeded
+        any_tier_success = any(tr.success for tr in result.tier_results)
+        
         return {
             "company_name": business["company_name"],
-            "success": result.success,
+            "success": any_tier_success,
             "total_cost_aud": result.total_cost_aud,
             "tier_summary": tier_summary,
             "data_fields": list(result.enriched_data.keys()) if result.enriched_data else [],

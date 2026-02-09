@@ -596,17 +596,18 @@ class SiegeWaterfall:
         self.hunter_client = hunter_client or HunterClientAdapter()
         self.proxycurl_client = proxycurl_client or ProxycurlClientAdapter()
         
-        # Use real Kaspr client if available
+        # Use real Kaspr client if available (Tier 5 - optional)
+        # Kaspr requires KASPR_API_KEY; if missing, Tier 5 is simply unavailable
         if kaspr_client:
             self.kaspr_client = kaspr_client
         elif KASPR_AVAILABLE:
             try:
                 self.kaspr_client = get_kaspr_client()
             except Exception as e:
-                logger.warning(f"[Siege] Could not initialize Kaspr client: {e}")
-                self.kaspr_client = KasprClient()
+                logger.warning(f"[Siege] Kaspr client unavailable (Tier 5 disabled): {e}")
+                self.kaspr_client = None  # Tier 5 will be skipped gracefully
         else:
-            self.kaspr_client = KasprClient()
+            self.kaspr_client = None  # Module not available, Tier 5 disabled
 
     async def enrich_lead(
         self,
@@ -1334,6 +1335,15 @@ class SiegeWaterfall:
                 success=False,
                 skipped=True,
                 skip_reason=f"ALS {als_score} below 85 threshold",
+            )
+        
+        # Guard: Kaspr client must be available
+        if self.kaspr_client is None:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="Kaspr client not configured (KASPR_API_KEY missing)",
             )
         
         try:

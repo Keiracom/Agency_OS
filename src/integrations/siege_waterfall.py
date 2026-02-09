@@ -21,7 +21,8 @@ SIEGE CONTEXT:
   Tier 1: ABN Bulk (data.gov.au) - FREE
   Tier 2: GMB/Ads Signals - $0.006/lead AUD
   Tier 3: Hunter.io email verification - $0.012/lead AUD
-  Tier 4: LinkedIn Pulse via Proxycurl - $0.024/lead AUD
+  Tier 4: LinkedIn Intelligence - DEPRECATED (Proxycurl shutdown July 2025)
+         Migration: Unipile (CEO Directive #002) - not yet activated
   Tier 5: Identity Gold (Kaspr) - $0.45/lead AUD (ALS >= 85 only)
 
   Weighted Average: ~$0.105/lead vs Apollo $0.50+
@@ -1192,93 +1193,37 @@ class SiegeWaterfall:
                 error=str(e),
             )
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type((httpx.RequestError, APIError)),
-    )
     async def tier4_proxycurl(self, lead: dict[str, Any]) -> TierResult:
         """
-        Tier 4: LinkedIn Pulse via Proxycurl - $0.024/lead AUD
+        Tier 4: LinkedIn Intelligence (DEPRECATED)
         
-        Enriches with LinkedIn profile data:
-        - Employment history
-        - Skills
-        - Education
-        - Connections
-        - Company details
+        NOTE: Proxycurl shutdown July 2025 (LinkedIn lawsuit).
+        Migration path: Unipile (CEO Directive #002).
+        
+        This tier now returns a graceful skip until Unipile is activated.
         
         Args:
-            lead: Lead data (linkedin_url or email)
+            lead: Lead data (unused - tier is deprecated)
             
         Returns:
-            TierResult with LinkedIn data
+            TierResult with skipped=True
         """
         tier = EnrichmentTier.PROXYCURL
-        cost = TIER_COSTS_AUD[tier]
         
-        try:
-            linkedin_url = lead.get("linkedin_url")
-            email = lead.get("email")
-            
-            if not linkedin_url and not email:
-                return TierResult(
-                    tier=tier,
-                    success=False,
-                    skipped=True,
-                    skip_reason="No linkedin_url or email available",
-                )
-            
-            enriched = await self.proxycurl_client.enrich_from_linkedin(
-                linkedin_url=linkedin_url,
-                email=email,
-            )
-            
-            if enriched.get("found"):
-                await self._log_enrichment_operation(
-                    tier=tier,
-                    operation="linkedin_enrich",
-                    lead_data=lead,
-                    success=True,
-                    cost_aud=cost,
-                )
-                return TierResult(
-                    tier=tier,
-                    success=True,
-                    data=enriched,
-                    cost_aud=cost,
-                )
-            else:
-                await self._log_enrichment_operation(
-                    tier=tier,
-                    operation="linkedin_enrich",
-                    lead_data=lead,
-                    success=False,
-                    cost_aud=cost,
-                    error="No LinkedIn profile found",
-                )
-                return TierResult(
-                    tier=tier,
-                    success=False,
-                    error="No LinkedIn profile found",
-                    cost_aud=cost,  # Still charged for lookup
-                )
-                
-        except Exception as e:
-            logger.warning(f"[Siege] Tier 4 Proxycurl failed: {e}")
-            sentry_sdk.capture_exception(e)
-            await self._log_enrichment_operation(
-                tier=tier,
-                operation="linkedin_enrich",
-                lead_data=lead,
-                success=False,
-                error=str(e),
-            )
-            return TierResult(
-                tier=tier,
-                success=False,
-                error=str(e),
-            )
+        # Log deprecation notice
+        logger.info(
+            f"[Siege] Tier 4 pending — Unipile not activated. "
+            f"LinkedIn enrichment skipped for lead: {lead.get('email', 'unknown')}"
+        )
+        
+        return TierResult(
+            tier=tier,
+            success=False,
+            skipped=True,
+            skip_reason="Tier 4 pending — Unipile not activated",
+            data={"found": False, "source": "tier4_deprecated"},
+            cost_aud=0.0,  # No cost when skipped
+        )
 
     @retry(
         stop=stop_after_attempt(2),  # Fewer retries - expensive tier

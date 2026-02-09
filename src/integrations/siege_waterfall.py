@@ -45,10 +45,17 @@ from tenacity import (
     wait_exponential,
 )
 
+from fuzzywuzzy import fuzz
+
 from src.config.settings import settings
 from src.exceptions import APIError, IntegrationError, ValidationError
 
 logger = logging.getLogger(__name__)
+
+# Fuzzy match thresholds (from waterfall_verification_worker.py)
+FUZZY_MATCH_THRESHOLD = 70
+HIGH_CONFIDENCE_THRESHOLD = 90
+MEDIUM_CONFIDENCE_THRESHOLD = 80
 
 
 # ============================================
@@ -908,8 +915,14 @@ class SiegeWaterfall:
         - Reviews/rating
         - Categories
         
+        Name matching waterfall (integrated from waterfall_verification_worker):
+        1. Try original company_name first
+        2. If ABN data exists, try legal name (business_name from Tier 1)
+        3. Try each ASIC-registered business_names
+        4. Use ABN postcode to narrow location
+        
         Args:
-            lead: Lead data (needs company_name)
+            lead: Lead data (needs company_name, may have ABN data from Tier 1)
             
         Returns:
             TierResult with GMB data
@@ -918,42 +931,98 @@ class SiegeWaterfall:
         cost = TIER_COSTS_AUD[tier]
         
         try:
-            company_name = lead.get("company_name")
-            if not company_name:
+            # Build name search waterfall from ABN data (Tier 1)
+            names_to_try = []
+            
+            # 1. Original company_name (highest priority)
+            if lead.get("company_name"):
+                names_to_try.append(lead["company_name"])
+            
+            # 2. ABN legal name (from Tier 1)
+            if lead.get("business_name") and lead["business_name"] not in names_to_try:
+                names_to_try.append(lead["business_name"])
+            
+            # 3. ABN trading name
+            if lead.get("trading_name") and lead["trading_name"] not in names_to_try:
+                names_to_try.append(lead["trading_name"])
+            
+            # 4. ASIC-registered business names (from ABN Tier 1)
+            for bn in lead.get("business_names", []):
+                if bn not in names_to_try:
+                    names_to_try.append(bn)
+            
+            if not names_to_try:
                 return TierResult(
                     tier=tier,
                     success=False,
                     skipped=True,
-                    skip_reason="No company_name available",
+                    skip_reason="No company_name or ABN business names available",
                 )
             
-            # Build location string
+            # Build location string - prefer ABN postcode if available
             location_parts = []
+            
+            # Use ABN postcode to narrow location (more precise)
+            if lead.get("postcode"):
+                location_parts.append(lead["postcode"])
             if lead.get("city"):
                 location_parts.append(lead["city"])
             if lead.get("state") or lead.get("company_state"):
                 location_parts.append(lead.get("state") or lead.get("company_state"))
-            if lead.get("country") or lead.get("company_country"):
-                location_parts.append(
-                    lead.get("country") or lead.get("company_country")
-                )
+            
             location = ", ".join(location_parts) if location_parts else "Australia"
+            domain = lead.get("domain") or lead.get("company_domain")
             
-            # Scrape GMB
-            enriched = await self.gmb_scraper.enrich_from_gmb(
-                business_name=company_name,
-                domain=lead.get("domain") or lead.get("company_domain"),
-                location=location,
-            )
+            # Try each name variant until we find a match
+            enriched = None
+            matched_name = None
             
-            if enriched.get("found"):
+            for name in names_to_try:
+                logger.debug(f"[Siege] Tier 2 GMB: Trying name '{name}' in {location}")
+                
+                result = await self.gmb_scraper.enrich_from_gmb(
+                    business_name=name,
+                    domain=domain,
+                    location=location,
+                )
+                
+                if result.get("found"):
+                    # Validate match with fuzzy scoring
+                    gmb_name = result.get("business_name", "")
+                    match_score = max(
+                        fuzz.ratio(name.lower(), gmb_name.lower()),
+                        fuzz.token_set_ratio(name.lower(), gmb_name.lower()),
+                    )
+                    
+                    if match_score >= FUZZY_MATCH_THRESHOLD:
+                        enriched = result
+                        matched_name = name
+                        enriched["match_score"] = match_score
+                        enriched["matched_query"] = name
+                        logger.info(
+                            f"[Siege] Tier 2 GMB: Matched '{gmb_name}' "
+                            f"with query '{name}' (score: {match_score})"
+                        )
+                        break
+                    else:
+                        logger.debug(
+                            f"[Siege] Tier 2 GMB: Low confidence match "
+                            f"'{gmb_name}' for '{name}' (score: {match_score})"
+                        )
+            
+            if enriched:
                 await self._log_enrichment_operation(
                     tier=tier,
                     operation="gmb_scrape",
                     lead_data=lead,
                     success=True,
                     cost_aud=cost,
-                    metadata={"location": location},
+                    metadata={
+                        "location": location,
+                        "matched_name": matched_name,
+                        "match_score": enriched.get("match_score"),
+                        "names_tried": len(names_to_try),
+                    },
                 )
                 return TierResult(
                     tier=tier,
@@ -967,12 +1036,13 @@ class SiegeWaterfall:
                     operation="gmb_scrape",
                     lead_data=lead,
                     success=False,
-                    error="No GMB listing found",
+                    error=f"No GMB listing found (tried {len(names_to_try)} name variants)",
+                    metadata={"names_tried": names_to_try},
                 )
                 return TierResult(
                     tier=tier,
                     success=False,
-                    error="No GMB listing found",
+                    error=f"No GMB listing found (tried {len(names_to_try)} name variants)",
                 )
                 
         except Exception as e:

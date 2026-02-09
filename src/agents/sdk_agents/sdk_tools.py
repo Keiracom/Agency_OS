@@ -91,7 +91,9 @@ ALL_TOOLS = [WEB_SEARCH_TOOL, WEB_FETCH_TOOL, LINKEDIN_POSTS_TOOL]
 
 # Tools for specific agent types
 ICP_TOOLS = [WEB_SEARCH_TOOL, WEB_FETCH_TOOL]  # ICP extraction uses search + fetch
-ENRICHMENT_TOOLS = [WEB_SEARCH_TOOL, WEB_FETCH_TOOL, LINKEDIN_POSTS_TOOL]
+# NOTE: ENRICHMENT_TOOLS deprecated with enrichment_agent.py (FCO-002)
+# LINKEDIN_POSTS_TOOL removed - Apify deprecated (FCO-003)
+ENRICHMENT_TOOLS = [WEB_SEARCH_TOOL, WEB_FETCH_TOOL]  # Kept for backwards compat
 EMAIL_TOOLS = []  # Email agent doesn't need tools - uses enrichment data
 VOICE_KB_TOOLS = []  # Voice KB agent doesn't need tools - uses enrichment data
 OBJECTION_TOOLS = []  # Objection agent doesn't need tools
@@ -257,88 +259,23 @@ async def linkedin_posts(
 ) -> str:
     """
     Fetch LinkedIn posts via Apify.
+    
+    NOTE: FCO-003 deprecated Apify. This function is stubbed.
+    LinkedIn post scraping disabled until Camoufox integration.
 
     Args:
         linkedin_url: LinkedIn profile URL
-        max_posts: Maximum posts to return
-        apify_token: Apify API token
+        max_posts: Maximum posts to return (unused)
+        apify_token: Apify API token (unused)
 
     Returns:
-        Formatted posts as string
+        Error message indicating deprecation
     """
-    token = apify_token or getattr(settings, "apify_token", None)
-
-    if not token:
-        return "Error: Apify token not configured"
-
-    # Extract profile ID from URL
-    profile_id = _extract_linkedin_id(linkedin_url)
-    if not profile_id:
-        return f"Error: Invalid LinkedIn URL format: {linkedin_url}"
-
-    try:
-        # Use Apify's LinkedIn Post Scraper
-        actor_id = "supreme_coder/linkedin-post"
-
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            # Start actor run
-            run_response = await client.post(
-                f"https://api.apify.com/v2/acts/{actor_id}/runs",
-                headers={"Authorization": f"Bearer {token}"},
-                json={
-                    "profileUrls": [linkedin_url],
-                    "maxPosts": max_posts,
-                },
-            )
-            run_response.raise_for_status()
-            run_data = run_response.json()
-            run_id = run_data["data"]["id"]
-
-            # Wait for completion (poll)
-            for _ in range(30):  # Max 30 seconds
-                await asyncio.sleep(1)
-                status_response = await client.get(
-                    f"https://api.apify.com/v2/actor-runs/{run_id}",
-                    headers={"Authorization": f"Bearer {token}"},
-                )
-                status_data = status_response.json()
-                status = status_data["data"]["status"]
-
-                if status == "SUCCEEDED":
-                    break
-                elif status in ["FAILED", "ABORTED", "TIMED-OUT"]:
-                    return f"Error: LinkedIn scrape {status.lower()}"
-
-            # Get results
-            dataset_id = status_data["data"]["defaultDatasetId"]
-            results_response = await client.get(
-                f"https://api.apify.com/v2/datasets/{dataset_id}/items",
-                headers={"Authorization": f"Bearer {token}"},
-            )
-            posts = results_response.json()
-
-        if not posts:
-            return f"No posts found for {linkedin_url}"
-
-        # Format posts
-        formatted = []
-        for post in posts[:max_posts]:
-            text = post.get("text", "")[:500]  # Truncate long posts
-            date = post.get("postedDate", "Unknown date")
-            likes = post.get("numLikes", 0)
-            comments = post.get("numComments", 0)
-
-            formatted.append(
-                f"**Post ({date})**\n{text}\nEngagement: {likes} likes, {comments} comments"
-            )
-
-        return "\n\n---\n\n".join(formatted)
-
-    except httpx.TimeoutException:
-        return f"Error: LinkedIn scrape timed out for {linkedin_url}"
-    except Exception as e:
-        logger.error(f"LinkedIn posts error: {e}", exc_info=True)
-        return f"Error: Failed to fetch LinkedIn posts - {str(e)}"
+    logger.info(
+        f"[STUB] linkedin_posts called for {linkedin_url} - "
+        f"Apify deprecated (FCO-003). Returning empty."
+    )
+    return f"LinkedIn posts unavailable - Apify deprecated (FCO-003). URL: {linkedin_url}"
 
 
 def _extract_linkedin_id(url: str) -> str | None:

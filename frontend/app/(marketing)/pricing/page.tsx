@@ -1,7 +1,12 @@
 /**
  * FILE: app/(marketing)/pricing/page.tsx
  * PURPOSE: Detailed Pricing page with FAQ
+ * 
+ * ISR: Revalidate every hour (3600s) - pricing rarely changes
  */
+
+// Force longer revalidation for mostly-static content
+export const revalidate = 3600;
 
 "use client";
 

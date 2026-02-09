@@ -4,7 +4,12 @@
  * PHASE: 8 (Frontend)
  * TASK: FE-007
  * UPDATED: Add onboarding redirect check
+ * 
+ * SSR: Force dynamic - all dashboard pages need fresh user data
  */
+
+// Force dynamic for entire dashboard segment
+export const dynamic = 'force-dynamic';
 
 import { redirect } from "next/navigation";
 import { getCurrentUser, getUserMemberships } from "@/lib/supabase-server";

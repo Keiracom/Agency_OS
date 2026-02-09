@@ -3,7 +3,12 @@
  * PURPOSE: Premium landing page combining Expert Panel animations + Buyer Guide ROI math
  * AESTHETIC: Dynamic gradients, floating orbs, glass morphism, scroll-triggered animations
  * SELLING POINTS: SDR comparison, cost-per-meeting, ROI breakdown
+ * 
+ * ISR: Revalidate every 60 seconds for founding spots counter updates
  */
+
+// ISR: Revalidate every 60 seconds (founding spots counter)
+export const revalidate = 60;
 
 "use client";
 

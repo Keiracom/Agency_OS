@@ -3,7 +3,12 @@
  * PURPOSE: Login page with Supabase auth
  * PHASE: 8 (Frontend)
  * TASK: FE-006
+ * 
+ * SSG: Static shell - form is client-side, revalidate daily
  */
+
+// Static shell with daily revalidation
+export const revalidate = 86400;
 
 "use client";
 

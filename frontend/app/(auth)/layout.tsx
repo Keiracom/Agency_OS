@@ -3,7 +3,12 @@
  * PURPOSE: Auth pages layout (login, signup)
  * PHASE: 8 (Frontend)
  * TASK: FE-006
+ * 
+ * SSG: Static shell - forms are client-side
  */
+
+// Static shell, revalidate daily
+export const revalidate = 86400;
 
 export default function AuthLayout({
   children,

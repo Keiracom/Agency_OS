@@ -3,6 +3,8 @@
  * PURPOSE: Dashboard V4 - Outcome-focused, customer-centric dashboard
  * PHASE: Dashboard V4 Implementation
  * 
+ * SSR: Force dynamic - user-specific data, no caching
+ * 
  * Features:
  * - Celebration banner (conditional) - Shows when targets hit early
  * - Meetings vs Goal - Hero metric with gauge visualization
@@ -13,6 +15,9 @@
  * - What's Working - ONE simple insight
  * - Warm Replies - Actionable opportunities
  */
+
+// Force dynamic rendering for user-specific data
+export const dynamic = 'force-dynamic';
 
 "use client";
 

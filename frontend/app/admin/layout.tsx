@@ -3,7 +3,12 @@
  * PURPOSE: Admin dashboard layout with protection
  * PHASE: Admin Dashboard
  * TASK: Admin Dashboard Foundation
+ * 
+ * SSR: Force dynamic - admin pages need fresh data
  */
+
+// Force dynamic for entire admin segment
+export const dynamic = 'force-dynamic';
 
 import { redirect } from "next/navigation";
 import { isPlatformAdmin, getAdminUser } from "@/lib/supabase-server";

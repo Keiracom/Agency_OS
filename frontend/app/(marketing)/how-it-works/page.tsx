@@ -1,7 +1,12 @@
 /**
  * FILE: app/(marketing)/how-it-works/page.tsx
  * PURPOSE: Detailed How It Works page
+ * 
+ * ISR: Revalidate every hour (3600s) - content rarely changes
  */
+
+// Force longer revalidation for mostly-static content
+export const revalidate = 3600;
 
 "use client";
 

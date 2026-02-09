@@ -17,7 +17,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.integrations.anthropic import get_anthropic_client
-from src.integrations.apify import ApifyClient, get_apify_client
+# NOTE: Apify import removed per FCO-003 deprecation (cost savings)
+# All scraping methods now degrade gracefully
 from src.models.client import Client
 from src.models.client_intelligence import ClientIntelligence
 
@@ -78,22 +79,24 @@ class ClientIntelligenceEngine:
     """
     Engine for scraping and processing client intelligence data.
 
-    Scrapes:
+    DEPRECATION NOTE (FCO-003):
+    Apify integration has been deprecated for cost savings.
+    All scraping methods now degrade gracefully, returning empty results.
+    AI proof point extraction still works if data is provided manually.
+
+    Original scrape targets (now deprecated):
     - Website (case studies, testimonials, services)
     - LinkedIn company page
     - Twitter/X profile and tweets
     - Facebook page
     - Instagram profile
     - Review platforms (Trustpilot, G2, Capterra, Google)
-
-    Then uses AI to extract proof points for SDK personalization.
     """
 
-    def __init__(
-        self,
-        apify_client: ApifyClient | None = None,
-    ):
-        self.apify = apify_client or get_apify_client()
+    def __init__(self):
+        # NOTE: apify_client removed per FCO-003 deprecation
+        # Scraping methods now return empty results with deprecation warning
+        pass
 
     async def scrape_client(
         self,
@@ -176,31 +179,16 @@ class ClientIntelligenceEngine:
         client: Client,
         result: ScrapeResult,
     ) -> None:
-        """Scrape client website."""
-        try:
-            website_data = await self.apify.scrape_website_with_waterfall(
-                url=client.website_url,
-                max_pages=20,
-            )
-
-            if website_data.success:
-                result.data["website"] = {
-                    "pages": website_data.pages,
-                    "page_count": website_data.page_count,
-                    "raw_html": website_data.raw_html[:50000],  # Limit size
-                }
-                result.sources_scraped.append("website")
-                result.total_cost_aud += Decimal(str(SCRAPE_COSTS["website"]))
-            else:
-                result.errors.append(
-                    {
-                        "source": "website",
-                        "error": website_data.failure_reason,
-                    }
-                )
-        except Exception as e:
-            logger.warning(f"Website scrape failed: {e}")
-            result.errors.append({"source": "website", "error": str(e)})
+        """Scrape client website.
+        
+        DEPRECATED: Apify integration removed per FCO-003.
+        Returns empty result. Website data should be provided manually.
+        """
+        logger.info(f"Website scrape skipped for {client.name} — Apify deprecated (FCO-003)")
+        result.errors.append({
+            "source": "website",
+            "error": "Apify deprecated (FCO-003). Provide data manually.",
+        })
 
     async def _scrape_linkedin(
         self,
@@ -208,230 +196,121 @@ class ClientIntelligenceEngine:
         config: ScrapeConfig,
         result: ScrapeResult,
     ) -> None:
-        """Scrape LinkedIn company page."""
-        try:
-            linkedin_url = config.linkedin_url
-
-            # Try to find LinkedIn URL if not provided
-            if not linkedin_url:
-                # Search for company LinkedIn page
-                domain = (
-                    client.website_url.replace("https://", "").replace("http://", "").split("/")[0]
-                )
-                search_results = await self.apify.search_google(
-                    [f"site:linkedin.com/company {client.name} {domain}"],
-                    results_per_query=3,
-                )
-                for r in search_results:
-                    if "linkedin.com/company" in r.get("url", ""):
-                        linkedin_url = r["url"]
-                        break
-
-            if linkedin_url:
-                linkedin_data = await self.apify.scrape_linkedin_company(linkedin_url)
-
-                if linkedin_data.get("found"):
-                    result.data["linkedin"] = linkedin_data
-                    result.sources_scraped.append("linkedin")
-                    result.total_cost_aud += Decimal(str(SCRAPE_COSTS["linkedin"]))
-                else:
-                    result.errors.append(
-                        {
-                            "source": "linkedin",
-                            "error": "Company not found",
-                        }
-                    )
-        except Exception as e:
-            logger.warning(f"LinkedIn scrape failed: {e}")
-            result.errors.append({"source": "linkedin", "error": str(e)})
+        """Scrape LinkedIn company page.
+        
+        DEPRECATED: Apify integration removed per FCO-003.
+        Returns empty result. LinkedIn data should be provided via Apollo enrichment.
+        """
+        logger.info(f"LinkedIn scrape skipped for {client.name} — Apify deprecated (FCO-003)")
+        result.errors.append({
+            "source": "linkedin",
+            "error": "Apify deprecated (FCO-003). Use Apollo enrichment.",
+        })
 
     async def _scrape_twitter(
         self,
         twitter_handle: str,
         result: ScrapeResult,
     ) -> None:
-        """Scrape Twitter/X profile."""
-        try:
-            twitter_data = await self.apify.scrape_twitter_profile(
-                twitter_handle=twitter_handle,
-                max_tweets=50,
-            )
-
-            if twitter_data.get("found"):
-                result.data["twitter"] = twitter_data
-                result.sources_scraped.append("twitter")
-                result.total_cost_aud += Decimal(str(SCRAPE_COSTS["twitter"]))
-            else:
-                result.errors.append(
-                    {
-                        "source": "twitter",
-                        "error": "Profile not found",
-                    }
-                )
-        except Exception as e:
-            logger.warning(f"Twitter scrape failed: {e}")
-            result.errors.append({"source": "twitter", "error": str(e)})
+        """Scrape Twitter/X profile.
+        
+        DEPRECATED: Apify integration removed per FCO-003.
+        """
+        logger.info(f"Twitter scrape skipped for {twitter_handle} — Apify deprecated (FCO-003)")
+        result.errors.append({
+            "source": "twitter",
+            "error": "Apify deprecated (FCO-003).",
+        })
 
     async def _scrape_facebook(
         self,
         facebook_url: str,
         result: ScrapeResult,
     ) -> None:
-        """Scrape Facebook page."""
-        try:
-            facebook_data = await self.apify.scrape_facebook_page(facebook_url)
-
-            if facebook_data.get("found"):
-                result.data["facebook"] = facebook_data
-                result.sources_scraped.append("facebook")
-                result.total_cost_aud += Decimal(str(SCRAPE_COSTS["facebook"]))
-            else:
-                result.errors.append(
-                    {
-                        "source": "facebook",
-                        "error": "Page not found",
-                    }
-                )
-        except Exception as e:
-            logger.warning(f"Facebook scrape failed: {e}")
-            result.errors.append({"source": "facebook", "error": str(e)})
+        """Scrape Facebook page.
+        
+        DEPRECATED: Apify integration removed per FCO-003.
+        """
+        logger.info(f"Facebook scrape skipped — Apify deprecated (FCO-003)")
+        result.errors.append({
+            "source": "facebook",
+            "error": "Apify deprecated (FCO-003).",
+        })
 
     async def _scrape_instagram(
         self,
         instagram_handle: str,
         result: ScrapeResult,
     ) -> None:
-        """Scrape Instagram profile."""
-        try:
-            instagram_url = f"https://www.instagram.com/{instagram_handle.lstrip('@')}/"
-            instagram_data = await self.apify.scrape_instagram_profile(instagram_url)
-
-            if instagram_data.get("found"):
-                result.data["instagram"] = instagram_data
-                result.sources_scraped.append("instagram")
-                result.total_cost_aud += Decimal(str(SCRAPE_COSTS["instagram"]))
-            else:
-                result.errors.append(
-                    {
-                        "source": "instagram",
-                        "error": "Profile not found",
-                    }
-                )
-        except Exception as e:
-            logger.warning(f"Instagram scrape failed: {e}")
-            result.errors.append({"source": "instagram", "error": str(e)})
+        """Scrape Instagram profile.
+        
+        DEPRECATED: Apify integration removed per FCO-003.
+        """
+        logger.info(f"Instagram scrape skipped for {instagram_handle} — Apify deprecated (FCO-003)")
+        result.errors.append({
+            "source": "instagram",
+            "error": "Apify deprecated (FCO-003).",
+        })
 
     async def _scrape_trustpilot(
         self,
         client: Client,
         result: ScrapeResult,
     ) -> None:
-        """Scrape Trustpilot reviews."""
-        try:
-            # Extract domain from website URL
-            domain = client.website_url.replace("https://", "").replace("http://", "").split("/")[0]
-
-            trustpilot_data = await self.apify.scrape_trustpilot_reviews(
-                company_domain=domain,
-                max_reviews=100,
-            )
-
-            if trustpilot_data.get("found"):
-                result.data["trustpilot"] = trustpilot_data
-                result.sources_scraped.append("trustpilot")
-                result.total_cost_aud += Decimal(str(SCRAPE_COSTS["trustpilot"]))
-            else:
-                result.errors.append(
-                    {
-                        "source": "trustpilot",
-                        "error": "Company not found on Trustpilot",
-                    }
-                )
-        except Exception as e:
-            logger.warning(f"Trustpilot scrape failed: {e}")
-            result.errors.append({"source": "trustpilot", "error": str(e)})
+        """Scrape Trustpilot reviews.
+        
+        DEPRECATED: Apify integration removed per FCO-003.
+        """
+        logger.info(f"Trustpilot scrape skipped for {client.name} — Apify deprecated (FCO-003)")
+        result.errors.append({
+            "source": "trustpilot",
+            "error": "Apify deprecated (FCO-003).",
+        })
 
     async def _scrape_g2(
         self,
         g2_url: str,
         result: ScrapeResult,
     ) -> None:
-        """Scrape G2 reviews."""
-        try:
-            g2_data = await self.apify.scrape_g2_reviews(
-                product_url=g2_url,
-                max_reviews=50,
-            )
-
-            if g2_data.get("found"):
-                result.data["g2"] = g2_data
-                result.sources_scraped.append("g2")
-                result.total_cost_aud += Decimal(str(SCRAPE_COSTS["g2"]))
-            else:
-                result.errors.append(
-                    {
-                        "source": "g2",
-                        "error": g2_data.get("error", "Product not found"),
-                    }
-                )
-        except Exception as e:
-            logger.warning(f"G2 scrape failed: {e}")
-            result.errors.append({"source": "g2", "error": str(e)})
+        """Scrape G2 reviews.
+        
+        DEPRECATED: Apify integration removed per FCO-003.
+        """
+        logger.info(f"G2 scrape skipped — Apify deprecated (FCO-003)")
+        result.errors.append({
+            "source": "g2",
+            "error": "Apify deprecated (FCO-003).",
+        })
 
     async def _scrape_capterra(
         self,
         capterra_url: str,
         result: ScrapeResult,
     ) -> None:
-        """Scrape Capterra reviews."""
-        try:
-            capterra_data = await self.apify.scrape_capterra_reviews(
-                product_url=capterra_url,
-                max_reviews=50,
-            )
-
-            if capterra_data.get("found"):
-                result.data["capterra"] = capterra_data
-                result.sources_scraped.append("capterra")
-                result.total_cost_aud += Decimal(str(SCRAPE_COSTS["capterra"]))
-            else:
-                result.errors.append(
-                    {
-                        "source": "capterra",
-                        "error": capterra_data.get("error", "Product not found"),
-                    }
-                )
-        except Exception as e:
-            logger.warning(f"Capterra scrape failed: {e}")
-            result.errors.append({"source": "capterra", "error": str(e)})
+        """Scrape Capterra reviews.
+        
+        DEPRECATED: Apify integration removed per FCO-003.
+        """
+        logger.info(f"Capterra scrape skipped — Apify deprecated (FCO-003)")
+        result.errors.append({
+            "source": "capterra",
+            "error": "Apify deprecated (FCO-003).",
+        })
 
     async def _scrape_google_reviews(
         self,
         client: Client,
         result: ScrapeResult,
     ) -> None:
-        """Scrape Google Business reviews."""
-        try:
-            google_data = await self.apify.scrape_google_reviews(
-                business_name=client.name,
-                location="Australia",
-                max_reviews=100,
-            )
-
-            if google_data.get("found"):
-                result.data["google_reviews"] = google_data
-                result.sources_scraped.append("google_reviews")
-                result.total_cost_aud += Decimal(str(SCRAPE_COSTS["google_reviews"]))
-            else:
-                result.errors.append(
-                    {
-                        "source": "google_reviews",
-                        "error": "Business not found on Google",
-                    }
-                )
-        except Exception as e:
-            logger.warning(f"Google Reviews scrape failed: {e}")
-            result.errors.append({"source": "google_reviews", "error": str(e)})
+        """Scrape Google Business reviews.
+        
+        DEPRECATED: Apify integration removed per FCO-003.
+        """
+        logger.info(f"Google Reviews scrape skipped for {client.name} — Apify deprecated (FCO-003)")
+        result.errors.append({
+            "source": "google_reviews",
+            "error": "Apify deprecated (FCO-003).",
+        })
 
     async def _extract_proof_points(
         self,
@@ -646,7 +525,12 @@ _engine: ClientIntelligenceEngine | None = None
 
 
 def get_client_intelligence_engine() -> ClientIntelligenceEngine:
-    """Get or create client intelligence engine instance."""
+    """Get or create client intelligence engine instance.
+    
+    Note:
+        Apify integration removed per FCO-003 deprecation.
+        All scraping methods now return empty results with deprecation warnings.
+    """
     global _engine
     if _engine is None:
         _engine = ClientIntelligenceEngine()

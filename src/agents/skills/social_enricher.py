@@ -12,8 +12,8 @@ PURPOSE: Extract additional portfolio companies from agency social media profile
 
 DEPENDENCIES:
 - src/agents/skills/base_skill.py
-- src/integrations/apify.py
 - src/integrations/anthropic.py
+NOTE: Apify deprecated (FCO-003). Social scraping stubbed pending Camoufox.
 
 EXPORTS:
 - SocialClientExtractorSkill
@@ -168,8 +168,6 @@ Be conservative - only extract names that clearly appear to be clients, not just
         2. Use Claude to extract client names from text content
         3. Return new companies not already in portfolio
         """
-        from src.integrations.apify import get_apify_client
-
         social_content = SocialTextContent()
         all_text_parts = []
         errors = []
@@ -204,67 +202,22 @@ Be conservative - only extract names that clearly appear to be clients, not just
                 social_content.facebook_about = input_data.facebook_about
                 all_text_parts.append(f"FACEBOOK ABOUT:\n{input_data.facebook_about}")
         else:
-            # Fallback: Fetch from Apify if URLs provided
-            apify = get_apify_client()
-
-            # Fetch LinkedIn
+            # FCO-003: Apify deprecated. Social scraping stubbed pending Camoufox integration.
+            # URLs were provided but we can't fetch them without Apify.
+            urls_provided = []
             if input_data.linkedin_url:
-                try:
-                    logger.info(
-                        f"Fetching LinkedIn for client extraction: {input_data.linkedin_url}"
-                    )
-                    data = await apify.scrape_linkedin_company(input_data.linkedin_url)
-                    if data.get("found"):
-                        description = data.get("description", "")
-                        specialties = data.get("specialties", [])
-                        social_content.linkedin_description = description
-                        social_content.linkedin_specialties = specialties
-                        if description:
-                            all_text_parts.append(f"LINKEDIN DESCRIPTION:\n{description}")
-                        if specialties:
-                            all_text_parts.append(
-                                f"LINKEDIN SPECIALTIES:\n{', '.join(specialties)}"
-                            )
-                        logger.info(
-                            f"LinkedIn: {len(description)} chars description, {len(specialties)} specialties"
-                        )
-                except Exception as e:
-                    logger.warning(f"LinkedIn fetch failed: {e}")
-                    errors.append(f"linkedin: {str(e)}")
-
-            # Fetch Instagram
+                urls_provided.append("linkedin")
             if input_data.instagram_url:
-                try:
-                    logger.info(
-                        f"Fetching Instagram for client extraction: {input_data.instagram_url}"
-                    )
-                    data = await apify.scrape_instagram_profile(input_data.instagram_url)
-                    if data.get("found"):
-                        bio = data.get("bio", "")
-                        social_content.instagram_bio = bio
-                        if bio:
-                            all_text_parts.append(f"INSTAGRAM BIO:\n{bio}")
-                        logger.info(f"Instagram: {len(bio)} chars bio")
-                except Exception as e:
-                    logger.warning(f"Instagram fetch failed: {e}")
-                    errors.append(f"instagram: {str(e)}")
-
-            # Fetch Facebook
+                urls_provided.append("instagram")
             if input_data.facebook_url:
-                try:
-                    logger.info(
-                        f"Fetching Facebook for client extraction: {input_data.facebook_url}"
-                    )
-                    data = await apify.scrape_facebook_page(input_data.facebook_url)
-                    if data.get("found"):
-                        about = data.get("about", "") or data.get("description", "")
-                        social_content.facebook_about = about
-                        if about:
-                            all_text_parts.append(f"FACEBOOK ABOUT:\n{about}")
-                        logger.info(f"Facebook: {len(about)} chars about")
-                except Exception as e:
-                    logger.warning(f"Facebook fetch failed: {e}")
-                    errors.append(f"facebook: {str(e)}")
+                urls_provided.append("facebook")
+
+            if urls_provided:
+                logger.info(
+                    f"[STUB] Social scraping disabled (FCO-003). "
+                    f"Would have fetched: {urls_provided} for {input_data.company_name}"
+                )
+                errors.append("social_scraping_disabled: FCO-003 Apify deprecated")
 
         # If no text content found, return empty result
         if not all_text_parts:
@@ -386,8 +339,8 @@ VERIFICATION CHECKLIST:
 - [x] No hardcoded secrets
 - [x] Extends BaseSkill with proper generics
 - [x] Input/Output Pydantic models defined
-- [x] Uses existing Apify methods
-- [x] Uses Claude for intelligent extraction
+- [x] Social scraping stubbed (FCO-003: Apify deprecated)
+- [x] Uses Claude for intelligent extraction from pre-scraped content
 - [x] Deduplicates against existing portfolio
 - [x] Error handling for each platform
 - [x] Registered with SkillRegistry

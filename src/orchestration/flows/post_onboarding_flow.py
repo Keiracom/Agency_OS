@@ -191,14 +191,17 @@ async def create_draft_campaigns_task(
     }
 
 
-@task(name="source_leads_from_apollo", retries=2, retry_delay_seconds=10)
-async def source_leads_from_apollo_task(
+@task(name="source_leads", retries=2, retry_delay_seconds=10)
+async def source_leads_task(
     client_id: UUID,
     icp_criteria: dict[str, Any],
     lead_count: int,
 ) -> dict[str, Any]:
     """
-    Source leads from Apollo based on ICP criteria.
+    Source leads based on ICP criteria.
+
+    NOTE: Apollo integration removed (CEO Directive #003).
+    Uses pool_population_flow which relies on Siege Waterfall.
 
     Args:
         client_id: Client UUID
@@ -443,7 +446,7 @@ async def post_onboarding_setup_flow(
         sourcing_cost = 0.0
 
         if auto_source_leads:
-            source_result = await source_leads_from_apollo_task(
+            source_result = await source_leads_task(
                 client_id=client_id,
                 icp_criteria=icp,
                 lead_count=lead_count,
@@ -538,7 +541,7 @@ async def trigger_lead_sourcing_flow(
         }
 
     # Source leads
-    source_result = await source_leads_from_apollo_task(
+    source_result = await source_leads_task(
         client_id=client_id,
         icp_criteria=icp_status["icp"],
         lead_count=lead_count,

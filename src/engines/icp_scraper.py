@@ -1064,7 +1064,7 @@ Respond in JSON format only:
             f"get_agency_apollo_data called for {company_name} - Apollo removed (CEO Directive #003)"
         )
         return EngineResult.ok(
-            data={"found": False, "apollo_removed": True},
+            data={"found": False, "legacy_removed": True},
             metadata={"source": "none", "note": "Apollo removed (CEO Directive #003)"},
         )
 

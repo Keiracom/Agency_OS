@@ -11,7 +11,7 @@ PHASE: 24A (Lead Pool Architecture)
 TASK: POOL-005
 DEPENDENCIES:
   - src/models/database.py
-  - src/integrations/apollo.py
+  - siege_waterfall (Apollo deprecated)
 LAYER: 3 (services)
 CONSUMERS: orchestration, API routes
 
@@ -546,7 +546,7 @@ class LeadPoolService:
             "company_technologies": lead_data.get("company_technologies", []),
             "company_keywords": lead_data.get("company_keywords", []),
             "email_status": email_status,
-            "enrichment_source": lead_data.get("enrichment_source", "apollo"),
+            "enrichment_source": lead_data.get("enrichment_source", "siege_waterfall"),
             "enrichment_confidence": lead_data.get("confidence")
             or lead_data.get("enrichment_confidence"),
             "enrichment_data": json.dumps(lead_data.get("enrichment_data"))

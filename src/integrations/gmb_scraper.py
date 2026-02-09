@@ -833,7 +833,7 @@ async def scrape_google_business(
     """
     Scrape Google Business data.
     
-    Drop-in replacement for apify.scrape_google_business().
+    Drop-in replacement for Apify (deprecated FCO-003)().
     
     Args:
         business_name: Name of the business to search

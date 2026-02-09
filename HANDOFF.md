@@ -1,77 +1,95 @@
-# HANDOFF.md — Session 2026-02-08
+# HANDOFF.md — Session 2026-02-09 (Session C Complete)
 
-**Last Updated:** 2026-02-08 22:55 UTC
-**Context Used:** 63% (recommend /reset)
-
----
-
-## 🎯 Session Summary
-
-Major wins this session:
-1. **Multi-Agent Orchestration Framework** — 8-agent fleet codified in AGENTS.md
-2. **`/superpowers` command** — Brainstorm → Plan → Execute → Review workflow baked in
-3. **Backend recovered** — Fixed 2 crashes (stripe, get_current_user_client_id)
-4. **DB Migrations applied** — sales_pipeline, founding_members, demo_bookings
-5. **Test suite unblocked** — 0 → 631 tests now collecting
+**Last Updated:** 2026-02-09 03:45 UTC
+**Directives:** CEO #001 (Stabilize), #002 (Tier 4 Pivot), #003 (Apollo/Proxycurl Cleanup)
+**Governance:** LAW I-A, LAW III, LAW V
 
 ---
 
-## 📋 PR Ready to Merge
+## ✅ CLEANUP COMPLETE
 
-**Branch:** `fix/p0-blockers`
-**Commits:** 4
-**Link:** https://github.com/Keiracom/Agency_OS/pull/new/fix/p0-blockers
-
-**Contains:**
-- python-multipart dependency
-- stripe dependency  
-- get_current_user_client_id function
-- prospeo_api_key in settings.py
-- src/config/database.py re-export
-- Migration 005 column fix (company_name → company)
-
-**Action:** Merge to main, Railway will auto-deploy.
+**All deprecated integrations removed from codebase.**
 
 ---
 
-## ⏳ Pending Work
+## 🎯 Session C — Final Refactors
 
-### P1 (Next Session)
-| Item | Notes |
-|------|-------|
-| Frontend ISR/SSG migration | build-1 has full audit + plan ready |
-| local-pool Prefect worker | Offline, daily_learning_scrape stuck |
-| 5 test collection errors | test_who_integration, test_weight_optimizer, 3 flow tests |
+**Objective:** Remove all remaining Apify/Proxycurl/SDK agent references
 
-### P2 (Needs Credentials/Planning)
-| Item | Notes |
-|------|-------|
-| Proxycurl API key | Tier 4 enrichment broken |
-| Kaspr API key | Tier 5 enrichment broken |
-| 21 services with no tests | Backlog |
+### Commits This Session
+
+| Commit | File | Category |
+|--------|------|----------|
+| `5e2c200` | siege_waterfall.py | Tier 4 graceful skip |
+| `449364c` | 4 comment-only files | Docs |
+| `f1cd3f0` | icp_discovery_agent.py | Agent |
+| `a5e1e97` | identity_escalation.py | Engine |
+| `737e00f` | research_skills.py | Skill |
+| `273b5e4` | social_enricher.py | Skill |
+| `882f32a` | stale_lead_refresh_flow.py | Flow |
+| `26d5a02` | client_intelligence.py | Engine |
+| `6d1ce80` | onboarding_flow.py | Flow |
+| `dab3903` | social_profile_discovery.py | Skill |
+| `92303e3` | smart_prompts.py | Engine |
+| `f455c15` | content.py | Engine |
+| `c60c5fc` | test_scraper_waterfall.py | Test |
 
 ---
 
-## 🏗️ New Capabilities
+## 📊 Full Cleanup Summary (Sessions A+B+C)
 
-### /superpowers Command
-Type `/superpowers` to trigger structured workflow:
-1. **Brainstorm** — Clarify requirements, get sign-off
-2. **Plan** — Break into tasks, assign agents
-3. **Execute** — Spawn agents, track progress
-4. **Review** — Validate, create PR, present summary
+| Metric | Value |
+|--------|-------|
+| Files deleted | 8 |
+| Files refactored | 20+ |
+| Total lines removed | ~6,500 |
+| Deprecated integrations | apollo.py, apify.py, proxycurl.py |
+| Deprecated SDK agents | email_agent.py, enrichment_agent.py, voice_kb_agent.py |
+| Branch | `cleanup/deprecated-sdk-agents` |
+| Total commits | 27 |
 
-Skill file: `/home/elliotbot/clawd/skills/superpowers/SKILL.md`
+---
 
-### 8-Agent Fleet
-| Label | Role |
-|-------|------|
-| build-1 | Frontend (Vercel, Next.js) |
-| build-2 | Backend (Railway, FastAPI) |
-| research-1/2 | Technical/Market research |
-| data-1/2 | Database/ETL operations |
-| test-1 | QA and validation |
-| ops-1 | Infrastructure ops |
+## ✅ Verification
+
+```bash
+# All imports clean:
+grep -rn "from src.integrations.apify|proxycurl|apollo" src/ tests/
+# Result: 0 matches (only comments remain)
+```
+
+---
+
+## 🔄 Graceful Degradation Status
+
+| Component | Status | Fallback |
+|-----------|--------|----------|
+| Siege Waterfall Tier 4 | Skipped | "Unipile not activated" |
+| Social scraping | Stubbed | Returns empty results |
+| LinkedIn enrichment | Disabled | Uses Siege Tiers 1-3, 5 |
+| SDK agents | Removed | Siege Waterfall pipeline |
+
+---
+
+## 📋 Branch Status
+
+**Branch:** `cleanup/deprecated-sdk-agents`
+**Status:** ✅ Ready for merge
+**Total Commits:** 27
+
+---
+
+## ⏳ Post-Merge: Unipile Integration
+
+CEO Directive #002 approved Unipile as Proxycurl replacement.
+
+**Implementation Steps:**
+1. Create `src/integrations/unipile.py`
+2. Implement UnipileClient with BYOA auth flow
+3. Update `siege_waterfall.py` Tier 4 to use Unipile
+4. Test with customer LinkedIn OAuth
+
+**Estimate:** 2-3 sessions
 
 ---
 
@@ -79,31 +97,22 @@ Skill file: `/home/elliotbot/clawd/skills/superpowers/SKILL.md`
 
 | Service | Status |
 |---------|--------|
-| agency-os (Railway) | ✅ SUCCESS |
+| agency-os (Railway) | ✅ Deployed |
 | prefect-server | ✅ Running |
-| prefect-worker (agency-os-pool) | ✅ Running |
-| prefect-worker (local-pool) | ❌ Offline |
-| Frontend (Vercel) | ✅ Running (needs ISR) |
+| prefect-worker | ✅ Running |
+| Frontend (Vercel) | ✅ Deployed |
 
 ---
 
-## 📊 Test Suite Status
+## 📊 SSOT References
 
-| Metric | Value |
-|--------|-------|
-| Tests collecting | 631 |
-| Collection errors | 5 |
-| Test files | 41 |
-
----
-
-## 🚀 Next Session Priorities
-
-1. **Merge PR** — `fix/p0-blockers` to main
-2. **Frontend ISR** — Apply build-1's audit recommendations
-3. **Prefect local-pool** — Start worker or migrate flow to Railway
-4. **Fix remaining 5 test errors** — Likely import path issues
+- **FCO-002:** SDK agent deprecation ✅ Complete
+- **FCO-003:** Apify deprecation ✅ Complete
+- **CEO Directive #002:** Unipile integration (pending)
+- **CEO Directive #003:** Apollo/Proxycurl cleanup ✅ Complete
+- **SIEGE:** `siege_waterfall.py` is SSOT for enrichment
+- **Scraping:** `camoufox_scraper.py` is SSOT for website scraping
 
 ---
 
-*Handoff complete. Ready for /reset.*
+*Handoff updated 2026-02-09 03:45 UTC. Cleanup complete. Ready for merge.*

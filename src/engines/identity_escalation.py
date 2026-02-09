@@ -13,7 +13,7 @@ DEPENDENCIES:
   - src/engines/base.py
   - src/engines/waterfall_verification_worker.py
   - src/integrations/lusha.py (to be created)
-  - src/integrations/proxycurl.py (existing)
+  # NOTE: proxycurl.py removed per FCO-003 (Proxycurl shutdown July 2025)
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 11: Session passed as argument
@@ -78,9 +78,9 @@ AU_LANDLINE_PATTERN = r"^(?:\+61|0)[2378]\d{8}$"  # Landline: 02/03/07/08
 IDENTITY_COSTS_AUD = {
     "lusha_mobile": Decimal("0.25"),      # ~$0.15-0.30, using mid-range
     "kaspr_mobile": Decimal("0.20"),      # Slightly cheaper
-    "proxycurl_linkedin": Decimal("0.02"), # LinkedIn profile enrichment
     "asic_extract": Decimal("0.50"),      # Company extract via broker
     "team_page_scrape": Decimal("0.01"),  # Our own scraper
+    # NOTE: proxycurl_linkedin removed (FCO-003 deprecation, Proxycurl shutdown July 2025)
 }
 
 # Thresholds
@@ -202,7 +202,6 @@ class IdentityEscalationEngine(BaseEngine):
         self,
         lusha_client=None,
         kaspr_client=None,
-        proxycurl_client=None,
         asic_client=None,
         web_scraper=None,
     ):
@@ -212,13 +211,15 @@ class IdentityEscalationEngine(BaseEngine):
         Args:
             lusha_client: Lusha API client for mobiles
             kaspr_client: Kaspr API client for mobiles
-            proxycurl_client: Proxycurl for LinkedIn data
             asic_client: ASIC broker API (InfoTrack/CreditorWatch)
             web_scraper: Autonomous browser for team page scraping
+        
+        Note:
+            proxycurl_client removed per FCO-003 deprecation (Proxycurl shutdown July 2025).
+            LinkedIn employee search now degrades gracefully.
         """
         self._lusha = lusha_client
         self._kaspr = kaspr_client
-        self._proxycurl = proxycurl_client
         self._asic = asic_client
         self._scraper = web_scraper
     
@@ -394,30 +395,13 @@ class IdentityEscalationEngine(BaseEngine):
             decision_makers.extend(team_contacts)
             
             # ========== TIER 2: LINKEDIN EMPLOYEE SEARCH ==========
+            # NOTE: Tier 2 (Proxycurl LinkedIn) deprecated per FCO-003 (shutdown July 2025)
+            # Skipping this tier entirely - relying on Tier 1 (team page) and Tier 3 (ASIC)
+            # LinkedIn enrichment will be replaced by Apollo in future iteration
             if company_linkedin_url and len(decision_makers) < 3:
-                step_number += 1
-                
-                linkedin_contacts = await self._search_linkedin_employees(
-                    company_linkedin_url, company_name
+                logger.info(
+                    f"Tier 2 skipped for {company_name}: Proxycurl deprecated (FCO-003)"
                 )
-                
-                step = IdentityLineageStep(
-                    step_number=step_number,
-                    tier=IdentityTier.LINKEDIN_EMPLOYEE,
-                    source_name="proxycurl_linkedin",
-                    cost_aud=IDENTITY_COSTS_AUD["proxycurl_linkedin"],
-                    success=len(linkedin_contacts) > 0,
-                    contacts_found=len(linkedin_contacts),
-                    data_added=["linkedin_urls", "titles"] if linkedin_contacts else [],
-                )
-                lineage_steps.append(step)
-                total_cost += step.cost_aud
-                result.tiers_used.append(IdentityTier.LINKEDIN_EMPLOYEE.value)
-                
-                # Merge with existing, avoiding duplicates
-                for lc in linkedin_contacts:
-                    if not any(dm.full_name.lower() == lc.full_name.lower() for dm in decision_makers):
-                        decision_makers.append(lc)
             
             # ========== TIER 3: ASIC DIRECTOR HUNT ==========
             if acn and len(decision_makers) < 3:
@@ -589,36 +573,19 @@ class IdentityEscalationEngine(BaseEngine):
         self, company_linkedin_url: str, company_name: str
     ) -> list[DecisionMaker]:
         """
-        Tier 2: Search LinkedIn for company employees via Proxycurl.
-        """
-        if self._proxycurl is None:
-            logger.warning("Proxycurl not configured — skipping LinkedIn search")
-            return []
+        Tier 2: Search LinkedIn for company employees.
         
-        try:
-            employees = await self._proxycurl.get_company_employees(
-                company_linkedin_url,
-                roles=DECISION_MAKER_TITLES,
-            )
-            
-            contacts = []
-            for emp in employees:
-                if self._is_decision_maker_title(emp.get("title", "")):
-                    contacts.append(DecisionMaker(
-                        full_name=emp.get("full_name", ""),
-                        first_name=emp.get("first_name", ""),
-                        last_name=emp.get("last_name", ""),
-                        title=emp.get("title", ""),
-                        linkedin_url=emp.get("linkedin_url"),
-                        source="linkedin_proxycurl",
-                        confidence=80,
-                    ))
-            
-            return contacts
-            
-        except Exception as e:
-            logger.error(f"LinkedIn employee search failed: {e}")
-            return []
+        DEPRECATED: Proxycurl integration removed per FCO-003 (shutdown July 2025).
+        This method now degrades gracefully by returning an empty list.
+        LinkedIn employee search will be replaced by Apollo enrichment.
+        """
+        # FCO-003: Proxycurl deprecated (shutdown July 2025)
+        # Graceful degradation: return empty, let other tiers handle identity
+        logger.info(
+            f"LinkedIn employee search skipped for {company_name} — "
+            "Proxycurl deprecated (FCO-003). Using other identity tiers."
+        )
+        return []
     
     async def _hunt_asic_directors(self, acn: str) -> list[DecisionMaker]:
         """
@@ -822,15 +789,17 @@ class IdentityEscalationEngine(BaseEngine):
 def get_identity_escalation_engine(
     lusha_client=None,
     kaspr_client=None,
-    proxycurl_client=None,
     asic_client=None,
     web_scraper=None,
 ) -> IdentityEscalationEngine:
-    """Get singleton IdentityEscalationEngine instance."""
+    """Get singleton IdentityEscalationEngine instance.
+    
+    Note:
+        proxycurl_client removed per FCO-003 deprecation (Proxycurl shutdown July 2025).
+    """
     return IdentityEscalationEngine(
         lusha_client=lusha_client,
         kaspr_client=kaspr_client,
-        proxycurl_client=proxycurl_client,
         asic_client=asic_client,
         web_scraper=web_scraper,
     )

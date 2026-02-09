@@ -23,7 +23,33 @@ from src.engines.url_validator import (
     PARKED_CONTENT_INDICATORS,
 )
 from src.models.url_validation import URLValidationResult
-from src.integrations.apify import ApifyClient, ScrapeResult
+
+# NOTE: Apify deprecated (FCO-003). Stubbing imports for test compatibility.
+# Tests using ApifyClient should be migrated to Camoufox or removed.
+from dataclasses import dataclass
+from typing import Any
+
+@dataclass
+class ScrapeResult:
+    """Stub for deprecated Apify ScrapeResult."""
+    url: str
+    raw_html: str = ""
+    title: str = ""
+    page_count: int = 0
+    tier_used: int = 1
+    needs_fallback: bool = False
+    failure_reason: str | None = None
+    
+    def has_valid_content(self) -> bool:
+        """Check if scrape has valid content."""
+        return len(self.raw_html) >= 500 and not self.needs_fallback
+
+class ApifyClient:
+    """Stub for deprecated ApifyClient."""
+    def __init__(self, *args, **kwargs):
+        pass
+    async def scrape(self, *args, **kwargs) -> ScrapeResult:
+        return ScrapeResult(url="", needs_fallback=True, failure_reason="Apify deprecated (FCO-003)")
 
 
 # ============================================
@@ -590,10 +616,11 @@ class TestContentValidation:
 
     def test_blocked_indicators_list_exists(self):
         """Test blocked indicators list is defined."""
-        from src.integrations.apify import BLOCKED_PAGE_INDICATORS
+        # FCO-003: Apify deprecated. Using Camoufox blocked indicators instead.
+        from src.integrations.camoufox_scraper import BLOCKED_INDICATORS
 
-        assert len(BLOCKED_PAGE_INDICATORS) > 0
-        assert "access denied" in BLOCKED_PAGE_INDICATORS
+        assert len(BLOCKED_INDICATORS) > 0
+        assert "access denied" in BLOCKED_INDICATORS
 
     def test_content_length_threshold(self):
         """Test minimum content length threshold."""

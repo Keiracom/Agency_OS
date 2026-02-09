@@ -21,7 +21,7 @@ RULES APPLIED:
   - Cost tracking in $AUD only
 
 GOVERNANCE EVENT: Waterfall Reliability Shift
-DESCRIPTION: Moving from Apollo SPOF to ABN + GMB + Hunter.io + ZeroBounce waterfall
+DESCRIPTION: Moved from Apollo SPOF (deprecated) to ABN + GMB + Hunter.io + ZeroBounce waterfall
 """
 
 import asyncio
@@ -67,7 +67,7 @@ class MatchConfidence(str, Enum):
 # Cost per operation in AUD (2026 pricing)
 COSTS_AUD = {
     VerificationTier.ABN_SEED: Decimal("0.00"),      # Free (data.gov.au)
-    VerificationTier.GMB_SCRAPER: Decimal("0.0062"), # Apify ~$6.20/1000
+    VerificationTier.GMB_SCRAPER: Decimal("0.0062"), # GMB scraper (Apify deprecated)
     VerificationTier.HUNTER_IO: Decimal("0.0064"),   # Hunter.io Growth tier
     VerificationTier.ZEROBOUNCE: Decimal("0.010"),   # ZeroBounce average
 }
@@ -213,7 +213,7 @@ class WaterfallVerificationWorker(BaseEngine):
         
         Args:
             abn_client: ABN Lookup API client
-            gmb_scraper: GMB/Apify scraper client
+            gmb_scraper: GMB scraper client (Apify deprecated)
             hunter_client: Hunter.io API client
             zerobounce_client: ZeroBounce API client
         """
@@ -640,7 +640,7 @@ class WaterfallVerificationWorker(BaseEngine):
         """
         Tier 2: Scrape Google Maps for business info.
         
-        Uses Apify Google Maps Scraper or similar.
+        Uses GMB Scraper (Apify deprecated FCO-003).
         """
         if self._gmb_scraper is None:
             logger.warning("GMB scraper not configured — skipping Tier 2")

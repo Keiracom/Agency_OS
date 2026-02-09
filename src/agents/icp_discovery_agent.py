@@ -58,7 +58,6 @@ from src.engines.icp_scraper import (
     get_icp_scraper_engine,
 )
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
-from src.integrations.apify import ApifyClient, get_apify_client
 from src.models.social_profile import (
     FacebookPageProfile,
     GoogleBusinessProfile,
@@ -182,7 +181,6 @@ class ICPDiscoveryAgent(BaseAgent):
         self,
         anthropic: AnthropicClient | None = None,
         scraper: ICPScraperEngine | None = None,
-        apify: ApifyClient | None = None,
     ):
         """
         Initialize ICP Discovery Agent.
@@ -190,12 +188,10 @@ class ICPDiscoveryAgent(BaseAgent):
         Args:
             anthropic: Optional Anthropic client override
             scraper: Optional scraper engine override
-            apify: Optional Apify client override
         """
         super().__init__()
         self._anthropic = anthropic
         self._scraper = scraper
-        self._apify = apify
 
         # Initialize skills
         self._skills = {
@@ -236,13 +232,6 @@ class ICPDiscoveryAgent(BaseAgent):
             self._scraper = get_icp_scraper_engine()
         return self._scraper
 
-    @property
-    def apify(self) -> ApifyClient:
-        """Get Apify client."""
-        if self._apify is None:
-            self._apify = get_apify_client()
-        return self._apify
-
     async def _scrape_social_profiles(
         self,
         social_links: dict[str, str],
@@ -251,116 +240,34 @@ class ICPDiscoveryAgent(BaseAgent):
         """
         Scrape social media profiles from collected links.
 
+        NOTE: Social scraping stubbed pending Camoufox integration (FCO-003).
+        Previously used Apify which has been deprecated for cost savings.
+
         Args:
             social_links: Dict of platform -> URL
             company_name: Company name for Google Business search
 
         Returns:
-            SocialProfiles with scraped data
+            SocialProfiles with empty data (scraping disabled)
         """
         import logging
 
         logger = logging.getLogger(__name__)
 
-        linkedin_profile = None
-        instagram_profile = None
-        facebook_profile = None
-        google_profile = None
+        # FCO-003: Apify deprecated. Social scraping stubbed pending Camoufox integration.
+        # Log what we would have scraped for debugging purposes.
+        if social_links:
+            logger.info(
+                f"[STUB] Social scraping disabled (FCO-003). "
+                f"Would have scraped: {list(social_links.keys())} for {company_name}"
+            )
 
-        # Scrape LinkedIn if URL available
-        linkedin_url = social_links.get("linkedin")
-        if linkedin_url:
-            try:
-                logger.info(f"Scraping LinkedIn company: {linkedin_url}")
-                data = await self.apify.scrape_linkedin_company(linkedin_url)
-                if data.get("found"):
-                    linkedin_profile = LinkedInCompanyProfile(
-                        name=data.get("name"),
-                        followers=data.get("followers"),
-                        employee_count=data.get("employee_count"),
-                        employee_range=data.get("employee_range"),
-                        specialties=data.get("specialties", []),
-                        description=data.get("description"),
-                        industry=data.get("industry"),
-                        headquarters=data.get("headquarters"),
-                        website=data.get("website"),
-                        founded_year=data.get("founded_year"),
-                        linkedin_url=linkedin_url,
-                    )
-            except Exception as e:
-                logger.warning(f"LinkedIn scraping failed: {e}")
-
-        # Scrape Instagram if URL available
-        instagram_url = social_links.get("instagram")
-        if instagram_url:
-            try:
-                logger.info(f"Scraping Instagram profile: {instagram_url}")
-                data = await self.apify.scrape_instagram_profile(instagram_url)
-                if data.get("found"):
-                    instagram_profile = InstagramProfile(
-                        username=data.get("username"),
-                        followers=data.get("followers"),
-                        following=data.get("following"),
-                        posts_count=data.get("posts_count"),
-                        bio=data.get("bio"),
-                        is_verified=data.get("is_verified", False),
-                        full_name=data.get("full_name"),
-                        profile_pic_url=data.get("profile_pic_url"),
-                        external_url=data.get("external_url"),
-                        instagram_url=instagram_url,
-                    )
-            except Exception as e:
-                logger.warning(f"Instagram scraping failed: {e}")
-
-        # Scrape Facebook if URL available
-        facebook_url = social_links.get("facebook")
-        if facebook_url:
-            try:
-                logger.info(f"Scraping Facebook page: {facebook_url}")
-                data = await self.apify.scrape_facebook_page(facebook_url)
-                if data.get("found"):
-                    facebook_profile = FacebookPageProfile(
-                        name=data.get("name"),
-                        likes=data.get("likes"),
-                        followers=data.get("followers"),
-                        category=data.get("category"),
-                        about=data.get("about"),
-                        rating=data.get("rating"),
-                        review_count=data.get("review_count"),
-                        website=data.get("website"),
-                        phone=data.get("phone"),
-                        address=data.get("address"),
-                        facebook_url=facebook_url,
-                    )
-            except Exception as e:
-                logger.warning(f"Facebook scraping failed: {e}")
-
-        # Always search Google Business by company name
-        if company_name:
-            try:
-                logger.info(f"Scraping Google Business: {company_name}")
-                data = await self.apify.scrape_google_business(company_name, "Australia")
-                if data.get("found"):
-                    google_profile = GoogleBusinessProfile(
-                        name=data.get("name"),
-                        rating=data.get("rating"),
-                        review_count=data.get("review_count"),
-                        address=data.get("address"),
-                        phone=data.get("phone"),
-                        website=data.get("website"),
-                        category=data.get("category"),
-                        place_id=data.get("place_id"),
-                        google_maps_url=data.get("google_maps_url"),
-                        opening_hours=data.get("opening_hours"),
-                    )
-            except Exception as e:
-                logger.warning(f"Google Business scraping failed: {e}")
-
+        # Return empty profiles - downstream code handles missing data gracefully
         return SocialProfiles(
-            linkedin=linkedin_profile,
-            instagram=instagram_profile,
-            facebook=facebook_profile,
-            google_business=google_profile,
+            linkedin=None,
+            instagram=None,
+            facebook=None,
+            google_business=None,
         )
 
     def _extract_domain(self, url: str) -> str:
@@ -475,17 +382,12 @@ class ICPDiscoveryAgent(BaseAgent):
             linkedin_specialties = updated_social_profiles.linkedin.specialties or []
 
         # Tier F3: Google client search
-        logger.info("Tier F3: Searching Google for client mentions...")
-        try:
-            search_queries = [
-                f'"{company_name}" clients case study',
-                f'"{company_name}" portfolio customers',
-            ]
-            google_results = await self.apify.search_google(search_queries, results_per_query=5)
-            logger.info(f"Tier F3: Found {len(google_results)} Google results")
-            total_cost += 0.01  # Apify Google search cost
-        except Exception as e:
-            logger.warning(f"Tier F3: Google search failed: {e}")
+        # FCO-003: Apify deprecated. Google search stubbed pending Camoufox integration.
+        logger.info(
+            f"[STUB] Tier F3: Google search disabled (FCO-003). "
+            f"Would have searched for '{company_name}' client mentions."
+        )
+        # google_results remains empty - fallback extraction will use Apollo/LinkedIn data only
 
         # Now use PortfolioFallbackSkill to extract clients from all sources
         if apollo_description or linkedin_description or google_results:

@@ -6,7 +6,6 @@ PURPOSE: Prefect flow for async ICP extraction during client onboarding
 
 DEPENDENCIES:
 - src/agents/icp_discovery_agent.py
-- src/agents/sdk_agents/icp_agent.py (SDK enhancement)
 - src/engines/icp_scraper.py
 - src/integrations/supabase.py
 
@@ -15,6 +14,10 @@ RULES APPLIED:
 - Rule 11: Session passed as argument
 - Rule 14: Soft deletes only
 - Rule 15: AI spend limiter via Anthropic integration
+
+DEPRECATION NOTES:
+- FCO-002: SDK agents deprecated (enhance_icp_with_sdk removed)
+- FCO-003: Apify deprecated (using icp_scraper engine)
 """
 
 import json
@@ -28,7 +31,6 @@ from prefect.task_runners import ConcurrentTaskRunner
 from sqlalchemy import text
 
 from src.agents.icp_discovery_agent import get_icp_discovery_agent
-from src.config.settings import get_settings
 from src.engines.client_intelligence import (
     ScrapeConfig,
     get_client_intelligence_engine,
@@ -113,7 +115,7 @@ async def scrape_website_task(
     website_url: str,
 ) -> dict[str, Any]:
     """
-    Scrape the website content using Apify.
+    Scrape the website content using the ICP scraper engine.
 
     Args:
         job_id: Extraction job UUID
@@ -199,140 +201,6 @@ async def run_icp_extraction_task(
         return {"success": False, "error": result.error}
 
 
-@task(name="enhance_icp_with_sdk", retries=1, timeout_seconds=300)
-async def enhance_icp_with_sdk_task(
-    job_id: UUID,
-    client_id: UUID,
-    website_url: str,
-    basic_result: dict[str, Any],
-) -> dict[str, Any]:
-    """
-    Enhance ICP extraction using Claude Agent SDK.
-
-    This task takes the basic ICP result and uses the SDK Agent to:
-    - Research additional context via web search
-    - Build more detailed pain points and buying signals
-    - Self-review and refine the ICP
-
-    Args:
-        job_id: Extraction job UUID
-        client_id: Client UUID
-        website_url: Website URL being analyzed
-        basic_result: Result from basic ICP extraction
-
-    Returns:
-        Enhanced ICP result dict or original if SDK disabled/fails
-    """
-    settings = get_settings()
-
-    # Check if SDK is enabled
-    if not settings.sdk_brain_enabled:
-        logger.info("SDK Brain disabled, returning basic ICP result")
-        return basic_result
-
-    # Only enhance if basic extraction succeeded
-    if not basic_result.get("success"):
-        logger.info("Basic extraction failed, skipping SDK enhancement")
-        return basic_result
-
-    try:
-        # Update progress
-        await update_job_status_task(
-            job_id=job_id,
-            status="running",
-            current_step="Enhancing ICP with AI research",
-            completed_steps=5,
-        )
-
-        # Import SDK components
-        from src.agents.sdk_agents.icp_agent import extract_icp
-
-        # Prepare website content from basic result profile
-        profile = basic_result.get("profile", {})
-        website_content = profile.get("company_description", "")
-
-        # Add services and other scraped data
-        if profile.get("services_offered"):
-            website_content += "\n\nServices: " + ", ".join(profile.get("services_offered", []))
-        if profile.get("value_proposition"):
-            website_content += "\n\nValue Proposition: " + profile.get("value_proposition", "")
-
-        # Extract portfolio companies if available
-        portfolio_companies = []
-        # Note: basic result may not have portfolio data, SDK will research
-
-        # Get client name from database
-        async with get_db_session() as db:
-            result_row = await db.execute(
-                text("SELECT company_name FROM clients WHERE id = :client_id"),
-                {"client_id": str(client_id)},
-            )
-            row = result_row.fetchone()
-            client_name = row[0] if row else "Unknown Agency"
-
-        # Run SDK ICP extraction
-        logger.info(f"Running SDK ICP enhancement for {client_name}")
-        sdk_result = await extract_icp(
-            client_name=client_name,
-            website_url=website_url,
-            website_content=website_content,
-            portfolio_companies=portfolio_companies,
-            social_links=profile.get("social_links", {}),
-            existing_icp=profile,  # Pass basic ICP for refinement
-            client_id=client_id,
-        )
-
-        if sdk_result.success and sdk_result.data:
-            logger.info(
-                f"SDK ICP enhancement completed: "
-                f"confidence={sdk_result.data.confidence_score:.2f}, "
-                f"cost=${sdk_result.cost_aud:.4f}"
-            )
-
-            # Merge SDK result into the profile
-            enhanced_profile = basic_result.get("profile", {}).copy()
-
-            # Update with SDK-enhanced fields
-            sdk_data = sdk_result.data
-            enhanced_profile["icp_industries"] = [ind.name for ind in sdk_data.target_industries]
-            enhanced_profile["icp_titles"] = [title.title for title in sdk_data.target_titles]
-            enhanced_profile["icp_pain_points"] = [pp.pain_point for pp in sdk_data.pain_points]
-            enhanced_profile["icp_company_sizes"] = [
-                f"{sdk_data.company_size_range.min_employees}-{sdk_data.company_size_range.max_employees}"
-            ]
-            enhanced_profile["icp_locations"] = sdk_data.target_locations
-            enhanced_profile["services_offered"] = sdk_data.services_offered
-            enhanced_profile["value_proposition"] = ", ".join(sdk_data.agency_strengths)
-
-            # Add SDK-specific metadata
-            enhanced_profile["sdk_confidence_score"] = sdk_data.confidence_score
-            enhanced_profile["sdk_data_gaps"] = sdk_data.data_gaps
-            enhanced_profile["sdk_buying_signals"] = [
-                {"signal": bs.signal, "urgency": bs.urgency} for bs in sdk_data.buying_signals
-            ]
-            enhanced_profile["sdk_sources_used"] = sdk_data.sources_used
-
-            return {
-                "success": True,
-                "profile": enhanced_profile,
-                "tokens_used": basic_result.get("tokens_used", 0)
-                + (sdk_result.input_tokens + sdk_result.output_tokens),
-                "cost_aud": basic_result.get("cost_aud", 0.0) + sdk_result.cost_aud,
-                "duration_seconds": basic_result.get("duration_seconds", 0),
-                "sdk_enhanced": True,
-                "sdk_confidence": sdk_data.confidence_score,
-            }
-        else:
-            logger.warning(f"SDK ICP enhancement failed: {sdk_result.error}")
-            # Return original result if SDK fails
-            return basic_result
-
-    except Exception as e:
-        logger.exception(f"SDK ICP enhancement error: {e}")
-        # Return original result on error
-        return basic_result
-
-
 @task(name="save_extraction_result", retries=3, retry_delay_seconds=5)
 async def save_extraction_result_task(
     job_id: UUID,
@@ -360,7 +228,7 @@ async def save_extraction_result_task(
                 UPDATE icp_extraction_jobs
                 SET status = 'completed',
                     completed_at = :now,
-                    completed_steps = 8,
+                    completed_steps = 6,
                     current_step = 'Complete',
                     extracted_icp = :icp
                 WHERE id = :job_id
@@ -526,7 +394,7 @@ async def scrape_client_intelligence_task(
     config: ScrapeConfig | None = None,
 ) -> dict[str, Any]:
     """
-    Scrape client intelligence data for SDK personalization.
+    Scrape client intelligence data for personalization.
 
     Scrapes:
     - Website (case studies, testimonials, services)
@@ -534,7 +402,7 @@ async def scrape_client_intelligence_task(
     - Twitter/X, Facebook, Instagram profiles
     - Review platforms (Trustpilot, G2, Capterra, Google)
 
-    Then uses AI to extract proof points for SDK agents.
+    Then uses AI to extract proof points for outreach personalization.
 
     Args:
         job_id: Extraction job UUID
@@ -549,7 +417,7 @@ async def scrape_client_intelligence_task(
         job_id=job_id,
         status="running",
         current_step="Scraping client intelligence",
-        completed_steps=6,
+        completed_steps=4,
     )
 
     try:
@@ -622,10 +490,10 @@ async def icp_onboarding_flow(
 
     Flow steps:
     1. Update job status to running
-    2. Run basic ICP extraction (scraping + AI analysis)
-    3. Enhance with SDK Agent (if enabled - adds research, pain points, buying signals)
-    4. Save extraction result
-    5. Optionally apply to client
+    2. Run ICP extraction (scraping + AI analysis)
+    3. Save extraction result
+    4. Optionally apply to client
+    5. Scrape client intelligence for personalization
 
     Args:
         job_id: Extraction job UUID (string or UUID)
@@ -653,28 +521,20 @@ async def icp_onboarding_flow(
             completed_steps=0,
         )
 
-        # Step 2: Run basic extraction
+        # Step 2: Run ICP extraction
         extraction_result = await run_icp_extraction_task(
             job_id=job_id,
             website_url=website_url,
         )
 
-        # Step 3: Enhance with SDK (if enabled and basic succeeded)
-        extraction_result = await enhance_icp_with_sdk_task(
-            job_id=job_id,
-            client_id=client_id,
-            website_url=website_url,
-            basic_result=extraction_result,
-        )
-
-        # Step 4: Save result
+        # Step 3: Save result
         await save_extraction_result_task(
             job_id=job_id,
             client_id=client_id,
             result=extraction_result,
         )
 
-        # Step 5: Auto-apply if enabled and successful
+        # Step 4: Auto-apply if enabled and successful
         if auto_apply and extraction_result.get("success") and extraction_result.get("profile"):
             await apply_icp_to_client_task(
                 client_id=client_id,
@@ -682,7 +542,7 @@ async def icp_onboarding_flow(
                 job_id=job_id,
             )
 
-        # Step 6: Scrape client intelligence for SDK personalization
+        # Step 5: Scrape client intelligence for personalization
         intel_result = await scrape_client_intelligence_task(
             job_id=job_id,
             client_id=client_id,
@@ -697,8 +557,6 @@ async def icp_onboarding_flow(
             "cost_aud": extraction_result.get("cost_aud", 0.0)
             + intel_result.get("total_cost_aud", 0.0),
             "duration_seconds": extraction_result.get("duration_seconds", 0),
-            "sdk_enhanced": extraction_result.get("sdk_enhanced", False),
-            "sdk_confidence": extraction_result.get("sdk_confidence"),
             "intel_sources_scraped": intel_result.get("sources_scraped", []),
             "intel_cost_aud": intel_result.get("total_cost_aud", 0.0),
             "error": extraction_result.get("error"),
@@ -872,6 +730,8 @@ def deploy_onboarding_flows():
 """
 VERIFICATION CHECKLIST:
 - [x] Contract comment at top with FILE, TASK, PHASE, PURPOSE
+- [x] FCO-002: SDK agent enhancement removed
+- [x] FCO-003: Apify references removed (using icp_scraper engine)
 - [x] Follows import hierarchy (Rule 12)
 - [x] Session managed properly with get_db_session()
 - [x] Soft delete checks (deleted_at IS NULL)

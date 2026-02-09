@@ -11,20 +11,22 @@ PHASE: 21 (Deep Research & UI)
 TASK: SKILL-021
 DEPENDENCIES:
   - src/agents/skills/base_skill.py
-  - src/integrations/apify.py
   - src/integrations/anthropic.py
+NOTE: Apify deprecated (FCO-003). LinkedIn scraping stubbed pending Camoufox.
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 12: No imports from engines
 """
 
+import logging
 from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field
 
 from src.agents.skills.base_skill import BaseSkill, SkillRegistry, SkillResult
 from src.integrations.anthropic import AnthropicClient
-from src.integrations.apify import ApifyClient, get_apify_client
+
+logger = logging.getLogger(__name__)
 
 
 class DeepResearchSkill(BaseSkill):
@@ -120,27 +122,6 @@ Return JSON with this structure:
     default_max_tokens: ClassVar[int] = 500
     default_temperature: ClassVar[float] = 0.7
 
-    def __init__(
-        self,
-        apify_client: ApifyClient | None = None,
-        **kwargs,
-    ):
-        """
-        Initialize with optional Apify client.
-
-        Args:
-            apify_client: Optional Apify client (uses singleton if not provided)
-        """
-        super().__init__(**kwargs)
-        self._apify = apify_client
-
-    @property
-    def apify(self) -> ApifyClient:
-        """Get Apify client."""
-        if self._apify is None:
-            self._apify = get_apify_client()
-        return self._apify
-
     async def execute(
         self,
         input_data: Input,
@@ -159,24 +140,14 @@ Return JSON with this structure:
         posts: list[dict[str, Any]] = []
         profile_data: dict[str, Any] = {}
 
-        # Step 1: Scrape LinkedIn profile
-        try:
-            profiles = await self.apify.scrape_linkedin_profiles([input_data.linkedin_url])
-            if profiles:
-                profile_data = profiles[0]
-                # Extract posts if available in profile data
-                raw_posts = profile_data.get("posts", []) or profile_data.get("activity", [])
-                for _i, post in enumerate(raw_posts[: input_data.max_posts]):
-                    posts.append(
-                        {
-                            "content": post.get("text") or post.get("content", ""),
-                            "date": post.get("date") or post.get("posted_date"),
-                            "engagement": post.get("likes", 0) + post.get("comments", 0),
-                        }
-                    )
-        except Exception:
-            # Log but continue - we can still generate based on profile info
-            pass
+        # Step 1: LinkedIn profile scraping
+        # FCO-003: Apify deprecated. LinkedIn scraping stubbed pending Camoufox integration.
+        logger.info(
+            f"[STUB] LinkedIn scraping disabled (FCO-003). "
+            f"Would have scraped: {input_data.linkedin_url}"
+        )
+        # profile_data and posts remain empty - we'll fall through to generate
+        # based on available input_data (name, company, title)
 
         # Step 2: If no posts found, try to get activity from profile
         if not posts and profile_data:
@@ -544,7 +515,7 @@ SkillRegistry.register(PersonalizationAnalysisSkill())
 # [x] Contract comment at top
 # [x] Follows BaseSkill pattern
 # [x] Input/Output Pydantic models
-# [x] Uses ApifyIntegration for LinkedIn scraping
+# [x] LinkedIn scraping stubbed (FCO-003: Apify deprecated)
 # [x] Uses AnthropicIntegration for icebreaker generation
 # [x] Handles missing posts gracefully
 # [x] Returns SkillResult with confidence and cost

@@ -55,9 +55,8 @@ FIELD_PRIORITIES: dict[str, tuple[FieldPriority, str]] = {
     "signals.new_in_role": (FieldPriority.HIGH, "New roles mean new initiatives/budget"),
     "research.pain_points": (FieldPriority.HIGH, "Direct personalization hooks"),
     "research.icebreakers": (FieldPriority.HIGH, "Pre-researched conversation starters"),
-    "sdk_research.icebreakers": (FieldPriority.HIGH, "SDK-discovered personalization hooks"),
-    "sdk_research.pain_points": (FieldPriority.HIGH, "SDK-discovered pain points"),
-    "sdk_research.recent_activity": (FieldPriority.HIGH, "Recent public activity to reference"),
+    # NOTE: sdk_research fields removed per FCO-002 deprecation
+    # SDK agents deprecated - using Apollo enrichment data instead
     "engagement.previous_objections": (FieldPriority.HIGH, "Must address in follow-ups"),
     "engagement.reply_intent": (FieldPriority.HIGH, "Context from previous replies"),
     # MEDIUM PRIORITY - Relevance context
@@ -345,18 +344,9 @@ async def build_full_lead_context(
             "competitors": deep_data.get("competitors", []),
         }
 
-    # Add SDK enrichment if available
-    if row.sdk_enrichment:
-        sdk_data = row.sdk_enrichment
-        context["sdk_research"] = {
-            "company_context": sdk_data.get("company_context"),
-            "person_context": sdk_data.get("person_context"),
-            "icebreakers": sdk_data.get("icebreakers", []),
-            "pain_points": sdk_data.get("pain_points", []),
-            "recent_activity": sdk_data.get("recent_activity", []),
-        }
-        if row.sdk_signals:
-            context["sdk_research"]["signals"] = row.sdk_signals
+    # NOTE: SDK enrichment deprecated per FCO-002
+    # sdk_enrichment and sdk_signals fields are now ignored
+    # Personalization uses research.* and signals.* from Apollo enrichment
 
     # Add engagement history if requested
     if include_engagement:
@@ -903,8 +893,8 @@ def format_lead_context_for_prompt(context: dict[str, Any]) -> str:
         tenure = person.get("tenure_months", 0)
         high_lines.append(f"★ **New in Role:** Yes ({tenure} months)")
 
-    # Research/SDK data - HIGH priority
-    research = context.get("research") or context.get("sdk_research", {})
+    # Research data - HIGH priority (SDK research deprecated per FCO-002)
+    research = context.get("research", {})
     if research:
         if research.get("pain_points"):
             pain_points = research["pain_points"]
@@ -1060,3 +1050,10 @@ def format_lead_context_for_prompt(context: dict[str, Any]) -> str:
 # [x] Helper functions for tenure, funding, location
 # [x] All functions have type hints
 # [x] All functions have docstrings
+# ============================================
+# FCO-002/FCO-003 DEPRECATION UPDATES
+# ============================================
+# [x] sdk_research.* fields removed from FIELD_PRIORITIES
+# [x] SDK enrichment handling removed from build_full_lead_context()
+# [x] format_lead_context_for_prompt() uses research.* only (no sdk_research)
+# [x] Graceful degradation: all functions work when fields are empty/None

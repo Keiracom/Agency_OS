@@ -6,24 +6,11 @@ Consumers: engines, orchestration
 
 SDK Agents use Claude Agent SDK with tools for:
 - ICP extraction (client onboarding)
-- Lead enrichment (Hot leads with signals only)
-- Email personalization (all Hot leads)
-- Voice KB generation (all Hot leads)
-- Objection handling
+
+NOTE: email_agent, enrichment_agent, voice_kb_agent deprecated per FCO-002.
+These functions now handled by Siege Waterfall pipeline.
 """
 
-from src.agents.sdk_agents.email_agent import (
-    EmailOutput,
-    EmailVariants,
-    generate_email_sequence,
-    generate_hot_lead_email,
-    run_sdk_email,
-)
-from src.agents.sdk_agents.enrichment_agent import (
-    EnrichmentOutput,
-    enrich_hot_lead,
-    run_sdk_enrichment,
-)
 from src.agents.sdk_agents.icp_agent import (
     ICPAgent,
     ICPInput,
@@ -54,12 +41,6 @@ from src.agents.sdk_agents.sdk_tools import (
     execute_tool,
     get_tools_for_agent,
 )
-from src.agents.sdk_agents.voice_kb_agent import (
-    VoiceKBOutput,
-    generate_hot_lead_voice_kb,
-    get_basic_voice_kb,
-    run_sdk_voice_kb,
-)
 
 __all__ = [
     # Tools
@@ -89,19 +70,4 @@ __all__ = [
     "ENTERPRISE_THRESHOLD",
     "COMPLETENESS_THRESHOLD",
     "EXECUTIVE_TITLES",
-    # Enrichment Agent
-    "run_sdk_enrichment",
-    "enrich_hot_lead",
-    "EnrichmentOutput",
-    # Email Agent
-    "run_sdk_email",
-    "generate_hot_lead_email",
-    "generate_email_sequence",
-    "EmailOutput",
-    "EmailVariants",
-    # Voice KB Agent
-    "run_sdk_voice_kb",
-    "generate_hot_lead_voice_kb",
-    "get_basic_voice_kb",
-    "VoiceKBOutput",
 ]

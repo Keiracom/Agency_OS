@@ -61,7 +61,7 @@ async def enrich_lead_task(
         Enrichment result with:
             - success: bool
             - lead_id: UUID
-            - enrichment_source: str (cache, apollo, apify, clay)
+            - enrichment_source: str (cache, siege_waterfall, camoufox)
             - confidence: float
             - fields_enriched: list[str]
 

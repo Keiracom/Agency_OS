@@ -127,7 +127,7 @@ async def perform_deep_research_task(
     Perform deep research on a single lead.
 
     Uses the Scout engine's perform_deep_research method which:
-    - Scrapes LinkedIn posts via Apify
+    - Scrapes LinkedIn posts via Camoufox (Apify deprecated FCO-003)
     - Generates icebreaker hooks via Claude
     - Saves results to lead_research and lead_social_posts tables
 

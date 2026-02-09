@@ -472,7 +472,7 @@ async def pool_campaign_assignment_flow(
             "message": "No matching leads available in pool",
         }
 
-    # Step 4: Score allocated leads (initial scoring with Apollo data only)
+    # Step 4: Score allocated leads (initial scoring with Siege Waterfall data)
     # Phase 37: Use lead_pool_ids directly (no separate assignments)
     lead_pool_ids = [lead["lead_pool_id"] for lead in allocation_result["assigned_leads"]]
     scoring_result = await score_pool_leads_task(

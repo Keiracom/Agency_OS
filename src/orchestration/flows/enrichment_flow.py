@@ -318,53 +318,8 @@ async def score_lead_task(lead_id: str) -> dict[str, Any]:
             }
 
 
-@task(name="sdk_enrich_hot_lead", retries=2, retry_delay_seconds=10)
-async def sdk_enrich_hot_lead_task(lead_id: str, signals: list[str]) -> dict[str, Any]:
-    """
-    Run SDK enrichment for a Hot lead with priority signals.
-
-    This performs deep web research to find funding info, hiring data,
-    recent news, and personalization opportunities.
-
-    Args:
-        lead_id: Lead UUID string
-        signals: Priority signals that triggered SDK eligibility
-
-    Returns:
-        Dict with SDK enrichment results
-    """
-    async with get_db_session() as db:
-        scout_engine = get_scout_engine()
-        lead_uuid = UUID(lead_id)
-
-        # Run SDK-enhanced enrichment
-        result = await scout_engine.enrich_lead_with_sdk(
-            db=db,
-            lead_id=lead_uuid,
-            force_refresh=False,
-        )
-
-        if result.success:
-            sdk_data = result.data.get("sdk_enrichment", {})
-            sdk_cost = result.data.get("sdk_cost_aud", 0)
-            logger.info(
-                f"SDK enrichment complete for lead {lead_id}: "
-                f"signals={signals}, cost=${sdk_cost:.2f}"
-            )
-            return {
-                "lead_id": lead_id,
-                "success": True,
-                "sdk_enrichment": sdk_data,
-                "sdk_cost_aud": sdk_cost,
-                "signals": signals,
-            }
-        else:
-            logger.warning(f"SDK enrichment failed for {lead_id}: {result.error}")
-            return {
-                "lead_id": lead_id,
-                "success": False,
-                "error": result.error,
-            }
+# NOTE: sdk_enrich_hot_lead_task removed per FCO-002.
+# Hot lead enrichment now handled by Siege Waterfall pipeline.
 
 
 @task(name="allocate_channels_for_lead", retries=2, retry_delay_seconds=5)
@@ -561,19 +516,8 @@ async def daily_enrichment_flow(
         result = await score_lead_task(lead_id=lead_id)
         scoring_results.append(result)
 
-    # Step 3.5: SDK enrichment for Hot leads with priority signals
-    sdk_enrichment_results = []
-    for score_result in scoring_results:
-        if score_result.get("sdk_eligible") and score_result.get("sdk_signals"):
-            logger.info(
-                f"Hot lead {score_result['lead_id']} qualifies for SDK enrichment: "
-                f"{score_result['sdk_signals']}"
-            )
-            sdk_result = await sdk_enrich_hot_lead_task(
-                lead_id=score_result["lead_id"],
-                signals=score_result["sdk_signals"],
-            )
-            sdk_enrichment_results.append(sdk_result)
+    # NOTE: Step 3.5 (SDK enrichment) removed per FCO-002.
+    # Hot lead enrichment now handled by Siege Waterfall pipeline.
 
     # Step 4: Allocate channels for scored leads
     allocation_results = []
@@ -609,12 +553,6 @@ async def daily_enrichment_flow(
     total_allocated = sum(1 for r in allocation_results if r["success"])
     total_credits_deducted = sum(r["credits_deducted"] for r in credit_results)
 
-    # SDK enrichment stats
-    total_sdk_enriched = sum(1 for r in sdk_enrichment_results if r.get("success"))
-    total_sdk_cost = sum(
-        r.get("sdk_cost_aud", 0) for r in sdk_enrichment_results if r.get("success")
-    )
-
     summary = {
         "total_leads_processed": leads_data["total_leads"],
         "total_enriched": total_enriched,
@@ -622,12 +560,9 @@ async def daily_enrichment_flow(
         "total_allocated": total_allocated,
         "clients_processed": len(leads_data["leads_by_client"]),
         "total_credits_deducted": total_credits_deducted,
-        "sdk_enriched": total_sdk_enriched,
-        "sdk_cost_aud": total_sdk_cost,
         "dncr_checked": dncr_result.get("total", 0),
         "dncr_blocked": dncr_result.get("on_dncr", 0),
         "enrichment_results": enrichment_results,
-        "sdk_enrichment_results": sdk_enrichment_results,
         "completed_at": datetime.utcnow().isoformat(),
     }
 
@@ -635,7 +570,6 @@ async def daily_enrichment_flow(
         f"Daily enrichment flow completed: {total_enriched} enriched, "
         f"{total_scored} scored, {total_allocated} allocated, "
         f"{total_credits_deducted} credits deducted, "
-        f"{total_sdk_enriched} SDK enriched (${total_sdk_cost:.2f}), "
         f"DNCR: {dncr_result.get('on_dncr', 0)}/{dncr_result.get('total', 0)} blocked"
     )
 

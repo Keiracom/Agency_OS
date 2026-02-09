@@ -26,6 +26,19 @@ GOVERNANCE EVENT: FIXED_COST_OPTIMIZATION_PHASE_1
 DESCRIPTION: DIY GMB scraper replaces Apify dependency for Google Maps data
 """
 
+# =============================================================================
+# INFRASTRUCTURE DEPENDENCY WARNING
+# =============================================================================
+# This file imports from Clawdbot tools (autonomous_browser.py, proxy_manager.py)
+# located at /home/elliotbot/clawd/tools/ (OUTSIDE this repo).
+#
+# CRITICAL: proxy_manager.py must use AU-geolocated proxies.
+# Webshare URL must have country_code = "AU" (not "-" for global).
+# Global proxies route through EU and hit Google GDPR consent wall.
+#
+# Reference: Commit 6c61b66 on Clawdbot local repo (fix/gmb-au-proxy)
+# =============================================================================
+
 import asyncio
 import json
 import logging

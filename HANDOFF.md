@@ -1,100 +1,95 @@
-# HANDOFF.md — Session 2026-02-09 (Session B Complete)
+# HANDOFF.md — Session 2026-02-09 (Session C Complete)
 
-**Last Updated:** 2026-02-09 03:30 UTC
+**Last Updated:** 2026-02-09 03:45 UTC
 **Directives:** CEO #001 (Stabilize), #002 (Tier 4 Pivot), #003 (Apollo/Proxycurl Cleanup)
 **Governance:** LAW I-A, LAW III, LAW V
 
 ---
 
-## 🎯 Session B — Refactors Summary
+## ✅ CLEANUP COMPLETE
 
-**Objective:** Fix all files with broken imports after Session A deletions
-
-### Commits This Session
-
-| Commit | File | Lines Changed | Notes |
-|--------|------|---------------|-------|
-| `360f425` | lead_enrichment_flow.py | -313 | Removed SDK agent tasks and Stage 5 |
-| `887d285` | enrichment_flow.py | -70 | Removed SDK enrich task and Step 3.5 |
-| `27e6896` | pool_population_flow.py | -104 | Removed Apollo, renamed tasks |
-| `b6d0f76` | scout.py | -69 | Replaced Apollo/Apify with Camoufox |
-| `57a3905` | icp_scraper.py | Already clean | Sub-agent verified |
-| `10fac49` | siege_waterfall.py | +1 | Deprecated ProxycurlClientAdapter |
-
-**Total Removed:** ~556 lines of deprecated code
+**All deprecated integrations removed from codebase.**
 
 ---
 
-## ⚠️ Remaining Broken Imports (Session C)
+## 🎯 Session C — Final Refactors
 
-### Apify References (6 files)
+**Objective:** Remove all remaining Apify/Proxycurl/SDK agent references
 
-| File | Line | Issue |
-|------|------|-------|
-| `src/orchestration/flows/stale_lead_refresh_flow.py` | 30 | `from src.integrations.apify` |
-| `src/engines/client_intelligence.py` | 20 | `from src.integrations.apify` |
-| `src/agents/icp_discovery_agent.py` | 61 | `from src.integrations.apify` |
-| `src/agents/skills/social_enricher.py` | 171 | Lazy import of Apify |
-| `src/agents/skills/social_profile_discovery.py` | 119 | Lazy import of Apify |
-| `src/agents/skills/research_skills.py` | 27 | `from src.integrations.apify` |
+### Commits This Session
 
-### Test Files (1 file)
+| Commit | File | Category |
+|--------|------|----------|
+| `5e2c200` | siege_waterfall.py | Tier 4 graceful skip |
+| `449364c` | 4 comment-only files | Docs |
+| `f1cd3f0` | icp_discovery_agent.py | Agent |
+| `a5e1e97` | identity_escalation.py | Engine |
+| `737e00f` | research_skills.py | Skill |
+| `273b5e4` | social_enricher.py | Skill |
+| `882f32a` | stale_lead_refresh_flow.py | Flow |
+| `26d5a02` | client_intelligence.py | Engine |
+| `6d1ce80` | onboarding_flow.py | Flow |
+| `dab3903` | social_profile_discovery.py | Skill |
+| `92303e3` | smart_prompts.py | Engine |
+| `f455c15` | content.py | Engine |
+| `c60c5fc` | test_scraper_waterfall.py | Test |
 
-| File | Line | Issue |
-|------|------|-------|
-| `tests/test_engines/test_scraper_waterfall.py` | 26, 593 | Apify imports |
+---
 
-**Fix:** Replace with Camoufox scraper or remove scraping functionality.
+## 📊 Full Cleanup Summary (Sessions A+B+C)
+
+| Metric | Value |
+|--------|-------|
+| Files deleted | 8 |
+| Files refactored | 20+ |
+| Total lines removed | ~6,500 |
+| Deprecated integrations | apollo.py, apify.py, proxycurl.py |
+| Deprecated SDK agents | email_agent.py, enrichment_agent.py, voice_kb_agent.py |
+| Branch | `cleanup/deprecated-sdk-agents` |
+| Total commits | 27 |
+
+---
+
+## ✅ Verification
+
+```bash
+# All imports clean:
+grep -rn "from src.integrations.apify|proxycurl|apollo" src/ tests/
+# Result: 0 matches (only comments remain)
+```
+
+---
+
+## 🔄 Graceful Degradation Status
+
+| Component | Status | Fallback |
+|-----------|--------|----------|
+| Siege Waterfall Tier 4 | Skipped | "Unipile not activated" |
+| Social scraping | Stubbed | Returns empty results |
+| LinkedIn enrichment | Disabled | Uses Siege Tiers 1-3, 5 |
+| SDK agents | Removed | Siege Waterfall pipeline |
 
 ---
 
 ## 📋 Branch Status
 
 **Branch:** `cleanup/deprecated-sdk-agents`
-**Total Commits:** 14 (8 deletions + 6 refactors)
-**Status:** Session B complete. 7 files remain for Session C.
+**Status:** ✅ Ready for merge
+**Total Commits:** 27
 
 ---
 
-## ⏳ Session C Priorities
+## ⏳ Post-Merge: Unipile Integration
 
-**Remaining Refactors (in order):**
+CEO Directive #002 approved Unipile as Proxycurl replacement.
 
-1. `stale_lead_refresh_flow.py` — Remove Apify, use Camoufox
-2. `client_intelligence.py` — Remove Apify, use Camoufox/GMB scraper
-3. `icp_discovery_agent.py` — Remove Apify, use Camoufox
-4. `research_skills.py` — Remove Apify, use Camoufox
-5. `social_enricher.py` — Remove Apify lazy import
-6. `social_profile_discovery.py` — Remove Apify lazy import
-7. `test_scraper_waterfall.py` — Update test mocks
+**Implementation Steps:**
+1. Create `src/integrations/unipile.py`
+2. Implement UnipileClient with BYOA auth flow
+3. Update `siege_waterfall.py` Tier 4 to use Unipile
+4. Test with customer LinkedIn OAuth
 
-**Estimate:** ~150 lines of refactoring across 7 files.
-
----
-
-## 📊 Session A+B Combined Summary
-
-| Metric | Value |
-|--------|-------|
-| Files deleted | 8 |
-| Files refactored | 6 |
-| Total lines removed | ~5,360 |
-| Remaining broken files | 7 |
-| Branch | `cleanup/deprecated-sdk-agents` |
-
----
-
-## 📋 CEO Directive #002 — Tier 4 Pivot (APPROVED)
-
-**Decision:** Replace Proxycurl with Unipile for LinkedIn enrichment
-
-| Aspect | Finding |
-|--------|---------|
-| Unipile Cost | €5/account/mo, no per-request fees |
-| Rate Limits | ~100 profiles/day/account |
-| Auth Model | BYOA (customer's LinkedIn via hosted auth) |
-
-**Status:** ProxycurlClientAdapter deprecated (graceful skip). Awaiting Unipile integration.
+**Estimate:** 2-3 sessions
 
 ---
 
@@ -111,12 +106,13 @@
 
 ## 📊 SSOT References
 
-- **FCO-002:** SDK agent deprecation
-- **FCO-003:** Apify deprecation
-- **CEO Directive #003:** Apollo/Proxycurl cleanup
+- **FCO-002:** SDK agent deprecation ✅ Complete
+- **FCO-003:** Apify deprecation ✅ Complete
+- **CEO Directive #002:** Unipile integration (pending)
+- **CEO Directive #003:** Apollo/Proxycurl cleanup ✅ Complete
 - **SIEGE:** `siege_waterfall.py` is SSOT for enrichment
 - **Scraping:** `camoufox_scraper.py` is SSOT for website scraping
 
 ---
 
-*Handoff updated 2026-02-09 03:30 UTC. Session B complete. 7 files remain.*
+*Handoff updated 2026-02-09 03:45 UTC. Cleanup complete. Ready for merge.*

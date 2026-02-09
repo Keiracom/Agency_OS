@@ -13,8 +13,10 @@ PURPOSE: Multi-source data scraping for ICP extraction with waterfall architectu
 DEPENDENCIES:
 - src/engines/base.py
 - src/engines/url_validator.py
-- src/integrations/apify.py
-- src/integrations/apollo.py
+- src/integrations/camoufox_scraper.py
+- src/integrations/clay.py
+- src/integrations/siege_waterfall.py
+- src/integrations/gmb_scraper.py
 - src/exceptions.py
 
 EXPORTS:
@@ -27,12 +29,16 @@ RULES APPLIED:
 - Rule 12: No imports from other engines (url_validator is same layer)
 - Rule 14: Soft deletes in queries
 
-WATERFALL ARCHITECTURE (Phase 19):
+WATERFALL ARCHITECTURE (Phase 19 - Post FCO-002/FCO-003):
   Tier 0: URL Validation (url_validator.py)
-  Tier 1: Cheerio (apify.py)
-  Tier 2: Playwright (apify.py)
-  Tier 3: Camoufox (camoufox_scraper.py) - anti-detection for Cloudflare sites
-  Tier 4: Manual fallback UI
+  Tier 1: Camoufox anti-detection browser (primary scraper)
+  Tier 2: Manual fallback UI
+
+DEPRECATION NOTES (FCO-002, FCO-003):
+  - Apollo integration REMOVED (CEO Directive #003)
+  - Apify integration REMOVED (FCO-002 cost optimization)
+  - Enrichment now via Siege Waterfall (siege_waterfall.py)
+  - Scraping now via Camoufox (camoufox_scraper.py)
 """
 
 from __future__ import annotations
@@ -52,8 +58,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.engines.base import BaseEngine, EngineResult
 from src.engines.url_validator import URLValidator, get_url_validator
 from src.integrations.anthropic import get_anthropic_client
-from src.integrations.apify import ScrapeResult, get_apify_client
-from src.integrations.apollo import get_apollo_client
 from src.integrations.camoufox_scraper import (
     CamoufoxScraper,
     get_camoufox_scraper,
@@ -77,8 +81,6 @@ PORTFOLIO_PATHS = [
 
 if TYPE_CHECKING:
     from src.integrations.anthropic import AnthropicClient
-    from src.integrations.apify import ApifyClient
-    from src.integrations.apollo import ApolloClient
     from src.integrations.clay import ClayClient
 
 logger = logging.getLogger(__name__)
@@ -119,7 +121,7 @@ class ScrapedWebsite:
     page_count: int = 0
     scraped_at: datetime = field(default_factory=datetime.utcnow)
     # Waterfall tracking (Phase 19)
-    tier_used: int = 0  # 0=validation, 1=cheerio, 2=playwright, 3=camoufox, 4=manual
+    tier_used: int = 0  # 0=validation, 1=camoufox, 2=manual
     needs_fallback: bool = False
     failure_reason: str | None = None
     manual_fallback_url: str | None = None
@@ -166,9 +168,13 @@ class ICPScraperEngine(BaseEngine):
     Multi-source scraper for ICP extraction.
 
     This engine handles DATA FETCHING ONLY:
-    - Website scraping via Apify
-    - Company enrichment via Apollo
-    - LinkedIn company data lookup
+    - Website scraping via Camoufox (anti-detection browser)
+    - Company enrichment via Siege Waterfall (ABN, GMB, Hunter, etc.)
+    - LinkedIn company data lookup (limited - uses Claude inference)
+
+    DEPRECATION (FCO-002, FCO-003):
+    - Apollo integration REMOVED (CEO Directive #003)
+    - Apify integration REMOVED (cost optimization)
 
     It does NOT do AI processing - that's the job of
     the ICP Discovery Agent and its skills.
@@ -176,8 +182,6 @@ class ICPScraperEngine(BaseEngine):
 
     def __init__(
         self,
-        apify_client: ApifyClient | None = None,
-        apollo_client: ApolloClient | None = None,
         clay_client: ClayClient | None = None,
         anthropic_client: AnthropicClient | None = None,
         url_validator: URLValidator | None = None,
@@ -188,16 +192,12 @@ class ICPScraperEngine(BaseEngine):
         Initialize with optional client overrides for testing.
 
         Args:
-            apify_client: Optional Apify client override
-            apollo_client: Optional Apollo client override
             clay_client: Optional Clay client override
             anthropic_client: Optional Anthropic client override
             url_validator: Optional URL validator override
-            camoufox_scraper: Optional Camoufox scraper override (Tier 3)
+            camoufox_scraper: Optional Camoufox scraper override
             siege_waterfall: Optional SiegeWaterfall override
         """
-        self._apify = apify_client
-        self._apollo = apollo_client
         self._clay = clay_client
         self._anthropic = anthropic_client
         self._url_validator = url_validator
@@ -208,20 +208,6 @@ class ICPScraperEngine(BaseEngine):
     def name(self) -> str:
         """Engine name."""
         return "icp_scraper"
-
-    @property
-    def apify(self) -> ApifyClient:
-        """Get Apify client."""
-        if self._apify is None:
-            self._apify = get_apify_client()
-        return self._apify
-
-    @property
-    def apollo(self) -> ApolloClient:
-        """Get Apollo client."""
-        if self._apollo is None:
-            self._apollo = get_apollo_client()
-        return self._apollo
 
     @property
     def clay(self) -> ClayClient:
@@ -246,14 +232,14 @@ class ICPScraperEngine(BaseEngine):
 
     @property
     def camoufox(self) -> CamoufoxScraper:
-        """Get Camoufox scraper (Tier 3 anti-detection)."""
+        """Get Camoufox scraper (primary anti-detection scraper)."""
         if self._camoufox is None:
             self._camoufox = get_camoufox_scraper()
         return self._camoufox
 
     @property
     def camoufox_enabled(self) -> bool:
-        """Check if Camoufox Tier 3 scraper is enabled and available."""
+        """Check if Camoufox scraper is enabled and available."""
         from src.config.settings import settings
 
         return settings.camoufox_enabled and is_camoufox_available()
@@ -380,12 +366,9 @@ class ICPScraperEngine(BaseEngine):
         """
         Directly fetch portfolio pages using httpx (ICP-FIX-008).
 
-        This supplements the Apify scrape by directly fetching known
+        This supplements the main scrape by directly fetching known
         portfolio page paths. httpx follows redirects automatically,
         so www/non-www issues are handled.
-
-        This is the same approach used by WebFetch - direct HTTP request
-        that follows redirects and gets the final HTML.
 
         Args:
             base_url: Base website URL (e.g., https://dilate.com.au/)
@@ -428,18 +411,18 @@ class ICPScraperEngine(BaseEngine):
         max_pages: int = 15,
     ) -> EngineResult[ScrapedWebsite]:
         """
-        Scrape a website using the Scraper Waterfall architecture.
+        Scrape a website using Camoufox anti-detection browser.
 
-        Waterfall tiers:
+        Waterfall tiers (Post FCO-002 deprecation):
         - Tier 0: URL validation (check format, DNS, parked domains)
-        - Tier 1: Apify Cheerio (fast, static HTML)
-        - Tier 2: Apify Playwright (JS rendering)
-        - Tier 3: Camoufox (future - for Cloudflare bypass)
-        - Tier 4: Manual fallback UI
+        - Tier 1: Camoufox anti-detection browser (primary)
+        - Tier 2: Manual fallback UI
+
+        Note: Apify tiers removed (FCO-002 cost optimization)
 
         Args:
             url: Website URL to scrape
-            max_pages: Maximum pages to crawl (default 15)
+            max_pages: Maximum pages to crawl (default 15, currently single-page)
 
         Returns:
             EngineResult containing ScrapedWebsite with tier tracking
@@ -482,195 +465,94 @@ class ICPScraperEngine(BaseEngine):
             logger.info(f"URL redirected: {url} -> {canonical_url}")
             domain = self._extract_domain(canonical_url)
 
-        # ===== TIER 1 & 2: Apify Waterfall =====
-        # Both Cheerio and Playwright now use seed URLs to crawl common
-        # agency pages like /case-studies, /testimonials, /portfolio.
-        # This ensures portfolio data is captured even on JS-heavy sites.
-        try:
-            scrape_result: ScrapeResult = await self.apify.scrape_website_with_waterfall(
-                canonical_url, max_pages=max_pages
-            )
+        # ===== TIER 1: Camoufox Anti-Detection Browser =====
+        # Primary scraping tier after FCO-002 Apify deprecation
+        if self.camoufox_enabled:
+            try:
+                logger.info(f"Tier 1: Attempting Camoufox scrape for {canonical_url}")
+                camoufox_result = await self.camoufox.scrape(canonical_url)
 
-            # Transform Apify result to our format
-            pages = []
-            all_html = []
+                if camoufox_result.success:
+                    logger.info(
+                        f"Tier 1 success for {url}: {len(camoufox_result.raw_html):,} chars"
+                    )
 
-            for page_data in scrape_result.pages:
-                html_content = page_data.get("html", "") or page_data.get("text", "")
-                page = ScrapedPage(
-                    url=page_data.get("url", ""),
-                    title=page_data.get("title", ""),
-                    html=html_content,
-                    text=page_data.get("text", ""),
-                    links=page_data.get("links", []),
-                    images=page_data.get("images", []),
-                )
-                pages.append(page)
-                if html_content:
-                    all_html.append(html_content)
+                    # Create ScrapedPage from Camoufox result
+                    camoufox_page = ScrapedPage(
+                        url=canonical_url,
+                        title=camoufox_result.title,
+                        html=camoufox_result.raw_html,
+                        text="",  # Camoufox returns raw HTML
+                        links=[],
+                        images=[],
+                    )
 
-            # Check if waterfall succeeded
-            if scrape_result.needs_fallback:
-                logger.warning(f"Tier 1/2 (Apify) failed for {url}, trying Tier 3 (Camoufox)")
+                    # Fetch portfolio pages to supplement
+                    portfolio_html = await self._fetch_portfolio_pages(canonical_url)
+                    combined_html = camoufox_result.raw_html
+                    if portfolio_html:
+                        combined_html = (
+                            combined_html + "\n\n---DIRECT FETCH---\n\n" + portfolio_html
+                        )
 
-                # ===== TIER 3: Camoufox Anti-Detection =====
-                # Only try if Camoufox is enabled and available
-                if self.camoufox_enabled:
-                    try:
-                        logger.info(f"Tier 3: Attempting Camoufox scrape for {canonical_url}")
-                        camoufox_result = await self.camoufox.scrape(canonical_url)
+                    # Extract social links
+                    social_links = self._extract_social_links(combined_html)
 
-                        if camoufox_result.success:
-                            logger.info(
-                                f"Tier 3 success for {url}: {len(camoufox_result.raw_html):,} chars"
-                            )
-
-                            # Create ScrapedPage from Camoufox result
-                            camoufox_page = ScrapedPage(
-                                url=canonical_url,
-                                title=camoufox_result.title,
-                                html=camoufox_result.raw_html,
-                                text="",  # Camoufox returns raw HTML
-                                links=[],
-                                images=[],
-                            )
-
-                            # Fetch portfolio pages to supplement
-                            portfolio_html = await self._fetch_portfolio_pages(canonical_url)
-                            combined_html = camoufox_result.raw_html
-                            if portfolio_html:
-                                combined_html = (
-                                    combined_html + "\n\n---DIRECT FETCH---\n\n" + portfolio_html
-                                )
-
-                            # Extract social links
-                            social_links = self._extract_social_links(combined_html)
-
-                            scraped = ScrapedWebsite(
-                                url=url,
-                                domain=domain,
-                                pages=[camoufox_page],
-                                raw_html=combined_html,
-                                page_count=1,
-                                tier_used=3,
-                                needs_fallback=False,
-                                canonical_url=canonical_url,
-                                social_links=social_links,
-                            )
-
-                            return EngineResult.ok(
-                                data=scraped,
-                                metadata={
-                                    "domain": domain,
-                                    "pages_scraped": 1,
-                                    "tier_used": 3,
-                                    "redirected": validation.redirected,
-                                    "canonical_url": canonical_url,
-                                    "camoufox_used": True,
-                                },
-                            )
-                        else:
-                            logger.warning(
-                                f"Tier 3 (Camoufox) failed for {url}: {camoufox_result.failure_reason}"
-                            )
-                    except Exception as camoufox_error:
-                        logger.error(f"Tier 3 (Camoufox) exception for {url}: {camoufox_error}")
-                else:
-                    logger.info("Tier 3 (Camoufox) skipped - not enabled or not available")
-
-                # ===== TIER 4: Manual Fallback =====
-                # All automated tiers failed, return with manual fallback flag
-                tier_used = 3 if self.camoufox_enabled else 2
-                logger.warning(f"All tiers failed for {url}, needs manual fallback")
-                return EngineResult.ok(
-                    data=ScrapedWebsite(
+                    scraped = ScrapedWebsite(
                         url=url,
                         domain=domain,
-                        pages=pages,
-                        raw_html=scrape_result.raw_html,
-                        page_count=scrape_result.page_count,
-                        tier_used=tier_used,
-                        needs_fallback=True,
-                        failure_reason=f"All automated tiers ({tier_used}) failed",
-                        manual_fallback_url=f"/onboarding/manual-entry?url={url}",
+                        pages=[camoufox_page],
+                        raw_html=combined_html,
+                        page_count=1,
+                        tier_used=1,
+                        needs_fallback=False,
                         canonical_url=canonical_url,
-                    ),
-                    metadata={
-                        "domain": domain,
-                        "tier_used": tier_used,
-                        "needs_fallback": True,
-                        "failure_reason": scrape_result.failure_reason,
-                        "camoufox_attempted": self.camoufox_enabled,
-                    },
-                )
+                        social_links=social_links,
+                    )
 
-            # Success!
-            logger.info(
-                f"Waterfall success for {url}: tier={scrape_result.tier_used}, pages={len(pages)}"
-            )
+                    return EngineResult.ok(
+                        data=scraped,
+                        metadata={
+                            "domain": domain,
+                            "pages_scraped": 1,
+                            "tier_used": 1,
+                            "redirected": validation.redirected,
+                            "canonical_url": canonical_url,
+                            "camoufox_used": True,
+                        },
+                    )
+                else:
+                    logger.warning(
+                        f"Tier 1 (Camoufox) failed for {url}: {camoufox_result.failure_reason}"
+                    )
+            except Exception as camoufox_error:
+                logger.error(f"Tier 1 (Camoufox) exception for {url}: {camoufox_error}")
+        else:
+            logger.warning("Tier 1 (Camoufox) not available - needs to be enabled")
 
-            # ICP-FIX-008: Direct fetch portfolio pages to supplement Apify scrape
-            # This ensures we get case study/portfolio URLs even if Apify missed them
-            portfolio_html = await self._fetch_portfolio_pages(canonical_url)
-
-            # Combine all HTML sources
-            combined_html = (
-                "\n\n---PAGE BREAK---\n\n".join(all_html) if all_html else scrape_result.raw_html
-            )
-            if portfolio_html:
-                combined_html = combined_html + "\n\n---DIRECT FETCH---\n\n" + portfolio_html
-                logger.info(
-                    f"Combined raw_html size: {len(combined_html):,} chars (includes direct fetch)"
-                )
-
-            # ICP-SOC-001: Extract social media links from raw HTML
-            social_links = self._extract_social_links(combined_html)
-
-            scraped = ScrapedWebsite(
+        # ===== TIER 2: Manual Fallback =====
+        # All automated tiers failed, return with manual fallback flag
+        logger.warning(f"All tiers failed for {url}, needs manual fallback")
+        return EngineResult.ok(
+            data=ScrapedWebsite(
                 url=url,
                 domain=domain,
-                pages=pages,
-                raw_html=combined_html,
-                page_count=len(pages),
-                tier_used=scrape_result.tier_used,
-                needs_fallback=False,
+                pages=[],
+                raw_html="",
+                page_count=0,
+                tier_used=1,
+                needs_fallback=True,
+                failure_reason="Camoufox scraping failed or not available",
+                manual_fallback_url=f"/onboarding/manual-entry?url={url}",
                 canonical_url=canonical_url,
-                social_links=social_links,
-            )
-
-            return EngineResult.ok(
-                data=scraped,
-                metadata={
-                    "domain": domain,
-                    "pages_scraped": len(pages),
-                    "tier_used": scrape_result.tier_used,
-                    "redirected": validation.redirected,
-                    "canonical_url": canonical_url,
-                },
-            )
-
-        except Exception as e:
-            logger.error(f"Scraper waterfall exception for {url}: {e}")
-            return EngineResult.ok(
-                data=ScrapedWebsite(
-                    url=url,
-                    domain=domain,
-                    pages=[],
-                    raw_html="",
-                    page_count=0,
-                    tier_used=2,
-                    needs_fallback=True,
-                    failure_reason=f"Scraper error: {str(e)}",
-                    manual_fallback_url=f"/onboarding/manual-entry?url={url}",
-                    canonical_url=canonical_url,
-                ),
-                metadata={
-                    "domain": domain,
-                    "tier_used": 2,
-                    "needs_fallback": True,
-                    "error": str(e),
-                },
-            )
+            ),
+            metadata={
+                "domain": domain,
+                "tier_used": 1,
+                "needs_fallback": True,
+                "camoufox_attempted": self.camoufox_enabled,
+            },
+        )
 
     async def get_linkedin_company_data(
         self,
@@ -678,70 +560,42 @@ class ICPScraperEngine(BaseEngine):
         domain: str | None = None,
     ) -> EngineResult[LinkedInCompanyData]:
         """
-        Get LinkedIn company data via Apollo organization lookup.
+        Get LinkedIn company data via Claude inference.
+
+        NOTE: Direct LinkedIn scraping removed (FCO-002 Apify deprecation).
+        Now uses Claude inference to estimate company data from name/domain.
 
         Args:
             company_name: Company name to look up
             domain: Optional company domain for better matching
 
         Returns:
-            EngineResult containing LinkedInCompanyData
+            EngineResult containing LinkedInCompanyData (inferred)
         """
         try:
-            # Try Apollo domain-based lookup first
-            if domain:
-                logger.info(
-                    f"Looking up LinkedIn data for {company_name} via Apollo (domain: {domain})"
+            logger.info(
+                f"get_linkedin_company_data: Using Claude inference for {company_name} "
+                "(LinkedIn scraping removed - FCO-002)"
+            )
+
+            # Use Claude inference instead of LinkedIn scraping
+            claude_inference = await self._infer_industry_with_claude(company_name, domain)
+
+            if claude_inference.get("industry"):
+                linkedin_data = LinkedInCompanyData(
+                    company_name=company_name,
+                    industry=claude_inference.get("industry"),
+                    employee_range=claude_inference.get("employee_range"),
                 )
-                apollo_result = await self.apollo.enrich_company(domain)
-
-                if apollo_result.get("found"):
-                    linkedin_data = LinkedInCompanyData(
-                        company_name=apollo_result.get("name", company_name),
-                        employee_count=apollo_result.get("employee_count"),
-                        headquarters=None,  # Apollo doesn't return this directly
-                        founded_year=apollo_result.get("founded_year"),
-                        industry=apollo_result.get("industry"),
-                        specialties=[],  # Apollo doesn't return this
-                        linkedin_url=apollo_result.get("linkedin_url"),
-                    )
-                    return EngineResult.ok(
-                        data=linkedin_data,
-                        metadata={"found": True, "source": "apollo"},
-                    )
-
-            # Fallback: Try Apify LinkedIn Company Scraper
-            if self.apify:
-                logger.info(f"Falling back to LinkedIn scraper for {company_name}")
-                # Search for company LinkedIn page
-                search_results = await self.apify.search_google(
-                    [f'"{company_name}" site:linkedin.com/company'], results_per_query=1
+                return EngineResult.ok(
+                    data=linkedin_data,
+                    metadata={"found": True, "source": "claude_inference"},
                 )
 
-                if search_results:
-                    linkedin_url = search_results[0].get("link", "")
-                    if "linkedin.com/company" in linkedin_url:
-                        scraped = await self.apify.scrape_linkedin_company(linkedin_url)
-                        if scraped.get("found"):
-                            linkedin_data = LinkedInCompanyData(
-                                company_name=scraped.get("name", company_name),
-                                employee_count=scraped.get("employee_count"),
-                                employee_range=scraped.get("employee_range"),
-                                headquarters=scraped.get("headquarters"),
-                                founded_year=scraped.get("founded_year"),
-                                industry=scraped.get("industry"),
-                                specialties=scraped.get("specialties", []),
-                                linkedin_url=linkedin_url,
-                            )
-                            return EngineResult.ok(
-                                data=linkedin_data,
-                                metadata={"found": True, "source": "linkedin_scraper"},
-                            )
-
-            # Not found
+            # Not found / inference failed
             return EngineResult.ok(
                 data=LinkedInCompanyData(company_name=company_name),
-                metadata={"found": False},
+                metadata={"found": False, "source": "none"},
             )
 
         except Exception as e:
@@ -830,14 +684,16 @@ Respond in JSON format only:
 
         Phase Dynamic ICP: Now accepts icp_config for dynamic country targeting.
 
-        NEW WATERFALL (Claude-first):
+        NEW WATERFALL (Post FCO-002/FCO-003):
         Tier 0: Claude inference (always runs first to establish baseline)
-        Tier 1: Apollo name/domain search (confirm/enrich)
-        Tier 1.5: LinkedIn scrape (fill gaps)
-        Tier 1.6: Clay enrichment (fill gaps)
-        Tier 2: LinkedIn via Google search
-        Tier 3: Google Business (great for local AU)
-        Tier 4: General Google search
+        Tier 0.5: Siege Waterfall for AU businesses (ABN + GMB)
+        Tier 1: Clay enrichment (if domain available)
+        Tier 2: Google Business (excellent for local AU)
+        Tier 3: Keyword fallback
+
+        REMOVED (FCO-002, FCO-003):
+        - Apollo (CEO Directive #003)
+        - Apify LinkedIn/Google search (cost optimization)
 
         Args:
             company_name: Company name
@@ -859,7 +715,7 @@ Respond in JSON format only:
         enrichment_source = None
 
         # ============================================
-        # TIER 0 (NEW): Claude Inference - ALWAYS RUNS FIRST
+        # TIER 0: Claude Inference - ALWAYS RUNS FIRST
         # ============================================
         # Claude analyzes the company name to establish a baseline industry.
         # This ensures every company gets SOME industry data even if all APIs fail.
@@ -885,14 +741,14 @@ Respond in JSON format only:
         if is_australian:
             try:
                 logger.info(f"Tier 0.5 (Siege): ABN+GMB enrichment for AU company {company_name}")
-                
+
                 # Build minimal lead data for Siege Waterfall
                 siege_data = {
                     "company_name": company_name,
                     "domain": domain,
                     "country": primary_country,
                 }
-                
+
                 # Run only ABN and GMB tiers (skip expensive tiers)
                 siege_result = await self.siege_waterfall.enrich_lead(
                     siege_data,
@@ -902,10 +758,10 @@ Respond in JSON format only:
                         EnrichmentTier.IDENTITY,    # Skip Kaspr (expensive)
                     ],
                 )
-                
+
                 if siege_result.sources_used > 0:
                     siege_enriched = siege_result.enriched_data
-                    
+
                     # Extract useful company data from Siege results
                     if siege_enriched.get("phone") and not enriched.location:
                         enriched.location = siege_enriched.get("address")
@@ -919,10 +775,10 @@ Respond in JSON format only:
                         if parsed.netloc:
                             enriched.domain = parsed.netloc.lower().replace("www.", "")
                             domain = enriched.domain
-                    
+
                     enriched.country = primary_country
                     enrichment_source = f"siege_waterfall_{siege_result.sources_used}sources"
-                    
+
                     logger.info(
                         f"Siege Waterfall found for {company_name}: "
                         f"industry={enriched.industry}, sources={siege_result.sources_used}, "
@@ -932,93 +788,12 @@ Respond in JSON format only:
                 logger.warning(f"Siege Waterfall failed for {company_name}: {e}")
 
         # ============================================
-        # TIER 1: Apollo - Confirm/Enrich Claude's baseline
+        # TIER 1: Clay enrichment (if we have domain but still missing data)
         # ============================================
-        # Apollo organization search by name (when no domain)
-        # Searches Apollo's database directly by company name
-        if not domain:
-            try:
-                logger.info(f"Tier 1a: Apollo name search for {company_name}")
-                orgs = await self.apollo.search_organizations(
-                    company_name=company_name,
-                    locations=icp_countries,  # Dynamic from ICP config
-                    limit=1,
-                )
-
-                if orgs and orgs[0].get("found"):
-                    org = orgs[0]
-                    enriched.company_name = org.get("name") or company_name
-                    enriched.domain = org.get("domain")
-                    # Only overwrite Claude's industry if Apollo has one
-                    if org.get("industry"):
-                        enriched.industry = org.get("industry")
-                    enriched.employee_count = org.get("employee_count")
-                    enriched.country = org.get("country")
-                    enriched.founded_year = org.get("founded_year")
-                    enriched.is_hiring = org.get("is_hiring")
-                    enriched.linkedin_url = org.get("linkedin_url")
-                    enrichment_source = "apollo_search"
-                    domain = org.get("domain")  # Use for potential follow-up
-                    logger.info(
-                        f"Apollo search found: {company_name} - {enriched.industry}, {enriched.employee_count} employees"
-                    )
-            except Exception as e:
-                logger.warning(f"Apollo name search failed for {company_name}: {e}")
-
-        # Tier 1: Apollo domain-based lookup (if we have/discovered a domain)
-        if domain and not enrichment_source:
-            try:
-                logger.info(f"Tier 1: Apollo enrichment for {company_name} ({domain})")
-                apollo_result = await self.apollo.enrich_company(domain)
-
-                if apollo_result.get("found"):
-                    enriched.company_name = apollo_result.get("name") or company_name
-                    enriched.domain = apollo_result.get("domain") or domain
-                    # Only overwrite Claude's industry if Apollo has one
-                    if apollo_result.get("industry"):
-                        enriched.industry = apollo_result.get("industry")
-                    enriched.employee_count = apollo_result.get("employee_count")
-                    enriched.country = apollo_result.get("country")
-                    enriched.founded_year = apollo_result.get("founded_year")
-                    enriched.is_hiring = apollo_result.get("is_hiring")
-                    enriched.linkedin_url = apollo_result.get("linkedin_url")
-                    enrichment_source = "apollo"
-                    logger.info(
-                        f"Apollo found: {company_name} - {enriched.industry}, {enriched.employee_count} employees"
-                    )
-            except Exception as e:
-                logger.warning(f"Apollo enrichment failed for {domain}: {e}")
-
-        # Tier 1.5: LinkedIn scrape to fill gaps (if Apollo found company but missing key data)
-        # Apollo often has linkedin_url but not industry/employee_count for small businesses
-        if enrichment_source and enriched.linkedin_url and self.apify:
-            missing_data = not enriched.industry or not enriched.employee_count
-            if missing_data:
-                try:
-                    logger.info(f"Tier 1.5: LinkedIn scrape for {company_name} to fill gaps")
-                    linkedin_data = await self.apify.scrape_linkedin_company(enriched.linkedin_url)
-                    if linkedin_data.get("found"):
-                        if not enriched.employee_count:
-                            enriched.employee_count = linkedin_data.get("employee_count")
-                        if not enriched.employee_range:
-                            enriched.employee_range = linkedin_data.get("employee_range")
-                        if not enriched.industry:
-                            enriched.industry = linkedin_data.get("industry")
-                        if not enriched.founded_year:
-                            enriched.founded_year = linkedin_data.get("founded_year")
-                        if not enriched.location:
-                            enriched.location = linkedin_data.get("headquarters")
-                        logger.info(
-                            f"LinkedIn filled gaps for {company_name}: industry={enriched.industry}, employees={enriched.employee_range}"
-                        )
-                except Exception as e:
-                    logger.warning(f"LinkedIn gap-fill failed for {company_name}: {e}")
-
-        # Tier 1.6: Clay company enrichment (if we have domain but still missing data)
         # Clay aggregates from multiple data providers (Clearbit, ZoomInfo, etc.)
         if enriched.domain and (not enriched.industry or not enriched.employee_count):
             try:
-                logger.info(f"Tier 1.6: Clay enrichment for {company_name} ({enriched.domain})")
+                logger.info(f"Tier 1 (Clay): enrichment for {company_name} ({enriched.domain})")
                 clay_result = await self.clay.enrich_company(enriched.domain)
 
                 if clay_result.get("found"):
@@ -1035,57 +810,20 @@ Respond in JSON format only:
                     if not enriched.founded_year:
                         enriched.founded_year = clay_result.get("founded_year")
                     if clay_result.get("industry") or clay_result.get("employee_count"):
+                        enrichment_source = "clay"
                         logger.info(
                             f"Clay filled gaps for {company_name}: industry={enriched.industry}, employees={enriched.employee_count}"
                         )
             except Exception as e:
                 logger.warning(f"Clay enrichment failed for {company_name}: {e}")
 
-        # Tier 2: LinkedIn Company Scraper (if Apollo didn't find it at all)
-        if not enrichment_source and self.apify:
-            try:
-                # Search for company on LinkedIn
-                logger.info(f"Tier 2: LinkedIn search for {company_name}")
-                search_results = await self.apify.search_google(
-                    [f'"{company_name}" site:linkedin.com/company'], results_per_query=1
-                )
-
-                # Google Search actor returns nested structure:
-                # [{"searchQuery": ..., "organicResults": [{"url": "...", ...}]}]
-                linkedin_url = ""
-                if search_results and search_results[0].get("organicResults"):
-                    organic = search_results[0]["organicResults"]
-                    if organic:
-                        linkedin_url = organic[0].get("url", "")
-                        logger.info(f"Found LinkedIn URL for {company_name}: {linkedin_url}")
-
-                if linkedin_url and "linkedin.com/company" in linkedin_url:
-                    linkedin_data = await self.apify.scrape_linkedin_company(linkedin_url)
-                    if linkedin_data.get("found"):
-                        enriched.employee_count = (
-                            linkedin_data.get("employee_count") or enriched.employee_count
-                        )
-                        enriched.employee_range = (
-                            linkedin_data.get("employee_range") or enriched.employee_range
-                        )
-                        enriched.industry = linkedin_data.get("industry") or enriched.industry
-                        enriched.founded_year = (
-                            linkedin_data.get("founded_year") or enriched.founded_year
-                        )
-                        enriched.linkedin_url = linkedin_url
-                        enriched.location = linkedin_data.get("headquarters") or enriched.location
-                        enrichment_source = "linkedin"
-                        logger.info(
-                            f"LinkedIn found: {company_name} - {enriched.industry}, {enriched.employee_range}"
-                        )
-            except Exception as e:
-                logger.warning(f"LinkedIn enrichment failed for {company_name}: {e}")
-
-        # Tier 3: Google Business (excellent for local Australian businesses)
-        # FCO-003: Uses GMB Scraper instead of Apify (~70% cost reduction)
+        # ============================================
+        # TIER 2: Google Business (excellent for local Australian businesses)
+        # ============================================
+        # FCO-003: Uses GMB Scraper (~70% cost reduction vs Apify)
         if not enrichment_source:
             try:
-                logger.info(f"Tier 3: Google Business search for {company_name}")
+                logger.info(f"Tier 2 (GMB): Google Business search for {company_name}")
                 from src.integrations.gmb_scraper import scrape_google_business
                 google_data = await scrape_google_business(company_name, primary_country)
 
@@ -1113,93 +851,9 @@ Respond in JSON format only:
             except Exception as e:
                 logger.warning(f"Google Business enrichment failed for {company_name}: {e}")
 
-        # Tier 4: General Google search to find company website (last resort)
-        if not enrichment_source and self.apify:
-            try:
-                logger.info(f"Tier 4: General Google search for {company_name}")
-                search_results = await self.apify.search_google(
-                    [f'"{company_name}" {primary_country} company'], results_per_query=5
-                )
-
-                if search_results and search_results[0].get("organicResults"):
-                    organic = search_results[0]["organicResults"]
-                    for result in organic[:5]:
-                        url = result.get("url", "")
-                        title = result.get("title", "")
-                        description = result.get("description", "")
-
-                        # Skip social media and directory sites
-                        if any(
-                            x in url
-                            for x in [
-                                "linkedin.com",
-                                "facebook.com",
-                                "twitter.com",
-                                "instagram.com",
-                                "yellowpages",
-                                "yelp.com",
-                                "truelocal",
-                                "hotfrog",
-                            ]
-                        ):
-                            continue
-
-                        # Found a company website
-                        from urllib.parse import urlparse
-
-                        parsed = urlparse(url)
-                        potential_domain = parsed.netloc.lower()
-                        if potential_domain.startswith("www."):
-                            potential_domain = potential_domain[4:]
-
-                        if potential_domain and "." in potential_domain:
-                            enriched.domain = potential_domain
-                            enriched.country = primary_country
-
-                            # Try to infer industry from title/description
-                            desc_lower = (title + " " + description).lower()
-                            industry_keywords = {
-                                "automotive": ["car", "auto", "motor", "vehicle", "dealer"],
-                                "hospitality": [
-                                    "hotel",
-                                    "resort",
-                                    "accommodation",
-                                    "tourism",
-                                    "travel",
-                                ],
-                                "retail": ["shop", "store", "retail", "fashion", "clothing"],
-                                "construction": ["construction", "builder", "building", "trades"],
-                                "manufacturing": [
-                                    "manufacturer",
-                                    "manufacturing",
-                                    "timber",
-                                    "steel",
-                                ],
-                                "healthcare": ["health", "medical", "clinic", "physio", "dental"],
-                                "technology": ["software", "tech", "digital", "it services"],
-                                "professional_services": [
-                                    "consulting",
-                                    "legal",
-                                    "accounting",
-                                    "services",
-                                ],
-                                "food_beverage": ["food", "restaurant", "cafe", "catering"],
-                                "recreation": ["dive", "tours", "adventure", "sports", "fitness"],
-                            }
-                            for industry, keywords in industry_keywords.items():
-                                if any(kw in desc_lower for kw in keywords):
-                                    enriched.industry = industry
-                                    break
-
-                            enrichment_source = "google_search"
-                            logger.info(
-                                f"Google Search found: {company_name} -> {potential_domain}, industry={enriched.industry}"
-                            )
-                            break
-            except Exception as e:
-                logger.warning(f"General Google search failed for {company_name}: {e}")
-
-        # Final fallback: Keyword matching (only if Claude AND all APIs failed)
+        # ============================================
+        # TIER 3: Keyword Fallback (only if Claude AND all APIs failed)
+        # ============================================
         # This should rarely be needed since Claude inference runs first
         if not enriched.industry:
             logger.warning(
@@ -1392,83 +1046,26 @@ Respond in JSON format only:
         icp_config: dict | None = None,
     ) -> EngineResult[dict[str, Any]]:
         """
-        Look up the agency itself in Apollo to get description data.
+        Look up the agency data.
 
-        Phase Dynamic ICP: Now accepts icp_config for dynamic country targeting.
-
-        Used in Portfolio Fallback Discovery (Tier F1) - the agency's Apollo
-        description may mention clients they've worked with.
+        NOTE: Apollo integration removed (CEO Directive #003).
+        This method now returns not found. Use website scraping
+        and Claude inference for agency data.
 
         Args:
             company_name: Agency name to search for
-            domain: Optional agency domain (more accurate if available)
-            icp_config: Optional ICP config dict with countries, employee_range, etc.
+            domain: Optional agency domain
+            icp_config: Optional ICP config dict
 
         Returns:
-            EngineResult containing Apollo data with description, keywords, etc.
+            EngineResult with found=False (Apollo removed)
         """
-        # Get countries from ICP config (default to Australia for backward compat)
-        icp_countries = icp_config.get("countries", ["Australia"]) if icp_config else ["Australia"]
-        
-        logger.info(f"Looking up agency in Apollo: {company_name} (domain={domain})")
-
-        # Try domain-based lookup first (more accurate)
-        if domain:
-            try:
-                result = await self.apollo.enrich_company(domain)
-                if result.get("found"):
-                    logger.info(f"Apollo found agency by domain: {domain}")
-                    return EngineResult.ok(
-                        data={
-                            "found": True,
-                            "source": "apollo_domain",
-                            "name": result.get("name"),
-                            "domain": result.get("domain"),
-                            "description": result.get("short_description")
-                            or result.get("description"),
-                            "industry": result.get("industry"),
-                            "employee_count": result.get("estimated_num_employees"),
-                            "keywords": result.get("keywords", []),
-                            "linkedin_url": result.get("linkedin_url"),
-                        },
-                        metadata={"source": "apollo_domain"},
-                    )
-            except Exception as e:
-                logger.warning(f"Apollo domain lookup failed for {domain}: {e}")
-
-        # Fallback to name search
-        try:
-            orgs = await self.apollo.search_organizations(
-                company_name=company_name,
-                locations=icp_countries,  # Dynamic from ICP config
-                limit=1,
-            )
-
-            if orgs and orgs[0].get("found"):
-                org = orgs[0]
-                logger.info(f"Apollo found agency by name search: {company_name}")
-                return EngineResult.ok(
-                    data={
-                        "found": True,
-                        "source": "apollo_search",
-                        "name": org.get("name"),
-                        "domain": org.get("domain"),
-                        "description": org.get("short_description") or org.get("description"),
-                        "industry": org.get("industry"),
-                        "employee_count": org.get("employee_count"),
-                        "keywords": org.get("keywords", []),
-                        "linkedin_url": org.get("linkedin_url"),
-                    },
-                    metadata={"source": "apollo_search"},
-                )
-        except Exception as e:
-            logger.warning(f"Apollo name search failed for {company_name}: {e}")
-
-        # Not found
-        logger.info(f"Agency not found in Apollo: {company_name}")
+        logger.info(
+            f"get_agency_apollo_data called for {company_name} - Apollo removed (CEO Directive #003)"
+        )
         return EngineResult.ok(
-            data={"found": False},
-            metadata={"source": "none"},
+            data={"found": False, "apollo_removed": True},
+            metadata={"source": "none", "note": "Apollo removed (CEO Directive #003)"},
         )
 
     async def enrich_portfolio_batch(
@@ -1754,19 +1351,25 @@ VERIFICATION CHECKLIST:
 - [x] No TODO/FIXME/pass statements
 - [x] No hardcoded secrets
 - [x] Extends BaseEngine
-- [x] Uses Apify for website scraping
-- [x] Uses Apollo for company enrichment
+- [x] Uses Camoufox for website scraping (Apify removed - FCO-002)
+- [x] Uses Siege Waterfall for enrichment (Apollo removed - CEO Directive #003)
 - [x] No AI processing (data fetching only)
 - [x] ScrapedWebsite dataclass for result
 - [x] EnrichedPortfolioCompany model
 - [x] Batch enrichment support
 - [x] Progress tracking methods
 - [x] Singleton pattern for engine instance
-WATERFALL ARCHITECTURE (SCR-005):
+
+WATERFALL ARCHITECTURE (Post FCO-002/FCO-003):
 - [x] URLValidator integration (Tier 0)
-- [x] scrape_website_with_waterfall (Tier 1 & 2)
-- [x] Camoufox integration (Tier 3) - anti-detection for Cloudflare
+- [x] Camoufox as primary scraper (Tier 1) - anti-detection browser
 - [x] ScrapedWebsite includes tier tracking fields
-- [x] Manual fallback URL generation (Tier 4)
+- [x] Manual fallback URL generation (Tier 2)
 - [x] Canonical URL tracking after redirects
+
+DEPRECATION LOG:
+- [x] Apollo removed (CEO Directive #003)
+- [x] Apify removed (FCO-002 cost optimization)
+- [x] LinkedIn scraping replaced with Claude inference
+- [x] Google search replaced with GMB scraper
 """

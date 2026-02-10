@@ -17,9 +17,11 @@ const publicRoutes = ["/", "/login", "/signup", "/about", "/pricing", "/how-it-w
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
+  const hostname = req.headers.get("host") || "";
 
-  // Skip auth on Vercel preview deployments (for visual review)
-  if (process.env.VERCEL_ENV === "preview") {
+  // Skip auth on ALL Vercel preview/staging deployments (no custom domain yet)
+  // This allows visual review without login - all data is mock anyway
+  if (hostname.includes("vercel.app")) {
     return NextResponse.next();
   }
 

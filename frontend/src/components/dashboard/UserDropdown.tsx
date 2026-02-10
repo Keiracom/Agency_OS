@@ -18,13 +18,13 @@ import { useRouter } from "next/navigation";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  IconUser,
-  IconSettings,
-  IconCreditCard,
-  IconHelp,
-  IconLogout,
-  IconChevronDown,
-} from "@tabler/icons-react";
+  User,
+  Settings,
+  DollarSign,
+  HelpCircle,
+  LogOut,
+  ChevronDown,
+} from "lucide-react";
 import { createBrowserClient } from "@/lib/supabase";
 import { cn, getInitials, getAvatarColor } from "@/lib/utils";
 
@@ -71,22 +71,22 @@ export function UserDropdown({ user, className }: UserDropdownProps) {
   const menuItems: MenuItem[] = [
     {
       label: "Profile",
-      icon: <IconUser className="h-4 w-4" />,
+      icon: <User className="h-4 w-4" />,
       href: "/dashboard/profile",
     },
     {
       label: "Settings",
-      icon: <IconSettings className="h-4 w-4" />,
+      icon: <Settings className="h-4 w-4" />,
       href: "/dashboard/settings",
     },
     {
       label: "Billing",
-      icon: <IconCreditCard className="h-4 w-4" />,
+      icon: <DollarSign className="h-4 w-4" />,
       href: "/dashboard/billing",
     },
     {
       label: "Help",
-      icon: <IconHelp className="h-4 w-4" />,
+      icon: <HelpCircle className="h-4 w-4" />,
       href: "/help",
     },
   ];
@@ -133,7 +133,7 @@ export function UserDropdown({ user, className }: UserDropdownProps) {
           </span>
 
           {/* Chevron */}
-          <IconChevronDown
+          <ChevronDown
             className={cn(
               "h-4 w-4 text-neutral-400 transition-transform duration-200",
               open && "rotate-180"
@@ -236,7 +236,7 @@ export function UserDropdown({ user, className }: UserDropdownProps) {
                         "disabled:opacity-50 disabled:cursor-not-allowed"
                       )}
                     >
-                      <IconLogout className="h-4 w-4" />
+                      <LogOut className="h-4 w-4" />
                       {isSigningOut ? "Signing out..." : "Sign Out"}
                     </button>
                   </DropdownMenu.Item>

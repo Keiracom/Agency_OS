@@ -41,7 +41,7 @@ export interface SiegeWaterfallTier {
   timestamp?: string;
 }
 
-export interface LeadDetail extends Lead {
+export interface LeadDetail extends Omit<Lead, 'company'> {
   radarScores: LeadRadarScores;
   timeline: TimelineEvent[];
   company: CompanyIntel;
@@ -53,7 +53,6 @@ export const mockLeadDetail: LeadDetail = {
   id: '1',
   name: 'Sarah Chen',
   title: 'CEO',
-  company: 'TechFlow Inc',
   email: 'sarah@techflow.io',
   alsScore: 94,
   tier: 'hot',

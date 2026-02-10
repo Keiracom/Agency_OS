@@ -7,8 +7,15 @@ export type TierType = 'hot' | 'warm' | 'cool' | 'cold';
 interface LeadTierBadgeProps {
   tier: TierType;
   showLabel?: boolean;
+  size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
+
+const sizeConfig = {
+  sm: 'px-1.5 py-0.5 text-[9px]',
+  md: 'px-2 py-1 text-[10px]',
+  lg: 'px-3 py-1.5 text-xs',
+};
 
 const tierConfig = {
   hot: {
@@ -37,13 +44,14 @@ const tierConfig = {
   },
 };
 
-export function LeadTierBadge({ tier, showLabel = true, className }: LeadTierBadgeProps) {
+export function LeadTierBadge({ tier, showLabel = true, size = 'md', className }: LeadTierBadgeProps) {
   const config = tierConfig[tier];
 
   return (
     <span
       className={cn(
-        'inline-flex items-center px-2 py-1 rounded text-[10px] font-semibold uppercase tracking-wide border',
+        'inline-flex items-center rounded font-semibold uppercase tracking-wide border',
+        sizeConfig[size],
         config.bg,
         config.text,
         config.border,

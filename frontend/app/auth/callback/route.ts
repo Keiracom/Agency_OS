@@ -25,8 +25,11 @@ export async function GET(request: Request) {
     }
 
     // Check onboarding status
+    interface OnboardingStatus {
+      needs_onboarding: boolean;
+    }
     const { data: onboardingStatus, error: statusError } = await supabase
-      .rpc('get_onboarding_status');
+      .rpc('get_onboarding_status') as { data: OnboardingStatus[] | null; error: Error | null };
 
     if (statusError) {
       console.error('Onboarding status error:', statusError);

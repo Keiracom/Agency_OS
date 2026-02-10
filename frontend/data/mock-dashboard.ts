@@ -44,7 +44,7 @@ export const mockActivityFeed = [
 ];
 
 export const mockQuickActions = [
-  { id: '1', label: 'Create Campaign', icon: 'zap', href: '/campaigns' },
-  { id: '2', label: 'View Leads', icon: 'users', href: '/leads' },
-  { id: '3', label: 'Settings', icon: 'settings', href: '/settings' },
+  { id: '1', label: 'Create Campaign', icon: 'zap' as const, href: '/campaigns' },
+  { id: '2', label: 'View Leads', icon: 'users' as const, href: '/leads' },
+  { id: '3', label: 'Settings', icon: 'settings' as const, href: '/settings' },
 ];

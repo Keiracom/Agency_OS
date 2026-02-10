@@ -1,8 +1,10 @@
 // Mock data for Campaigns page
 // Source: frontend/design/html-prototypes/dashboard-campaigns.html
 
-import { ChannelType, channelEmoji } from './types';
-export { ChannelType, channelEmoji };
+import type { ChannelType } from './types';
+import { channelEmoji } from './types';
+export type { ChannelType };
+export { channelEmoji };
 
 export type CampaignStatus = 'active' | 'paused' | 'draft' | 'complete';
 export type SequenceStepStatus = 'completed' | 'active' | 'upcoming';

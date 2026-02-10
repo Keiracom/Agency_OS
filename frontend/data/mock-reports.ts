@@ -4,8 +4,8 @@
  * Will be replaced with real API calls
  */
 
-import { ChannelType } from './types';
-export { ChannelType };
+import type { ChannelType } from './types';
+export type { ChannelType };
 
 // ============================================
 // Types

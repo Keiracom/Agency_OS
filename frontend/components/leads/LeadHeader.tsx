@@ -113,9 +113,7 @@ export function LeadHeader({ lead }: LeadHeaderProps) {
             Why This Lead is Hot
           </div>
           <div className="flex flex-wrap gap-2">
-            {lead.whyHot.map((reason) => (
-              <WhyHotBadge key={reason} reason={reason} />
-            ))}
+            <WhyHotBadge reasons={lead.whyHot} />
           </div>
         </div>
       )}

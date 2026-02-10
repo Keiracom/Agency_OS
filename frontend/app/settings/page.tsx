@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import AppShell from '@/components/layout/AppShell';
+import { AppShell } from '@/components/layout/AppShell';
 import {
   ProfileCard,
   TeamList,

@@ -1,8 +1,10 @@
 // Mock data for Inbox/Replies page
 // Source: frontend/design/html-prototypes/dashboard-inbox.html
 
-import { ChannelType, channelEmoji } from './types';
-export { ChannelType, channelEmoji };
+import type { ChannelType } from './types';
+import { channelEmoji } from './types';
+export type { ChannelType };
+export { channelEmoji };
 
 export type IntentType = 'interested' | 'meeting' | 'future' | 'not-interested';
 export type MessageDirection = 'sent' | 'received';

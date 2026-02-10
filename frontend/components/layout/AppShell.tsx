@@ -15,7 +15,7 @@ import {
 
 interface AppShellProps {
   children: ReactNode;
-  pageTitle: string;
+  pageTitle?: string;
 }
 
 const navItems = [
@@ -27,7 +27,7 @@ const navItems = [
   { href: "/settings", icon: Settings, label: "Settings" },
 ];
 
-export default function AppShell({ children, pageTitle }: AppShellProps) {
+export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
   const pathname = usePathname();
 
   return (

@@ -9,7 +9,7 @@
 
 import { useState } from "react";
 import { Download, FileText } from "lucide-react";
-import AppShell from "@/components/layout/AppShell";
+import { AppShell } from "@/components/layout/AppShell";
 import {
   ExecSummaryCard,
   ChannelMatrix,

@@ -9,7 +9,7 @@ import { useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { LeadsFilters } from "@/components/leads/LeadsFilters";
 import { LeadsTable } from "@/components/leads/LeadsTable";
-import { mockLeads, mockLeadStats, LeadTier } from "@/data/mock-leads";
+import { mockLeads, mockLeadStats, LeadTier, Lead } from "@/data/mock-leads";
 import { useRouter } from "next/navigation";
 
 export default function LeadsPage() {
@@ -27,8 +27,12 @@ export default function LeadsPage() {
     return matchesTier && matchesSearch;
   });
 
-  const handleLeadClick = (leadId: string) => {
-    router.push(`/leads/${leadId}`);
+  const handleLeadClick = (lead: Lead) => {
+    router.push(`/leads/${lead.id}`);
+  };
+
+  const handleTierChange = (tier: string) => {
+    setActiveTier(tier as LeadTier | "all");
   };
 
   return (
@@ -52,7 +56,7 @@ export default function LeadsPage() {
         {/* Filters */}
         <LeadsFilters
           activeTier={activeTier}
-          onTierChange={setActiveTier}
+          onTierChange={handleTierChange}
           searchQuery={searchQuery}
           onSearch={setSearchQuery}
           counts={mockLeadStats}

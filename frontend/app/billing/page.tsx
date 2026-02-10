@@ -1,7 +1,7 @@
 'use client';
 
 import { HelpCircle } from 'lucide-react';
-import AppShell from '@/components/layout/AppShell';
+import { AppShell } from '@/components/layout/AppShell';
 import {
   PlanHeroCard,
   UsageMeters,

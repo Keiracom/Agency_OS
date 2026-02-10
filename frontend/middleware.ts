@@ -18,6 +18,11 @@ const publicRoutes = ["/", "/login", "/signup", "/about", "/pricing", "/how-it-w
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
 
+  // Skip auth on Vercel preview deployments (for visual review)
+  if (process.env.VERCEL_ENV === "preview") {
+    return NextResponse.next();
+  }
+
   // Always allow public routes without any redirect
   if (publicRoutes.some(route => pathname === route || pathname.startsWith(route + "/"))) {
     return NextResponse.next();

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agency OS Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F8FAFC; color: #1E293B; }
+  
+  .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 220px; background: #0F172A; padding: 24px 0; }
+  .logo { padding: 0 24px 32px; font-size: 20px; font-weight: 800; color: #3B82F6; }
+  .nav a { display: flex; align-items: center; gap: 12px; padding: 14px 24px; color: #64748B; text-decoration: none; font-size: 14px; font-weight: 500; }
+  .nav a:hover { color: #E2E8F0; background: rgba(255,255,255,0.05); }
+  .nav a.active { color: white; background: rgba(59,130,246,0.2); border-left: 3px solid #3B82F6; }
+  
+  .main { margin-left: 220px; padding: 32px 40px; max-width: 1100px; }
+  
+  .header { margin-bottom: 32px; }
+  .greeting { font-size: 28px; font-weight: 700; color: #0F172A; }
+  .subtext { font-size: 15px; color: #64748B; margin-top: 4px; }
+  
+  /* Celebration Banner */
+  .celebration { background: linear-gradient(135deg, #10B981, #059669); border-radius: 16px; padding: 20px 28px; margin-bottom: 28px; display: flex; align-items: center; gap: 16px; color: white; }
+  .celebration-icon { font-size: 32px; }
+  .celebration-text { font-size: 18px; font-weight: 600; }
+  .celebration-sub { font-size: 14px; opacity: 0.9; margin-top: 2px; }
+  
+  /* Hero Card - Meetings vs Goal */
+  .hero-card { background: white; border-radius: 20px; padding: 32px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border: 1px solid #E2E8F0; }
+  .hero-row { display: flex; align-items: center; gap: 48px; }
+  .hero-main { flex: 1; }
+  .hero-label { font-size: 14px; color: #64748B; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  .hero-number { font-size: 72px; font-weight: 800; color: #0F172A; line-height: 1; }
+  .hero-target { font-size: 18px; color: #64748B; margin-top: 8px; }
+  .hero-target span { color: #10B981; font-weight: 600; }
+  
+  .hero-gauge { width: 200px; }
+  .gauge-container { position: relative; width: 180px; height: 100px; margin: 0 auto; }
+  .gauge-bg { width: 180px; height: 90px; border-radius: 90px 90px 0 0; background: #E2E8F0; position: absolute; top: 0; left: 0; overflow: hidden; }
+  .gauge-fill { width: 180px; height: 90px; border-radius: 90px 90px 0 0; background: linear-gradient(90deg, #10B981, #3B82F6); position: absolute; top: 0; left: 0; transform-origin: bottom center; transform: rotate(-90deg); }
+  .gauge-fill.at-70 { transform: rotate(-54deg); } /* 70% of 180deg = 126deg, so -90 + 126 = 36, but we rotate from -90 so it's -90 + (0.7 * 180) = -90 + 126 = 36deg... let me recalc: 70% fill means rotate to show 70%, starting from -90 (empty) to 90 (full). 70% of 180 = 126. -90 + 126 = 36. Hmm, let me just use a simpler visual */
+  .gauge-status { text-align: center; margin-top: 12px; }
+  .gauge-status-text { font-size: 16px; font-weight: 700; color: #10B981; }
+  
+  .hero-momentum { display: flex; align-items: center; gap: 12px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #F1F5F9; }
+  .momentum-arrow { font-size: 24px; }
+  .momentum-text { font-size: 14px; color: #64748B; }
+  .momentum-text strong { color: #10B981; }
+  
+  /* Grid */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+  
+  .card { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border: 1px solid #E2E8F0; }
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .card-title { font-size: 16px; font-weight: 700; color: #0F172A; }
+  .card-action { font-size: 13px; color: #3B82F6; text-decoration: none; font-weight: 500; }
+  
+  /* Hot Right Now */
+  .hot-list { display: flex; flex-direction: column; gap: 14px; }
+  .hot-item { display: flex; align-items: center; gap: 14px; padding: 14px; background: #FFFBEB; border-radius: 12px; border-left: 4px solid #F59E0B; }
+  .hot-item.very-hot { background: #FEF2F2; border-left-color: #EF4444; }
+  .hot-avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #3B82F6, #8B5CF6); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px; }
+  .hot-info { flex: 1; }
+  .hot-name { font-size: 15px; font-weight: 600; color: #0F172A; }
+  .hot-company { font-size: 13px; color: #64748B; }
+  .hot-signal { font-size: 12px; color: #D97706; font-weight: 500; margin-top: 4px; }
+  .hot-item.very-hot .hot-signal { color: #DC2626; }
+  .hot-score { text-align: right; }
+  .hot-score-value { font-size: 20px; font-weight: 800; color: #F59E0B; }
+  .hot-item.very-hot .hot-score-value { color: #EF4444; }
+  .hot-score-label { font-size: 10px; color: #64748B; text-transform: uppercase; }
+  
+  /* Week Ahead */
+  .meeting-list { display: flex; flex-direction: column; gap: 12px; }
+  .meeting-item { display: flex; align-items: center; gap: 16px; padding: 16px; background: #F8FAFC; border-radius: 12px; }
+  .meeting-date { text-align: center; min-width: 50px; }
+  .meeting-day { font-size: 12px; color: #64748B; text-transform: uppercase; }
+  .meeting-num { font-size: 24px; font-weight: 800; color: #0F172A; }
+  .meeting-info { flex: 1; }
+  .meeting-name { font-size: 15px; font-weight: 600; color: #0F172A; }
+  .meeting-company { font-size: 13px; color: #64748B; }
+  .meeting-meta { display: flex; gap: 12px; margin-top: 6px; }
+  .meeting-time { font-size: 12px; color: #3B82F6; font-weight: 500; }
+  .meeting-type { font-size: 12px; color: #64748B; }
+  .meeting-value { text-align: right; }
+  .meeting-value-num { font-size: 18px; font-weight: 700; color: #10B981; }
+  .meeting-value-label { font-size: 10px; color: #64748B; }
+  
+  /* Insight Card */
+  .insight-card { background: linear-gradient(135deg, #EFF6FF, #F5F3FF); border: 1px solid #DBEAFE; }
+  .insight-icon { font-size: 32px; margin-bottom: 16px; }
+  .insight-headline { font-size: 20px; font-weight: 700; color: #0F172A; margin-bottom: 8px; }
+  .insight-detail { font-size: 14px; color: #475569; line-height: 1.5; }
+  .insight-detail strong { color: #0F172A; }
+  
+  /* Quick Stats Row */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: white; border-radius: 12px; padding: 20px; text-align: center; border: 1px solid #E2E8F0; }
+  .stat-value { font-size: 28px; font-weight: 800; color: #0F172A; }
+  .stat-label { font-size: 12px; color: #64748B; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat-change { font-size: 12px; color: #10B981; margin-top: 6px; font-weight: 500; }
+  .stat-change.down { color: #EF4444; }
+  
+  /* Replies Card */
+  .replies-card { background: white; border-radius: 16px; padding: 24px; border: 1px solid #E2E8F0; }
+  .replies-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .replies-badge { background: #10B981; color: white; padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: 700; }
+  .replies-title { font-size: 16px; font-weight: 600; color: #0F172A; }
+  .reply-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #F1F5F9; }
+  .reply-item:last-child { border-bottom: none; }
+  .reply-avatar { width: 40px; height: 40px; border-radius: 50%; background: #E2E8F0; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #64748B; }
+  .reply-info { flex: 1; }
+  .reply-name { font-size: 14px; font-weight: 600; color: #0F172A; }
+  .reply-preview { font-size: 13px; color: #64748B; }
+  .reply-action { padding: 8px 16px; background: #3B82F6; color: white; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo">⚡ Agency OS</div>
+  <nav class="nav">
+    <a href="#" class="active">📊 Dashboard</a>
+    <a href="#">📬 Inbox</a>
+    <a href="#">📅 Meetings</a>
+    <a href="#">👥 Prospects</a>
+    <a href="#">📈 Reports</a>
+  </nav>
+</div>
+
+<div class="main">
+  <div class="header">
+    <div class="greeting">Good morning, Dave</div>
+    <div class="subtext">January 28, 2026 • Here's what's happening with your pipeline</div>
+  </div>
+
+  <!-- Celebration Banner (conditional) -->
+  <div class="celebration">
+    <div class="celebration-icon">🎉</div>
+    <div>
+      <div class="celebration-text">You hit your January target 4 days early!</div>
+      <div class="celebration-sub">20 meetings booked — your best month yet</div>
+    </div>
+  </div>
+
+  <!-- Hero: Meetings vs Goal -->
+  <div class="hero-card">
+    <div class="hero-row">
+      <div class="hero-main">
+        <div class="hero-label">Meetings This Month</div>
+        <div class="hero-number">20</div>
+        <div class="hero-target">Goal: 20 • <span>Target hit ✓</span></div>
+        <div class="hero-momentum">
+          <div class="momentum-arrow">📈</div>
+          <div class="momentum-text"><strong>↑ 33% vs last month</strong> • Momentum is strong</div>
+        </div>
+      </div>
+      <div class="hero-gauge">
+        <svg viewBox="0 0 200 120" width="200" height="120">
+          <!-- Background arc -->
+          <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#E2E8F0" stroke-width="20" stroke-linecap="round"/>
+          <!-- Filled arc (100% = full) -->
+          <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#gaugeGradient)" stroke-width="20" stroke-linecap="round" stroke-dasharray="251.2" stroke-dashoffset="0"/>
+          <defs>
+            <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#10B981"/>
+              <stop offset="100%" stop-color="#3B82F6"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="gauge-status">
+          <div class="gauge-status-text">100% — Target Hit</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-value">87%</div>
+      <div class="stat-label">Show Rate</div>
+      <div class="stat-change">↑ vs 65% avg</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">4</div>
+      <div class="stat-label">Deals Started</div>
+      <div class="stat-change">↑ 2 this week</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">$340K</div>
+      <div class="stat-label">Pipeline Value</div>
+      <div class="stat-change">↑ 28% vs last month</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">45x</div>
+      <div class="stat-label">ROI</div>
+      <div class="stat-change">$340K from $7.5K</div>
+    </div>
+  </div>
+
+  <!-- Two Column Grid -->
+  <div class="grid">
+    <!-- Hot Right Now -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🔥 Hot Right Now</div>
+        <a href="#" class="card-action">View all →</a>
+      </div>
+      <div class="hot-list">
+        <div class="hot-item very-hot">
+          <div class="hot-avatar">SC</div>
+          <div class="hot-info">
+            <div class="hot-name">Sarah Chen</div>
+            <div class="hot-company">TechCorp • CTO</div>
+            <div class="hot-signal">Opened 5x, clicked case study, replied "interested"</div>
+          </div>
+          <div class="hot-score">
+            <div class="hot-score-value">96</div>
+            <div class="hot-score-label">Score</div>
+          </div>
+        </div>
+        <div class="hot-item">
+          <div class="hot-avatar">MJ</div>
+          <div class="hot-info">
+            <div class="hot-name">Mike Johnson</div>
+            <div class="hot-company">StartupXYZ • VP Sales</div>
+            <div class="hot-signal">LinkedIn reply: "Let's chat this week"</div>
+          </div>
+          <div class="hot-score">
+            <div class="hot-score-value">89</div>
+            <div class="hot-score-label">Score</div>
+          </div>
+        </div>
+        <div class="hot-item">
+          <div class="hot-avatar">LP</div>
+          <div class="hot-info">
+            <div class="hot-name">Lisa Park</div>
+            <div class="hot-company">Acme Inc • Director Ops</div>
+            <div class="hot-signal">Opened email 3x in the last hour</div>
+          </div>
+          <div class="hot-score">
+            <div class="hot-score-value">84</div>
+            <div class="hot-score-label">Score</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Your Week Ahead -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📅 Your Week Ahead</div>
+        <a href="#" class="card-action">See calendar →</a>
+      </div>
+      <div class="meeting-list">
+        <div class="meeting-item">
+          <div class="meeting-date">
+            <div class="meeting-day">Today</div>
+            <div class="meeting-num">28</div>
+          </div>
+          <div class="meeting-info">
+            <div class="meeting-name">Sarah Chen</div>
+            <div class="meeting-company">TechCorp</div>
+            <div class="meeting-meta">
+              <div class="meeting-time">2:00 PM</div>
+              <div class="meeting-type">Discovery • 30min</div>
+            </div>
+          </div>
+          <div class="meeting-value">
+            <div class="meeting-value-num">$85K</div>
+            <div class="meeting-value-label">Potential</div>
+          </div>
+        </div>
+        <div class="meeting-item">
+          <div class="meeting-date">
+            <div class="meeting-day">Wed</div>
+            <div class="meeting-num">29</div>
+          </div>
+          <div class="meeting-info">
+            <div class="meeting-name">Mike Johnson</div>
+            <div class="meeting-company">StartupXYZ</div>
+            <div class="meeting-meta">
+              <div class="meeting-time">10:00 AM</div>
+              <div class="meeting-type">Demo • 45min</div>
+            </div>
+          </div>
+          <div class="meeting-value">
+            <div class="meeting-value-num">$120K</div>
+            <div class="meeting-value-label">Potential</div>
+          </div>
+        </div>
+        <div class="meeting-item">
+          <div class="meeting-date">
+            <div class="meeting-day">Thu</div>
+            <div class="meeting-num">30</div>
+          </div>
+          <div class="meeting-info">
+            <div class="meeting-name">Emma Wilson</div>
+            <div class="meeting-company">Scale Labs</div>
+            <div class="meeting-meta">
+              <div class="meeting-time">3:30 PM</div>
+              <div class="meeting-type">Follow-up • 30min</div>
+            </div>
+          </div>
+          <div class="meeting-value">
+            <div class="meeting-value-num">$65K</div>
+            <div class="meeting-value-label">Potential</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Insight + Replies -->
+  <div class="grid">
+    <!-- What's Working -->
+    <div class="card insight-card">
+      <div class="insight-icon">💡</div>
+      <div class="insight-headline">LinkedIn is your best channel</div>
+      <div class="insight-detail">
+        Your LinkedIn outreach is booking <strong>2.4x more meetings</strong> than email this month. 
+        We've shifted 60% of your outreach there automatically.
+      </div>
+    </div>
+
+    <!-- Warm Replies -->
+    <div class="replies-card">
+      <div class="replies-header">
+        <div class="replies-badge">3</div>
+        <div class="replies-title">Warm replies to review</div>
+      </div>
+      <div class="reply-item">
+        <div class="reply-avatar">JK</div>
+        <div class="reply-info">
+          <div class="reply-name">James Kim • Velocity Inc</div>
+          <div class="reply-preview">"Can you send more details about pricing?"</div>
+        </div>
+        <a href="#" class="reply-action">Reply</a>
+      </div>
+      <div class="reply-item">
+        <div class="reply-avatar">RN</div>
+        <div class="reply-info">
+          <div class="reply-name">Rachel Ng • Growth Co</div>
+          <div class="reply-preview">"Interested, but timing is Q2. Follow up then?"</div>
+        </div>
+        <a href="#" class="reply-action">Reply</a>
+      </div>
+      <div class="reply-item">
+        <div class="reply-avatar">DL</div>
+        <div class="reply-info">
+          <div class="reply-name">David Lee • Nexus Digital</div>
+          <div class="reply-preview">"This looks relevant. Can we do a quick call?"</div>
+        </div>
+        <a href="#" class="reply-action">Reply</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -4,12 +4,14 @@
  * Will be replaced with real API calls
  */
 
+import { ChannelType } from './types';
+export { ChannelType };
+
 // ============================================
 // Types
 // ============================================
 
 export type DateRange = 'thisMonth' | 'lastMonth' | 'quarter' | 'custom';
-export type ChannelType = 'email' | 'linkedin' | 'sms' | 'voice' | 'mail';
 export type FunnelStage = 'contacted' | 'engaged' | 'replied' | 'booked';
 export type TierType = 'hot' | 'warm' | 'cool' | 'cold';
 

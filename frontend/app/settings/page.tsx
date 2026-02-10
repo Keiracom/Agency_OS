@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import AppShell from '@/components/layout/AppShell';
 import {
   ProfileCard,
   TeamList,
@@ -23,17 +24,14 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
 
   return (
-    <div className="min-h-screen bg-bg-void">
-      {/* Header */}
-      <header className="bg-bg-surface border-b border-border-subtle px-8 py-5 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-text-primary">Settings</h1>
-          <p className="text-sm text-text-muted mt-1">Manage your account, team, and integrations</p>
-        </div>
-      </header>
+    <AppShell pageTitle="Settings">
+      {/* Subtitle */}
+      <div className="px-6 pt-2 pb-0">
+        <p className="text-sm text-text-muted">Manage your account, team, and integrations</p>
+      </div>
 
       {/* Content */}
-      <div className="p-8 max-w-[1000px]">
+      <div className="p-6 max-w-[1000px]">
         {/* Tabs */}
         <SettingsTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
@@ -57,6 +55,6 @@ export default function SettingsPage() {
           <NotificationToggles preferences={mockNotificationPreferences} />
         )}
       </div>
-    </div>
+    </AppShell>
   );
 }

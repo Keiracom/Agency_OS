@@ -51,7 +51,7 @@ export const mockUserProfile: UserProfile = {
   company: 'Growth Agency',
   timezone: 'Australia/Sydney (AEST)',
   initials: 'DK',
-  plan: 'Growth Plan',
+  plan: 'Velocity Plan',
 };
 
 export const mockTeamMembers: TeamMember[] = [

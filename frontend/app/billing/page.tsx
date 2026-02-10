@@ -1,6 +1,7 @@
 'use client';
 
 import { HelpCircle } from 'lucide-react';
+import AppShell from '@/components/layout/AppShell';
 import {
   PlanHeroCard,
   UsageMeters,
@@ -20,26 +21,21 @@ import {
 
 export default function BillingPage() {
   return (
-    <div className="min-h-screen bg-bg-void">
-      {/* Header */}
-      <header className="bg-bg-surface border-b border-border-subtle px-8 py-5 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-text-primary">Billing & Subscription</h1>
-          <p className="text-sm text-text-muted mt-1">Manage your plan, usage, and payment methods</p>
-        </div>
-        <div className="flex gap-3">
-          <a
-            href="#"
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-transparent text-text-secondary border border-border-default hover:bg-bg-surface-hover hover:text-text-primary transition-all no-underline"
-          >
-            <HelpCircle className="w-4 h-4" />
-            Support
-          </a>
-        </div>
-      </header>
+    <AppShell pageTitle="Billing & Subscription">
+      {/* Header Row with Subtitle and Support */}
+      <div className="px-6 pt-2 pb-0 flex items-center justify-between">
+        <p className="text-sm text-text-muted">Manage your plan, usage, and payment methods</p>
+        <a
+          href="#"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-transparent text-text-secondary border border-border-default hover:bg-bg-surface-hover hover:text-text-primary transition-all no-underline"
+        >
+          <HelpCircle className="w-4 h-4" />
+          Support
+        </a>
+      </div>
 
       {/* Content */}
-      <div className="p-8 max-w-[1200px]">
+      <div className="p-6 max-w-[1200px]">
         {/* Current Plan Hero */}
         <PlanHeroCard plan={mockCurrentPlan} metrics={mockPlanMetrics} />
 
@@ -58,6 +54,6 @@ export default function BillingPage() {
         {/* Upgrade CTA */}
         <UpgradeCTA />
       </div>
-    </div>
+    </AppShell>
   );
 }

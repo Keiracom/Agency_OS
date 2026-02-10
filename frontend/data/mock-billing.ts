@@ -67,17 +67,17 @@ export const mockCurrentPlan: CurrentPlan = {
 };
 
 export const mockPlanMetrics: PlanMetrics = {
-  leads: 2500,
+  leads: 2250,
   meetingsMin: 15,
-  meetingsMax: 16,
+  meetingsMax: 22,
   clientsMin: 3,
   clientsMax: 4,
   channels: 5,
 };
 
 export const mockUsageData: UsageData = {
-  leads: { current: 1847, max: 2500 },
-  meetings: { current: 12, targetMin: 15, targetMax: 16 },
+  leads: { current: 1847, max: 2250 },
+  meetings: { current: 12, targetMin: 15, targetMax: 22 },
   clients: { current: 3, targetMin: 3, targetMax: 4 },
 };
 
@@ -126,7 +126,7 @@ export const mockAvailablePlans: AvailablePlan[] = [
     tagline: 'Launch your outbound engine',
     price: 2500,
     meetingsMin: 8,
-    meetingsMax: 9,
+    meetingsMax: 11,
     clientsMin: 1,
     clientsMax: 2,
     leads: 1250,
@@ -146,12 +146,12 @@ export const mockAvailablePlans: AvailablePlan[] = [
     tagline: 'Accelerate your growth',
     price: 5000,
     meetingsMin: 15,
-    meetingsMax: 16,
+    meetingsMax: 22,
     clientsMin: 3,
     clientsMax: 4,
-    leads: 2500,
+    leads: 2250,
     features: [
-      '2,500 leads per month',
+      '2,250 leads per month',
       'Everything in Ignition',
       'Priority lead scoring',
       'Advanced analytics',
@@ -167,12 +167,12 @@ export const mockAvailablePlans: AvailablePlan[] = [
     tagline: 'Own your market',
     price: 7500,
     meetingsMin: 31,
-    meetingsMax: 32,
+    meetingsMax: 41,
     clientsMin: 9,
     clientsMax: 10,
-    leads: 5000,
+    leads: 4500,
     features: [
-      '5,000 leads per month',
+      '4,500 leads per month',
       'Everything in Velocity',
       'Custom integrations',
       'White-glove onboarding',

@@ -1,7 +1,9 @@
 // Mock data for Inbox/Replies page
 // Source: frontend/design/html-prototypes/dashboard-inbox.html
 
-export type ChannelType = 'email' | 'linkedin' | 'sms' | 'voice';
+import { ChannelType, channelEmoji } from './types';
+export { ChannelType, channelEmoji };
+
 export type IntentType = 'interested' | 'meeting' | 'future' | 'not-interested';
 export type MessageDirection = 'sent' | 'received';
 
@@ -27,14 +29,6 @@ export interface Conversation {
   messages: Message[];
   suggestedReply?: string;
 }
-
-// Channel emoji mapping
-export const channelEmoji: Record<ChannelType, string> = {
-  email: '📧',
-  linkedin: '💼',
-  sms: '💬',
-  voice: '📞',
-};
 
 // Intent badge styles
 export const intentStyles: Record<IntentType, { bg: string; text: string; label: string }> = {

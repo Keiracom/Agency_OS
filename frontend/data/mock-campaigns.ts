@@ -1,7 +1,9 @@
 // Mock data for Campaigns page
 // Source: frontend/design/html-prototypes/dashboard-campaigns.html
 
-export type ChannelType = 'email' | 'linkedin' | 'voice' | 'sms';
+import { ChannelType, channelEmoji } from './types';
+export { ChannelType, channelEmoji };
+
 export type CampaignStatus = 'active' | 'paused' | 'draft' | 'complete';
 export type SequenceStepStatus = 'completed' | 'active' | 'upcoming';
 
@@ -42,14 +44,6 @@ export interface Recommendation {
   id: string;
   text: string;
 }
-
-// Channel emoji mapping
-export const channelEmoji: Record<ChannelType, string> = {
-  email: '📧',
-  linkedin: '💼',
-  voice: '📞',
-  sms: '💬',
-};
 
 // Status badge styles
 export const statusStyles: Record<CampaignStatus, { bg: string; text: string; dot: string }> = {

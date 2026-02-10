@@ -9,122 +9,125 @@ module.exports = {
   ],
   prefix: "",
   theme: {
-  	container: {
-  		center: true,
-  		padding: '2rem',
-  		screens: {
-  			'2xl': '1400px'
-  		}
-  	},
-  	extend: {
-  		// Glass morphism utilities
-  		backdropBlur: {
-  			xs: '2px',
-  		},
-  		backgroundImage: {
-  			'sydney-night': "url('/images/sydney-cbd-night.jpg')",
-  			'glass-gradient': 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
-  		},
-  		colors: {
-  			border: 'hsl(var(--border))',
-  			input: 'hsl(var(--input))',
-  			ring: 'hsl(var(--ring))',
-  			background: 'hsl(var(--background))',
-  			foreground: 'hsl(var(--foreground))',
-  			primary: {
-  				DEFAULT: 'hsl(var(--primary))',
-  				foreground: 'hsl(var(--primary-foreground))'
-  			},
-  			secondary: {
-  				DEFAULT: 'hsl(var(--secondary))',
-  				foreground: 'hsl(var(--secondary-foreground))'
-  			},
-  			destructive: {
-  				DEFAULT: 'hsl(var(--destructive))',
-  				foreground: 'hsl(var(--destructive-foreground))'
-  			},
-  			muted: {
-  				DEFAULT: 'hsl(var(--muted))',
-  				foreground: 'hsl(var(--muted-foreground))'
-  			},
-  			accent: {
-  				DEFAULT: 'hsl(var(--accent))',
-  				foreground: 'hsl(var(--accent-foreground))'
-  			},
-  			popover: {
-  				DEFAULT: 'hsl(var(--popover))',
-  				foreground: 'hsl(var(--popover-foreground))'
-  			},
-  			card: {
-  				DEFAULT: 'hsl(var(--card))',
-  				foreground: 'hsl(var(--card-foreground))'
-  			},
-  			// Mint palette - EQTY Lab theme
-  			mint: {
-  				50: '#f0fdf8',
-  				100: '#ccfce8',
-  				200: '#99f6d4',
-  				300: '#5eebb8',
-  				400: '#2dd498',
-  				500: '#0eb77a',
-  				600: '#059562',
-  				700: '#047652',
-  				800: '#065d43',
-  				900: '#054d38',
-  			},
-  			// ALS Tier colors (kept for lead scoring)
-  			hot: {
-  				DEFAULT: '#ef4444',
-  				light: '#fecaca'
-  			},
-  			warm: {
-  				DEFAULT: '#f97316',
-  				light: '#fed7aa'
-  			},
-  			cool: {
-  				DEFAULT: '#0eb77a',  // Updated to mint
-  				light: '#ccfce8'
-  			},
-  			cold: {
-  				DEFAULT: '#6b7280',
-  				light: '#e5e7eb'
-  			},
-  			chart: {
-  				'1': 'hsl(var(--chart-1))',
-  				'2': 'hsl(var(--chart-2))',
-  				'3': 'hsl(var(--chart-3))',
-  				'4': 'hsl(var(--chart-4))',
-  				'5': 'hsl(var(--chart-5))'
-  			}
-  		},
-  		borderRadius: {
-  			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
-  		},
-  		keyframes: {
-  			'accordion-down': {
-  				from: {
-  					height: '0'
-  				},
-  				to: {
-  					height: 'var(--radix-accordion-content-height)'
-  				}
-  			},
-  			'accordion-up': {
-  				from: {
-  					height: 'var(--radix-accordion-content-height)'
-  				},
-  				to: {
-  					height: '0'
-  				}
-  			}
-  		},
-  		animation: {
-  			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
-  		}
-  	}
+    container: {
+      center: true,
+      padding: '2rem',
+      screens: {
+        '2xl': '1400px'
+      }
+    },
+    extend: {
+      // Bloomberg Dark Theme Tokens
+      colors: {
+        // Base layers
+        'bg-void': '#05050A',
+        'bg-base': '#0A0A12',
+        'bg-surface': '#12121D',
+        'bg-surface-hover': '#1A1A28',
+        'bg-elevated': '#222233',
+        
+        // Borders
+        'border-subtle': '#1E1E2E',
+        'border-default': '#2A2A3D',
+        'border-strong': '#3A3A50',
+        
+        // Text
+        'text-primary': '#F8F8FC',
+        'text-secondary': '#B4B4C4',
+        'text-muted': '#6E6E82',
+        
+        // Accent
+        'accent-primary': '#7C3AED',
+        'accent-primary-hover': '#9061F9',
+        'accent-teal': '#14B8A6',
+        'accent-blue': '#3B82F6',
+        
+        // Status
+        'status-success': '#22C55E',
+        'status-warning': '#F59E0B',
+        'status-error': '#EF4444',
+        
+        // Tiers (ALS Lead Scoring)
+        'tier-hot': '#EF4444',
+        'tier-warm': '#F59E0B',
+        'tier-cool': '#3B82F6',
+        
+        // shadcn/ui compatibility
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        primary: {
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))'
+        },
+        secondary: {
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))'
+        },
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))'
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))'
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))'
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))'
+        },
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))'
+        },
+        chart: {
+          '1': 'hsl(var(--chart-1))',
+          '2': 'hsl(var(--chart-2))',
+          '3': 'hsl(var(--chart-3))',
+          '4': 'hsl(var(--chart-4))',
+          '5': 'hsl(var(--chart-5))'
+        }
+      },
+      fontFamily: {
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)'
+      },
+      boxShadow: {
+        'glow-sm': '0 0 10px rgba(124, 58, 237, 0.2)',
+        'glow-md': '0 0 20px rgba(124, 58, 237, 0.3)',
+        'glow-lg': '0 0 30px rgba(124, 58, 237, 0.4)',
+      },
+      keyframes: {
+        'accordion-down': {
+          from: { height: '0' },
+          to: { height: 'var(--radix-accordion-content-height)' }
+        },
+        'accordion-up': {
+          from: { height: 'var(--radix-accordion-content-height)' },
+          to: { height: '0' }
+        },
+        'pulse-glow': {
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(124, 58, 237, 0.4)' },
+          '50%': { boxShadow: '0 0 0 8px rgba(124, 58, 237, 0)' }
+        }
+      },
+      animation: {
+        'accordion-down': 'accordion-down 0.2s ease-out',
+        'accordion-up': 'accordion-up 0.2s ease-out',
+        'pulse-glow': 'pulse-glow 2s ease-in-out infinite'
+      }
+    }
   },
   plugins: [require("tailwindcss-animate")],
 }

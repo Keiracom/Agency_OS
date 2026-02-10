@@ -7,7 +7,7 @@ import {
   LayoutDashboard,
   Users,
   Megaphone,
-  Inbox,
+  MessageSquareReply,
   BarChart3,
   Settings,
   Check,
@@ -22,7 +22,7 @@ const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Command Center" },
   { href: "/leads", icon: Users, label: "Leads" },
   { href: "/campaigns", icon: Megaphone, label: "Campaigns" },
-  { href: "/inbox", icon: Inbox, label: "Inbox" },
+  { href: "/replies", icon: MessageSquareReply, label: "Replies" },
   { href: "/reports", icon: BarChart3, label: "Reports" },
   { href: "/settings", icon: Settings, label: "Settings" },
 ];

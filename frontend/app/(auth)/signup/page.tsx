@@ -1,16 +1,13 @@
+"use client";
+
 /**
  * FILE: frontend/app/(auth)/signup/page.tsx
  * PURPOSE: Signup page with Supabase auth
  * PHASE: 8 (Frontend)
  * TASK: FE-006
  * 
- * SSG: Static shell - form is client-side, revalidate daily
+ * SSG: Static shell - form is client-side
  */
-
-// Static shell with daily revalidation
-export const revalidate = 86400;
-
-"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";

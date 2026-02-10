@@ -1,113 +1,117 @@
-# HANDOFF.md — Sprint 2 Complete
+# HANDOFF.md — Agency OS Session Handoff
 
-**Last Updated:** 2026-02-10 06:00 UTC  
-**Branch:** `feature/sprint2-setup`  
-**Status:** 🟢 Ready for PR Review
-
----
-
-## ✅ Sprint 2 Deliverables
-
-### PART A — Governance & Setup
-- [x] LAW VIII (GitHub Visibility) added to AGENTS.md
-- [x] HTML prototypes committed to `frontend/design/html-prototypes/`
-- [x] Stale prototype directories removed (prototype/, prototype-v1..v5, prototype-bloomberg, prototype-premium)
-
-### PART B — Dashboard Page
-- **Route:** `/dashboard`
-- **Prototype:** `dashboard-v3.html`
-- **Components:**
-  - `StatsRow.tsx` — 4-card stats grid
-  - `ActivityFeedSimple.tsx` — Recent activity list
-  - `QuickActionsSimple.tsx` — Action buttons
-
-### PART C — Leads List Page
-- **Route:** `/leads`
-- **Prototype:** `leads-v2.html`
-- **Components:**
-  - `LeadTierBadge.tsx` — Hot/Warm/Cool/Cold badges
-  - `WhyHotBadge.tsx` — Reason badges (CEO, Founder, etc.)
-  - `LeadsFilters.tsx` — Tier tabs + search
-  - `LeadsTable.tsx` — Full leads table
-
-### PART D — Lead Detail Page
-- **Route:** `/leads/[id]`
-- **Prototype:** `lead-detail-v2.html`
-- **Components:**
-  - `LeadHeader.tsx` — Profile header with ALS score
-  - `LeadRadarChart.tsx` — ALS component breakdown
-  - `LeadTimeline.tsx` — Activity timeline
-  - `LeadContactInfo.tsx` — Company intel card
-  - `SiegeWaterfallProgress.tsx` — Enrichment tier progress
+**Last Updated:** 2026-02-10 09:27 UTC  
+**Session:** Sprint 3 Campaigns + Inbox  
+**Context:** ~90% used — restart recommended
 
 ---
 
-## 📁 Files Changed
+## 🎯 Current State
 
-### New Files (25+)
-```
-frontend/design/html-prototypes/
-├── README.md
-├── dashboard-v3.html (SSOT)
-├── leads-v2.html (SSOT)
-├── lead-detail-v2.html (SSOT)
-├── dashboard-v2.html
-├── dashboard-campaigns.html
-├── dashboard-inbox.html
-├── dashboard-prospects.html
-└── dashboard-v4-customer.html
+### Just Completed: Sprint 3 — PR #21
+**Branch:** `feature/sprint3-campaigns-inbox`  
+**PR:** https://github.com/Keiracom/Agency_OS/pull/21  
+**Status:** Ready for review and merge
 
-frontend/components/dashboard/
-├── StatsRow.tsx
-├── ActivityFeedSimple.tsx
-└── QuickActionsSimple.tsx
+**What's in PR #21:**
+- `/campaigns` route — Campaign management with metrics, sequence timeline, AI insights
+- `/replies` route — Unified inbox with conversation list, AI-suggested replies
+- 12 new components (9 campaigns, 3 inbox)
+- 2 mock data files
+- Bug fix: signup page `'use client'` directive position
 
-frontend/components/leads/
-├── LeadTierBadge.tsx
-├── WhyHotBadge.tsx
-├── LeadsFilters.tsx
-├── LeadsTable.tsx
-├── LeadHeader.tsx
-├── LeadRadarChart.tsx
-├── LeadTimeline.tsx
-├── LeadContactInfo.tsx
-└── SiegeWaterfallProgress.tsx
+### Frontend Routes Complete (Post-Merge)
+| Route | Status | Sprint |
+|-------|--------|--------|
+| `/onboarding` | ✅ Merged (PR #16) | Sprint 1 |
+| `/dashboard` | ✅ Merged (PR #17) | Sprint 1 |
+| `/leads` | ✅ Merged (PR #19) | Sprint 2 |
+| `/leads/[id]` | ✅ Merged (PR #19) | Sprint 2 |
+| `/campaigns` | 🟡 In PR #21 | Sprint 3 |
+| `/replies` | 🟡 In PR #21 | Sprint 3 |
 
-frontend/data/
-├── mock-dashboard.ts
-├── mock-leads.ts
-└── mock-lead-detail.ts
-
-frontend/app/
-├── dashboard/page.tsx (updated)
-├── leads/page.tsx (new)
-└── leads/[id]/page.tsx (new)
-```
-
-### Deleted Files (24)
-- All `frontend/app/prototype*` directories (superseded by HTML prototypes)
+### Remaining Routes (Future Sprints)
+| Route | Priority | Notes |
+|-------|----------|-------|
+| `/reports` | Medium | Performance analytics |
+| `/settings` | Medium | Account/team settings |
+| `/intelligence` | Lower | AI insights hub |
 
 ---
 
-## 🔗 Prototype → Component Mapping
+## 📋 Pending Actions
 
-| Prototype | Route | Components |
-|-----------|-------|------------|
-| `dashboard-v3.html` | `/dashboard` | StatsRow, ActivityFeedSimple, QuickActionsSimple |
-| `leads-v2.html` | `/leads` | LeadsFilters, LeadsTable, LeadTierBadge, WhyHotBadge |
-| `lead-detail-v2.html` | `/leads/[id]` | LeadHeader, LeadRadarChart, LeadTimeline, LeadContactInfo, SiegeWaterfallProgress |
+### Immediate (Dave)
+1. **Review & merge PR #21** — Sprint 3 Campaigns + Inbox
+2. **Verify pages render** at `/campaigns` and `/replies` after merge
 
----
-
-## 🧪 Testing Notes
-
-All pages use mock data. To test:
-```bash
-cd frontend
-NODE_ENV=development npm run dev
-# Visit: /dashboard, /leads, /leads/1
-```
+### Next Session
+1. Start Sprint 4 (Reports + Settings) OR
+2. Begin API integration for existing pages
 
 ---
 
-*Sprint 2 complete. Awaiting PR review and merge.*
+## 🏗️ Architecture Context
+
+### Frontend Stack
+- **Framework:** Next.js 14 (App Router)
+- **Styling:** Tailwind CSS (light theme, slate colors)
+- **Components:** Custom components in `components/` (dashboard/, leads/, campaigns/, inbox/)
+- **Data:** Mock data in `data/mock-*.ts` files
+- **Layout:** AppShell wrapper with sidebar navigation
+
+### Component Patterns
+- `'use client'` directive at top of interactive components
+- Props interfaces defined inline
+- Tailwind classes (no custom theme tokens yet)
+- Export barrels in `index.ts` files
+
+### HTML Prototypes (SSOT)
+All UI derives from `frontend/design/html-prototypes/`:
+- `dashboard-v3.html` → Dashboard
+- `leads-v2.html` → Leads list
+- `lead-detail-v2.html` → Lead detail
+- `dashboard-campaigns.html` → Campaigns
+- `dashboard-inbox.html` → Inbox/Replies
+
+---
+
+## 🔧 Technical Notes
+
+### Known Issues
+- None blocking
+
+### Recent Fixes
+- Signup page `'use client'` directive was after comments (must be first line) — fixed in PR #21
+
+### Build Notes
+- Local builds are slow (~2-3 min) due to server RAM
+- Vercel builds are faster and more reliable
+- Use `pnpm dev` for quick local testing
+
+---
+
+## 📊 Sprint Summary
+
+| Sprint | PRs | Routes | Components |
+|--------|-----|--------|------------|
+| Sprint 1 | #16, #17 | /onboarding, /dashboard | 3 dashboard components |
+| Sprint 2 | #19, #20 | /leads, /leads/[id] | 10 leads components |
+| Sprint 3 | #21 | /campaigns, /replies | 12 components (9 campaigns, 3 inbox) |
+
+**Total new components this session:** 12  
+**Total lines added:** 908
+
+---
+
+## 🧠 Decisions Made This Session
+
+1. **LAW V Clarification:** Task delegation threshold (>50 lines) applies to tasks, not individual components. Components can be any size — just delegate the task if it's large.
+
+2. **Sub-agent usage:** Used build-1 and build-2 for inbox components (ConversationList, ConversationDetail)
+
+3. **Theme tokens:** Stayed with standard Tailwind classes (slate, white, blue) rather than custom Bloomberg tokens for consistency with Sprint 2 components.
+
+---
+
+*Next session: Merge PR #21, then Sprint 4 or API integration*

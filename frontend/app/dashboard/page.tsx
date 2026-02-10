@@ -99,7 +99,7 @@ const MailIcon = () => (
 export default function DashboardPage() {
   return (
     <AppShell>
-      <div className="relative p-8 bg-bg-void min-h-screen overflow-hidden">
+      <div className="relative p-8 min-h-screen overflow-hidden">
         {/* Ambient orbs now in AppShell for proper layering */}
         
         {/* Content layer - above ambient background */}

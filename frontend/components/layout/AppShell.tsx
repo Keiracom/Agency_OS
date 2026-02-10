@@ -91,41 +91,21 @@ export default function AppShell({ children, pageTitle }: AppShellProps) {
         <main className="flex-1">{children}</main>
       </div>
 
-      {/* Maya AI Widget Mount Point - Fixed Bottom Right */}
-      {/* Sprint 1: Placeholder only. Full implementation in Sprint 2+ */}
-      <MayaWidgetPlaceholder />
-    </div>
-  );
-}
-
-/**
- * MayaWidgetPlaceholder
- * 
- * Empty positioned container for Maya AI companion.
- * Sprint 1: Visual placeholder only.
- * Sprint 2+: Will be replaced with full MayaWidget component.
- */
-function MayaWidgetPlaceholder() {
-  return (
-    <div 
-      id="maya-widget-mount"
-      className="fixed bottom-6 right-6 z-50"
-      data-testid="maya-widget-placeholder"
-    >
-      <button
-        className="relative w-14 h-14 rounded-full bg-gradient-to-br from-accent-primary to-accent-blue 
-          flex items-center justify-center shadow-glow-md hover:shadow-glow-lg transition-shadow
-          cursor-default"
-        title="Maya AI Assistant (Coming Soon)"
-        disabled
-      >
-        {/* Avatar placeholder */}
-        <span className="text-white font-bold text-lg">M</span>
-        {/* Online indicator */}
-        <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-status-success rounded-full border-2 border-bg-void">
-          <span className="absolute inset-0 bg-status-success rounded-full animate-ping opacity-75" />
-        </span>
-      </button>
+      {/* Maya AI Bubble - Fixed Bottom Right */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <button
+          className="relative w-14 h-14 rounded-full bg-gradient-to-br from-accent-primary to-accent-blue 
+            flex items-center justify-center shadow-glow-md hover:shadow-glow-lg transition-shadow"
+          title="Maya AI Assistant"
+        >
+          {/* Avatar placeholder - using "M" for Maya */}
+          <span className="text-white font-bold text-lg">M</span>
+          {/* Online indicator */}
+          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-status-success rounded-full border-2 border-bg-void">
+            <span className="absolute inset-0 bg-status-success rounded-full animate-ping opacity-75" />
+          </span>
+        </button>
+      </div>
     </div>
   );
 }

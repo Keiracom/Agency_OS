@@ -27,3 +27,10 @@ export { LeadTierBadge, type TierType } from "./LeadTierBadge";
 export { WhyHotBadge, type WhyHotReason } from "./WhyHotBadge";
 export { LeadsFilters } from "./LeadsFilters";
 export { LeadsTable } from "./LeadsTable";
+
+// Sprint 2: Lead Detail Components
+export { LeadHeader } from "./LeadHeader";
+export { LeadRadarChart } from "./LeadRadarChart";
+export { LeadTimeline } from "./LeadTimeline";
+export { LeadContactInfo } from "./LeadContactInfo";
+export { SiegeWaterfallProgress } from "./SiegeWaterfallProgress";

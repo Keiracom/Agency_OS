@@ -21,3 +21,9 @@ export {
   type LeadStatusOption,
   type LeadBulkActionsProps,
 } from "./LeadBulkActions";
+
+// Sprint 2: Leads List Components
+export { LeadTierBadge, type TierType } from "./LeadTierBadge";
+export { WhyHotBadge, type WhyHotReason } from "./WhyHotBadge";
+export { LeadsFilters } from "./LeadsFilters";
+export { LeadsTable } from "./LeadsTable";

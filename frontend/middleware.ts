@@ -10,10 +10,12 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // Routes that require authentication
-const protectedRoutes = ["/dashboard", "/admin", "/onboarding", "/prototype"];
+// NOTE: /dashboard temporarily removed for visual review (PR #25) - will restore before merge
+const protectedRoutes = ["/admin", "/onboarding", "/prototype"];
 
 // Routes that are always public
-const publicRoutes = ["/", "/login", "/signup", "/about", "/pricing", "/how-it-works", "/api", "/dashboard-v2", "/showroom", "/gallery"];
+// NOTE: /dashboard temporarily public for visual review (PR #25) - will revert before merge to main
+const publicRoutes = ["/", "/login", "/signup", "/about", "/pricing", "/how-it-works", "/api", "/dashboard-v2", "/showroom", "/gallery", "/dashboard"];
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;

@@ -1,0 +1,2231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Setup Your Campaign | Agency OS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Base Layers */
+      --bg-void: #05050A;
+      --bg-base: #0A0A12;
+      --bg-surface: #12121D;
+      --bg-surface-hover: #1A1A28;
+      --bg-elevated: #222233;
+      
+      /* Borders */
+      --border-subtle: #1E1E2E;
+      --border-default: #2A2A3D;
+      --border-strong: #3A3A50;
+      
+      /* Text */
+      --text-primary: #F8F8FC;
+      --text-secondary: #B4B4C4;
+      --text-muted: #6E6E82;
+      --text-disabled: #4A4A5C;
+      
+      /* Accent */
+      --accent-primary: #7C3AED;
+      --accent-primary-hover: #9061F9;
+      --accent-primary-muted: rgba(124, 58, 237, 0.15);
+      --accent-teal: #14B8A6;
+      --accent-teal-muted: rgba(20, 184, 166, 0.15);
+      --accent-blue: #3B82F6;
+      --accent-blue-muted: rgba(59, 130, 246, 0.15);
+      
+      /* Status */
+      --status-success: #22C55E;
+      --status-success-muted: rgba(34, 197, 94, 0.15);
+      --status-warning: #F59E0B;
+      --status-error: #EF4444;
+      
+      /* Gradients */
+      --gradient-premium: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);
+      --gradient-success: linear-gradient(135deg, #14B8A6 0%, #22C55E 100%);
+      
+      /* Fonts */
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      
+      /* Shadows */
+      --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2);
+      --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2);
+      --shadow-xl: 0 8px 16px rgba(0, 0, 0, 0.4), 0 16px 32px rgba(0, 0, 0, 0.3);
+      --glow-purple: 0 0 20px rgba(124, 58, 237, 0.4);
+      
+      /* Radius */
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+    }
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-void);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Onboarding Header */
+    .onboarding-header {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .logo {
+      width: 42px;
+      height: 42px;
+      background: var(--gradient-premium);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 800;
+      font-size: 18px;
+      box-shadow: var(--glow-purple);
+    }
+    
+    .brand-text {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    
+    .header-help {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-muted);
+      font-size: 13px;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    
+    .header-help:hover {
+      color: var(--text-secondary);
+    }
+    
+    .header-help svg {
+      width: 18px;
+      height: 18px;
+    }
+    
+    /* Progress Bar */
+    .progress-container {
+      background: var(--bg-base);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 24px 32px;
+    }
+    
+    .progress-steps {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    .progress-step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .step-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .step-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--bg-surface);
+      border: 2px solid var(--border-default);
+      color: var(--text-muted);
+      transition: all 0.2s;
+    }
+    
+    .step-number.active {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(124, 58, 237, 0.4);
+    }
+    
+    .step-number.completed {
+      background: var(--status-success);
+      border-color: var(--status-success);
+      color: #fff;
+    }
+    
+    .step-number.completed svg {
+      width: 14px;
+      height: 14px;
+    }
+    
+    .step-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      display: none;
+    }
+    
+    @media (min-width: 768px) {
+      .step-label { display: block; }
+    }
+    
+    .step-indicator.active .step-label {
+      color: var(--text-primary);
+    }
+    
+    .step-indicator.completed .step-label {
+      color: var(--status-success);
+    }
+    
+    .step-connector {
+      width: 40px;
+      height: 2px;
+      background: var(--border-default);
+      margin: 0 4px;
+    }
+    
+    .step-connector.completed {
+      background: var(--status-success);
+    }
+    
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 48px 24px;
+    }
+    
+    /* Step Containers */
+    .step-container {
+      display: none;
+      width: 100%;
+      max-width: 640px;
+    }
+    
+    .step-container.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Card */
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+    }
+    
+    .card-accent {
+      height: 3px;
+      background: var(--gradient-premium);
+    }
+    
+    .card-header {
+      padding: 32px 32px 0;
+    }
+    
+    .card-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    
+    .card-description {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    
+    .card-body {
+      padding: 32px;
+    }
+    
+    .card-footer {
+      padding: 24px 32px;
+      background: var(--bg-base);
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    /* Form Elements */
+    .form-group {
+      margin-bottom: 24px;
+    }
+    
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+    
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+    
+    .form-label-hint {
+      font-weight: 400;
+      color: var(--text-muted);
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg-base);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      color: var(--text-primary);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    
+    .form-input:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px var(--accent-primary-muted);
+    }
+    
+    .form-input::placeholder {
+      color: var(--text-muted);
+    }
+    
+    .form-textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+    
+    .form-helper {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+    
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: none;
+      text-decoration: none;
+    }
+    
+    .btn svg {
+      width: 18px;
+      height: 18px;
+    }
+    
+    .btn-primary {
+      background: var(--accent-primary);
+      color: #fff;
+    }
+    
+    .btn-primary:hover {
+      background: var(--accent-primary-hover);
+      transform: translateY(-1px);
+    }
+    
+    .btn-primary:disabled {
+      background: var(--text-disabled);
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-default);
+    }
+    
+    .btn-secondary:hover {
+      background: var(--bg-surface-hover);
+      color: var(--text-primary);
+    }
+    
+    .btn-success {
+      background: var(--gradient-success);
+      color: #fff;
+      padding: 16px 32px;
+      font-size: 16px;
+    }
+    
+    .btn-success:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(34, 197, 94, 0.3);
+    }
+    
+    .btn-large {
+      padding: 14px 28px;
+      font-size: 15px;
+    }
+    
+    /* ======================================
+       STEP 2: Analyzing State
+       ====================================== */
+    
+    .analyzing-container {
+      text-align: center;
+      padding: 48px 32px;
+    }
+    
+    .analyzing-spinner {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 24px;
+      border: 3px solid var(--border-default);
+      border-top-color: var(--accent-primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .analyzing-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    
+    .analyzing-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+    }
+    
+    .analyzing-progress {
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    
+    .progress-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    
+    .progress-item:last-child {
+      border-bottom: none;
+    }
+    
+    .progress-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-base);
+      color: var(--text-muted);
+    }
+    
+    .progress-icon.done {
+      background: var(--status-success-muted);
+      color: var(--status-success);
+    }
+    
+    .progress-icon.loading {
+      background: var(--accent-primary-muted);
+      color: var(--accent-primary);
+      animation: pulse 1s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .progress-icon svg {
+      width: 14px;
+      height: 14px;
+    }
+    
+    .progress-text {
+      font-size: 13px;
+      color: var(--text-secondary);
+      text-align: left;
+    }
+    
+    /* Analysis Results */
+    .analysis-results {
+      display: none;
+      padding: 32px;
+    }
+    
+    .analysis-results.show {
+      display: block;
+    }
+    
+    .results-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    
+    .results-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--status-success-muted);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--status-success);
+    }
+    
+    .results-icon svg {
+      width: 24px;
+      height: 24px;
+    }
+    
+    .results-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    
+    .results-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .result-stat {
+      background: var(--bg-base);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      text-align: center;
+    }
+    
+    .result-stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--accent-primary);
+      font-family: var(--font-mono);
+    }
+    
+    .result-stat-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    
+    .results-details {
+      background: var(--bg-base);
+      border-radius: var(--radius-md);
+      padding: 20px;
+    }
+    
+    .results-section {
+      margin-bottom: 16px;
+    }
+    
+    .results-section:last-child {
+      margin-bottom: 0;
+    }
+    
+    .results-section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+    
+    .results-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    
+    .tag.highlighted {
+      background: var(--accent-primary-muted);
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+    }
+    
+    /* ======================================
+       STEP 3: ICP Selection
+       ====================================== */
+    
+    .icp-suggestion {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      background: var(--accent-blue-muted);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .icp-suggestion-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--accent-blue);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    
+    .icp-suggestion-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+    
+    .icp-suggestion-text {
+      flex: 1;
+    }
+    
+    .icp-suggestion-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+    
+    .icp-suggestion-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+    
+    .checkbox-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      background: var(--bg-base);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    
+    .checkbox-item:hover {
+      border-color: var(--border-strong);
+      background: var(--bg-surface-hover);
+    }
+    
+    .checkbox-item.selected {
+      border-color: var(--accent-primary);
+      background: var(--accent-primary-muted);
+    }
+    
+    .checkbox-box {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: transparent;
+      transition: all 0.15s;
+    }
+    
+    .checkbox-item.selected .checkbox-box {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      color: #fff;
+    }
+    
+    .checkbox-box svg {
+      width: 12px;
+      height: 12px;
+    }
+    
+    .checkbox-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    
+    .checkbox-item.selected .checkbox-label {
+      color: var(--text-primary);
+    }
+    
+    .ai-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--accent-primary);
+      background: var(--accent-primary-muted);
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+    }
+    
+    /* Tags Input */
+    .tags-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px;
+      background: var(--bg-base);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      min-height: 48px;
+    }
+    
+    .tag-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    
+    .tag-item.ai-suggested {
+      background: var(--accent-primary-muted);
+      border-color: rgba(124, 58, 237, 0.3);
+      color: var(--accent-primary);
+    }
+    
+    .tag-remove {
+      width: 14px;
+      height: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0.6;
+      transition: opacity 0.15s;
+    }
+    
+    .tag-remove:hover {
+      opacity: 1;
+    }
+    
+    .tag-remove svg {
+      width: 10px;
+      height: 10px;
+    }
+    
+    .tag-input {
+      flex: 1;
+      min-width: 120px;
+      border: none;
+      background: transparent;
+      font-size: 13px;
+      color: var(--text-primary);
+      outline: none;
+    }
+    
+    .tag-input::placeholder {
+      color: var(--text-muted);
+    }
+    
+    /* Geography Selector */
+    .geo-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    
+    .geo-item {
+      padding: 10px;
+      text-align: center;
+      background: var(--bg-base);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    
+    .geo-item:hover {
+      border-color: var(--border-strong);
+    }
+    
+    .geo-item.selected {
+      border-color: var(--accent-primary);
+      background: var(--accent-primary-muted);
+      color: var(--accent-primary);
+    }
+    
+    .geo-all {
+      grid-column: span 4;
+    }
+    
+    /* ======================================
+       STEP 4: Channel Connection
+       ====================================== */
+    
+    .channels-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    
+    .channel-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px;
+      background: var(--bg-base);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      transition: all 0.15s;
+    }
+    
+    .channel-card:hover {
+      border-color: var(--border-strong);
+    }
+    
+    .channel-card.connected {
+      border-color: var(--status-success);
+      background: var(--status-success-muted);
+    }
+    
+    .channel-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    
+    .channel-icon svg {
+      width: 24px;
+      height: 24px;
+    }
+    
+    .channel-icon.email {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3B82F6;
+    }
+    
+    .channel-icon.linkedin {
+      background: rgba(0, 119, 181, 0.15);
+      color: #0077B5;
+    }
+    
+    .channel-icon.sms {
+      background: rgba(20, 184, 166, 0.15);
+      color: #14B8A6;
+    }
+    
+    .channel-icon.voice {
+      background: rgba(124, 58, 237, 0.15);
+      color: #7C3AED;
+    }
+    
+    .channel-info {
+      flex: 1;
+    }
+    
+    .channel-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+    
+    .channel-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    
+    .channel-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    .status-badge.connected {
+      background: var(--status-success-muted);
+      color: var(--status-success);
+    }
+    
+    .status-badge.pending {
+      background: var(--bg-surface);
+      color: var(--text-muted);
+    }
+    
+    .status-badge.auto {
+      background: var(--accent-teal-muted);
+      color: var(--accent-teal);
+    }
+    
+    .status-badge svg {
+      width: 12px;
+      height: 12px;
+    }
+    
+    .btn-connect {
+      padding: 8px 16px;
+      background: var(--accent-primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    
+    .btn-connect:hover {
+      background: var(--accent-primary-hover);
+    }
+    
+    .connect-options {
+      display: none;
+      padding: 16px;
+      margin-top: 12px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+    }
+    
+    .connect-options.show {
+      display: block;
+    }
+    
+    .connect-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg-base);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-bottom: 8px;
+    }
+    
+    .connect-btn:last-child {
+      margin-bottom: 0;
+    }
+    
+    .connect-btn:hover {
+      background: var(--bg-surface-hover);
+      border-color: var(--border-strong);
+      color: var(--text-primary);
+    }
+    
+    .connect-btn img {
+      width: 20px;
+      height: 20px;
+    }
+    
+    /* ======================================
+       STEP 5: Review & Launch
+       ====================================== */
+    
+    .review-section {
+      background: var(--bg-base);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    
+    .review-section:last-child {
+      margin-bottom: 0;
+    }
+    
+    .review-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    
+    .review-section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .review-section-title svg {
+      width: 18px;
+      height: 18px;
+      color: var(--accent-primary);
+    }
+    
+    .review-edit {
+      font-size: 12px;
+      color: var(--accent-primary);
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    
+    .review-edit:hover {
+      color: var(--accent-primary-hover);
+    }
+    
+    .review-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+    
+    .review-item {
+      background: var(--bg-surface);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+    }
+    
+    .review-item-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+    
+    .review-item-value {
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+    
+    .review-item-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    
+    .review-tag {
+      padding: 4px 8px;
+      background: var(--bg-base);
+      border-radius: 4px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+    
+    /* Estimate Card */
+    .estimate-card {
+      background: var(--gradient-premium);
+      border-radius: var(--radius-xl);
+      padding: 32px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    
+    .estimate-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 8px;
+    }
+    
+    .estimate-value {
+      font-size: 48px;
+      font-weight: 800;
+      color: #fff;
+      font-family: var(--font-mono);
+    }
+    
+    .estimate-unit {
+      font-size: 14px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.9);
+      margin-top: 4px;
+    }
+    
+    .estimate-note {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.6);
+      margin-top: 16px;
+    }
+    
+    /* Launch Button */
+    .launch-container {
+      text-align: center;
+    }
+    
+    .launch-terms {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 16px;
+    }
+    
+    .launch-terms a {
+      color: var(--accent-primary);
+      text-decoration: none;
+    }
+    
+    .launch-terms a:hover {
+      text-decoration: underline;
+    }
+    
+    /* ======================================
+       Celebration Modal
+       ====================================== */
+    
+    .celebration-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(5, 5, 10, 0.9);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .celebration-overlay.show {
+      display: flex;
+    }
+    
+    .celebration-modal {
+      background: var(--bg-surface);
+      border-radius: var(--radius-xl);
+      padding: 48px;
+      text-align: center;
+      max-width: 480px;
+      animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(0.8); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    
+    .celebration-icon {
+      width: 80px;
+      height: 80px;
+      background: var(--gradient-success);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      box-shadow: 0 0 40px rgba(34, 197, 94, 0.4);
+    }
+    
+    .celebration-icon svg {
+      width: 40px;
+      height: 40px;
+      color: #fff;
+    }
+    
+    .celebration-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+    }
+    
+    .celebration-text {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+    
+    .celebration-stats {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-bottom: 32px;
+      padding: 24px;
+      background: var(--bg-base);
+      border-radius: var(--radius-lg);
+    }
+    
+    .celebration-stat {
+      text-align: center;
+    }
+    
+    .celebration-stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent-primary);
+      font-family: var(--font-mono);
+    }
+    
+    .celebration-stat-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    
+    .btn-dashboard {
+      padding: 14px 32px;
+      background: var(--accent-primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .btn-dashboard:hover {
+      background: var(--accent-primary-hover);
+      transform: translateY(-1px);
+    }
+    
+    .btn-dashboard svg {
+      width: 18px;
+      height: 18px;
+    }
+    
+    /* Confetti */
+    .confetti {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 999;
+    }
+    
+    .confetti-piece {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      animation: confetti-fall 3s ease-in-out forwards;
+    }
+    
+    @keyframes confetti-fall {
+      0% {
+        opacity: 1;
+        transform: translateY(-100px) rotate(0deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(100vh) rotate(720deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="onboarding-header">
+    <div class="header-brand">
+      <div class="logo">A</div>
+      <span class="brand-text">Agency OS</span>
+    </div>
+    <div class="header-help">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      Need help?
+    </div>
+  </header>
+
+  <!-- Progress Bar -->
+  <div class="progress-container">
+    <div class="progress-steps">
+      <div class="step-indicator active" data-step="1">
+        <div class="step-number active">1</div>
+        <span class="step-label">Your Business</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-indicator" data-step="2">
+        <div class="step-number">2</div>
+        <span class="step-label">Analysis</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-indicator" data-step="3">
+        <div class="step-number">3</div>
+        <span class="step-label">Target Audience</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-indicator" data-step="4">
+        <div class="step-number">4</div>
+        <span class="step-label">Channels</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-indicator" data-step="5">
+        <div class="step-number">5</div>
+        <span class="step-label">Launch</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Step 1: Your Business -->
+    <div class="step-container active" data-step="1">
+      <div class="card">
+        <div class="card-accent"></div>
+        <div class="card-header">
+          <h1 class="card-title">Tell us about your business</h1>
+          <p class="card-description">We'll analyze your website to understand your services and identify your ideal customers.</p>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">Agency Name</label>
+            <input type="text" class="form-input" id="agencyName" placeholder="e.g., Dilate Digital" autocomplete="organization">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Website URL <span class="form-label-hint">(Required for AI analysis)</span></label>
+            <input type="url" class="form-input" id="websiteUrl" placeholder="https://yourwebsite.com">
+            <p class="form-helper">We'll scan your website to extract services, portfolio, and target industries automatically.</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Brief Description <span class="form-label-hint">(Optional)</span></label>
+            <textarea class="form-input form-textarea" id="agencyDescription" placeholder="What does your agency do? What makes you different?"></textarea>
+          </div>
+        </div>
+        <div class="card-footer">
+          <div></div>
+          <button class="btn btn-primary btn-large" onclick="analyzeWebsite()">
+            Analyze My Website
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: AI Analysis -->
+    <div class="step-container" data-step="2">
+      <div class="card">
+        <div class="card-accent"></div>
+        
+        <!-- Analyzing State -->
+        <div class="analyzing-container" id="analyzingState">
+          <div class="analyzing-spinner"></div>
+          <h2 class="analyzing-title">Analyzing your website</h2>
+          <p class="analyzing-subtitle">This usually takes 10-15 seconds</p>
+          
+          <div class="analyzing-progress">
+            <div class="progress-item" data-progress="scrape">
+              <div class="progress-icon loading">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+              </div>
+              <span class="progress-text">Scanning website pages...</span>
+            </div>
+            <div class="progress-item" data-progress="portfolio">
+              <div class="progress-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                </svg>
+              </div>
+              <span class="progress-text">Extracting portfolio companies...</span>
+            </div>
+            <div class="progress-item" data-progress="industries">
+              <div class="progress-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                </svg>
+              </div>
+              <span class="progress-text">Identifying target industries...</span>
+            </div>
+            <div class="progress-item" data-progress="icp">
+              <div class="progress-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <span class="progress-text">Building your ideal customer profile...</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Analysis Results -->
+        <div class="analysis-results" id="analysisResults">
+          <div class="results-header">
+            <div class="results-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="results-title">Analysis Complete</h3>
+              <p class="results-subtitle" id="agencyNameDisplay">Dilate Digital</p>
+            </div>
+          </div>
+          
+          <div class="results-grid">
+            <div class="result-stat">
+              <div class="result-stat-value" id="portfolioCount">12</div>
+              <div class="result-stat-label">Portfolio Companies</div>
+            </div>
+            <div class="result-stat">
+              <div class="result-stat-value" id="industryCount">4</div>
+              <div class="result-stat-label">Industries Identified</div>
+            </div>
+            <div class="result-stat">
+              <div class="result-stat-value" id="serviceCount">6</div>
+              <div class="result-stat-label">Services Detected</div>
+            </div>
+          </div>
+          
+          <div class="results-details">
+            <div class="results-section">
+              <h4 class="results-section-title">Services Detected</h4>
+              <div class="results-tags" id="servicesDetected">
+                <span class="tag highlighted">SEO</span>
+                <span class="tag highlighted">PPC Advertising</span>
+                <span class="tag">Content Marketing</span>
+                <span class="tag">Web Development</span>
+                <span class="tag">Social Media</span>
+                <span class="tag">Email Marketing</span>
+              </div>
+            </div>
+            <div class="results-section">
+              <h4 class="results-section-title">Industries Served</h4>
+              <div class="results-tags" id="industriesServed">
+                <span class="tag highlighted">Automotive</span>
+                <span class="tag highlighted">Healthcare</span>
+                <span class="tag">Real Estate</span>
+                <span class="tag">Professional Services</span>
+              </div>
+            </div>
+            <div class="results-section">
+              <h4 class="results-section-title">Example Portfolio Companies</h4>
+              <div class="results-tags" id="portfolioCompanies">
+                <span class="tag">Mazda Dealership</span>
+                <span class="tag">Perth Physio</span>
+                <span class="tag">Bloom Homes</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card-footer">
+          <button class="btn btn-secondary" onclick="goToStep(1)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back
+          </button>
+          <button class="btn btn-primary btn-large" onclick="goToStep(3)">
+            Configure Target Audience
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: ICP Configuration -->
+    <div class="step-container" data-step="3">
+      <div class="card">
+        <div class="card-accent"></div>
+        <div class="card-header">
+          <h1 class="card-title">Define Your Ideal Customer</h1>
+          <p class="card-description">We've pre-filled recommendations based on your website analysis. Adjust as needed.</p>
+        </div>
+        <div class="card-body">
+          <div class="icp-suggestion">
+            <div class="icp-suggestion-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 16v-4M12 8h.01"/>
+              </svg>
+            </div>
+            <div class="icp-suggestion-text">
+              <div class="icp-suggestion-title">AI Recommendation</div>
+              <div class="icp-suggestion-desc">Based on your portfolio, we recommend targeting <strong>Automotive and Healthcare</strong> businesses with 50-200 employees. These industries show the strongest alignment with your past work.</div>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Target Industries <span class="ai-badge">AI Pre-selected</span></label>
+            <div class="checkbox-grid">
+              <div class="checkbox-item selected" onclick="toggleCheckbox(this)">
+                <div class="checkbox-box">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+                <span class="checkbox-label">Automotive</span>
+              </div>
+              <div class="checkbox-item selected" onclick="toggleCheckbox(this)">
+                <div class="checkbox-box">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+                <span class="checkbox-label">Healthcare</span>
+              </div>
+              <div class="checkbox-item" onclick="toggleCheckbox(this)">
+                <div class="checkbox-box">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+                <span class="checkbox-label">Real Estate</span>
+              </div>
+              <div class="checkbox-item" onclick="toggleCheckbox(this)">
+                <div class="checkbox-box">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+                <span class="checkbox-label">Professional Services</span>
+              </div>
+              <div class="checkbox-item" onclick="toggleCheckbox(this)">
+                <div class="checkbox-box">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+                <span class="checkbox-label">Retail</span>
+              </div>
+              <div class="checkbox-item" onclick="toggleCheckbox(this)">
+                <div class="checkbox-box">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+                <span class="checkbox-label">Hospitality</span>
+              </div>
+              <div class="checkbox-item" onclick="toggleCheckbox(this)">
+                <div class="checkbox-box">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+                <span class="checkbox-label">Manufacturing</span>
+              </div>
+              <div class="checkbox-item" onclick="toggleCheckbox(this)">
+                <div class="checkbox-box">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+                <span class="checkbox-label">Technology</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Company Size <span class="ai-badge">AI Suggested</span></label>
+            <select class="form-input" id="companySize">
+              <option value="1-10">1-10 employees (Micro)</option>
+              <option value="11-50">11-50 employees (Small)</option>
+              <option value="51-200" selected>51-200 employees (Medium)</option>
+              <option value="201-500">201-500 employees (Mid-Market)</option>
+              <option value="501+">501+ employees (Enterprise)</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Target Job Titles <span class="ai-badge">AI Suggested</span></label>
+            <div class="tags-container" id="titlesContainer">
+              <div class="tag-item ai-suggested">
+                CEO / Founder
+                <span class="tag-remove" onclick="removeTag(this)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </span>
+              </div>
+              <div class="tag-item ai-suggested">
+                Marketing Director
+                <span class="tag-remove" onclick="removeTag(this)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </span>
+              </div>
+              <div class="tag-item ai-suggested">
+                Head of Growth
+                <span class="tag-remove" onclick="removeTag(this)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </span>
+              </div>
+              <input type="text" class="tag-input" placeholder="Add more titles..." id="titleInput" onkeydown="handleTagInput(event)">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Geography</label>
+            <div class="geo-grid">
+              <div class="geo-item geo-all selected" onclick="toggleGeo(this, 'all')">All Australia</div>
+              <div class="geo-item" onclick="toggleGeo(this, 'state')">NSW</div>
+              <div class="geo-item" onclick="toggleGeo(this, 'state')">VIC</div>
+              <div class="geo-item" onclick="toggleGeo(this, 'state')">QLD</div>
+              <div class="geo-item" onclick="toggleGeo(this, 'state')">WA</div>
+              <div class="geo-item" onclick="toggleGeo(this, 'state')">SA</div>
+              <div class="geo-item" onclick="toggleGeo(this, 'state')">TAS</div>
+              <div class="geo-item" onclick="toggleGeo(this, 'state')">ACT</div>
+              <div class="geo-item" onclick="toggleGeo(this, 'state')">NT</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <button class="btn btn-secondary" onclick="goToStep(2)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back
+          </button>
+          <button class="btn btn-primary btn-large" onclick="goToStep(4)">
+            Connect Channels
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: Connect Channels -->
+    <div class="step-container" data-step="4">
+      <div class="card">
+        <div class="card-accent"></div>
+        <div class="card-header">
+          <h1 class="card-title">Connect Your Channels</h1>
+          <p class="card-description">Set up your outreach channels. More channels means more touchpoints and higher conversion rates.</p>
+        </div>
+        <div class="card-body">
+          <div class="channels-list">
+            <!-- Email -->
+            <div class="channel-card" id="emailChannel">
+              <div class="channel-icon email">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+              </div>
+              <div class="channel-info">
+                <div class="channel-name">Email</div>
+                <div class="channel-desc">Connect your email provider for cold outreach</div>
+              </div>
+              <div class="channel-status">
+                <button class="btn-connect" onclick="toggleConnectOptions('email')">Connect</button>
+              </div>
+            </div>
+            <div class="connect-options" id="emailOptions">
+              <button class="connect-btn" onclick="connectChannel('email', 'google')">
+                <svg viewBox="0 0 24 24" width="20" height="20">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Connect with Google
+              </button>
+              <button class="connect-btn" onclick="connectChannel('email', 'microsoft')">
+                <svg viewBox="0 0 24 24" width="20" height="20">
+                  <path fill="#F25022" d="M1 1h10v10H1z"/>
+                  <path fill="#00A4EF" d="M13 1h10v10H13z"/>
+                  <path fill="#7FBA00" d="M1 13h10v10H1z"/>
+                  <path fill="#FFB900" d="M13 13h10v10H13z"/>
+                </svg>
+                Connect with Microsoft
+              </button>
+              <button class="connect-btn" onclick="connectChannel('email', 'smtp')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                  <rect x="2" y="2" width="20" height="8" rx="2"/>
+                  <rect x="2" y="14" width="20" height="8" rx="2"/>
+                  <line x1="6" y1="6" x2="6.01" y2="6"/>
+                  <line x1="6" y1="18" x2="6.01" y2="18"/>
+                </svg>
+                Configure SMTP manually
+              </button>
+            </div>
+            
+            <!-- LinkedIn -->
+            <div class="channel-card" id="linkedinChannel">
+              <div class="channel-icon linkedin">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                </svg>
+              </div>
+              <div class="channel-info">
+                <div class="channel-name">LinkedIn</div>
+                <div class="channel-desc">Automate connection requests and messages</div>
+              </div>
+              <div class="channel-status">
+                <button class="btn-connect" onclick="connectLinkedIn()">Connect</button>
+              </div>
+            </div>
+            
+            <!-- SMS -->
+            <div class="channel-card connected" id="smsChannel">
+              <div class="channel-icon sms">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+              </div>
+              <div class="channel-info">
+                <div class="channel-name">SMS</div>
+                <div class="channel-desc">Text message outreach and responses</div>
+              </div>
+              <div class="channel-status">
+                <span class="status-badge auto">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                  Auto-Provisioned
+                </span>
+              </div>
+            </div>
+            
+            <!-- Voice -->
+            <div class="channel-card connected" id="voiceChannel">
+              <div class="channel-icon voice">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+              </div>
+              <div class="channel-info">
+                <div class="channel-name">Voice AI</div>
+                <div class="channel-desc">Autonomous AI calling for qualified leads</div>
+              </div>
+              <div class="channel-status">
+                <span class="status-badge auto">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                  Enabled
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <button class="btn btn-secondary" onclick="goToStep(3)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back
+          </button>
+          <button class="btn btn-primary btn-large" onclick="goToStep(5)">
+            Review & Launch
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5: Review & Launch -->
+    <div class="step-container" data-step="5">
+      <div class="card">
+        <div class="card-accent"></div>
+        <div class="card-header">
+          <h1 class="card-title">Review Your Campaign</h1>
+          <p class="card-description">Everything looks good. Review your settings and launch when ready.</p>
+        </div>
+        <div class="card-body">
+          <!-- Estimate Card -->
+          <div class="estimate-card">
+            <div class="estimate-label">Estimated Monthly Meetings</div>
+            <div class="estimate-value">8-12</div>
+            <div class="estimate-unit">qualified meetings per month</div>
+            <div class="estimate-note">Based on your ICP settings and industry benchmarks</div>
+          </div>
+          
+          <!-- Review Sections -->
+          <div class="review-section">
+            <div class="review-section-header">
+              <div class="review-section-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                  <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                Your Business
+              </div>
+              <span class="review-edit" onclick="goToStep(1)">Edit</span>
+            </div>
+            <div class="review-grid">
+              <div class="review-item">
+                <div class="review-item-label">Agency Name</div>
+                <div class="review-item-value" id="reviewAgencyName">Dilate Digital</div>
+              </div>
+              <div class="review-item">
+                <div class="review-item-label">Website</div>
+                <div class="review-item-value" id="reviewWebsite">dilate.com.au</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="review-section">
+            <div class="review-section-header">
+              <div class="review-section-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <circle cx="12" cy="12" r="6"/>
+                  <circle cx="12" cy="12" r="2"/>
+                </svg>
+                Target Audience
+              </div>
+              <span class="review-edit" onclick="goToStep(3)">Edit</span>
+            </div>
+            <div class="review-grid">
+              <div class="review-item">
+                <div class="review-item-label">Industries</div>
+                <div class="review-item-tags" id="reviewIndustries">
+                  <span class="review-tag">Automotive</span>
+                  <span class="review-tag">Healthcare</span>
+                </div>
+              </div>
+              <div class="review-item">
+                <div class="review-item-label">Company Size</div>
+                <div class="review-item-value" id="reviewSize">51-200 employees</div>
+              </div>
+              <div class="review-item">
+                <div class="review-item-label">Target Titles</div>
+                <div class="review-item-tags" id="reviewTitles">
+                  <span class="review-tag">CEO / Founder</span>
+                  <span class="review-tag">Marketing Director</span>
+                  <span class="review-tag">Head of Growth</span>
+                </div>
+              </div>
+              <div class="review-item">
+                <div class="review-item-label">Geography</div>
+                <div class="review-item-value" id="reviewGeo">All Australia</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="review-section">
+            <div class="review-section-header">
+              <div class="review-section-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                  <polyline points="2 17 12 22 22 17"/>
+                  <polyline points="2 12 12 17 22 12"/>
+                </svg>
+                Active Channels
+              </div>
+              <span class="review-edit" onclick="goToStep(4)">Edit</span>
+            </div>
+            <div class="review-grid">
+              <div class="review-item">
+                <div class="review-item-label">Connected</div>
+                <div class="review-item-tags" id="reviewChannels">
+                  <span class="review-tag">SMS</span>
+                  <span class="review-tag">Voice AI</span>
+                </div>
+              </div>
+              <div class="review-item">
+                <div class="review-item-label">Pending</div>
+                <div class="review-item-tags" id="reviewPendingChannels">
+                  <span class="review-tag">Email</span>
+                  <span class="review-tag">LinkedIn</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Launch Button -->
+          <div class="launch-container">
+            <button class="btn btn-success btn-large" onclick="launchCampaign()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;">
+                <path d="M22 2L11 13"/>
+                <path d="M22 2L15 22l-4-9-9-4L22 2z"/>
+              </svg>
+              Launch Campaign
+            </button>
+            <p class="launch-terms">
+              By launching, you agree to our <a href="#">Terms of Service</a> and <a href="#">Acceptable Use Policy</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Celebration Overlay -->
+  <div class="celebration-overlay" id="celebrationOverlay">
+    <div class="celebration-modal">
+      <div class="celebration-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 2L11 13"/>
+          <path d="M22 2L15 22l-4-9-9-4L22 2z"/>
+        </svg>
+      </div>
+      <h2 class="celebration-title">Campaign Launched</h2>
+      <p class="celebration-text">
+        Your outreach campaign is now live. Our AI is already identifying and scoring leads that match your ideal customer profile.
+      </p>
+      <div class="celebration-stats">
+        <div class="celebration-stat">
+          <div class="celebration-stat-value">2,847</div>
+          <div class="celebration-stat-label">Leads in Pipeline</div>
+        </div>
+        <div class="celebration-stat">
+          <div class="celebration-stat-value">~12</div>
+          <div class="celebration-stat-label">Est. Monthly Meetings</div>
+        </div>
+      </div>
+      <a href="dashboard-v2.html" class="btn-dashboard">
+        Go to Dashboard
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+
+  <!-- Confetti Container -->
+  <div class="confetti" id="confetti"></div>
+
+  <script>
+    let currentStep = 1;
+    
+    // Navigation
+    function goToStep(step) {
+      // Hide current step
+      document.querySelector(`.step-container[data-step="${currentStep}"]`).classList.remove('active');
+      
+      // Update progress indicators
+      for (let i = 1; i <= 5; i++) {
+        const indicator = document.querySelector(`.step-indicator[data-step="${i}"]`);
+        const stepNumber = indicator.querySelector('.step-number');
+        const connector = indicator.nextElementSibling;
+        
+        if (i < step) {
+          // Completed
+          indicator.classList.remove('active');
+          indicator.classList.add('completed');
+          stepNumber.classList.remove('active');
+          stepNumber.classList.add('completed');
+          stepNumber.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
+          if (connector && connector.classList.contains('step-connector')) {
+            connector.classList.add('completed');
+          }
+        } else if (i === step) {
+          // Active
+          indicator.classList.add('active');
+          indicator.classList.remove('completed');
+          stepNumber.classList.add('active');
+          stepNumber.classList.remove('completed');
+          stepNumber.textContent = i;
+        } else {
+          // Future
+          indicator.classList.remove('active', 'completed');
+          stepNumber.classList.remove('active', 'completed');
+          stepNumber.textContent = i;
+          if (connector && connector.classList.contains('step-connector')) {
+            connector.classList.remove('completed');
+          }
+        }
+      }
+      
+      // Show new step
+      document.querySelector(`.step-container[data-step="${step}"]`).classList.add('active');
+      currentStep = step;
+      
+      // Scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    
+    // Step 1: Analyze Website
+    function analyzeWebsite() {
+      const agencyName = document.getElementById('agencyName').value || 'Your Agency';
+      const websiteUrl = document.getElementById('websiteUrl').value;
+      
+      if (!websiteUrl) {
+        alert('Please enter your website URL');
+        return;
+      }
+      
+      // Move to step 2
+      goToStep(2);
+      
+      // Show analyzing state, hide results
+      const analyzingState = document.getElementById('analyzingState');
+      const analysisResults = document.getElementById('analysisResults');
+      analyzingState.style.display = 'block';
+      analysisResults.classList.remove('show');
+      
+      // Reset progress items to initial state
+      const progressItems = document.querySelectorAll('.analyzing-progress .progress-item');
+      progressItems.forEach((item, index) => {
+        const icon = item.querySelector('.progress-icon');
+        icon.classList.remove('done', 'loading');
+        if (index === 0) {
+          icon.classList.add('loading');
+        }
+        // Reset icon to original spinner SVG
+        icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>';
+      });
+      
+      // Simulate analysis progress with guaranteed completion
+      let current = 0;
+      const totalSteps = progressItems.length;
+      
+      function advanceProgress() {
+        if (current < totalSteps) {
+          const icon = progressItems[current].querySelector('.progress-icon');
+          icon.classList.remove('loading');
+          icon.classList.add('done');
+          icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
+          current++;
+          
+          if (current < totalSteps) {
+            progressItems[current].querySelector('.progress-icon').classList.add('loading');
+            setTimeout(advanceProgress, 1500);
+          } else {
+            // All steps complete - show results
+            setTimeout(() => {
+              analyzingState.style.display = 'none';
+              analysisResults.classList.add('show');
+              document.getElementById('agencyNameDisplay').textContent = agencyName;
+            }, 500);
+          }
+        }
+      }
+      
+      // Start the progress after a brief delay to ensure DOM is ready
+      setTimeout(advanceProgress, 1500);
+    }
+    
+    // Step 3: Toggle checkbox
+    function toggleCheckbox(element) {
+      element.classList.toggle('selected');
+    }
+    
+    // Step 3: Remove tag
+    function removeTag(element) {
+      element.parentElement.remove();
+    }
+    
+    // Step 3: Handle tag input
+    function handleTagInput(event) {
+      if (event.key === 'Enter' && event.target.value.trim()) {
+        const container = document.getElementById('titlesContainer');
+        const input = document.getElementById('titleInput');
+        
+        const tag = document.createElement('div');
+        tag.className = 'tag-item';
+        tag.innerHTML = `
+          ${input.value.trim()}
+          <span class="tag-remove" onclick="removeTag(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </span>
+        `;
+        
+        container.insertBefore(tag, input);
+        input.value = '';
+      }
+    }
+    
+    // Step 3: Toggle geography
+    function toggleGeo(element, type) {
+      if (type === 'all') {
+        // Select only "All Australia", deselect states
+        document.querySelectorAll('.geo-item').forEach(item => item.classList.remove('selected'));
+        element.classList.add('selected');
+      } else {
+        // Deselect "All Australia", toggle this state
+        document.querySelector('.geo-all').classList.remove('selected');
+        element.classList.toggle('selected');
+        
+        // If no states selected, reselect "All Australia"
+        const selectedStates = document.querySelectorAll('.geo-item.selected:not(.geo-all)');
+        if (selectedStates.length === 0) {
+          document.querySelector('.geo-all').classList.add('selected');
+        }
+      }
+    }
+    
+    // Step 4: Toggle connect options
+    function toggleConnectOptions(channel) {
+      const options = document.getElementById(`${channel}Options`);
+      options.classList.toggle('show');
+    }
+    
+    // Step 4: Connect channel
+    function connectChannel(channel, provider) {
+      const channelCard = document.getElementById(`${channel}Channel`);
+      const options = document.getElementById(`${channel}Options`);
+      
+      // Simulate connection
+      channelCard.classList.add('connected');
+      channelCard.querySelector('.channel-status').innerHTML = `
+        <span class="status-badge connected">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          Connected
+        </span>
+      `;
+      options.classList.remove('show');
+    }
+    
+    // Step 4: Connect LinkedIn
+    function connectLinkedIn() {
+      const channelCard = document.getElementById('linkedinChannel');
+      
+      // Simulate connection
+      channelCard.classList.add('connected');
+      channelCard.querySelector('.channel-status').innerHTML = `
+        <span class="status-badge connected">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          Connected
+        </span>
+      `;
+    }
+    
+    // Step 5: Launch Campaign
+    function launchCampaign() {
+      // Show celebration
+      document.getElementById('celebrationOverlay').classList.add('show');
+      
+      // Create confetti
+      createConfetti();
+    }
+    
+    // Create confetti effect
+    function createConfetti() {
+      const confettiContainer = document.getElementById('confetti');
+      const colors = ['#7C3AED', '#3B82F6', '#14B8A6', '#22C55E', '#F59E0B', '#EC4899'];
+      
+      for (let i = 0; i < 100; i++) {
+        const piece = document.createElement('div');
+        piece.className = 'confetti-piece';
+        piece.style.left = Math.random() * 100 + '%';
+        piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        piece.style.animationDelay = Math.random() * 2 + 's';
+        piece.style.animationDuration = (Math.random() * 2 + 2) + 's';
+        
+        if (Math.random() > 0.5) {
+          piece.style.borderRadius = '50%';
+        }
+        
+        confettiContainer.appendChild(piece);
+      }
+      
+      // Remove confetti after animation
+      setTimeout(() => {
+        confettiContainer.innerHTML = '';
+      }, 5000);
+    }
+  </script>
+</body>
+</html>

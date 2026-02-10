@@ -2,10 +2,11 @@
  * FILE: frontend/lib/supabase.ts
  * PURPOSE: Supabase client configuration for Next.js (Client-side only)
  * PHASE: 8 (Frontend)
+ * MIGRATION: Updated to use @supabase/ssr (replaces auth-helpers-nextjs)
  */
 
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient as createSSRBrowserClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 // Types for our database tables
 export type Database = {
@@ -153,9 +154,13 @@ export type Database = {
 /**
  * Create a Supabase client for use in client components.
  * Uses cookies for session management.
+ * MIGRATION: Now uses @supabase/ssr createBrowserClient
  */
 export function createBrowserClient() {
-  return createClientComponentClient<Database>();
+  return createSSRBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 }
 
 /**
@@ -166,7 +171,7 @@ export function createAnonClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  return createClient<Database>(supabaseUrl, supabaseAnonKey);
+  return createSupabaseClient<Database>(supabaseUrl, supabaseAnonKey);
 }
 
 /**

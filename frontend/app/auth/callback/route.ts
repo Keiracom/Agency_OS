@@ -3,10 +3,10 @@
  * PURPOSE: Handle Supabase auth callback and redirect based on onboarding status
  * PHASE: 17 (Launch Prerequisites)
  * UPDATED: Auto-provision flow - redirect to onboarding if ICP not confirmed
+ * MIGRATION: Updated to use @supabase/ssr (replaces auth-helpers-nextjs)
  */
 
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createServerClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
@@ -14,8 +14,7 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get('code');
 
   if (code) {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const supabase = await createServerClient();
     
     // Exchange code for session
     const { error: sessionError } = await supabase.auth.exchangeCodeForSession(code);

@@ -2,37 +2,36 @@
  * FILE: frontend/middleware.ts
  * PURPOSE: Next.js middleware for route protection
  * MIGRATION: Updated to use @supabase/ssr (replaces auth-helpers-nextjs)
- * NOTE: Root "/" is public (landing page), dashboard requires auth
+ * 
+ * NOTE: Auth logic DISABLED for visual review (PR #25)
+ * TODO: Re-enable auth before production deploy
  */
 
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Routes that require authentication
-// NOTE: /dashboard temporarily removed for visual review (PR #25) - will restore before merge
-const protectedRoutes = ["/admin", "/onboarding", "/prototype"];
+export async function middleware(req: NextRequest) {
+  // TEMPORARILY DISABLED: All auth checks bypassed for visual review
+  // Re-enable the full auth logic before merging to main
+  return NextResponse.next();
+}
 
-// Routes that are always public
-// NOTE: /dashboard temporarily public for visual review (PR #25) - will revert before merge to main
-const publicRoutes = ["/", "/login", "/signup", "/about", "/pricing", "/how-it-works", "/api", "/dashboard-v2", "/showroom", "/gallery", "/dashboard"];
+/*
+ * ORIGINAL AUTH LOGIC - PRESERVED FOR LATER
+ * ==========================================
+ 
+import { createServerClient } from "@supabase/ssr";
+
+const protectedRoutes = ["/dashboard", "/admin", "/onboarding", "/prototype"];
+const publicRoutes = ["/", "/login", "/signup", "/about", "/pricing", "/how-it-works", "/api", "/dashboard-v2", "/showroom", "/gallery"];
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
-  const hostname = req.headers.get("host") || "";
 
-  // Skip auth on ALL Vercel preview/staging deployments (no custom domain yet)
-  // This allows visual review without login - all data is mock anyway
-  if (hostname.includes("vercel.app")) {
-    return NextResponse.next();
-  }
-
-  // Always allow public routes without any redirect
   if (publicRoutes.some(route => pathname === route || pathname.startsWith(route + "/"))) {
     return NextResponse.next();
   }
 
-  // Check auth for protected routes
   if (protectedRoutes.some(route => pathname.startsWith(route))) {
     let supabaseResponse = NextResponse.next({ request: req });
 
@@ -41,9 +40,7 @@ export async function middleware(req: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          getAll() {
-            return req.cookies.getAll();
-          },
+          getAll() { return req.cookies.getAll(); },
           setAll(cookiesToSet) {
             cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
             supabaseResponse = NextResponse.next({ request: req });
@@ -55,7 +52,6 @@ export async function middleware(req: NextRequest) {
       }
     );
 
-    // Refresh session if expired
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -69,6 +65,7 @@ export async function middleware(req: NextRequest) {
 
   return NextResponse.next();
 }
+*/
 
 export const config = {
   matcher: [

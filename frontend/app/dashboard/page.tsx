@@ -99,7 +99,45 @@ const MailIcon = () => (
 export default function DashboardPage() {
   return (
     <AppShell>
-      <div className="p-8 bg-bg-void min-h-screen">
+      <div className="relative p-8 bg-bg-void min-h-screen overflow-hidden">
+        {/* Ambient Background Orbs - gives glassmorphism something to blur */}
+        <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+          {/* Purple orb - top right */}
+          <div 
+            className="absolute -top-20 -right-20 w-[500px] h-[500px] rounded-full opacity-[0.08]"
+            style={{
+              background: 'radial-gradient(circle, #7C3AED 0%, transparent 70%)',
+              filter: 'blur(100px)',
+            }}
+          />
+          {/* Blue orb - bottom left */}
+          <div 
+            className="absolute -bottom-32 -left-32 w-[450px] h-[450px] rounded-full opacity-[0.06]"
+            style={{
+              background: 'radial-gradient(circle, #3B82F6 0%, transparent 70%)',
+              filter: 'blur(80px)',
+            }}
+          />
+          {/* Teal orb - center */}
+          <div 
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full opacity-[0.04]"
+            style={{
+              background: 'radial-gradient(circle, #14B8A6 0%, transparent 70%)',
+              filter: 'blur(60px)',
+            }}
+          />
+          {/* Subtle dot grid texture */}
+          <div 
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1px)',
+              backgroundSize: '24px 24px',
+            }}
+          />
+        </div>
+        
+        {/* Content layer - above ambient background */}
+        <div className="relative z-10">
         {/* ROW 1: Hero Section - 2 column grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Meetings Booked Hero */}
@@ -471,6 +509,7 @@ export default function DashboardPage() {
             </div>
           </GlassCard>
         </div>
+        </div>{/* End content layer */}
       </div>
     </AppShell>
   );

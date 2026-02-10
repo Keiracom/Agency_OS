@@ -100,33 +100,7 @@ export default function DashboardPage() {
   return (
     <AppShell>
       <div className="relative p-8 bg-bg-void min-h-screen overflow-hidden">
-        {/* Ambient Background Orbs - VISIBLE now */}
-        <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-          {/* Purple orb - top right - VISIBLE */}
-          <div 
-            className="absolute -top-20 -right-20 w-[600px] h-[600px] rounded-full opacity-30"
-            style={{
-              background: 'radial-gradient(circle, #7C3AED 0%, transparent 60%)',
-              filter: 'blur(80px)',
-            }}
-          />
-          {/* Blue orb - bottom left - VISIBLE */}
-          <div 
-            className="absolute -bottom-20 -left-20 w-[550px] h-[550px] rounded-full opacity-25"
-            style={{
-              background: 'radial-gradient(circle, #3B82F6 0%, transparent 60%)',
-              filter: 'blur(70px)',
-            }}
-          />
-          {/* Teal/cyan orb - center-right */}
-          <div 
-            className="absolute top-1/3 right-1/4 w-[400px] h-[400px] rounded-full opacity-20"
-            style={{
-              background: 'radial-gradient(circle, #06B6D4 0%, transparent 60%)',
-              filter: 'blur(60px)',
-            }}
-          />
-        </div>
+        {/* Ambient orbs now in AppShell for proper layering */}
         
         {/* Content layer - above ambient background */}
         <div className="relative z-10">

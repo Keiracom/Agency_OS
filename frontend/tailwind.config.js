@@ -33,7 +33,7 @@ module.exports = {
         
         // Glass (new tokens for glassmorphism)
         glass: {
-          surface: 'rgba(23, 22, 34, 0.55)',
+          surface: 'rgba(23, 22, 34, 0.7)',
           border: 'rgba(255, 255, 255, 0.06)',
           'border-hover': 'rgba(255, 255, 255, 0.1)',
         },
@@ -114,7 +114,7 @@ module.exports = {
         'glow-sm': '0 0 10px rgba(124, 58, 237, 0.2)',
         'glow-md': '0 0 20px rgba(124, 58, 237, 0.3)',
         'glow-lg': '0 0 30px rgba(124, 58, 237, 0.4)',
-        'glass': '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04)',
+        'glass': '0 12px 40px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
         'glass-glow': '0 0 20px rgba(124, 58, 237, 0.15)',
       },
       keyframes: {

@@ -1,6 +1,6 @@
 /**
  * FILE: frontend/components/layout/sidebar.tsx
- * PURPOSE: Dashboard sidebar navigation
+ * PURPOSE: Dashboard sidebar navigation - ported from HTML prototype
  * PHASE: 8 (Frontend)
  * TASK: FE-004
  */
@@ -12,18 +12,12 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
-  Target,
+  Zap,
+  MessageSquare,
   BarChart3,
   Settings,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  MessageSquare,
-  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
 
 interface NavItem {
   title: string;
@@ -31,113 +25,87 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-const navItems: NavItem[] = [
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
+const navSections: NavSection[] = [
   {
-    title: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
+    title: "Main",
+    items: [
+      { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { title: "Leads", href: "/dashboard/leads", icon: Users },
+      { title: "Campaigns", href: "/dashboard/campaigns", icon: Zap },
+      { title: "Replies", href: "/dashboard/replies", icon: MessageSquare },
+    ],
   },
   {
-    title: "Campaigns",
-    href: "/dashboard/campaigns",
-    icon: Target,
-  },
-  {
-    title: "Leads",
-    href: "/dashboard/leads",
-    icon: Users,
-  },
-  {
-    title: "Replies",
-    href: "/dashboard/replies",
-    icon: MessageSquare,
-  },
-  {
-    title: "Reports",
-    href: "/dashboard/reports",
-    icon: BarChart3,
-  },
-  {
-    title: "Elliot",
-    href: "/dashboard/elliot",
-    icon: Bot,
+    title: "Analytics",
+    items: [
+      { title: "Reports", href: "/dashboard/reports", icon: BarChart3 },
+    ],
   },
   {
     title: "Settings",
-    href: "/dashboard/settings",
-    icon: Settings,
+    items: [
+      { title: "Settings", href: "/dashboard/settings", icon: Settings },
+    ],
   },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <aside
-      className={cn(
-        "flex flex-col border-r bg-background transition-all duration-300",
-        collapsed ? "w-16" : "w-64"
-      )}
-    >
+    <aside className="fixed left-0 top-0 bottom-0 w-60 bg-bg-surface border-r border-border-default py-5 z-50">
       {/* Logo */}
-      <div className="flex h-16 items-center border-b px-4">
-        {!collapsed && (
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
-              A
+      <div className="flex items-center gap-3 px-5 mb-8">
+        <div className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-accent-primary to-accent-primary-hover flex items-center justify-center">
+          <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5">
+            <path
+              d="M5 12L10 17L19 8"
+              stroke="white"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+        <span className="font-bold text-lg text-text-primary">Agency OS</span>
+      </div>
+
+      {/* Navigation Sections */}
+      <nav className="space-y-6">
+        {navSections.map((section) => (
+          <div key={section.title}>
+            <div className="px-5 text-[11px] font-semibold text-text-muted uppercase tracking-wide mb-2">
+              {section.title}
             </div>
-            <span className="font-semibold">Agency OS</span>
-          </Link>
-        )}
-        {collapsed && (
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold mx-auto">
-            A
+            {section.items.map((item) => {
+              const isActive =
+                pathname === item.href ||
+                (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
+              
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 px-5 py-3 text-sm font-medium transition-all duration-200",
+                    isActive
+                      ? "bg-accent-primary/10 text-accent-primary-hover border-r-2 border-accent-primary"
+                      : "text-text-secondary hover:bg-bg-surface-hover hover:text-text-primary"
+                  )}
+                >
+                  <item.icon className="w-5 h-5 shrink-0" />
+                  <span>{item.title}</span>
+                </Link>
+              );
+            })}
           </div>
-        )}
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 space-y-1 p-2">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                collapsed && "justify-center"
-              )}
-            >
-              <item.icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span>{item.title}</span>}
-            </Link>
-          );
-        })}
+        ))}
       </nav>
-
-      {/* Collapse Toggle */}
-      <div className="border-t p-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-center"
-          onClick={() => setCollapsed(!collapsed)}
-        >
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <>
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              Collapse
-            </>
-          )}
-        </Button>
-      </div>
     </aside>
   );
 }

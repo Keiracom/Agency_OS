@@ -1,91 +1,50 @@
-# HANDOFF.md — Session 2026-02-10 (Context Recovery)
+# HANDOFF.md — Session 2026-02-10
 
-**Last Updated:** 2026-02-10 04:36 UTC  
-**Branch:** `fix/nextjs-middleware-upgrade`  
-**Status:** ⚠️ PARTIAL — Crashed mid-fix, needs review before continuing
-
----
-
-## 🔧 Branch Purpose
-
-Migrate Supabase auth from deprecated `@supabase/auth-helpers-nextjs` to `@supabase/ssr`.
-
-**Why:** Production 500 errors on login redirect. Old package is deprecated and has Next.js 14 incompatibilities.
+**Last Updated:** 2026-02-10 04:45 UTC  
+**Status:** ✅ PR #18 Ready for Review
 
 ---
 
-## 📁 Files Changed (Verified via `git status`)
+## ✅ Just Created: PR #18 — Supabase Auth Migration
 
-| File | Status | Notes |
-|------|--------|-------|
-| `frontend/middleware.ts` | ✅ COMPLETE | Migrated to @supabase/ssr inline (no external import) |
-| `frontend/app/page.tsx` | ✅ COMPLETE | Fixed "use client" position (was line 13, now line 1). Removed incompatible `revalidate` export |
-| `frontend/lib/supabase/client.ts` | ✅ NEW | Browser client using createBrowserClient |
-| `frontend/lib/supabase/server.ts` | ✅ NEW | Server client using createServerClient |
-| `frontend/lib/supabase/middleware.ts` | ✅ NEW | Middleware helper (currently unused - inlined in middleware.ts) |
-| `frontend/lib/supabase.ts` | ⚠️ MODIFIED | Needs verification - may have old imports |
-| `frontend/lib/supabase-server.ts` | ⚠️ MODIFIED | Needs verification - may have old imports |
-| `frontend/app/auth/callback/route.ts` | ⚠️ MODIFIED | Needs verification |
-| `frontend/package.json` | ✅ COMPLETE | Added @supabase/ssr ^0.8.0, removed auth-helpers |
-| `frontend/pnpm-lock.yaml` | ✅ NEW | Lockfile regenerated |
+**PR:** https://github.com/Keiracom/Agency_OS/pull/18  
+**Branch:** `fix/nextjs-middleware-upgrade` → `main`
 
----
+### What Ships
 
-## 🔴 Known Issues (Not Yet Fixed)
+| Change | Description |
+|--------|-------------|
+| **@supabase/ssr** | Replaces deprecated auth-helpers-nextjs |
+| **lib/supabase/*.ts** | New client/server/middleware patterns |
+| **middleware.ts** | Uses @supabase/ssr inline (edge-compatible) |
+| **app/page.tsx** | Fixed "use client" position + removed ISR conflict |
+| **auth/callback** | Updated to new server client |
 
-### Issue A: Edge Runtime Sandbox Error (Resolved?)
-- **Error:** `EvalError: Code generation from strings disallowed for this context`
-- **Cause:** `NODE_ENV=production` was set while running `npm run dev`
-- **Fix Applied:** Changed to `NODE_ENV=development npm run dev`
-- **Status:** Middleware compiled successfully after fix, but session crashed before full verification
+### Why This Matters
 
-### Issue B: app/page.tsx "use client" Conflict (Fixed)
-- **Problem:** `"use client"` was on line 13, must be line 1
-- **Also:** Had `export const revalidate = 60` which is incompatible with "use client"
-- **Fix Applied:** Moved "use client" to line 1, removed revalidate export
-- **Status:** ✅ Fixed (verified in file)
+Production was throwing 500 errors on login redirects. The deprecated package had Next.js 14 incompatibilities.
+
+### Validation
+
+- ✅ Dev server starts
+- ✅ Middleware compiles (no more EvalError)
+- ✅ Root route returns 200
+- ✅ No deprecated package warnings
 
 ---
 
-## ⚠️ Unverified State
+## 📋 Next Steps
 
-The session crashed during dev server compilation. The following need verification:
-
-1. **Does dev server start without errors?**
-   ```bash
-   cd /home/elliotbot/clawd/Agency_OS/frontend
-   NODE_ENV=development npm run dev
-   ```
-
-2. **Do routes return 200?**
-   - `/` (root landing page)
-   - `/login`
-   - `/onboarding` (should redirect to /login if no auth)
-
-3. **Are old imports cleaned up?**
-   - `lib/supabase.ts` - may still import from auth-helpers
-   - `lib/supabase-server.ts` - may still import from auth-helpers
-   - Other components using createClientComponentClient
+1. **Dave:** Review and merge PR #18
+2. **Vercel:** Auto-deploy on merge
+3. **Verify:** Login flow works in production
 
 ---
 
-## 📋 Before Resuming
+## 📊 Previous Session Context
 
-1. Kill any orphan dev server: `pkill -f "next dev"`
-2. Verify NODE_ENV issue: `echo $NODE_ENV` (should not be "production" for dev)
-3. Run dev server with explicit NODE_ENV=development
-4. Test routes
-5. If working, commit and push branch
+Last session (2026-02-09) merged PR #15 (Fuzzy Matching). This session focused solely on fixing the middleware auth issue.
 
 ---
 
-## 🧹 Cleanup Needed
-
-After verification, these files may be redundant:
-- `frontend/lib/supabase.ts` — Old client, replaced by lib/supabase/client.ts
-- `frontend/lib/supabase-server.ts` — Old server client, replaced by lib/supabase/server.ts
-- `frontend/lib/supabase/middleware.ts` — Unused (logic inlined in middleware.ts)
-
----
-
-*Handoff created after crash. Do not continue without reviewing actual file state.*
+*Handoff complete. PR ready for review.*

@@ -31,7 +31,10 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-bg-void relative overflow-hidden">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Base dark background */}
+      <div className="fixed inset-0 bg-bg-void -z-10" />
+      
       {/* Ambient Background Orbs - for glassmorphism depth */}
       <div className="pointer-events-none fixed inset-0 z-0">
         {/* Purple orb - top right */}

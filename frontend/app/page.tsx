@@ -5,6 +5,7 @@
  * PURPOSE: Premium landing page combining Expert Panel animations + Buyer Guide ROI math
  * AESTHETIC: Dynamic gradients, floating orbs, glass morphism, scroll-triggered animations
  * SELLING POINTS: SDR comparison, cost-per-meeting, ROI breakdown
+ * NOTE: ISR removed - incompatible with "use client". Founding spots fetched client-side.
  */
 
 import Link from "next/link";

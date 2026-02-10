@@ -1,93 +1,50 @@
-# HANDOFF.md — Session 2026-02-09 (Phase 3 Sprint 1 Complete)
+# HANDOFF.md — Session 2026-02-10
 
-**Last Updated:** 2026-02-09 05:25 UTC  
-**Directives:** CEO #007 — Phase 3 Sprint 1: Foundation + Onboarding  
-**Governance:** LAW I-A, LAW III, LAW V, LAW VII
-
----
-
-## 🚀 Phase 3 Sprint 1: COMPLETE ✅
-
-**PR:** https://github.com/Keiracom/Agency_OS/pull/16  
-**Branch:** `feature/phase3-sprint1`
-
-### Deliverables
-
-| Step | Component | Status |
-|------|-----------|--------|
-| Step 1 | Theme alignment (globals.css + tailwind.config) | ✅ Complete |
-| Step 2 | AppShell layout (sidebar + header + Maya bubble) | ✅ Complete |
-| Step 3 | Onboarding page (/app/onboarding/page.tsx) | ✅ Complete |
-| Step 4 | Dashboard stub with AppShell | ✅ Complete |
-
-### Theme Tokens Applied
-
-| Token | Value | Purpose |
-|-------|-------|---------|
-| `--bg-void` | #05050A | Deepest background |
-| `--bg-base` | #0A0A12 | Main background |
-| `--bg-surface` | #12121D | Card/panel background |
-| `--accent-primary` | #7C3AED | Primary purple |
-| `--text-primary` | #F8F8FC | Main text |
-| `--gradient-premium` | linear-gradient(135deg, #7C3AED, #3B82F6) | Premium buttons |
-
-### Files Changed
-
-| File | Lines | Action |
-|------|-------|--------|
-| `frontend/app/globals.css` | 186 | Replaced mint theme with Bloomberg dark |
-| `frontend/tailwind.config.js` | 134 | Extended with theme tokens |
-| `frontend/components/layout/AppShell.tsx` | 111 | NEW - Main layout shell |
-| `frontend/app/onboarding/page.tsx` | 179 | Replaced wizard with simple flow |
-| `frontend/app/dashboard/page.tsx` | 16 | Stub with AppShell |
-| `frontend/app/page.tsx` | - | Fixed "use client" position |
+**Last Updated:** 2026-02-10 04:45 UTC  
+**Status:** ✅ PR #18 Ready for Review
 
 ---
 
-## 🔧 Known Issues
+## ✅ Just Created: PR #18 — Supabase Auth Migration
 
-### Pre-existing: Local Build Failure
+**PR:** https://github.com/Keiracom/Agency_OS/pull/18  
+**Branch:** `fix/nextjs-middleware-upgrade` → `main`
 
-The local `npm run build` fails with a PostCSS/webpack error unrelated to Sprint 1 changes. Per LAW VII, Vercel handles production builds.
+### What Ships
 
-**Error:** `Cannot find module 'postcss-flexbugs-fixes'` in webpack loader  
-**Cause:** Appears to be npm peer dependency resolution issue  
-**Workaround:** Vercel build (has proper node environment)
+| Change | Description |
+|--------|-------------|
+| **@supabase/ssr** | Replaces deprecated auth-helpers-nextjs |
+| **lib/supabase/*.ts** | New client/server/middleware patterns |
+| **middleware.ts** | Uses @supabase/ssr inline (edge-compatible) |
+| **app/page.tsx** | Fixed "use client" position + removed ISR conflict |
+| **auth/callback** | Updated to new server client |
 
-### Pre-existing: Next.js Security Warning
+### Why This Matters
 
-`next@14.0.4` has a known vulnerability. Should upgrade to patched version in future sprint.
+Production was throwing 500 errors on login redirects. The deprecated package had Next.js 14 incompatibilities.
 
----
+### Validation
 
-## 📋 Sprint 2 Scope (Next)
-
-Per CEO Directive #007:
-
-1. **Dashboard page** — Command Center with stats cards
-2. **Leads list** — Table with tier badges, pagination
-3. **Lead Detail** — Modal with enrichment data
-4. Demo flow: Onboarding → Dashboard → Leads → Lead Detail
-
----
-
-## 🔑 Pending Actions (Non-Sprint)
-
-| Item | Owner | Status |
-|------|-------|--------|
-| ABN_LOOKUP_GUID | Dave | ❌ Blocked - register at abr.business.gov.au |
-| GMB Proxy geo-filter | Elliot | ⏳ Deferred to after Phase 3 |
-| Next.js security upgrade | Elliot | ⏳ Future sprint |
+- ✅ Dev server starts
+- ✅ Middleware compiles (no more EvalError)
+- ✅ Root route returns 200
+- ✅ No deprecated package warnings
 
 ---
 
-## 📊 Session Stats
+## 📋 Next Steps
 
-- **Context:** Clean (fresh session)
-- **Sub-agents used:** 1 (build-1 for components)
-- **Commits:** 1 (f61f503)
-- **PR:** #16
+1. **Dave:** Review and merge PR #18
+2. **Vercel:** Auto-deploy on merge
+3. **Verify:** Login flow works in production
 
 ---
 
-*Sprint 1 complete. Ready for Dave's visual verification and merge.*
+## 📊 Previous Session Context
+
+Last session (2026-02-09) merged PR #15 (Fuzzy Matching). This session focused solely on fixing the middleware auth issue.
+
+---
+
+*Handoff complete. PR ready for review.*

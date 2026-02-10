@@ -1,0 +1,481 @@
+{
+  "total_tested": 10,
+  "tier1_success_rate": 0.0,
+  "tier2_success_rate": 0.0,
+  "tier3_success_rate": 0.0,
+  "total_cost_aud": 0.0,
+  "avg_cost_per_lead": 0.0,
+  "under_budget": true,
+  "results": [
+    {
+      "company_name": "Atlassian",
+      "success": false,
+      "total_cost_aud": 0.0,
+      "tier_summary": {
+        "tier1_abn": {
+          "success": false,
+          "skipped": false,
+          "error": "No ABN match found",
+          "cost_aud": 0.0
+        },
+        "tier2_gmb": {
+          "success": false,
+          "skipped": false,
+          "error": "No GMB listing found (tried 1 name variants)",
+          "cost_aud": 0.0
+        },
+        "tier3_hunter": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier4_proxycurl": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier5_identity": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        }
+      },
+      "data_fields": [
+        "company_name",
+        "abn",
+        "state",
+        "expected_found",
+        "enrichment_cost_aud",
+        "enrichment_sources",
+        "enrichment_completed_at"
+      ],
+      "error": null
+    },
+    {
+      "company_name": "Canva",
+      "success": false,
+      "total_cost_aud": 0.0,
+      "tier_summary": {
+        "tier1_abn": {
+          "success": false,
+          "skipped": false,
+          "error": "No ABN match found",
+          "cost_aud": 0.0
+        },
+        "tier2_gmb": {
+          "success": false,
+          "skipped": false,
+          "error": "No GMB listing found (tried 1 name variants)",
+          "cost_aud": 0.0
+        },
+        "tier3_hunter": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier4_proxycurl": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier5_identity": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        }
+      },
+      "data_fields": [
+        "company_name",
+        "abn",
+        "state",
+        "expected_found",
+        "enrichment_cost_aud",
+        "enrichment_sources",
+        "enrichment_completed_at"
+      ],
+      "error": null
+    },
+    {
+      "company_name": "REA Group",
+      "success": false,
+      "total_cost_aud": 0.0,
+      "tier_summary": {
+        "tier1_abn": {
+          "success": false,
+          "skipped": false,
+          "error": "No ABN match found",
+          "cost_aud": 0.0
+        },
+        "tier2_gmb": {
+          "success": false,
+          "skipped": false,
+          "error": "No GMB listing found (tried 1 name variants)",
+          "cost_aud": 0.0
+        },
+        "tier3_hunter": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier4_proxycurl": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier5_identity": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        }
+      },
+      "data_fields": [
+        "company_name",
+        "abn",
+        "state",
+        "expected_found",
+        "enrichment_cost_aud",
+        "enrichment_sources",
+        "enrichment_completed_at"
+      ],
+      "error": null
+    },
+    {
+      "company_name": "Xero Australia",
+      "success": false,
+      "total_cost_aud": 0.0,
+      "tier_summary": {
+        "tier1_abn": {
+          "success": false,
+          "skipped": false,
+          "error": "No ABN match found",
+          "cost_aud": 0.0
+        },
+        "tier2_gmb": {
+          "success": false,
+          "skipped": false,
+          "error": "No GMB listing found (tried 1 name variants)",
+          "cost_aud": 0.0
+        },
+        "tier3_hunter": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier4_proxycurl": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier5_identity": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        }
+      },
+      "data_fields": [
+        "company_name",
+        "abn",
+        "state",
+        "expected_found",
+        "enrichment_cost_aud",
+        "enrichment_sources",
+        "enrichment_completed_at"
+      ],
+      "error": null
+    },
+    {
+      "company_name": "Culture Amp",
+      "success": false,
+      "total_cost_aud": 0.0,
+      "tier_summary": {
+        "tier1_abn": {
+          "success": false,
+          "skipped": false,
+          "error": "No ABN match found",
+          "cost_aud": 0.0
+        },
+        "tier2_gmb": {
+          "success": false,
+          "skipped": false,
+          "error": "No GMB listing found (tried 1 name variants)",
+          "cost_aud": 0.0
+        },
+        "tier3_hunter": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier4_proxycurl": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier5_identity": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        }
+      },
+      "data_fields": [
+        "company_name",
+        "abn",
+        "state",
+        "expected_found",
+        "enrichment_cost_aud",
+        "enrichment_sources",
+        "enrichment_completed_at"
+      ],
+      "error": null
+    },
+    {
+      "company_name": "SafetyCulture",
+      "success": false,
+      "total_cost_aud": 0.0,
+      "tier_summary": {
+        "tier1_abn": {
+          "success": false,
+          "skipped": false,
+          "error": "No ABN match found",
+          "cost_aud": 0.0
+        },
+        "tier2_gmb": {
+          "success": false,
+          "skipped": false,
+          "error": "No GMB listing found (tried 1 name variants)",
+          "cost_aud": 0.0
+        },
+        "tier3_hunter": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier4_proxycurl": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier5_identity": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        }
+      },
+      "data_fields": [
+        "company_name",
+        "abn",
+        "state",
+        "expected_found",
+        "enrichment_cost_aud",
+        "enrichment_sources",
+        "enrichment_completed_at"
+      ],
+      "error": null
+    },
+    {
+      "company_name": "Employment Hero",
+      "success": false,
+      "total_cost_aud": 0.0,
+      "tier_summary": {
+        "tier1_abn": {
+          "success": false,
+          "skipped": false,
+          "error": "No ABN match found",
+          "cost_aud": 0.0
+        },
+        "tier2_gmb": {
+          "success": false,
+          "skipped": false,
+          "error": "No GMB listing found (tried 1 name variants)",
+          "cost_aud": 0.0
+        },
+        "tier3_hunter": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier4_proxycurl": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier5_identity": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        }
+      },
+      "data_fields": [
+        "company_name",
+        "abn",
+        "state",
+        "expected_found",
+        "enrichment_cost_aud",
+        "enrichment_sources",
+        "enrichment_completed_at"
+      ],
+      "error": null
+    },
+    {
+      "company_name": "Deputy",
+      "success": false,
+      "total_cost_aud": 0.0,
+      "tier_summary": {
+        "tier1_abn": {
+          "success": false,
+          "skipped": false,
+          "error": "No ABN match found",
+          "cost_aud": 0.0
+        },
+        "tier2_gmb": {
+          "success": false,
+          "skipped": false,
+          "error": "No GMB listing found (tried 1 name variants)",
+          "cost_aud": 0.0
+        },
+        "tier3_hunter": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier4_proxycurl": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier5_identity": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        }
+      },
+      "data_fields": [
+        "company_name",
+        "abn",
+        "state",
+        "expected_found",
+        "enrichment_cost_aud",
+        "enrichment_sources",
+        "enrichment_completed_at"
+      ],
+      "error": null
+    },
+    {
+      "company_name": "Envato",
+      "success": false,
+      "total_cost_aud": 0.0,
+      "tier_summary": {
+        "tier1_abn": {
+          "success": false,
+          "skipped": false,
+          "error": "No ABN match found",
+          "cost_aud": 0.0
+        },
+        "tier2_gmb": {
+          "success": false,
+          "skipped": false,
+          "error": "No GMB listing found (tried 1 name variants)",
+          "cost_aud": 0.0
+        },
+        "tier3_hunter": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier4_proxycurl": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier5_identity": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        }
+      },
+      "data_fields": [
+        "company_name",
+        "abn",
+        "state",
+        "expected_found",
+        "enrichment_cost_aud",
+        "enrichment_sources",
+        "enrichment_completed_at"
+      ],
+      "error": null
+    },
+    {
+      "company_name": "Campaign Monitor",
+      "success": false,
+      "total_cost_aud": 0.0,
+      "tier_summary": {
+        "tier1_abn": {
+          "success": false,
+          "skipped": false,
+          "error": "No ABN match found",
+          "cost_aud": 0.0
+        },
+        "tier2_gmb": {
+          "success": false,
+          "skipped": false,
+          "error": "No GMB listing found (tried 1 name variants)",
+          "cost_aud": 0.0
+        },
+        "tier3_hunter": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier4_proxycurl": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        },
+        "tier5_identity": {
+          "success": false,
+          "skipped": true,
+          "error": null,
+          "cost_aud": 0.0
+        }
+      },
+      "data_fields": [
+        "company_name",
+        "abn",
+        "state",
+        "expected_found",
+        "enrichment_cost_aud",
+        "enrichment_sources",
+        "enrichment_completed_at"
+      ],
+      "error": null
+    }
+  ]
+}

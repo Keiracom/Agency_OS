@@ -100,38 +100,30 @@ export default function DashboardPage() {
   return (
     <AppShell>
       <div className="relative p-8 bg-bg-void min-h-screen overflow-hidden">
-        {/* Ambient Background Orbs - gives glassmorphism something to blur */}
+        {/* Ambient Background Orbs - VISIBLE now */}
         <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-          {/* Purple orb - top right */}
+          {/* Purple orb - top right - VISIBLE */}
           <div 
-            className="absolute -top-20 -right-20 w-[500px] h-[500px] rounded-full opacity-[0.08]"
+            className="absolute -top-20 -right-20 w-[600px] h-[600px] rounded-full opacity-30"
             style={{
-              background: 'radial-gradient(circle, #7C3AED 0%, transparent 70%)',
-              filter: 'blur(100px)',
-            }}
-          />
-          {/* Blue orb - bottom left */}
-          <div 
-            className="absolute -bottom-32 -left-32 w-[450px] h-[450px] rounded-full opacity-[0.06]"
-            style={{
-              background: 'radial-gradient(circle, #3B82F6 0%, transparent 70%)',
+              background: 'radial-gradient(circle, #7C3AED 0%, transparent 60%)',
               filter: 'blur(80px)',
             }}
           />
-          {/* Teal orb - center */}
+          {/* Blue orb - bottom left - VISIBLE */}
           <div 
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full opacity-[0.04]"
+            className="absolute -bottom-20 -left-20 w-[550px] h-[550px] rounded-full opacity-25"
             style={{
-              background: 'radial-gradient(circle, #14B8A6 0%, transparent 70%)',
-              filter: 'blur(60px)',
+              background: 'radial-gradient(circle, #3B82F6 0%, transparent 60%)',
+              filter: 'blur(70px)',
             }}
           />
-          {/* Subtle dot grid texture */}
+          {/* Teal/cyan orb - center-right */}
           <div 
-            className="absolute inset-0 opacity-[0.03]"
+            className="absolute top-1/3 right-1/4 w-[400px] h-[400px] rounded-full opacity-20"
             style={{
-              backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1px)',
-              backgroundSize: '24px 24px',
+              background: 'radial-gradient(circle, #06B6D4 0%, transparent 60%)',
+              filter: 'blur(60px)',
             }}
           />
         </div>

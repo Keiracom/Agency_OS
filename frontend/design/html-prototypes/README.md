@@ -1,45 +1,74 @@
-# HTML Prototypes — Design SSOT
+# Agency OS HTML Prototypes
 
-These HTML files are the **Single Source of Truth** for Agency OS UI design.
+Static HTML/CSS prototypes for Agency OS UI components. These serve as the **Single Source of Truth (SSOT)** for frontend implementation.
 
-All React ports **must visually match** these prototypes.
+## Directory Contents
 
-## Sprint 2 Primary References
+### Dashboard Views
+| File | Description |
+|------|-------------|
+| `dashboard-v2.html` | Dashboard v2 - Original command center layout |
+| `dashboard-v3.html` | Dashboard v3 - Refined metrics and widgets |
+| `dashboard-v4-customer.html` | Dashboard v4 - Customer-focused view with streamlined UX |
 
-| File | Purpose | Priority |
-|------|---------|----------|
-| `dashboard-v3.html` | Command Center dashboard | **PRIMARY** |
-| `leads-v2.html` | Leads list with ALS tiers | **PRIMARY** |
-| `lead-detail-v2.html` | Individual lead view | Sprint 2 |
+### Leads & Prospects
+| File | Description |
+|------|-------------|
+| `leads-v2.html` | Leads list view with filtering, search, and ALS scores |
+| `lead-detail-v2.html` | Lead detail page - Full profile, activity timeline, engagement history |
+| `dashboard-prospects.html` | Prospects pipeline view with funnel stages |
 
-## Secondary References
+### Campaigns
+| File | Description |
+|------|-------------|
+| `dashboard-campaigns.html` | Campaign overview with metrics and sequence visualization |
+| `campaigns-v2.html` | Campaigns list - All campaigns with status and performance |
+| `campaigns-v3.html` | Campaigns v3 - Updated layout and channel indicators |
+| `campaigns-v4.html` | Campaigns v4 - Latest design with AI insights |
+| `campaign-detail-v2.html` | Campaign detail - Full sequence, metrics, A/B tests |
+| `campaign-new-v2.html` | New campaign wizard - Multi-step creation flow |
 
-| File | Purpose |
-|------|---------|
-| `dashboard-v2.html` | Previous dashboard iteration |
-| `dashboard-v4-customer.html` | Customer-facing variant |
-| `dashboard-campaigns.html` | Campaign management view |
-| `dashboard-inbox.html` | Unified inbox view |
-| `dashboard-prospects.html` | Prospect pipeline view |
+### Inbox & Replies
+| File | Description |
+|------|-------------|
+| `dashboard-inbox.html` | Inbox overview with conversation list |
+| `replies-v2.html` | Replies inbox - Unified multi-channel conversation view |
+| `reply-detail-v2.html` | Reply detail - Full thread with AI-suggested responses |
 
-## Usage
+### Sprint 4 Pages
+| File | Description |
+|------|-------------|
+| `reports-v2.html` | **Reports** - Analytics dashboard with charts, ROI metrics, exports |
+| `settings-v2.html` | **Settings** - Account, integrations, team management |
+| `billing-v2.html` | **Billing** - Plans, usage, invoices, payment methods |
 
-Before porting any component:
-1. `cat` the relevant HTML file
-2. Extract the exact structure, classes, and content
-3. Map HTML classes to theme tokens (bg-void, bg-surface, accent-primary, etc.)
-4. Build React component matching the prototype exactly
-
-## Theme Token Mapping
-
-| Prototype Class | Theme Token |
-|-----------------|-------------|
-| Dark backgrounds | `bg-void`, `bg-base` |
-| Card surfaces | `bg-surface` |
-| Accent colors | `accent-primary`, `accent-secondary` |
-| Text | `text-primary`, `text-muted` |
-| Borders | `border-subtle` |
+### Onboarding
+| File | Description |
+|------|-------------|
+| `onboarding-v2.html` | Onboarding v2 - Multi-step setup wizard |
+| `onboarding-v3.html` | Onboarding v3 - Streamlined flow with progressive disclosure |
 
 ---
 
-*Last updated: 2026-02-10*
+## Usage
+
+1. Open any `.html` file directly in a browser
+2. Use browser DevTools to inspect styles/layout
+3. Reference when implementing React components
+
+## Design Tokens
+
+All prototypes use consistent design tokens:
+- **Primary:** `#3B82F6` (Blue)
+- **Accent:** `#7C3AED` (Violet/AI)
+- **Success:** `#10B981` (Green)
+- **Warning:** `#F59E0B` (Amber)
+- **Error:** `#EF4444` (Red)
+- **Background:** `#F8FAFC` (Slate-50)
+- **Surface:** `#FFFFFF`
+- **Text Primary:** `#1E293B`
+- **Text Secondary:** `#64748B`
+
+---
+
+*Last synced: 2026-02-10*

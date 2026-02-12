@@ -35,15 +35,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* Instrument Serif for headings - loaded via Google Fonts link */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" 
-          rel="stylesheet" 
-        />
-      </head>
+      {/* Fonts loaded via @import in globals.css */}
       <body className={`${dmSans.variable} ${jetbrainsMono.variable} font-sans`}>
         <Providers>{children}</Providers>
       </body>

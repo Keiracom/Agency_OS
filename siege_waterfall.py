@@ -11,7 +11,7 @@ import re
 import logging
 from typing import List, Dict, Optional, Tuple, Any
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 
 # Supabase imports (assumed to be available)
@@ -201,7 +201,7 @@ class Tier2GMBEnricher:
                 gmb_result="found" if gmb_result.found else "not_found",
                 match_score=gmb_result.match_score,
                 pass_fail="pass" if gmb_result.found else "fail",
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(timezone.utc)
             )
             self.attempts.append(attempt)
             

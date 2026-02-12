@@ -56,11 +56,12 @@ IGNITION = TierConfig(
     daily_outreach=50,
 )
 
+# Canonical pricing — last updated CEO Directive #008
 VELOCITY = TierConfig(
     name=TierName.VELOCITY,
     price_aud=4000,  # Updated 2026-02-06 per CEO confirmation
     founding_price_aud=2000,
-    leads_per_month=2250,
+    leads_per_month=2500,  # Updated 2026-02-12 per CEO Directive #008
     max_campaigns=10,
     ai_suggested_campaigns=6,
     custom_campaigns=4,
@@ -68,11 +69,12 @@ VELOCITY = TierConfig(
     daily_outreach=100,
 )
 
+# Canonical pricing — last updated CEO Directive #008
 DOMINANCE = TierConfig(
     name=TierName.DOMINANCE,
     price_aud=7500,
     founding_price_aud=3750,
-    leads_per_month=4500,
+    leads_per_month=5000,  # Updated 2026-02-12 per CEO Directive #008
     max_campaigns=20,
     ai_suggested_campaigns=12,
     custom_campaigns=8,
@@ -197,8 +199,8 @@ def get_available_channels_enum(als_score: int) -> list["ChannelType"]:
 # =============================================================================
 # [x] Matches PRICING_TIERS.md exactly
 # [x] Ignition: 1,250 leads, 5 campaigns (3 AI + 2 custom), 1 LinkedIn seat
-# [x] Velocity: 2,250 leads, 10 campaigns (6 AI + 4 custom), 3 LinkedIn seats
-# [x] Dominance: 4,500 leads, 20 campaigns (12 AI + 8 custom), 5 LinkedIn seats
+# [x] Velocity: 2,500 leads, 10 campaigns (6 AI + 4 custom), 3 LinkedIn seats  # CEO Directive #008
+# [x] Dominance: 5,000 leads, 20 campaigns (12 AI + 8 custom), 5 LinkedIn seats  # CEO Directive #008
 # [x] Founding prices at 50% discount
 # [x] ALS tier thresholds: Hot 85+, Warm 60+, Cool 35+, Cold 20+, Dead <20
 # [x] Channel access rules match spec

@@ -3,7 +3,7 @@
  * PURPOSE: Scrollable list of inbox messages
  */
 'use client';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { InboxMessage } from '@/lib/mock/inbox-data';
 import { InboxFilters } from './InboxFilters';
 import { InboxListItem } from './InboxListItem';
@@ -14,15 +14,16 @@ interface InboxListProps {
   onSelectMessage: (id: string) => void;
 }
 
-const filterTabs = [
-  { id: 'all', label: 'All', count: 23 },
-  { id: 'unread', label: 'Unread', count: 7 },
-  { id: 'positive', label: 'Positive', count: 12 },
-  { id: 'action', label: 'Action' },
-];
-
 export function InboxList({ messages, selectedId, onSelectMessage }: InboxListProps) {
   const [activeFilter, setActiveFilter] = useState('all');
+  
+  // Derive counts from actual data
+  const filterTabs = useMemo(() => [
+    { id: 'all', label: 'All', count: messages.length },
+    { id: 'unread', label: 'Unread', count: messages.filter((m) => m.unread).length },
+    { id: 'positive', label: 'Positive', count: messages.filter((m) => m.sentiment === 'positive').length },
+    { id: 'action', label: 'Action', count: messages.filter((m) => m.intent === 'meeting' || m.intent === 'interested').length },
+  ], [messages]);
   
   const filteredMessages = messages.filter((m) => {
     if (activeFilter === 'unread') return m.unread;

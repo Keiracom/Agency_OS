@@ -17,33 +17,36 @@ module.exports = {
       }
     },
     extend: {
-      // Bloomberg Dark Theme Tokens
+      // Agency OS Design Tokens - Bloomberg Terminal Dark Mode
+      // Sprint 1: Theme Foundation (CEO Directive #008)
       colors: {
-        // Base layers
-        'bg-void': '#05050A',
-        'bg-base': '#0A0A12',
-        'bg-surface': '#12121D',
-        'bg-surface-hover': '#1A1A28',
-        'bg-elevated': '#222233',
+        // Base layers - Warm Charcoal
+        'bg-void': '#080604',
+        'bg-base': '#0C0A08',
+        'bg-surface': 'rgba(255, 255, 255, 0.03)',
+        'bg-surface-hover': 'rgba(255, 255, 255, 0.06)',
+        'bg-elevated': 'rgba(255, 255, 255, 0.08)',
         
-        // Borders
-        'border-subtle': '#1E1E2E',
-        'border-default': '#2A2A3D',
-        'border-strong': '#3A3A50',
+        // Borders - Glassmorphism
+        'border-subtle': 'rgba(255, 255, 255, 0.06)',
+        'border-default': 'rgba(255, 255, 255, 0.08)',
+        'border-strong': 'rgba(255, 255, 255, 0.12)',
         
-        // Text
-        'text-primary': '#F8F8FC',
-        'text-secondary': '#B4B4C4',
-        'text-muted': '#6E6E82',
+        // Text - Warm Cream
+        'text-primary': '#FAF5F0',
+        'text-secondary': '#A09890',
+        'text-muted': '#6B6560',
         
-        // Accent
-        'accent-primary': '#7C3AED',
-        'accent-primary-hover': '#9061F9',
+        // Accent - Amber Primary, Violet for AI only
+        'accent-primary': '#D4956A',
+        'accent-primary-hover': '#E0A87D',
+        'accent-ai': '#7C3AED',
+        'accent-ai-hover': '#9061F9',
         'accent-teal': '#14B8A6',
         'accent-blue': '#3B82F6',
         
         // Status
-        'status-success': '#22C55E',
+        'status-success': '#10B981',
         'status-warning': '#F59E0B',
         'status-error': '#EF4444',
         
@@ -95,7 +98,8 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        sans: ['DM Sans', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        serif: ['Instrument Serif', 'Georgia', 'serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       borderRadius: {
@@ -104,9 +108,14 @@ module.exports = {
         sm: 'calc(var(--radius) - 4px)'
       },
       boxShadow: {
-        'glow-sm': '0 0 10px rgba(124, 58, 237, 0.2)',
-        'glow-md': '0 0 20px rgba(124, 58, 237, 0.3)',
-        'glow-lg': '0 0 30px rgba(124, 58, 237, 0.4)',
+        'glow-sm': '0 0 10px rgba(212, 149, 106, 0.2)',
+        'glow-md': '0 0 20px rgba(212, 149, 106, 0.3)',
+        'glow-lg': '0 0 30px rgba(212, 149, 106, 0.4)',
+        'glow-ai-sm': '0 0 10px rgba(124, 58, 237, 0.2)',
+        'glow-ai-md': '0 0 20px rgba(124, 58, 237, 0.3)',
+      },
+      backdropBlur: {
+        'glass': '12px',
       },
       keyframes: {
         'accordion-down': {

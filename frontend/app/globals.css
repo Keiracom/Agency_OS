@@ -1,35 +1,41 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    /* Bloomberg Dark Theme - Agency OS SSOT */
-    /* Base Layers */
-    --bg-void: #05050A;
-    --bg-base: #0A0A12;
-    --bg-surface: #12121D;
-    --bg-surface-hover: #1A1A28;
-    --bg-elevated: #222233;
+    /* Agency OS Design Tokens - Bloomberg Terminal Dark Mode */
+    /* Sprint 1: Theme Foundation (CEO Directive #008) */
     
-    /* Borders */
-    --border-subtle: #1E1E2E;
-    --border-default: #2A2A3D;
-    --border-strong: #3A3A50;
+    /* Base Layers - Warm Charcoal */
+    --bg-void: #080604;
+    --bg-base: #0C0A08;
+    --bg-surface: rgba(255, 255, 255, 0.03);
+    --bg-surface-hover: rgba(255, 255, 255, 0.06);
+    --bg-elevated: rgba(255, 255, 255, 0.08);
     
-    /* Text */
-    --text-primary: #F8F8FC;
-    --text-secondary: #B4B4C4;
-    --text-muted: #6E6E82;
+    /* Borders - Glassmorphism */
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-default: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.12);
     
-    /* Accent */
-    --accent-primary: #7C3AED;
-    --accent-primary-hover: #9061F9;
-    --accent-teal: #14B8A6;
-    --accent-blue: #3B82F6;
+    /* Text - Warm Cream */
+    --text-primary: #FAF5F0;
+    --text-secondary: #A09890;
+    --text-muted: #6B6560;
+    
+    /* Accent - Amber Primary */
+    --accent-primary: #D4956A;
+    --accent-primary-hover: #E0A87D;
+    
+    /* Accent - Violet for AI indicators ONLY */
+    --accent-ai: #7C3AED;
+    --accent-ai-hover: #9061F9;
     
     /* Status */
-    --status-success: #22C55E;
+    --status-success: #10B981;
     --status-warning: #F59E0B;
     --status-error: #EF4444;
     
@@ -39,40 +45,42 @@
     --tier-cool: #3B82F6;
     
     /* Gradients */
-    --gradient-premium: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);
+    --gradient-premium: linear-gradient(135deg, #D4956A 0%, #E0A87D 100%);
+    --gradient-ai: linear-gradient(135deg, #7C3AED 0%, #9061F9 100%);
     
     /* Fonts */
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-serif: 'Instrument Serif', Georgia, serif;
     --font-mono: 'JetBrains Mono', monospace;
 
     /* shadcn/ui compatibility layer */
-    --background: 240 10% 4%;           /* bg-base */
-    --foreground: 240 5% 97%;           /* text-primary */
-    --card: 240 6% 7%;                  /* bg-surface */
-    --card-foreground: 240 5% 97%;
-    --popover: 240 6% 7%;
-    --popover-foreground: 240 5% 97%;
-    --primary: 263 70% 58%;             /* accent-primary #7C3AED */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 240 5% 15%;            /* bg-elevated */
-    --secondary-foreground: 240 5% 97%;
-    --muted: 240 5% 15%;
-    --muted-foreground: 240 5% 50%;     /* text-muted */
-    --accent: 263 70% 58%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;           /* status-error */
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5% 17%;               /* border-default */
-    --input: 240 5% 17%;
-    --ring: 263 70% 58%;                /* accent-primary */
+    --background: 20 14% 4%;             /* bg-base #0C0A08 */
+    --foreground: 30 33% 96%;            /* text-primary #FAF5F0 */
+    --card: 0 0% 100% / 0.03;            /* bg-surface */
+    --card-foreground: 30 33% 96%;
+    --popover: 0 0% 100% / 0.03;
+    --popover-foreground: 30 33% 96%;
+    --primary: 25 54% 62%;               /* accent-primary #D4956A */
+    --primary-foreground: 20 14% 4%;
+    --secondary: 0 0% 100% / 0.06;       /* bg-surface-hover */
+    --secondary-foreground: 30 33% 96%;
+    --muted: 0 0% 100% / 0.06;
+    --muted-foreground: 25 8% 40%;       /* text-muted */
+    --accent: 25 54% 62%;
+    --accent-foreground: 20 14% 4%;
+    --destructive: 0 84% 60%;            /* status-error */
+    --destructive-foreground: 30 33% 96%;
+    --border: 0 0% 100% / 0.08;          /* border-default */
+    --input: 0 0% 100% / 0.08;
+    --ring: 25 54% 62%;                  /* accent-primary */
     --radius: 0.75rem;
     
     /* Chart colors */
-    --chart-1: 263 70% 58%;             /* Purple */
-    --chart-2: 217 91% 60%;             /* Blue */
-    --chart-3: 142 71% 45%;             /* Green */
-    --chart-4: 38 92% 50%;              /* Orange */
-    --chart-5: 0 84% 60%;               /* Red */
+    --chart-1: 25 54% 62%;               /* Amber */
+    --chart-2: 263 70% 58%;              /* Violet (AI) */
+    --chart-3: 160 84% 39%;              /* Success Green */
+    --chart-4: 38 92% 50%;               /* Warning Orange */
+    --chart-5: 0 84% 60%;                /* Error Red */
   }
 
   /* Dark mode is default - no .dark class needed */
@@ -83,9 +91,20 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background-color: #0C0A08;
     font-family: var(--font-sans);
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Typography - Headings use Instrument Serif */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-serif);
+  }
+  
+  /* Data/numbers use JetBrains Mono */
+  .font-data, [data-number], .tabular-nums {
+    font-family: var(--font-mono);
   }
 }
 
@@ -96,16 +115,16 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-surface);
+  background: #0C0A08;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-default);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--border-strong);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 /* ALS Tier colors */
@@ -122,7 +141,7 @@
 }
 
 .tier-cold {
-  @apply bg-gray-500/10 text-gray-400 border-gray-500/30;
+  @apply bg-gray-500/10 text-gray-400 border-gray-700/30;
 }
 
 .tier-dead {
@@ -131,7 +150,7 @@
 
 /* Campaign status colors */
 .status-active {
-  @apply bg-green-500/10 text-green-400 border-green-500/30;
+  @apply bg-emerald-500/10 text-emerald-400 border-emerald-500/30;
 }
 
 .status-draft {
@@ -143,7 +162,7 @@
 }
 
 .status-completed {
-  @apply bg-purple-500/10 text-purple-400 border-purple-500/30;
+  @apply bg-violet-500/10 text-violet-400 border-violet-500/30;
 }
 
 /* Channel icon colors */
@@ -152,7 +171,7 @@
 }
 
 .channel-sms {
-  @apply text-green-400;
+  @apply text-emerald-400;
 }
 
 .channel-linkedin {
@@ -160,14 +179,14 @@
 }
 
 .channel-voice {
-  @apply text-purple-400;
+  @apply text-violet-400;
 }
 
 .channel-mail {
   @apply text-orange-400;
 }
 
-/* Premium gradient utilities */
+/* Premium gradient utilities - Amber */
 .gradient-premium {
   background: var(--gradient-premium);
 }
@@ -179,12 +198,34 @@
   background-clip: text;
 }
 
-/* Glass morphism for elevated panels */
+/* AI gradient - Violet (use sparingly) */
+.gradient-ai {
+  background: var(--gradient-ai);
+}
+
+.gradient-ai-text {
+  background: var(--gradient-ai);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glass morphism for elevated panels - Sprint 1 card treatment */
 .glass-surface {
-  background: rgba(18, 18, 29, 0.8);
+  background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-surface-hover {
+  @apply glass-surface;
+  transition: all 0.2s ease;
+}
+
+.glass-surface-hover:hover {
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 20px rgba(212, 149, 106, 0.1);
 }
 
 /* Loading skeleton animation */
@@ -197,7 +238,8 @@
 .skeleton {
   position: relative;
   overflow: hidden;
-  background-color: var(--bg-surface);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 0.5rem;
 }
 
 .skeleton::after {
@@ -210,8 +252,8 @@
   background-image: linear-gradient(
     90deg,
     transparent 0,
-    rgba(255, 255, 255, 0.05) 20%,
-    rgba(255, 255, 255, 0.1) 60%,
+    rgba(255, 255, 255, 0.03) 20%,
+    rgba(255, 255, 255, 0.06) 60%,
     transparent
   );
   animation: shimmer 2s infinite;
@@ -242,6 +284,15 @@ html {
 
 @keyframes pulse-glow {
   0%, 100% { 
+    box-shadow: 0 0 0 0 rgba(212, 149, 106, 0.4);
+  }
+  50% { 
+    box-shadow: 0 0 0 8px rgba(212, 149, 106, 0);
+  }
+}
+
+@keyframes pulse-glow-ai {
+  0%, 100% { 
     box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.4);
   }
   50% { 
@@ -259,4 +310,20 @@ html {
 
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-pulse-glow-ai {
+  animation: pulse-glow-ai 2s ease-in-out infinite;
+}
+
+/* Progressive disclosure transition */
+.step-reveal {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.4s ease;
+}
+
+.step-reveal.active {
+  opacity: 1;
+  transform: translateY(0);
 }

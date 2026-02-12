@@ -1,80 +1,40 @@
 /**
- * MeetingsChart.tsx - CSS-based Bar Chart
- * Sprint 4 - Reports Page
- *
- * Meetings over time visualization without external charting libraries.
+ * MeetingsChart.tsx - Meetings Over Time Bar Chart
+ * CSS-only bar chart with amber accent
  */
 
 "use client";
 
 import { TrendingUp } from "lucide-react";
-import type { MonthlyMeetings } from "@/data/mock-reports";
+import { meetingsData } from "@/lib/mock/reports-data";
 
-// ============================================
-// Types
-// ============================================
-
-interface MeetingsChartProps {
-  data: MonthlyMeetings[];
-}
-
-// ============================================
-// Component
-// ============================================
-
-export function MeetingsChart({ data }: MeetingsChartProps) {
-  // Calculate max value for relative heights
-  const maxValue = Math.max(...data.map((d) => d.value));
+export function MeetingsChart() {
+  const maxVal = Math.max(...meetingsData.map((d) => d.value));
 
   return (
-    <div className="bg-bg-surface border border-border-subtle rounded-xl overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
-        <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
-          <TrendingUp className="w-4 h-4 text-accent-primary" />
-          Meetings Over Time
-        </div>
+    <div className="bg-[#12121D] border border-[#1E1E2E] rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-[#1E1E2E] flex items-center gap-2">
+        <TrendingUp className="w-4 h-4 text-[#D4956A]" />
+        <h3 className="text-sm font-semibold text-[#F8F8FC]">Meetings Over Time</h3>
       </div>
-
-      {/* Chart */}
       <div className="p-5">
-        <div className="h-[200px] flex items-end gap-2 pt-4">
-          {data.map((item, index) => {
-            const heightPercent = (item.value / maxValue) * 100;
-
+        <div className="h-48 flex items-end gap-2">
+          {meetingsData.map((d) => {
+            const height = (d.value / maxVal) * 100;
             return (
-              <div
-                key={item.month}
-                className="flex-1 flex flex-col items-center h-full"
-              >
-                {/* Bar Container */}
+              <div key={d.month} className="flex-1 flex flex-col items-center h-full">
                 <div className="flex-1 w-full flex items-end justify-center">
                   <div
-                    className="w-[70%] rounded-t transition-all duration-500 relative group
-                      bg-gradient-to-t from-accent-primary/50 to-accent-primary
-                      hover:brightness-110 cursor-pointer"
-                    style={{ height: `${heightPercent}%` }}
+                    className="w-[70%] rounded-t bg-gradient-to-t from-[#D4956A]/50 to-[#D4956A] hover:brightness-110 transition-all relative group"
+                    style={{ height: `${height}%` }}
                   >
-                    {/* Tooltip on hover */}
-                    <span
-                      className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1
-                        text-[11px] font-mono font-semibold text-text-primary
-                        opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      {item.value}
+                    <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs font-mono font-semibold text-[#F8F8FC] opacity-0 group-hover:opacity-100 transition-opacity">
+                      {d.value}
                     </span>
                   </div>
                 </div>
-
-                {/* Label */}
-                <div className="text-[11px] text-text-muted font-medium mt-2">
-                  {item.month}
-                </div>
-
-                {/* Value */}
-                <div className="text-xs font-mono font-semibold text-text-secondary mt-0.5">
-                  {item.value}
-                </div>
+                <p className="text-[11px] text-[#6E6E82] mt-2 font-medium">{d.month}</p>
+                <p className="text-xs font-mono font-semibold text-[#B4B4C4]">{d.value}</p>
               </div>
             );
           })}
@@ -83,5 +43,3 @@ export function MeetingsChart({ data }: MeetingsChartProps) {
     </div>
   );
 }
-
-export default MeetingsChart;

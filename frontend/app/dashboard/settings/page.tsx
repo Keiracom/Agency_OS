@@ -1,220 +1,133 @@
-/**
- * FILE: frontend/app/dashboard/settings/page.tsx
- * PURPOSE: Settings page
- * PHASE: 8 (Frontend)
- * TASK: FE-014
- */
+'use client';
 
-import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Target, ChevronRight, Bell, User } from "lucide-react";
+import { useState } from 'react';
+import { User, Users, Link2, Bell, CreditCard, Key, AlertTriangle, Upload, Trash2 } from 'lucide-react';
+import {
+  SettingsHeader,
+  ProfileSection,
+  IntegrationsSection,
+  NotificationsSection,
+  BillingSection,
+  TeamSection,
+} from '@/components/settings';
+import {
+  mockUserProfile,
+  mockIntegrations,
+  mockNotifications,
+  mockBillingInfo,
+  mockTeamMembers,
+  mockApiKeys,
+} from '@/lib/mock/settings-data';
+
+type TabId = 'profile' | 'team' | 'integrations' | 'notifications' | 'billing';
+
+const tabs: { id: TabId; label: string; icon: typeof User }[] = [
+  { id: 'profile', label: 'Profile', icon: User },
+  { id: 'team', label: 'Team', icon: Users },
+  { id: 'integrations', label: 'Integrations', icon: Link2 },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'billing', label: 'Billing', icon: CreditCard },
+];
 
 export default function SettingsPage() {
+  const [activeTab, setActiveTab] = useState<TabId>('profile');
+
   return (
-    <div className="space-y-6 max-w-4xl">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">
-          Manage your account and organization settings
-        </p>
+    <div className="max-w-4xl mx-auto">
+      <SettingsHeader />
+
+      {/* Tabs */}
+      <div className="flex gap-1 mb-8 p-1.5 bg-bg-surface rounded-xl w-fit">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all ${
+                isActive
+                  ? 'bg-[rgba(212,149,106,0.15)] text-[#D4956A]'
+                  : 'text-text-muted hover:text-text-secondary hover:bg-bg-surface-hover'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Quick Settings Links */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* Profile Settings Link */}
-        <Link href="/dashboard/settings/profile">
-          <Card className="cursor-pointer hover:border-primary/50 transition-colors h-full">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
-                  <User className="h-5 w-5 text-blue-500" />
-                </div>
-                <div>
-                  <p className="font-medium">Profile</p>
-                  <p className="text-sm text-muted-foreground">
-                    Manage your personal information
-                  </p>
-                </div>
-              </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground" />
-            </CardContent>
-          </Card>
-        </Link>
-
-        {/* ICP Settings Link */}
-        <Link href="/dashboard/settings/icp">
-          <Card className="cursor-pointer hover:border-primary/50 transition-colors h-full">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <Target className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium">Ideal Customer Profile</p>
-                  <p className="text-sm text-muted-foreground">
-                    Define your target audience for all campaigns
-                  </p>
-                </div>
-              </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground" />
-            </CardContent>
-          </Card>
-        </Link>
-
-        {/* Notifications Settings Link */}
-        <Link href="/dashboard/settings/notifications">
-          <Card className="cursor-pointer hover:border-primary/50 transition-colors h-full">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10">
-                  <Bell className="h-5 w-5 text-orange-500" />
-                </div>
-                <div>
-                  <p className="font-medium">Notifications</p>
-                  <p className="text-sm text-muted-foreground">
-                    Configure email, push, and SMS alerts
-                  </p>
-                </div>
-              </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground" />
-            </CardContent>
-          </Card>
-        </Link>
+      {/* Tab Content */}
+      <div className="space-y-6">
+        {activeTab === 'profile' && (
+          <>
+            <ProfileSection profile={mockUserProfile} />
+            <ApiKeysSection />
+            <DangerZone />
+          </>
+        )}
+        {activeTab === 'team' && <TeamSection members={mockTeamMembers} />}
+        {activeTab === 'integrations' && <IntegrationsSection integrations={mockIntegrations} />}
+        {activeTab === 'notifications' && <NotificationsSection preferences={mockNotifications} />}
+        {activeTab === 'billing' && <BillingSection billing={mockBillingInfo} />}
       </div>
+    </div>
+  );
+}
 
-      {/* Organization */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Organization</CardTitle>
-          <CardDescription>Update your organization details</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="orgName">Organization Name</Label>
-              <Input id="orgName" defaultValue="Acme Agency" />
-            </div>
-            <div className="space-y-2">
-              <Label>Subscription Tier</Label>
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="text-base px-3 py-1">
-                  Velocity
-                </Badge>
-                <Button variant="link" className="text-sm">Upgrade</Button>
+function ApiKeysSection() {
+  return (
+    <div className="glass-surface border border-border-subtle rounded-xl overflow-hidden">
+      <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <Key className="w-5 h-5 text-[#D4956A]" />
+          <span className="font-serif font-semibold text-text-primary">API Keys</span>
+        </div>
+        <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border-default text-text-secondary hover:bg-bg-surface-hover hover:text-text-primary transition-all">
+          + Generate New Key
+        </button>
+      </div>
+      <div className="p-6 space-y-3">
+        {mockApiKeys.map((key) => (
+          <div key={key.id} className="flex items-center justify-between p-4 bg-bg-surface-hover rounded-xl">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-[rgba(212,149,106,0.15)] rounded-xl flex items-center justify-center">
+                <Key className="w-5 h-5 text-[#D4956A]" />
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-text-primary">{key.name}</div>
+                <div className="text-sm text-text-muted font-mono">{key.value}</div>
               </div>
             </div>
-          </div>
-          <Button>Save Changes</Button>
-        </CardContent>
-      </Card>
-
-      {/* Default Permission Mode */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Default Permission Mode</CardTitle>
-          <CardDescription>
-            Set the default automation level for new campaigns
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            {[
-              {
-                mode: "autopilot",
-                title: "Autopilot",
-                description: "Full automation. AI handles all decisions.",
-              },
-              {
-                mode: "co_pilot",
-                title: "Co-Pilot",
-                description: "AI suggests, you approve key decisions.",
-              },
-              {
-                mode: "manual",
-                title: "Manual",
-                description: "Full control. Approve every action.",
-              },
-            ].map((option) => (
-              <Card
-                key={option.mode}
-                className={`cursor-pointer hover:border-primary transition-colors ${
-                  option.mode === "co_pilot" ? "border-primary" : ""
-                }`}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">{option.title}</span>
-                    {option.mode === "co_pilot" && (
-                      <Badge variant="active">Selected</Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground">{option.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Integrations */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Integrations</CardTitle>
-          <CardDescription>Connect your tools and services</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4">
-            {[
-              { name: "Apollo", status: "connected", description: "Lead enrichment" },
-              { name: "LinkedIn", status: "connected", description: "Via HeyReach" },
-              { name: "Resend", status: "connected", description: "Email sending" },
-              { name: "Twilio", status: "not_connected", description: "SMS sending" },
-            ].map((integration) => (
-              <div
-                key={integration.name}
-                className="flex items-center justify-between rounded-lg border p-4"
-              >
-                <div>
-                  <p className="font-medium">{integration.name}</p>
-                  <p className="text-sm text-muted-foreground">{integration.description}</p>
-                </div>
-                <Badge
-                  variant={integration.status === "connected" ? "active" : "outline"}
-                  className="capitalize"
-                >
-                  {integration.status.replace("_", " ")}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Danger Zone */}
-      <Card className="border-destructive">
-        <CardHeader>
-          <CardTitle className="text-destructive">Danger Zone</CardTitle>
-          <CardDescription>
-            Irreversible actions for your organization
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
-            <div>
-              <p className="font-medium">Delete Organization</p>
-              <p className="text-sm text-muted-foreground">
-                Permanently delete your organization and all data
-              </p>
+            <div className="flex gap-2">
+              <button className="px-3 py-1.5 text-xs font-medium rounded-md bg-bg-elevated text-text-secondary hover:bg-border-default hover:text-text-primary transition-all">Copy</button>
+              <button className="px-3 py-1.5 text-xs font-medium rounded-md bg-bg-elevated text-text-secondary hover:bg-border-default hover:text-text-primary transition-all">Regenerate</button>
             </div>
-            <Button variant="destructive">Delete</Button>
           </div>
-        </CardContent>
-      </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DangerZone() {
+  return (
+    <div className="rounded-xl border border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.05)] p-6">
+      <h3 className="flex items-center gap-2.5 text-base font-semibold text-status-error mb-4">
+        <AlertTriangle className="w-5 h-5" />
+        Danger Zone
+      </h3>
+      <div className="flex gap-3">
+        <button className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-[rgba(239,68,68,0.1)] text-status-error border border-[rgba(239,68,68,0.3)] hover:bg-[rgba(239,68,68,0.2)] transition-all">
+          <Upload className="w-4 h-4" />
+          Export All Data
+        </button>
+        <button className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-[rgba(239,68,68,0.1)] text-status-error border border-[rgba(239,68,68,0.3)] hover:bg-[rgba(239,68,68,0.2)] transition-all">
+          <Trash2 className="w-4 h-4" />
+          Delete Account
+        </button>
+      </div>
     </div>
   );
 }

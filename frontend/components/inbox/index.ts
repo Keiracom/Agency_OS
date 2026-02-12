@@ -1,9 +1,12 @@
 /**
  * FILE: frontend/components/inbox/index.ts
- * PURPOSE: Export all inbox-related components
+ * PURPOSE: Barrel export for inbox components
  */
-
-// Sprint 3: Inbox Components
-export { ConversationList } from './ConversationList';
-export { ConversationDetail } from './ConversationDetail';
+export { InboxHeader } from './InboxHeader';
 export { InboxFilters } from './InboxFilters';
+export { InboxList } from './InboxList';
+export { InboxListItem } from './InboxListItem';
+export { InboxPreview } from './InboxPreview';
+export { IntentBadge } from './IntentBadge';
+export { ChannelBadge } from './ChannelBadge';
+export { SentimentBadge } from './SentimentBadge';

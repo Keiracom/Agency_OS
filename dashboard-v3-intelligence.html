@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agency OS - Intelligence</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0F172A; color: #E2E8F0; }
+  
+  .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 240px; background: #020617; padding: 24px 0; border-right: 1px solid #1E293B; }
+  .logo { padding: 0 24px 32px; font-size: 20px; font-weight: 800; background: linear-gradient(135deg, #3B82F6, #8B5CF6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .nav a { display: flex; align-items: center; gap: 12px; padding: 14px 24px; color: #64748B; text-decoration: none; font-size: 14px; font-weight: 500; }
+  .nav a:hover { color: #E2E8F0; background: rgba(255,255,255,0.03); }
+  .nav a.active { color: #8B5CF6; background: rgba(139,92,246,0.1); border-right: 2px solid #8B5CF6; }
+  
+  .main { margin-left: 240px; padding: 32px; }
+  
+  .header { margin-bottom: 32px; }
+  .page-title { font-size: 32px; font-weight: 800; display: flex; align-items: center; gap: 12px; }
+  .page-title .ai-glow { background: linear-gradient(135deg, #8B5CF6, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .page-subtitle { font-size: 14px; color: #64748B; margin-top: 8px; line-height: 1.6; }
+  .page-subtitle strong { color: #E2E8F0; }
+  
+  .learning-banner { background: linear-gradient(135deg, rgba(139,92,246,0.2), rgba(236,72,153,0.2)); border: 1px solid rgba(139,92,246,0.3); border-radius: 16px; padding: 20px 24px; margin-bottom: 32px; display: flex; align-items: center; gap: 20px; }
+  .learning-icon { font-size: 32px; }
+  .learning-text { flex: 1; }
+  .learning-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .learning-desc { font-size: 13px; color: #94A3B8; }
+  .learning-stats { display: flex; gap: 32px; }
+  .learning-stat { text-align: center; }
+  .learning-stat-value { font-size: 24px; font-weight: 800; color: #8B5CF6; }
+  .learning-stat-label { font-size: 11px; color: #64748B; text-transform: uppercase; }
+  
+  .card { background: #1E293B; border-radius: 16px; padding: 24px; border: 1px solid #334155; margin-bottom: 24px; }
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+  .card-title { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+  .card-subtitle { font-size: 12px; color: #64748B; margin-top: 4px; }
+  .confidence-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .confidence-high { background: rgba(16, 185, 129, 0.2); color: #10B981; }
+  .confidence-med { background: rgba(245, 158, 11, 0.2); color: #F59E0B; }
+  
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+  
+  .chart-container { position: relative; height: 280px; }
+  
+  /* ICP Scoring */
+  .icp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .icp-section { }
+  .icp-section-title { font-size: 11px; color: #64748B; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; font-weight: 600; }
+  .icp-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .icp-label { width: 120px; font-size: 13px; color: #94A3B8; }
+  .icp-track { flex: 1; height: 28px; background: #0F172A; border-radius: 6px; overflow: hidden; position: relative; }
+  .icp-fill { height: 100%; border-radius: 6px; display: flex; align-items: center; padding-left: 12px; font-size: 12px; font-weight: 700; color: white; }
+  .icp-fill.top { background: linear-gradient(90deg, #10B981, #34D399); }
+  .icp-fill.good { background: linear-gradient(90deg, #3B82F6, #60A5FA); }
+  .icp-fill.avg { background: linear-gradient(90deg, #F59E0B, #FBBF24); }
+  .icp-fill.low { background: linear-gradient(90deg, #64748B, #94A3B8); }
+  .icp-multiplier { width: 50px; text-align: right; font-size: 14px; font-weight: 700; }
+  .icp-multiplier.positive { color: #10B981; }
+  .icp-multiplier.negative { color: #EF4444; }
+  
+  .avoid-section { margin-top: 20px; padding: 16px; background: rgba(239, 68, 68, 0.1); border-radius: 10px; border: 1px solid rgba(239, 68, 68, 0.2); }
+  .avoid-title { font-size: 11px; color: #EF4444; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; font-weight: 600; }
+  .avoid-items { display: flex; flex-wrap: wrap; gap: 8px; }
+  .avoid-item { padding: 6px 12px; background: rgba(239, 68, 68, 0.1); border-radius: 6px; font-size: 12px; color: #FCA5A5; }
+  
+  /* Pattern Cards */
+  .pattern-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .pattern-card { background: #0F172A; border-radius: 12px; padding: 16px; border: 1px solid #334155; }
+  .pattern-card.winner { border-color: #10B981; background: rgba(16, 185, 129, 0.05); }
+  .pattern-card.loser { border-color: #EF4444; background: rgba(239, 68, 68, 0.05); }
+  .pattern-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .pattern-label { font-size: 11px; color: #64748B; text-transform: uppercase; }
+  .pattern-impact { font-size: 14px; font-weight: 700; }
+  .pattern-impact.positive { color: #10B981; }
+  .pattern-impact.negative { color: #EF4444; }
+  .pattern-text { font-size: 14px; color: #E2E8F0; line-height: 1.4; }
+  .pattern-example { font-size: 12px; color: #64748B; margin-top: 8px; font-style: italic; }
+  
+  /* Timing Optimization */
+  .timing-visual { display: flex; gap: 24px; }
+  .timing-days { flex: 1; }
+  .timing-hours { flex: 1; }
+  .timing-bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .timing-label { width: 40px; font-size: 12px; color: #64748B; }
+  .timing-bar-track { flex: 1; height: 24px; background: #0F172A; border-radius: 4px; overflow: hidden; }
+  .timing-bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font-size: 10px; font-weight: 600; color: white; }
+  .timing-bar-fill.peak { background: linear-gradient(90deg, #10B981, #34D399); }
+  .timing-bar-fill.good { background: linear-gradient(90deg, #3B82F6, #60A5FA); }
+  .timing-bar-fill.avoid { background: #334155; color: #64748B; }
+  .timing-insight { margin-top: 16px; padding: 12px 16px; background: #0F172A; border-radius: 8px; font-size: 13px; color: #94A3B8; display: flex; align-items: center; gap: 10px; }
+  .timing-insight strong { color: #E2E8F0; }
+  
+  /* Sequence Optimizer */
+  .sequence-comparison { display: flex; flex-direction: column; gap: 16px; }
+  .sequence-row { display: flex; align-items: center; gap: 16px; padding: 16px; background: #0F172A; border-radius: 12px; }
+  .sequence-row.best { border: 1px solid #10B981; }
+  .sequence-rank { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; }
+  .sequence-rank.gold { background: linear-gradient(135deg, #F59E0B, #FBBF24); color: #0F172A; }
+  .sequence-rank.silver { background: #64748B; color: white; }
+  .sequence-rank.bronze { background: #78350F; color: #FDE68A; }
+  .sequence-flow { flex: 1; display: flex; align-items: center; gap: 8px; font-size: 20px; }
+  .sequence-arrow { color: #334155; font-size: 14px; }
+  .sequence-metrics { display: flex; gap: 24px; }
+  .sequence-metric { text-align: center; }
+  .sequence-metric-value { font-size: 18px; font-weight: 700; }
+  .sequence-metric-value.green { color: #10B981; }
+  .sequence-metric-label { font-size: 10px; color: #64748B; text-transform: uppercase; }
+  
+  /* Predictions */
+  .predictions-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .prediction-card { background: linear-gradient(135deg, #1E293B, #0F172A); border-radius: 12px; padding: 20px; border: 1px solid #334155; position: relative; overflow: hidden; }
+  .prediction-card::before { content: ''; position: absolute; top: 0; right: 0; width: 100px; height: 100px; background: radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%); }
+  .prediction-icon { font-size: 24px; margin-bottom: 12px; }
+  .prediction-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  .prediction-value { font-size: 28px; font-weight: 800; margin-bottom: 4px; }
+  .prediction-value.up { color: #10B981; }
+  .prediction-desc { font-size: 12px; color: #64748B; line-height: 1.5; }
+  .prediction-action { margin-top: 12px; padding: 8px 16px; background: rgba(139, 92, 246, 0.2); border-radius: 8px; font-size: 12px; color: #A78BFA; font-weight: 600; display: inline-block; cursor: pointer; }
+  
+  /* Learning Timeline */
+  .learning-timeline { display: flex; flex-direction: column; gap: 16px; }
+  .timeline-item { display: flex; gap: 16px; padding: 16px; background: #0F172A; border-radius: 12px; }
+  .timeline-date { width: 80px; font-size: 12px; color: #64748B; }
+  .timeline-dot { width: 12px; height: 12px; border-radius: 50%; background: #8B5CF6; margin-top: 4px; }
+  .timeline-content { flex: 1; }
+  .timeline-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .timeline-desc { font-size: 13px; color: #94A3B8; }
+  .timeline-impact { margin-top: 8px; font-size: 12px; color: #10B981; font-weight: 600; }
+  
+  /* Model Performance */
+  .model-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .model-metric { background: #0F172A; border-radius: 12px; padding: 20px; text-align: center; }
+  .model-metric-value { font-size: 32px; font-weight: 800; }
+  .model-metric-value.purple { color: #8B5CF6; }
+  .model-metric-value.green { color: #10B981; }
+  .model-metric-value.blue { color: #3B82F6; }
+  .model-metric-label { font-size: 11px; color: #64748B; text-transform: uppercase; margin-top: 4px; }
+  .model-metric-sub { font-size: 11px; color: #10B981; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo">⚡ Agency OS</div>
+  <nav class="nav">
+    <a href="#">📊 Overview</a>
+    <a href="#">🎯 Campaigns</a>
+    <a href="#">👥 Prospects</a>
+    <a href="#">📬 Inbox</a>
+    <a href="#">📈 Analytics</a>
+    <a href="#" class="active">🧠 Intelligence</a>
+  </nav>
+</div>
+
+<div class="main">
+  <div class="header">
+    <div class="page-title">🧠 <span class="ai-glow">Intelligence</span></div>
+    <div class="page-subtitle">
+      Your AI has analyzed <strong>2,847 outreach attempts</strong>, <strong>234 conversations</strong>, and <strong>24 closed deals</strong>.<br>
+      These patterns improve your results automatically — no manual optimization needed.
+    </div>
+  </div>
+
+  <!-- Learning Banner -->
+  <div class="learning-banner">
+    <div class="learning-icon">🔄</div>
+    <div class="learning-text">
+      <div class="learning-title">Continuously Learning</div>
+      <div class="learning-desc">Model retrained 3 hours ago with 47 new data points. Your ICP accuracy improved 4.2%.</div>
+    </div>
+    <div class="learning-stats">
+      <div class="learning-stat">
+        <div class="learning-stat-value">94%</div>
+        <div class="learning-stat-label">Prediction Accuracy</div>
+      </div>
+      <div class="learning-stat">
+        <div class="learning-stat-value">+31%</div>
+        <div class="learning-stat-label">vs Manual Targeting</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Model Performance -->
+  <div class="model-metrics">
+    <div class="model-metric">
+      <div class="model-metric-value purple">2,847</div>
+      <div class="model-metric-label">Data Points</div>
+      <div class="model-metric-sub">+234 this week</div>
+    </div>
+    <div class="model-metric">
+      <div class="model-metric-value green">94%</div>
+      <div class="model-metric-label">ALS Accuracy</div>
+      <div class="model-metric-sub">+4.2% improvement</div>
+    </div>
+    <div class="model-metric">
+      <div class="model-metric-value blue">3.2x</div>
+      <div class="model-metric-label">Lift vs Random</div>
+      <div class="model-metric-sub">Top quartile prospects</div>
+    </div>
+    <div class="model-metric">
+      <div class="model-metric-value">23</div>
+      <div class="model-metric-label">Signals Tracked</div>
+      <div class="model-metric-sub">Funding, hiring, tech...</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <!-- WHO: ICP Analysis -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">👤 Who Converts Best</div>
+          <div class="card-subtitle">Conversion multiplier vs baseline</div>
+        </div>
+        <div class="confidence-badge confidence-high">✓ 94% confidence</div>
+      </div>
+      
+      <div class="icp-grid">
+        <div class="icp-section">
+          <div class="icp-section-title">By Title</div>
+          <div class="icp-bar">
+            <div class="icp-label">CTO</div>
+            <div class="icp-track"><div class="icp-fill top" style="width:100%">3.2x</div></div>
+            <div class="icp-multiplier positive">+220%</div>
+          </div>
+          <div class="icp-bar">
+            <div class="icp-label">VP Engineering</div>
+            <div class="icp-track"><div class="icp-fill top" style="width:88%">2.8x</div></div>
+            <div class="icp-multiplier positive">+180%</div>
+          </div>
+          <div class="icp-bar">
+            <div class="icp-label">Director Ops</div>
+            <div class="icp-track"><div class="icp-fill good" style="width:72%">2.3x</div></div>
+            <div class="icp-multiplier positive">+130%</div>
+          </div>
+          <div class="icp-bar">
+            <div class="icp-label">CEO (SMB)</div>
+            <div class="icp-track"><div class="icp-fill good" style="width:63%">2.0x</div></div>
+            <div class="icp-multiplier positive">+100%</div>
+          </div>
+          <div class="icp-bar">
+            <div class="icp-label">Manager</div>
+            <div class="icp-track"><div class="icp-fill low" style="width:25%">0.4x</div></div>
+            <div class="icp-multiplier negative">-60%</div>
+          </div>
+        </div>
+        
+        <div class="icp-section">
+          <div class="icp-section-title">By Company</div>
+          <div class="icp-bar">
+            <div class="icp-label">Recent Funding</div>
+            <div class="icp-track"><div class="icp-fill top" style="width:97%">3.1x</div></div>
+            <div class="icp-multiplier positive">+210%</div>
+          </div>
+          <div class="icp-bar">
+            <div class="icp-label">50-200 emp</div>
+            <div class="icp-track"><div class="icp-fill top" style="width:88%">2.8x</div></div>
+            <div class="icp-multiplier positive">+180%</div>
+          </div>
+          <div class="icp-bar">
+            <div class="icp-label">Hiring +5/mo</div>
+            <div class="icp-track"><div class="icp-fill good" style="width:75%">2.4x</div></div>
+            <div class="icp-multiplier positive">+140%</div>
+          </div>
+          <div class="icp-bar">
+            <div class="icp-label">Tech Stack Match</div>
+            <div class="icp-track"><div class="icp-fill good" style="width:66%">2.1x</div></div>
+            <div class="icp-multiplier positive">+110%</div>
+          </div>
+          <div class="icp-bar">
+            <div class="icp-label">Enterprise 500+</div>
+            <div class="icp-track"><div class="icp-fill low" style="width:38%">0.6x</div></div>
+            <div class="icp-multiplier negative">-40%</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="avoid-section">
+        <div class="avoid-title">⚠️ Auto-Deprioritized (Low Conversion)</div>
+        <div class="avoid-items">
+          <div class="avoid-item">Managers (0.4x)</div>
+          <div class="avoid-item">Enterprise 500+ (0.6x)</div>
+          <div class="avoid-item">No LinkedIn (0.5x)</div>
+          <div class="avoid-item">Contractors (0.3x)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WHAT: Message Patterns -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">💬 What Works</div>
+          <div class="card-subtitle">Message patterns that drive replies</div>
+        </div>
+        <div class="confidence-badge confidence-high">✓ 89% confidence</div>
+      </div>
+      
+      <div class="pattern-grid">
+        <div class="pattern-card winner">
+          <div class="pattern-header">
+            <div class="pattern-label">✅ Top Performer</div>
+            <div class="pattern-impact positive">+67% open</div>
+          </div>
+          <div class="pattern-text">"Question about [company]'s..."</div>
+          <div class="pattern-example">e.g., "Question about TechCorp's expansion"</div>
+        </div>
+        <div class="pattern-card winner">
+          <div class="pattern-header">
+            <div class="pattern-label">✅ Top Performer</div>
+            <div class="pattern-impact positive">+45% reply</div>
+          </div>
+          <div class="pattern-text">Reference specific pain point</div>
+          <div class="pattern-example">e.g., "hiring 5 engineers but pipeline is dry"</div>
+        </div>
+        <div class="pattern-card winner">
+          <div class="pattern-header">
+            <div class="pattern-label">✅ High Impact</div>
+            <div class="pattern-impact positive">+38% reply</div>
+          </div>
+          <div class="pattern-text">Mention recent company news</div>
+          <div class="pattern-example">e.g., "Saw your Series B announcement..."</div>
+        </div>
+        <div class="pattern-card winner">
+          <div class="pattern-header">
+            <div class="pattern-label">✅ High Impact</div>
+            <div class="pattern-impact positive">+28% reply</div>
+          </div>
+          <div class="pattern-text">Keep under 100 words</div>
+          <div class="pattern-example">Your avg: 87 words (optimized)</div>
+        </div>
+        <div class="pattern-card loser">
+          <div class="pattern-header">
+            <div class="pattern-label">❌ Avoid</div>
+            <div class="pattern-impact negative">-35% reply</div>
+          </div>
+          <div class="pattern-text">Multiple CTAs in one message</div>
+          <div class="pattern-example">"Book a call OR check our site OR..."</div>
+        </div>
+        <div class="pattern-card loser">
+          <div class="pattern-header">
+            <div class="pattern-label">❌ Avoid</div>
+            <div class="pattern-impact negative">-22% reply</div>
+          </div>
+          <div class="pattern-text">Overly formal tone</div>
+          <div class="pattern-example">"I hope this email finds you well..."</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WHEN: Timing -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">⏰ When to Reach Out</div>
+        <div class="card-subtitle">Optimal send times based on your prospect responses</div>
+      </div>
+      <div class="confidence-badge confidence-high">✓ 91% confidence</div>
+    </div>
+    
+    <div class="timing-visual">
+      <div class="timing-days">
+        <div class="icp-section-title">Best Days</div>
+        <div class="timing-bar-row">
+          <div class="timing-label">Mon</div>
+          <div class="timing-bar-track"><div class="timing-bar-fill good" style="width:55%">1.2x</div></div>
+        </div>
+        <div class="timing-bar-row">
+          <div class="timing-label">Tue</div>
+          <div class="timing-bar-track"><div class="timing-bar-fill peak" style="width:100%">2.3x ⭐</div></div>
+        </div>
+        <div class="timing-bar-row">
+          <div class="timing-label">Wed</div>
+          <div class="timing-bar-track"><div class="timing-bar-fill peak" style="width:91%">2.1x</div></div>
+        </div>
+        <div class="timing-bar-row">
+          <div class="timing-label">Thu</div>
+          <div class="timing-bar-track"><div class="timing-bar-fill good" style="width:83%">1.9x</div></div>
+        </div>
+        <div class="timing-bar-row">
+          <div class="timing-label">Fri</div>
+          <div class="timing-bar-track"><div class="timing-bar-fill avoid" style="width:26%">0.6x</div></div>
+        </div>
+      </div>
+      
+      <div class="timing-hours">
+        <div class="icp-section-title">Best Hours (AEST)</div>
+        <div class="timing-bar-row">
+          <div class="timing-label">7am</div>
+          <div class="timing-bar-track"><div class="timing-bar-fill good" style="width:45%">1.4x</div></div>
+        </div>
+        <div class="timing-bar-row">
+          <div class="timing-label">9am</div>
+          <div class="timing-bar-track"><div class="timing-bar-fill peak" style="width:100%">2.4x ⭐</div></div>
+        </div>
+        <div class="timing-bar-row">
+          <div class="timing-label">11am</div>
+          <div class="timing-bar-track"><div class="timing-bar-fill peak" style="width:87%">2.1x</div></div>
+        </div>
+        <div class="timing-bar-row">
+          <div class="timing-label">2pm</div>
+          <div class="timing-bar-track"><div class="timing-bar-fill good" style="width:70%">1.7x</div></div>
+        </div>
+        <div class="timing-bar-row">
+          <div class="timing-label">5pm</div>
+          <div class="timing-bar-track"><div class="timing-bar-fill avoid" style="width:30%">0.7x</div></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="timing-insight">
+      💡 <strong>Auto-applied:</strong> Your campaigns now send 78% of emails on Tue-Thu between 9-11am AEST. Reply rate improved 34% since optimization.
+    </div>
+  </div>
+
+  <!-- HOW: Sequence Optimizer -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">🔀 Optimal Channel Sequences</div>
+        <div class="card-subtitle">Best performing multi-channel combinations</div>
+      </div>
+      <div class="confidence-badge confidence-high">✓ 87% confidence</div>
+    </div>
+    
+    <div class="sequence-comparison">
+      <div class="sequence-row best">
+        <div class="sequence-rank gold">1</div>
+        <div class="sequence-flow">
+          📧 <span class="sequence-arrow">→</span> 📞 <span class="sequence-arrow">→</span> 💼 <span class="sequence-arrow">→</span> 💬
+        </div>
+        <div class="sequence-metrics">
+          <div class="sequence-metric">
+            <div class="sequence-metric-value green">18.4%</div>
+            <div class="sequence-metric-label">Meeting Rate</div>
+          </div>
+          <div class="sequence-metric">
+            <div class="sequence-metric-value">$287</div>
+            <div class="sequence-metric-label">Cost/Meeting</div>
+          </div>
+          <div class="sequence-metric">
+            <div class="sequence-metric-value">4.2d</div>
+            <div class="sequence-metric-label">Avg Time</div>
+          </div>
+        </div>
+      </div>
+      <div class="sequence-row">
+        <div class="sequence-rank silver">2</div>
+        <div class="sequence-flow">
+          💼 <span class="sequence-arrow">→</span> 📧 <span class="sequence-arrow">→</span> 📞
+        </div>
+        <div class="sequence-metrics">
+          <div class="sequence-metric">
+            <div class="sequence-metric-value">14.2%</div>
+            <div class="sequence-metric-label">Meeting Rate</div>
+          </div>
+          <div class="sequence-metric">
+            <div class="sequence-metric-value">$342</div>
+            <div class="sequence-metric-label">Cost/Meeting</div>
+          </div>
+          <div class="sequence-metric">
+            <div class="sequence-metric-value">5.8d</div>
+            <div class="sequence-metric-label">Avg Time</div>
+          </div>
+        </div>
+      </div>
+      <div class="sequence-row">
+        <div class="sequence-rank bronze">3</div>
+        <div class="sequence-flow">
+          📧 <span class="sequence-arrow">→</span> 📧 <span class="sequence-arrow">→</span> 💼
+        </div>
+        <div class="sequence-metrics">
+          <div class="sequence-metric">
+            <div class="sequence-metric-value">11.8%</div>
+            <div class="sequence-metric-label">Meeting Rate</div>
+          </div>
+          <div class="sequence-metric">
+            <div class="sequence-metric-value">$298</div>
+            <div class="sequence-metric-label">Cost/Meeting</div>
+          </div>
+          <div class="sequence-metric">
+            <div class="sequence-metric-value">7.1d</div>
+            <div class="sequence-metric-label">Avg Time</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Predictions -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">🔮 AI Predictions & Recommendations</div>
+        <div class="card-subtitle">What the model thinks you should do next</div>
+      </div>
+    </div>
+    
+    <div class="predictions-grid">
+      <div class="prediction-card">
+        <div class="prediction-icon">🎯</div>
+        <div class="prediction-title">ICP Expansion</div>
+        <div class="prediction-value up">+23%</div>
+        <div class="prediction-desc">Adding "Head of Growth" title could increase meetings by 23% based on similar conversion patterns.</div>
+        <div class="prediction-action">Apply to Campaigns →</div>
+      </div>
+      <div class="prediction-card">
+        <div class="prediction-icon">📞</div>
+        <div class="prediction-title">Voice Scaling</div>
+        <div class="prediction-value up">+$127K</div>
+        <div class="prediction-desc">Increasing voice calls to warm leads by 50% could add $127K pipeline next month.</div>
+        <div class="prediction-action">View Analysis →</div>
+      </div>
+      <div class="prediction-card">
+        <div class="prediction-icon">⚡</div>
+        <div class="prediction-title">Signal Alert</div>
+        <div class="prediction-value up">34</div>
+        <div class="prediction-desc">34 prospects in your pool had funding announcements this week. Prioritizing now.</div>
+        <div class="prediction-action">View Prospects →</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Learning Timeline -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">📚 Recent Learnings</div>
+        <div class="card-subtitle">How your AI has improved over time</div>
+      </div>
+    </div>
+    
+    <div class="learning-timeline">
+      <div class="timeline-item">
+        <div class="timeline-date">Jan 28</div>
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <div class="timeline-title">Discovered VP titles outperform Directors by 1.4x</div>
+          <div class="timeline-desc">Analyzed 89 recent conversations. VP-level prospects book meetings 40% faster than Director-level.</div>
+          <div class="timeline-impact">→ Auto-adjusting ALS weights +15 points for VP titles</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">Jan 25</div>
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <div class="timeline-title">Tuesday 9am AEST confirmed as peak window</div>
+          <div class="timeline-desc">Statistical significance reached (p < 0.01). 2.3x reply rate vs baseline.</div>
+          <div class="timeline-impact">→ Shifted 78% of sends to Tue-Thu morning slots</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">Jan 21</div>
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <div class="timeline-title">Voice + Email combo beats email-only by 3.2x</div>
+          <div class="timeline-desc">For hot leads (ALS 85+), adding a voice touch within 48h of email open dramatically increases conversion.</div>
+          <div class="timeline-impact">→ Added auto-trigger: voice call when hot lead opens email</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

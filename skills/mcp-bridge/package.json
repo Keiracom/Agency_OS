@@ -1,0 +1,21 @@
+{
+  "name": "mcp-bridge",
+  "version": "1.0.0",
+  "description": "Clawdbot skill for bridging to MCP servers",
+  "type": "module",
+  "main": "scripts/mcp-bridge.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "node scripts/mcp-bridge.js servers"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@supabase/mcp-server-supabase": "^0.6.3",
+    "@upstash/mcp-server": "^0.2.1",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  }
+}

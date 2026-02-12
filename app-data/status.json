@@ -1,0 +1,105 @@
+{
+  "lastUpdated": "2025-06-08T10:30:00Z",
+  "scoreboard": {
+    "tasksCompletedToday": 12,
+    "needsAttention": 2,
+    "health": "green",
+    "currentlyWorkingOn": [
+      {
+        "id": "1",
+        "title": "Building Elliot Mobile App",
+        "status": "in_progress",
+        "startedAt": "2025-06-08T09:00:00Z"
+      }
+    ],
+    "recentWins": [
+      {
+        "id": "w1",
+        "title": "Set up Expo project with navigation",
+        "completedAt": "2025-06-08T10:00:00Z",
+        "details": "Initialized React Native Expo project with bottom tab navigation"
+      },
+      {
+        "id": "w2",
+        "title": "Created dashboard API spec",
+        "completedAt": "2025-06-08T08:30:00Z",
+        "details": "Designed OpenAPI spec for Elliot Dashboard with memory, knowledge, and activity endpoints"
+      },
+      {
+        "id": "w3",
+        "title": "Weekly memory maintenance",
+        "completedAt": "2025-06-07T23:00:00Z",
+        "details": "Rolled up daily logs into weekly summary, updated patterns"
+      },
+      {
+        "id": "w4",
+        "title": "Fixed Prefect deployment",
+        "completedAt": "2025-06-07T18:00:00Z",
+        "details": "Resolved Railway deployment issue with correct Prefect server configuration"
+      },
+      {
+        "id": "w5",
+        "title": "Email inbox processing",
+        "completedAt": "2025-06-07T14:00:00Z",
+        "details": "Processed 15 emails, flagged 3 for Dave's review"
+      }
+    ],
+    "blockers": [
+      {
+        "id": "b1",
+        "title": "Need API key for new service",
+        "priority": "medium",
+        "createdAt": "2025-06-08T08:00:00Z"
+      },
+      {
+        "id": "b2",
+        "title": "Review PR for dashboard schema",
+        "priority": "low",
+        "createdAt": "2025-06-07T20:00:00Z"
+      }
+    ]
+  },
+  "metrics": {
+    "contextPercent": 35,
+    "tokens": {
+      "input": 45230,
+      "output": 12450,
+      "costEstimate": 0.42
+    },
+    "sessions": {
+      "count": 8,
+      "uptimeHours": 18.5
+    },
+    "model": "claude-opus-4-5",
+    "memory": {
+      "dailyLogCount": 45,
+      "patternCount": 12,
+      "lastMaintenance": "2025-06-07T23:00:00Z"
+    },
+    "cronJobs": [
+      {
+        "name": "heartbeat",
+        "schedule": "*/30 * * * *",
+        "status": "active",
+        "lastRun": "2025-06-08T10:00:00Z"
+      },
+      {
+        "name": "email-check",
+        "schedule": "0 */2 * * *",
+        "status": "active",
+        "lastRun": "2025-06-08T10:00:00Z"
+      },
+      {
+        "name": "memory-sync",
+        "schedule": "0 0 * * *",
+        "status": "active",
+        "lastRun": "2025-06-08T00:00:00Z"
+      }
+    ],
+    "responseTime": {
+      "avg": 2.3,
+      "p95": 5.1,
+      "unit": "seconds"
+    }
+  }
+}

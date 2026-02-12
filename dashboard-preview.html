@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agency OS Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F8FAFC; color: #1E293B; }
+
+  .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 220px; background: #0F172A; color: white; padding: 24px 0; }
+  .sidebar .logo { padding: 0 24px 24px; font-size: 18px; font-weight: 700; color: #3B82F6; }
+  .sidebar nav a { display: flex; align-items: center; gap: 10px; padding: 12px 24px; color: #94A3B8; text-decoration: none; font-size: 14px; transition: all 0.2s; }
+  .sidebar nav a:hover, .sidebar nav a.active { color: white; background: rgba(255,255,255,0.08); }
+  .sidebar nav a.active { border-left: 3px solid #3B82F6; }
+
+  .main { margin-left: 220px; padding: 32px; max-width: 1200px; }
+
+  .hero { background: white; border-radius: 16px; padding: 32px; margin-bottom: 24px; border: 1px solid #E2E8F0; }
+  .hero-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .hero-title { font-size: 14px; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  .hero-status { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+  .hero-status.on-track { background: #ECFDF5; color: #059669; }
+  .hero-status .dot { width: 8px; height: 8px; border-radius: 50%; background: #10B981; }
+  .hero-metric { font-size: 48px; font-weight: 800; color: #1E293B; margin-bottom: 8px; }
+  .hero-bar { height: 8px; background: #E2E8F0; border-radius: 4px; margin-bottom: 12px; }
+  .hero-bar-fill { height: 100%; background: linear-gradient(90deg, #3B82F6, #8B5CF6); border-radius: 4px; width: 48%; }
+  .hero-sub { display: flex; gap: 24px; color: #64748B; font-size: 14px; }
+  .hero-sub span { color: #10B981; font-weight: 600; }
+
+  .channels { background: white; border-radius: 16px; padding: 24px 32px; margin-bottom: 24px; border: 1px solid #E2E8F0; }
+  .channels-title { font-size: 13px; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; margin-bottom: 16px; }
+  .channels-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+  .channel-item { display: flex; flex-direction: column; }
+  .channel-icon { font-size: 20px; margin-bottom: 4px; }
+  .channel-num { font-size: 24px; font-weight: 700; color: #1E293B; }
+  .channel-label { font-size: 12px; color: #94A3B8; }
+  .channel-stats { font-size: 12px; color: #64748B; margin-top: 4px; }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+
+  .card { background: white; border-radius: 16px; padding: 24px; border: 1px solid #E2E8F0; }
+  .card-title { font-size: 13px; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; margin-bottom: 16px; }
+
+  .campaign { padding: 16px; border: 1px solid #E2E8F0; border-radius: 12px; margin-bottom: 12px; }
+  .campaign-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .campaign-name { font-weight: 600; font-size: 15px; }
+  .campaign-badge { font-size: 11px; background: #EDE9FE; color: #7C3AED; padding: 2px 8px; border-radius: 10px; }
+  .campaign-pct { font-size: 13px; color: #64748B; }
+  .campaign-channels { display: flex; gap: 4px; font-size: 14px; margin-bottom: 6px; }
+  .campaign-stats { font-size: 13px; color: #64748B; }
+  .campaign-stats strong { color: #1E293B; }
+
+  .meeting { display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid #F1F5F9; }
+  .meeting:last-child { border-bottom: none; }
+  .meeting-when { font-size: 12px; color: #3B82F6; font-weight: 600; }
+  .meeting-who { font-size: 14px; font-weight: 600; }
+  .meeting-company { font-size: 13px; color: #64748B; }
+  .meeting-type { font-size: 11px; background: #F1F5F9; color: #64748B; padding: 2px 8px; border-radius: 8px; }
+
+  .activity-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #F1F5F9; font-size: 13px; }
+  .activity-item:last-child { border-bottom: none; }
+  .activity-icon { font-size: 16px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: #F1F5F9; border-radius: 8px; }
+  .activity-text { flex: 1; color: #475569; }
+  .activity-text strong { color: #1E293B; }
+  .activity-time { color: #94A3B8; font-size: 12px; white-space: nowrap; }
+
+  .live-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #10B981; }
+  .live-badge .pulse { width: 6px; height: 6px; border-radius: 50%; background: #10B981; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .insight-banner { background: linear-gradient(135deg, #EDE9FE, #E0F2FE); border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+  .insight-icon { font-size: 20px; }
+  .insight-text { font-size: 14px; color: #475569; flex: 1; }
+  .insight-link { font-size: 13px; color: #7C3AED; text-decoration: none; font-weight: 600; white-space: nowrap; }
+
+  .pool { background: white; border-radius: 16px; padding: 24px 32px; margin-bottom: 24px; border: 1px solid #E2E8F0; }
+  .pool-bars { display: flex; gap: 4px; height: 24px; border-radius: 6px; overflow: hidden; margin-bottom: 12px; }
+  .pool-bar { display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: white; }
+  .pool-hot { background: #EF4444; flex: 1; }
+  .pool-warm { background: #F97316; flex: 38; }
+  .pool-cool { background: #EAB308; flex: 33; }
+  .pool-cold { background: #3B82F6; flex: 23; }
+  .pool-dead { background: #94A3B8; flex: 5; }
+  .pool-legend { display: flex; gap: 16px; font-size: 12px; color: #64748B; }
+  .pool-legend span { font-weight: 600; color: #1E293B; }
+  .pool-signals { display: flex; gap: 20px; margin-top: 12px; font-size: 13px; color: #64748B; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo">⚡ Agency OS</div>
+  <nav>
+    <a href="#" class="active">📊 Overview</a>
+    <a href="#">🎯 Campaigns</a>
+    <a href="#">👥 Prospects</a>
+    <a href="#">📬 Inbox</a>
+    <a href="#">📈 Performance</a>
+    <a href="#">🧠 Intelligence</a>
+  </nav>
+</div>
+
+<div class="main">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-header">
+      <div class="hero-title">January 2026</div>
+      <div class="hero-status on-track"><div class="dot"></div> On Track</div>
+    </div>
+    <div class="hero-metric">12 Meetings Booked</div>
+    <div class="hero-bar"><div class="hero-bar-fill"></div></div>
+    <div class="hero-sub">
+      Target: 15–25 this month &nbsp;│&nbsp; 10 showed &nbsp;│&nbsp; 3 deals started &nbsp;│&nbsp; <span>+3 vs last month</span>
+    </div>
+  </div>
+
+  <!-- AI Insight Banner -->
+  <div class="insight-banner">
+    <div class="insight-icon">🧠</div>
+    <div class="insight-text"><strong>AI Insight:</strong> VP titles convert 3.2x better this month. We're prioritizing them in your campaigns.</div>
+    <a href="#" class="insight-link">View Intel →</a>
+  </div>
+
+  <!-- Channels -->
+  <div class="channels">
+    <div class="channels-title">This Month's Outreach</div>
+    <div class="channels-grid">
+      <div class="channel-item">
+        <div class="channel-icon">📧</div>
+        <div class="channel-num">1,247</div>
+        <div class="channel-label">Emails</div>
+        <div class="channel-stats">61% opened │ 3.2% replied</div>
+      </div>
+      <div class="channel-item">
+        <div class="channel-icon">💼</div>
+        <div class="channel-num">89</div>
+        <div class="channel-label">LinkedIn</div>
+        <div class="channel-stats">42% accepted │ 12.3% replied</div>
+      </div>
+      <div class="channel-item">
+        <div class="channel-icon">📞</div>
+        <div class="channel-num">23</div>
+        <div class="channel-label">Voice Calls</div>
+        <div class="channel-stats">34% connected │ 8.2% to meeting</div>
+      </div>
+      <div class="channel-item">
+        <div class="channel-icon">💬</div>
+        <div class="channel-num">12</div>
+        <div class="channel-label">SMS</div>
+        <div class="channel-stats">33% replied │ 2 conversations</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Campaigns + Meetings -->
+  <div class="row">
+    <div class="card">
+      <div class="card-title">Campaigns</div>
+      <div class="campaign">
+        <div class="campaign-header">
+          <div class="campaign-name">Tech Decision Makers <span class="campaign-badge">✨ AI</span></div>
+          <div class="campaign-pct">40%</div>
+        </div>
+        <div class="campaign-channels">📧 💼 📞</div>
+        <div class="campaign-stats"><strong>6 meetings</strong> │ 3.8% reply │ 85% show rate</div>
+      </div>
+      <div class="campaign">
+        <div class="campaign-header">
+          <div class="campaign-name">Series A Startups <span class="campaign-badge">✨ AI</span></div>
+          <div class="campaign-pct">35%</div>
+        </div>
+        <div class="campaign-channels">📧 💼</div>
+        <div class="campaign-stats"><strong>4 meetings</strong> │ 2.9% reply │ 80% show rate</div>
+      </div>
+      <div class="campaign">
+        <div class="campaign-header">
+          <div class="campaign-name">My Custom Campaign</div>
+          <div class="campaign-pct">25%</div>
+        </div>
+        <div class="campaign-channels">📧 💬</div>
+        <div class="campaign-stats"><strong>2 meetings</strong> │ 1.8% reply │ 100% show rate</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Upcoming Meetings</div>
+      <div class="meeting">
+        <div>
+          <div class="meeting-when">Today 2:00 PM</div>
+          <div class="meeting-who">Sarah Chen</div>
+          <div class="meeting-company">TechCorp</div>
+        </div>
+        <div class="meeting-type">Discovery │ 30min</div>
+      </div>
+      <div class="meeting">
+        <div>
+          <div class="meeting-when">Tomorrow 10:00 AM</div>
+          <div class="meeting-who">Mike Johnson</div>
+          <div class="meeting-company">StartupXYZ</div>
+        </div>
+        <div class="meeting-type">Demo │ 45min</div>
+      </div>
+      <div class="meeting">
+        <div>
+          <div class="meeting-when">Thu 3:30 PM</div>
+          <div class="meeting-who">Lisa Park</div>
+          <div class="meeting-company">Acme Inc</div>
+        </div>
+        <div class="meeting-type">Follow-up │ 30min</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lead Pool -->
+  <div class="pool">
+    <div class="channels-title" style="display:flex;justify-content:space-between">
+      <span>Prospect Pool</span>
+      <span style="color:#3B82F6;font-size:12px;cursor:pointer">View all →</span>
+    </div>
+    <div class="pool-bars">
+      <div class="pool-bar pool-hot">1%</div>
+      <div class="pool-bar pool-warm">38%</div>
+      <div class="pool-bar pool-cool">33%</div>
+      <div class="pool-bar pool-cold">23%</div>
+      <div class="pool-bar pool-dead">5%</div>
+    </div>
+    <div class="pool-legend">
+      🔥 Hot <span>12</span> │
+      🟠 Warm <span>445</span> │
+      🟡 Cool <span>389</span> │
+      🔵 Cold <span>267</span> │
+      ⚪ Dead <span>134</span>
+    </div>
+    <div class="pool-signals">
+      ✅ 92% verified emails │ ⚡ 34 funding signals │ 📈 89 hiring intent │ 🔧 156 tech stack matched
+    </div>
+  </div>
+
+  <!-- Activity Feed -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:0">Recent Activity</div>
+      <div class="live-badge"><div class="pulse"></div> Live</div>
+    </div>
+    <div class="activity-item">
+      <div class="activity-icon">📧</div>
+      <div class="activity-text"><strong>Sarah Chen</strong> (TechCorp) opened your email</div>
+      <div class="activity-time">2m ago</div>
+    </div>
+    <div class="activity-item">
+      <div class="activity-icon">💼</div>
+      <div class="activity-text"><strong>Mike Johnson</strong> (StartupXYZ) replied on LinkedIn</div>
+      <div class="activity-time">15m ago</div>
+    </div>
+    <div class="activity-item">
+      <div class="activity-icon">📞</div>
+      <div class="activity-text"><strong>Lisa Park</strong> (Acme Inc) — meeting booked from voice call</div>
+      <div class="activity-time">1h ago</div>
+    </div>
+    <div class="activity-item">
+      <div class="activity-icon">💬</div>
+      <div class="activity-text"><strong>David Lee</strong> (Growth Co) replied to SMS</div>
+      <div class="activity-time">2h ago</div>
+    </div>
+    <div class="activity-item">
+      <div class="activity-icon">📧</div>
+      <div class="activity-text"><strong>Emma Wilson</strong> (Scale Labs) clicked case study link</div>
+      <div class="activity-time">3h ago</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

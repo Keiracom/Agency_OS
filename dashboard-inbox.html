@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agency OS - Inbox</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F8FAFC; color: #1E293B; }
+  .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 220px; background: #0F172A; color: white; padding: 24px 0; }
+  .sidebar .logo { padding: 0 24px 24px; font-size: 18px; font-weight: 700; color: #3B82F6; }
+  .sidebar nav a { display: flex; align-items: center; gap: 10px; padding: 12px 24px; color: #94A3B8; text-decoration: none; font-size: 14px; }
+  .sidebar nav a:hover, .sidebar nav a.active { color: white; background: rgba(255,255,255,0.08); }
+  .sidebar nav a.active { border-left: 3px solid #3B82F6; }
+  .main { margin-left: 220px; height: 100vh; display: flex; flex-direction: column; }
+  
+  .inbox-header { padding: 24px 32px; border-bottom: 1px solid #E2E8F0; background: white; display: flex; justify-content: space-between; align-items: center; }
+  .page-title { font-size: 24px; font-weight: 700; }
+  .inbox-filters { display: flex; gap: 8px; }
+  .filter-btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; border: 1px solid #E2E8F0; background: white; cursor: pointer; }
+  .filter-btn.active { background: #1E293B; color: white; border-color: #1E293B; }
+  
+  .inbox-container { flex: 1; display: grid; grid-template-columns: 360px 1fr; overflow: hidden; }
+  
+  .conversation-list { border-right: 1px solid #E2E8F0; background: white; overflow-y: auto; }
+  .conversation-item { padding: 16px 20px; border-bottom: 1px solid #F1F5F9; cursor: pointer; transition: background 0.15s; }
+  .conversation-item:hover { background: #F8FAFC; }
+  .conversation-item.active { background: #EFF6FF; border-left: 3px solid #3B82F6; }
+  .conversation-item.unread { background: #FFFBEB; }
+  .conversation-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+  .conversation-name { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  .conversation-name .unread-dot { width: 8px; height: 8px; border-radius: 50%; background: #3B82F6; }
+  .conversation-time { font-size: 12px; color: #94A3B8; }
+  .conversation-company { font-size: 12px; color: #64748B; margin-bottom: 6px; }
+  .conversation-preview { font-size: 13px; color: #64748B; display: flex; align-items: center; gap: 8px; }
+  .conversation-channel { font-size: 14px; }
+  .conversation-tag { padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+  .tag-interested { background: #ECFDF5; color: #059669; }
+  .tag-meeting { background: #EDE9FE; color: #7C3AED; }
+  .tag-future { background: #FEF3C7; color: #D97706; }
+  
+  .conversation-detail { display: flex; flex-direction: column; background: #F8FAFC; }
+  .detail-header { padding: 20px 24px; background: white; border-bottom: 1px solid #E2E8F0; }
+  .detail-name { font-size: 18px; font-weight: 700; margin-bottom: 2px; }
+  .detail-title { font-size: 13px; color: #64748B; }
+  
+  .messages { flex: 1; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+  .message { max-width: 80%; }
+  .message.received { align-self: flex-start; }
+  .message.sent { align-self: flex-end; }
+  .message-bubble { padding: 14px 18px; border-radius: 16px; font-size: 14px; line-height: 1.5; }
+  .message.received .message-bubble { background: white; border: 1px solid #E2E8F0; border-bottom-left-radius: 4px; }
+  .message.sent .message-bubble { background: #3B82F6; color: white; border-bottom-right-radius: 4px; }
+  .message-meta { font-size: 11px; color: #94A3B8; margin-top: 6px; display: flex; align-items: center; gap: 8px; }
+  .message-channel { font-size: 12px; }
+  
+  .ai-reply { background: white; border-radius: 16px; border: 1px solid #E2E8F0; padding: 20px; margin-top: auto; }
+  .ai-reply-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .ai-badge { padding: 4px 10px; background: #EDE9FE; color: #7C3AED; border-radius: 6px; font-size: 11px; font-weight: 600; }
+  .ai-reply-title { font-size: 13px; font-weight: 600; color: #475569; }
+  .ai-reply-text { font-size: 14px; line-height: 1.6; color: #475569; padding: 16px; background: #F8FAFC; border-radius: 10px; margin-bottom: 16px; }
+  .ai-reply-actions { display: flex; gap: 10px; }
+  .btn { padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
+  .btn-primary { background: #3B82F6; color: white; }
+  .btn-secondary { background: white; border: 1px solid #E2E8F0; color: #475569; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo">⚡ Agency OS</div>
+  <nav>
+    <a href="#">📊 Overview</a>
+    <a href="#">🎯 Campaigns</a>
+    <a href="#">👥 Prospects</a>
+    <a href="#" class="active">📬 Inbox</a>
+    <a href="#">📈 Performance</a>
+    <a href="#">🧠 Intelligence</a>
+  </nav>
+</div>
+
+<div class="main">
+  <div class="inbox-header">
+    <div class="page-title">Inbox</div>
+    <div class="inbox-filters">
+      <button class="filter-btn active">All</button>
+      <button class="filter-btn">Needs Reply</button>
+      <button class="filter-btn">Meetings</button>
+    </div>
+  </div>
+
+  <div class="inbox-container">
+    <div class="conversation-list">
+      <div class="conversation-item active unread">
+        <div class="conversation-header">
+          <div class="conversation-name"><span class="unread-dot"></span> Mike Johnson</div>
+          <div class="conversation-time">15m ago</div>
+        </div>
+        <div class="conversation-company">StartupXYZ</div>
+        <div class="conversation-preview">
+          <span class="conversation-channel">💼</span>
+          Thanks for the connection!...
+          <span class="conversation-tag tag-interested">Interested</span>
+        </div>
+      </div>
+      
+      <div class="conversation-item unread">
+        <div class="conversation-header">
+          <div class="conversation-name"><span class="unread-dot"></span> David Lee</div>
+          <div class="conversation-time">2h ago</div>
+        </div>
+        <div class="conversation-company">Growth Co</div>
+        <div class="conversation-preview">
+          <span class="conversation-channel">💬</span>
+          Interested in learning more...
+          <span class="conversation-tag tag-interested">Interested</span>
+        </div>
+      </div>
+      
+      <div class="conversation-item">
+        <div class="conversation-header">
+          <div class="conversation-name">Sarah Chen</div>
+          <div class="conversation-time">1h ago</div>
+        </div>
+        <div class="conversation-company">TechCorp</div>
+        <div class="conversation-preview">
+          <span class="conversation-channel">📧</span>
+          Re: Question about...
+          <span class="conversation-tag tag-meeting">Meeting Booked</span>
+        </div>
+      </div>
+      
+      <div class="conversation-item">
+        <div class="conversation-header">
+          <div class="conversation-name">Emma Wilson</div>
+          <div class="conversation-time">3h ago</div>
+        </div>
+        <div class="conversation-company">Scale Labs</div>
+        <div class="conversation-preview">
+          <span class="conversation-channel">📧</span>
+          Not right now, but maybe...
+          <span class="conversation-tag tag-future">Future Interest</span>
+        </div>
+      </div>
+      
+      <div class="conversation-item">
+        <div class="conversation-header">
+          <div class="conversation-name">James Park</div>
+          <div class="conversation-time">Yesterday</div>
+        </div>
+        <div class="conversation-company">Velocity Inc</div>
+        <div class="conversation-preview">
+          <span class="conversation-channel">📞</span>
+          Left voicemail, called back...
+          <span class="conversation-tag tag-interested">Interested</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="conversation-detail">
+      <div class="detail-header">
+        <div class="detail-name">Mike Johnson</div>
+        <div class="detail-title">VP Sales, StartupXYZ │ Series A │ 45 employees</div>
+      </div>
+
+      <div class="messages">
+        <div class="message sent">
+          <div class="message-bubble">Hi Mike, I noticed StartupXYZ just closed your Series A — congratulations! I work with similar stage companies to help them build predictable pipeline. Would love to connect and share some ideas.</div>
+          <div class="message-meta"><span class="message-channel">💼</span> LinkedIn │ Jan 27, 3:00 PM</div>
+        </div>
+        
+        <div class="message received">
+          <div class="message-bubble">Thanks for the connection! We're actually looking at this space. We've been struggling to get consistent meetings booked — our SDRs are maxed out and we need to scale without adding headcount.</div>
+          <div class="message-meta"><span class="message-channel">💼</span> LinkedIn │ Jan 28, 10:15 AM</div>
+        </div>
+
+        <div class="ai-reply">
+          <div class="ai-reply-header">
+            <span class="ai-badge">🤖 AI</span>
+            <span class="ai-reply-title">Suggested Reply</span>
+          </div>
+          <div class="ai-reply-text">
+            Thanks Mike! That's exactly the challenge we solve — we've helped similar Series A companies book 15-20 qualified meetings per month without adding headcount.<br><br>
+            Would a 15-minute call this week work to show you how? I have availability Thursday 2pm or Friday 10am AEST.
+          </div>
+          <div class="ai-reply-actions">
+            <button class="btn btn-primary">Send</button>
+            <button class="btn btn-secondary">Edit</button>
+            <button class="btn btn-secondary">Different tone</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

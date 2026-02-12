@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agency OS Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0F172A; color: #E2E8F0; }
+  
+  .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 240px; background: #020617; padding: 24px 0; border-right: 1px solid #1E293B; }
+  .logo { padding: 0 24px 32px; font-size: 20px; font-weight: 800; background: linear-gradient(135deg, #3B82F6, #8B5CF6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .nav a { display: flex; align-items: center; gap: 12px; padding: 14px 24px; color: #64748B; text-decoration: none; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+  .nav a:hover { color: #E2E8F0; background: rgba(255,255,255,0.03); }
+  .nav a.active { color: #3B82F6; background: rgba(59,130,246,0.1); border-right: 2px solid #3B82F6; }
+  
+  .main { margin-left: 240px; padding: 32px; min-height: 100vh; }
+  
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+  .greeting { font-size: 28px; font-weight: 700; }
+  .greeting span { color: #64748B; font-weight: 400; font-size: 16px; display: block; margin-top: 4px; }
+  .period-toggle { display: flex; gap: 4px; background: #1E293B; padding: 4px; border-radius: 10px; }
+  .period-btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #64748B; background: transparent; border: none; cursor: pointer; }
+  .period-btn.active { background: #3B82F6; color: white; }
+  
+  /* ROI Hero */
+  .roi-hero { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border-radius: 20px; padding: 32px; margin-bottom: 24px; border: 1px solid #334155; position: relative; overflow: hidden; }
+  .roi-hero::before { content: ''; position: absolute; top: -50%; right: -20%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%); }
+  .roi-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 32px; position: relative; }
+  .roi-metric { }
+  .roi-label { font-size: 12px; color: #64748B; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+  .roi-value { font-size: 42px; font-weight: 800; background: linear-gradient(135deg, #10B981, #34D399); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .roi-value.blue { background: linear-gradient(135deg, #3B82F6, #60A5FA); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .roi-value.purple { background: linear-gradient(135deg, #8B5CF6, #A78BFA); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .roi-sub { font-size: 13px; color: #94A3B8; margin-top: 4px; }
+  .roi-sub .up { color: #10B981; }
+  .roi-compare { margin-top: 24px; padding-top: 24px; border-top: 1px solid #334155; display: flex; gap: 40px; }
+  .compare-item { font-size: 13px; color: #64748B; }
+  .compare-item strong { color: #E2E8F0; }
+  
+  /* Charts Row */
+  .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px; }
+  
+  .card { background: #1E293B; border-radius: 16px; padding: 24px; border: 1px solid #334155; }
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .card-title { font-size: 14px; font-weight: 600; color: #E2E8F0; }
+  .card-subtitle { font-size: 12px; color: #64748B; }
+  
+  .chart-container { position: relative; height: 280px; }
+  
+  /* Funnel */
+  .funnel { display: flex; flex-direction: column; gap: 8px; }
+  .funnel-step { display: flex; align-items: center; gap: 16px; }
+  .funnel-bar-container { flex: 1; height: 40px; background: #0F172A; border-radius: 8px; overflow: hidden; position: relative; }
+  .funnel-bar { height: 100%; border-radius: 8px; display: flex; align-items: center; padding-left: 16px; font-size: 13px; font-weight: 600; color: white; }
+  .funnel-bar.step1 { background: linear-gradient(90deg, #3B82F6, #60A5FA); }
+  .funnel-bar.step2 { background: linear-gradient(90deg, #8B5CF6, #A78BFA); }
+  .funnel-bar.step3 { background: linear-gradient(90deg, #EC4899, #F472B6); }
+  .funnel-bar.step4 { background: linear-gradient(90deg, #F59E0B, #FBBF24); }
+  .funnel-bar.step5 { background: linear-gradient(90deg, #10B981, #34D399); }
+  .funnel-label { width: 80px; font-size: 12px; color: #94A3B8; }
+  .funnel-value { width: 60px; text-align: right; font-size: 13px; font-weight: 600; color: #E2E8F0; }
+  .funnel-rate { width: 50px; text-align: right; font-size: 11px; color: #64748B; }
+  
+  /* Channel Performance */
+  .channels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .channel-card { background: #0F172A; border-radius: 12px; padding: 16px; }
+  .channel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .channel-icon { font-size: 20px; }
+  .channel-name { font-size: 13px; font-weight: 600; }
+  .channel-metric { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+  .channel-metric.email { color: #3B82F6; }
+  .channel-metric.linkedin { color: #8B5CF6; }
+  .channel-metric.voice { color: #EC4899; }
+  .channel-metric.sms { color: #10B981; }
+  .channel-sub { font-size: 11px; color: #64748B; }
+  .channel-trend { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #10B981; margin-top: 8px; }
+  .channel-trend.down { color: #EF4444; }
+  
+  /* Bottom Row */
+  .bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  
+  /* Activity */
+  .activity-list { display: flex; flex-direction: column; gap: 12px; }
+  .activity-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: #0F172A; border-radius: 10px; }
+  .activity-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .activity-icon.meeting { background: rgba(16,185,129,0.2); }
+  .activity-icon.reply { background: rgba(59,130,246,0.2); }
+  .activity-icon.open { background: rgba(139,92,246,0.2); }
+  .activity-text { flex: 1; font-size: 13px; color: #94A3B8; }
+  .activity-text strong { color: #E2E8F0; }
+  .activity-time { font-size: 11px; color: #64748B; }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #10B981; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  
+  /* Upcoming */
+  .meeting-list { display: flex; flex-direction: column; gap: 12px; }
+  .meeting-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #0F172A; border-radius: 12px; border-left: 3px solid #10B981; }
+  .meeting-info { }
+  .meeting-when { font-size: 12px; color: #10B981; font-weight: 600; margin-bottom: 4px; }
+  .meeting-who { font-size: 14px; font-weight: 600; color: #E2E8F0; }
+  .meeting-company { font-size: 12px; color: #64748B; }
+  .meeting-value { text-align: right; }
+  .meeting-deal { font-size: 16px; font-weight: 700; color: #10B981; }
+  .meeting-type { font-size: 11px; color: #64748B; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo">⚡ Agency OS</div>
+  <nav class="nav">
+    <a href="#" class="active">📊 Overview</a>
+    <a href="#">🎯 Campaigns</a>
+    <a href="#">👥 Prospects</a>
+    <a href="#">📬 Inbox</a>
+    <a href="#">📈 Analytics</a>
+    <a href="#">🧠 Intelligence</a>
+  </nav>
+</div>
+
+<div class="main">
+  <div class="header">
+    <div class="greeting">
+      Good morning, Dave
+      <span>Here's your pipeline for January 2026</span>
+    </div>
+    <div class="period-toggle">
+      <button class="period-btn">7D</button>
+      <button class="period-btn active">30D</button>
+      <button class="period-btn">90D</button>
+      <button class="period-btn">YTD</button>
+    </div>
+  </div>
+
+  <!-- ROI Hero -->
+  <div class="roi-hero">
+    <div class="roi-grid">
+      <div class="roi-metric">
+        <div class="roi-label">Pipeline Generated</div>
+        <div class="roi-value">$847K</div>
+        <div class="roi-sub"><span class="up">↑ 34%</span> vs last month</div>
+      </div>
+      <div class="roi-metric">
+        <div class="roi-label">Meetings Booked</div>
+        <div class="roi-value blue">24</div>
+        <div class="roi-sub">85% show rate │ 12 this week</div>
+      </div>
+      <div class="roi-metric">
+        <div class="roi-label">Cost Per Meeting</div>
+        <div class="roi-value purple">$312</div>
+        <div class="roi-sub">vs $1,200 industry avg</div>
+      </div>
+      <div class="roi-metric">
+        <div class="roi-label">Deals Started</div>
+        <div class="roi-value">7</div>
+        <div class="roi-sub">$121K avg deal size</div>
+      </div>
+    </div>
+    <div class="roi-compare">
+      <div class="compare-item">💡 <strong>Your ROI:</strong> $847K pipeline from $7,500 spend = <strong style="color:#10B981">113x return</strong></div>
+      <div class="compare-item">vs hiring 2 SDRs: $180K/year + 3 months ramp time</div>
+    </div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="charts-row">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Pipeline & Meetings Trend</div>
+          <div class="card-subtitle">Last 6 months</div>
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="trendChart"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Conversion Funnel</div>
+        <div class="card-subtitle">This month</div>
+      </div>
+      <div class="funnel">
+        <div class="funnel-step">
+          <div class="funnel-label">Contacted</div>
+          <div class="funnel-bar-container"><div class="funnel-bar step1" style="width:100%">1,847</div></div>
+          <div class="funnel-rate"></div>
+        </div>
+        <div class="funnel-step">
+          <div class="funnel-label">Opened</div>
+          <div class="funnel-bar-container"><div class="funnel-bar step2" style="width:61%">1,127</div></div>
+          <div class="funnel-rate">61%</div>
+        </div>
+        <div class="funnel-step">
+          <div class="funnel-label">Replied</div>
+          <div class="funnel-bar-container"><div class="funnel-bar step3" style="width:8%">148</div></div>
+          <div class="funnel-rate">8%</div>
+        </div>
+        <div class="funnel-step">
+          <div class="funnel-label">Meeting</div>
+          <div class="funnel-bar-container"><div class="funnel-bar step4" style="width:3%">24</div></div>
+          <div class="funnel-rate">16%</div>
+        </div>
+        <div class="funnel-step">
+          <div class="funnel-label">Deal</div>
+          <div class="funnel-bar-container"><div class="funnel-bar step5" style="width:1%">7</div></div>
+          <div class="funnel-rate">29%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Channel Performance -->
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+      <div class="card-title">Channel Performance</div>
+      <div class="card-subtitle">Meetings attributed by channel</div>
+    </div>
+    <div class="channels-grid">
+      <div class="channel-card">
+        <div class="channel-header">
+          <span class="channel-icon">📧</span>
+          <span class="channel-name">Email</span>
+        </div>
+        <div class="channel-metric email">11</div>
+        <div class="channel-sub">meetings │ 3.2% reply rate │ $284/meeting</div>
+        <div class="channel-trend">↑ 18% vs last month</div>
+      </div>
+      <div class="channel-card">
+        <div class="channel-header">
+          <span class="channel-icon">💼</span>
+          <span class="channel-name">LinkedIn</span>
+        </div>
+        <div class="channel-metric linkedin">7</div>
+        <div class="channel-sub">meetings │ 12% reply rate │ $356/meeting</div>
+        <div class="channel-trend">↑ 24% vs last month</div>
+      </div>
+      <div class="channel-card">
+        <div class="channel-header">
+          <span class="channel-icon">📞</span>
+          <span class="channel-name">Voice AI</span>
+        </div>
+        <div class="channel-metric voice">4</div>
+        <div class="channel-sub">meetings │ 8% connect rate │ $412/meeting</div>
+        <div class="channel-trend">↑ 33% vs last month</div>
+      </div>
+      <div class="channel-card">
+        <div class="channel-header">
+          <span class="channel-icon">💬</span>
+          <span class="channel-name">SMS</span>
+        </div>
+        <div class="channel-metric sms">2</div>
+        <div class="channel-sub">meetings │ 28% reply rate │ $189/meeting</div>
+        <div class="channel-trend down">↓ 5% vs last month</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Row -->
+  <div class="bottom-row">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Live Activity</div>
+        <div class="live-dot"></div>
+      </div>
+      <div class="activity-list">
+        <div class="activity-item">
+          <div class="activity-icon meeting">📅</div>
+          <div class="activity-text"><strong>Sarah Chen</strong> meeting booked — Discovery call Thursday</div>
+          <div class="activity-time">2m ago</div>
+        </div>
+        <div class="activity-item">
+          <div class="activity-icon reply">💬</div>
+          <div class="activity-text"><strong>Mike Johnson</strong> replied on LinkedIn — interested</div>
+          <div class="activity-time">15m ago</div>
+        </div>
+        <div class="activity-item">
+          <div class="activity-icon open">👁️</div>
+          <div class="activity-text"><strong>Lisa Park</strong> opened email 3x, clicked case study</div>
+          <div class="activity-time">1h ago</div>
+        </div>
+        <div class="activity-item">
+          <div class="activity-icon meeting">📅</div>
+          <div class="activity-text"><strong>David Lee</strong> meeting booked via voice AI</div>
+          <div class="activity-time">2h ago</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Upcoming Meetings</div>
+        <div class="card-subtitle">Next 7 days</div>
+      </div>
+      <div class="meeting-list">
+        <div class="meeting-item">
+          <div class="meeting-info">
+            <div class="meeting-when">Today 2:00 PM</div>
+            <div class="meeting-who">Sarah Chen</div>
+            <div class="meeting-company">TechCorp • CTO</div>
+          </div>
+          <div class="meeting-value">
+            <div class="meeting-deal">$85K</div>
+            <div class="meeting-type">Discovery</div>
+          </div>
+        </div>
+        <div class="meeting-item">
+          <div class="meeting-info">
+            <div class="meeting-when">Tomorrow 10:00 AM</div>
+            <div class="meeting-who">Mike Johnson</div>
+            <div class="meeting-company">StartupXYZ • VP Sales</div>
+          </div>
+          <div class="meeting-value">
+            <div class="meeting-deal">$120K</div>
+            <div class="meeting-type">Demo</div>
+          </div>
+        </div>
+        <div class="meeting-item">
+          <div class="meeting-info">
+            <div class="meeting-when">Thursday 3:30 PM</div>
+            <div class="meeting-who">Emma Wilson</div>
+            <div class="meeting-company">Scale Labs • Director Ops</div>
+          </div>
+          <div class="meeting-value">
+            <div class="meeting-deal">$65K</div>
+            <div class="meeting-type">Follow-up</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Pipeline & Meetings Trend Chart
+const ctx = document.getElementById('trendChart').getContext('2d');
+const gradient1 = ctx.createLinearGradient(0, 0, 0, 280);
+gradient1.addColorStop(0, 'rgba(16, 185, 129, 0.3)');
+gradient1.addColorStop(1, 'rgba(16, 185, 129, 0)');
+
+const gradient2 = ctx.createLinearGradient(0, 0, 0, 280);
+gradient2.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
+gradient2.addColorStop(1, 'rgba(59, 130, 246, 0)');
+
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: ['Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan'],
+    datasets: [{
+      label: 'Pipeline ($K)',
+      data: [320, 480, 520, 610, 720, 847],
+      borderColor: '#10B981',
+      backgroundColor: gradient1,
+      fill: true,
+      tension: 0.4,
+      pointRadius: 4,
+      pointBackgroundColor: '#10B981',
+      yAxisID: 'y'
+    }, {
+      label: 'Meetings',
+      data: [12, 15, 18, 19, 21, 24],
+      borderColor: '#3B82F6',
+      backgroundColor: gradient2,
+      fill: true,
+      tension: 0.4,
+      pointRadius: 4,
+      pointBackgroundColor: '#3B82F6',
+      yAxisID: 'y1'
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { intersect: false, mode: 'index' },
+    plugins: {
+      legend: {
+        position: 'top',
+        align: 'end',
+        labels: { color: '#94A3B8', usePointStyle: true, padding: 20 }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(148, 163, 184, 0.1)' },
+        ticks: { color: '#64748B' }
+      },
+      y: {
+        position: 'left',
+        grid: { color: 'rgba(148, 163, 184, 0.1)' },
+        ticks: { color: '#10B981', callback: v => '$' + v + 'K' }
+      },
+      y1: {
+        position: 'right',
+        grid: { display: false },
+        ticks: { color: '#3B82F6' }
+      }
+    }
+  }
+});
+</script>
+
+</body>
+</html>

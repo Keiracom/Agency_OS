@@ -27,9 +27,9 @@ interface AppShellProps {
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/inbox", icon: Inbox, label: "Inbox" },
-  { href: "/meetings", icon: Calendar, label: "Meetings" },
-  { href: "/prospects", icon: Users, label: "Prospects" },
+  { href: "/replies", icon: Inbox, label: "Inbox" },
+  { href: "/dashboard/meetings", icon: Calendar, label: "Meetings" },
+  { href: "/dashboard/leads", icon: Users, label: "Prospects" },
   { href: "/reports", icon: BarChart3, label: "Reports" },
 ];
 

@@ -1,4 +1,11 @@
-# MEMORY.md — What I Know
+# MEMORY.md — DEPRECATED
+
+**Migrated to Supabase `elliot_internal.memories` on 2026-02-12.**
+**Read-only reference only. Do not add new entries here.**
+
+---
+
+# MEMORY.md — What I Know (ARCHIVED)
 
 ## Dave
 

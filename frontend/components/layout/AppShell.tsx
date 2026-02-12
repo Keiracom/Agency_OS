@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   Inbox,
   Calendar,
+  Megaphone,
   Users,
   BarChart3,
   Zap,
@@ -29,6 +30,7 @@ const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/replies", icon: Inbox, label: "Inbox" },
   { href: "/dashboard/meetings", icon: Calendar, label: "Meetings" },
+  { href: "/dashboard/campaigns", icon: Megaphone, label: "Campaigns" },
   { href: "/dashboard/leads", icon: Users, label: "Prospects" },
   { href: "/reports", icon: BarChart3, label: "Reports" },
 ];

@@ -1,0 +1,22 @@
+# CEO Directive #014: ABN→GMB Waterfall Name Resolution
+# Core dependencies for siege_waterfall.py
+
+# Database
+supabase>=2.0.0
+psycopg2-binary>=2.9.0
+
+# Google My Business (placeholder - actual implementation may vary)
+# googlemaps>=4.7.0
+# google-auth>=2.0.0
+# google-auth-oauthlib>=0.5.0
+
+# Core utilities
+requests>=2.28.0
+python-dotenv>=0.20.0
+
+# Development/Testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+black>=22.0.0
+flake8>=5.0.0
+mypy>=0.991

@@ -1,86 +1,46 @@
 /**
- * ConversionFunnel.tsx - Horizontal Bar Funnel Visualization
- * Sprint 4 - Reports Page
- *
- * Funnel visualization showing conversion stages.
+ * ConversionFunnel.tsx - Conversion Funnel Visualization
+ * Horizontal funnel bars with gradient fills
  */
 
 "use client";
 
 import { Shield } from "lucide-react";
-import type { FunnelStageData, FunnelStage } from "@/data/mock-reports";
+import { funnelData } from "@/lib/mock/reports-data";
 
-// ============================================
-// Types
-// ============================================
-
-interface ConversionFunnelProps {
-  stages: FunnelStageData[];
-}
-
-// ============================================
-// Stage Colors
-// ============================================
-
-const stageColors: Record<FunnelStage, string> = {
-  contacted: "bg-gradient-to-r from-accent-primary/30 to-accent-primary",
-  engaged: "bg-gradient-to-r from-accent-blue/30 to-accent-blue",
-  replied: "bg-gradient-to-r from-accent-teal/30 to-accent-teal",
-  booked: "bg-gradient-to-r from-status-success/30 to-status-success",
+const stageGradients: Record<number, string> = {
+  0: "from-[#D4956A]/30 to-[#D4956A]",
+  1: "from-[#3B82F6]/30 to-[#3B82F6]",
+  2: "from-[#14B8A6]/30 to-[#14B8A6]",
+  3: "from-[#22C55E]/30 to-[#22C55E]",
 };
 
-// ============================================
-// Component
-// ============================================
-
-export function ConversionFunnel({ stages }: ConversionFunnelProps) {
+export function ConversionFunnel() {
   return (
-    <div className="bg-bg-surface border border-border-subtle rounded-xl overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
-        <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
-          <Shield className="w-4 h-4 text-accent-teal" />
-          Conversion Funnel
-        </div>
+    <div className="bg-[#12121D] border border-[#1E1E2E] rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-[#1E1E2E] flex items-center gap-2">
+        <Shield className="w-4 h-4 text-teal-400" />
+        <h3 className="text-sm font-semibold text-[#F8F8FC]">Conversion Funnel</h3>
       </div>
-
-      {/* Funnel */}
-      <div className="p-5">
-        <div className="flex flex-col gap-2">
-          {stages.map((stage) => (
-            <div key={stage.stage} className="flex items-center gap-4">
-              {/* Label */}
-              <div className="w-24 text-right text-xs font-medium text-text-secondary">
-                {stage.label}
-              </div>
-
-              {/* Bar Container */}
-              <div className="flex-1 h-8 bg-bg-base rounded-md overflow-hidden relative">
-                <div
-                  className={`h-full rounded-md flex items-center justify-end pr-3 transition-all duration-500 ${stageColors[stage.stage]}`}
-                  style={{ width: `${Math.max(stage.percentage, 5)}%` }}
-                >
-                  <span className="text-xs font-mono font-semibold text-white">
-                    {stage.percentage}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div className="w-24 flex flex-col gap-0.5">
-                <div className="text-sm font-mono font-bold text-text-primary">
-                  {stage.count.toLocaleString()}
-                </div>
-                <div className="text-[10px] text-text-muted">
-                  {stage.description}
-                </div>
+      <div className="p-5 space-y-2">
+        {funnelData.map((stage, i) => (
+          <div key={stage.stage} className="flex items-center gap-4">
+            <p className="w-20 text-xs font-medium text-[#B4B4C4] text-right">{stage.label}</p>
+            <div className="flex-1 h-8 bg-[#0A0A12] rounded-md overflow-hidden relative">
+              <div
+                className={`h-full rounded-md flex items-center justify-end pr-3 bg-gradient-to-r ${stageGradients[i]}`}
+                style={{ width: `${stage.percentage}%` }}
+              >
+                <span className="text-xs font-mono font-semibold text-white">{stage.percentage}%</span>
               </div>
             </div>
-          ))}
-        </div>
+            <div className="w-24 text-right">
+              <p className="text-sm font-mono font-bold text-[#F8F8FC]">{stage.count.toLocaleString()}</p>
+              <p className="text-[10px] text-[#6E6E82]">{stage.description}</p>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
-
-export default ConversionFunnel;

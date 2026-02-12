@@ -17,6 +17,7 @@ import {
   Megaphone,
   Users,
   BarChart3,
+  Settings,
   Zap,
 } from "lucide-react";
 
@@ -32,7 +33,8 @@ const navItems = [
   { href: "/dashboard/meetings", icon: Calendar, label: "Meetings" },
   { href: "/dashboard/campaigns", icon: Megaphone, label: "Campaigns" },
   { href: "/dashboard/leads", icon: Users, label: "Prospects" },
-  { href: "/reports", icon: BarChart3, label: "Reports" },
+  { href: "/dashboard/reports", icon: BarChart3, label: "Reports" },
+  { href: "/dashboard/settings", icon: Settings, label: "Settings" },
 ];
 
 export function AppShell({ 

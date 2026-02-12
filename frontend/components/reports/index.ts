@@ -1,14 +1,16 @@
 /**
  * Reports Components Barrel Export
- * Sprint 4 - Reports Page
+ * Sprint 3c - Analytics Terminal
  */
 
-export { ExecSummaryCard } from "./ExecSummaryCard";
+export { ReportsHeader } from "./ReportsHeader";
+export { HeroMetrics } from "./HeroMetrics";
 export { ChannelMatrix } from "./ChannelMatrix";
 export { MeetingsChart } from "./MeetingsChart";
 export { ConversionFunnel } from "./ConversionFunnel";
 export { ResponseRates } from "./ResponseRates";
-export { InsightsCard } from "./InsightsCard";
+export { WhatsWorking } from "./WhatsWorking";
 export { LeadSources } from "./LeadSources";
-export { DateSelector } from "./DateSelector";
-export { TierBreakdown } from "./TierBreakdown";
+export { TierConversion } from "./TierConversion";
+export { VoicePerformance } from "./VoicePerformance";
+export { ROISummary } from "./ROISummary";

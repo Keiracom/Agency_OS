@@ -27,7 +27,7 @@ interface AppShellProps {
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/replies", icon: Inbox, label: "Inbox" },
+  { href: "/dashboard/inbox", icon: Inbox, label: "Inbox", badge: 7 },
   { href: "/dashboard/meetings", icon: Calendar, label: "Meetings" },
   { href: "/dashboard/leads", icon: Users, label: "Prospects" },
   { href: "/reports", icon: BarChart3, label: "Reports" },
@@ -61,13 +61,14 @@ export function AppShell({
           {navItems.map((item) => {
             const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
             const Icon = item.icon;
+            const badge = 'badge' in item ? item.badge : undefined;
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg
-                  transition-all duration-200
+                  transition-all duration-200 relative
                   ${
                     isActive
                       ? "bg-accent-primary/15 text-accent-primary border-l-2 border-accent-primary"
@@ -77,6 +78,11 @@ export function AppShell({
               >
                 <Icon className="w-5 h-5 flex-shrink-0" />
                 <span className="text-sm font-medium">{item.label}</span>
+                {badge && badge > 0 && (
+                  <span className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full bg-status-error text-white text-xs font-bold flex items-center justify-center">
+                    {badge}
+                  </span>
+                )}
               </Link>
             );
           })}

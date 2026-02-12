@@ -59,10 +59,10 @@ const MOCK_PROSPECT = {
   ],
   alsBreakdown: [
     { label: "Data Quality", score: 18, max: 20 },
-    { label: "Authority (Title)", score: 21, max: 25 },
-    { label: "Company Fit", score: 22, max: 25 },
-    { label: "Timing", score: 15, max: 15 },
-    { label: "Engagement", score: 18, max: 20 },
+    { label: "Authority (Title)", score: 23, max: 25 },
+    { label: "Company Fit", score: 23, max: 25 },
+    { label: "Timing", score: 10, max: 10 },
+    { label: "Engagement", score: 20, max: 20 },
   ],
   timeline: [
     {

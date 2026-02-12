@@ -24,8 +24,8 @@ The ONLY differences between tiers are:
 | Tier | Founding Price | Regular Price | Leads/mo | Campaigns | LinkedIn Seats |
 |------|----------------|---------------|----------|-----------|----------------|
 | **Ignition** | $1,250/mo | $2,500/mo | 1,250 | 5 | 1 |
-| **Velocity** | $2,000/mo | $4,000/mo | 2,250 | 10 | 3 |
-| **Dominance** | $3,750/mo | $7,500/mo | 4,500 | 20 | 5 |
+| **Velocity** | $2,000/mo | $4,000/mo | 2,500 | 10 | 3 |
+| **Dominance** | $3,750/mo | $7,500/mo | 5,000 | 20 | 5 |
 
 **Founding member terms:**
 - 50% discount locked for life (as long as subscription remains active)
@@ -153,3 +153,4 @@ Downgrade:
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-01-04 | Initial creation, simplified to volume-only tiers | CEO |
+| 2026-02-12 | Updated lead volumes: Velocity 2,250→2,500, Dominance 4,500→5,000 per CEO Directive #008 | Elliot |

@@ -1004,7 +1004,6 @@ class SiegeWaterfall:
         
         Waterfall order (CEO Directive #014 + #016):
         a) ASIC business names from business_names[] (try each)
-        a.5) LinkedIn company name from Bright Data (consumer-facing, high GMB match rate)
         b) ABN trading_name (pre-2012 legacy)
         c) Legal name stripped of "Pty Ltd" / "Ltd" / "Pty"
         c.5) LinkedIn company name from Bright Data (fallback after govt data)
@@ -1077,11 +1076,6 @@ class SiegeWaterfall:
             for bn in business_names:
                 if bn:
                     waterfall_searches.append((bn, "a", base_location or "Australia"))
-            
-            # Step a.5: LinkedIn company name from Bright Data (CEO Directive #016)
-            # Consumer-facing name often matches GMB better than legal names
-            if linkedin_company_name:
-                waterfall_searches.append((linkedin_company_name, "a5", base_location or "Australia"))
             
             # Step b: ABN trading_name (pre-2012 legacy)
             if trading_name:

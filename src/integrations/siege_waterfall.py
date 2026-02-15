@@ -1004,9 +1004,9 @@ class SiegeWaterfall:
         
         Waterfall order (CEO Directive #014 + #016):
         a) ASIC business names from business_names[] (try each)
-        a.5) LinkedIn company name from Bright Data (consumer-facing, high GMB match rate)
         b) ABN trading_name (pre-2012 legacy)
         c) Legal name stripped of "Pty Ltd" / "Ltd" / "Pty"
+        c.5) LinkedIn company name from Bright Data (fallback after govt data)
         d) Location-pinned search (name + postcode + state + "Australia")
         
         Generic filter: Skip if no ASIC business names, no linkedin_company_name,
@@ -1077,11 +1077,6 @@ class SiegeWaterfall:
                 if bn:
                     waterfall_searches.append((bn, "a", base_location or "Australia"))
             
-            # Step a.5: LinkedIn company name from Bright Data (CEO Directive #016)
-            # Consumer-facing name often matches GMB better than legal names
-            if linkedin_company_name:
-                waterfall_searches.append((linkedin_company_name, "a5", base_location or "Australia"))
-            
             # Step b: ABN trading_name (pre-2012 legacy)
             if trading_name:
                 waterfall_searches.append((trading_name, "b", base_location or "Australia"))
@@ -1093,6 +1088,11 @@ class SiegeWaterfall:
                     waterfall_searches.append((stripped_name, "c", base_location or "Australia"))
                 elif stripped_name:
                     waterfall_searches.append((stripped_name, "c", base_location or "Australia"))
+            
+            # Step c.5: LinkedIn company name from Bright Data (CEO Directive #016)
+            # Fallback after official govt data exhausted
+            if linkedin_company_name:
+                waterfall_searches.append((linkedin_company_name, "c5", base_location or "Australia"))
             
             # Step d: Location-pinned search (name + full location + "Australia")
             if legal_name and base_location:

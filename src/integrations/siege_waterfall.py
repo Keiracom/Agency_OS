@@ -1002,14 +1002,15 @@ class SiegeWaterfall:
         Scrapes Google Maps for business signals:
         - Phone numbers, Website, Hours, Reviews/rating, Categories
         
-        Waterfall order (CEO Directive #014):
+        Waterfall order (CEO Directive #014 + #016):
         a) ASIC business names from business_names[] (try each)
+        a.5) LinkedIn company name from Bright Data (consumer-facing, high GMB match rate)
         b) ABN trading_name (pre-2012 legacy)
         c) Legal name stripped of "Pty Ltd" / "Ltd" / "Pty"
         d) Location-pinned search (name + postcode + state + "Australia")
         
-        Generic filter: Skip if no ASIC business names AND legal name matches
-        generic patterns (Holdings, Trust, Enterprises, etc.)
+        Generic filter: Skip if no ASIC business names, no linkedin_company_name,
+        AND legal name matches generic patterns (Holdings, Trust, Enterprises, etc.)
         
         Args:
             lead: Lead data (needs company_name, may have ABN data from Tier 1)
@@ -1026,10 +1027,13 @@ class SiegeWaterfall:
             business_names = lead.get("business_names", [])
             trading_name = lead.get("trading_name")
             legal_name = lead.get("business_name") or lead.get("company_name")
+            # CEO Directive #016: Bright Data LinkedIn company name (high priority)
+            linkedin_company_name = lead.get("linkedin_company_name")
             
-            # CEO Directive #014: Generic name filter
-            # Skip Tier 2 if no ASIC business names AND legal name is generic
-            if not business_names and legal_name and self._is_generic_name(legal_name):
+            # CEO Directive #014 + #016: Generic name filter
+            # Skip Tier 2 if no ASIC business names, no linkedin_company_name,
+            # AND legal name is generic
+            if not business_names and not linkedin_company_name and legal_name and self._is_generic_name(legal_name):
                 skip_reason = "tier2_skipped_generic_name"
                 logger.info(
                     f"[Siege] Tier 2 GMB: Skipping generic name '{legal_name}' "
@@ -1072,6 +1076,11 @@ class SiegeWaterfall:
             for bn in business_names:
                 if bn:
                     waterfall_searches.append((bn, "a", base_location or "Australia"))
+            
+            # Step a.5: LinkedIn company name from Bright Data (CEO Directive #016)
+            # Consumer-facing name often matches GMB better than legal names
+            if linkedin_company_name:
+                waterfall_searches.append((linkedin_company_name, "a5", base_location or "Australia"))
             
             # Step b: ABN trading_name (pre-2012 legacy)
             if trading_name:

@@ -330,7 +330,7 @@ function CampaignHero({
   const isPaused = campaign.status === "paused";
 
   return (
-    <div className="relative bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl p-8 overflow-hidden">
+    <div className="relative bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl p-8 overflow-hidden">
       {/* Top gradient bar */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-600 via-amber to-amber" />
 
@@ -370,7 +370,7 @@ function CampaignHero({
         <div className="flex items-center gap-3">
           <button
             onClick={onEdit}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-800/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-sm text-text-primary transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-bg-base/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-sm text-text-primary transition-colors"
           >
             <Edit2 className="w-4 h-4" />
             Edit
@@ -428,7 +428,7 @@ function CampaignHero({
 
 function FunnelVisualization({ funnel }: { funnel: FunnelStep[] }) {
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl p-6">
+    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl p-6">
       <div className="flex items-center gap-3 mb-6">
         <Shield className="w-5 h-5 text-amber" />
         <h3 className="text-lg font-semibold text-text-primary">Campaign Funnel</h3>
@@ -469,7 +469,7 @@ function FunnelVisualization({ funnel }: { funnel: FunnelStep[] }) {
 
 function SequenceFlow({ steps }: { steps: SequenceStep[] }) {
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="flex items-center gap-3 p-5 border-b border-white/10">
         <Activity className="w-5 h-5 text-amber" />
         <h3 className="text-base font-semibold text-text-primary">Sequence Flow</h3>
@@ -546,7 +546,7 @@ function ChannelPerformance({
   abTests: ABTest[];
 }) {
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="flex items-center gap-3 p-5 border-b border-white/10">
         <BarChart3 className="w-5 h-5 text-amber" />
         <h3 className="text-base font-semibold text-text-primary">Channel Performance</h3>
@@ -597,13 +597,13 @@ function ChannelPerformance({
                     className={`p-4 rounded-lg border ${
                       variant.isWinner
                         ? "bg-amber/5 border-amber/30"
-                        : "bg-slate-800/40 border-white/5"
+                        : "bg-bg-base/40 border-white/5"
                     }`}
                   >
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted mb-2">
                       {variant.label}
                     </p>
-                    <p className="text-xs text-slate-300 italic mb-3">"{variant.subject}"</p>
+                    <p className="text-xs text-text-secondary italic mb-3">"{variant.subject}"</p>
                     <div className="flex gap-4">
                       <div className="text-center">
                         <p className="text-xl font-bold font-mono text-text-primary">{variant.openRate}%</p>
@@ -639,7 +639,7 @@ function LeadsTable({
   onViewAll?: () => void;
 }) {
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="flex items-center justify-between p-5 border-b border-white/10">
         <div className="flex items-center gap-3">
           <Users className="w-5 h-5 text-amber" />
@@ -650,7 +650,7 @@ function LeadsTable({
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="bg-slate-800/40">
+            <tr className="bg-bg-base/40">
               <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Lead</th>
               <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Status</th>
               <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Step</th>
@@ -663,7 +663,7 @@ function LeadsTable({
               const status = statusConfig[lead.status];
               const StatusIcon = status.icon;
               return (
-                <tr key={lead.id} className="hover:bg-slate-800/20 transition-colors">
+                <tr key={lead.id} className="hover:bg-bg-base/20 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${tierColors[lead.tier]} flex items-center justify-center text-text-primary text-xs font-bold`}>
@@ -681,7 +681,7 @@ function LeadsTable({
                       {status.label}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-300">Step {lead.step}</td>
+                  <td className="px-4 py-3 text-sm text-text-secondary">Step {lead.step}</td>
                   <td className="px-4 py-3">
                     <span className={`text-base font-bold font-mono ${scoreColors[lead.tier]}`}>{lead.score}</span>
                   </td>
@@ -694,7 +694,7 @@ function LeadsTable({
       </div>
       <button
         onClick={onViewAll}
-        className="w-full py-4 text-sm font-medium text-amber hover:text-violet-300 hover:bg-slate-800/20 transition-colors border-t border-white/10"
+        className="w-full py-4 text-sm font-medium text-amber hover:text-violet-300 hover:bg-bg-base/20 transition-colors border-t border-white/10"
       >
         Explore All Leads →
       </button>
@@ -708,7 +708,7 @@ function LeadsTable({
 
 function ActivityFeed({ activities }: { activities: ActivityItem[] }) {
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="flex items-center justify-between p-5 border-b border-white/10">
         <div className="flex items-center gap-3">
           <Zap className="w-5 h-5 text-amber-400" />
@@ -723,7 +723,7 @@ function ActivityFeed({ activities }: { activities: ActivityItem[] }) {
           return (
             <div key={item.id} className={`flex gap-4 py-4 ${idx < activities.length - 1 ? "border-b border-white/5" : ""}`}>
               <div className={`w-9 h-9 rounded-full ${config.bg} flex items-center justify-center flex-shrink-0`}>
-                <Icon className="w-4 h-4 text-slate-300" />
+                <Icon className="w-4 h-4 text-text-secondary" />
               </div>
               <div className="flex-1">
                 <p className="text-sm text-text-primary">
@@ -747,11 +747,11 @@ function ActivityFeed({ activities }: { activities: ActivityItem[] }) {
 function CampaignDetailSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
-      <div className="h-64 bg-slate-900/40 rounded-2xl" />
-      <div className="h-40 bg-slate-900/40 rounded-2xl" />
+      <div className="h-64 bg-bg-void/40 rounded-2xl" />
+      <div className="h-40 bg-bg-void/40 rounded-2xl" />
       <div className="grid grid-cols-2 gap-6">
-        <div className="h-96 bg-slate-900/40 rounded-2xl" />
-        <div className="h-96 bg-slate-900/40 rounded-2xl" />
+        <div className="h-96 bg-bg-void/40 rounded-2xl" />
+        <div className="h-96 bg-bg-void/40 rounded-2xl" />
       </div>
     </div>
   );
@@ -779,7 +779,7 @@ export function CampaignDetail({
       {/* Back navigation */}
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-sm text-text-muted hover:text-slate-300 transition-colors"
+        className="flex items-center gap-2 text-sm text-text-muted hover:text-text-secondary transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         <span>Back to Campaigns</span>

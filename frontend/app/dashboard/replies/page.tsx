@@ -56,10 +56,10 @@ const intentConfig: Record<IntentType, { label: string; icon: typeof Calendar; c
   meeting_request: { label: "Meeting", icon: Calendar, color: "bg-amber-glow text-green-800" },
   interested: { label: "Interested", icon: ThumbsUp, color: "bg-amber-glow text-blue-800" },
   question: { label: "Question", icon: HelpCircle, color: "bg-yellow-100 text-yellow-800" },
-  not_interested: { label: "Not Interested", icon: ThumbsDown, color: "bg-gray-100 text-gray-800" },
+  not_interested: { label: "Not Interested", icon: ThumbsDown, color: "bg-bg-surface text-gray-800" },
   unsubscribe: { label: "Unsubscribe", icon: X, color: "bg-amber-glow text-red-800" },
   out_of_office: { label: "OOO", icon: Clock, color: "bg-purple-100 text-purple-800" },
-  auto_reply: { label: "Auto-Reply", icon: MessageSquare, color: "bg-gray-100 text-gray-600" },
+  auto_reply: { label: "Auto-Reply", icon: MessageSquare, color: "bg-bg-surface text-text-muted" },
 };
 
 function formatDate(dateString: string): string {

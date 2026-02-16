@@ -308,7 +308,7 @@ export function OverviewStats({
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
-            className="bg-slate-900/40 backdrop-blur-md rounded-xl border border-white/10 p-5 animate-pulse"
+            className="bg-bg-void/40 backdrop-blur-md rounded-xl border border-white/10 p-5 animate-pulse"
           >
             <div className="h-7 w-16 bg-bg-surface/10 rounded mb-2" />
             <div className="h-3 w-20 bg-bg-surface/10 rounded mb-2" />
@@ -324,7 +324,7 @@ export function OverviewStats({
       {items.map((item) => (
         <div
           key={item.label}
-          className="relative bg-slate-900/40 backdrop-blur-md rounded-xl border border-white/10 p-5 text-center overflow-hidden hover:border-amber/30 transition-colors"
+          className="relative bg-bg-void/40 backdrop-blur-md rounded-xl border border-white/10 p-5 text-center overflow-hidden hover:border-amber/30 transition-colors"
         >
           {/* Gradient top border accent */}
           <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber to-amber opacity-50" />
@@ -366,7 +366,7 @@ export function CampaignCard({
 
   return (
     <div
-      className="bg-slate-900/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden cursor-pointer transition-all duration-200 hover:border-amber/50 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber/10"
+      className="bg-bg-void/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden cursor-pointer transition-all duration-200 hover:border-amber/50 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber/10"
       onClick={() => onClick?.(campaign.id)}
     >
       {/* Header */}
@@ -532,7 +532,7 @@ export function CampaignComparison({
 }) {
   if (isLoading) {
     return (
-      <div className="bg-slate-900/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden animate-pulse">
+      <div className="bg-bg-void/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden animate-pulse">
         <div className="px-6 py-5 border-b border-white/5">
           <div className="h-5 w-48 bg-bg-surface/10 rounded" />
         </div>
@@ -562,7 +562,7 @@ export function CampaignComparison({
   const bestPipeline = Math.max(...metrics.map((m) => parseFloat(m.pipeline?.replace(/[$K]/g, "") || "0")));
 
   return (
-    <div className="mt-8 bg-slate-900/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden">
+    <div className="mt-8 bg-bg-void/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2.5 px-6 py-5 border-b border-white/5">
         <BarChart3 className="w-5 h-5 text-amber" />
@@ -717,7 +717,7 @@ export function CampaignCards({
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="bg-slate-900/40 backdrop-blur-md rounded-2xl border border-white/10 h-96 animate-pulse"
+            className="bg-bg-void/40 backdrop-blur-md rounded-2xl border border-white/10 h-96 animate-pulse"
           >
             <div className="p-6">
               <div className="h-6 w-48 bg-bg-surface/10 rounded mb-4" />

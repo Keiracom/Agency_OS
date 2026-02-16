@@ -194,7 +194,7 @@ export default function AdminCompliancePage() {
                           ? "bg-amber-glow text-error"
                           : issue.type === "bounce"
                           ? "bg-yellow-500/10 text-yellow-700"
-                          : "bg-gray-500/10 text-gray-700"
+                          : "bg-bg-surface0/10 text-text-muted"
                       }
                     >
                       {issue.type}

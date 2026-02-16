@@ -206,7 +206,7 @@ function ProgressStepper({ currentStep, totalSteps }: { currentStep: number; tot
   const steps = ["Basics", "Audience", "Channels", "Messaging", "Review"];
 
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md border-b border-white/10 py-6 px-8">
+    <div className="bg-bg-void/40 backdrop-blur-md border-b border-white/10 py-6 px-8">
       <div className="flex items-center justify-center gap-0 max-w-3xl mx-auto">
         {steps.map((step, idx) => {
           const stepNum = idx + 1;
@@ -262,7 +262,7 @@ function StepBasics({
   onChange: (updates: Partial<WizardState>) => void;
 }) {
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3 mb-1">
           <FileText className="w-5 h-5 text-amber" />
@@ -370,7 +370,7 @@ function StepAudience({
   onFilterToggle: (groupId: string, optionId: string) => void;
 }) {
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3 mb-1">
           <Users className="w-5 h-5 text-amber" />
@@ -432,7 +432,7 @@ function StepAudience({
                       className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
                         option.selected
                           ? "bg-amber/20 border-amber/50 text-amber"
-                          : "bg-slate-800/60 border-white/10 text-text-secondary hover:bg-slate-700/60"
+                          : "bg-bg-base/60 border-white/10 text-text-secondary hover:bg-slate-700/60"
                       }`}
                     >
                       {option.label}
@@ -477,7 +477,7 @@ function StepChannels({
   onChannelToggle: (channel: ChannelType) => void;
 }) {
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3 mb-1">
           <MessageCircle className="w-5 h-5 text-amber" />
@@ -547,7 +547,7 @@ function StepChannels({
 
                 return (
                   <div key={`${step.type}-${step.day}`} className="flex items-center gap-2">
-                    <div className={`flex items-center gap-2 px-3 py-2 bg-slate-800/60 border border-white/10 ${borderColor} border-l-2 rounded-lg`}>
+                    <div className={`flex items-center gap-2 px-3 py-2 bg-bg-base/60 border border-white/10 ${borderColor} border-l-2 rounded-lg`}>
                       <Icon className="w-4 h-4 text-text-secondary" />
                       <span className="text-xs text-text-secondary">Day {step.day}</span>
                     </div>
@@ -590,7 +590,7 @@ function StepMessaging({
   onValuePropToggle: (prop: string) => void;
 }) {
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3 mb-1">
           <Send className="w-5 h-5 text-amber" />
@@ -636,7 +636,7 @@ function StepMessaging({
                   className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
                     isSelected
                       ? "bg-amber/20 border-amber/50 text-amber"
-                      : "bg-slate-950/40 border-white/10 text-text-secondary hover:bg-slate-800/60"
+                      : "bg-slate-950/40 border-white/10 text-text-secondary hover:bg-bg-base/60"
                   }`}
                 >
                   {prop}
@@ -692,7 +692,7 @@ function StepMessaging({
         {/* AI Preview */}
         {state.messageGeneration === "ai" && (
           <div className="bg-slate-950/40 border border-white/10 rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 bg-slate-800/40 border-b border-white/10">
+            <div className="flex items-center justify-between px-5 py-4 bg-bg-base/40 border-b border-white/10">
               <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
                 <Eye className="w-4 h-4 text-amber" />
                 First Touch Preview
@@ -724,12 +724,12 @@ function StepMessaging({
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 px-5 py-4 bg-slate-800/40 border-t border-white/10">
-              <button className="flex items-center gap-2 px-4 py-2 bg-slate-700/60 hover:bg-bg-elevated/60 border border-white/10 rounded-lg text-sm text-slate-300 transition-colors">
+            <div className="flex items-center gap-3 px-5 py-4 bg-bg-base/40 border-t border-white/10">
+              <button className="flex items-center gap-2 px-4 py-2 bg-slate-700/60 hover:bg-bg-elevated/60 border border-white/10 rounded-lg text-sm text-text-secondary transition-colors">
                 <RefreshCw className="w-4 h-4" />
                 Regenerate
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-slate-700/60 hover:bg-bg-elevated/60 border border-white/10 rounded-lg text-sm text-slate-300 transition-colors">
+              <button className="flex items-center gap-2 px-4 py-2 bg-slate-700/60 hover:bg-bg-elevated/60 border border-white/10 rounded-lg text-sm text-text-secondary transition-colors">
                 <Edit2 className="w-4 h-4" />
                 Edit
               </button>
@@ -757,7 +757,7 @@ function StepReview({
   const toneLabel = toneOptions.find((t) => t.value === state.tone)?.label || "Professional";
 
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3 mb-1">
           <Target className="w-5 h-5 text-amber" />
@@ -814,7 +814,7 @@ function StepReview({
                 return (
                   <span
                     key={channel}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800/60 rounded-lg text-xs font-medium text-slate-300"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-bg-base/60 rounded-lg text-xs font-medium text-text-secondary"
                   >
                     <Icon className="w-3.5 h-3.5" />
                     {config.label}
@@ -1001,11 +1001,11 @@ export function CampaignWizard({ onBack, onComplete, isSubmitting = false }: Cam
   return (
     <div className="min-h-screen bg-slate-950">
       {/* Header */}
-      <div className="bg-slate-900/40 backdrop-blur-md border-b border-white/10 px-8 py-4">
+      <div className="bg-bg-void/40 backdrop-blur-md border-b border-white/10 px-8 py-4">
         <div className="flex items-center gap-4">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-text-muted hover:text-slate-300 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-text-muted hover:text-text-secondary rounded-lg transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
@@ -1040,7 +1040,7 @@ export function CampaignWizard({ onBack, onComplete, isSubmitting = false }: Cam
           {currentStep > 1 ? (
             <button
               onClick={prevStep}
-              className="flex items-center gap-2 px-5 py-2.5 bg-slate-800/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-sm text-text-primary transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 bg-bg-base/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-sm text-text-primary transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Back

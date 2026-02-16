@@ -131,7 +131,7 @@ function RiveAnimation() {
       <div className="absolute inset-0 border-2 border-orange-500/30 rounded-xl" />
 
       {/* Rive canvas */}
-      <div className="relative w-full h-full rounded-xl overflow-hidden bg-slate-900/50">
+      <div className="relative w-full h-full rounded-xl overflow-hidden bg-bg-void/50">
         <RiveComponent />
       </div>
 

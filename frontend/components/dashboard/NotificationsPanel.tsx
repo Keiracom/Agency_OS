@@ -260,7 +260,7 @@ function NotificationItem({
             <p 
               className={`
                 text-sm font-medium truncate
-                ${isUnread ? "text-text-primary" : "text-slate-300"}
+                ${isUnread ? "text-text-primary" : "text-text-secondary"}
               `}
             >
               {notification.title}
@@ -439,7 +439,7 @@ export function NotificationsPanel({
         <div 
           className="
             absolute right-0 top-full mt-2 w-96
-            bg-slate-900/95 backdrop-blur-xl 
+            bg-bg-void/95 backdrop-blur-xl 
             border border-white/10 
             rounded-2xl shadow-2xl shadow-black/50
             overflow-hidden z-50

@@ -125,8 +125,8 @@ const intentColors: Record<string, string> = {
   question: "bg-amber/10 text-amber border-amber/20",
   not_interested: "bg-amber-glow text-error border-amber/20",
   unsubscribe: "bg-amber-glow text-error border-amber/20",
-  out_of_office: "bg-gray-500/10 text-gray-700 border-gray-500/20",
-  auto_reply: "bg-gray-500/10 text-gray-700 border-gray-500/20",
+  out_of_office: "bg-bg-surface0/10 text-text-muted border-gray-500/20",
+  auto_reply: "bg-bg-surface0/10 text-text-muted border-gray-500/20",
 };
 
 const channelIcons = {

@@ -154,7 +154,7 @@ const getActivityColor = (type: Activity["type"]) => {
     case "sms_replied":
       return "text-amber bg-amber/10";
     default:
-      return "text-gray-400 bg-gray-500/10";
+      return "text-text-muted bg-bg-surface0/10";
   }
 };
 
@@ -245,7 +245,7 @@ export function ActivityTicker({
             </>
           )}
         </div>
-        <span className="text-[10px] text-gray-500">
+        <span className="text-[10px] text-text-primary0">
           {effectiveActivities.length} events{isDemo ? " (sample)" : ""}
         </span>
       </div>
@@ -268,12 +268,12 @@ export function ActivityTicker({
 
             {/* Message */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-gray-200 truncate">{activity.message}</p>
+              <p className="text-sm text-text-secondary truncate">{activity.message}</p>
             </div>
 
             {/* Timestamp */}
             {showTimestamp && (
-              <span className="flex-shrink-0 text-[10px] text-gray-500">
+              <span className="flex-shrink-0 text-[10px] text-text-primary0">
                 {formatTimestamp(activity.timestamp)}
               </span>
             )}

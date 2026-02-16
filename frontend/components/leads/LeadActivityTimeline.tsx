@@ -126,7 +126,7 @@ const channelColors: Record<string, string> = {
   voice: "bg-amber",
   linkedin: "bg-amber",
   mail: "bg-amber-500",
-  system: "bg-gray-500",
+  system: "bg-bg-surface0",
 };
 
 const channelBadgeColors: Record<string, string> = {
@@ -135,7 +135,7 @@ const channelBadgeColors: Record<string, string> = {
   voice: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-amber",
   linkedin: "bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-amber",
   mail: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
-  system: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
+  system: "bg-bg-surface text-gray-800 dark:bg-bg-void/30 dark:text-text-muted",
 };
 
 const allChannels: ChannelType[] = ["email", "sms", "linkedin", "voice", "mail"];
@@ -207,7 +207,7 @@ function TimelineItem({
     }
   };
 
-  const channelColor = channelColors[activity.channel] || "bg-gray-500";
+  const channelColor = channelColors[activity.channel] || "bg-bg-surface0";
   const timestamp = new Date(activity.created_at);
 
   return (

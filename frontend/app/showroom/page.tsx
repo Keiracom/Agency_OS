@@ -80,7 +80,7 @@ const SparklesCore = dynamic(
 
 function ComponentLoader({ name, color = "#00d4ff" }: { name: string; color?: string }) {
   return (
-    <div className="w-full h-full min-h-[350px] bg-slate-900/50 rounded-xl border border-slate-700/50 flex items-center justify-center">
+    <div className="w-full h-full min-h-[350px] bg-bg-void/50 rounded-xl border border-slate-700/50 flex items-center justify-center">
       <div className="text-center">
         <div
           className="w-12 h-12 border-3 rounded-full animate-spin mx-auto mb-4"
@@ -106,7 +106,7 @@ function ComponentLoader({ name, color = "#00d4ff" }: { name: string; color?: st
 
 function PlaceholderCard({ name, color = "#666" }: { name: string; color?: string }) {
   return (
-    <div className="w-full h-full min-h-[350px] bg-slate-900/50 rounded-xl border border-dashed border-slate-600/50 flex items-center justify-center">
+    <div className="w-full h-full min-h-[350px] bg-bg-void/50 rounded-xl border border-dashed border-slate-600/50 flex items-center justify-center">
       <div className="text-center">
         <div
           className="w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-4"
@@ -151,7 +151,7 @@ function ShowcaseCard({ title, engine, description, accentColor, children, codeS
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="w-full max-w-6xl h-[80vh] bg-slate-900 rounded-2xl border border-slate-700/50 overflow-hidden"
+              className="w-full max-w-6xl h-[80vh] bg-bg-void rounded-2xl border border-slate-700/50 overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="h-full flex flex-col">
@@ -162,7 +162,7 @@ function ShowcaseCard({ title, engine, description, accentColor, children, codeS
                   </div>
                   <button
                     onClick={() => setIsFullscreen(false)}
-                    className="w-10 h-10 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+                    className="w-10 h-10 rounded-lg bg-bg-base hover:bg-slate-700 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -187,7 +187,7 @@ function ShowcaseCard({ title, engine, description, accentColor, children, codeS
         />
 
         {/* Card */}
-        <div className="relative bg-slate-900/80 backdrop-blur-sm rounded-xl border border-slate-700/50 overflow-hidden h-full flex flex-col">
+        <div className="relative bg-bg-void/80 backdrop-blur-sm rounded-xl border border-slate-700/50 overflow-hidden h-full flex flex-col">
           {/* Header */}
           <div className="px-4 py-3 border-b border-slate-700/50 flex items-center justify-between flex-shrink-0">
             <div>
@@ -198,7 +198,7 @@ function ShowcaseCard({ title, engine, description, accentColor, children, codeS
               {/* Fullscreen button */}
               <button
                 onClick={() => setIsFullscreen(true)}
-                className="w-7 h-7 rounded-md bg-slate-800/50 hover:bg-slate-700 flex items-center justify-center text-text-muted hover:text-text-primary transition-colors"
+                className="w-7 h-7 rounded-md bg-bg-base/50 hover:bg-slate-700 flex items-center justify-center text-text-muted hover:text-text-primary transition-colors"
                 title="Fullscreen"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -211,7 +211,7 @@ function ShowcaseCard({ title, engine, description, accentColor, children, codeS
                   className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
                     showCode
                       ? 'bg-slate-700 text-text-primary'
-                      : 'bg-slate-800/50 hover:bg-slate-700 text-text-muted hover:text-text-primary'
+                      : 'bg-bg-base/50 hover:bg-slate-700 text-text-muted hover:text-text-primary'
                   }`}
                   title="Show code"
                 >
@@ -237,7 +237,7 @@ function ShowcaseCard({ title, engine, description, accentColor, children, codeS
           {tags.length > 0 && (
             <div className="px-4 py-2 border-b border-slate-700/30 flex gap-2 flex-wrap flex-shrink-0">
               {tags.map((tag) => (
-                <span key={tag} className="px-2 py-0.5 bg-slate-800/50 rounded text-xs text-text-secondary font-mono">
+                <span key={tag} className="px-2 py-0.5 bg-bg-base/50 rounded text-xs text-text-secondary font-mono">
                   {tag}
                 </span>
               ))}
@@ -255,7 +255,7 @@ function ShowcaseCard({ title, engine, description, accentColor, children, codeS
                   exit={{ opacity: 0, y: -10 }}
                   className="h-full p-4 overflow-auto"
                 >
-                  <pre className="text-xs font-mono text-slate-300 bg-slate-950/50 p-4 rounded-lg overflow-x-auto">
+                  <pre className="text-xs font-mono text-text-secondary bg-slate-950/50 p-4 rounded-lg overflow-x-auto">
                     <code>{codeSnippet}</code>
                   </pre>
                 </motion.div>
@@ -316,7 +316,7 @@ export default function ShowroomPage() {
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDark ? "bg-slate-950" : "bg-gray-50"}`}>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? "bg-slate-950" : "bg-bg-surface"}`}>
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden">
         <div className={`absolute inset-0 transition-colors duration-300 ${isDark ? "bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" : "bg-gradient-to-br from-gray-50 via-white to-gray-100"}`} />
@@ -358,7 +358,7 @@ export default function ShowroomPage() {
                 </div>
                 <div>
                   <h1 className={`text-xl font-bold ${isDark ? "text-text-primary" : "text-gray-900"}`}>Component Showroom</h1>
-                  <p className={`text-xs font-mono ${isDark ? "text-text-muted" : "text-gray-500"}`}>R3F • SPLINE • RIVE • UI EFFECTS</p>
+                  <p className={`text-xs font-mono ${isDark ? "text-text-muted" : "text-text-primary0"}`}>R3F • SPLINE • RIVE • UI EFFECTS</p>
                 </div>
               </div>
 
@@ -372,11 +372,11 @@ export default function ShowroomPage() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className={`w-full border rounded-lg px-4 py-2 pl-10 text-sm focus:outline-none transition-colors ${
                       isDark
-                        ? "bg-slate-800/50 border-slate-700/50 text-text-primary placeholder-slate-500 focus:border-amber/50"
+                        ? "bg-bg-base/50 border-slate-700/50 text-text-primary placeholder-slate-500 focus:border-amber/50"
                         : "bg-bg-surface border-gray-300 text-gray-900 placeholder-gray-400 focus:border-amber"
                     }`}
                   />
-                  <svg className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? "text-text-muted" : "text-gray-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? "text-text-muted" : "text-text-muted"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
@@ -388,8 +388,8 @@ export default function ShowroomPage() {
                   onClick={() => setTheme(isDark ? "light" : "dark")}
                   className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
                     isDark
-                      ? "bg-slate-800 hover:bg-slate-700 text-yellow-400"
-                      : "bg-gray-100 hover:bg-gray-200 text-slate-700"
+                      ? "bg-bg-base hover:bg-slate-700 text-yellow-400"
+                      : "bg-bg-surface hover:bg-bg-elevated text-slate-700"
                   }`}
                   title={`Switch to ${isDark ? "light" : "dark"} mode`}
                 >
@@ -403,7 +403,7 @@ export default function ShowroomPage() {
                     </svg>
                   )}
                 </button>
-                <span className={`flex items-center gap-2 text-xs font-mono ${isDark ? "text-text-muted" : "text-gray-500"}`}>
+                <span className={`flex items-center gap-2 text-xs font-mono ${isDark ? "text-text-muted" : "text-text-primary0"}`}>
                   <span className="w-2 h-2 bg-amber rounded-full animate-pulse" />
                   {categories[0].count} COMPONENTS
                 </span>
@@ -768,7 +768,7 @@ export default function ShowroomPage() {
 
         {/* Import Reference */}
         <section className="max-w-[1800px] mx-auto px-6 pb-12">
-          <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 p-6">
+          <div className="bg-bg-void/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 p-6">
             <h2 className="text-text-primary font-semibold text-lg mb-6 flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber/20 to-amber/20 flex items-center justify-center">
                 <svg className="w-4 h-4 text-amber" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -784,7 +784,7 @@ export default function ShowroomPage() {
                 { title: "Rive", color: "#f97316", imports: ["RiveButton", "RiveLoader", "RiveCharacter"] },
                 { title: "UI Effects", color: "#22c55e", imports: ["HoloCard", "SparklesCore"] },
               ].map((group) => (
-                <div key={group.title} className="p-4 bg-slate-800/30 rounded-xl border border-slate-700/30">
+                <div key={group.title} className="p-4 bg-bg-base/30 rounded-xl border border-slate-700/30">
                   <h3 className="font-mono text-sm mb-3" style={{ color: group.color }}>{group.title}</h3>
                   <code className="text-text-secondary text-xs block space-y-1">
                     <span className="text-text-muted">import {"{"}</span>

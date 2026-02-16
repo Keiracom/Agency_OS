@@ -138,7 +138,7 @@ function MenuItem({
     ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
     ${danger
       ? "text-amber hover:bg-amber-glow focus:bg-amber-glow"
-      : "text-slate-300 hover:text-text-primary hover:bg-bg-surface/5 focus:bg-bg-surface/5"
+      : "text-text-secondary hover:text-text-primary hover:bg-bg-surface/5 focus:bg-bg-surface/5"
     }
   `;
 
@@ -322,7 +322,7 @@ export function UserDropdown({
                 transition={{ duration: 0.15, ease: "easeOut" }}
                 className="
                   w-64
-                  bg-slate-900/95 backdrop-blur-xl
+                  bg-bg-void/95 backdrop-blur-xl
                   border border-white/10
                   rounded-xl shadow-2xl shadow-black/40
                   overflow-hidden

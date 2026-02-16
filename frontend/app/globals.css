@@ -1,5 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
+/* Import design tokens - single source of truth */
+@import '../src/styles/design-tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

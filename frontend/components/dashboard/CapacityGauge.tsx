@@ -158,7 +158,7 @@ export function CapacityGauge({
               <p className="text-2xl font-bold text-text-primary">
                 {current.toLocaleString()}
               </p>
-              <p className="text-xs text-gray-500">Used</p>
+              <p className="text-xs text-text-primary0">Used</p>
             </div>
             <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full ${config.bgColor}`}>
               <StatusIcon className={`h-3.5 w-3.5 ${config.textColor}`} />
@@ -170,7 +170,7 @@ export function CapacityGauge({
               <p className="text-2xl font-bold text-text-primary">
                 {limit.toLocaleString()}
               </p>
-              <p className="text-xs text-gray-500">Limit</p>
+              <p className="text-xs text-text-primary0">Limit</p>
             </div>
           </div>
         </CardContent>
@@ -197,7 +197,7 @@ export function CapacityGauge({
         </CardHeader>
         <CardContent className="space-y-3">
           {/* Progress bar */}
-          <div className="h-4 bg-gray-800 rounded-full overflow-hidden">
+          <div className="h-4 bg-bg-base rounded-full overflow-hidden">
             <div
               className={`h-full bg-gradient-to-r ${config.color} rounded-full transition-all duration-500`}
               style={{ width: `${percentage}%` }}
@@ -274,11 +274,11 @@ export function CapacityGauge({
         <div className="flex items-center justify-between w-full mt-4">
           <div className="text-center flex-1">
             <p className="text-lg font-bold text-text-primary">{current.toLocaleString()}</p>
-            <p className="text-xs text-gray-500">Used</p>
+            <p className="text-xs text-text-primary0">Used</p>
           </div>
           <div className="text-center flex-1">
             <p className="text-lg font-bold text-text-primary">{(limit - current).toLocaleString()}</p>
-            <p className="text-xs text-gray-500">Remaining</p>
+            <p className="text-xs text-text-primary0">Remaining</p>
           </div>
         </div>
       </CardContent>

@@ -370,11 +370,11 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
           </h1>
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-bg-elevated border border-default rounded-lg text-text-secondary text-sm font-medium hover:bg-bg-elevated hover:text-slate-200 transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-bg-elevated border border-default rounded-lg text-text-secondary text-sm font-medium hover:bg-bg-elevated hover:text-text-secondary transition-colors">
             <Filter className="w-4 h-4" />
             Filters
           </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-bg-elevated border border-default rounded-lg text-text-secondary text-sm font-medium hover:bg-bg-elevated hover:text-slate-200 transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-bg-elevated border border-default rounded-lg text-text-secondary text-sm font-medium hover:bg-bg-elevated hover:text-text-secondary transition-colors">
             <RefreshCw className="w-4 h-4" />
             Sync
           </button>
@@ -410,7 +410,7 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
                   className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                     filter === tab.key
                       ? "bg-amber/15 text-amber"
-                      : "text-text-muted hover:bg-bg-elevated hover:text-slate-300"
+                      : "text-text-muted hover:bg-bg-elevated hover:text-text-secondary"
                   }`}
                 >
                   {tab.label}
@@ -609,15 +609,15 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
                 />
                 <div className="flex items-center justify-between mt-3">
                   <div className="flex gap-2">
-                    <button className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-default rounded-md text-xs text-text-secondary hover:bg-bg-elevated hover:text-slate-200 transition-colors">
+                    <button className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-default rounded-md text-xs text-text-secondary hover:bg-bg-elevated hover:text-text-secondary transition-colors">
                       <Paperclip className="w-3.5 h-3.5" />
                       Attach
                     </button>
-                    <button className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-default rounded-md text-xs text-text-secondary hover:bg-bg-elevated hover:text-slate-200 transition-colors">
+                    <button className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-default rounded-md text-xs text-text-secondary hover:bg-bg-elevated hover:text-text-secondary transition-colors">
                       <Calendar className="w-3.5 h-3.5" />
                       Schedule
                     </button>
-                    <button className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-default rounded-md text-xs text-text-secondary hover:bg-bg-elevated hover:text-slate-200 transition-colors">
+                    <button className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-default rounded-md text-xs text-text-secondary hover:bg-bg-elevated hover:text-text-secondary transition-colors">
                       <Zap className="w-3.5 h-3.5" />
                       AI Write
                     </button>

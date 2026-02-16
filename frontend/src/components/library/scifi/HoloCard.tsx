@@ -136,7 +136,7 @@ export function HoloCard({
                   <p className="text-amber font-mono text-xs">Stability: 99.7%</p>
                 </div>
               </div>
-              <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-2 bg-bg-base rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-amber to-amber rounded-full animate-pulse"
                   style={{ width: "87%" }}
@@ -144,7 +144,7 @@ export function HoloCard({
               </div>
               <div className="grid grid-cols-3 gap-2 text-center">
                 {["SYNC", "LOAD", "TEMP"].map((label, i) => (
-                  <div key={label} className="bg-slate-900/50 border border-amber/20 rounded p-2">
+                  <div key={label} className="bg-bg-void/50 border border-amber/20 rounded p-2">
                     <p className="text-amber font-mono text-lg">
                       {[98, 42, 37][i]}%
                     </p>
@@ -157,7 +157,7 @@ export function HoloCard({
         </div>
 
         {/* Footer status bar */}
-        <div className="absolute bottom-0 left-0 right-0 h-6 bg-slate-900/80 border-t border-amber/20 flex items-center px-3 justify-between">
+        <div className="absolute bottom-0 left-0 right-0 h-6 bg-bg-void/80 border-t border-amber/20 flex items-center px-3 justify-between">
           <span className="text-amber font-mono text-[10px]">
             SYS://HOLO.CARD.v2.1
           </span>

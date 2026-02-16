@@ -47,7 +47,7 @@ const tierColors = {
 };
 
 const statusColors = {
-  new: "bg-gray-500/10 text-gray-700 border-gray-500/20",
+  new: "bg-bg-surface0/10 text-text-muted border-gray-500/20",
   enriched: "bg-bg-elevated/10 text-amber border-default/20",
   scored: "bg-amber/10 text-amber border-amber/20",
   in_sequence: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",

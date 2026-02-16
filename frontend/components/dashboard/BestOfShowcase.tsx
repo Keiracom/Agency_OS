@@ -121,9 +121,9 @@ function BestOfCard({
           <PerformanceBadge item={item} />
         </div>
         {item.subject && (
-          <p className="text-xs text-gray-400 truncate">{item.subject}</p>
+          <p className="text-xs text-text-muted truncate">{item.subject}</p>
         )}
-        <p className="text-[10px] text-gray-500 mt-1">
+        <p className="text-[10px] text-text-primary0 mt-1">
           {formatDate(item.timestamp)} · {item.performance_reason}
         </p>
       </div>
@@ -164,32 +164,32 @@ function ContentDetailModal({
           {/* Metadata */}
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-gray-500">Recipient:</span>
-              <span className="ml-2 text-gray-300">{item.lead_name || item.lead_email || "—"}</span>
+              <span className="text-text-primary0">Recipient:</span>
+              <span className="ml-2 text-text-secondary">{item.lead_name || item.lead_email || "—"}</span>
             </div>
             <div>
-              <span className="text-gray-500">Company:</span>
-              <span className="ml-2 text-gray-300">{item.lead_company || "—"}</span>
+              <span className="text-text-primary0">Company:</span>
+              <span className="ml-2 text-text-secondary">{item.lead_company || "—"}</span>
             </div>
             <div>
-              <span className="text-gray-500">Campaign:</span>
-              <span className="ml-2 text-gray-300">{item.campaign_name || "—"}</span>
+              <span className="text-text-primary0">Campaign:</span>
+              <span className="ml-2 text-text-secondary">{item.campaign_name || "—"}</span>
             </div>
             <div>
-              <span className="text-gray-500">Sent:</span>
-              <span className="ml-2 text-gray-300">{formatDate(item.timestamp)}</span>
+              <span className="text-text-primary0">Sent:</span>
+              <span className="ml-2 text-text-secondary">{formatDate(item.timestamp)}</span>
             </div>
           </div>
 
           {/* Engagement Stats */}
           <div className="flex items-center gap-6 p-3 bg-bg-surface/5 rounded-lg">
             <div className="flex items-center gap-2">
-              <Eye className="h-4 w-4 text-gray-400" />
-              <span className="text-sm text-gray-300">{item.email_open_count} opens</span>
+              <Eye className="h-4 w-4 text-text-muted" />
+              <span className="text-sm text-text-secondary">{item.email_open_count} opens</span>
             </div>
             <div className="flex items-center gap-2">
-              <MousePointer className="h-4 w-4 text-gray-400" />
-              <span className="text-sm text-gray-300">{item.email_click_count} clicks</span>
+              <MousePointer className="h-4 w-4 text-text-muted" />
+              <span className="text-sm text-text-secondary">{item.email_click_count} clicks</span>
             </div>
             {item.got_reply && (
               <div className="flex items-center gap-2">
@@ -208,16 +208,16 @@ function ContentDetailModal({
           {/* Subject */}
           {item.subject && (
             <div>
-              <h4 className="text-sm font-medium text-gray-400 mb-1">Subject</h4>
-              <p className="text-gray-200">{item.subject}</p>
+              <h4 className="text-sm font-medium text-text-muted mb-1">Subject</h4>
+              <p className="text-text-secondary">{item.subject}</p>
             </div>
           )}
 
           {/* Full Content */}
           <div>
-            <h4 className="text-sm font-medium text-gray-400 mb-1">Content</h4>
+            <h4 className="text-sm font-medium text-text-muted mb-1">Content</h4>
             <div className="p-4 bg-bg-surface/5 rounded-lg">
-              <pre className="whitespace-pre-wrap text-sm text-gray-300 font-sans">
+              <pre className="whitespace-pre-wrap text-sm text-text-secondary font-sans">
                 {item.full_message_body || item.content_preview || "No content available"}
               </pre>
             </div>
@@ -285,7 +285,7 @@ export function BestOfShowcase({
           </CardHeader>
         )}
         <CardContent className={compact ? "p-3" : "p-6"}>
-          <div className="text-center text-gray-500">
+          <div className="text-center text-text-primary0">
             <Trophy className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm">No high performers yet</p>
             <p className="text-xs mt-1">Content that gets engagement will appear here</p>
@@ -305,7 +305,7 @@ export function BestOfShowcase({
                 <Trophy className="h-4 w-4 text-yellow-400" />
                 Top Performers
               </CardTitle>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-text-primary0">
                 Last {data.period_days} days
               </span>
             </div>
@@ -323,7 +323,7 @@ export function BestOfShowcase({
             ))}
           </div>
           {data.total_high_performers > limit && (
-            <p className="text-xs text-gray-500 text-center mt-3">
+            <p className="text-xs text-text-primary0 text-center mt-3">
               +{data.total_high_performers - limit} more high performers
             </p>
           )}

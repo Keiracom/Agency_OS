@@ -231,8 +231,8 @@ export default function DashboardDemo({ className = "" }: DashboardDemoProps) {
               { label: "Hot", value: 24, color: "bg-amber", textColor: "text-amber" },
               { label: "Warm", value: 31, color: "bg-orange-500", textColor: "text-orange-400" },
               { label: "Cool", value: 28, color: "bg-bg-elevated", textColor: "text-text-secondary" },
-              { label: "Cold", value: 12, color: "bg-gray-500", textColor: "text-gray-400" },
-              { label: "Dead", value: 5, color: "bg-gray-700", textColor: "text-gray-500" },
+              { label: "Cold", value: 12, color: "bg-bg-surface0", textColor: "text-text-muted" },
+              { label: "Dead", value: 5, color: "bg-gray-700", textColor: "text-text-primary0" },
             ].map((tier) => (
               <div key={tier.label}>
                 <div className="flex items-center justify-between text-xs mb-1.5">

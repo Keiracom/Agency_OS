@@ -34,7 +34,7 @@ type SourceType = "hackernews" | "producthunt" | "github" | "manual" | "conversa
 const sourceConfig: Record<string, { icon: typeof Newspaper; label: string; color: string }> = {
   hackernews: { icon: Newspaper, label: "Hacker News", color: "text-orange-500" },
   producthunt: { icon: Rocket, label: "Product Hunt", color: "text-amber" },
-  github: { icon: Github, label: "GitHub", color: "text-gray-700 dark:text-gray-300" },
+  github: { icon: Github, label: "GitHub", color: "text-text-muted dark:text-text-secondary" },
   manual: { icon: Lightbulb, label: "Manual", color: "text-yellow-500" },
   conversation: { icon: MessageSquare, label: "Conversation", color: "text-text-secondary" },
   inference: { icon: Sparkles, label: "Inference", color: "text-amber" },

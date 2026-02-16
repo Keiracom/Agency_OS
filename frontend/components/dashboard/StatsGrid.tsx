@@ -78,7 +78,7 @@ export function StatCard({
 }: StatCardProps) {
   if (isLoading) {
     return (
-      <div className="bg-slate-900/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 animate-pulse">
+      <div className="bg-bg-void/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 animate-pulse">
         <div className="flex items-start justify-between mb-2">
           <div className="h-3 w-24 bg-bg-surface/10 rounded" />
           <div className="w-8 h-8 rounded-lg bg-bg-surface/10" />
@@ -90,9 +90,9 @@ export function StatCard({
   }
 
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 hover:bg-slate-900/50 transition-colors">
+    <div className="bg-bg-void/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 hover:bg-bg-void/50 transition-colors">
       <div className="flex items-start justify-between mb-2">
-        <span className="text-xs font-medium text-slate-300 uppercase tracking-wide">
+        <span className="text-xs font-medium text-text-secondary uppercase tracking-wide">
           {label}
         </span>
         <div
@@ -146,7 +146,7 @@ function StatusCard({
 
   if (isLoading) {
     return (
-      <div className="bg-slate-900/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 animate-pulse">
+      <div className="bg-bg-void/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 animate-pulse">
         <div className="flex items-start justify-between mb-2">
           <div className="h-3 w-24 bg-bg-surface/10 rounded" />
           <div className="w-8 h-8 rounded-lg bg-bg-surface/10" />
@@ -163,9 +163,9 @@ function StatusCard({
                      color.includes('red') ? 'text-amber' : 'text-text-primary';
 
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 hover:bg-slate-900/50 transition-colors">
+    <div className="bg-bg-void/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 hover:bg-bg-void/50 transition-colors">
       <div className="flex items-start justify-between mb-2">
-        <span className="text-xs font-medium text-slate-300 uppercase tracking-wide">
+        <span className="text-xs font-medium text-text-secondary uppercase tracking-wide">
           Campaign Status
         </span>
         <div className="w-8 h-8 rounded-lg bg-amber/20 text-amber flex items-center justify-center backdrop-blur-sm">

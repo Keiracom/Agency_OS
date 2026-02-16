@@ -248,7 +248,7 @@ function getLeadStatusStyles(status: "meeting" | "replied" | "opened" | "sent") 
     case "opened":
       return "bg-amber/15 text-amber";
     case "sent":
-      return "bg-gray-500/15 text-text-muted";
+      return "bg-bg-surface0/15 text-text-muted";
   }
 }
 

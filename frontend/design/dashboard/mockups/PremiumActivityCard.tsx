@@ -65,7 +65,7 @@ export function PremiumActivityCard({
       <div className="relative z-10 backdrop-blur-xl bg-bg-surface/[0.02] border border-white/[0.06] rounded-2xl">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
-          <h3 className="text-sm font-medium text-gray-300">{title}</h3>
+          <h3 className="text-sm font-medium text-text-secondary">{title}</h3>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-amber animate-pulse" />
             <span className="text-xs text-amber">Live</span>
@@ -92,13 +92,13 @@ export function PremiumActivityCard({
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-text-primary truncate">
                     <span className="font-medium">{activity.leadName}</span>
-                    <span className="text-gray-500"> {activity.action}</span>
+                    <span className="text-text-primary0"> {activity.action}</span>
                   </p>
-                  <p className="text-xs text-gray-500 truncate">{activity.company}</p>
+                  <p className="text-xs text-text-primary0 truncate">{activity.company}</p>
                 </div>
 
                 {/* Timestamp */}
-                <span className="text-xs text-gray-600 whitespace-nowrap">
+                <span className="text-xs text-text-muted whitespace-nowrap">
                   {activity.timestamp}
                 </span>
               </div>
@@ -108,7 +108,7 @@ export function PremiumActivityCard({
 
         {/* Footer */}
         <div className="px-6 py-3 border-t border-white/[0.04]">
-          <button className="flex items-center gap-2 text-xs text-gray-500 hover:text-amber transition-colors">
+          <button className="flex items-center gap-2 text-xs text-text-primary0 hover:text-amber transition-colors">
             <Send className="w-3 h-3" />
             View all activity
           </button>

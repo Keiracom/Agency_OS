@@ -29,8 +29,8 @@ const tierConfig: Record<TierType, { label: string; badgeBg: string; badgeText: 
   },
   cold: {
     label: "COLD",
-    badgeBg: "bg-gray-500/15",
-    badgeText: "text-gray-400",
+    badgeBg: "bg-bg-surface0/15",
+    badgeText: "text-text-muted",
     barGradient: "from-gray-500/30 to-gray-500",
   },
 };

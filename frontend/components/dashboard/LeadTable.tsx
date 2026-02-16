@@ -42,7 +42,7 @@ interface LeadTableProps {
 
 // Glass-themed status labels per LEADS.md spec
 const statusLabels: Record<LeadStatus, { label: string; style: string }> = {
-  new: { label: "New", style: "bg-slate-500/20 text-slate-300 border border-slate-500/20" },
+  new: { label: "New", style: "bg-slate-500/20 text-text-secondary border border-slate-500/20" },
   enriched: { label: "Enriched", style: "bg-bg-elevated/20 text-text-secondary border border-default/20" },
   scored: { label: "Scored", style: "bg-bg-elevated/20 text-text-secondary border border-default/20" },
   in_sequence: { label: "In Sequence", style: "bg-amber/20 text-amber border border-amber/20" },
@@ -174,7 +174,7 @@ export function LeadTable({
   // Loading state
   if (isLoading) {
     return (
-      <div className="bg-slate-900/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg shadow-black/20 p-8">
+      <div className="bg-bg-void/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg shadow-black/20 p-8">
         <div className="flex items-center justify-center">
           <div className="w-8 h-8 border-4 border-default border-t-transparent rounded-full animate-spin" />
         </div>
@@ -185,7 +185,7 @@ export function LeadTable({
   // Error state
   if (error) {
     return (
-      <div className="bg-slate-900/40 backdrop-blur-md rounded-xl border border-amber/30 shadow-lg shadow-black/20 p-8 text-center">
+      <div className="bg-bg-void/40 backdrop-blur-md rounded-xl border border-amber/30 shadow-lg shadow-black/20 p-8 text-center">
         <p className="text-amber">Failed to load leads</p>
         <p className="text-sm text-text-secondary mt-1">{error.message}</p>
       </div>
@@ -237,7 +237,7 @@ export function LeadTable({
       )}
 
       {/* Lead Table - Glass themed */}
-      <div className="bg-slate-900/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg shadow-black/20 overflow-hidden">
+      <div className="bg-bg-void/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg shadow-black/20 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/10 text-xs text-text-secondary bg-bg-surface/5">
@@ -265,7 +265,7 @@ export function LeadTable({
                   <div className="text-xs text-text-secondary">{lead.email}</div>
                 </td>
                 <td className="p-4">
-                  <div className="text-slate-200">{lead.company}</div>
+                  <div className="text-text-secondary">{lead.company}</div>
                   <div className="text-xs text-text-muted">
                     {lead.organization_industry}
                   </div>

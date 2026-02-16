@@ -136,7 +136,7 @@ const getStatusConfig = (status: TranscriptData["status"]) => {
       };
     case "no_answer":
       return {
-        color: "bg-gray-500/20 text-gray-400 border-gray-500/30",
+        color: "bg-bg-surface0/20 text-text-muted border-gray-500/30",
         icon: AlertCircle,
         label: "No Answer",
       };
@@ -163,7 +163,7 @@ const getOutcomeConfig = (outcome: TranscriptData["outcome"]) => {
       };
     case "not_interested":
       return {
-        color: "bg-gray-500/20 text-gray-400 border-gray-500/30",
+        color: "bg-bg-surface0/20 text-text-muted border-gray-500/30",
         label: "Not Interested",
       };
     case "no_decision":
@@ -210,12 +210,12 @@ export function TranscriptViewer({ transcript }: TranscriptViewerProps) {
               <Phone className="h-5 w-5 text-amber" />
               Voice AI Transcript
             </CardTitle>
-            <div className="flex items-center gap-2 text-sm text-gray-400">
+            <div className="flex items-center gap-2 text-sm text-text-muted">
               <span className="font-medium text-text-primary">{effectiveTranscript.leadName}</span>
               <span>-</span>
               <span>{effectiveTranscript.leadCompany}</span>
             </div>
-            <p className="text-xs text-gray-500">{effectiveTranscript.phoneNumber}</p>
+            <p className="text-xs text-text-primary0">{effectiveTranscript.phoneNumber}</p>
           </div>
           <div className="flex flex-col items-end gap-2">
             <Badge className={statusConfig.color}>
@@ -229,7 +229,7 @@ export function TranscriptViewer({ transcript }: TranscriptViewerProps) {
         </div>
 
         {/* Call metadata */}
-        <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+        <div className="flex items-center gap-4 mt-3 text-xs text-text-primary0">
           <div className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
             {formatTime(effectiveTranscript.startTime)}
@@ -279,11 +279,11 @@ export function TranscriptViewer({ transcript }: TranscriptViewerProps) {
                     : "bg-bg-elevated/20 rounded-tr-none"
                 }`}
               >
-                <p className="text-sm text-gray-200 leading-relaxed">
+                <p className="text-sm text-text-secondary leading-relaxed">
                   {message.content}
                 </p>
               </div>
-              <p className="text-[10px] text-gray-600 mt-1 px-2">
+              <p className="text-[10px] text-text-muted mt-1 px-2">
                 {formatTime(message.timestamp)}
               </p>
             </div>

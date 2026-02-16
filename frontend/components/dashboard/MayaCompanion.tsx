@@ -366,13 +366,13 @@ export function MayaCompanion({
         <div
           className={cn(
             "absolute bottom-full right-0 mb-4 w-[360px] rounded-2xl overflow-hidden",
-            "bg-slate-900/60 backdrop-blur-xl border border-slate-700/50",
+            "bg-bg-void/60 backdrop-blur-xl border border-slate-700/50",
             "shadow-2xl shadow-black/40",
             "animate-in slide-in-from-bottom-4 fade-in duration-300"
           )}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700/50 bg-slate-800/30">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700/50 bg-bg-base/30">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center text-text-primary font-bold shadow-lg shadow-amber/30">
                 M
@@ -394,7 +394,7 @@ export function MayaCompanion({
           {currentView === "tour" && !tourCompleted && currentTourStep && (
             <div className="p-5">
               {/* Tour Content */}
-              <p className="text-sm text-slate-300 leading-relaxed mb-4">
+              <p className="text-sm text-text-secondary leading-relaxed mb-4">
                 {currentTourStep.content}
               </p>
 
@@ -426,7 +426,7 @@ export function MayaCompanion({
                 </button>
                 <button
                   onClick={handleDismissTour}
-                  className="px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg border border-slate-600/50 transition-colors"
+                  className="px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-text-secondary text-sm font-medium rounded-lg border border-slate-600/50 transition-colors"
                 >
                   Skip
                 </button>
@@ -461,7 +461,7 @@ export function MayaCompanion({
                         "max-w-[85%] px-4 py-2.5 rounded-2xl text-sm",
                         message.role === "user"
                           ? "bg-amber text-text-primary rounded-br-md"
-                          : "bg-slate-700/60 text-slate-200 rounded-bl-md"
+                          : "bg-slate-700/60 text-text-secondary rounded-bl-md"
                       )}
                     >
                       {message.content}
@@ -493,7 +493,7 @@ export function MayaCompanion({
                     <button
                       key={i}
                       onClick={() => handleSuggestionClick(suggestion)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/60 hover:bg-slate-700/60 border border-slate-600/30 rounded-full text-xs text-slate-300 hover:text-text-primary transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-bg-base/60 hover:bg-slate-700/60 border border-slate-600/30 rounded-full text-xs text-text-secondary hover:text-text-primary transition-colors"
                     >
                       {suggestion.icon}
                       {suggestion.label}
@@ -512,7 +512,7 @@ export function MayaCompanion({
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Ask Maya anything..."
-                    className="w-full px-4 py-3 pr-12 bg-slate-800/60 border border-slate-600/50 rounded-xl text-sm text-text-primary placeholder-slate-500 focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20 transition-colors"
+                    className="w-full px-4 py-3 pr-12 bg-bg-base/60 border border-slate-600/50 rounded-xl text-sm text-text-primary placeholder-slate-500 focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20 transition-colors"
                   />
                   <button
                     onClick={handleSendMessage}

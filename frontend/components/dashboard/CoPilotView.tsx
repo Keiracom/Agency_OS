@@ -115,9 +115,9 @@ Best,
       case "cool":
         return "bg-bg-elevated/20 text-text-secondary border-default/30";
       case "cold":
-        return "bg-gray-500/20 text-gray-400 border-gray-500/30";
+        return "bg-bg-surface0/20 text-text-muted border-gray-500/30";
       default:
-        return "bg-gray-500/20 text-gray-400 border-gray-500/30";
+        return "bg-bg-surface0/20 text-text-muted border-gray-500/30";
     }
   };
 
@@ -141,13 +141,13 @@ Best,
                 </Badge>
               </div>
             </div>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-text-muted">
               To: {fullName} &lt;{lead.email || `${fullName.toLowerCase().replace(" ", ".")}@${emailDomain}`}&gt;
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <label className="text-xs text-gray-500 uppercase tracking-wider">
+              <label className="text-xs text-text-primary0 uppercase tracking-wider">
                 Subject
               </label>
               <input
@@ -157,7 +157,7 @@ Best,
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs text-gray-500 uppercase tracking-wider">
+              <label className="text-xs text-text-primary0 uppercase tracking-wider">
                 Body
               </label>
               <Textarea
@@ -177,7 +177,7 @@ Best,
               <Button
                 variant="outline"
                 onClick={onRegenerateEmail}
-                className="border-white/10 text-gray-300 hover:bg-bg-surface/5"
+                className="border-white/10 text-text-secondary hover:bg-bg-surface/5"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Regenerate
@@ -185,7 +185,7 @@ Best,
               <Button
                 variant="outline"
                 onClick={handleCopy}
-                className="border-white/10 text-gray-300 hover:bg-bg-surface/5"
+                className="border-white/10 text-text-secondary hover:bg-bg-surface/5"
               >
                 {copied ? (
                   <Check className="h-4 w-4 text-amber" />
@@ -276,7 +276,7 @@ Best,
               <CardTitle className="text-text-primary text-sm flex items-center gap-2">
                 <Linkedin className="h-4 w-4 text-text-secondary" />
                 Recent LinkedIn Posts
-                <span className="text-gray-500 font-normal">
+                <span className="text-text-primary0 font-normal">
                   ({research.posts_found} found)
                 </span>
               </CardTitle>
@@ -284,11 +284,11 @@ Best,
             <CardContent className="space-y-3">
               {research.social_posts.slice(0, 3).map((post, index) => (
                 <div key={post.id || index} className="p-3 bg-[#0f0f13] rounded-lg">
-                  <p className="text-gray-300 text-sm leading-relaxed line-clamp-3">
+                  <p className="text-text-secondary text-sm leading-relaxed line-clamp-3">
                     "{post.content}"
                   </p>
                   {post.date && (
-                    <p className="text-gray-500 text-xs mt-2">
+                    <p className="text-text-primary0 text-xs mt-2">
                       {new Date(post.date).toLocaleDateString()}
                     </p>
                   )}
@@ -308,7 +308,7 @@ Best,
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-300 text-sm leading-relaxed">
+              <p className="text-text-secondary text-sm leading-relaxed">
                 {research.profile_summary}
               </p>
             </CardContent>
@@ -337,12 +337,12 @@ Best,
               ].map((item) => (
                 <div key={item.label} className="space-y-1">
                   <div className="flex justify-between text-xs">
-                    <span className="text-gray-400">{item.label}</span>
+                    <span className="text-text-muted">{item.label}</span>
                     <span className="text-text-primary">
                       {item.value}/{item.max}
                     </span>
                   </div>
-                  <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                  <div className="h-2 bg-bg-base rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-amber to-amber rounded-full transition-all"
                       style={{ width: `${(item.value / item.max) * 100}%` }}
@@ -378,9 +378,9 @@ Best,
 
         {/* No LinkedIn URL Warning */}
         {!lead.linkedin_url && (
-          <Card className="bg-gray-900/20 border-gray-500/30">
+          <Card className="bg-bg-void/20 border-gray-500/30">
             <CardContent className="p-4">
-              <div className="flex items-center gap-3 text-gray-400">
+              <div className="flex items-center gap-3 text-text-muted">
                 <Linkedin className="h-5 w-5" />
                 <span>No LinkedIn URL available. Add LinkedIn to enable deep research.</span>
               </div>

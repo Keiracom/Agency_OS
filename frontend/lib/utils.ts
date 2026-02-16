@@ -49,7 +49,7 @@ export function getTierColor(tier: string): string {
     warm: "text-orange-500",
     cool: "text-text-secondary",
     cold: "text-amber",
-    dead: "text-gray-500",
+    dead: "text-text-primary0",
   }
-  return tierColors[tier?.toLowerCase()] || "text-gray-500"
+  return tierColors[tier?.toLowerCase()] || "text-text-primary0"
 }

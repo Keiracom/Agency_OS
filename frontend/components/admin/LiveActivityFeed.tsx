@@ -89,7 +89,7 @@ export function LiveActivityFeed({
       case "mail":
         return "bg-orange-500/10 text-orange-600";
       default:
-        return "bg-gray-500/10 text-gray-600";
+        return "bg-bg-surface0/10 text-text-muted";
     }
   };
 

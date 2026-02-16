@@ -247,7 +247,7 @@ function ResultItem({
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className={`text-sm font-medium truncate ${isSelected ? "text-text-primary" : "text-slate-200"}`}>
+          <span className={`text-sm font-medium truncate ${isSelected ? "text-text-primary" : "text-text-secondary"}`}>
             {result.title}
           </span>
           <CategoryBadge category={result.category} />
@@ -551,7 +551,7 @@ export function GlobalSearch({
       <div
         className="
           relative w-full max-w-2xl mx-4
-          bg-slate-900/95 backdrop-blur-xl
+          bg-bg-void/95 backdrop-blur-xl
           border border-white/10
           rounded-2xl shadow-2xl shadow-black/50
           overflow-hidden

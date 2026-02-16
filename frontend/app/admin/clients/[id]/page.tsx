@@ -85,13 +85,13 @@ const statusColors = {
   trialing: "bg-bg-elevated/10 text-amber",
   past_due: "bg-amber-glow text-error",
   paused: "bg-yellow-500/10 text-yellow-700",
-  cancelled: "bg-gray-500/10 text-gray-700",
+  cancelled: "bg-bg-surface0/10 text-text-muted",
 };
 
 const campaignStatusColors = {
   active: "bg-amber/10 text-amber border-amber/20",
   paused: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
-  completed: "bg-gray-500/10 text-gray-700 border-gray-500/20",
+  completed: "bg-bg-surface0/10 text-text-muted border-gray-500/20",
   draft: "bg-bg-elevated/10 text-amber border-default/20",
 };
 

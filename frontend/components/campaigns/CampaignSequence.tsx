@@ -18,7 +18,7 @@ export function CampaignSequence({ sequence }: Props) {
           <div key={idx} className="contents">
             <SequenceStep step={step} />
             {idx < sequence.length - 1 && (
-              <span className="text-slate-300 text-lg">→</span>
+              <span className="text-text-secondary text-lg">→</span>
             )}
           </div>
         ))}

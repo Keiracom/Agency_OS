@@ -131,7 +131,7 @@ function SearchTrigger({
         group
       "
     >
-      <Search className="w-4 h-4 text-text-secondary group-hover:text-slate-300" />
+      <Search className="w-4 h-4 text-text-secondary group-hover:text-text-secondary" />
       <span className="text-sm text-text-muted group-hover:text-text-secondary flex-1 text-left truncate">
         {placeholder}
       </span>
@@ -224,7 +224,7 @@ function NotificationBell({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-bg-void/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
             <h3 className="text-sm font-semibold text-text-primary">Notifications</h3>
             {unreadCount > 0 && onMarkAllRead && (
@@ -265,7 +265,7 @@ function NotificationBell({
                       <Sparkles className="w-3.5 h-3.5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium truncate ${!notification.read ? "text-text-primary" : "text-slate-300"}`}>
+                      <p className={`text-sm font-medium truncate ${!notification.read ? "text-text-primary" : "text-text-secondary"}`}>
                         {notification.title}
                       </p>
                       <p className="text-xs text-text-muted truncate mt-0.5">
@@ -346,7 +346,7 @@ function UserDropdown({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-56 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
+        <div className="absolute right-0 top-full mt-2 w-56 bg-bg-void/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
           {/* User Info Header */}
           <div className="px-4 py-3 border-b border-white/10">
             <p className="text-sm font-medium text-text-primary truncate">{displayName}</p>
@@ -372,7 +372,7 @@ function UserDropdown({
                     text-sm transition-colors
                     ${action.danger
                       ? "text-amber hover:bg-amber-glow"
-                      : "text-slate-300 hover:text-text-primary hover:bg-bg-surface/5"
+                      : "text-text-secondary hover:text-text-primary hover:bg-bg-surface/5"
                     }
                   `}
                 >

@@ -314,7 +314,7 @@ function GlassCard({
   return (
     <div
       className={cn(
-        "relative bg-slate-900/40 backdrop-blur-md rounded-xl border border-white/10",
+        "relative bg-bg-void/40 backdrop-blur-md rounded-xl border border-white/10",
         "shadow-lg shadow-black/20 overflow-hidden",
         className
       )}
@@ -485,7 +485,7 @@ function ChannelStatusPanel({
               key={key}
               className={cn(
                 "relative p-4 rounded-xl border transition-all cursor-pointer group",
-                "bg-slate-800/40 hover:bg-slate-800/60",
+                "bg-bg-base/40 hover:bg-bg-base/60",
                 status.status === "active" 
                   ? "border-white/10 hover:border-amber/30" 
                   : "border-white/5 opacity-75 hover:opacity-100"
@@ -523,7 +523,7 @@ function ChannelStatusPanel({
               </div>
 
               {/* Hover Tooltip */}
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-900 rounded-lg border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-bg-void rounded-lg border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
                 <div className="text-xs font-medium text-text-primary">{fullLabel}</div>
                 <div className="text-[10px] text-text-secondary">{getStatusLabel(status.status)} • {status.health}% health</div>
               </div>
@@ -590,7 +590,7 @@ function RecentActivitySummary({ activities }: { activities: RecentActivity[] })
             <div
               key={activity.id}
               className={cn(
-                "flex items-start gap-3 py-3 cursor-pointer transition-colors hover:bg-slate-800/30 -mx-4 px-4",
+                "flex items-start gap-3 py-3 cursor-pointer transition-colors hover:bg-bg-base/30 -mx-4 px-4",
                 idx !== activities.length - 1 && "border-b border-white/5"
               )}
             >
@@ -657,7 +657,7 @@ function HeroMeetingsCard({
           /{target}
         </span>
       </div>
-      <div className="mt-3 text-base text-slate-300">
+      <div className="mt-3 text-base text-text-secondary">
         {exceeded ? (
           <span className="text-amber font-medium">Target exceeded</span>
         ) : (
@@ -768,7 +768,7 @@ function ChannelOrchestrationWheel({
         {channels.map(({ key, label }) => (
           <div
             key={key}
-            className="text-center py-3 px-2 bg-slate-800/50 rounded-lg"
+            className="text-center py-3 px-2 bg-bg-base/50 rounded-lg"
           >
             <div className="text-lg font-bold font-mono text-text-primary">
               {stats[key as keyof ChannelStats]}
@@ -842,7 +842,7 @@ function HotProspectsCard({ prospects }: { prospects: Prospect[] }) {
           <div
             key={prospect.id}
             className={cn(
-              "flex items-center gap-4 py-4 cursor-pointer transition-colors hover:bg-slate-800/30 -mx-6 px-6",
+              "flex items-center gap-4 py-4 cursor-pointer transition-colors hover:bg-bg-base/30 -mx-6 px-6",
               idx !== prospects.length - 1 && "border-b border-white/5"
             )}
           >
@@ -945,7 +945,7 @@ function VoiceAICard({ calls }: { calls: VoiceCall[] }) {
           {stats.map(({ value, label }) => (
             <div
               key={label}
-              className="text-center py-4 px-2 bg-slate-800/50 rounded-lg"
+              className="text-center py-4 px-2 bg-bg-base/50 rounded-lg"
             >
               <div className="text-2xl font-bold font-mono text-text-primary">
                 {value}
@@ -1034,7 +1034,7 @@ function WhatsWorkingCard({
       <div className="px-6 py-4">
         <div className="grid grid-cols-2 gap-4">
           {/* Who Converts */}
-          <div className="bg-slate-800/50 rounded-lg p-4">
+          <div className="bg-bg-base/50 rounded-lg p-4">
             <div className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide mb-3">
               Who Converts
             </div>
@@ -1043,7 +1043,7 @@ function WhatsWorkingCard({
                 key={item.label}
                 className="flex justify-between items-center py-2"
               >
-                <span className="text-sm text-slate-300">{item.label}</span>
+                <span className="text-sm text-text-secondary">{item.label}</span>
                 <span className="text-sm font-semibold text-amber">
                   {item.value}
                 </span>
@@ -1052,7 +1052,7 @@ function WhatsWorkingCard({
           </div>
 
           {/* Best Channel Mix */}
-          <div className="bg-slate-800/50 rounded-lg p-4">
+          <div className="bg-bg-base/50 rounded-lg p-4">
             <div className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide mb-3">
               Best Channel Mix
             </div>
@@ -1061,7 +1061,7 @@ function WhatsWorkingCard({
                 key={item.label}
                 className="flex justify-between items-center py-2"
               >
-                <span className="text-sm text-slate-300">{item.label}</span>
+                <span className="text-sm text-text-secondary">{item.label}</span>
                 <span className="text-sm font-semibold text-amber">
                   {item.value}
                 </span>
@@ -1150,7 +1150,7 @@ function StatsSummaryRow() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {stats.map(({ value, label, change, positive, neutral }) => (
-        <GlassCard key={label} className="p-6 hover:bg-slate-900/50 transition-colors cursor-pointer">
+        <GlassCard key={label} className="p-6 hover:bg-bg-void/50 transition-colors cursor-pointer">
           <div className="text-3xl font-extrabold font-mono text-text-primary">
             {value}
           </div>

@@ -72,7 +72,7 @@ export function PremiumHeroCard({
         <div className="grid grid-cols-2 gap-8">
           {/* Meetings Booked */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-gray-400 text-sm font-medium">
+            <div className="flex items-center gap-2 text-text-muted text-sm font-medium">
               <Calendar className="w-4 h-4" />
               <span>Meetings Booked</span>
             </div>
@@ -93,14 +93,14 @@ export function PremiumHeroCard({
 
           {/* Show Rate */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-gray-400 text-sm font-medium">
+            <div className="flex items-center gap-2 text-text-muted text-sm font-medium">
               <span>Show Rate</span>
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-5xl font-light text-text-primary tracking-tight">
                 {showRate}
               </span>
-              <span className="text-2xl text-gray-500">%</span>
+              <span className="text-2xl text-text-primary0">%</span>
             </div>
             {/* Mini progress bar */}
             <div className="w-full h-1.5 bg-bg-surface/[0.08] rounded-full overflow-hidden">

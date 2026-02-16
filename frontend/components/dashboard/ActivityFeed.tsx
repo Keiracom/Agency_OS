@@ -289,7 +289,7 @@ function DetailModal({ activity, onClose }: DetailModalProps) {
       onClick={onClose}
     >
       <div
-        className="bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl shadow-black/40 w-full max-w-md mx-4 overflow-hidden"
+        className="bg-bg-void/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl shadow-black/40 w-full max-w-md mx-4 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -326,7 +326,7 @@ function DetailModal({ activity, onClose }: DetailModalProps) {
             <div className="space-y-1.5">
               <p className="text-text-primary font-medium">{activity.contactName}</p>
               {activity.contactCompany && (
-                <p className="text-sm text-slate-300">{activity.contactCompany}</p>
+                <p className="text-sm text-text-secondary">{activity.contactCompany}</p>
               )}
               {activity.contactEmail && (
                 <p className="text-sm text-text-secondary">{activity.contactEmail}</p>
@@ -339,7 +339,7 @@ function DetailModal({ activity, onClose }: DetailModalProps) {
             <h4 className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-2">
               Details
             </h4>
-            <p className="text-slate-200">{activity.description}</p>
+            <p className="text-text-secondary">{activity.description}</p>
           </div>
 
           {/* Metadata */}
@@ -368,7 +368,7 @@ function DetailModal({ activity, onClose }: DetailModalProps) {
           <div className="flex items-center justify-between pt-2">
             <div className="flex items-center gap-2">
               {getStatusIcon(activity.status)}
-              <span className="text-sm text-slate-300 capitalize">{activity.status}</span>
+              <span className="text-sm text-text-secondary capitalize">{activity.status}</span>
             </div>
             <button className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-amber-light transition-colors">
               View Full Record
@@ -529,14 +529,14 @@ export function ActivityFeed({
     <>
       <div
         className={`
-          bg-slate-900/40 backdrop-blur-md rounded-xl 
+          bg-bg-void/40 backdrop-blur-md rounded-xl 
           border border-white/10 shadow-xl shadow-black/20
           overflow-hidden flex flex-col
           ${className}
         `}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-slate-900/60">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-bg-void/60">
           <div className="flex items-center gap-3">
             {/* Live Indicator */}
             <div className="flex items-center gap-2">
@@ -602,7 +602,7 @@ export function ActivityFeed({
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-2 border-t border-white/10 bg-slate-900/60">
+        <div className="px-4 py-2 border-t border-white/10 bg-bg-void/60">
           <p className="text-[10px] text-text-muted text-center">
             {activities.length} total activities · {isPaused ? "Paused" : "Auto-updating"}
           </p>

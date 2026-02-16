@@ -48,9 +48,9 @@ export function KPICard({
         )}
       >
         <CardContent className="p-6">
-          <Skeleton className={cn("h-4 w-32 mb-4", isDark ? "bg-bg-surface/10" : "bg-gray-200")} />
-          <Skeleton className={cn("h-10 w-20 mb-2", isDark ? "bg-bg-surface/10" : "bg-gray-200")} />
-          <Skeleton className={cn("h-4 w-24", isDark ? "bg-bg-surface/10" : "bg-gray-200")} />
+          <Skeleton className={cn("h-4 w-32 mb-4", isDark ? "bg-bg-surface/10" : "bg-bg-elevated")} />
+          <Skeleton className={cn("h-10 w-20 mb-2", isDark ? "bg-bg-surface/10" : "bg-bg-elevated")} />
+          <Skeleton className={cn("h-4 w-24", isDark ? "bg-bg-surface/10" : "bg-bg-elevated")} />
         </CardContent>
       </Card>
     );
@@ -64,10 +64,10 @@ export function KPICard({
   };
 
   const getTrendColor = () => {
-    if (trend === undefined || trend === null) return isDark ? "text-text-primary/40" : "text-gray-400";
+    if (trend === undefined || trend === null) return isDark ? "text-text-primary/40" : "text-text-muted";
     if (trend > 0) return "text-[#10B981]"; // emerald
     if (trend < 0) return "text-[#F59E0B]"; // amber (not red, less alarming)
-    return isDark ? "text-text-primary/40" : "text-gray-400";
+    return isDark ? "text-text-primary/40" : "text-text-muted";
   };
 
   const TrendIcon = getTrendIcon();

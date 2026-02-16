@@ -155,7 +155,7 @@ export function Sidebar({
     <div 
       className={`
         ${collapsed ? "w-[72px]" : "w-60"} 
-        bg-slate-900/80 backdrop-blur-xl 
+        bg-bg-void/80 backdrop-blur-xl 
         flex flex-col h-screen fixed left-0 top-0 z-40 
         border-r border-white/10
         transition-all duration-300 ease-in-out
@@ -184,7 +184,7 @@ export function Sidebar({
           className={`
             absolute -right-3 top-1/2 -translate-y-1/2
             w-6 h-6 rounded-full
-            bg-slate-800 border border-white/20
+            bg-bg-base border border-white/20
             flex items-center justify-center
             text-text-secondary hover:text-text-primary hover:bg-slate-700
             transition-all duration-200
@@ -235,7 +235,7 @@ export function Sidebar({
                     className={`px-2 py-0.5 rounded-full text-xs transition-all duration-200 ${
                       activePage === item.key
                         ? "bg-bg-elevated/50 text-text-primary"
-                        : "bg-bg-surface/10 text-slate-300 border border-white/10"
+                        : "bg-bg-surface/10 text-text-secondary border border-white/10"
                     } ${clickedItem === item.key ? "scale-110" : ""}`}
                   >
                     {item.badge}

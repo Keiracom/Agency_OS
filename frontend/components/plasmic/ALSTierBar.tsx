@@ -23,7 +23,7 @@ const tierConfig: Record<ALSTier, { label: string; color: string; bg: string }> 
   warm: { label: "Warm", color: "text-text-primary", bg: "bg-[#F97316]" },
   cool: { label: "Cool", color: "text-text-primary", bg: "bg-[#3B82F6]" },
   cold: { label: "Cold", color: "text-text-primary", bg: "bg-[#6B7280]" },
-  dead: { label: "Dead", color: "text-gray-700", bg: "bg-[#D1D5DB]" },
+  dead: { label: "Dead", color: "text-text-muted", bg: "bg-[#D1D5DB]" },
 };
 
 export function ALSTierBar({ tier, count, percentage, className }: ALSTierBarProps) {

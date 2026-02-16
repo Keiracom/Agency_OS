@@ -1,59 +1,66 @@
 'use client';
 
 import { useState } from 'react';
+import { User, Users, Link2, Bell } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import {
-  ProfileCard,
-  TeamList,
-  IntegrationsGrid,
-  NotificationToggles,
-  ApiKeysCard,
-  DangerZone,
-  SettingsTabs,
-  SettingsTab,
+  ProfileSection,
+  TeamSection,
+  IntegrationsSection,
+  NotificationsSection,
 } from '@/components/settings';
 import {
   mockUserProfile,
   mockTeamMembers,
   mockIntegrations,
-  mockNotificationPreferences,
-  mockApiKeys,
-} from '@/data/mock-settings';
+  mockNotifications,
+} from '@/lib/mock/settings-data';
+
+type SettingsTab = 'profile' | 'team' | 'integrations' | 'notifications';
+
+const tabs: { id: SettingsTab; label: string; icon: typeof User }[] = [
+  { id: 'profile', label: 'Profile', icon: User },
+  { id: 'team', label: 'Team', icon: Users },
+  { id: 'integrations', label: 'Integrations', icon: Link2 },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
+];
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
 
   return (
     <AppShell pageTitle="Settings">
-      {/* Subtitle */}
       <div className="px-6 pt-2 pb-0">
         <p className="text-sm text-text-muted">Manage your account, team, and integrations</p>
       </div>
 
-      {/* Content */}
       <div className="p-6 max-w-[1000px]">
         {/* Tabs */}
-        <SettingsTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        <div className="flex gap-1 mb-8 p-1.5 bg-bg-surface rounded-xl w-fit">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all ${
+                  isActive
+                    ? 'bg-[rgba(212,149,106,0.15)] text-[#D4956A]'
+                    : 'text-text-muted hover:text-text-secondary hover:bg-bg-surface-hover'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
 
-        {/* Profile Tab */}
-        {activeTab === 'profile' && (
-          <div>
-            <ProfileCard profile={mockUserProfile} />
-            <ApiKeysCard apiKeys={mockApiKeys} />
-            <DangerZone />
-          </div>
-        )}
-
-        {/* Team Tab */}
-        {activeTab === 'team' && <TeamList members={mockTeamMembers} />}
-
-        {/* Integrations Tab */}
-        {activeTab === 'integrations' && <IntegrationsGrid integrations={mockIntegrations} />}
-
-        {/* Notifications Tab */}
-        {activeTab === 'notifications' && (
-          <NotificationToggles preferences={mockNotificationPreferences} />
-        )}
+        {activeTab === 'profile' && <ProfileSection profile={mockUserProfile} />}
+        {activeTab === 'team' && <TeamSection members={mockTeamMembers} />}
+        {activeTab === 'integrations' && <IntegrationsSection integrations={mockIntegrations} />}
+        {activeTab === 'notifications' && <NotificationsSection preferences={mockNotifications} />}
       </div>
     </AppShell>
   );

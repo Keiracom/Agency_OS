@@ -17,36 +17,40 @@ module.exports = {
       }
     },
     extend: {
-      // Agency OS Design Tokens - Bloomberg Terminal Dark Mode
-      // Sprint 1: Theme Foundation (CEO Directive #008)
+      // Bloomberg Dark Theme Tokens (v2 - Warmed up)
       colors: {
-        // Base layers - Warm Charcoal
-        'bg-void': '#080604',
-        'bg-base': '#0C0A08',
-        'bg-surface': 'rgba(255, 255, 255, 0.03)',
-        'bg-surface-hover': 'rgba(255, 255, 255, 0.06)',
-        'bg-elevated': 'rgba(255, 255, 255, 0.08)',
+        // Base layers (warmed up for glassmorphism)
+        'bg-void': '#08070D',
+        'bg-base': '#0D0C14',
+        'bg-surface': '#171622',
+        'bg-surface-hover': '#1E1C2D',
+        'bg-elevated': '#262438',
         
-        // Borders - Glassmorphism
-        'border-subtle': 'rgba(255, 255, 255, 0.06)',
-        'border-default': 'rgba(255, 255, 255, 0.08)',
-        'border-strong': 'rgba(255, 255, 255, 0.12)',
+        // Borders (warmed up)
+        'border-subtle': '#221F30',
+        'border-default': '#2E2B40',
+        'border-strong': '#3D3955',
         
-        // Text - Warm Cream
-        'text-primary': '#FAF5F0',
-        'text-secondary': '#A09890',
-        'text-muted': '#6B6560',
+        // Glass (new tokens for glassmorphism)
+        glass: {
+          surface: 'rgba(23, 22, 34, 0.7)',
+          border: 'rgba(255, 255, 255, 0.06)',
+          'border-hover': 'rgba(255, 255, 255, 0.1)',
+        },
         
-        // Accent - Amber Primary, Violet for AI only
-        'accent-primary': '#D4956A',
-        'accent-primary-hover': '#E0A87D',
-        'accent-ai': '#7C3AED',
-        'accent-ai-hover': '#9061F9',
+        // Text
+        'text-primary': '#F8F8FC',
+        'text-secondary': '#B4B4C4',
+        'text-muted': '#6E6E82',
+        
+        // Accent
+        'accent-primary': '#7C3AED',
+        'accent-primary-hover': '#9061F9',
         'accent-teal': '#14B8A6',
         'accent-blue': '#3B82F6',
         
         // Status
-        'status-success': '#10B981',
+        'status-success': '#22C55E',
         'status-warning': '#F59E0B',
         'status-error': '#EF4444',
         
@@ -98,8 +102,7 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['DM Sans', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-        serif: ['Instrument Serif', 'Georgia', 'serif'],
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       borderRadius: {
@@ -108,14 +111,11 @@ module.exports = {
         sm: 'calc(var(--radius) - 4px)'
       },
       boxShadow: {
-        'glow-sm': '0 0 10px rgba(212, 149, 106, 0.2)',
-        'glow-md': '0 0 20px rgba(212, 149, 106, 0.3)',
-        'glow-lg': '0 0 30px rgba(212, 149, 106, 0.4)',
-        'glow-ai-sm': '0 0 10px rgba(124, 58, 237, 0.2)',
-        'glow-ai-md': '0 0 20px rgba(124, 58, 237, 0.3)',
-      },
-      backdropBlur: {
-        'glass': '12px',
+        'glow-sm': '0 0 10px rgba(124, 58, 237, 0.2)',
+        'glow-md': '0 0 20px rgba(124, 58, 237, 0.3)',
+        'glow-lg': '0 0 30px rgba(124, 58, 237, 0.4)',
+        'glass': '0 12px 40px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
+        'glass-glow': '0 0 20px rgba(124, 58, 237, 0.15)',
       },
       keyframes: {
         'accordion-down': {

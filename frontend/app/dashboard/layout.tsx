@@ -3,10 +3,24 @@
  * PURPOSE: Dashboard layout with sidebar and header
  * PHASE: 8 (Frontend)
  * TASK: FE-007
- * UPDATED: Add onboarding redirect check
  * 
- * SSR: Force dynamic - all dashboard pages need fresh user data
+ * NOTE: Auth logic DISABLED for visual review (PR #25)
+ * TODO: Re-enable auth before production deploy
  */
+
+export default function DashboardRootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  // TEMPORARILY DISABLED: All auth checks bypassed for visual review
+  // Just render children directly - no layout wrapper needed for preview
+  return <>{children}</>;
+}
+
+/*
+ * ORIGINAL AUTH LAYOUT - PRESERVED FOR LATER
+ * ==========================================
 
 // Force dynamic for entire dashboard segment
 export const dynamic = 'force-dynamic';
@@ -39,9 +53,8 @@ export default async function DashboardRootLayout({
   }
 
   const memberships = await getUserMemberships();
-  const activeMembership = memberships[0]; // Get first (or active) membership
+  const activeMembership = memberships[0];
 
-  // If no memberships exist (edge case), redirect to onboarding
   if (!activeMembership) {
     redirect("/onboarding");
   }
@@ -52,7 +65,6 @@ export default async function DashboardRootLayout({
     avatarUrl: user.user_metadata?.avatar_url,
   };
 
-  // Fetch client data including credits and pause status (Phase H, Item 43)
   let creditsRemaining = 0;
   let pausedAt: string | null = null;
   let pauseReason: string | null = null;
@@ -74,7 +86,6 @@ export default async function DashboardRootLayout({
     name: activeMembership.client.name,
     tier: activeMembership.client.tier,
     creditsRemaining: creditsRemaining,
-    // Phase H, Item 43: Emergency pause status
     pausedAt: pausedAt,
     pauseReason: pauseReason,
   } : undefined;
@@ -85,3 +96,4 @@ export default async function DashboardRootLayout({
     </DashboardLayout>
   );
 }
+*/

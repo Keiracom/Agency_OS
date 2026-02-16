@@ -3,14 +3,16 @@ Bright Data Unified Client
 
 Wraps both SERP API and Scrapers API with cost tracking and error handling.
 Supports Google/Maps searches via SERP API and LinkedIn scraping via Scrapers API.
+
+Note: All methods are async - use with await.
 """
 
-import requests
-import time
+import httpx
+import asyncio
 import structlog
 import urllib.parse
 from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 logger = structlog.get_logger()
 
@@ -47,12 +49,14 @@ class CostTracker:
 
 class BrightDataClient:
     """
-    Unified client for Bright Data SERP API and Scrapers API.
+    Unified async client for Bright Data SERP API and Scrapers API.
     
     Provides methods for:
     - Google/Maps searches via SERP API
     - LinkedIn scraping via Scrapers API
     - Cost tracking across both services
+    
+    All methods are async and should be called with await.
     """
     
     def __init__(self, api_key: str, serp_zone: str = "serp_api1"):
@@ -66,251 +70,240 @@ class BrightDataClient:
         self.api_key = api_key
         self.serp_zone = serp_zone
         self.costs = CostTracker()
-        self._session = requests.Session()
+        self._client: Optional[httpx.AsyncClient] = None
+    
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get or create async HTTP client."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(timeout=60.0, verify=False)
+        return self._client
+    
+    async def close(self):
+        """Close the HTTP client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
     
     # SERP API Methods
     
-    def search_google_maps(self, query: str, location: str) -> List[Dict]:
+    async def search_google_maps(
+        self, 
+        query: str, 
+        location: str,
+        max_results: int = 20
+    ) -> List[Dict]:
         """
         Search Google Maps via SERP API.
         
         Args:
             query: Search query (e.g., "restaurants")
             location: Location to search in (e.g., "Melbourne")
-            
+            max_results: Maximum results to return (default 20)
+        
         Returns:
-            List of business results from Google Maps
-            
-        Raises:
-            BrightDataError: If the SERP request fails
-            
+            List of business results with name, phone, website, address, rating, etc.
+        
         Cost: $0.0015 AUD per request
         """
-        url = f"https://www.google.com/maps/search/{query}+{location}?brd_json=1"
-        return self._serp_request(url)
+        encoded_query = urllib.parse.quote(f"{query} {location}")
+        url = f"https://www.google.com/maps/search/{encoded_query}?brd_json=1"
+        
+        result = await self._serp_request(url)
+        
+        # Extract business results (limit to max_results)
+        if isinstance(result, list):
+            return result[:max_results]
+        elif isinstance(result, dict) and "organic" in result:
+            return result["organic"][:max_results]
+        
+        return []
     
-    def search_google(self, query: str) -> List[Dict]:
+    async def search_google(self, query: str) -> Dict:
         """
         Search Google via SERP API.
         
         Args:
-            query: Search query string
-            
+            query: Search query (e.g., 'site:linkedin.com/company "business name"')
+        
         Returns:
-            List of organic search results from Google
-            
-        Raises:
-            BrightDataError: If the SERP request fails
-            
+            Search results with organic results list
+        
         Cost: $0.0015 AUD per request
         """
         encoded_query = urllib.parse.quote(query)
         url = f"https://www.google.com/search?q={encoded_query}&brd_json=1"
-        return self._serp_request(url)
-    
-    def _serp_request(self, url: str) -> Any:
-        """
-        Execute SERP API request via proxy.
         
-        Args:
-            url: Target URL to scrape
-            
-        Returns:
-            JSON response from the target URL
-            
-        Raises:
-            BrightDataError: If the request fails
-        """
+        return await self._serp_request(url)
+    
+    async def _serp_request(self, url: str) -> Any:
+        """Execute SERP API request via proxy."""
         proxy_url = f"http://brd-customer-hl_4af12f98-zone-{self.serp_zone}:{self.api_key}@brd.superproxy.io:33335"
         
+        client = await self._get_client()
+        
         try:
-            response = self._session.get(
+            response = await client.get(
                 url,
-                proxies={"http": proxy_url, "https": proxy_url},
-                verify=False,
-                timeout=30
+                proxy=proxy_url,
+                timeout=30.0
             )
             response.raise_for_status()
             self.costs.serp_requests += 1
-            logger.info("serp_request_success", url=url, cost_aud=COSTS_AUD["serp_request"])
+            
+            logger.debug("serp_request_complete", url=url[:100], status=response.status_code)
             return response.json()
-        except requests.RequestException as e:
-            logger.error("serp_request_failed", url=url, error=str(e))
-            raise BrightDataError(f"SERP request failed: {e}")
+            
+        except httpx.HTTPStatusError as e:
+            raise BrightDataError(f"SERP request failed: HTTP {e.response.status_code}")
+        except httpx.RequestError as e:
+            raise BrightDataError(f"SERP request failed: {str(e)}")
     
     # Scrapers API Methods
     
-    def scrape_linkedin_company(self, linkedin_url: str) -> Dict:
+    async def scrape_linkedin_company(self, linkedin_url: str) -> Dict:
         """
-        Scrape LinkedIn Company profile via Scrapers API.
+        Scrape LinkedIn Company via Scrapers API.
         
         Args:
-            linkedin_url: Full LinkedIn company URL
-            
+            linkedin_url: LinkedIn company URL
+        
         Returns:
-            Company profile data including name, employees, about, etc.
-            
-        Raises:
-            BrightDataError: If scraping fails
-            
-        Dataset: gd_l1vikfnt1wgvvqz95w
+            Company profile with name, industry, employees[], updates[], etc.
+        
         Cost: $0.0015 AUD per record
         """
-        results = self._scraper_request(
+        results = await self._scraper_request(
             DATASET_IDS["linkedin_company"],
             [{"url": linkedin_url}]
         )
         return results[0] if results else {}
     
-    def scrape_linkedin_profile(self, linkedin_url: str) -> Dict:
+    async def scrape_linkedin_profile(self, linkedin_url: str) -> Dict:
         """
         Scrape LinkedIn People Profile via Scrapers API.
         
         Args:
-            linkedin_url: Full LinkedIn profile URL
-            
+            linkedin_url: LinkedIn profile URL
+        
         Returns:
-            Profile data including name, title, experience, etc.
-            
-        Raises:
-            BrightDataError: If scraping fails
-            
-        Dataset: gd_l1viktl72bvl7bjuj0
+            Person profile with name, experience, education, skills, etc.
+        
         Cost: $0.0015 AUD per record
         """
-        results = self._scraper_request(
+        results = await self._scraper_request(
             DATASET_IDS["linkedin_people"],
             [{"url": linkedin_url}]
         )
         return results[0] if results else {}
     
-    def scrape_linkedin_jobs(self, keyword: str, location: str, country: str = "AU") -> List[Dict]:
+    async def scrape_linkedin_jobs(
+        self, 
+        keyword: str, 
+        location: str, 
+        country: str = "AU"
+    ) -> List[Dict]:
         """
         Discover LinkedIn Jobs via keyword search.
         
         Args:
-            keyword: Job search keyword (e.g., "marketing")
-            location: Location to search in (e.g., "Melbourne") 
+            keyword: Job keyword (e.g., "marketing")
+            location: Location (e.g., "Melbourne")
             country: Country code (default: "AU")
-            
+        
         Returns:
-            List of job postings matching the criteria
-            
-        Raises:
-            BrightDataError: If scraping fails
-            
-        Dataset: gd_lpfll7v5hcqtkxl6l
-        Discovery mode: keyword
+            List of job postings
+        
         Cost: $0.0015 AUD per record
         """
-        return self._scraper_request(
+        return await self._scraper_request(
             DATASET_IDS["linkedin_jobs"],
             [{"keyword": keyword, "location": location, "country": country}],
             discover_by="keyword"
         )
     
-    def _scraper_request(self, dataset_id: str, inputs: List[Dict], discover_by: str = None) -> List[Dict]:
-        """
-        Execute Scraper API request: trigger → poll → download.
-        
-        Args:
-            dataset_id: Bright Data dataset ID
-            inputs: List of input parameters for the dataset
-            discover_by: Discovery mode ("keyword" for jobs)
-            
-        Returns:
-            List of scraped records
-            
-        Raises:
-            BrightDataError: If any step of the process fails
-        """
+    async def _scraper_request(
+        self, 
+        dataset_id: str, 
+        inputs: List[Dict], 
+        discover_by: str = None
+    ) -> List[Dict]:
+        """Execute Scraper API: trigger → poll → download."""
         base_url = "https://api.brightdata.com/datasets/v3"
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        headers = {
+            "Authorization": f"Bearer {self.api_key}", 
+            "Content-Type": "application/json"
+        }
         
         # Build trigger URL
         trigger_url = f"{base_url}/trigger?dataset_id={dataset_id}&include_errors=true"
         if discover_by:
             trigger_url += f"&type=discover_new&discover_by={discover_by}"
         
-        # Trigger collection
+        client = await self._get_client()
+        
+        # Trigger
         try:
-            response = self._session.post(trigger_url, headers=headers, json=inputs, timeout=30)
+            response = await client.post(
+                trigger_url, 
+                headers=headers, 
+                json=inputs, 
+                timeout=30.0
+            )
             response.raise_for_status()
             snapshot_id = response.json()["snapshot_id"]
-            logger.info("scraper_triggered", snapshot_id=snapshot_id, dataset_id=dataset_id, discover_by=discover_by)
-        except requests.RequestException as e:
-            logger.error("scraper_trigger_failed", dataset_id=dataset_id, error=str(e))
-            raise BrightDataError(f"Scraper trigger failed: {e}")
+            logger.info("scraper_triggered", snapshot_id=snapshot_id, dataset_id=dataset_id)
+        except httpx.HTTPStatusError as e:
+            raise BrightDataError(f"Scraper trigger failed: HTTP {e.response.status_code}")
+        except httpx.RequestError as e:
+            raise BrightDataError(f"Scraper trigger failed: {str(e)}")
         
         # Poll until ready (max 5 minutes)
-        for attempt in range(60):
+        for _ in range(60):
             try:
-                progress = self._session.get(
+                progress = await client.get(
                     f"{base_url}/progress/{snapshot_id}",
                     headers=headers,
-                    timeout=10
+                    timeout=10.0
                 )
-                progress_data = progress.json()
-                status = progress_data.get("status")
+                status_data = progress.json()
+                status = status_data.get("status")
                 
                 if status == "ready":
-                    records = progress_data.get("records", 0)
+                    records = status_data.get("records", 0)
                     self.costs.scraper_records += records
-                    logger.info("scraper_ready", snapshot_id=snapshot_id, records=records, 
-                              cost_aud=records * COSTS_AUD["scraper_record"])
+                    logger.info("scraper_ready", snapshot_id=snapshot_id, records=records)
                     break
                 elif status == "failed":
-                    logger.error("scraper_failed", snapshot_id=snapshot_id, progress_data=progress_data)
-                    raise BrightDataError(f"Scraper job failed: {progress_data}")
-                else:
-                    logger.debug("scraper_polling", snapshot_id=snapshot_id, status=status, attempt=attempt + 1)
-            except requests.RequestException as e:
-                logger.warning("scraper_poll_error", snapshot_id=snapshot_id, attempt=attempt + 1, error=str(e))
-                pass
+                    raise BrightDataError(f"Scraper job failed: {status_data}")
+                    
+            except httpx.RequestError:
+                pass  # Retry on network errors
             
-            time.sleep(5)
+            await asyncio.sleep(5)
         else:
-            logger.error("scraper_timeout", snapshot_id=snapshot_id)
             raise BrightDataError(f"Scraper timeout for snapshot {snapshot_id}")
         
         # Download results
         try:
-            data = self._session.get(
+            data = await client.get(
                 f"{base_url}/snapshot/{snapshot_id}?format=json",
                 headers=headers,
-                timeout=60
+                timeout=60.0
             )
             data.raise_for_status()
-            results = data.json()
-            logger.info("scraper_download_success", snapshot_id=snapshot_id, records=len(results))
-            return results
-        except requests.RequestException as e:
-            logger.error("scraper_download_failed", snapshot_id=snapshot_id, error=str(e))
-            raise BrightDataError(f"Scraper download failed: {e}")
+            return data.json()
+        except httpx.HTTPStatusError as e:
+            raise BrightDataError(f"Scraper download failed: HTTP {e.response.status_code}")
+        except httpx.RequestError as e:
+            raise BrightDataError(f"Scraper download failed: {str(e)}")
     
     # Cost tracking methods
     
     def get_total_cost(self) -> float:
-        """
-        Get total AUD spent this session.
-        
-        Returns:
-            Total cost in AUD
-        """
+        """Return total AUD spent this session."""
         return self.costs.total_aud
     
     def get_cost_breakdown(self) -> Dict[str, Any]:
-        """
-        Get detailed cost breakdown by service type.
-        
-        Returns:
-            Dictionary with cost breakdown including:
-            - serp_requests: Number of SERP API requests
-            - serp_cost_aud: Cost of SERP requests in AUD
-            - scraper_records: Number of scraper records
-            - scraper_cost_aud: Cost of scraper records in AUD
-            - total_aud: Total cost in AUD
-        """
+        """Return costs by method/tier."""
         return {
             "serp_requests": self.costs.serp_requests,
             "serp_cost_aud": self.costs.serp_requests * COSTS_AUD["serp_request"],

@@ -336,7 +336,7 @@ class WaterfallV2:
             # Search LinkedIn company URL via SERP
             search_query = f'site:linkedin.com/company "{lead.business_name}" {lead.address or lead.state or ""}'
             
-            serp_results = await self.bd.search_serp(
+            serp_results = await self.bd.search_google(
                 query=search_query.strip(),
                 max_results=10
             )
@@ -456,6 +456,15 @@ class WaterfallV2:
         if lead.linkedin_data.get("updates"):
             recent_updates = len(lead.linkedin_data["updates"])
             score_breakdown["timing"] += min(recent_updates * 2, 10)
+            
+            # Hiring signal detection - bonus 5 points for active growth
+            for update in lead.linkedin_data["updates"]:
+                update_text = (update.get("text") or "").lower()
+                if "#hiring" in update_text or "we're hiring" in update_text or "we are hiring" in update_text:
+                    score_breakdown["timing"] += 5  # Active hiring = growth signal
+                    logger.debug("hiring_signal_detected", lead_id=lead.id)
+                    break  # Only count once
+        
         if lead.founded and lead.founded >= datetime.now().year - 2:
             score_breakdown["timing"] += 5  # New companies often need services
         
@@ -645,7 +654,7 @@ class WaterfallV2:
             for dm in lead.decision_makers[:2]:  # Limit to top 2 to control costs  
                 linkedin_url = dm.get("link")
                 if linkedin_url:
-                    kaspr_data = await self.kaspr.enrich_contact(linkedin_url)
+                    kaspr_data = await self.kaspr.enrich_identity(linkedin_url)
                     if kaspr_data:
                         verified_contacts.append(kaspr_data)
                         

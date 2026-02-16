@@ -18,7 +18,7 @@ export function RecommendationsCard({ recommendations }: Props) {
             key={rec.id}
             className="flex gap-2.5 items-start px-4 py-3 bg-amber-50 rounded-lg text-sm text-amber-800"
           >
-            <span className="text-base">💡</span>
+            <span className="text-base"></span>
             <span>{rec.text}</span>
           </div>
         ))}

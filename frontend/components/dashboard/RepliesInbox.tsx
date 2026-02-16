@@ -121,7 +121,7 @@ const mockConversations: InboxConversation[] = [
     aiSuggestions: [
       {
         id: "s1",
-        label: "✨ Quick Accept",
+        label: "Sparkles Quick Accept",
         text: "Hi David, great to hear! I'd love to learn more about your $40K → $100K goals. Tuesday at 2pm AEST work for a 30-min call? I'll send a calendar invite.",
         icon: "sparkles",
       },

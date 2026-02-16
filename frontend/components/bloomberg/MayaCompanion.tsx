@@ -17,11 +17,11 @@ interface MayaStep {
 
 const mayaSteps: MayaStep[] = [
   {
-    content: "Welcome to Agency OS! 👋 I'm Maya, your digital employee. I'm currently analyzing your website to understand your agency and find your ideal clients. This usually takes 2-3 minutes.",
+    content: "Welcome to Agency OS!  I'm Maya, your digital employee. I'm currently analyzing your website to understand your agency and find your ideal clients. This usually takes 2-3 minutes.",
     action: "Got it",
   },
   {
-    content: "While I analyze your website, I'm also setting up your email domains and phone numbers. These are pre-warmed and ready to use! 🚀",
+    content: "While I analyze your website, I'm also setting up your email domains and phone numbers. These are pre-warmed and ready to use! ",
     action: "Continue",
   },
   {
@@ -30,7 +30,7 @@ const mayaSteps: MayaStep[] = [
     highlight: "campaigns-nav",
   },
   {
-    content: "That's the basics! I'll be here in the corner whenever you need help. Click my avatar anytime to chat. 💬",
+    content: "That's the basics! I'll be here in the corner whenever you need help. Click my avatar anytime to chat. ",
     action: "Finish tour",
   },
 ];

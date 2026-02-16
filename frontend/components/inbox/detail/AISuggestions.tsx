@@ -47,10 +47,10 @@ export function AISuggestions({ suggestions, onUseSuggestion }: AISuggestionsPro
             >
               <div className="flex items-center justify-between mb-2.5">
                 <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-amber">
-                  {suggestion.label.includes('✨') ? (
+                  {suggestion.label.includes('Sparkles') ? (
                     <>
                       <Sparkles className="w-3.5 h-3.5" />
-                      {suggestion.label.replace('✨ ', '')}
+                      {suggestion.label.replace('Sparkles ', '')}
                     </>
                   ) : (
                     <>

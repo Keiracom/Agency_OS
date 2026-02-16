@@ -35,7 +35,7 @@ export function QuickActions({ onScheduleCall, onAddNote, onSendToCRM, onViewPro
   return (
     <div className="bg-bg-base rounded-xl p-4">
       <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-text-muted">
-        <span className="text-amber-500">⚡</span>
+        <span className="text-amber-500"></span>
         Quick Actions
       </div>
       <div className="space-y-2">

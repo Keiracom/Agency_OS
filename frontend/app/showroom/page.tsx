@@ -755,7 +755,7 @@ export default function ShowroomPage() {
                   />
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
-                      <span className="text-3xl mb-2 block">✨</span>
+                      <span className="text-3xl mb-2 block">Sparkles</span>
                       <span className="text-text-primary/90 font-bold text-lg">Click for more!</span>
                     </div>
                   </div>

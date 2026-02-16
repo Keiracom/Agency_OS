@@ -360,7 +360,7 @@ function buildQuickStats(metrics: DashboardMetricsV4Response | null): QuickStat[
 function buildInsight(metrics: DashboardMetricsV4Response | null): InsightData {
   if (!metrics || !metrics.best_channel) {
     return {
-      icon: "💡",
+      icon: "lightbulb",
       headline: "Keep building momentum",
       detail: "As your campaigns run, we'll surface insights about what's working best for your outreach.",
     };
@@ -370,7 +370,7 @@ function buildInsight(metrics: DashboardMetricsV4Response | null): InsightData {
   const multiplier = metrics.best_channel_multiplier || 1;
 
   return {
-    icon: "💡",
+    icon: "lightbulb",
     headline: `${channelName} is your best channel`,
     detail: `Your ${channelName} outreach is booking ${multiplier}x more meetings than other channels this month. We've shifted more outreach there automatically.`,
     highlightText: `${multiplier}x more meetings`,

@@ -686,8 +686,8 @@ export const ReportsView: React.FC = () => {
                       className="w-8 h-8 rounded-md flex items-center justify-center text-sm"
                       style={{ background: `${colorMap[source.color]}26` }}
                     >
-                      {source.name === 'Data Partner' ? '🚀' : 
-                       source.name === 'LinkedIn' ? '💼' :
+                      {source.name === 'Data Partner' ? '' : 
+                       source.name === 'LinkedIn' ? '' :
                        source.name === 'Referral' ? '🤝' : '🌐'}
                     </div>
                     <div className="flex-1">
@@ -853,7 +853,7 @@ export const ReportsView: React.FC = () => {
             style={{ borderColor: colors.borderSubtle }}
           >
             <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: colors.textPrimary }}>
-              💰 ROI Summary — This Period
+              ROI Summary — This Period
             </div>
           </div>
           <div className="p-5">

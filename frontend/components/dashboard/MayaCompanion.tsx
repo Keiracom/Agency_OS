@@ -84,12 +84,12 @@ export interface MayaCompanionProps {
 const defaultSteps: MayaStep[] = [
   {
     content:
-      "Welcome to Agency OS! 👋 I'm Maya, your digital employee. I'm currently analyzing your website to understand your agency and find your ideal clients. This usually takes 2-3 minutes.",
+      "Welcome to Agency OS!  I'm Maya, your digital employee. I'm currently analyzing your website to understand your agency and find your ideal clients. This usually takes 2-3 minutes.",
     action: "Got it",
   },
   {
     content:
-      "While I analyze your website, I'm also setting up your email domains and phone numbers. These are pre-warmed and ready to use! 🚀",
+      "While I analyze your website, I'm also setting up your email domains and phone numbers. These are pre-warmed and ready to use! ",
     action: "Continue",
   },
   {
@@ -100,7 +100,7 @@ const defaultSteps: MayaStep[] = [
   },
   {
     content:
-      "That's the basics! I'll be here in the corner whenever you need help. Click my avatar anytime to chat. 💬",
+      "That's the basics! I'll be here in the corner whenever you need help. Click my avatar anytime to chat. ",
     action: "Finish tour",
   },
 ];
@@ -267,7 +267,7 @@ export function MayaCompanion({
         {
           id: `maya-${Date.now()}`,
           role: "maya",
-          content: "Tour complete! 🎉 I'm always here to help. Ask me anything or check out the suggestions below.",
+          content: "Tour complete!  I'm always here to help. Ask me anything or check out the suggestions below.",
           timestamp: new Date(),
         },
       ]);

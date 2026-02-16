@@ -35,7 +35,7 @@ function AISuggestedReply({ suggestedReply }: { suggestedReply: string }) {
     <div className="bg-bg-surface border border-slate-200 rounded-2xl p-5 mt-auto">
       <div className="flex items-center gap-2 mb-3">
         <span className="px-2.5 py-1 bg-violet-100 text-amber rounded-md text-[11px] font-semibold">
-          🤖 AI
+          AI
         </span>
         <span className="text-sm font-semibold text-text-muted">Suggested Reply</span>
       </div>
@@ -63,7 +63,7 @@ function EmptyState() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-slate-50">
       <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-        <span className="text-2xl">💬</span>
+        <span className="text-2xl"></span>
       </div>
       <h3 className="text-lg font-semibold text-slate-800 mb-2">No Conversation Selected</h3>
       <p className="text-sm text-text-muted max-w-xs">

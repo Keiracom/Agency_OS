@@ -301,7 +301,7 @@ export function CostOverview() {
       <Card className="bg-muted/30">
         <CardContent className="py-3">
           <p className="text-xs text-muted-foreground text-center">
-            💡 Cost estimates are derived from <code>knowledge/costs.md</code> and may vary based on actual usage.
+             Cost estimates are derived from <code>knowledge/costs.md</code> and may vary based on actual usage.
             For real-time cost tracking, connect to billing APIs.
           </p>
         </CardContent>

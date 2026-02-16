@@ -85,9 +85,9 @@ const MOCK_LEAD: Lead = {
     estimatedRevenue: "$1-2M",
     location: "Sydney",
     recentIntelligence: [
-      { icon: "📈", text: "Expanded to Queensland market (Jan 2026)" },
-      { icon: "👥", text: "Hired 3 new BDRs in last 60 days" },
-      { icon: "🏆", text: 'Featured in "Top 50 Agencies to Watch"' },
+      { icon: "", text: "Expanded to Queensland market (Jan 2026)" },
+      { icon: "", text: "Hired 3 new BDRs in last 60 days" },
+      { icon: "", text: 'Featured in "Top 50 Agencies to Watch"' },
     ],
   },
   score: 94,
@@ -401,8 +401,8 @@ function VoiceTranscriptModal({
                             : "bg-amber/10 text-amber border border-amber/30"
                         }`}
                       >
-                        {line.highlight.type === "pain_point" && "🎯"}
-                        {line.highlight.type === "meeting_intent" && "📅"}
+                        {line.highlight.type === "pain_point" && ""}
+                        {line.highlight.type === "meeting_intent" && ""}
                         {line.highlight.type === "meeting_booked" && "✓"}
                         {line.highlight.label}
                       </div>
@@ -857,11 +857,11 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                                     event.type
                                   )}`}
                                 >
-                                  {event.type === "reply" && "✉️"}
-                                  {event.type === "email" && "📧"}
-                                  {event.type === "linkedin" && "💼"}
-                                  {event.type === "voice" && "📞"}
-                                  {event.type === "sms" && "💬"}
+                                  {event.type === "reply" && ""}
+                                  {event.type === "email" && ""}
+                                  {event.type === "linkedin" && ""}
+                                  {event.type === "voice" && ""}
+                                  {event.type === "sms" && ""}
                                 </div>
 
                                 {/* Content */}
@@ -912,7 +912,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                 <div className="bg-bg-base border border-default rounded-xl overflow-hidden">
                   <div className="px-5 py-4 border-b border-default">
                     <div className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-                      🏢 Company Intel
+                      Company Intel
                     </div>
                   </div>
                   <div className="p-5">
@@ -1002,7 +1002,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                 <div className="bg-bg-base border border-default rounded-xl overflow-hidden">
                   <div className="px-5 py-4 border-b border-default">
                     <div className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
-                      📝 Notes
+                      Notes
                     </div>
                   </div>
                   <div className="p-5">

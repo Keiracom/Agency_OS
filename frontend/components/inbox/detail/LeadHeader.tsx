@@ -48,7 +48,7 @@ export function LeadHeader({ message }: LeadHeaderProps) {
   if (message.title.toLowerCase().includes('ceo') || message.title.toLowerCase().includes('founder')) {
     badges.push(
       <span key="title" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wide bg-amber/15 text-amber">
-        👑 {message.title}
+         {message.title}
       </span>
     );
   }

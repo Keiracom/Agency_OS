@@ -270,10 +270,10 @@ export default function HowItWorksClient() {
             <ScrollReveal animation="fade-right" className="order-2 md:order-1">
               <div className="grid grid-cols-2 gap-4">
                 {[
-                  { icon: "✉️", name: "Email", desc: "Personalized sequences", status: "Active" },
-                  { icon: "💼", name: "LinkedIn", desc: "Connection + InMails", status: "Active" },
-                  { icon: "💬", name: "SMS", desc: "DNCR-compliant", status: "Active" },
-                  { icon: "📞", name: "Voice AI", desc: "Conversational calls", status: "Active" },
+                  { icon: "", name: "Email", desc: "Personalized sequences", status: "Active" },
+                  { icon: "", name: "LinkedIn", desc: "Connection + InMails", status: "Active" },
+                  { icon: "", name: "SMS", desc: "DNCR-compliant", status: "Active" },
+                  { icon: "", name: "Voice AI", desc: "Conversational calls", status: "Active" },
                   { icon: "📬", name: "Direct Mail", desc: "Postcards + letters", status: "Active" },
                   { icon: "🧠", name: "AI Content", desc: "Per-prospect copy", status: "Learning" },
                 ].map((ch, i) => (

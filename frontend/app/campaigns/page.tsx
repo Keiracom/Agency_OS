@@ -42,7 +42,7 @@ export default function CampaignsPage() {
                     <span className="font-semibold text-slate-800 text-sm">{campaign.name}</span>
                     {campaign.isAI && (
                       <span className="text-xs px-2 py-0.5 bg-violet-100 text-amber rounded-full font-medium">
-                        ✨ AI
+                        AI
                       </span>
                     )}
                   </div>

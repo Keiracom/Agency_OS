@@ -516,13 +516,13 @@ function SequenceFlow({ steps }: { steps: SequenceStep[] }) {
                 </div>
                 <p className="text-sm font-medium text-text-primary mb-2">{step.title}</p>
                 <div className="flex items-center gap-4 text-xs text-text-secondary">
-                  {step.stats.sent && <span>📤 {step.stats.sent.toLocaleString()} sent</span>}
+                  {step.stats.sent && <span> {step.stats.sent.toLocaleString()} sent</span>}
                   {step.stats.opened && <span>👀 {step.stats.opened.toLocaleString()} opened</span>}
                   {step.stats.replied && <span>↩️ {step.stats.replied.toLocaleString()} replied</span>}
-                  {step.stats.accepted && <span>✅ {step.stats.accepted.toLocaleString()} accepted</span>}
-                  {step.stats.called && <span>📞 {step.stats.called.toLocaleString()} called</span>}
-                  {step.stats.connected && <span>📱 {step.stats.connected.toLocaleString()} connected</span>}
-                  {step.stats.booked && <span>📅 {step.stats.booked.toLocaleString()} booked</span>}
+                  {step.stats.accepted && <span>Sent: {step.stats.accepted.toLocaleString()} accepted</span>}
+                  {step.stats.called && <span> {step.stats.called.toLocaleString()} called</span>}
+                  {step.stats.connected && <span> {step.stats.connected.toLocaleString()} connected</span>}
+                  {step.stats.booked && <span> {step.stats.booked.toLocaleString()} booked</span>}
                   {step.status === "pending" && <span className="text-text-muted">Pending...</span>}
                 </div>
               </div>

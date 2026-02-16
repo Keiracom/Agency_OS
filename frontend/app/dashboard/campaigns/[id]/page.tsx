@@ -531,14 +531,14 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                     </div>
                     <p className="text-sm font-medium text-text-primary mb-2">{step.title}</p>
                     <div className="flex items-center gap-4 text-xs text-text-secondary">
-                      {step.sent > 0 && <span>📤 {step.sent.toLocaleString()} sent</span>}
+                      {step.sent > 0 && <span> {step.sent.toLocaleString()} sent</span>}
                       {step.opened && <span>👀 {step.opened} opened</span>}
                       {step.replied && <span>↩️ {step.replied} replied</span>}
                       {step.accepted && <span>✓ {step.accepted} accepted</span>}
-                      {step.connected && <span>📱 {step.connected} connected</span>}
+                      {step.connected && <span> {step.connected} connected</span>}
                       {step.booked && (
                         <span className="text-accent-primary font-medium">
-                          📅 {step.booked} booked
+                           {step.booked} booked
                         </span>
                       )}
                       {step.status === "pending" && (

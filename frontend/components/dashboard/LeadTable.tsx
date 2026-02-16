@@ -321,7 +321,7 @@ export function LeadTable({
             id: selectedLead.id,
             name: selectedLead.company ?? "Unknown Company",
             domain: selectedLead.domain ?? "",
-            logoEmoji: "🏢",
+            logoEmoji: "",
             employees: selectedLead.organization_employee_count?.toString() ?? "Unknown",
             industry: selectedLead.organization_industry ?? "Unknown",
             estimatedRevenue: "Unknown",

@@ -562,7 +562,7 @@ export default function LandingPage() {
                     </div>
                     <div className="flex items-center gap-2 mb-4">
                       <span className="text-text-muted line-through text-sm">Was {tier.originalPrice}/mo</span>
-                      <span className="text-xs font-semibold text-amber bg-green-50 px-2 py-0.5 rounded">{tier.savings}</span>
+                      <span className="text-xs font-semibold text-amber bg-amber-glow px-2 py-0.5 rounded">{tier.savings}</span>
                     </div>
                     {/* Expected Meetings Highlight */}
                     <div className={`p-3 rounded-xl ${tier.popular ? "bg-gradient-to-r from-mint-500/10 to-mint-400/10 border border-mint-200" : "bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200"}`}>

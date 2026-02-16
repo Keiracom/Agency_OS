@@ -9,6 +9,7 @@
 import Link from "next/link";
 import { ScrollReveal } from "@/hooks/use-scroll-animation";
 import { WaitlistForm } from "@/components/marketing/waitlist-form";
+import { Mail, Brain } from "lucide-react";
 
 export default function HowItWorksClient() {
   return (
@@ -152,7 +153,7 @@ export default function HowItWorksClient() {
                         <p className="font-medium text-sm">{lead.name}</p>
                         <p className="text-xs text-[#1d1d1f]/50">{lead.title} at {lead.company}</p>
                       </div>
-                      <span className="text-xs font-medium text-amber bg-green-50 px-2 py-1 rounded-full">
+                      <span className="text-xs font-medium text-amber bg-amber-glow px-2 py-1 rounded-full">
                         {lead.confidence} match
                       </span>
                     </div>
@@ -270,16 +271,16 @@ export default function HowItWorksClient() {
             <ScrollReveal animation="fade-right" className="order-2 md:order-1">
               <div className="grid grid-cols-2 gap-4">
                 {[
-                  { icon: "", name: "Email", desc: "Personalized sequences", status: "Active" },
-                  { icon: "", name: "LinkedIn", desc: "Connection + InMails", status: "Active" },
-                  { icon: "", name: "SMS", desc: "DNCR-compliant", status: "Active" },
-                  { icon: "", name: "Voice AI", desc: "Conversational calls", status: "Active" },
-                  { icon: "📬", name: "Direct Mail", desc: "Postcards + letters", status: "Active" },
-                  { icon: "🧠", name: "AI Content", desc: "Per-prospect copy", status: "Learning" },
+                  { icon: "email", name: "Email", desc: "Personalized sequences", status: "Active" },
+                  { icon: "linkedin", name: "LinkedIn", desc: "Connection + InMails", status: "Active" },
+                  { icon: "sms", name: "SMS", desc: "DNCR-compliant", status: "Active" },
+                  { icon: "voice", name: "Voice AI", desc: "Conversational calls", status: "Active" },
+                  { icon: "mail", name: "Direct Mail", desc: "Postcards + letters", status: "Active" },
+                  { icon: "brain", name: "AI Content", desc: "Per-prospect copy", status: "Learning" },
                 ].map((ch, i) => (
                   <div key={i} className="p-4 rounded-xl bg-bg-surface border border-black/5 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-2xl">{ch.icon}</span>
+                      <span className="text-2xl">{ch.icon === "mail" ? <Mail className="w-6 h-6 text-[#0066CC]" /> : ch.icon === "brain" ? <Brain className="w-6 h-6 text-[#0066CC]" /> : null}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${ch.status === 'Active' ? 'bg-amber-glow text-amber' : 'bg-amber-glow text-text-secondary'}`}>
                         {ch.status}
                       </span>

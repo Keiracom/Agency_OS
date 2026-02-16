@@ -104,7 +104,7 @@ const CHANNEL_CONFIG: Record<
   sms: {
     label: "SMS",
     icon: <MessageSquare className="h-4 w-4" />,
-    color: "bg-amber-glow text-amber dark:bg-green-900/30 dark:text-amber",
+    color: "bg-amber-glow text-amber dark:bg-amber-glow dark:text-amber",
   },
   linkedin: {
     label: "LinkedIn",
@@ -114,7 +114,7 @@ const CHANNEL_CONFIG: Record<
   voice: {
     label: "Voice",
     icon: <Phone className="h-4 w-4" />,
-    color: "bg-purple-100 text-amber dark:bg-purple-900/30 dark:text-amber",
+    color: "bg-amber-glow text-amber dark:bg-amber-glow dark:text-amber",
   },
   mail: {
     label: "Direct Mail",

@@ -517,7 +517,7 @@ function SequenceFlow({ steps }: { steps: SequenceStep[] }) {
                 <p className="text-sm font-medium text-text-primary mb-2">{step.title}</p>
                 <div className="flex items-center gap-4 text-xs text-text-secondary">
                   {step.stats.sent && <span> {step.stats.sent.toLocaleString()} sent</span>}
-                  {step.stats.opened && <span>👀 {step.stats.opened.toLocaleString()} opened</span>}
+                  {step.stats.opened && <span><Eye className="inline w-3 h-3 mr-0.5" /> {step.stats.opened.toLocaleString()} opened</span>}
                   {step.stats.replied && <span>↩️ {step.stats.replied.toLocaleString()} replied</span>}
                   {step.stats.accepted && <span>Sent: {step.stats.accepted.toLocaleString()} accepted</span>}
                   {step.stats.called && <span> {step.stats.called.toLocaleString()} called</span>}

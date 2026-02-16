@@ -287,7 +287,7 @@ export function ICPReviewModal({
                       : 'outline'
                   }
                   className={cn(
-                    profile.confidence >= 0.8 && 'bg-amber-glow text-green-800 dark:bg-green-900 dark:text-green-200',
+                    profile.confidence >= 0.8 && 'bg-amber-glow text-amber dark:bg-amber-glow dark:text-amber-light',
                     profile.confidence >= 0.6 && profile.confidence < 0.8 && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                   )}
                 >

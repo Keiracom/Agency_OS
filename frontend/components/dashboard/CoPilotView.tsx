@@ -369,7 +369,7 @@ Best,
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-purple-200 text-sm italic">
+              <p className="text-amber-light text-sm italic">
                 "{research.icebreaker_hook}"
               </p>
             </CardContent>

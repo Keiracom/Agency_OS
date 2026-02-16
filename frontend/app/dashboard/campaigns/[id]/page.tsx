@@ -27,6 +27,7 @@ import {
   Check,
   Activity,
   Trophy,
+  Eye,
 } from "lucide-react";
 
 // Australian mock campaign data
@@ -532,7 +533,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                     <p className="text-sm font-medium text-text-primary mb-2">{step.title}</p>
                     <div className="flex items-center gap-4 text-xs text-text-secondary">
                       {step.sent > 0 && <span> {step.sent.toLocaleString()} sent</span>}
-                      {step.opened && <span>👀 {step.opened} opened</span>}
+                      {step.opened && <span><Eye className="inline w-3 h-3 mr-0.5" /> {step.opened} opened</span>}
                       {step.replied && <span>↩️ {step.replied} replied</span>}
                       {step.accepted && <span>✓ {step.accepted} accepted</span>}
                       {step.connected && <span> {step.connected} connected</span>}

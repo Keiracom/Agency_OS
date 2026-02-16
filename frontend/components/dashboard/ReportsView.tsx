@@ -688,7 +688,7 @@ export const ReportsView: React.FC = () => {
                     >
                       {source.name === 'Data Partner' ? '' : 
                        source.name === 'LinkedIn' ? '' :
-                       source.name === 'Referral' ? '🤝' : '🌐'}
+                       source.name === 'Referral' ? '' : ''}
                     </div>
                     <div className="flex-1">
                       <div className="text-xs font-medium" style={{ color: colors.textPrimary }}>

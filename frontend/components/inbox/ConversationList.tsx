@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import { Conversation, channelEmoji, intentStyles } from '@/data/mock-inbox';
+import { Inbox } from 'lucide-react';
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -77,7 +78,7 @@ export function ConversationList({
 
       {conversations.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-          <div className="text-4xl mb-3">📭</div>
+          <Inbox className="w-10 h-10 text-text-muted mb-3" />
           <div className="text-sm font-medium text-slate-800 mb-1">No conversations</div>
           <div className="text-xs text-text-secondary">
             Conversations will appear here when leads reply

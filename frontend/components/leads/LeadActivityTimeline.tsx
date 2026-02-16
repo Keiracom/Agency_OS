@@ -130,9 +130,9 @@ const channelColors: Record<string, string> = {
 };
 
 const channelBadgeColors: Record<string, string> = {
-  email: "bg-amber-glow text-blue-800 dark:bg-bg-void/30 dark:text-text-secondary",
-  sms: "bg-amber-glow text-green-800 dark:bg-green-900/30 dark:text-amber",
-  voice: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-amber",
+  email: "bg-amber-glow text-amber dark:bg-bg-void/30 dark:text-text-secondary",
+  sms: "bg-amber-glow text-amber dark:bg-amber-glow dark:text-amber",
+  voice: "bg-amber-glow text-amber dark:bg-amber-glow dark:text-amber",
   linkedin: "bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-amber",
   mail: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
   system: "bg-bg-surface text-gray-800 dark:bg-bg-void/30 dark:text-text-muted",

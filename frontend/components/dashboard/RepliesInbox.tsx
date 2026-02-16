@@ -267,10 +267,10 @@ const intentConfig: Record<IntentType, { bg: string; text: string; label: string
   question: { bg: "bg-bg-elevated/15", text: "text-text-secondary", label: "Question" },
 };
 
-const sentimentConfig: Record<SentimentType, { color: string; emoji: string; border: string }> = {
-  positive: { color: "text-amber", emoji: "😊", border: "border-l-amber" },
-  negative: { color: "text-amber", emoji: "😟", border: "border-l-amber" },
-  neutral: { color: "text-text-secondary", emoji: "😐", border: "border-l-slate-500" },
+const sentimentConfig: Record<SentimentType, { color: string; label: string; border: string }> = {
+  positive: { color: "text-amber", label: "Positive", border: "border-l-amber" },
+  negative: { color: "text-amber", label: "Negative", border: "border-l-amber" },
+  neutral: { color: "text-text-secondary", label: "Neutral", border: "border-l-slate-500" },
 };
 
 const tierScoreConfig: Record<ALSTier, { text: string; bg: string }> = {
@@ -298,8 +298,7 @@ function SentimentBadge({ sentiment }: { sentiment: SentimentType }) {
   const config = sentimentConfig[sentiment];
   return (
     <span className={`flex items-center gap-1 text-xs ${config.color}`}>
-      <span>{config.emoji}</span>
-      <span className="capitalize">{sentiment}</span>
+      <span className="capitalize">{config.label}</span>
     </span>
   );
 }
@@ -560,7 +559,7 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
                         </div>
                         {msg.sender === "them" && (
                           <div className="inline-flex items-center gap-2 mt-4 px-3 py-1.5 bg-amber/10 rounded-md text-xs font-medium text-amber">
-                            😊 Positive sentiment • Meeting intent detected
+                            Positive sentiment • Meeting intent detected
                           </div>
                         )}
                       </div>

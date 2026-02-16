@@ -151,7 +151,7 @@ export function OnboardingChecklist({
         </ul>
 
         {allComplete && (
-          <div className="mt-4 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg text-center">
+          <div className="mt-4 p-3 bg-amber-glow dark:bg-amber-glow rounded-lg text-center">
             <p className="text-sm font-medium text-amber dark:text-amber">
               All setup tasks completed!
             </p>

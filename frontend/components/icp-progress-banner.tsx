@@ -52,7 +52,7 @@ export function ICPProgressBanner({
       className={cn(
         'relative rounded-lg border p-4 shadow-sm transition-all duration-300',
         isRunning && 'bg-bg-surface border-blue-200 dark:bg-blue-950/30 dark:border-blue-800',
-        isCompleted && 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800',
+        isCompleted && 'bg-amber-glow border-amber dark:bg-amber-glow dark:border-amber',
         isFailed && 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800',
         className
       )}
@@ -89,14 +89,14 @@ export function ICPProgressBanner({
           {isCompleted && (
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-amber dark:text-amber flex-shrink-0" />
-              <p className="font-medium text-green-900 dark:text-amber-glow flex-1">
+              <p className="font-medium text-amber dark:text-amber-glow flex-1">
                 Your ICP is ready!
               </p>
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={onReview}
-                className="text-amber hover:text-green-800 hover:bg-amber-glow dark:text-green-300 dark:hover:bg-green-900/50 flex-shrink-0"
+                className="text-amber hover:text-amber hover:bg-amber-glow dark:text-amber-light dark:hover:bg-amber-glow flex-shrink-0"
               >
                 Review Now
                 <ArrowRight className="ml-1 h-4 w-4" />
@@ -109,7 +109,7 @@ export function ICPProgressBanner({
             <div className="flex items-center gap-3">
               <XCircle className="h-5 w-5 text-amber dark:text-amber flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-red-900 dark:text-amber-glow">
+                <p className="font-medium text-error dark:text-amber-glow">
                   Couldn&apos;t analyze your website
                 </p>
                 {status.error_message && (
@@ -122,7 +122,7 @@ export function ICPProgressBanner({
                 size="sm"
                 variant="ghost"
                 onClick={onRetry}
-                className="text-error hover:text-red-800 hover:bg-amber-glow dark:text-amber-light dark:hover:bg-red-900/50 flex-shrink-0"
+                className="text-error hover:text-error hover:bg-amber-glow dark:text-amber-light dark:hover:bg-error-glow flex-shrink-0"
               >
                 <RefreshCw className="mr-1 h-4 w-4" />
                 Try Again
@@ -137,7 +137,7 @@ export function ICPProgressBanner({
           className={cn(
             'rounded-md p-1 transition-colors flex-shrink-0',
             isRunning && 'text-text-secondary hover:bg-amber-glow dark:hover:bg-bg-void/50',
-            isCompleted && 'text-amber hover:bg-amber-glow dark:hover:bg-green-900/50',
+            isCompleted && 'text-amber hover:bg-amber-glow dark:hover:bg-amber-glow',
             isFailed && 'text-amber hover:bg-amber-glow dark:hover:bg-red-900/50'
           )}
           aria-label="Dismiss banner"

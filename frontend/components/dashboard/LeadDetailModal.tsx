@@ -79,7 +79,7 @@ const MOCK_LEAD: Lead = {
     id: "company_001",
     name: "Bloom Digital",
     domain: "bloomdigital.com.au",
-    logoEmoji: "🌸",
+    logoEmoji: "",
     employees: "15-30",
     industry: "Agency",
     estimatedRevenue: "$1-2M",
@@ -230,7 +230,7 @@ const MOCK_LEAD: Lead = {
       id: "li5",
       sender: "You",
       timestamp: "Jan 29 • 3:18 PM",
-      text: "Perfect! Just saw it. Looking forward to chatting 🙌",
+      text: "Perfect! Just saw it. Looking forward to chatting!",
       direction: "sent",
     },
   ],
@@ -919,7 +919,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                     {/* Company Header */}
                     <div className="flex items-center gap-4 mb-5">
                       <div className="w-13 h-13 bg-bg-elevated rounded-xl flex items-center justify-center text-2xl border border-default p-3">
-                        {lead.company.logoEmoji}
+                        <Briefcase className="w-6 h-6 text-text-muted" />
                       </div>
                       <div>
                         <h3 className="font-semibold text-text-primary">{lead.company.name}</h3>
@@ -947,7 +947,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                     {/* Recent Intelligence */}
                     <div className="pt-5 border-t border-default">
                       <div className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">
-                        📰 Recent Intelligence
+                        Recent Intelligence
                       </div>
                       <div className="space-y-2.5">
                         {lead.company.recentIntelligence.map((intel, idx) => (

@@ -457,7 +457,7 @@ export default function ProspectDetailPage() {
               <div className="p-5">
                 <div className="flex items-center gap-4 mb-5">
                   <div className="w-12 h-12 rounded-xl bg-bg-elevated flex items-center justify-center text-xl border border-border-default">
-                    🌸
+                    <Building2 className="w-6 h-6 text-text-muted" />
                   </div>
                   <div>
                     <p className="font-semibold text-text-primary">{prospect.company}</p>

@@ -60,9 +60,9 @@ export function CreditsBadge({ className }: CreditsBadgeProps) {
 
   // Get appropriate styling
   const variantStyles = {
-    default: "bg-amber-glow text-green-800 hover:bg-amber-glow dark:bg-green-900 dark:text-green-200",
+    default: "bg-amber-glow text-amber hover:bg-amber-glow dark:bg-amber-glow dark:text-amber-light",
     warning: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-200",
-    destructive: "bg-amber-glow text-red-800 hover:bg-amber-glow dark:bg-red-900 dark:text-red-200",
+    destructive: "bg-amber-glow text-error hover:bg-amber-glow dark:bg-error-glow dark:text-error",
   };
 
   const tooltipText =

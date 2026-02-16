@@ -3,7 +3,7 @@
  * PURPOSE: Preview panel for selected message
  */
 import { InboxMessage } from '@/lib/mock/inbox-data';
-import { Calendar, Phone, User, Archive, Send, Paperclip, Zap } from 'lucide-react';
+import { Calendar, Phone, User, Archive, Send, Paperclip, Zap, Mail } from 'lucide-react';
 import Link from 'next/link';
 
 interface InboxPreviewProps {
@@ -14,7 +14,7 @@ export function InboxPreview({ message }: InboxPreviewProps) {
   if (!message) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-center p-10">
-        <div className="w-20 h-20 glass-surface rounded-2xl flex items-center justify-center text-4xl mb-5">📬</div>
+        <div className="w-20 h-20 glass-surface rounded-2xl flex items-center justify-center text-4xl mb-5"><Mail className="w-10 h-10 text-text-muted" /></div>
         <h3 className="text-lg font-semibold text-text-primary mb-2">Select a conversation</h3>
         <p className="text-sm text-text-muted max-w-xs">Choose a message from the list to see the full conversation and reply.</p>
       </div>
@@ -66,7 +66,7 @@ export function InboxPreview({ message }: InboxPreviewProps) {
             </div>
             <p className="text-sm text-text-secondary leading-relaxed">{message.preview}</p>
             <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 bg-status-success/10 rounded text-xs text-status-success">
-              😊 Positive sentiment • Meeting intent detected
+              Positive sentiment • Meeting intent detected
             </div>
           </div>
         </div>

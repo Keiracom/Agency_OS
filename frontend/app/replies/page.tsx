@@ -7,9 +7,19 @@ import { ConversationList } from '@/components/inbox/ConversationList';
 import { ConversationDetail } from '@/components/inbox/ConversationDetail';
 import { mockConversations, InboxFilter, Conversation } from '@/data/mock-inbox';
 
+const FILTER_TABS = [
+  { id: 'all', label: 'All' },
+  { id: 'needs-reply', label: 'Needs Reply' },
+  { id: 'meetings', label: 'Meetings' },
+];
+
 export default function RepliesPage() {
   const [filter, setFilter] = useState<InboxFilter>('all');
   const [selectedId, setSelectedId] = useState<string>(mockConversations[0]?.id || '');
+
+  const handleFilterChange = (id: string) => {
+    setFilter(id as InboxFilter);
+  };
 
   // Filter conversations based on active filter
   const filteredConversations = mockConversations.filter((conv) => {
@@ -30,7 +40,7 @@ export default function RepliesPage() {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Inbox</h1>
-        <InboxFilters activeFilter={filter} onFilterChange={setFilter} />
+        <InboxFilters activeFilter={filter} onFilterChange={handleFilterChange} tabs={FILTER_TABS} />
       </div>
 
       {/* Inbox Container - Two Column Layout */}

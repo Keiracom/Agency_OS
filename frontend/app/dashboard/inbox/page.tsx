@@ -15,7 +15,7 @@ export default function InboxPage() {
   const unreadCount = mockInboxMessages.filter((m) => m.unread).length;
 
   return (
-    <AppShell pageTitle="Inbox" agencyName="Agency OS">
+    <AppShell pageTitle="Inbox">
       <div className="-m-8 h-[calc(100vh-64px)] flex flex-col">
         <InboxHeader unreadCount={unreadCount} />
         <div className="flex-1 flex overflow-hidden">

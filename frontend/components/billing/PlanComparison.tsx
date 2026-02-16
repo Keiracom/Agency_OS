@@ -42,7 +42,7 @@ export function PlanComparison({ plans }: PlanComparisonProps) {
                 className={`inline-block px-3.5 py-[5px] text-[11px] font-bold rounded-full uppercase tracking-wider mb-4 ${
                   plan.isCurrent
                     ? 'bg-[rgba(20,184,166,0.15)] text-accent-teal border border-accent-teal'
-                    : 'bg-accent-primary text-white'
+                    : 'bg-accent-primary text-text-primary'
                 }`}
               >
                 {plan.isCurrent ? 'Current Plan' : 'Recommended'}
@@ -88,7 +88,7 @@ export function PlanComparison({ plans }: PlanComparisonProps) {
                 plan.isCurrent
                   ? 'bg-[rgba(20,184,166,0.15)] text-accent-teal border border-accent-teal cursor-default'
                   : plan.isPopular
-                  ? 'bg-accent-primary text-white hover:bg-accent-primary-hover hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(124,58,237,0.3)]'
+                  ? 'bg-accent-primary text-text-primary hover:bg-accent-primary-hover hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(124,58,237,0.3)]'
                   : 'bg-bg-surface text-text-muted border border-border-default hover:bg-bg-elevated hover:text-text-secondary'
               }`}
               disabled={plan.isCurrent}

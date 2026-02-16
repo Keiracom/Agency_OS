@@ -80,7 +80,7 @@ export function PlanHeroCard({ plan, metrics }: PlanHeroCardProps) {
 
       {/* Actions */}
       <div className="flex gap-3">
-        <button className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-accent-primary text-white hover:bg-accent-primary-hover hover:-translate-y-px transition-all">
+        <button className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-accent-primary text-text-primary hover:bg-accent-primary-hover hover:-translate-y-px transition-all">
           <TrendingUp className="w-4 h-4" />
           Upgrade Plan
         </button>

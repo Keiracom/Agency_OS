@@ -60,19 +60,19 @@ export function ProcessingOverlay({
   const currentStage = stages[stage] ?? stages[0];
 
   return (
-    <div className="fixed inset-0 bg-white/95 flex items-center justify-center z-50 animate-in fade-in duration-300">
+    <div className="fixed inset-0 bg-bg-surface/95 flex items-center justify-center z-50 animate-in fade-in duration-300">
       <div className="text-center max-w-md mx-4">
         {/* Spinner */}
         <div className="w-16 h-16 mx-auto mb-6 relative">
-          <div className="absolute inset-0 border-4 border-blue-100 rounded-full" />
-          <div className="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin" />
+          <div className="absolute inset-0 border-4 border-amber-glow rounded-full" />
+          <div className="absolute inset-0 border-4 border-default rounded-full border-t-transparent animate-spin" />
         </div>
 
         {/* Title */}
         <h2 className="text-xl font-semibold text-slate-900 mb-2">
           {title ?? currentStage?.label ?? "Processing..."}
         </h2>
-        <p className="text-sm text-slate-500 mb-8">{subtitle}</p>
+        <p className="text-sm text-text-muted mb-8">{subtitle}</p>
 
         {/* Progress Steps */}
         <div className="space-y-3">
@@ -83,17 +83,17 @@ export function ProcessingOverlay({
                 i < stage
                   ? "bg-emerald-50"
                   : i === stage
-                  ? "bg-blue-50"
+                  ? "bg-bg-surface"
                   : "bg-slate-50"
               }`}
             >
               <div
                 className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 ${
                   i < stage
-                    ? "bg-emerald-500 text-white"
+                    ? "bg-amber text-text-primary"
                     : i === stage
-                    ? "bg-blue-500 text-white"
-                    : "bg-slate-200 text-slate-400"
+                    ? "bg-bg-elevated text-text-primary"
+                    : "bg-slate-200 text-text-secondary"
                 }`}
               >
                 {i < stage ? (
@@ -109,8 +109,8 @@ export function ProcessingOverlay({
                   i < stage
                     ? "text-emerald-700"
                     : i === stage
-                    ? "text-blue-700 font-medium"
-                    : "text-slate-400"
+                    ? "text-amber font-medium"
+                    : "text-text-secondary"
                 }`}
               >
                 {s.label}

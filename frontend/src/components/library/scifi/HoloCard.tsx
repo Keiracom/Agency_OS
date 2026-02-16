@@ -38,11 +38,11 @@ export function HoloCard({
   return (
     <div className="relative w-full h-full min-h-[300px] p-1">
       {/* Outer glow */}
-      <div className="absolute inset-0 bg-cyan-500/20 blur-xl rounded-lg" />
+      <div className="absolute inset-0 bg-amber/20 blur-xl rounded-lg" />
 
       {/* Main card container */}
       <div
-        className={`relative w-full h-full bg-slate-950/90 backdrop-blur-sm border border-cyan-500/50 rounded-lg overflow-hidden ${
+        className={`relative w-full h-full bg-slate-950/90 backdrop-blur-sm border border-amber/50 rounded-lg overflow-hidden ${
           glitchActive ? "translate-x-[2px]" : ""
         }`}
         style={{
@@ -94,17 +94,17 @@ export function HoloCard({
 
         {/* Scan line effect */}
         <div
-          className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent pointer-events-none"
+          className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber/50 to-transparent pointer-events-none"
           style={{ top: `${scanLine}%` }}
         />
 
         {/* Header */}
-        <div className="relative border-b border-cyan-500/30 p-4">
+        <div className="relative border-b border-amber/30 p-4">
           <div className="flex items-center justify-between">
             <div>
               <h3
-                className={`text-cyan-400 font-mono text-lg tracking-widest ${
-                  glitchActive ? "text-red-400" : ""
+                className={`text-amber font-mono text-lg tracking-widest ${
+                  glitchActive ? "text-amber" : ""
                 }`}
                 style={{
                   textShadow: "0 0 10px cyan, 0 0 20px cyan",
@@ -112,13 +112,13 @@ export function HoloCard({
               >
                 {title}
               </h3>
-              <p className="text-cyan-600 font-mono text-xs tracking-wider mt-1">
+              <p className="text-amber font-mono text-xs tracking-wider mt-1">
                 {subtitle}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
-              <span className="text-cyan-400 font-mono text-xs">ACTIVE</span>
+              <span className="w-2 h-2 bg-amber rounded-full animate-pulse" />
+              <span className="text-amber font-mono text-xs">ACTIVE</span>
             </div>
           </div>
         </div>
@@ -128,27 +128,27 @@ export function HoloCard({
           {children || (
             <div className="space-y-3">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 border border-cyan-500/50 rounded flex items-center justify-center">
-                  <span className="text-2xl text-cyan-400">◇</span>
+                <div className="w-12 h-12 border border-amber/50 rounded flex items-center justify-center">
+                  <span className="text-2xl text-amber">◇</span>
                 </div>
                 <div>
                   <p className="text-cyan-300 font-mono text-sm">QUANTUM CORE</p>
-                  <p className="text-cyan-600 font-mono text-xs">Stability: 99.7%</p>
+                  <p className="text-amber font-mono text-xs">Stability: 99.7%</p>
                 </div>
               </div>
-              <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-2 bg-bg-base rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-cyan-500 to-teal-400 rounded-full animate-pulse"
+                  className="h-full bg-gradient-to-r from-amber to-amber rounded-full animate-pulse"
                   style={{ width: "87%" }}
                 />
               </div>
               <div className="grid grid-cols-3 gap-2 text-center">
                 {["SYNC", "LOAD", "TEMP"].map((label, i) => (
-                  <div key={label} className="bg-slate-900/50 border border-cyan-500/20 rounded p-2">
-                    <p className="text-cyan-400 font-mono text-lg">
+                  <div key={label} className="bg-bg-void/50 border border-amber/20 rounded p-2">
+                    <p className="text-amber font-mono text-lg">
                       {[98, 42, 37][i]}%
                     </p>
-                    <p className="text-cyan-600 font-mono text-[10px]">{label}</p>
+                    <p className="text-amber font-mono text-[10px]">{label}</p>
                   </div>
                 ))}
               </div>
@@ -157,11 +157,11 @@ export function HoloCard({
         </div>
 
         {/* Footer status bar */}
-        <div className="absolute bottom-0 left-0 right-0 h-6 bg-slate-900/80 border-t border-cyan-500/20 flex items-center px-3 justify-between">
-          <span className="text-cyan-600 font-mono text-[10px]">
+        <div className="absolute bottom-0 left-0 right-0 h-6 bg-bg-void/80 border-t border-amber/20 flex items-center px-3 justify-between">
+          <span className="text-amber font-mono text-[10px]">
             SYS://HOLO.CARD.v2.1
           </span>
-          <span className="text-cyan-600 font-mono text-[10px] animate-pulse">
+          <span className="text-amber font-mono text-[10px] animate-pulse">
             ▸▸▸ CONNECTED ◂◂◂
           </span>
         </div>

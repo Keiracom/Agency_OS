@@ -104,9 +104,9 @@ const mockErrors: ErrorEntry[] = [
 ];
 
 const levelColors = {
-  error: "bg-red-500/10 text-red-700 border-red-500/20",
+  error: "bg-amber-glow text-error border-amber/20",
   warning: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
-  info: "bg-blue-500/10 text-blue-700 border-blue-500/20",
+  info: "bg-bg-elevated/10 text-amber border-default/20",
 };
 
 function formatTimeAgo(date: Date): string {
@@ -177,7 +177,7 @@ export default function AdminErrorsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{unresolvedCount}</div>
+            <div className="text-2xl font-bold text-amber">{unresolvedCount}</div>
           </CardContent>
         </Card>
         <Card>
@@ -187,7 +187,7 @@ export default function AdminErrorsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{errorCount}</div>
+            <div className="text-2xl font-bold text-amber">{errorCount}</div>
           </CardContent>
         </Card>
         <Card>
@@ -265,11 +265,11 @@ export default function AdminErrorsPage() {
                   <TableCell>{error.count}</TableCell>
                   <TableCell>
                     {error.resolved ? (
-                      <Badge variant="outline" className="bg-green-500/10 text-green-700">
+                      <Badge variant="outline" className="bg-amber/10 text-amber">
                         Resolved
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="bg-red-500/10 text-red-700">
+                      <Badge variant="outline" className="bg-amber-glow text-error">
                         Open
                       </Badge>
                     )}

@@ -33,7 +33,7 @@ export function NotesSection({ notes, onAddNote }: NotesSectionProps) {
         
         <button
           onClick={onAddNote}
-          className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 border border-dashed border-border-default rounded-lg text-xs text-text-muted hover:text-text-secondary hover:border-border-strong hover:bg-white/[0.03] transition-colors"
+          className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 border border-dashed border-border-default rounded-lg text-xs text-text-muted hover:text-text-secondary hover:border-border-strong hover:bg-bg-surface/[0.03] transition-colors"
         >
           <Plus className="w-3.5 h-3.5" />
           Add Note

@@ -34,7 +34,7 @@ export function Header({ className, title = "Dashboard", clientName = "Acme Agen
     <header
       className={cn(
         "sticky top-0 z-30 flex h-16 items-center justify-between",
-        "bg-white border-b border-[#E5E7EB] px-6",
+        "bg-bg-surface border-b border-[#E5E7EB] px-6",
         className
       )}
     >
@@ -66,7 +66,7 @@ export function Header({ className, title = "Dashboard", clientName = "Acme Agen
               <Bell className="h-5 w-5 text-[#6B7280]" />
               {notificationCount > 0 && (
                 <Badge
-                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-[#EF4444] text-white text-xs"
+                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-[#EF4444] text-text-primary text-xs"
                 >
                   {notificationCount}
                 </Badge>
@@ -101,7 +101,7 @@ export function Header({ className, title = "Dashboard", clientName = "Acme Agen
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-2 px-2">
               <div className="h-8 w-8 rounded-full bg-[#2196F3] flex items-center justify-center">
-                <User className="h-4 w-4 text-white" />
+                <User className="h-4 w-4 text-text-primary" />
               </div>
               <span className="hidden md:block text-sm font-medium text-[#1F2937]">
                 {clientName}
@@ -117,7 +117,7 @@ export function Header({ className, title = "Dashboard", clientName = "Acme Agen
             <DropdownMenuItem>Account Settings</DropdownMenuItem>
             <DropdownMenuItem>Billing</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600">Sign out</DropdownMenuItem>
+            <DropdownMenuItem className="text-amber">Sign out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

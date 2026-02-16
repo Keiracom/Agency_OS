@@ -54,7 +54,7 @@ export const theme = {
   classes: {
     card: 'bg-[#12121A] border border-[#2A2A3A] rounded-2xl',
     cardHover: 'hover:border-[#7C3AED]/50 transition-colors',
-    textPrimary: 'text-white',
+    textPrimary: 'text-text-primary',
     textSecondary: 'text-[#A0A0B0]',
     textMuted: 'text-[#6B6B7B]',
     accentPurple: 'text-[#9D5CFF]',

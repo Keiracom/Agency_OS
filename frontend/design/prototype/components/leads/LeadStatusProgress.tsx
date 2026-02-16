@@ -90,9 +90,9 @@ export function LeadStatusProgress({ status }: LeadStatusProgressProps) {
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
                   isCompleted
-                    ? "bg-[#10B981] text-white"
+                    ? "bg-[#10B981] text-text-primary"
                     : isCurrent
-                    ? "bg-[#3B82F6] text-white ring-4 ring-[#DBEAFE]"
+                    ? "bg-[#3B82F6] text-text-primary ring-4 ring-[#DBEAFE]"
                     : "bg-[#E2E8F0] text-[#94A3B8]"
                 }`}
               >

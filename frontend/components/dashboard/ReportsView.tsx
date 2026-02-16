@@ -327,7 +327,7 @@ const FunnelStage: React.FC<{
             background: `linear-gradient(90deg, ${stageColors[index]}40, ${stageColors[index]})`,
           }}
         >
-          <span className="text-xs font-semibold font-mono text-white">
+          <span className="text-xs font-semibold font-mono text-text-primary">
             {percentage}%
           </span>
         </div>
@@ -686,9 +686,9 @@ export const ReportsView: React.FC = () => {
                       className="w-8 h-8 rounded-md flex items-center justify-center text-sm"
                       style={{ background: `${colorMap[source.color]}26` }}
                     >
-                      {source.name === 'Data Partner' ? '🚀' : 
-                       source.name === 'LinkedIn' ? '💼' :
-                       source.name === 'Referral' ? '🤝' : '🌐'}
+                      {source.name === 'Data Partner' ? '' : 
+                       source.name === 'LinkedIn' ? '' :
+                       source.name === 'Referral' ? '' : ''}
                     </div>
                     <div className="flex-1">
                       <div className="text-xs font-medium" style={{ color: colors.textPrimary }}>
@@ -757,7 +757,7 @@ export const ReportsView: React.FC = () => {
                           background: `linear-gradient(90deg, ${tierColors[tier.tier]}4D, ${tierColors[tier.tier]})`,
                         }}
                       >
-                        <span className="text-[11px] font-semibold font-mono text-white">
+                        <span className="text-[11px] font-semibold font-mono text-text-primary">
                           {tier.leads} leads
                         </span>
                       </div>
@@ -853,7 +853,7 @@ export const ReportsView: React.FC = () => {
             style={{ borderColor: colors.borderSubtle }}
           >
             <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: colors.textPrimary }}>
-              💰 ROI Summary — This Period
+              ROI Summary — This Period
             </div>
           </div>
           <div className="p-5">

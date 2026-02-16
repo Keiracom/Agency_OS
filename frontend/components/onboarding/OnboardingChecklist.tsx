@@ -130,7 +130,7 @@ export function OnboardingChecklist({
           </div>
           <span
             className={cn("text-sm font-medium", {
-              "text-green-600": allComplete,
+              "text-amber": allComplete,
               "text-muted-foreground": !allComplete,
             })}
           >
@@ -151,11 +151,11 @@ export function OnboardingChecklist({
         </ul>
 
         {allComplete && (
-          <div className="mt-4 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg text-center">
-            <p className="text-sm font-medium text-green-700 dark:text-green-400">
+          <div className="mt-4 p-3 bg-amber-glow dark:bg-amber-glow rounded-lg text-center">
+            <p className="text-sm font-medium text-amber dark:text-amber">
               All setup tasks completed!
             </p>
-            <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+            <p className="text-xs text-amber dark:text-amber mt-1">
               You are ready to start your outreach campaigns.
             </p>
           </div>
@@ -217,7 +217,7 @@ function ChecklistItemRow({ item, onItemClick }: ChecklistItemRowProps) {
 
       {/* Completed indicator */}
       {item.completed && (
-        <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+        <span className="text-xs text-amber dark:text-amber font-medium">
           Done
         </span>
       )}

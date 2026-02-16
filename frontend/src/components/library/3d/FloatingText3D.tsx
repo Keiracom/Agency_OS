@@ -204,7 +204,7 @@ export function FloatingText3D({ className = "", text = "AGENCY" }: FloatingText
 
       {/* Label */}
       <div className="absolute bottom-3 left-0 right-0 text-center">
-        <p className="text-cyan-400/40 text-[10px] font-mono tracking-wider">
+        <p className="text-amber/40 text-[10px] font-mono tracking-wider">
           3D TYPOGRAPHY
         </p>
       </div>

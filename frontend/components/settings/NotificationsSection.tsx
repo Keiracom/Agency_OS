@@ -38,7 +38,7 @@ export function NotificationsSection({ preferences: initialPrefs }: Notification
                     : 'bg-bg-elevated border-border-default'
                 }`}
               >
-                <span className={`absolute top-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-all duration-200 ${
+                <span className={`absolute top-[2px] w-5 h-5 bg-bg-surface rounded-full shadow-md transition-all duration-200 ${
                   pref.enabled ? 'left-6' : 'left-[2px]'
                 }`} />
               </button>

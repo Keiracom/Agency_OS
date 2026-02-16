@@ -173,7 +173,7 @@ function Card({
 }) {
   return (
     <div
-      className={`bg-[#12121D] border border-[#1E1E2E] rounded-2xl overflow-hidden ${className}`}
+      className={`bg-bg-base border border-default rounded-2xl overflow-hidden ${className}`}
     >
       {children}
     </div>
@@ -195,12 +195,12 @@ function CardHeader({
   rightElement?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between px-6 py-5 border-b border-[#1E1E2E]">
+    <div className="flex items-center justify-between px-6 py-5 border-b border-default">
       <div className="flex items-center gap-2.5">
-        {icon && <span className="text-violet-500">{icon}</span>}
-        <span className="font-semibold text-white">{title}</span>
+        {icon && <span className="text-amber">{icon}</span>}
+        <span className="font-semibold text-text-primary">{title}</span>
       </div>
-      {subtitle && <span className="text-sm text-[#6E6E82]">{subtitle}</span>}
+      {subtitle && <span className="text-sm text-text-muted">{subtitle}</span>}
       {rightElement}
     </div>
   );
@@ -231,26 +231,26 @@ function UsageMeter({
   const percentage = Math.min((currentNum / totalNum) * 100, 100);
 
   return (
-    <div className="bg-[#1A1A28] rounded-xl p-5">
+    <div className="bg-bg-elevated rounded-xl p-5">
       <div className="flex justify-between items-start mb-4">
-        <span className="font-semibold text-white text-sm">{label}</span>
+        <span className="font-semibold text-text-primary text-sm">{label}</span>
         <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${colorClass}`}>
           {icon}
         </div>
       </div>
       <div className="flex items-baseline gap-1 mb-3">
-        <span className="text-3xl font-extrabold font-mono text-white">
+        <span className="text-3xl font-extrabold font-mono text-text-primary">
           {typeof current === "number" ? current.toLocaleString() : current}
         </span>
-        <span className="text-base text-[#6E6E82] font-mono">/ {total}</span>
+        <span className="text-base text-text-muted font-mono">/ {total}</span>
       </div>
-      <div className="h-2 bg-[#222233] rounded-full overflow-hidden mb-2">
+      <div className="h-2 bg-bg-elevated rounded-full overflow-hidden mb-2">
         <div
           className={`h-full rounded-full transition-all duration-500 ${barColorClass}`}
           style={{ width: `${percentage}%` }}
         />
       </div>
-      <div className="text-sm text-[#6E6E82]">{statusText}</div>
+      <div className="text-sm text-text-muted">{statusText}</div>
     </div>
   );
 }
@@ -277,16 +277,16 @@ function PlanCard({
       className={`
         relative rounded-2xl p-7 text-center transition-all duration-200
         ${isCurrent
-          ? "bg-[#222233] border-2 border-teal-500"
+          ? "bg-bg-elevated border-2 border-amber"
           : isRecommended
-          ? "bg-gradient-to-b from-violet-500/10 to-[#1A1A28] border-2 border-violet-500"
-          : "bg-[#1A1A28] border-2 border-[#1E1E2E] hover:border-[#2A2A3D]"
+          ? "bg-gradient-to-b from-amber/10 to-[#1A1A28] border-2 border-amber"
+          : "bg-bg-elevated border-2 border-default hover:border-default"
         }
       `}
     >
       {/* Top gradient bar for recommended */}
       {isRecommended && (
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 to-blue-500 rounded-t-2xl" />
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber to-amber-light rounded-t-2xl" />
       )}
 
       {/* Badge */}
@@ -295,8 +295,8 @@ function PlanCard({
           className={`
             inline-block px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide rounded-full mb-4
             ${isCurrent
-              ? "bg-teal-500/15 text-teal-400 border border-teal-500"
-              : "bg-violet-500 text-white"
+              ? "bg-amber-glow text-amber border border-amber"
+              : "bg-amber text-text-primary"
             }
           `}
         >
@@ -304,30 +304,30 @@ function PlanCard({
         </span>
       )}
 
-      <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
-      <p className="text-sm text-[#6E6E82] mb-4">{plan.tagline}</p>
-      <div className="text-4xl font-extrabold font-mono text-white mb-1">
+      <h3 className="text-2xl font-bold text-text-primary mb-2">{plan.name}</h3>
+      <p className="text-sm text-text-muted mb-4">{plan.tagline}</p>
+      <div className="text-4xl font-extrabold font-mono text-text-primary mb-1">
         ${plan.price.toLocaleString()}
-        <span className="text-sm font-normal text-[#6E6E82]">/mo</span>
+        <span className="text-sm font-normal text-text-muted">/mo</span>
       </div>
 
       {/* Outcomes preview */}
-      <div className="flex justify-center gap-6 my-5 p-4 bg-[#12121D] rounded-lg">
+      <div className="flex justify-center gap-6 my-5 p-4 bg-bg-base rounded-lg">
         <div className="text-center">
-          <div className="text-xl font-bold font-mono text-white">{plan.meetingsRange}</div>
-          <div className="text-xs text-[#6E6E82] uppercase tracking-wide">Meetings/mo</div>
+          <div className="text-xl font-bold font-mono text-text-primary">{plan.meetingsRange}</div>
+          <div className="text-xs text-text-muted uppercase tracking-wide">Meetings/mo</div>
         </div>
         <div className="text-center">
-          <div className="text-xl font-bold font-mono text-white">{plan.clientsRange}</div>
-          <div className="text-xs text-[#6E6E82] uppercase tracking-wide">New Clients</div>
+          <div className="text-xl font-bold font-mono text-text-primary">{plan.clientsRange}</div>
+          <div className="text-xs text-text-muted uppercase tracking-wide">New Clients</div>
         </div>
       </div>
 
       {/* Features list */}
       <ul className="text-left space-y-2.5 mb-6">
         {plan.features.map((feature, idx) => (
-          <li key={idx} className="flex items-start gap-2.5 text-sm text-[#B4B4C4]">
-            <Check className="w-4 h-4 text-teal-400 flex-shrink-0 mt-0.5" />
+          <li key={idx} className="flex items-start gap-2.5 text-sm text-text-secondary">
+            <Check className="w-4 h-4 text-amber flex-shrink-0 mt-0.5" />
             {feature}
           </li>
         ))}
@@ -340,10 +340,10 @@ function PlanCard({
         className={`
           w-full py-3.5 px-4 rounded-lg font-semibold text-sm transition-all
           ${isCurrent
-            ? "bg-teal-500/15 text-teal-400 border border-teal-500 cursor-default"
+            ? "bg-amber-glow text-amber border border-amber cursor-default"
             : isRecommended
-            ? "bg-violet-500 text-white hover:bg-violet-400 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-violet-500/30"
-            : "bg-[#12121D] text-[#6E6E82] border border-[#2A2A3D] hover:bg-[#222233] hover:text-[#B4B4C4]"
+            ? "bg-amber text-text-primary hover:bg-violet-400 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber/30"
+            : "bg-bg-base text-text-muted border border-default hover:bg-bg-elevated hover:text-text-secondary"
           }
         `}
       >
@@ -358,10 +358,10 @@ function PlanCard({
  */
 function InvoiceRow({ invoice }: { invoice: Invoice }) {
   return (
-    <tr className="hover:bg-[#1A1A28] transition-colors">
-      <td className="px-6 py-4 font-mono text-white">{invoice.date}</td>
-      <td className="px-6 py-4 text-[#B4B4C4]">{invoice.description}</td>
-      <td className="px-6 py-4 font-mono font-semibold text-white">
+    <tr className="hover:bg-bg-elevated transition-colors">
+      <td className="px-6 py-4 font-mono text-text-primary">{invoice.date}</td>
+      <td className="px-6 py-4 text-text-secondary">{invoice.description}</td>
+      <td className="px-6 py-4 font-mono font-semibold text-text-primary">
         ${invoice.amount.toLocaleString()}.00
       </td>
       <td className="px-6 py-4">
@@ -369,7 +369,7 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
           className={`
             inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium
             ${invoice.status === "paid"
-              ? "bg-green-500/15 text-green-400"
+              ? "bg-amber/15 text-amber"
               : "bg-amber-500/15 text-amber-400"
             }
           `}
@@ -379,7 +379,7 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
         </span>
       </td>
       <td className="px-6 py-4">
-        <button className="text-violet-400 text-sm font-medium hover:underline">
+        <button className="text-amber text-sm font-medium hover:underline">
           Download
         </button>
       </td>
@@ -420,16 +420,16 @@ export default function BillingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#05050A]">
+    <div className="min-h-screen bg-bg-void">
       {/* Header */}
-      <header className="bg-[#12121D] border-b border-[#1E1E2E] px-8 py-5 flex items-center justify-between">
+      <header className="bg-bg-base border-b border-default px-8 py-5 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white">Billing & Subscription</h1>
-          <p className="text-sm text-[#6E6E82] mt-1">
+          <h1 className="text-xl font-bold text-text-primary">Billing & Subscription</h1>
+          <p className="text-sm text-text-muted mt-1">
             Manage your plan, usage, and payment methods
           </p>
         </div>
-        <button className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-[#B4B4C4] border border-[#2A2A3D] rounded-lg hover:bg-[#1A1A28] hover:text-white transition-colors">
+        <button className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-text-secondary border border-default rounded-lg hover:bg-bg-elevated hover:text-text-primary transition-colors">
           <HelpCircle className="w-4 h-4" />
           Support
         </button>
@@ -439,73 +439,73 @@ export default function BillingPage() {
         {/* Current Plan Hero */}
         <Card className="relative">
           {/* Top accent bar */}
-          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 to-blue-500" />
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber to-amber-light" />
 
           <div className="p-8">
             <div className="flex justify-between items-start">
               <div>
-                <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                  <Zap className="w-7 h-7 text-violet-400" />
+                <h2 className="text-2xl font-bold text-text-primary flex items-center gap-3">
+                  <Zap className="w-7 h-7 text-amber" />
                   {currentPlanDetails.name} Plan
                 </h2>
-                <p className="text-sm text-[#6E6E82] mt-1">
+                <p className="text-sm text-text-muted mt-1">
                   Your subscription renews on{" "}
-                  <strong className="text-white">March 1, 2026</strong>
+                  <strong className="text-text-primary">March 1, 2026</strong>
                 </p>
-                <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 mt-3 bg-green-500/15 text-green-400 text-xs font-semibold rounded-full">
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 mt-3 bg-amber/15 text-amber text-xs font-semibold rounded-full">
                   <Check className="w-3.5 h-3.5" />
                   Active
                 </span>
               </div>
               <div className="text-right">
-                <div className="text-5xl font-extrabold font-mono text-white">
+                <div className="text-5xl font-extrabold font-mono text-text-primary">
                   ${currentPlanDetails.price.toLocaleString()}
                 </div>
-                <div className="text-sm text-[#6E6E82] mt-1">per month</div>
+                <div className="text-sm text-text-muted mt-1">per month</div>
               </div>
             </div>
 
             {/* Plan metrics */}
-            <div className="grid grid-cols-4 gap-4 my-7 py-6 border-y border-[#1E1E2E]">
-              <div className="flex items-center gap-3 px-4 py-3.5 bg-[#1A1A28] rounded-lg">
-                <div className="w-10 h-10 bg-violet-500/15 rounded-lg flex items-center justify-center">
-                  <Users className="w-5 h-5 text-violet-400" />
+            <div className="grid grid-cols-4 gap-4 my-7 py-6 border-y border-default">
+              <div className="flex items-center gap-3 px-4 py-3.5 bg-bg-elevated rounded-lg">
+                <div className="w-10 h-10 bg-amber/15 rounded-lg flex items-center justify-center">
+                  <Users className="w-5 h-5 text-amber" />
                 </div>
-                <div className="text-sm text-[#B4B4C4]">
-                  <strong className="block text-lg font-bold font-mono text-white">
+                <div className="text-sm text-text-secondary">
+                  <strong className="block text-lg font-bold font-mono text-text-primary">
                     {currentPlanDetails.leads.toLocaleString()}
                   </strong>
                   Leads per month
                 </div>
               </div>
-              <div className="flex items-center gap-3 px-4 py-3.5 bg-[#1A1A28] rounded-lg">
-                <div className="w-10 h-10 bg-teal-500/15 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-teal-400" />
+              <div className="flex items-center gap-3 px-4 py-3.5 bg-bg-elevated rounded-lg">
+                <div className="w-10 h-10 bg-amber-glow rounded-lg flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-amber" />
                 </div>
-                <div className="text-sm text-[#B4B4C4]">
-                  <strong className="block text-lg font-bold font-mono text-white">
+                <div className="text-sm text-text-secondary">
+                  <strong className="block text-lg font-bold font-mono text-text-primary">
                     {currentPlanDetails.meetingsRange}
                   </strong>
                   Meetings per month
                 </div>
               </div>
-              <div className="flex items-center gap-3 px-4 py-3.5 bg-[#1A1A28] rounded-lg">
-                <div className="w-10 h-10 bg-blue-500/15 rounded-lg flex items-center justify-center">
-                  <User className="w-5 h-5 text-blue-400" />
+              <div className="flex items-center gap-3 px-4 py-3.5 bg-bg-elevated rounded-lg">
+                <div className="w-10 h-10 bg-bg-elevated/15 rounded-lg flex items-center justify-center">
+                  <User className="w-5 h-5 text-text-secondary" />
                 </div>
-                <div className="text-sm text-[#B4B4C4]">
-                  <strong className="block text-lg font-bold font-mono text-white">
+                <div className="text-sm text-text-secondary">
+                  <strong className="block text-lg font-bold font-mono text-text-primary">
                     {currentPlanDetails.clientsRange}
                   </strong>
                   New clients per month
                 </div>
               </div>
-              <div className="flex items-center gap-3 px-4 py-3.5 bg-[#1A1A28] rounded-lg">
+              <div className="flex items-center gap-3 px-4 py-3.5 bg-bg-elevated rounded-lg">
                 <div className="w-10 h-10 bg-amber-500/15 rounded-lg flex items-center justify-center">
                   <Lightbulb className="w-5 h-5 text-amber-400" />
                 </div>
-                <div className="text-sm text-[#B4B4C4]">
-                  <strong className="block text-lg font-bold font-mono text-white">
+                <div className="text-sm text-text-secondary">
+                  <strong className="block text-lg font-bold font-mono text-text-primary">
                     5-Channel
                   </strong>
                   Outreach system
@@ -515,15 +515,15 @@ export default function BillingPage() {
 
             {/* Action buttons */}
             <div className="flex gap-3">
-              <button className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 text-white font-medium rounded-lg hover:bg-violet-400 hover:-translate-y-0.5 transition-all">
+              <button className="flex items-center gap-2 px-5 py-2.5 bg-amber text-text-primary font-medium rounded-lg hover:bg-violet-400 hover:-translate-y-0.5 transition-all">
                 <TrendingUp className="w-4 h-4" />
                 Upgrade Plan
               </button>
-              <button className="flex items-center gap-2 px-5 py-2.5 text-[#B4B4C4] border border-[#2A2A3D] rounded-lg hover:bg-[#1A1A28] hover:text-white transition-colors">
+              <button className="flex items-center gap-2 px-5 py-2.5 text-text-secondary border border-default rounded-lg hover:bg-bg-elevated hover:text-text-primary transition-colors">
                 <CreditCard className="w-4 h-4" />
                 Update Payment
               </button>
-              <button className="px-5 py-2.5 text-[#B4B4C4] border border-[#2A2A3D] rounded-lg hover:bg-[#1A1A28] hover:text-white transition-colors">
+              <button className="px-5 py-2.5 text-text-secondary border border-default rounded-lg hover:bg-bg-elevated hover:text-text-primary transition-colors">
                 Cancel Subscription
               </button>
             </div>
@@ -543,12 +543,12 @@ export default function BillingPage() {
                 label="Leads Contacted"
                 current={usage.leadsContacted}
                 total={usage.leadsLimit.toLocaleString()}
-                icon={<Users className="w-4.5 h-4.5 text-violet-400" />}
-                colorClass="bg-violet-500/15"
-                barColorClass="bg-gradient-to-r from-violet-500 to-blue-500"
+                icon={<Users className="w-4.5 h-4.5 text-amber" />}
+                colorClass="bg-amber/15"
+                barColorClass="bg-gradient-to-r from-amber to-amber-light"
                 statusText={
                   <>
-                    <strong className="text-green-400">{leadsRemaining.toLocaleString()}</strong> leads remaining
+                    <strong className="text-amber">{leadsRemaining.toLocaleString()}</strong> leads remaining
                   </>
                 }
               />
@@ -556,12 +556,12 @@ export default function BillingPage() {
                 label="Meetings Booked"
                 current={usage.meetingsBooked}
                 total={usage.meetingsTarget}
-                icon={<Calendar className="w-4.5 h-4.5 text-teal-400" />}
-                colorClass="bg-teal-500/15"
-                barColorClass="bg-gradient-to-r from-teal-500 to-green-500"
+                icon={<Calendar className="w-4.5 h-4.5 text-amber" />}
+                colorClass="bg-amber-glow"
+                barColorClass="bg-gradient-to-r from-amber to-amber"
                 statusText={
                   <>
-                    <strong className="text-green-400">On track</strong> for target
+                    <strong className="text-amber">On track</strong> for target
                   </>
                 }
               />
@@ -569,12 +569,12 @@ export default function BillingPage() {
                 label="New Clients Won"
                 current={usage.clientsWon}
                 total={usage.clientsTarget}
-                icon={<Check className="w-4.5 h-4.5 text-green-400" />}
-                colorClass="bg-green-500/15"
-                barColorClass="bg-gradient-to-r from-teal-500 to-green-500"
+                icon={<Check className="w-4.5 h-4.5 text-amber" />}
+                colorClass="bg-amber/15"
+                barColorClass="bg-gradient-to-r from-amber to-amber"
                 statusText={
                   <>
-                    <strong className="text-green-400">Exceeding</strong> expectations
+                    <strong className="text-amber">Exceeding</strong> expectations
                   </>
                 }
               />
@@ -588,42 +588,42 @@ export default function BillingPage() {
             icon={<Link2 className="w-5 h-5" />}
             title="API & Integrations"
             rightElement={
-              <button className="text-violet-400 text-sm font-medium hover:underline">
+              <button className="text-amber text-sm font-medium hover:underline">
                 View documentation
               </button>
             }
           />
           <div className="p-6">
             <div className="grid grid-cols-3 gap-5">
-              <div className="flex gap-3.5 p-5 bg-[#1A1A28] rounded-xl">
-                <div className="w-11 h-11 bg-blue-500/15 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <ArrowUpRight className="w-5 h-5 text-blue-400" />
+              <div className="flex gap-3.5 p-5 bg-bg-elevated rounded-xl">
+                <div className="w-11 h-11 bg-bg-elevated/15 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <ArrowUpRight className="w-5 h-5 text-text-secondary" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-white mb-1">Connect Your CRM</h4>
-                  <p className="text-sm text-[#6E6E82] leading-relaxed">
+                  <h4 className="text-sm font-semibold text-text-primary mb-1">Connect Your CRM</h4>
+                  <p className="text-sm text-text-muted leading-relaxed">
                     Sync leads bidirectionally with HubSpot, Salesforce, Pipedrive, and more.
                   </p>
                 </div>
               </div>
-              <div className="flex gap-3.5 p-5 bg-[#1A1A28] rounded-xl">
-                <div className="w-11 h-11 bg-blue-500/15 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Bell className="w-5 h-5 text-blue-400" />
+              <div className="flex gap-3.5 p-5 bg-bg-elevated rounded-xl">
+                <div className="w-11 h-11 bg-bg-elevated/15 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Bell className="w-5 h-5 text-text-secondary" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-white mb-1">Meeting Webhooks</h4>
-                  <p className="text-sm text-[#6E6E82] leading-relaxed">
+                  <h4 className="text-sm font-semibold text-text-primary mb-1">Meeting Webhooks</h4>
+                  <p className="text-sm text-text-muted leading-relaxed">
                     Receive instant notifications when new meetings are booked.
                   </p>
                 </div>
               </div>
-              <div className="flex gap-3.5 p-5 bg-[#1A1A28] rounded-xl">
-                <div className="w-11 h-11 bg-blue-500/15 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Database className="w-5 h-5 text-blue-400" />
+              <div className="flex gap-3.5 p-5 bg-bg-elevated rounded-xl">
+                <div className="w-11 h-11 bg-bg-elevated/15 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Database className="w-5 h-5 text-text-secondary" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-white mb-1">Lead Data Sync</h4>
-                  <p className="text-sm text-[#6E6E82] leading-relaxed">
+                  <h4 className="text-sm font-semibold text-text-primary mb-1">Lead Data Sync</h4>
+                  <p className="text-sm text-text-muted leading-relaxed">
                     Export enriched lead data and engagement history to your systems.
                   </p>
                 </div>
@@ -638,28 +638,28 @@ export default function BillingPage() {
             icon={<CreditCard className="w-5 h-5" />}
             title="Payment Method"
             rightElement={
-              <button className="text-violet-400 text-sm font-medium hover:underline">
+              <button className="text-amber text-sm font-medium hover:underline">
                 Add new
               </button>
             }
           />
           <div className="p-6">
-            <div className="flex items-center justify-between p-5 bg-[#1A1A28] rounded-xl">
+            <div className="flex items-center justify-between p-5 bg-bg-elevated rounded-xl">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-9 bg-[#222233] border border-[#2A2A3D] rounded flex items-center justify-center">
+                <div className="w-14 h-9 bg-bg-elevated border border-default rounded flex items-center justify-center">
                   <MastercardIcon />
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-white">
+                  <h4 className="text-sm font-semibold text-text-primary">
                     {paymentMethod.type.charAt(0).toUpperCase() + paymentMethod.type.slice(1)} ending in{" "}
                     {paymentMethod.last4}
                   </h4>
-                  <p className="text-sm text-[#6E6E82] font-mono mt-0.5">
+                  <p className="text-sm text-text-muted font-mono mt-0.5">
                     Expires {paymentMethod.expiryMonth}/{paymentMethod.expiryYear}
                   </p>
                 </div>
               </div>
-              <button className="px-4 py-2 text-sm text-[#B4B4C4] border border-[#2A2A3D] rounded-lg hover:bg-[#222233] hover:text-white transition-colors">
+              <button className="px-4 py-2 text-sm text-text-secondary border border-default rounded-lg hover:bg-bg-elevated hover:text-text-primary transition-colors">
                 Update
               </button>
             </div>
@@ -672,7 +672,7 @@ export default function BillingPage() {
             icon={<FileText className="w-5 h-5" />}
             title="Invoice History"
             rightElement={
-              <button className="text-violet-400 text-sm font-medium hover:underline flex items-center gap-1">
+              <button className="text-amber text-sm font-medium hover:underline flex items-center gap-1">
                 <Download className="w-4 h-4" />
                 Download all
               </button>
@@ -680,20 +680,20 @@ export default function BillingPage() {
           />
           <table className="w-full">
             <thead>
-              <tr className="bg-[#1A1A28] border-b border-[#1E1E2E]">
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-[#6E6E82] uppercase tracking-wide">
+              <tr className="bg-bg-elevated border-b border-default">
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">
                   Date
                 </th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-[#6E6E82] uppercase tracking-wide">
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">
                   Description
                 </th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-[#6E6E82] uppercase tracking-wide">
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">
                   Amount
                 </th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-[#6E6E82] uppercase tracking-wide">
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">
                   Status
                 </th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-[#6E6E82] uppercase tracking-wide" />
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-text-muted uppercase tracking-wide" />
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1E1E2E]">
@@ -725,11 +725,11 @@ export default function BillingPage() {
         {/* Upgrade CTA */}
         <div className="bg-gradient-to-r from-amber-500/10 to-amber-400/5 border border-amber-500/25 rounded-2xl p-8 flex items-center justify-between">
           <div>
-            <h3 className="text-xl font-bold text-white flex items-center gap-2.5 mb-2">
+            <h3 className="text-xl font-bold text-text-primary flex items-center gap-2.5 mb-2">
               <Star className="w-6 h-6 text-amber-400" />
               Ready to dominate your market?
             </h3>
-            <p className="text-sm text-[#B4B4C4] max-w-lg">
+            <p className="text-sm text-text-secondary max-w-lg">
               Upgrade to Dominance and get 2x the meetings, dedicated Slack support, and custom
               integrations built for your workflow.
             </p>

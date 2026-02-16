@@ -26,25 +26,25 @@ const tierConfig: Record<
 > = {
   hot: {
     bg: "bg-[#EF4444]",
-    text: "text-white",
+    text: "text-text-primary",
     label: "High Priority",
     internalLabel: "Hot",
   },
   warm: {
     bg: "bg-[#F97316]",
-    text: "text-white",
+    text: "text-text-primary",
     label: "Engaged",
     internalLabel: "Warm",
   },
   cool: {
     bg: "bg-[#3B82F6]",
-    text: "text-white",
+    text: "text-text-primary",
     label: "Nurturing",
     internalLabel: "Cool",
   },
   cold: {
     bg: "bg-[#6B7280]",
-    text: "text-white",
+    text: "text-text-primary",
     label: "Low Activity",
     internalLabel: "Cold",
   },

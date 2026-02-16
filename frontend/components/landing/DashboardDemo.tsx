@@ -31,11 +31,11 @@ const channelIcons = {
 };
 
 const channelStyles = {
-  email: { icon: "text-blue-400", bg: "bg-blue-500/20" },
-  linkedin: { icon: "text-sky-400", bg: "bg-sky-500/20" },
-  sms: { icon: "text-green-400", bg: "bg-green-500/20" },
-  phone: { icon: "text-purple-400", bg: "bg-purple-500/20" },
-  calendar: { icon: "text-emerald-400", bg: "bg-emerald-500/20" },
+  email: { icon: "text-text-secondary", bg: "bg-bg-elevated/20" },
+  linkedin: { icon: "text-amber", bg: "bg-amber/20" },
+  sms: { icon: "text-amber", bg: "bg-amber/20" },
+  phone: { icon: "text-amber", bg: "bg-amber/20" },
+  calendar: { icon: "text-amber", bg: "bg-amber/20" },
 };
 
 // Pipeline growth data - 6 months showing upward trend to $284K
@@ -82,8 +82,8 @@ export default function DashboardDemo({ className = "" }: DashboardDemoProps) {
           <div className="w-3 h-3 rounded-full bg-[#28c840]" />
         </div>
         <div className="flex-1 flex justify-center">
-          <div className="px-4 py-1.5 rounded-lg bg-[#0a0a0f] text-white/60 text-xs flex items-center gap-2">
-            <Lock className="w-3 h-3 text-green-500" />
+          <div className="px-4 py-1.5 rounded-lg bg-[#0a0a0f] text-text-primary/60 text-xs flex items-center gap-2">
+            <Lock className="w-3 h-3 text-amber" />
             app.agencyos.com.au
           </div>
         </div>
@@ -93,49 +93,49 @@ export default function DashboardDemo({ className = "" }: DashboardDemoProps) {
       <div className="p-6 md:p-8 bg-[#0a0a0f]">
         {/* Stats Row - Static values for stability */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+          <div className="p-4 rounded-xl bg-bg-surface/5 border border-white/10">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-white/60 text-xs uppercase tracking-wider">Pipeline</span>
-              <span className="text-xs text-emerald-400">↑ 12%</span>
+              <span className="text-text-primary/60 text-xs uppercase tracking-wider">Pipeline</span>
+              <span className="text-xs text-amber">↑ 12%</span>
             </div>
-            <p className="text-2xl md:text-3xl font-bold text-white">$284K</p>
+            <p className="text-2xl md:text-3xl font-bold text-text-primary">$284K</p>
           </div>
-          <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+          <div className="p-4 rounded-xl bg-bg-surface/5 border border-white/10">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-white/60 text-xs uppercase tracking-wider">Meetings</span>
-              <span className="text-xs text-emerald-400">↑ 8 this week</span>
+              <span className="text-text-primary/60 text-xs uppercase tracking-wider">Meetings</span>
+              <span className="text-xs text-amber">↑ 8 this week</span>
             </div>
-            <p className="text-2xl md:text-3xl font-bold text-white">47</p>
+            <p className="text-2xl md:text-3xl font-bold text-text-primary">47</p>
           </div>
-          <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+          <div className="p-4 rounded-xl bg-bg-surface/5 border border-white/10">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-white/60 text-xs uppercase tracking-wider">Reply Rate</span>
-              <span className="text-xs text-emerald-400">↑ 2.1%</span>
+              <span className="text-text-primary/60 text-xs uppercase tracking-wider">Reply Rate</span>
+              <span className="text-xs text-amber">↑ 2.1%</span>
             </div>
-            <p className="text-2xl md:text-3xl font-bold text-white">12%</p>
+            <p className="text-2xl md:text-3xl font-bold text-text-primary">12%</p>
           </div>
-          <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+          <div className="p-4 rounded-xl bg-bg-surface/5 border border-white/10">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-white/60 text-xs uppercase tracking-wider">Leads</span>
-              <span className="text-xs text-blue-400">Active</span>
+              <span className="text-text-primary/60 text-xs uppercase tracking-wider">Leads</span>
+              <span className="text-xs text-text-secondary">Active</span>
             </div>
-            <p className="text-2xl md:text-3xl font-bold text-white">2,847</p>
+            <p className="text-2xl md:text-3xl font-bold text-text-primary">2,847</p>
           </div>
         </div>
 
         {/* Two Column Layout */}
         <div className="grid md:grid-cols-2 gap-6">
           {/* Live Activity Feed */}
-          <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+          <div className="rounded-xl bg-bg-surface/5 border border-white/10 overflow-hidden">
             <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
-              <h3 className="font-semibold text-sm text-white flex items-center gap-2">
+              <h3 className="font-semibold text-sm text-text-primary flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber" />
                 </span>
                 Live Activity
               </h3>
-              <span className="text-xs text-white/50">Auto-updating</span>
+              <span className="text-xs text-text-primary/50">Auto-updating</span>
             </div>
             <div className="divide-y divide-white/5">
               {visibleActivities.map((activity, idx) => {
@@ -151,10 +151,10 @@ export default function DashboardDemo({ className = "" }: DashboardDemoProps) {
                       <Icon className={`w-4 h-4 ${style.icon}`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{activity.name}</p>
-                      <p className="text-xs text-white/50">{activity.action}</p>
+                      <p className="text-sm font-medium text-text-primary truncate">{activity.name}</p>
+                      <p className="text-xs text-text-primary/50">{activity.action}</p>
                     </div>
-                    <span className="text-xs text-white/40">{timeAgoValues[idx]}s ago</span>
+                    <span className="text-xs text-text-primary/40">{timeAgoValues[idx]}s ago</span>
                   </div>
                 );
               })}
@@ -162,13 +162,13 @@ export default function DashboardDemo({ className = "" }: DashboardDemoProps) {
           </div>
 
           {/* Pipeline Growth Chart */}
-          <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+          <div className="rounded-xl bg-bg-surface/5 border border-white/10 overflow-hidden">
             <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
-              <h3 className="font-semibold text-sm text-white flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-emerald-400" />
+              <h3 className="font-semibold text-sm text-text-primary flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-amber" />
                 Pipeline Growth
               </h3>
-              <span className="text-xs px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300">
+              <span className="text-xs px-2 py-1 rounded-full bg-amber/20 text-amber-light">
                 +100% YoY
               </span>
             </div>
@@ -221,25 +221,25 @@ export default function DashboardDemo({ className = "" }: DashboardDemoProps) {
         </div>
 
         {/* ALS Score Distribution */}
-        <div className="mt-6 rounded-xl bg-white/5 border border-white/10 p-4">
+        <div className="mt-6 rounded-xl bg-bg-surface/5 border border-white/10 p-4">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-sm text-white">Lead Quality Distribution</h3>
-            <span className="text-xs text-white/50">Agency Lead Score (ALS)</span>
+            <h3 className="font-semibold text-sm text-text-primary">Lead Quality Distribution</h3>
+            <span className="text-xs text-text-primary/50">Agency Lead Score (ALS)</span>
           </div>
           <div className="grid grid-cols-5 gap-3">
             {[
-              { label: "Hot", value: 24, color: "bg-red-500", textColor: "text-red-400" },
+              { label: "Hot", value: 24, color: "bg-amber", textColor: "text-amber" },
               { label: "Warm", value: 31, color: "bg-orange-500", textColor: "text-orange-400" },
-              { label: "Cool", value: 28, color: "bg-blue-500", textColor: "text-blue-400" },
-              { label: "Cold", value: 12, color: "bg-gray-500", textColor: "text-gray-400" },
-              { label: "Dead", value: 5, color: "bg-gray-700", textColor: "text-gray-500" },
+              { label: "Cool", value: 28, color: "bg-bg-elevated", textColor: "text-text-secondary" },
+              { label: "Cold", value: 12, color: "bg-bg-surface0", textColor: "text-text-muted" },
+              { label: "Dead", value: 5, color: "bg-gray-700", textColor: "text-text-primary0" },
             ].map((tier) => (
               <div key={tier.label}>
                 <div className="flex items-center justify-between text-xs mb-1.5">
                   <span className={`font-medium ${tier.textColor}`}>{tier.label}</span>
-                  <span className="text-white/60">{tier.value}%</span>
+                  <span className="text-text-primary/60">{tier.value}%</span>
                 </div>
-                <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <div className="h-1.5 rounded-full bg-bg-surface/10 overflow-hidden">
                   <div
                     className={`h-full ${tier.color} rounded-full`}
                     style={{ width: `${tier.value}%` }}

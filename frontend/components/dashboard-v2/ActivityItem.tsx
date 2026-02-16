@@ -33,7 +33,7 @@ export function ActivityItem({ channel, name, company, action, timestamp }: Acti
     <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-[#F8FAFC] transition-colors">
       {/* Icon */}
       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${config.bg}`}>
-        <Icon className="h-5 w-5 text-white" />
+        <Icon className="h-5 w-5 text-text-primary" />
       </div>
 
       {/* Content */}

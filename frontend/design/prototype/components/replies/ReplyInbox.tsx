@@ -403,7 +403,7 @@ export function ReplyInbox({ onNavigate }: ReplyInboxProps) {
       </div>
 
       {/* Main Content - Split View */}
-      <div className="flex bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden" style={{ height: "calc(100vh - 200px)" }}>
+      <div className="flex bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden" style={{ height: "calc(100vh - 200px)" }}>
         {/* Left Panel - Reply List */}
         <div className="w-[400px] flex flex-col border-r border-[#E2E8F0]">
           {/* Filters */}

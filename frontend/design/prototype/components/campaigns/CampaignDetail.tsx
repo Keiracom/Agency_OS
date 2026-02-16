@@ -171,7 +171,7 @@ export function CampaignDetail() {
                 Pause Campaign
               </button>
             ) : (
-              <button className="flex items-center gap-2 px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-blue-500/25">
+              <button className="flex items-center gap-2 px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-text-primary text-sm font-medium rounded-lg transition-colors shadow-lg shadow-amber/25">
                 <Play className="h-4 w-4" />
                 Activate Campaign
               </button>
@@ -195,7 +195,7 @@ export function CampaignDetail() {
           {activeTab === "overview" && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Channel Allocation */}
-              <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+              <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm">
                 <div className="px-6 py-4 border-b border-[#E2E8F0]">
                   <h3 className="text-sm font-semibold text-[#64748B] uppercase tracking-wider">
                     Channel Allocation
@@ -248,7 +248,7 @@ export function CampaignDetail() {
               </div>
 
               {/* Target Settings */}
-              <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+              <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm">
                 <div className="px-6 py-4 border-b border-[#E2E8F0]">
                   <h3 className="text-sm font-semibold text-[#64748B] uppercase tracking-wider">
                     Target Settings
@@ -332,21 +332,21 @@ export function CampaignDetail() {
           )}
 
           {activeTab === "leads" && (
-            <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm p-8 text-center">
+            <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm p-8 text-center">
               <h3 className="text-lg font-semibold text-[#1E293B] mb-2">
                 Leads in Campaign
               </h3>
               <p className="text-[#64748B] mb-4">
                 View and manage leads assigned to this campaign
               </p>
-              <button className="px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-sm font-medium rounded-lg transition-colors">
+              <button className="px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-text-primary text-sm font-medium rounded-lg transition-colors">
                 View All Leads
               </button>
             </div>
           )}
 
           {activeTab === "activity" && (
-            <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm p-8 text-center">
+            <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm p-8 text-center">
               <h3 className="text-lg font-semibold text-[#1E293B] mb-2">
                 Campaign Activity
               </h3>

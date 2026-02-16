@@ -55,7 +55,7 @@ export function EmergencyPauseButton({
 }: EmergencyPauseButtonProps) {
   return (
     <div
-      className={`bg-white rounded-xl border shadow-sm p-6 ${
+      className={`bg-bg-surface rounded-xl border shadow-sm p-6 ${
         isPaused ? "border-[#F97316]" : "border-[#E2E8F0]"
       }`}
     >
@@ -90,7 +90,7 @@ export function EmergencyPauseButton({
           </div>
           <button
             onClick={onResume}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#10B981] hover:bg-[#059669] text-white font-medium rounded-lg transition-colors shadow-lg shadow-green-500/25"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#10B981] hover:bg-[#059669] text-text-primary font-medium rounded-lg transition-colors shadow-lg shadow-amber/25"
           >
             <Play className="h-5 w-5" />
             Resume Outreach
@@ -104,7 +104,7 @@ export function EmergencyPauseButton({
           </p>
           <button
             onClick={onPause}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#EF4444] hover:bg-[#DC2626] text-white font-medium rounded-lg transition-colors shadow-lg shadow-red-500/25"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#EF4444] hover:bg-[#DC2626] text-text-primary font-medium rounded-lg transition-colors shadow-lg shadow-amber/25"
           >
             <Pause className="h-5 w-5" />
             Pause All Outreach

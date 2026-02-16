@@ -39,10 +39,10 @@ const channelIcons: Record<string, typeof Mail> = {
 };
 
 const channelColors: Record<string, string> = {
-  email: "bg-blue-500/10 text-blue-600",
-  sms: "bg-green-500/10 text-green-600",
-  linkedin: "bg-sky-500/10 text-sky-600",
-  voice: "bg-purple-500/10 text-purple-600",
+  email: "bg-bg-elevated/10 text-text-secondary",
+  sms: "bg-amber/10 text-amber",
+  linkedin: "bg-amber-glow text-amber",
+  voice: "bg-amber/10 text-amber",
   mail: "bg-orange-500/10 text-orange-600",
 };
 
@@ -108,7 +108,7 @@ export default function AdminActivityPage() {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="h-2 w-2 rounded-full bg-amber animate-pulse" />
             Live
           </Badge>
           <Button variant="outline" size="sm" onClick={() => refetch()}>

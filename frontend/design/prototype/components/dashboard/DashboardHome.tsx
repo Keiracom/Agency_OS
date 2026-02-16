@@ -186,7 +186,7 @@ export function DashboardHome() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       {/* Page header */}
-      <div className="px-8 py-6 border-b border-[#E2E8F0] bg-white">
+      <div className="px-8 py-6 border-b border-[#E2E8F0] bg-bg-surface">
         <h1 className="text-2xl font-bold text-[#1E293B]">Dashboard</h1>
         <p className="text-sm text-[#64748B] mt-1">
           Welcome back. Here is your outreach performance this month.
@@ -223,7 +223,7 @@ export function DashboardHome() {
         />
 
         {/* Campaigns Section */}
-        <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+        <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm">
           {/* Section header */}
           <div className="px-6 py-4 border-b border-[#E2E8F0] flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -268,7 +268,7 @@ export function DashboardHome() {
               disabled={isConfirming || totalPriority !== 100}
               className={`px-6 py-2.5 rounded-lg font-medium transition-all ${
                 totalPriority === 100
-                  ? "bg-[#3B82F6] hover:bg-[#2563EB] text-white shadow-lg shadow-blue-500/25"
+                  ? "bg-[#3B82F6] hover:bg-[#2563EB] text-text-primary shadow-lg shadow-amber/25"
                   : "bg-[#E2E8F0] text-[#94A3B8] cursor-not-allowed"
               }`}
             >

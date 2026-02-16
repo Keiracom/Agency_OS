@@ -209,18 +209,18 @@ export function SplineRobot({ className }: SplineRobotProps) {
       </Canvas>
 
       {/* Corner decorations */}
-      <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-purple-500/50 pointer-events-none" />
-      <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-purple-500/50 pointer-events-none" />
-      <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-purple-500/50 pointer-events-none" />
-      <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-purple-500/50 pointer-events-none" />
+      <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-amber/50 pointer-events-none" />
+      <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-amber/50 pointer-events-none" />
+      <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-amber/50 pointer-events-none" />
+      <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-amber/50 pointer-events-none" />
 
       {/* Glow effects */}
-      <div className="absolute top-0 left-0 w-16 h-16 bg-purple-500/10 blur-2xl pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-16 h-16 bg-cyan-500/10 blur-2xl pointer-events-none" />
+      <div className="absolute top-0 left-0 w-16 h-16 bg-amber/10 blur-2xl pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-16 h-16 bg-amber/10 blur-2xl pointer-events-none" />
 
       {/* Label */}
       <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none">
-        <p className="text-purple-400/40 text-[10px] font-mono tracking-wider">
+        <p className="text-amber/40 text-[10px] font-mono tracking-wider">
           3D ROBOT HEAD
         </p>
       </div>

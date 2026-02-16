@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       errors: results.filter((r) => r.status === "error").length,
     };
 
-    console.log(`🚨 EMERGENCY PAUSE: ${summary.paused} campaigns paused. Reason: ${reason || "Not specified"}`);
+    console.log(`[EMERGENCY PAUSE] ${summary.paused} campaigns paused. Reason: ${reason || "Not specified"}`);
 
     return NextResponse.json({
       success: true,

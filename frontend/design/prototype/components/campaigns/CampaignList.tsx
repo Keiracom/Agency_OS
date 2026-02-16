@@ -104,21 +104,21 @@ export function CampaignList() {
               placeholder="Search campaigns..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-white border border-[#E2E8F0] rounded-lg text-sm text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all"
+              className="w-full pl-10 pr-4 py-2 bg-bg-surface border border-[#E2E8F0] rounded-lg text-sm text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all"
             />
           </div>
 
           {/* Filters and Add Button */}
           <div className="flex items-center gap-3">
             {/* Status Filter */}
-            <div className="flex items-center gap-1 bg-white border border-[#E2E8F0] rounded-lg p-1">
+            <div className="flex items-center gap-1 bg-bg-surface border border-[#E2E8F0] rounded-lg p-1">
               {filterButtons.map((filter) => (
                 <button
                   key={filter.value}
                   onClick={() => setStatusFilter(filter.value)}
                   className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
                     statusFilter === filter.value
-                      ? "bg-[#3B82F6] text-white shadow-sm"
+                      ? "bg-[#3B82F6] text-text-primary shadow-sm"
                       : "text-[#64748B] hover:text-[#1E293B] hover:bg-[#F8FAFC]"
                   }`}
                 >
@@ -128,7 +128,7 @@ export function CampaignList() {
             </div>
 
             {/* Add Campaign Button */}
-            <button className="flex items-center gap-2 px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-blue-500/25">
+            <button className="flex items-center gap-2 px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-text-primary text-sm font-medium rounded-lg transition-colors shadow-lg shadow-amber/25">
               <Plus className="h-4 w-4" />
               New Campaign
             </button>
@@ -136,7 +136,7 @@ export function CampaignList() {
         </div>
 
         {/* Slot Usage Indicator */}
-        <div className="flex items-center gap-3 p-4 bg-white border border-[#E2E8F0] rounded-xl">
+        <div className="flex items-center gap-3 p-4 bg-bg-surface border border-[#E2E8F0] rounded-xl">
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-[#64748B]">
@@ -164,7 +164,7 @@ export function CampaignList() {
             isConfirming={isConfirming}
           />
         ) : (
-          <div className="bg-white border border-[#E2E8F0] rounded-xl p-8 text-center">
+          <div className="bg-bg-surface border border-[#E2E8F0] rounded-xl p-8 text-center">
             <div className="mx-auto w-12 h-12 bg-[#F1F5F9] rounded-xl flex items-center justify-center mb-4">
               <Filter className="h-6 w-6 text-[#94A3B8]" />
             </div>

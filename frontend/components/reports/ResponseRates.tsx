@@ -19,10 +19,10 @@ export function ResponseRates() {
   const circumference = 2 * Math.PI * radius;
 
   return (
-    <div className="bg-[#12121D] border border-[#1E1E2E] rounded-xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#1E1E2E] flex items-center gap-2">
+    <div className="bg-bg-base border border-default rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-default flex items-center gap-2">
         <Zap className="w-4 h-4 text-amber-500" />
-        <h3 className="text-sm font-semibold text-[#F8F8FC]">Response Rates</h3>
+        <h3 className="text-sm font-semibold text-text-primary">Response Rates</h3>
       </div>
       <div className="p-5 flex justify-around">
         {responseRates.map((rate) => {
@@ -46,11 +46,11 @@ export function ResponseRates() {
                     className="transition-all duration-500"
                   />
                 </svg>
-                <span className="absolute inset-0 flex items-center justify-center text-lg font-bold font-mono text-[#F8F8FC]">
+                <span className="absolute inset-0 flex items-center justify-center text-lg font-bold font-mono text-text-primary">
                   {rate.value}%
                 </span>
               </div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#6E6E82] mt-2">{rate.label}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mt-2">{rate.label}</p>
             </div>
           );
         })}

@@ -105,7 +105,7 @@ export function ProfileSettingsForm({
   return (
     <div className="space-y-6">
       {/* Company Information */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+      <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-[#E2E8F0]">
           <div className="flex items-center gap-2">
             <Building2 className="h-5 w-5 text-[#64748B]" />
@@ -164,7 +164,7 @@ export function ProfileSettingsForm({
       </div>
 
       {/* Contact Information */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+      <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-[#E2E8F0]">
           <div className="flex items-center gap-2">
             <User className="h-5 w-5 text-[#64748B]" />
@@ -205,7 +205,7 @@ export function ProfileSettingsForm({
       </div>
 
       {/* Billing Information (Read-only) */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+      <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-[#E2E8F0]">
           <div className="flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-[#64748B]" />
@@ -266,7 +266,7 @@ export function ProfileSettingsForm({
       <div className="flex justify-end">
         <button
           onClick={handleSave}
-          className="px-6 py-2.5 bg-[#3B82F6] hover:bg-[#2563EB] text-white font-medium rounded-lg transition-colors shadow-lg shadow-blue-500/25"
+          className="px-6 py-2.5 bg-[#3B82F6] hover:bg-[#2563EB] text-text-primary font-medium rounded-lg transition-colors shadow-lg shadow-amber/25"
         >
           Save Changes
         </button>

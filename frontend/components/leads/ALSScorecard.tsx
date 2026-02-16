@@ -37,9 +37,9 @@ interface ALSScorecardProps {
 }
 
 const getTier = (score: number): { name: string; color: string } => {
-  if (score >= 85) return { name: "Hot", color: "from-orange-500 to-red-500" };
-  if (score >= 60) return { name: "Warm", color: "from-yellow-500 to-orange-500" };
-  if (score >= 35) return { name: "Cool", color: "from-blue-400 to-blue-600" };
+  if (score >= 85) return { name: "Hot", color: "from-orange-500 to-amber" };
+  if (score >= 60) return { name: "Warm", color: "from-yellow-500 to-amber-light" };
+  if (score >= 35) return { name: "Cool", color: "from-text-secondary to-amber" };
   if (score >= 20) return { name: "Cold", color: "from-gray-400 to-gray-600" };
   return { name: "Dead", color: "from-gray-600 to-gray-800" };
 };
@@ -51,11 +51,11 @@ const getTierBadgeColor = (tier: string): string => {
     case "Warm":
       return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30";
     case "Cool":
-      return "bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30";
+      return "bg-bg-elevated/20 text-text-secondary border-default/30 hover:bg-bg-elevated/30";
     case "Cold":
-      return "bg-gray-500/20 text-gray-400 border-gray-500/30 hover:bg-gray-500/30";
+      return "bg-bg-surface0/20 text-text-muted border-gray-500/30 hover:bg-bg-surface0/30";
     default:
-      return "bg-gray-600/20 text-gray-500 border-gray-600/30 hover:bg-gray-600/30";
+      return "bg-gray-600/20 text-text-primary0 border-gray-600/30 hover:bg-gray-600/30";
   }
 };
 
@@ -217,32 +217,32 @@ export function ALSScorecard({
       {/* Score Details */}
       <div className="space-y-2">
         <div className="flex justify-between items-center text-xs">
-          <span className="text-gray-400">Data Quality</span>
-          <span className="text-white font-medium">
+          <span className="text-text-muted">Data Quality</span>
+          <span className="text-text-primary font-medium">
             {defaultBreakdown.dataQuality}/20
           </span>
         </div>
         <div className="flex justify-between items-center text-xs">
-          <span className="text-gray-400">Authority</span>
-          <span className="text-white font-medium">
+          <span className="text-text-muted">Authority</span>
+          <span className="text-text-primary font-medium">
             {defaultBreakdown.authority}/25
           </span>
         </div>
         <div className="flex justify-between items-center text-xs">
-          <span className="text-gray-400">Company Fit</span>
-          <span className="text-white font-medium">
+          <span className="text-text-muted">Company Fit</span>
+          <span className="text-text-primary font-medium">
             {defaultBreakdown.companyFit}/25
           </span>
         </div>
         <div className="flex justify-between items-center text-xs">
-          <span className="text-gray-400">Timing</span>
-          <span className="text-white font-medium">
+          <span className="text-text-muted">Timing</span>
+          <span className="text-text-primary font-medium">
             {defaultBreakdown.timing}/15
           </span>
         </div>
         <div className="flex justify-between items-center text-xs">
-          <span className="text-gray-400">Risk</span>
-          <span className="text-white font-medium">
+          <span className="text-text-muted">Risk</span>
+          <span className="text-text-primary font-medium">
             {defaultBreakdown.risk}/15
           </span>
         </div>
@@ -251,7 +251,7 @@ export function ALSScorecard({
       {/* Total */}
       <div className="pt-2 border-t border-white/10">
         <div className="flex justify-between items-center">
-          <span className="text-gray-300 font-medium">Total ALS Score</span>
+          <span className="text-text-secondary font-medium">Total ALS Score</span>
           <span
             className={`font-bold bg-gradient-to-r ${tier.color} bg-clip-text text-transparent`}
           >

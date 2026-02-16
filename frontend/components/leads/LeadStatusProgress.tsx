@@ -179,7 +179,7 @@ function SpecialStatusBadge({
                 sizes.container,
                 isUnsubscribed
                   ? "bg-yellow-500/20 text-yellow-500"
-                  : "bg-red-500/20 text-red-500"
+                  : "bg-amber/20 text-amber"
               )}
             >
               {STATUS_ICONS[status]}
@@ -188,7 +188,7 @@ function SpecialStatusBadge({
               className={cn(
                 "font-medium",
                 sizes.text,
-                isUnsubscribed ? "text-yellow-500" : "text-red-500"
+                isUnsubscribed ? "text-yellow-500" : "text-amber"
               )}
             >
               {STATUS_LABELS[status]}
@@ -280,9 +280,9 @@ export function LeadStatusProgress({
                         sizes.step,
                         {
                           // Completed step
-                          "bg-emerald-500 text-white": isComplete,
+                          "bg-amber text-text-primary": isComplete,
                           // Current step
-                          "bg-blue-500 text-white ring-2 ring-blue-500/30 ring-offset-2 ring-offset-background":
+                          "bg-bg-elevated text-text-primary ring-2 ring-amber/30 ring-offset-2 ring-offset-background":
                             isCurrent,
                           // Pending step
                           "bg-muted text-muted-foreground": isPending,
@@ -324,7 +324,7 @@ export function LeadStatusProgress({
                       "flex-1 mx-1.5 rounded-full transition-colors",
                       sizes.line,
                       {
-                        "bg-emerald-500": index < currentIndex,
+                        "bg-amber": index < currentIndex,
                         "bg-muted": index >= currentIndex,
                       }
                     )}
@@ -349,8 +349,8 @@ export function LeadStatusProgress({
                     "flex-1 text-center truncate px-0.5",
                     sizes.text,
                     {
-                      "font-medium text-blue-500": isCurrent,
-                      "text-emerald-500": isComplete,
+                      "font-medium text-text-secondary": isCurrent,
+                      "text-amber": isComplete,
                       "text-muted-foreground": !isCurrent && !isComplete,
                     }
                   )}
@@ -389,19 +389,12 @@ export function LeadStatusBadge({ status, className }: LeadStatusBadgeProps) {
           <div
             className={cn(
               "inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium transition-colors",
-              {
-                // Special statuses
-                "bg-red-500/20 text-red-500 border border-red-500/30":
-                  status === "bounced",
-                "bg-yellow-500/20 text-yellow-500 border border-yellow-500/30":
-                  status === "unsubscribed",
-                // Converted (success)
-                "bg-emerald-500/20 text-emerald-500 border border-emerald-500/30":
-                  isFinal,
-                // In progress statuses
-                "bg-blue-500/20 text-blue-500 border border-blue-500/30":
-                  !isSpecial && !isFinal,
-              },
+              // Amber for bounced, converted, or other special statuses
+              (status === "bounced" || isFinal) && "bg-amber/20 text-amber border border-amber/30",
+              // Amber-light for unsubscribed
+              status === "unsubscribed" && "bg-amber-light/20 text-amber-light border border-amber-light/30",
+              // Muted for in progress
+              !isSpecial && !isFinal && "bg-bg-elevated/20 text-text-secondary border border-default/30",
               className
             )}
           >

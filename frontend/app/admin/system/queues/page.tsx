@@ -109,9 +109,9 @@ const statusIcons = {
 };
 
 const statusColors = {
-  success: "text-green-500",
-  failed: "text-red-500",
-  running: "text-blue-500",
+  success: "text-amber",
+  failed: "text-amber",
+  running: "text-text-secondary",
   pending: "text-yellow-500",
 };
 
@@ -157,7 +157,7 @@ export default function AdminQueuesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{mockQueueStats.active}</div>
+            <div className="text-2xl font-bold text-text-secondary">{mockQueueStats.active}</div>
             <p className="text-xs text-muted-foreground">Currently running</p>
           </CardContent>
         </Card>
@@ -179,7 +179,7 @@ export default function AdminQueuesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{mockQueueStats.completed}</div>
+            <div className="text-2xl font-bold text-amber">{mockQueueStats.completed}</div>
             <p className="text-xs text-muted-foreground">Successfully finished</p>
           </CardContent>
         </Card>
@@ -190,7 +190,7 @@ export default function AdminQueuesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{mockQueueStats.failed}</div>
+            <div className="text-2xl font-bold text-amber">{mockQueueStats.failed}</div>
             <p className="text-xs text-muted-foreground">Need attention</p>
           </CardContent>
         </Card>
@@ -270,7 +270,7 @@ export default function AdminQueuesPage() {
             <div className="p-4 border rounded-lg">
               <p className="text-sm text-muted-foreground">Workers</p>
               <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                <div className="h-2 w-2 rounded-full bg-amber animate-pulse" />
                 <span className="font-medium">2 active</span>
               </div>
             </div>

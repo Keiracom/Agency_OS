@@ -1,0 +1,199 @@
+/**
+ * PURE BLOOMBERG DESIGN TOKENS
+ * CEO Directive #027 — Design System Overhaul
+ * 
+ * Single source of truth for all design values.
+ * Import this file ONCE in app/globals.css.
+ * All components must reference these tokens — NO HARDCODED HEX VALUES.
+ */
+
+:root {
+  /* ========================================
+     BACKGROUNDS — Warm Charcoal
+     ======================================== */
+  --bg-void: #0C0A08;
+  --bg-base: #141210;
+  --bg-surface: #1C1A17;
+  --bg-elevated: #242220;
+
+  /* ========================================
+     TEXT — Warm Cream
+     ======================================== */
+  --text-primary: #F5F0EB;
+  --text-secondary: #A39E96;
+  --text-muted: #6B6660;
+
+  /* ========================================
+     ACCENT — AMBER ONLY (The only colour)
+     ======================================== */
+  --amber: #D4956A;
+  --amber-light: #E8B48A;
+  --amber-glow: rgba(212, 149, 106, 0.12);
+  --amber-glow-subtle: rgba(212, 149, 106, 0.06);
+  --amber-glow-strong: rgba(212, 149, 106, 0.20);
+
+  /* ========================================
+     ERROR — Muted Warm Red (Use sparingly)
+     ======================================== */
+  --error: #C0675A;
+  --error-glow: rgba(192, 103, 90, 0.12);
+
+  /* ========================================
+     BORDERS — Subtle Glass Edges
+     ======================================== */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-focus: rgba(255, 255, 255, 0.20);
+  --border-amber: rgba(212, 149, 106, 0.15);
+  --border-amber-strong: rgba(212, 149, 106, 0.20);
+
+  /* ========================================
+     GLASSMORPHISM — Frosted Glass
+     ======================================== */
+  --glass-surface: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.10);
+  --glass-border-top: rgba(255, 255, 255, 0.15);
+  --glass-border-left: rgba(255, 255, 255, 0.12);
+  --glass-blur: 20px;
+
+  /* Accent Glass (for hero metrics) */
+  --glass-accent-surface: rgba(212, 149, 106, 0.06);
+  --glass-accent-border: rgba(212, 149, 106, 0.15);
+  --glass-accent-border-top: rgba(212, 149, 106, 0.20);
+  --glass-accent-inset: rgba(212, 149, 106, 0.08);
+  --glass-accent-glow: rgba(212, 149, 106, 0.03);
+
+  /* ========================================
+     SHADOWS
+     ======================================== */
+  --shadow-glass: 0 4px 24px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --shadow-glass-lg: 0 12px 40px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --shadow-accent-glass: 0 4px 24px rgba(0, 0, 0, 0.3), 0 0 40px rgba(212, 149, 106, 0.03), inset 0 1px 0 rgba(212, 149, 106, 0.08);
+  --shadow-glow-sm: 0 0 10px rgba(212, 149, 106, 0.15);
+  --shadow-glow-md: 0 0 20px rgba(212, 149, 106, 0.20);
+  --shadow-glow-lg: 0 0 30px rgba(212, 149, 106, 0.25);
+
+  /* ========================================
+     TYPOGRAPHY
+     ======================================== */
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-serif: 'Instrument Serif', Georgia, serif;
+
+  /* ========================================
+     ICON STYLING
+     ======================================== */
+  --icon-stroke-accent: var(--amber);
+  --icon-stroke-secondary: var(--text-secondary);
+  --icon-stroke-width: 1.5;
+  --icon-container-bg: var(--amber-glow);
+  --icon-container-radius: 8px;
+  --icon-container-padding: 8px;
+
+  /* ========================================
+     GRADIENTS
+     ======================================== */
+  --gradient-amber: linear-gradient(135deg, var(--amber) 0%, var(--amber-light) 100%);
+  
+  /* Page background with ambient radials */
+  --bg-page-gradient: 
+    radial-gradient(ellipse at 20% 0%, rgba(212, 149, 106, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(212, 149, 106, 0.04) 0%, transparent 50%),
+    var(--bg-void);
+
+  /* ========================================
+     SPACING (for reference)
+     ======================================== */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+
+  /* ========================================
+     Z-INDEX SCALE
+     ======================================== */
+  --z-dropdown: 50;
+  --z-sticky: 100;
+  --z-modal: 200;
+  --z-popover: 300;
+  --z-tooltip: 400;
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+/* Page background with ambient glow */
+.bg-page {
+  background: var(--bg-page-gradient);
+}
+
+/* Glass Card (default) */
+.glass-card {
+  background: var(--glass-surface);
+  border: 1px solid var(--glass-border);
+  border-top-color: var(--glass-border-top);
+  border-left-color: var(--glass-border-left);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--shadow-glass);
+}
+
+/* Accent Glass Card (for hero metrics) */
+.glass-card-accent {
+  background: var(--glass-accent-surface);
+  border: 1px solid var(--glass-accent-border);
+  border-top-color: var(--glass-accent-border-top);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--shadow-accent-glass);
+}
+
+/* Icon container */
+.icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--icon-container-bg);
+  border-radius: var(--icon-container-radius);
+  padding: var(--icon-container-padding);
+}
+
+/* Accent icon */
+.icon-accent {
+  color: var(--amber);
+  stroke-width: var(--icon-stroke-width);
+}
+
+/* Secondary icon */
+.icon-secondary {
+  color: var(--text-secondary);
+  stroke-width: var(--icon-stroke-width);
+}
+
+/* Text visibility enforcement */
+.text-visible {
+  color: var(--text-primary) !important;
+}
+
+/* Typography utilities */
+.font-data {
+  font-family: var(--font-mono);
+}
+
+.font-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.font-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}

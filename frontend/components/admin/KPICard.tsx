@@ -57,7 +57,7 @@ export function KPICard({
 
   const getChangeColor = () => {
     if (!change || change === 0) return "text-muted-foreground";
-    return change > 0 ? "text-green-600" : "text-red-600";
+    return change > 0 ? "text-amber" : "text-amber";
   };
 
   return (

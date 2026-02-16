@@ -83,7 +83,7 @@ export default function OnboardingPage() {
         {/* Logo Section */}
         <div className="text-center mb-10">
           <div className="w-14 h-14 mx-auto mb-5 rounded-2xl gradient-premium flex items-center justify-center shadow-glow-md">
-            <Check className="w-7 h-7 text-white" strokeWidth={3} />
+            <Check className="w-7 h-7 text-text-primary" strokeWidth={3} />
           </div>
           <h1 className="text-3xl font-serif text-text-primary mb-2">
             Agency OS
@@ -149,7 +149,7 @@ export default function OnboardingPage() {
                   <button
                     onClick={handleWebsiteSubmit}
                     className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg
-                      text-xs font-medium gradient-premium text-white"
+                      text-xs font-medium gradient-premium text-text-primary"
                   >
                     Continue
                   </button>
@@ -237,7 +237,7 @@ export default function OnboardingPage() {
                 >
                   {hubspotConnected ? (
                     <div className="absolute top-2 right-2 w-5 h-5 bg-status-success rounded-full flex items-center justify-center">
-                      <Check className="w-3 h-3 text-white" />
+                      <Check className="w-3 h-3 text-text-primary" />
                     </div>
                   ) : null}
                   
@@ -282,7 +282,7 @@ export default function OnboardingPage() {
                 >
                   {linkedinConnected ? (
                     <div className="absolute top-2 right-2 w-5 h-5 bg-status-success rounded-full flex items-center justify-center">
-                      <Check className="w-3 h-3 text-white" />
+                      <Check className="w-3 h-3 text-text-primary" />
                     </div>
                   ) : null}
                   

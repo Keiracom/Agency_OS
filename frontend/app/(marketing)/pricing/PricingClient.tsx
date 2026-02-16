@@ -17,11 +17,11 @@ export default function PricingClient() {
   return (
     <main className="min-h-screen bg-[#fafafa] text-[#1d1d1f] antialiased">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-white/70 border-b border-black/5">
+      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-bg-surface/70 border-b border-black/5">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center">
-              <span className="text-white font-bold text-sm">A</span>
+              <span className="text-text-primary font-bold text-sm">A</span>
             </div>
             <span className="font-semibold text-lg tracking-tight">Agency OS</span>
           </Link>
@@ -33,7 +33,7 @@ export default function PricingClient() {
           </div>
           <div className="flex items-center gap-4">
             <Link href="/login" className="text-sm text-[#1d1d1f]/60 hover:text-[#1d1d1f] transition-colors hidden sm:block">Sign in</Link>
-            <Link href="/#waitlist" className="text-sm font-medium px-4 py-2 rounded-full bg-[#1d1d1f] text-white hover:bg-[#1d1d1f]/90 transition-all hover:scale-105">Join Waitlist</Link>
+            <Link href="/#waitlist" className="text-sm font-medium px-4 py-2 rounded-full bg-[#1d1d1f] text-text-primary hover:bg-[#1d1d1f]/90 transition-all hover:scale-105">Join Waitlist</Link>
           </div>
         </div>
       </nav>
@@ -42,12 +42,12 @@ export default function PricingClient() {
       <section className="pt-32 pb-16 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <ScrollReveal animation="fade-up">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-50 border border-red-100 mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-50 border border-amber-glow mb-6">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber"></span>
               </span>
-              <span className="text-sm text-red-600 font-medium">Founding tier: 50% off for life — 20 spots only</span>
+              <span className="text-sm text-amber font-medium">Founding tier: 50% off for life — 20 spots only</span>
             </div>
             <h1 className="text-5xl md:text-6xl font-semibold tracking-tight leading-tight mb-6">
               Simple pricing.<br />No hidden fees.
@@ -90,34 +90,34 @@ export default function PricingClient() {
               },
             ].map((tier, i) => (
               <ScrollReveal key={i} animation="fade-up" delay={i * 100}>
-                <div className={`relative h-full flex flex-col p-8 rounded-2xl border ${tier.popular ? 'bg-[#1d1d1f] text-white border-[#1d1d1f] shadow-2xl shadow-black/20 md:scale-105' : 'bg-white border-black/10'}`}>
+                <div className={`relative h-full flex flex-col p-8 rounded-2xl border ${tier.popular ? 'bg-[#1d1d1f] text-text-primary border-[#1d1d1f] shadow-2xl shadow-black/20 md:scale-105' : 'bg-bg-surface border-black/10'}`}>
                   {tier.popular && (
                     <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                      <span className="px-4 py-1 rounded-full bg-gradient-to-r from-[#0066CC] to-[#5856D6] text-white text-sm font-medium">Most Popular</span>
+                      <span className="px-4 py-1 rounded-full bg-gradient-to-r from-[#0066CC] to-[#5856D6] text-text-primary text-sm font-medium">Most Popular</span>
                     </div>
                   )}
 
                   <h3 className="text-2xl font-semibold mb-2">{tier.name}</h3>
-                  <p className={`text-sm mb-6 ${tier.popular ? 'text-white/60' : 'text-[#1d1d1f]/60'}`}>{tier.desc}</p>
+                  <p className={`text-sm mb-6 ${tier.popular ? 'text-text-primary/60' : 'text-[#1d1d1f]/60'}`}>{tier.desc}</p>
 
                   <div className="mb-6">
-                    <span className={`text-sm line-through ${tier.popular ? 'text-white/40' : 'text-[#1d1d1f]/40'}`}>
+                    <span className={`text-sm line-through ${tier.popular ? 'text-text-primary/40' : 'text-[#1d1d1f]/40'}`}>
                       ${tier.originalPrice.toLocaleString()}
                     </span>
                     <div className="flex items-baseline gap-1">
                       <span className="text-4xl font-bold">${(tier.originalPrice / 2).toLocaleString()}</span>
-                      <span className={tier.popular ? 'text-white/60' : 'text-[#1d1d1f]/60'}>/month</span>
+                      <span className={tier.popular ? 'text-text-primary/60' : 'text-[#1d1d1f]/60'}>/month</span>
                     </div>
-                    <span className="text-sm text-green-500 font-medium">Founding price (50% off for life)</span>
-                    <div className={`mt-4 p-3 rounded-xl ${tier.popular ? 'bg-white/10 border border-white/20' : 'bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200'}`}>
+                    <span className="text-sm text-amber font-medium">Founding price (50% off for life)</span>
+                    <div className={`mt-4 p-3 rounded-xl ${tier.popular ? 'bg-bg-surface/10 border border-white/20' : 'bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200'}`}>
                       <div className="flex items-center gap-2">
-                        <svg className={`w-5 h-5 ${tier.popular ? 'text-green-400' : 'text-green-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className={`w-5 h-5 ${tier.popular ? 'text-amber' : 'text-amber'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth={2}/>
                           <line x1="16" y1="2" x2="16" y2="6" strokeWidth={2}/>
                           <line x1="8" y1="2" x2="8" y2="6" strokeWidth={2}/>
                           <line x1="3" y1="10" x2="21" y2="10" strokeWidth={2}/>
                         </svg>
-                        <span className={`text-sm font-bold ${tier.popular ? 'text-green-400' : 'text-green-700'}`}>{tier.expectedMeetings}</span>
+                        <span className={`text-sm font-bold ${tier.popular ? 'text-amber' : 'text-amber'}`}>{tier.expectedMeetings}</span>
                       </div>
                     </div>
                   </div>
@@ -125,10 +125,10 @@ export default function PricingClient() {
                   <ul className="space-y-3 mb-8 flex-1">
                     {tier.limits.map((limit, j) => (
                       <li key={j} className="flex items-center gap-3">
-                        <svg className={`w-5 h-5 flex-shrink-0 ${tier.popular ? 'text-green-400' : 'text-green-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className={`w-5 h-5 flex-shrink-0 ${tier.popular ? 'text-amber' : 'text-amber'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span className={`text-sm font-medium ${tier.popular ? 'text-white/80' : 'text-[#1d1d1f]/70'}`}>
+                        <span className={`text-sm font-medium ${tier.popular ? 'text-text-primary/80' : 'text-[#1d1d1f]/70'}`}>
                           {limit}
                         </span>
                       </li>
@@ -137,7 +137,7 @@ export default function PricingClient() {
 
                   <Link
                     href="/#waitlist"
-                    className={`block text-center py-3 px-6 rounded-full font-medium transition-all hover:scale-105 ${tier.popular ? 'bg-white text-[#1d1d1f] hover:bg-white/90' : 'bg-[#1d1d1f] text-white hover:bg-[#1d1d1f]/90'}`}
+                    className={`block text-center py-3 px-6 rounded-full font-medium transition-all hover:scale-105 ${tier.popular ? 'bg-bg-surface text-[#1d1d1f] hover:bg-bg-surface/90' : 'bg-[#1d1d1f] text-text-primary hover:bg-[#1d1d1f]/90'}`}
                   >
                     Claim Founding Spot
                   </Link>
@@ -159,7 +159,7 @@ export default function PricingClient() {
                 "Priority support",
               ].map((feature, i) => (
                 <div key={i} className="flex items-center gap-2 p-3 rounded-lg bg-[#f5f5f7] border border-black/5">
-                  <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-4 h-4 text-amber flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                   <span className="text-sm text-[#1d1d1f]/70">{feature}</span>
@@ -176,7 +176,7 @@ export default function PricingClient() {
 
 
       {/* What's a Credit */}
-      <section className="px-6 py-24 bg-white">
+      <section className="px-6 py-24 bg-bg-surface">
         <div className="max-w-4xl mx-auto">
           <ScrollReveal animation="fade-up">
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-center mb-12">
@@ -200,7 +200,7 @@ export default function PricingClient() {
                       "ALS score calculation",
                     ].map((item, i) => (
                       <li key={i} className="flex items-center gap-2 text-sm text-[#1d1d1f]/60">
-                        <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-4 h-4 text-amber" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         {item}
@@ -219,7 +219,7 @@ export default function PricingClient() {
                       "AI content generation",
                     ].map((item, i) => (
                       <li key={i} className="flex items-center gap-2 text-sm text-[#1d1d1f]/60">
-                        <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-4 h-4 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         {item}
@@ -277,7 +277,7 @@ export default function PricingClient() {
               },
             ].map((faq, i) => (
               <ScrollReveal key={i} animation="fade-up" delay={i * 50}>
-                <div className="p-6 rounded-xl bg-white border border-black/5">
+                <div className="p-6 rounded-xl bg-bg-surface border border-black/5">
                   <h3 className="font-semibold mb-2">{faq.q}</h3>
                   <p className="text-[#1d1d1f]/60">{faq.a}</p>
                 </div>
@@ -288,7 +288,7 @@ export default function PricingClient() {
       </section>
 
       {/* CTA */}
-      <section className="px-6 py-24 bg-white">
+      <section className="px-6 py-24 bg-bg-surface">
         <div className="max-w-3xl mx-auto text-center">
           <ScrollReveal animation="fade-up">
             <h2 className="text-4xl md:text-5xl font-semibold tracking-tight mb-4">
@@ -303,21 +303,21 @@ export default function PricingClient() {
       </section>
 
       {/* Footer */}
-      <footer className="px-6 py-12 bg-[#1d1d1f] text-white">
+      <footer className="px-6 py-12 bg-[#1d1d1f] text-text-primary">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <Link href="/" className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center">
-                <span className="text-white font-bold text-sm">A</span>
+                <span className="text-text-primary font-bold text-sm">A</span>
               </div>
               <span className="font-semibold text-lg">Agency OS</span>
             </Link>
-            <div className="flex items-center gap-8 text-sm text-white/60">
-              <Link href="/how-it-works" className="hover:text-white transition-colors">How it Works</Link>
-              <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
-              <Link href="/about" className="hover:text-white transition-colors">About</Link>
+            <div className="flex items-center gap-8 text-sm text-text-primary/60">
+              <Link href="/how-it-works" className="hover:text-text-primary transition-colors">How it Works</Link>
+              <Link href="/pricing" className="hover:text-text-primary transition-colors">Pricing</Link>
+              <Link href="/about" className="hover:text-text-primary transition-colors">About</Link>
             </div>
-            <p className="text-sm text-white/40">© 2025 Agency OS. Made in Australia 🇦🇺</p>
+            <p className="text-sm text-text-primary/40">© 2025 Agency OS. Made in Australia 🇦🇺</p>
           </div>
         </div>
       </footer>

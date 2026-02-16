@@ -117,7 +117,7 @@ export function ReplyFilters({
     intentFilters.find((f) => f.value === selectedIntent)?.label || "All Intents";
 
   return (
-    <div className="bg-white border-b border-[#E2E8F0] px-4 py-3">
+    <div className="bg-bg-surface border-b border-[#E2E8F0] px-4 py-3">
       <div className="flex items-center justify-between gap-4">
         {/* Left: Channel filters */}
         <div className="flex items-center gap-2">
@@ -133,7 +133,7 @@ export function ReplyFilters({
                   flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
                   ${
                     isActive
-                      ? "bg-[#3B82F6] text-white shadow-sm"
+                      ? "bg-[#3B82F6] text-text-primary shadow-sm"
                       : "bg-[#F1F5F9] text-[#64748B] hover:bg-[#E2E8F0]"
                   }
                 `}
@@ -155,7 +155,7 @@ export function ReplyFilters({
           <div className="relative">
             <button
               onClick={() => setIsIntentOpen(!isIntentOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-[#E2E8F0] rounded-lg text-sm font-medium text-[#64748B] hover:border-[#94A3B8] transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 bg-bg-surface border border-[#E2E8F0] rounded-lg text-sm font-medium text-[#64748B] hover:border-[#94A3B8] transition-colors"
             >
               <Filter className="h-4 w-4" />
               <span>{selectedIntentLabel}</span>
@@ -175,7 +175,7 @@ export function ReplyFilters({
             </button>
 
             {isIntentOpen && (
-              <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-[#E2E8F0] rounded-lg shadow-lg z-10">
+              <div className="absolute right-0 top-full mt-1 w-40 bg-bg-surface border border-[#E2E8F0] rounded-lg shadow-lg z-10">
                 {intentFilters.map((filter) => {
                   const isActive = selectedIntent === filter.value;
 
@@ -204,7 +204,7 @@ export function ReplyFilters({
           </div>
 
           {/* Date Range Picker (placeholder) */}
-          <button className="flex items-center gap-2 px-3 py-1.5 bg-white border border-[#E2E8F0] rounded-lg text-sm font-medium text-[#64748B] hover:border-[#94A3B8] transition-colors">
+          <button className="flex items-center gap-2 px-3 py-1.5 bg-bg-surface border border-[#E2E8F0] rounded-lg text-sm font-medium text-[#64748B] hover:border-[#94A3B8] transition-colors">
             <Calendar className="h-4 w-4" />
             <span>Date Range</span>
           </button>

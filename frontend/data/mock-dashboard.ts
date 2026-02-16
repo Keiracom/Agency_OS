@@ -20,7 +20,7 @@ export const mockChannelOrchestration = {
     { id: 'linkedin', label: 'LinkedIn', value: 423, color: 'accent-blue' },
     { id: 'sms', label: 'SMS', value: 127, color: 'accent-teal' },
     { id: 'voice', label: 'Calls', value: 47, color: 'status-warning' },
-    { id: 'mail', label: 'Mail', value: 23, color: 'pink-500' },
+    { id: 'mail', label: 'Mail', value: 23, color: 'amber-light' },
   ],
 };
 

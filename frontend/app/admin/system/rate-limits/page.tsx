@@ -104,7 +104,7 @@ export default function AdminRateLimitsPage() {
             const percentage = Math.round((limit.used / limit.limit) * 100);
             const progressColor =
               limit.status === "critical"
-                ? "bg-red-500"
+                ? "bg-amber"
                 : limit.status === "warning"
                 ? "bg-yellow-500"
                 : "";
@@ -127,7 +127,7 @@ export default function AdminRateLimitsPage() {
                         variant="outline"
                         className={
                           limit.status === "critical"
-                            ? "bg-red-500/10 text-red-700"
+                            ? "bg-amber-glow text-error"
                             : "bg-yellow-500/10 text-yellow-700"
                         }
                       >

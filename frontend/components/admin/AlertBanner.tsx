@@ -56,22 +56,22 @@ export function AlertBanner({ alerts, onDismiss, className }: AlertBannerProps) 
   const getSeverityColor = (severity: Alert["severity"]) => {
     switch (severity) {
       case "critical":
-        return "bg-red-500/10 border-red-500/20 text-red-700 dark:text-red-400";
+        return "bg-amber-glow border-amber/20 text-error dark:text-amber";
       case "warning":
         return "bg-yellow-500/10 border-yellow-500/20 text-yellow-700 dark:text-yellow-400";
       case "info":
-        return "bg-blue-500/10 border-blue-500/20 text-blue-700 dark:text-blue-400";
+        return "bg-bg-elevated/10 border-default/20 text-amber dark:text-text-secondary";
     }
   };
 
   const getSeverityDot = (severity: Alert["severity"]) => {
     switch (severity) {
       case "critical":
-        return "bg-red-500";
+        return "bg-amber";
       case "warning":
         return "bg-yellow-500";
       case "info":
-        return "bg-blue-500";
+        return "bg-bg-elevated";
     }
   };
 
@@ -80,7 +80,7 @@ export function AlertBanner({ alerts, onDismiss, className }: AlertBannerProps) 
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           Alerts
-          <span className="inline-flex items-center justify-center rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">
+          <span className="inline-flex items-center justify-center rounded-full bg-amber px-2 py-0.5 text-xs text-text-primary">
             {alerts.length}
           </span>
         </CardTitle>

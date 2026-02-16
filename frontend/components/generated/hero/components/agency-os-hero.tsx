@@ -29,9 +29,9 @@ const iconMap = {
 }
 
 const colorMap = {
-  blue: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  green: "bg-green-500/20 text-green-400 border-green-500/30",
-  purple: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+  blue: "bg-bg-elevated/20 text-text-secondary border-default/30",
+  green: "bg-amber/20 text-amber border-amber/30",
+  purple: "bg-amber/20 text-amber border-amber/30",
 }
 
 export default function AgencyOSHero() {
@@ -65,9 +65,9 @@ export default function AgencyOSHero() {
     <section className="relative min-h-screen bg-[#0a0a0f] overflow-hidden">
       {/* Floating gradient orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/30 rounded-full blur-[120px] animate-float" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-[120px] animate-float-delayed" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-400/20 rounded-full blur-[100px] animate-pulse-slow" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-bg-elevated/30 rounded-full blur-[120px] animate-float" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-amber/30 rounded-full blur-[120px] animate-float-delayed" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-text-secondary/20 rounded-full blur-[100px] animate-pulse-slow" />
       </div>
 
       {/* Content */}
@@ -77,16 +77,16 @@ export default function AgencyOSHero() {
           <div className="space-y-8">
             {/* Urgency badge */}
             <div
-              className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 backdrop-blur-[20px] transition-all duration-700 ${
+              className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-bg-surface/5 backdrop-blur-[20px] transition-all duration-700 ${
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
               }`}
               style={{ transitionDelay: "0ms" }}
             >
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber" />
               </span>
-              <span className="text-sm text-white/90 font-medium">Only 17 of 20 founding spots remaining</span>
+              <span className="text-sm text-text-primary/90 font-medium">Only 17 of 20 founding spots remaining</span>
             </div>
 
             {/* Headline */}
@@ -96,7 +96,7 @@ export default function AgencyOSHero() {
               }`}
               style={{ transitionDelay: "100ms" }}
             >
-              <span className="bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-amber to-amber bg-clip-text text-transparent">
                 Stop chasing clients.
                 <br />
                 Let them find you.
@@ -105,7 +105,7 @@ export default function AgencyOSHero() {
 
             {/* Subheadline */}
             <p
-              className={`text-xl lg:text-2xl text-white/70 transition-all duration-700 ${
+              className={`text-xl lg:text-2xl text-text-primary/70 transition-all duration-700 ${
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
               }`}
               style={{ transitionDelay: "200ms" }}
@@ -120,12 +120,12 @@ export default function AgencyOSHero() {
               }`}
               style={{ transitionDelay: "300ms" }}
             >
-              <button className="group relative px-8 py-4 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold text-lg overflow-hidden transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(139,92,246,0.5)]">
+              <button className="group relative px-8 py-4 rounded-lg bg-gradient-to-r from-amber to-amber text-text-primary font-semibold text-lg overflow-hidden transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(139,92,246,0.5)]">
                 <span className="relative z-10">See It In Action</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-700 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute inset-0 bg-gradient-to-r from-amber to-amber opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
 
-              <button className="group flex items-center gap-2 px-8 py-4 text-white/90 font-semibold text-lg hover:text-white transition-colors">
+              <button className="group flex items-center gap-2 px-8 py-4 text-text-primary/90 font-semibold text-lg hover:text-text-primary transition-colors">
                 How it works
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
@@ -141,15 +141,15 @@ export default function AgencyOSHero() {
           >
             <div className="relative">
               {/* Glass card container */}
-              <div className="rounded-lg border border-white/10 bg-white/5 backdrop-blur-[20px] p-4 space-y-3">
+              <div className="rounded-lg border border-white/10 bg-bg-surface/5 backdrop-blur-[20px] p-4 space-y-3">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-white font-semibold text-lg">Live Activity</h3>
+                  <h3 className="text-text-primary font-semibold text-lg">Live Activity</h3>
                   <div className="flex items-center gap-2">
                     <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber" />
                     </span>
-                    <span className="text-xs text-white/50">Live</span>
+                    <span className="text-xs text-text-primary/50">Live</span>
                   </div>
                 </div>
 
@@ -160,7 +160,7 @@ export default function AgencyOSHero() {
                     return (
                       <div
                         key={`${activity.id}-${index}`}
-                        className="flex items-start gap-3 p-3 rounded-lg border border-white/10 bg-white/5 backdrop-blur-[20px] animate-slide-in"
+                        className="flex items-start gap-3 p-3 rounded-lg border border-white/10 bg-bg-surface/5 backdrop-blur-[20px] animate-slide-in"
                         style={{
                           animationDelay: index === 0 ? "0ms" : "0ms",
                           animationFillMode: "backwards",
@@ -172,8 +172,8 @@ export default function AgencyOSHero() {
                           <Icon className="w-5 h-5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-white/90 text-sm leading-relaxed">{activity.message}</p>
-                          <p className="text-white/50 text-xs mt-1">Just now</p>
+                          <p className="text-text-primary/90 text-sm leading-relaxed">{activity.message}</p>
+                          <p className="text-text-primary/50 text-xs mt-1">Just now</p>
                         </div>
                       </div>
                     )
@@ -182,7 +182,7 @@ export default function AgencyOSHero() {
               </div>
 
               {/* Glow effect */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 to-purple-600/20 rounded-lg blur-xl -z-10" />
+              <div className="absolute -inset-1 bg-gradient-to-r from-amber/20 to-amber/20 rounded-lg blur-xl -z-10" />
             </div>
           </div>
         </div>

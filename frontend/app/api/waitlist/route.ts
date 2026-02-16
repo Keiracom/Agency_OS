@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({
             from: "Agency OS <hello@agencyos.com.au>",
             to: [email],
-            subject: "You're on the Agency OS waitlist! 🎉",
+            subject: "You're on the Agency OS waitlist!",
             html: `
               <!DOCTYPE html>
               <html>
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
                   <p style="font-size: 18px; color: #374151;">You're officially on the waitlist for Agency OS – the client acquisition machine built specifically for Australian marketing agencies.</p>
                   
                   <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 16px; padding: 24px; margin: 32px 0; border: 1px solid #fcd34d;">
-                    <h2 style="font-size: 16px; font-weight: 700; margin: 0 0 12px 0; color: #92400e;">🔥 Founding Member Status</h2>
+                    <h2 style="font-size: 16px; font-weight: 700; margin: 0 0 12px 0; color: #92400e;">Founding Member Status</h2>
                     <p style="margin: 0; color: #78350f; font-size: 15px;">You're in line for one of 20 founding spots at <strong>50% off for life</strong>. We'll reach out soon with your exclusive invite.</p>
                   </div>
                   

@@ -117,7 +117,7 @@ export function CampaignNew() {
         </div>
 
         {/* Form Card */}
-        <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+        <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm">
           <div className="p-6 space-y-6">
             {/* Campaign Name */}
             <div>
@@ -133,7 +133,7 @@ export function CampaignNew() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Tech Decision Makers Q1 2026"
-                className="w-full px-4 py-2 bg-white border border-[#E2E8F0] rounded-lg text-sm text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all"
+                className="w-full px-4 py-2 bg-bg-surface border border-[#E2E8F0] rounded-lg text-sm text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all"
               />
               <p className="mt-1.5 text-xs text-[#94A3B8]">
                 Choose a descriptive name to identify this campaign
@@ -154,7 +154,7 @@ export function CampaignNew() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe the campaign goals and target audience..."
                 rows={3}
-                className="w-full px-4 py-2 bg-white border border-[#E2E8F0] rounded-lg text-sm text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all resize-none"
+                className="w-full px-4 py-2 bg-bg-surface border border-[#E2E8F0] rounded-lg text-sm text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all resize-none"
               />
             </div>
 
@@ -176,13 +176,13 @@ export function CampaignNew() {
                       className={`p-4 rounded-xl border-2 text-left transition-all ${
                         isSelected
                           ? "border-[#3B82F6] bg-[#EFF6FF]"
-                          : "border-[#E2E8F0] hover:border-[#94A3B8] bg-white"
+                          : "border-[#E2E8F0] hover:border-[#94A3B8] bg-bg-surface"
                       }`}
                     >
                       <div
                         className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${
                           isSelected
-                            ? "bg-[#3B82F6] text-white"
+                            ? "bg-[#3B82F6] text-text-primary"
                             : "bg-[#F1F5F9] text-[#64748B]"
                         }`}
                       >
@@ -225,7 +225,7 @@ export function CampaignNew() {
         </div>
 
         {/* ICP Inheritance Card */}
-        <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+        <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm">
           <div className="px-6 py-4 border-b border-[#E2E8F0]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -234,7 +234,7 @@ export function CampaignNew() {
                 </h3>
                 <div className="group relative">
                   <Info className="h-4 w-4 text-[#94A3B8] cursor-help" />
-                  <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-[#1E293B] text-white text-xs rounded-lg shadow-lg z-10">
+                  <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-[#1E293B] text-text-primary text-xs rounded-lg shadow-lg z-10">
                     Campaign inherits your ICP settings. Edit in Settings to update all campaigns.
                   </div>
                 </div>
@@ -330,7 +330,7 @@ export function CampaignNew() {
           <button
             onClick={handleCreate}
             disabled={!isValid || isCreating}
-            className="px-6 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-text-primary text-sm font-medium rounded-lg transition-colors shadow-lg shadow-amber/25 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isCreating ? "Creating..." : "Create Campaign"}
           </button>

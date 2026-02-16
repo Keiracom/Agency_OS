@@ -50,7 +50,7 @@ export function CampaignPriorityCard({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm p-5">
+    <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm p-5">
       {/* Header: Name + AI badge + Status */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
@@ -83,7 +83,7 @@ export function CampaignPriorityCard({
                 className={`${config.color} p-1.5 rounded-md`}
                 title={config.label}
               >
-                <IconComponent className="h-3.5 w-3.5 text-white" />
+                <IconComponent className="h-3.5 w-3.5 text-text-primary" />
               </div>
             );
           })}

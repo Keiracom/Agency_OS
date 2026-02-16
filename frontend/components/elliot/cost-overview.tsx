@@ -107,10 +107,10 @@ function SummaryCards({ summary }: { summary: { low: number; high: number } }) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Low Estimate</CardTitle>
-          <TrendingDown className="h-4 w-4 text-green-500" />
+          <TrendingDown className="h-4 w-4 text-amber" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-green-600">{formatCurrency(summary.low)}</div>
+          <div className="text-2xl font-bold text-amber">{formatCurrency(summary.low)}</div>
           <p className="text-xs text-muted-foreground mt-1">
             Minimum expected spend
           </p>
@@ -120,10 +120,10 @@ function SummaryCards({ summary }: { summary: { low: number; high: number } }) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">High Estimate</CardTitle>
-          <TrendingUp className="h-4 w-4 text-red-500" />
+          <TrendingUp className="h-4 w-4 text-amber" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-red-600">{formatCurrency(summary.high)}</div>
+          <div className="text-2xl font-bold text-amber">{formatCurrency(summary.high)}</div>
           <p className="text-xs text-muted-foreground mt-1">
             Maximum expected spend
           </p>
@@ -207,8 +207,8 @@ function CostOptimizationTips() {
         <div className="space-y-4">
           {tips.map((tip, i) => (
             <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-500/20">
-                <DollarSign className="h-4 w-4 text-green-600" />
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber/20">
+                <DollarSign className="h-4 w-4 text-amber" />
               </div>
               <div>
                 <p className="font-medium text-sm">{tip.title}</p>
@@ -301,7 +301,7 @@ export function CostOverview() {
       <Card className="bg-muted/30">
         <CardContent className="py-3">
           <p className="text-xs text-muted-foreground text-center">
-            💡 Cost estimates are derived from <code>knowledge/costs.md</code> and may vary based on actual usage.
+             Cost estimates are derived from <code>knowledge/costs.md</code> and may vary based on actual usage.
             For real-time cost tracking, connect to billing APIs.
           </p>
         </CardContent>

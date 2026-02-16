@@ -85,7 +85,7 @@ export function PrioritySlider({
         <div
           className={`
             absolute top-1/2 -translate-y-1/2 -translate-x-1/2
-            w-4 h-4 bg-white border-2 border-[#3B82F6] rounded-full shadow-md
+            w-4 h-4 bg-bg-surface border-2 border-[#3B82F6] rounded-full shadow-md
             transition-all duration-150
             ${disabled ? "opacity-50" : "hover:scale-110"}
           `}

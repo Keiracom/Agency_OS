@@ -137,7 +137,7 @@ export default function LinkedInSettingsPage() {
     }
 
     if (status?.status === "connected") {
-      return <Badge className="bg-green-500">Connected</Badge>;
+      return <Badge className="bg-amber">Connected</Badge>;
     }
 
     if (status?.status === "awaiting_2fa") {
@@ -193,7 +193,7 @@ export default function LinkedInSettingsPage() {
                       href={status.profile_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:underline"
+                      className="text-sm text-text-secondary hover:underline"
                     >
                       View Profile
                     </a>
@@ -207,7 +207,7 @@ export default function LinkedInSettingsPage() {
               <div className="flex gap-3">
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="outline" className="text-red-600 hover:text-red-700">
+                    <Button variant="outline" className="text-amber hover:text-error">
                       Disconnect
                     </Button>
                   </AlertDialogTrigger>
@@ -223,7 +223,7 @@ export default function LinkedInSettingsPage() {
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
                         onClick={handleDisconnect}
-                        className="bg-red-600 hover:bg-red-700"
+                        className="bg-amber hover:bg-error"
                       >
                         Disconnect
                       </AlertDialogAction>
@@ -311,19 +311,19 @@ export default function LinkedInSettingsPage() {
         <CardContent>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li className="flex items-center gap-2">
-              <ShieldIcon className="h-4 w-4 text-green-500" />
+              <ShieldIcon className="h-4 w-4 text-amber" />
               Credentials are encrypted using AES-256 encryption
             </li>
             <li className="flex items-center gap-2">
-              <ShieldIcon className="h-4 w-4 text-green-500" />
+              <ShieldIcon className="h-4 w-4 text-amber" />
               Your password is never stored in plain text
             </li>
             <li className="flex items-center gap-2">
-              <ShieldIcon className="h-4 w-4 text-green-500" />
+              <ShieldIcon className="h-4 w-4 text-amber" />
               Credentials are only used for automated outreach
             </li>
             <li className="flex items-center gap-2">
-              <ShieldIcon className="h-4 w-4 text-green-500" />
+              <ShieldIcon className="h-4 w-4 text-amber" />
               We never post to your LinkedIn feed
             </li>
           </ul>

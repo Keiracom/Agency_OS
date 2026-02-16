@@ -79,17 +79,17 @@ export function LiveActivityFeed({
   const getChannelColor = (channel?: Activity["channel"]) => {
     switch (channel) {
       case "email":
-        return "bg-blue-500/10 text-blue-600";
+        return "bg-bg-elevated/10 text-text-secondary";
       case "sms":
-        return "bg-green-500/10 text-green-600";
+        return "bg-amber/10 text-amber";
       case "linkedin":
-        return "bg-sky-500/10 text-sky-600";
+        return "bg-amber-glow text-amber";
       case "voice":
-        return "bg-purple-500/10 text-purple-600";
+        return "bg-amber/10 text-amber";
       case "mail":
         return "bg-orange-500/10 text-orange-600";
       default:
-        return "bg-gray-500/10 text-gray-600";
+        return "bg-bg-surface0/10 text-text-muted";
     }
   };
 
@@ -99,7 +99,7 @@ export function LiveActivityFeed({
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium">Live Activity</CardTitle>
           <div className="flex items-center gap-1.5">
-            <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+            <div className="h-2 w-2 rounded-full bg-amber animate-pulse" />
             <span className="text-xs text-muted-foreground">Live</span>
           </div>
         </div>

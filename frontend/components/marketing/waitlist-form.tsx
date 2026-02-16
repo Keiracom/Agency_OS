@@ -64,13 +64,13 @@ export function WaitlistForm({ source = "landing-page", className = "", variant 
   if (status === "success") {
     return (
       <div className={`text-center ${className}`}>
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
-          <svg className="w-8 h-8 text-green-600 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-glow mb-4">
+          <svg className="w-8 h-8 text-amber animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
         <h3 className="text-2xl font-semibold text-gray-900 mb-2">You're in!</h3>
-        <p className="text-gray-600">Redirecting...</p>
+        <p className="text-text-muted">Redirecting...</p>
       </div>
     );
   }
@@ -89,8 +89,8 @@ export function WaitlistForm({ source = "landing-page", className = "", variant 
             }}
             placeholder="your.email@agency.com"
             required
-            className={`w-full h-12 px-4 rounded-xl border bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${
-              status === "error" ? "border-red-300" : "border-gray-200"
+            className={`w-full h-12 px-4 rounded-xl border bg-bg-surface text-gray-900 placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent transition ${
+              status === "error" ? "border-amber-light" : "border-gray-200"
             }`}
             disabled={status === "loading"}
           />
@@ -101,14 +101,14 @@ export function WaitlistForm({ source = "landing-page", className = "", variant 
             value={agencyName}
             onChange={(e) => setAgencyName(e.target.value)}
             placeholder="Your Agency Name"
-            className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-bg-surface text-gray-900 placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent transition"
             disabled={status === "loading"}
           />
         </div>
         <button
           type="submit"
           disabled={status === "loading"}
-          className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold flex items-center justify-center gap-2 hover:opacity-95 hover:shadow-lg hover:shadow-blue-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full h-12 rounded-xl bg-gradient-to-r from-amber to-amber text-text-primary font-semibold flex items-center justify-center gap-2 hover:opacity-95 hover:shadow-lg hover:shadow-amber/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {status === "loading" ? (
             <span className="flex items-center gap-2">
@@ -128,7 +128,7 @@ export function WaitlistForm({ source = "landing-page", className = "", variant 
           )}
         </button>
         {status === "error" && (
-          <p className="text-red-500 text-sm text-center">{message}</p>
+          <p className="text-amber text-sm text-center">{message}</p>
         )}
       </form>
     );
@@ -147,8 +147,8 @@ export function WaitlistForm({ source = "landing-page", className = "", variant 
               if (status === "error") setStatus("idle");
             }}
             placeholder="Enter your work email"
-            className={`w-full px-5 py-3 rounded-full border bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-              status === "error" ? "border-red-300" : "border-gray-200"
+            className={`w-full px-5 py-3 rounded-full border bg-bg-surface text-gray-900 placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent transition-all ${
+              status === "error" ? "border-amber-light" : "border-gray-200"
             }`}
             disabled={status === "loading"}
           />
@@ -156,7 +156,7 @@ export function WaitlistForm({ source = "landing-page", className = "", variant 
         <button
           type="submit"
           disabled={status === "loading"}
-          className="px-6 py-3 rounded-full bg-gray-900 text-white font-medium hover:bg-gray-800 transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          className="px-6 py-3 rounded-full bg-bg-void text-text-primary font-medium hover:bg-bg-base transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
         >
           {status === "loading" ? (
             <span className="flex items-center gap-2">
@@ -171,7 +171,7 @@ export function WaitlistForm({ source = "landing-page", className = "", variant 
           )}
         </button>
         {status === "error" && (
-          <p className="text-red-500 text-sm mt-2 sm:absolute sm:-bottom-6 sm:left-0">{message}</p>
+          <p className="text-amber text-sm mt-2 sm:absolute sm:-bottom-6 sm:left-0">{message}</p>
         )}
       </form>
     );
@@ -189,15 +189,15 @@ export function WaitlistForm({ source = "landing-page", className = "", variant 
             if (status === "error") setStatus("idle");
           }}
           placeholder="Enter your work email"
-          className={`flex-1 px-6 py-4 rounded-full border bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-            status === "error" ? "border-red-300" : "border-gray-200"
+          className={`flex-1 px-6 py-4 rounded-full border bg-bg-surface text-gray-900 placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent transition-all ${
+            status === "error" ? "border-amber-light" : "border-gray-200"
           }`}
           disabled={status === "loading"}
         />
         <button
           type="submit"
           disabled={status === "loading"}
-          className="px-8 py-4 rounded-full bg-gray-900 text-white font-medium hover:bg-gray-800 transition-all hover:scale-105 hover:shadow-xl hover:shadow-black/10 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          className="px-8 py-4 rounded-full bg-bg-void text-text-primary font-medium hover:bg-bg-base transition-all hover:scale-105 hover:shadow-xl hover:shadow-black/10 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
         >
           {status === "loading" ? (
             <span className="flex items-center gap-2">
@@ -213,7 +213,7 @@ export function WaitlistForm({ source = "landing-page", className = "", variant 
         </button>
       </div>
       {status === "error" && (
-        <p className="text-red-500 text-sm text-center">{message}</p>
+        <p className="text-amber text-sm text-center">{message}</p>
       )}
     </form>
   );

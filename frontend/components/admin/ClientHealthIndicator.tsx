@@ -23,9 +23,9 @@ export function ClientHealthIndicator({
   className,
 }: ClientHealthIndicatorProps) {
   const getHealthColor = () => {
-    if (score >= 70) return "text-green-600 bg-green-500";
+    if (score >= 70) return "text-amber bg-amber";
     if (score >= 40) return "text-yellow-600 bg-yellow-500";
-    return "text-red-600 bg-red-500";
+    return "text-amber bg-amber";
   };
 
   const getHealthLabel = () => {
@@ -52,7 +52,7 @@ export function ClientHealthIndicator({
     <div className={cn("flex items-center gap-2", className)}>
       <div
         className={cn(
-          "rounded-full flex items-center justify-center font-bold text-white",
+          "rounded-full flex items-center justify-center font-bold text-text-primary",
           sizeClass,
           colorClass.split(" ")[1]
         )}
@@ -75,9 +75,9 @@ interface ClientHealthBadgeProps {
 
 export function ClientHealthBadge({ score, className }: ClientHealthBadgeProps) {
   const getHealthColor = () => {
-    if (score >= 70) return "bg-green-500/10 text-green-700 border-green-500/20";
+    if (score >= 70) return "bg-amber/10 text-amber border-amber/20";
     if (score >= 40) return "bg-yellow-500/10 text-yellow-700 border-yellow-500/20";
-    return "bg-red-500/10 text-red-700 border-red-500/20";
+    return "bg-amber-glow text-error border-amber/20";
   };
 
   const getHealthLabel = () => {

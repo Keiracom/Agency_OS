@@ -87,20 +87,20 @@ interface NotificationTypeConfig {
 const notificationTypeConfig: Record<NotificationType, NotificationTypeConfig> = {
   reply: {
     icon: MessageSquare,
-    bgColor: "bg-blue-500/20",
-    iconColor: "text-blue-400",
+    bgColor: "bg-bg-elevated/20",
+    iconColor: "text-text-secondary",
     label: "New Reply",
   },
   meeting: {
     icon: Calendar,
-    bgColor: "bg-emerald-500/20",
-    iconColor: "text-emerald-400",
+    bgColor: "bg-amber/20",
+    iconColor: "text-amber",
     label: "Meeting Booked",
   },
   milestone: {
     icon: Target,
-    bgColor: "bg-purple-500/20",
-    iconColor: "text-purple-400",
+    bgColor: "bg-amber/20",
+    iconColor: "text-amber",
     label: "Campaign Milestone",
   },
   alert: {
@@ -244,8 +244,8 @@ function NotificationItem({
         cursor-pointer
         transition-all duration-200
         border-b border-white/5 last:border-0
-        hover:bg-white/5
-        ${isUnread ? "bg-blue-500/5" : ""}
+        hover:bg-bg-surface/5
+        ${isUnread ? "bg-bg-elevated/5" : ""}
       `}
     >
       <div className="flex items-start gap-3">
@@ -260,7 +260,7 @@ function NotificationItem({
             <p 
               className={`
                 text-sm font-medium truncate
-                ${isUnread ? "text-white" : "text-slate-300"}
+                ${isUnread ? "text-text-primary" : "text-text-secondary"}
               `}
             >
               {notification.title}
@@ -268,11 +268,11 @@ function NotificationItem({
             
             {/* Unread indicator */}
             {isUnread && (
-              <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1.5 animate-pulse" />
+              <div className="w-2 h-2 bg-bg-elevated rounded-full flex-shrink-0 mt-1.5 animate-pulse" />
             )}
           </div>
           
-          <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">
+          <p className="text-xs text-text-muted line-clamp-2 mt-0.5">
             {notification.message}
           </p>
           
@@ -280,7 +280,7 @@ function NotificationItem({
             <span className={`text-[10px] px-1.5 py-0.5 rounded ${config.bgColor} ${config.iconColor}`}>
               {config.label}
             </span>
-            <span className="text-[10px] text-slate-600">
+            <span className="text-[10px] text-text-muted">
               {formatRelativeTime(notification.timestamp)}
             </span>
           </div>
@@ -291,7 +291,7 @@ function NotificationItem({
           {isUnread && onMarkRead && (
             <button
               onClick={handleMarkRead}
-              className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-emerald-400 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-bg-surface/10 text-text-secondary hover:text-amber transition-colors"
               title="Mark as read"
             >
               <Check className="w-3.5 h-3.5" />
@@ -300,7 +300,7 @@ function NotificationItem({
           {notification.href && (
             <button
               onClick={handleClick}
-              className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-blue-400 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-bg-surface/10 text-text-secondary hover:text-text-secondary transition-colors"
               title="View details"
             >
               <ExternalLink className="w-3.5 h-3.5" />
@@ -309,7 +309,7 @@ function NotificationItem({
           {onDismiss && (
             <button
               onClick={handleDismiss}
-              className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-red-400 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-bg-surface/10 text-text-secondary hover:text-amber transition-colors"
               title="Dismiss"
             >
               <X className="w-3.5 h-3.5" />
@@ -324,13 +324,13 @@ function NotificationItem({
 function EmptyState() {
   return (
     <div className="px-4 py-12 text-center">
-      <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/5 flex items-center justify-center">
-        <Inbox className="w-8 h-8 text-slate-600" />
+      <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-bg-surface/5 flex items-center justify-center">
+        <Inbox className="w-8 h-8 text-text-muted" />
       </div>
-      <h3 className="text-sm font-medium text-slate-400 mb-1">
+      <h3 className="text-sm font-medium text-text-secondary mb-1">
         All caught up!
       </h3>
-      <p className="text-xs text-slate-600">
+      <p className="text-xs text-text-muted">
         No new notifications
       </p>
     </div>
@@ -417,18 +417,18 @@ export function NotificationsPanel({
         aria-expanded={isOpen}
         className={`
           relative p-2.5 rounded-xl
-          bg-white/5 backdrop-blur-xl border border-white/10
-          text-slate-400 hover:text-white hover:bg-white/10
+          bg-bg-surface/5 backdrop-blur-xl border border-white/10
+          text-text-secondary hover:text-text-primary hover:bg-bg-surface/10
           transition-all duration-200
-          focus:outline-none focus:ring-2 focus:ring-blue-500/50
-          ${isOpen ? "bg-white/10 text-white ring-2 ring-blue-500/30" : ""}
+          focus:outline-none focus:ring-2 focus:ring-amber/50
+          ${isOpen ? "bg-bg-surface/10 text-text-primary ring-2 ring-amber/30" : ""}
         `}
       >
         <Bell className="w-5 h-5" />
         
         {/* Unread Badge */}
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white animate-pulse">
+          <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-amber rounded-full flex items-center justify-center text-[10px] font-bold text-text-primary animate-pulse">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
@@ -439,7 +439,7 @@ export function NotificationsPanel({
         <div 
           className="
             absolute right-0 top-full mt-2 w-96
-            bg-slate-900/95 backdrop-blur-xl 
+            bg-bg-void/95 backdrop-blur-xl 
             border border-white/10 
             rounded-2xl shadow-2xl shadow-black/50
             overflow-hidden z-50
@@ -447,14 +447,14 @@ export function NotificationsPanel({
           "
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-bg-surface/5">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-blue-400" />
-              <h3 className="text-sm font-semibold text-white">
+              <Sparkles className="w-4 h-4 text-text-secondary" />
+              <h3 className="text-sm font-semibold text-text-primary">
                 Notifications
               </h3>
               {unreadCount > 0 && (
-                <span className="px-2 py-0.5 text-[10px] font-medium bg-blue-500/20 text-blue-400 rounded-full">
+                <span className="px-2 py-0.5 text-[10px] font-medium bg-bg-elevated/20 text-text-secondary rounded-full">
                   {unreadCount} new
                 </span>
               )}
@@ -465,8 +465,8 @@ export function NotificationsPanel({
                 onClick={handleMarkAllRead}
                 className="
                   flex items-center gap-1.5 px-2.5 py-1 rounded-lg
-                  text-xs text-blue-400 hover:text-blue-300 
-                  hover:bg-blue-500/10 transition-colors
+                  text-xs text-text-secondary hover:text-amber-light 
+                  hover:bg-bg-elevated/10 transition-colors
                 "
               >
                 <CheckCheck className="w-3.5 h-3.5" />
@@ -494,7 +494,7 @@ export function NotificationsPanel({
 
           {/* Footer */}
           {hasNotifications && (
-            <div className="px-4 py-2.5 border-t border-white/10 bg-white/5">
+            <div className="px-4 py-2.5 border-t border-white/10 bg-bg-surface/5">
               <button
                 onClick={() => {
                   // In real app: router.push("/dashboard/notifications")
@@ -502,8 +502,8 @@ export function NotificationsPanel({
                 }}
                 className="
                   w-full py-2 rounded-lg
-                  text-xs font-medium text-slate-400 hover:text-white
-                  hover:bg-white/5 transition-colors
+                  text-xs font-medium text-text-secondary hover:text-text-primary
+                  hover:bg-bg-surface/5 transition-colors
                 "
               >
                 View all notifications

@@ -314,13 +314,13 @@ function GlassCard({
   return (
     <div
       className={cn(
-        "relative bg-slate-900/40 backdrop-blur-md rounded-xl border border-white/10",
+        "relative bg-bg-void/40 backdrop-blur-md rounded-xl border border-white/10",
         "shadow-lg shadow-black/20 overflow-hidden",
         className
       )}
     >
       {gradient && (
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 to-blue-500" />
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber to-amber" />
       )}
       {children}
     </div>
@@ -339,8 +339,8 @@ function ChannelStatusIndicator({
 }) {
   const config = {
     active: { 
-      color: "bg-emerald-400", 
-      ring: "ring-emerald-400/30",
+      color: "bg-amber", 
+      ring: "ring-amber/30",
       label: "Active",
       pulse: true 
     },
@@ -351,8 +351,8 @@ function ChannelStatusIndicator({
       pulse: false 
     },
     error: { 
-      color: "bg-red-400", 
-      ring: "ring-red-400/30",
+      color: "bg-amber", 
+      ring: "ring-amber/30",
       label: "Error",
       pulse: true 
     },
@@ -417,24 +417,24 @@ function ChannelStatusPanel({
       label: "Email", 
       fullLabel: "Cold Email",
       icon: EnvelopeIcon, 
-      color: "text-purple-400", 
-      bgColor: "bg-purple-500/15" 
+      color: "text-amber", 
+      bgColor: "bg-amber/15" 
     },
     { 
       key: "linkedin", 
       label: "LinkedIn", 
       fullLabel: "LinkedIn",
       icon: ChatBubbleLeftRightIcon, 
-      color: "text-blue-400", 
-      bgColor: "bg-blue-500/15" 
+      color: "text-text-secondary", 
+      bgColor: "bg-bg-elevated/15" 
     },
     { 
       key: "sms", 
       label: "SMS", 
       fullLabel: "SMS/Text",
       icon: ChatBubbleLeftRightIcon, 
-      color: "text-teal-400", 
-      bgColor: "bg-teal-500/15" 
+      color: "text-amber", 
+      bgColor: "bg-amber-glow" 
     },
     { 
       key: "voice", 
@@ -449,8 +449,8 @@ function ChannelStatusPanel({
       label: "Mail", 
       fullLabel: "Direct Mail",
       icon: EnvelopeOpenIcon, 
-      color: "text-pink-400", 
-      bgColor: "bg-pink-500/15" 
+      color: "text-amber-light", 
+      bgColor: "bg-amber-glow" 
     },
   ];
 
@@ -466,13 +466,13 @@ function ChannelStatusPanel({
   return (
     <GlassCard gradient>
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-        <div className="flex items-center gap-2.5 text-sm font-semibold text-white">
-          <SparklesIcon className="w-5 h-5 text-purple-400" />
+        <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+          <SparklesIcon className="w-5 h-5 text-amber" />
           5-Channel Orchestration
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-400">
+        <div className="flex items-center gap-2 text-xs text-text-secondary">
           <span className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-emerald-400" />
+            <div className="w-2 h-2 rounded-full bg-amber" />
             {Object.values(channelStatus).filter(c => c.status === "active").length} Active
           </span>
         </div>
@@ -485,9 +485,9 @@ function ChannelStatusPanel({
               key={key}
               className={cn(
                 "relative p-4 rounded-xl border transition-all cursor-pointer group",
-                "bg-slate-800/40 hover:bg-slate-800/60",
+                "bg-bg-base/40 hover:bg-bg-base/60",
                 status.status === "active" 
-                  ? "border-white/10 hover:border-purple-500/30" 
+                  ? "border-white/10 hover:border-amber/30" 
                   : "border-white/5 opacity-75 hover:opacity-100"
               )}
             >
@@ -502,10 +502,10 @@ function ChannelStatusPanel({
               </div>
 
               {/* Stats */}
-              <div className="text-xl font-bold font-mono text-white">
+              <div className="text-xl font-bold font-mono text-text-primary">
                 {stats[key].toLocaleString()}
               </div>
-              <div className="text-[10px] text-slate-400 uppercase tracking-wider mt-0.5">
+              <div className="text-[10px] text-text-secondary uppercase tracking-wider mt-0.5">
                 {label}
               </div>
 
@@ -514,18 +514,18 @@ function ChannelStatusPanel({
                 <div 
                   className={cn(
                     "h-full rounded-full transition-all",
-                    status.status === "active" ? "bg-emerald-500" :
+                    status.status === "active" ? "bg-amber" :
                     status.status === "warming" ? "bg-amber-500" :
-                    status.status === "error" ? "bg-red-500" : "bg-slate-500"
+                    status.status === "error" ? "bg-amber" : "bg-slate-500"
                   )}
                   style={{ width: `${status.health}%` }}
                 />
               </div>
 
               {/* Hover Tooltip */}
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-900 rounded-lg border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                <div className="text-xs font-medium text-white">{fullLabel}</div>
-                <div className="text-[10px] text-slate-400">{getStatusLabel(status.status)} • {status.health}% health</div>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-bg-void rounded-lg border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                <div className="text-xs font-medium text-text-primary">{fullLabel}</div>
+                <div className="text-[10px] text-text-secondary">{getStatusLabel(status.status)} • {status.health}% health</div>
               </div>
             </div>
           );
@@ -552,11 +552,11 @@ function RecentActivitySummary({ activities }: { activities: RecentActivity[] })
 
   const getActivityColor = (channel: keyof ChannelStats) => {
     switch (channel) {
-      case "email": return { bg: "bg-purple-500/15", text: "text-purple-400" };
-      case "linkedin": return { bg: "bg-blue-500/15", text: "text-blue-400" };
-      case "sms": return { bg: "bg-teal-500/15", text: "text-teal-400" };
+      case "email": return { bg: "bg-amber/15", text: "text-amber" };
+      case "linkedin": return { bg: "bg-bg-elevated/15", text: "text-text-secondary" };
+      case "sms": return { bg: "bg-amber-glow", text: "text-amber" };
       case "voice": return { bg: "bg-amber-500/15", text: "text-amber-400" };
-      case "directMail": return { bg: "bg-pink-500/15", text: "text-pink-400" };
+      case "directMail": return { bg: "bg-amber-glow", text: "text-amber-light" };
     }
   };
 
@@ -573,12 +573,12 @@ function RecentActivitySummary({ activities }: { activities: RecentActivity[] })
   return (
     <GlassCard className="h-full">
       <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
-        <div className="flex items-center gap-2.5 text-sm font-semibold text-white">
-          <BoltIcon className="w-5 h-5 text-blue-400" />
+        <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+          <BoltIcon className="w-5 h-5 text-text-secondary" />
           Recent Activity
         </div>
-        <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full">
-          <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+        <div className="flex items-center gap-1.5 text-xs font-medium text-amber bg-amber-glow px-2.5 py-1 rounded-full">
+          <span className="w-2 h-2 bg-amber rounded-full animate-pulse" />
           Live
         </div>
       </div>
@@ -590,7 +590,7 @@ function RecentActivitySummary({ activities }: { activities: RecentActivity[] })
             <div
               key={activity.id}
               className={cn(
-                "flex items-start gap-3 py-3 cursor-pointer transition-colors hover:bg-slate-800/30 -mx-4 px-4",
+                "flex items-start gap-3 py-3 cursor-pointer transition-colors hover:bg-bg-base/30 -mx-4 px-4",
                 idx !== activities.length - 1 && "border-b border-white/5"
               )}
             >
@@ -599,19 +599,19 @@ function RecentActivitySummary({ activities }: { activities: RecentActivity[] })
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-white truncate">
+                  <span className="text-sm font-semibold text-text-primary truncate">
                     {activity.contactName}
                   </span>
-                  <span className="text-xs text-slate-500">•</span>
-                  <span className="text-xs text-slate-400 truncate">
+                  <span className="text-xs text-text-muted">•</span>
+                  <span className="text-xs text-text-secondary truncate">
                     {activity.company}
                   </span>
                 </div>
-                <div className="text-sm text-slate-400 mt-0.5 truncate">
+                <div className="text-sm text-text-secondary mt-0.5 truncate">
                   {activity.description}
                 </div>
               </div>
-              <div className="text-xs text-slate-500 flex-shrink-0">
+              <div className="text-xs text-text-muted flex-shrink-0">
                 {formatTimeAgo(activity.timestamp)}
               </div>
             </div>
@@ -621,7 +621,7 @@ function RecentActivitySummary({ activities }: { activities: RecentActivity[] })
       <div className="px-6 py-3 border-t border-white/10">
         <a 
           href="/activity" 
-          className="text-sm text-purple-400 hover:text-purple-300 transition-colors"
+          className="text-sm text-amber hover:text-amber-light transition-colors"
         >
           View All Activity →
         </a>
@@ -646,32 +646,32 @@ function HeroMeetingsCard({
 
   return (
     <GlassCard className="p-8" gradient>
-      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+      <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">
         Meetings Booked
       </div>
       <div className="flex items-baseline gap-1">
-        <span className="text-6xl font-extrabold text-white font-mono tracking-tighter">
+        <span className="text-6xl font-extrabold text-text-primary font-mono tracking-tighter">
           {booked}
         </span>
-        <span className="text-3xl font-bold text-slate-500 font-mono">
+        <span className="text-3xl font-bold text-text-muted font-mono">
           /{target}
         </span>
       </div>
-      <div className="mt-3 text-base text-slate-300">
+      <div className="mt-3 text-base text-text-secondary">
         {exceeded ? (
-          <span className="text-emerald-400 font-medium">Target exceeded</span>
+          <span className="text-amber font-medium">Target exceeded</span>
         ) : (
-          <span className="text-slate-400">
+          <span className="text-text-secondary">
             {target - booked} more to target
           </span>
         )}{" "}
         — 3 days early
       </div>
       <div className="mt-4 pt-4 border-t border-white/10 flex items-center gap-2 text-sm">
-        <span className="text-emerald-400 font-medium flex items-center gap-1">
+        <span className="text-amber font-medium flex items-center gap-1">
           <ArrowTrendingUpIcon className="w-4 h-4" />↑ {changePercent}%
         </span>
-        <span className="text-slate-400">vs last month</span>
+        <span className="text-text-secondary">vs last month</span>
       </div>
     </GlassCard>
   );
@@ -692,16 +692,16 @@ function ChannelOrchestrationWheel({
   const strokeDasharray = `${(percentage / 100) * 380} 503`;
 
   const channels = [
-    { key: "email", icon: EnvelopeIcon, label: "Email", color: "bg-purple-500/15 text-purple-400" },
-    { key: "linkedin", icon: ChatBubbleLeftRightIcon, label: "LinkedIn", color: "bg-blue-500/15 text-blue-400" },
-    { key: "sms", icon: ChatBubbleLeftRightIcon, label: "SMS", color: "bg-teal-500/15 text-teal-400" },
+    { key: "email", icon: EnvelopeIcon, label: "Email", color: "bg-amber/15 text-amber" },
+    { key: "linkedin", icon: ChatBubbleLeftRightIcon, label: "LinkedIn", color: "bg-bg-elevated/15 text-text-secondary" },
+    { key: "sms", icon: ChatBubbleLeftRightIcon, label: "SMS", color: "bg-amber-glow text-amber" },
     { key: "voice", icon: PhoneIcon, label: "Calls", color: "bg-amber-500/15 text-amber-400" },
-    { key: "directMail", icon: EnvelopeIcon, label: "Mail", color: "bg-pink-500/15 text-pink-400" },
+    { key: "directMail", icon: EnvelopeIcon, label: "Mail", color: "bg-amber-glow text-amber-light" },
   ];
 
   return (
     <GlassCard className="p-8 flex flex-col items-center" gradient>
-      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
+      <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-4">
         5-Channel Orchestration
       </div>
 
@@ -739,10 +739,10 @@ function ChannelOrchestrationWheel({
 
         {/* Center text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-5xl font-extrabold font-mono bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+          <span className="text-5xl font-extrabold font-mono bg-gradient-to-r from-amber to-text-secondary bg-clip-text text-transparent">
             {(totalTouches / 1000).toFixed(1)}K
           </span>
-          <span className="text-xs text-slate-400 uppercase tracking-wider">
+          <span className="text-xs text-text-secondary uppercase tracking-wider">
             Touches
           </span>
         </div>
@@ -768,12 +768,12 @@ function ChannelOrchestrationWheel({
         {channels.map(({ key, label }) => (
           <div
             key={key}
-            className="text-center py-3 px-2 bg-slate-800/50 rounded-lg"
+            className="text-center py-3 px-2 bg-bg-base/50 rounded-lg"
           >
-            <div className="text-lg font-bold font-mono text-white">
+            <div className="text-lg font-bold font-mono text-text-primary">
               {stats[key as keyof ChannelStats]}
             </div>
-            <div className="text-[10px] text-slate-400 uppercase mt-1">
+            <div className="text-[10px] text-text-secondary uppercase mt-1">
               {label}
             </div>
           </div>
@@ -790,49 +790,49 @@ function HotProspectsCard({ prospects }: { prospects: Prospect[] }) {
   const getBadgeColor = (type: Prospect["badges"][0]["type"]) => {
     switch (type) {
       case "hot":
-        return "bg-red-500/15 text-red-400";
+        return "bg-amber-glow text-amber";
       case "ceo":
       case "founder":
-        return "bg-purple-500/15 text-purple-400";
+        return "bg-amber/15 text-amber";
       case "active":
-        return "bg-emerald-500/15 text-emerald-400";
+        return "bg-amber-glow text-amber";
       default:
-        return "bg-slate-500/15 text-slate-400";
+        return "bg-bg-surface text-text-secondary";
     }
   };
 
   const getAvatarGradient = (tier: Prospect["tier"]) => {
     switch (tier) {
       case "hot":
-        return "bg-gradient-to-br from-red-500 to-orange-500";
+        return "bg-gradient-to-br from-amber to-amber-light";
       case "warm":
         return "bg-gradient-to-br from-amber-500 to-yellow-500";
       default:
-        return "bg-gradient-to-br from-blue-500 to-cyan-500";
+        return "bg-gradient-to-br from-amber to-amber";
     }
   };
 
   const getScoreColor = (tier: Prospect["tier"]) => {
     switch (tier) {
       case "hot":
-        return "text-red-400";
+        return "text-amber";
       case "warm":
         return "text-amber-400";
       default:
-        return "text-blue-400";
+        return "text-text-secondary";
     }
   };
 
   return (
     <GlassCard className="h-full">
       <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
-        <div className="flex items-center gap-2.5 text-sm font-semibold text-white">
-          <FireIcon className="w-5 h-5 text-red-400" />
+        <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+          <FireIcon className="w-5 h-5 text-amber" />
           Hot Right Now
         </div>
         <a
           href="/leads"
-          className="text-sm text-purple-400 hover:text-purple-300 transition-colors"
+          className="text-sm text-amber hover:text-amber-light transition-colors"
         >
           See All →
         </a>
@@ -842,23 +842,23 @@ function HotProspectsCard({ prospects }: { prospects: Prospect[] }) {
           <div
             key={prospect.id}
             className={cn(
-              "flex items-center gap-4 py-4 cursor-pointer transition-colors hover:bg-slate-800/30 -mx-6 px-6",
+              "flex items-center gap-4 py-4 cursor-pointer transition-colors hover:bg-bg-base/30 -mx-6 px-6",
               idx !== prospects.length - 1 && "border-b border-white/5"
             )}
           >
             <div
               className={cn(
-                "w-11 h-11 rounded-lg flex items-center justify-center text-sm font-semibold text-white",
+                "w-11 h-11 rounded-lg flex items-center justify-center text-sm font-semibold text-text-primary",
                 getAvatarGradient(prospect.tier)
               )}
             >
               {prospect.initials}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-sm text-white truncate">
+              <div className="font-semibold text-sm text-text-primary truncate">
                 {prospect.name}
               </div>
-              <div className="text-sm text-slate-400 truncate">
+              <div className="text-sm text-text-secondary truncate">
                 {prospect.company} • {prospect.title}
               </div>
               <div className="flex gap-1.5 mt-1.5">
@@ -884,7 +884,7 @@ function HotProspectsCard({ prospects }: { prospects: Prospect[] }) {
               >
                 {prospect.score}
               </div>
-              <div className="text-[10px] text-slate-500 uppercase">Score</div>
+              <div className="text-[10px] text-text-muted uppercase">Score</div>
             </div>
           </div>
         ))}
@@ -908,20 +908,20 @@ function VoiceAICard({ calls }: { calls: VoiceCall[] }) {
     switch (outcome) {
       case "booked":
         return {
-          bg: "bg-emerald-500/15",
-          text: "text-emerald-400",
+          bg: "bg-amber-glow",
+          text: "text-amber",
           icon: CheckCircleIcon,
         };
       case "followup":
         return {
-          bg: "bg-blue-500/15",
-          text: "text-blue-400",
+          bg: "bg-bg-elevated/15",
+          text: "text-text-secondary",
           icon: ClockIcon,
         };
       default:
         return {
-          bg: "bg-slate-500/15",
-          text: "text-slate-400",
+          bg: "bg-bg-surface",
+          text: "text-text-secondary",
           icon: PhoneIcon,
         };
     }
@@ -930,12 +930,12 @@ function VoiceAICard({ calls }: { calls: VoiceCall[] }) {
   return (
     <GlassCard className="h-full">
       <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
-        <div className="flex items-center gap-2.5 text-sm font-semibold text-white">
+        <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
           <PhoneIcon className="w-5 h-5 text-amber-400" />
           Smart Calling
         </div>
-        <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full">
-          <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+        <div className="flex items-center gap-1.5 text-xs font-medium text-amber bg-amber-glow px-2.5 py-1 rounded-full">
+          <span className="w-2 h-2 bg-amber rounded-full animate-pulse" />
           Active
         </div>
       </div>
@@ -945,12 +945,12 @@ function VoiceAICard({ calls }: { calls: VoiceCall[] }) {
           {stats.map(({ value, label }) => (
             <div
               key={label}
-              className="text-center py-4 px-2 bg-slate-800/50 rounded-lg"
+              className="text-center py-4 px-2 bg-bg-base/50 rounded-lg"
             >
-              <div className="text-2xl font-bold font-mono text-white">
+              <div className="text-2xl font-bold font-mono text-text-primary">
                 {value}
               </div>
-              <div className="text-xs text-slate-400 mt-1">{label}</div>
+              <div className="text-xs text-text-secondary mt-1">{label}</div>
             </div>
           ))}
         </div>
@@ -976,7 +976,7 @@ function VoiceAICard({ calls }: { calls: VoiceCall[] }) {
                 <Icon className="w-4 h-4" />
               </div>
               <div className="flex-1">
-                <div className="text-sm font-semibold text-white">
+                <div className="text-sm font-semibold text-text-primary">
                   {call.name}{" "}
                   <span
                     className={cn(
@@ -987,19 +987,19 @@ function VoiceAICard({ calls }: { calls: VoiceCall[] }) {
                     {call.outcome.replace("-", " ")}
                   </span>
                 </div>
-                <div className="text-sm text-slate-400 mt-0.5">
+                <div className="text-sm text-text-secondary mt-0.5">
                   {call.summary}
                 </div>
                 <div className="flex gap-4 mt-2">
-                  <button className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1">
+                  <button className="text-xs text-amber hover:text-amber-light flex items-center gap-1">
                     <PlayIcon className="w-3 h-3" /> Listen
                   </button>
-                  <button className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1">
+                  <button className="text-xs text-amber hover:text-amber-light flex items-center gap-1">
                     <DocumentTextIcon className="w-3 h-3" /> Transcript
                   </button>
                 </div>
               </div>
-              <div className="text-sm text-slate-500 font-mono">
+              <div className="text-sm text-text-muted font-mono">
                 {call.duration}
               </div>
             </div>
@@ -1025,17 +1025,17 @@ function WhatsWorkingCard({
   return (
     <GlassCard className="h-full">
       <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
-        <div className="flex items-center gap-2.5 text-sm font-semibold text-white">
-          <LightBulbIcon className="w-5 h-5 text-purple-400" />
+        <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+          <LightBulbIcon className="w-5 h-5 text-amber" />
           What's Working
         </div>
-        <span className="text-xs text-slate-500">Updated 2h ago</span>
+        <span className="text-xs text-text-muted">Updated 2h ago</span>
       </div>
       <div className="px-6 py-4">
         <div className="grid grid-cols-2 gap-4">
           {/* Who Converts */}
-          <div className="bg-slate-800/50 rounded-lg p-4">
-            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-3">
+          <div className="bg-bg-base/50 rounded-lg p-4">
+            <div className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide mb-3">
               Who Converts
             </div>
             {whoConverts.map((item) => (
@@ -1043,8 +1043,8 @@ function WhatsWorkingCard({
                 key={item.label}
                 className="flex justify-between items-center py-2"
               >
-                <span className="text-sm text-slate-300">{item.label}</span>
-                <span className="text-sm font-semibold text-emerald-400">
+                <span className="text-sm text-text-secondary">{item.label}</span>
+                <span className="text-sm font-semibold text-amber">
                   {item.value}
                 </span>
               </div>
@@ -1052,8 +1052,8 @@ function WhatsWorkingCard({
           </div>
 
           {/* Best Channel Mix */}
-          <div className="bg-slate-800/50 rounded-lg p-4">
-            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-3">
+          <div className="bg-bg-base/50 rounded-lg p-4">
+            <div className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide mb-3">
               Best Channel Mix
             </div>
             {channelMix.map((item) => (
@@ -1061,8 +1061,8 @@ function WhatsWorkingCard({
                 key={item.label}
                 className="flex justify-between items-center py-2"
               >
-                <span className="text-sm text-slate-300">{item.label}</span>
-                <span className="text-sm font-semibold text-emerald-400">
+                <span className="text-sm text-text-secondary">{item.label}</span>
+                <span className="text-sm font-semibold text-amber">
                   {item.value}
                 </span>
               </div>
@@ -1071,12 +1071,12 @@ function WhatsWorkingCard({
         </div>
 
         {/* Discovery Banner */}
-        <div className="mt-5 p-4 rounded-lg bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-400 uppercase tracking-wide mb-2">
-            <FireIcon className="w-3.5 h-3.5 text-red-400" />
+        <div className="mt-5 p-4 rounded-lg bg-gradient-to-r from-amber/10 to-amber/10 border border-amber/30">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-amber uppercase tracking-wide mb-2">
+            <FireIcon className="w-3.5 h-3.5 text-amber" />
             This Week's Discovery
           </div>
-          <p className="text-sm text-white leading-relaxed">{discovery}</p>
+          <p className="text-sm text-text-primary leading-relaxed">{discovery}</p>
         </div>
       </div>
     </GlassCard>
@@ -1090,11 +1090,11 @@ function WeekAheadCard({ meetings }: { meetings: Meeting[] }) {
   return (
     <GlassCard className="h-full">
       <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
-        <div className="flex items-center gap-2.5 text-sm font-semibold text-white">
-          <CalendarIcon className="w-5 h-5 text-blue-400" />
+        <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+          <CalendarIcon className="w-5 h-5 text-text-secondary" />
           Week Ahead
         </div>
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-text-muted">
           {meetings.length} meetings
         </span>
       </div>
@@ -1111,19 +1111,19 @@ function WeekAheadCard({ meetings }: { meetings: Meeting[] }) {
               className={cn(
                 "w-2.5 h-2.5 rounded-full mt-1.5",
                 meeting.status === "today"
-                  ? "bg-emerald-400"
-                  : "bg-blue-400"
+                  ? "bg-amber"
+                  : "bg-text-secondary"
               )}
             />
             <div className="flex-1">
-              <div className="text-sm text-white">
+              <div className="text-sm text-text-primary">
                 <span className="font-semibold">{meeting.time}</span> —{" "}
                 {meeting.title}
               </div>
-              <div className="text-sm text-slate-400 mt-0.5">
+              <div className="text-sm text-text-secondary mt-0.5">
                 {meeting.contact} • {meeting.company}
                 {meeting.dealValue && (
-                  <span className="text-emerald-400 ml-2">
+                  <span className="text-amber ml-2">
                     {meeting.dealValue} deal
                   </span>
                 )}
@@ -1150,17 +1150,17 @@ function StatsSummaryRow() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {stats.map(({ value, label, change, positive, neutral }) => (
-        <GlassCard key={label} className="p-6 hover:bg-slate-900/50 transition-colors cursor-pointer">
-          <div className="text-3xl font-extrabold font-mono text-white">
+        <GlassCard key={label} className="p-6 hover:bg-bg-void/50 transition-colors cursor-pointer">
+          <div className="text-3xl font-extrabold font-mono text-text-primary">
             {value}
           </div>
-          <div className="text-xs font-medium text-slate-400 uppercase tracking-wide mt-2">
+          <div className="text-xs font-medium text-text-secondary uppercase tracking-wide mt-2">
             {label}
           </div>
           <div
             className={cn(
               "text-sm font-medium mt-2",
-              neutral ? "text-slate-500" : positive ? "text-emerald-400" : "text-red-400"
+              neutral ? "text-text-muted" : positive ? "text-amber" : "text-amber"
             )}
           >
             {change}

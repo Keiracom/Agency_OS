@@ -121,21 +121,21 @@ const channelIcons: Record<string, React.ReactNode> = {
 };
 
 const channelColors: Record<string, string> = {
-  email: "bg-blue-500",
-  sms: "bg-green-500",
-  voice: "bg-purple-500",
-  linkedin: "bg-sky-500",
+  email: "bg-bg-elevated",
+  sms: "bg-amber",
+  voice: "bg-amber",
+  linkedin: "bg-amber",
   mail: "bg-amber-500",
-  system: "bg-gray-500",
+  system: "bg-bg-surface0",
 };
 
 const channelBadgeColors: Record<string, string> = {
-  email: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-  sms: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-  voice: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400",
-  linkedin: "bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400",
+  email: "bg-amber-glow text-amber dark:bg-bg-void/30 dark:text-text-secondary",
+  sms: "bg-amber-glow text-amber dark:bg-amber-glow dark:text-amber",
+  voice: "bg-amber-glow text-amber dark:bg-amber-glow dark:text-amber",
+  linkedin: "bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-amber",
   mail: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
-  system: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
+  system: "bg-bg-surface text-gray-800 dark:bg-bg-void/30 dark:text-text-muted",
 };
 
 const allChannels: ChannelType[] = ["email", "sms", "linkedin", "voice", "mail"];
@@ -207,7 +207,7 @@ function TimelineItem({
     }
   };
 
-  const channelColor = channelColors[activity.channel] || "bg-gray-500";
+  const channelColor = channelColors[activity.channel] || "bg-bg-surface0";
   const timestamp = new Date(activity.created_at);
 
   return (
@@ -272,7 +272,7 @@ function TimelineItem({
               className={cn(
                 "rounded-lg p-3 text-sm",
                 isReceived
-                  ? "bg-blue-50 dark:bg-blue-950 border-l-4 border-blue-500"
+                  ? "bg-bg-surface dark:bg-blue-950 border-l-4 border-default"
                   : "bg-muted"
               )}
             >

@@ -66,7 +66,7 @@ export function ALSDistribution({ data }: ALSDistributionProps) {
   const maxPercentage = Math.max(...data.map((d) => d.percentage), 1);
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm p-6">
+    <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm p-6">
       {/* Header */}
       <h2 className="text-sm font-semibold text-[#64748B] uppercase tracking-wider mb-6">
         Lead Distribution by ALS Tier

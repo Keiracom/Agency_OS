@@ -11,9 +11,9 @@ import { tierData, type TierType } from "@/lib/mock/reports-data";
 const tierConfig: Record<TierType, { label: string; badgeBg: string; badgeText: string; barGradient: string }> = {
   hot: {
     label: "HOT",
-    badgeBg: "bg-red-500/15",
-    badgeText: "text-red-400",
-    barGradient: "from-red-500/30 to-red-500",
+    badgeBg: "bg-amber-glow",
+    badgeText: "text-amber",
+    barGradient: "from-amber/30 to-amber",
   },
   warm: {
     label: "WARM",
@@ -23,14 +23,14 @@ const tierConfig: Record<TierType, { label: string; badgeBg: string; badgeText: 
   },
   cool: {
     label: "COOL",
-    badgeBg: "bg-blue-500/15",
-    badgeText: "text-blue-400",
-    barGradient: "from-blue-500/30 to-blue-500",
+    badgeBg: "bg-bg-elevated/15",
+    badgeText: "text-text-secondary",
+    barGradient: "from-amber/30 to-amber",
   },
   cold: {
     label: "COLD",
-    badgeBg: "bg-gray-500/15",
-    badgeText: "text-gray-400",
+    badgeBg: "bg-bg-surface0/15",
+    badgeText: "text-text-muted",
     barGradient: "from-gray-500/30 to-gray-500",
   },
 };
@@ -39,10 +39,10 @@ export function TierConversion() {
   const maxRate = Math.max(...tierData.map((t) => t.conversionRate));
 
   return (
-    <div className="bg-[#12121D] border border-[#1E1E2E] rounded-xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#1E1E2E] flex items-center gap-2">
+    <div className="bg-bg-base border border-default rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-default flex items-center gap-2">
         <BarChart3 className="w-4 h-4 text-[#D4956A]" />
-        <h3 className="text-sm font-semibold text-[#F8F8FC]">Conversion Rate by Tier</h3>
+        <h3 className="text-sm font-semibold text-text-primary">Conversion Rate by Tier</h3>
       </div>
       <div className="p-5 space-y-3">
         {tierData.map((tier) => {
@@ -53,17 +53,17 @@ export function TierConversion() {
               <span className={`w-12 py-1 text-center text-[10px] font-bold uppercase rounded ${cfg.badgeBg} ${cfg.badgeText}`}>
                 {cfg.label}
               </span>
-              <div className="flex-1 h-6 bg-[#0A0A12] rounded overflow-hidden">
+              <div className="flex-1 h-6 bg-bg-void rounded overflow-hidden">
                 <div
                   className={`h-full rounded flex items-center pl-2.5 bg-gradient-to-r ${cfg.barGradient}`}
                   style={{ width: `${barWidth}%` }}
                 >
-                  <span className="text-[11px] font-mono font-semibold text-white">{tier.count}</span>
+                  <span className="text-[11px] font-mono font-semibold text-text-primary">{tier.count}</span>
                 </div>
               </div>
               <div className="w-16 text-right">
-                <p className="text-sm font-mono font-bold text-[#F8F8FC]">{tier.conversionRate}%</p>
-                <p className="text-[9px] text-[#6E6E82]">conv rate</p>
+                <p className="text-sm font-mono font-bold text-text-primary">{tier.conversionRate}%</p>
+                <p className="text-[9px] text-text-muted">conv rate</p>
               </div>
             </div>
           );

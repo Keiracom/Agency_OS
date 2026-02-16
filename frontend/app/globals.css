@@ -1,52 +1,53 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
+/* Import design tokens - single source of truth */
+@import '../src/styles/design-tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    /* Agency OS Design Tokens - Bloomberg Terminal Dark Mode */
-    /* Sprint 1: Theme Foundation (CEO Directive #008) */
+    /* =================================================
+       PURE BLOOMBERG DESIGN SYSTEM
+       Warm Charcoal + Amber ONLY
+       CEO Directive #027
+       ================================================= */
     
-    /* Base Layers - Warm Charcoal */
-    --bg-void: #080604;
-    --bg-base: #0C0A08;
-    --bg-surface: rgba(255, 255, 255, 0.03);
-    --bg-surface-hover: rgba(255, 255, 255, 0.06);
-    --bg-elevated: rgba(255, 255, 255, 0.08);
+    /* Background Layers */
+    --bg-void: #0C0A08;
+    --bg-base: #141210;
+    --bg-surface: #1C1A17;
+    --bg-elevated: #242220;
     
-    /* Borders - Glassmorphism */
-    --border-subtle: rgba(255, 255, 255, 0.06);
-    --border-default: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.12);
+    /* Text */
+    --text-primary: #F5F0EB;
+    --text-secondary: #A39E96;
+    --text-muted: #6B6660;
     
-    /* Text - Warm Cream */
-    --text-primary: #FAF5F0;
-    --text-secondary: #A09890;
-    --text-muted: #6B6560;
+    /* Accent — THE ONLY COLOR */
+    --amber: #D4956A;
+    --amber-light: #E8B48A;
+    --amber-glow: rgba(212,149,106,0.12);
     
-    /* Accent - Amber Primary */
-    --accent-primary: #D4956A;
-    --accent-primary-hover: #E0A87D;
+    /* Error (muted warm red — use sparingly) */
+    --error: #C0675A;
+    --error-glow: rgba(192,103,90,0.12);
     
-    /* Accent - Violet for AI indicators ONLY */
-    --accent-ai: #7C3AED;
-    --accent-ai-hover: #9061F9;
+    /* Borders */
+    --border-subtle: rgba(255,255,255,0.06);
+    --border-default: rgba(255,255,255,0.10);
+    --border-focus: rgba(255,255,255,0.20);
     
-    /* Status */
-    --status-success: #10B981;
-    --status-warning: #F59E0B;
-    --status-error: #EF4444;
-    
-    /* Tiers (ALS Lead Scoring) */
-    --tier-hot: #EF4444;
-    --tier-warm: #F59E0B;
-    --tier-cool: #3B82F6;
+    /* Glassmorphism */
+    --glass-surface: rgba(255,255,255,0.04);
+    --glass-border: rgba(255,255,255,0.10);
+    --glass-border-top: rgba(255,255,255,0.15);
+    --glass-border-left: rgba(255,255,255,0.12);
     
     /* Gradients */
-    --gradient-premium: linear-gradient(135deg, #D4956A 0%, #E0A87D 100%);
-    --gradient-ai: linear-gradient(135deg, #7C3AED 0%, #9061F9 100%);
+    --gradient-amber: linear-gradient(135deg, #D4956A 0%, #E8B48A 100%);
     
     /* Fonts */
     --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -54,168 +55,189 @@
     --font-mono: 'JetBrains Mono', monospace;
 
     /* shadcn/ui compatibility layer */
-    --background: 20 14% 4%;             /* bg-base #0C0A08 */
-    --foreground: 30 33% 96%;            /* text-primary #FAF5F0 */
-    --card: 0 0% 100% / 0.03;            /* bg-surface */
-    --card-foreground: 30 33% 96%;
-    --popover: 0 0% 100% / 0.03;
-    --popover-foreground: 30 33% 96%;
-    --primary: 25 54% 62%;               /* accent-primary #D4956A */
-    --primary-foreground: 20 14% 4%;
-    --secondary: 0 0% 100% / 0.06;       /* bg-surface-hover */
-    --secondary-foreground: 30 33% 96%;
-    --muted: 0 0% 100% / 0.06;
-    --muted-foreground: 25 8% 40%;       /* text-muted */
-    --accent: 25 54% 62%;
-    --accent-foreground: 20 14% 4%;
-    --destructive: 0 84% 60%;            /* status-error */
-    --destructive-foreground: 30 33% 96%;
-    --border: 0 0% 100% / 0.08;          /* border-default */
-    --input: 0 0% 100% / 0.08;
-    --ring: 25 54% 62%;                  /* accent-primary */
+    --background: 20 12% 6%;
+    --foreground: 30 20% 95%;
+    --card: 20 12% 10%;
+    --card-foreground: 30 20% 95%;
+    --popover: 20 12% 8%;
+    --popover-foreground: 30 20% 95%;
+    --primary: 25 50% 62%;
+    --primary-foreground: 20 12% 6%;
+    --secondary: 20 8% 14%;
+    --secondary-foreground: 30 20% 95%;
+    --muted: 20 8% 14%;
+    --muted-foreground: 25 6% 40%;
+    --accent: 25 50% 62%;
+    --accent-foreground: 20 12% 6%;
+    --destructive: 8 55% 55%;
+    --destructive-foreground: 30 20% 95%;
+    --border: 0 0% 100% / 0.10;
+    --input: 0 0% 100% / 0.10;
+    --ring: 25 50% 62%;
     --radius: 0.75rem;
     
-    /* Chart colors */
-    --chart-1: 25 54% 62%;               /* Amber */
-    --chart-2: 263 70% 58%;              /* Violet (AI) */
-    --chart-3: 160 84% 39%;              /* Success Green */
-    --chart-4: 38 92% 50%;               /* Warning Orange */
-    --chart-5: 0 84% 60%;                /* Error Red */
+    /* Chart colors (amber variations) */
+    --chart-1: 25 50% 62%;
+    --chart-2: 25 50% 72%;
+    --chart-3: 25 50% 52%;
+    --chart-4: 25 50% 45%;
+    --chart-5: 25 50% 38%;
   }
-
-  /* Dark mode is default - no .dark class needed */
 }
 
 @layer base {
   * {
     @apply border-border;
   }
+  
   body {
     @apply text-foreground;
-    background-color: #0C0A08;
+    background-color: var(--bg-void);
     font-family: var(--font-sans);
     font-feature-settings: "rlig" 1, "calt" 1;
+    color: var(--text-primary);
   }
   
-  /* Typography - Headings use Instrument Serif */
+  /* Typography */
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-serif);
+    color: var(--text-primary);
   }
   
-  /* Data/numbers use JetBrains Mono */
+  /* Data/numbers use mono */
   .font-data, [data-number], .tabular-nums {
     font-family: var(--font-mono);
   }
+  
+  /* Ensure text visibility */
+  p, span, div, label {
+    color: inherit;
+  }
 }
 
-/* Custom scrollbar - Bloomberg dark */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0C0A08;
+  background: var(--bg-void);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--border-default);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--border-focus);
 }
 
-/* ALS Tier colors */
+/* =================================================
+   TIER SYSTEM (Amber-based)
+   ================================================= */
 .tier-hot {
-  @apply bg-red-500/10 text-red-400 border-red-500/30;
+  background: var(--amber-glow);
+  color: var(--amber);
+  border: 1px solid rgba(212,149,106,0.30);
 }
 
 .tier-warm {
-  @apply bg-amber-500/10 text-amber-400 border-amber-500/30;
+  background: rgba(232,180,138,0.10);
+  color: var(--amber-light);
+  border: 1px solid rgba(232,180,138,0.25);
 }
 
 .tier-cool {
-  @apply bg-blue-500/10 text-blue-400 border-blue-500/30;
+  background: rgba(163,158,150,0.08);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
 }
 
 .tier-cold {
-  @apply bg-gray-500/10 text-gray-400 border-gray-700/30;
+  background: rgba(107,102,96,0.08);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
 }
 
 .tier-dead {
-  @apply bg-gray-800/50 text-gray-600 border-gray-700/30;
+  background: rgba(107,102,96,0.04);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  opacity: 0.6;
 }
 
-/* Campaign status colors */
+/* =================================================
+   STATUS SYSTEM (Amber-based)
+   ================================================= */
 .status-active {
-  @apply bg-emerald-500/10 text-emerald-400 border-emerald-500/30;
+  background: var(--amber-glow);
+  color: var(--amber);
+  border: 1px solid rgba(212,149,106,0.30);
 }
 
 .status-draft {
-  @apply bg-gray-500/10 text-gray-400 border-gray-500/30;
+  background: rgba(163,158,150,0.08);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
 }
 
 .status-paused {
-  @apply bg-yellow-500/10 text-yellow-400 border-yellow-500/30;
+  background: rgba(232,180,138,0.08);
+  color: var(--amber-light);
+  border: 1px solid rgba(232,180,138,0.20);
 }
 
 .status-completed {
-  @apply bg-violet-500/10 text-violet-400 border-violet-500/30;
+  background: rgba(163,158,150,0.06);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
 }
 
-/* Channel icon colors */
-.channel-email {
-  @apply text-blue-400;
+.status-error {
+  background: var(--error-glow);
+  color: var(--error);
+  border: 1px solid rgba(192,103,90,0.30);
 }
 
-.channel-sms {
-  @apply text-emerald-400;
-}
-
-.channel-linkedin {
-  @apply text-sky-400;
-}
-
-.channel-voice {
-  @apply text-violet-400;
-}
-
+/* =================================================
+   CHANNEL ICONS (All amber now)
+   ================================================= */
+.channel-email,
+.channel-sms,
+.channel-linkedin,
+.channel-voice,
 .channel-mail {
-  @apply text-orange-400;
+  color: var(--amber);
 }
 
-/* Premium gradient utilities - Amber */
-.gradient-premium {
-  background: var(--gradient-premium);
+/* =================================================
+   GRADIENT UTILITIES
+   ================================================= */
+.gradient-amber {
+  background: var(--gradient-amber);
 }
 
 .gradient-text {
-  background: var(--gradient-premium);
+  background: var(--gradient-amber);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* AI gradient - Violet (use sparingly) */
-.gradient-ai {
-  background: var(--gradient-ai);
-}
-
-.gradient-ai-text {
-  background: var(--gradient-ai);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Glass morphism for elevated panels - Sprint 1 card treatment */
+/* =================================================
+   GLASSMORPHISM
+   ================================================= */
 .glass-surface {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--glass-surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-top-color: var(--glass-border-top);
+  border-left-color: var(--glass-border-left);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 
 .glass-surface-hover {
@@ -224,21 +246,18 @@
 }
 
 .glass-surface-hover:hover {
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 0 20px rgba(212, 149, 106, 0.1);
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.15);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3), 0 0 20px rgba(212,149,106,0.08), inset 0 1px 0 rgba(255,255,255,0.08);
 }
 
-/* Loading skeleton animation */
-@keyframes shimmer {
-  100% {
-    transform: translateX(100%);
-  }
-}
-
+/* =================================================
+   LOADING SKELETON
+   ================================================= */
 .skeleton {
   position: relative;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--glass-surface);
   border-radius: 0.5rem;
 }
 
@@ -260,12 +279,19 @@
   content: '';
 }
 
-/* Smooth scroll */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* =================================================
+   ANIMATIONS
+   ================================================= */
 html {
   scroll-behavior: smooth;
 }
 
-/* Animations */
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -284,19 +310,10 @@ html {
 
 @keyframes pulse-glow {
   0%, 100% { 
-    box-shadow: 0 0 0 0 rgba(212, 149, 106, 0.4);
+    box-shadow: 0 0 0 0 rgba(212,149,106,0.4);
   }
   50% { 
-    box-shadow: 0 0 0 8px rgba(212, 149, 106, 0);
-  }
-}
-
-@keyframes pulse-glow-ai {
-  0%, 100% { 
-    box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.4);
-  }
-  50% { 
-    box-shadow: 0 0 0 8px rgba(124, 58, 237, 0);
+    box-shadow: 0 0 0 8px rgba(212,149,106,0);
   }
 }
 
@@ -312,11 +329,7 @@ html {
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
-.animate-pulse-glow-ai {
-  animation: pulse-glow-ai 2s ease-in-out infinite;
-}
-
-/* Progressive disclosure transition */
+/* Progressive disclosure */
 .step-reveal {
   opacity: 0;
   transform: translateY(10px);
@@ -326,4 +339,17 @@ html {
 .step-reveal.active {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* =================================================
+   UTILITY OVERRIDES
+   Force text visibility on dark backgrounds
+   ================================================= */
+.text-visible {
+  color: var(--text-primary) !important;
+}
+
+/* Fix white-on-white issues */
+.bg-white, .bg-\[\#fff\], .bg-\[\#ffffff\], .bg-\[\#FFFFFF\] {
+  background-color: var(--bg-surface) !important;
 }

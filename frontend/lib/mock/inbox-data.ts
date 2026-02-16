@@ -2,6 +2,7 @@
  * FILE: frontend/lib/mock/inbox-data.ts
  * PURPOSE: Mock data for Inbox Command Center and Reply Detail pages
  * SPRINT: Dashboard Sprint 3b - Inbox Command Center
+ * CEO Directive #027 — Design System Overhaul: No emojis
  */
 
 export type IntentType = 'meeting' | 'interested' | 'question' | 'objection' | 'later';
@@ -272,7 +273,7 @@ export const mockDavidParkSMS: ThreadMessage[] = [
     senderName: 'David Park',
     senderEmail: '',
     channel: 'sms',
-    body: 'Perfect, that works! 👍',
+    body: 'Perfect, that works!',
     timestamp: '11:30 AM',
     date: 'Today',
     sentiment: 'positive',
@@ -283,7 +284,7 @@ export const mockDavidParkSMS: ThreadMessage[] = [
 export const mockAISuggestions: AISuggestion[] = [
   {
     id: 'ai-1',
-    label: '✨ Confirm Meeting',
+    label: 'Confirm Meeting',
     icon: 'sparkles',
     text: "Perfect, David! Just sent you a calendar invite for Tuesday 2pm AEST. Looking forward to learning more about your $40K → $100K goals and showing you how we can help accelerate that. See you then!",
   },
@@ -322,13 +323,14 @@ export const mockDavidParkNotes: Note[] = [
   },
 ];
 
+// Lucide icon names for score factors
 export const mockDavidParkScoreFactors: ScoreFactor[] = [
-  { icon: '👑', label: 'CEO-Level Title', value: 25 },
-  { icon: '📅', label: 'Meeting Request', value: 20 },
-  { icon: '💰', label: 'Budget Revealed ($40K MRR)', value: 15 },
-  { icon: '📈', label: 'Growth Intent', value: 12 },
-  { icon: '✉️', label: 'Email Opened (3x)', value: 10 },
-  { icon: '💬', label: 'SMS Engaged', value: 10 },
+  { icon: 'Crown', label: 'CEO-Level Title', value: 25 },
+  { icon: 'Calendar', label: 'Meeting Request', value: 20 },
+  { icon: 'DollarSign', label: 'Budget Revealed ($40K MRR)', value: 15 },
+  { icon: 'TrendingUp', label: 'Growth Intent', value: 12 },
+  { icon: 'Mail', label: 'Email Opened (3x)', value: 10 },
+  { icon: 'MessageSquare', label: 'SMS Engaged', value: 10 },
 ];
 
 export const intentLabels: Record<IntentType, string> = {
@@ -339,10 +341,18 @@ export const intentLabels: Record<IntentType, string> = {
   later: 'Not Now',
 };
 
+// Lucide icon names for sentiment
+export const sentimentIcon: Record<SentimentType, string> = {
+  positive: 'ThumbsUp',
+  negative: 'ThumbsDown',
+  neutral: 'Minus',
+};
+
+// DEPRECATED: Use sentimentIcon instead
 export const sentimentEmoji: Record<SentimentType, string> = {
-  positive: '😊',
-  negative: '😟',
-  neutral: '😐',
+  positive: 'ThumbsUp',
+  negative: 'ThumbsDown',
+  neutral: 'Minus',
 };
 
 export const channelLabels: Record<ChannelType, string> = {

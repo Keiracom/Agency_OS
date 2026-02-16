@@ -17,7 +17,7 @@ export function FloatingFoundingSpots() {
   // Sold out state
   if (soldOut) {
     return (
-      <div className="fixed bottom-4 right-4 z-50 bg-red-600 text-white px-4 py-3 rounded-lg shadow-lg">
+      <div className="fixed bottom-4 right-4 z-50 bg-amber text-text-primary px-4 py-3 rounded-lg shadow-lg">
         <span className="font-semibold">Founding spots sold out</span>
       </div>
     );
@@ -25,21 +25,21 @@ export function FloatingFoundingSpots() {
 
   // Urgency-based styling
   const urgencyClass = isUrgent
-    ? "bg-red-600 animate-pulse"
+    ? "bg-amber animate-pulse"
     : remaining !== null && remaining <= 10
     ? "bg-orange-500"
-    : "bg-gradient-to-r from-blue-600 to-purple-600";
+    : "bg-gradient-to-r from-amber to-amber";
 
   return (
     <a
       href="#pricing"
-      className={`fixed bottom-4 right-4 z-50 ${urgencyClass} text-white px-4 py-3 rounded-lg shadow-lg cursor-pointer hover:scale-105 transition-transform flex items-center gap-3`}
+      className={`fixed bottom-4 right-4 z-50 ${urgencyClass} text-text-primary px-4 py-3 rounded-lg shadow-lg cursor-pointer hover:scale-105 transition-transform flex items-center gap-3`}
     >
       {/* Pulsing dot for urgency */}
       {isUrgent && (
         <span className="relative flex h-3 w-3">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-bg-surface opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-bg-surface"></span>
         </span>
       )}
 

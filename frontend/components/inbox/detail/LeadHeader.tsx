@@ -10,9 +10,9 @@ import { Calendar, Phone, Flame } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const tierGradients: Record<TierType, string> = {
-  hot: 'from-red-500 to-orange-500',
+  hot: 'from-amber to-amber-light',
   warm: 'from-amber-500 to-yellow-400',
-  cool: 'from-blue-500 to-blue-400',
+  cool: 'from-amber to-text-secondary',
 };
 
 const tierColors: Record<TierType, string> = {
@@ -22,9 +22,9 @@ const tierColors: Record<TierType, string> = {
 };
 
 const tierBgColors: Record<TierType, string> = {
-  hot: 'bg-red-500/15',
+  hot: 'bg-amber-glow',
   warm: 'bg-amber-500/15',
-  cool: 'bg-blue-500/15',
+  cool: 'bg-bg-elevated/15',
 };
 
 interface LeadHeaderProps {
@@ -47,8 +47,8 @@ export function LeadHeader({ message }: LeadHeaderProps) {
   // Title badge (if CEO)
   if (message.title.toLowerCase().includes('ceo') || message.title.toLowerCase().includes('founder')) {
     badges.push(
-      <span key="title" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wide bg-violet-500/15 text-violet-400">
-        👑 {message.title}
+      <span key="title" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wide bg-amber/15 text-amber">
+         {message.title}
       </span>
     );
   }
@@ -56,7 +56,7 @@ export function LeadHeader({ message }: LeadHeaderProps) {
   // Intent badge
   if (message.intent === 'meeting') {
     badges.push(
-      <span key="intent" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wide bg-green-500/15 text-green-400">
+      <span key="intent" className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wide bg-amber/15 text-amber">
         <Calendar className="w-3.5 h-3.5" />
         Meeting Requested
       </span>
@@ -67,7 +67,7 @@ export function LeadHeader({ message }: LeadHeaderProps) {
     <div className="bg-surface-dark border-b border-border-subtle px-8 py-5 flex items-center gap-5">
       {/* Avatar */}
       <div className={cn(
-        'w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl bg-gradient-to-br flex-shrink-0',
+        'w-14 h-14 rounded-2xl flex items-center justify-center text-text-primary font-bold text-xl bg-gradient-to-br flex-shrink-0',
         tierGradients[message.tier]
       )}>
         {message.initials}
@@ -104,11 +104,11 @@ export function LeadHeader({ message }: LeadHeaderProps) {
       
       {/* Actions */}
       <div className="flex gap-2.5">
-        <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-amber-600 hover:bg-amber-500 text-white transition-colors">
+        <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-amber-600 hover:bg-amber-500 text-text-primary transition-colors">
           <Calendar className="w-4 h-4" />
           Schedule Call
         </button>
-        <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold glass-surface border border-border-subtle text-text-primary hover:bg-white/[0.05] transition-colors">
+        <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold glass-surface border border-border-subtle text-text-primary hover:bg-bg-surface/[0.05] transition-colors">
           <Phone className="w-4 h-4" />
           Call Now
         </button>

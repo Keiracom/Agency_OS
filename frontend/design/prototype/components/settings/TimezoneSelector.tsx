@@ -157,7 +157,7 @@ export function TimezoneSelector({ value, onChange }: TimezoneSelectorProps) {
           />
 
           {/* Dropdown Content */}
-          <div className="absolute z-20 mt-1 w-full bg-white border border-[#E2E8F0] rounded-lg shadow-lg overflow-hidden">
+          <div className="absolute z-20 mt-1 w-full bg-bg-surface border border-[#E2E8F0] rounded-lg shadow-lg overflow-hidden">
             {/* Search Input */}
             <div className="p-2 border-b border-[#E2E8F0]">
               <div className="relative">

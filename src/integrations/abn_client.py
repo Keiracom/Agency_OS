@@ -498,6 +498,8 @@ class ABNClient:
         trading_name: bool = True,
         business_name: bool = True,
         limit: int = 20,
+        active_only: bool = True,
+        entity_type_code: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         """
         Search businesses by name, optionally filter by state.
@@ -512,6 +514,14 @@ class ABNClient:
             trading_name: Include trading names in search
             business_name: Include ASIC business names in search
             limit: Maximum results to return (default 20, max 200)
+            active_only: Only return active ABNs (default True)
+            entity_type_code: Filter by entity type codes (e.g., ['PRV', 'PUB']):
+                - PRV: Private company
+                - PUB: Public company
+                - IND: Individual/Sole trader
+                - TRT: Trust (usually excluded for B2B)
+                - SUP: Super fund (usually excluded)
+                - OTH: Other
 
         Returns:
             List of matching business summaries with keys:
@@ -553,7 +563,8 @@ class ABNClient:
             "legalName": "Y" if legal_name else "N",
             "tradingName": "Y" if trading_name else "N",
             "businessName": "Y" if business_name else "N",
-            "activeABNsOnly": "Y",
+            "activeABNsOnly": "Y" if active_only else "N",
+            "entityTypeCode": ",".join(entity_type_code) if entity_type_code else "",
             "searchWidth": "typical",
             "minimumScore": "0",
             "maxSearchResults": str(min(limit, 200)),

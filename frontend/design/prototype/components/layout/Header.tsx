@@ -47,7 +47,7 @@ export function Header({
     .slice(0, 2);
 
   return (
-    <header className="h-16 bg-white border-b border-[#E2E8F0] flex items-center justify-between px-6">
+    <header className="h-16 bg-bg-surface border-b border-[#E2E8F0] flex items-center justify-between px-6">
       {/* Page Title */}
       <h1 className="text-2xl font-semibold text-[#1E293B]">{title}</h1>
 
@@ -67,7 +67,7 @@ export function Header({
         <button className="relative p-2 text-[#64748B] hover:text-[#1E293B] hover:bg-[#F8FAFC] rounded-lg transition-colors">
           <Bell className="h-5 w-5" />
           {notificationCount > 0 && (
-            <span className="absolute top-1 right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 bg-[#EF4444] text-white text-[10px] font-bold rounded-full">
+            <span className="absolute top-1 right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 bg-[#EF4444] text-text-primary text-[10px] font-bold rounded-full">
               {notificationCount > 99 ? "99+" : notificationCount}
             </span>
           )}
@@ -87,7 +87,7 @@ export function Header({
             />
           ) : (
             <div className="w-8 h-8 bg-[#3B82F6] rounded-full flex items-center justify-center">
-              <span className="text-xs font-semibold text-white">{initials}</span>
+              <span className="text-xs font-semibold text-text-primary">{initials}</span>
             </div>
           )}
           {/* Name */}

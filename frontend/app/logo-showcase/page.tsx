@@ -48,7 +48,7 @@ export default function LogoShowcasePage() {
                 <div>
                   <span className="text-xs text-gray-400 mb-2 block">Full Size</span>
                   <div className="flex flex-col items-center">
-                    <span className="text-5xl font-bold tracking-tight text-white">AOS</span>
+                    <span className="text-5xl font-bold tracking-tight text-text-primary">AOS</span>
                     <span className="text-sm font-light text-gray-400 tracking-widest uppercase mt-1">
                       Agency Operating System
                     </span>
@@ -57,7 +57,7 @@ export default function LogoShowcasePage() {
                 <div>
                   <span className="text-xs text-gray-400 mb-2 block">Nav Size</span>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-bold tracking-tight text-white">AOS</span>
+                    <span className="text-2xl font-bold tracking-tight text-text-primary">AOS</span>
                     <span className="text-xs font-light text-gray-500 tracking-wider">
                       Agency Operating System
                     </span>
@@ -72,7 +72,7 @@ export default function LogoShowcasePage() {
                 <div>
                   <span className="text-xs text-gray-500 mb-2 block">Full Size</span>
                   <div className="flex flex-col items-center">
-                    <span className="text-5xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    <span className="text-5xl font-bold tracking-tight bg-gradient-to-r from-amber to-amber bg-clip-text text-transparent">
                       AOS
                     </span>
                     <span className="text-sm font-light text-gray-600 tracking-widest uppercase mt-1">
@@ -83,7 +83,7 @@ export default function LogoShowcasePage() {
                 <div>
                   <span className="text-xs text-gray-500 mb-2 block">Nav Size</span>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    <span className="text-2xl font-bold tracking-tight bg-gradient-to-r from-amber to-amber bg-clip-text text-transparent">
                       AOS
                     </span>
                     <span className="text-xs font-light text-gray-500 tracking-wider">
@@ -99,7 +99,7 @@ export default function LogoShowcasePage() {
                 <div>
                   <span className="text-xs text-gray-400 mb-2 block">Full Size</span>
                   <div className="flex flex-col items-center">
-                    <span className="text-5xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                    <span className="text-5xl font-bold tracking-tight bg-gradient-to-r from-text-secondary to-amber bg-clip-text text-transparent">
                       AOS
                     </span>
                     <span className="text-sm font-light text-gray-400 tracking-widest uppercase mt-1">
@@ -110,7 +110,7 @@ export default function LogoShowcasePage() {
                 <div>
                   <span className="text-xs text-gray-400 mb-2 block">Nav Size</span>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                    <span className="text-2xl font-bold tracking-tight bg-gradient-to-r from-text-secondary to-amber bg-clip-text text-transparent">
                       AOS
                     </span>
                     <span className="text-xs font-light text-gray-500 tracking-wider">
@@ -135,8 +135,8 @@ export default function LogoShowcasePage() {
                 <div>
                   <span className="text-xs text-gray-500 mb-2 block">Full Size</span>
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-                      <span className="text-white font-bold text-lg">A</span>
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber to-amber flex items-center justify-center">
+                      <span className="text-text-primary font-bold text-lg">A</span>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-3xl font-bold tracking-tight text-black">AOS</span>
@@ -149,8 +149,8 @@ export default function LogoShowcasePage() {
                 <div>
                   <span className="text-xs text-gray-500 mb-2 block">Nav Size</span>
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-                      <span className="text-white font-bold text-sm">A</span>
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber to-amber flex items-center justify-center">
+                      <span className="text-text-primary font-bold text-sm">A</span>
                     </div>
                     <span className="text-xl font-bold tracking-tight text-black">AOS</span>
                   </div>
@@ -163,11 +163,11 @@ export default function LogoShowcasePage() {
                 <div>
                   <span className="text-xs text-gray-400 mb-2 block">Full Size</span>
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
-                      <span className="text-white font-bold text-lg">A</span>
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber to-amber flex items-center justify-center">
+                      <span className="text-text-primary font-bold text-lg">A</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-3xl font-bold tracking-tight text-white">AOS</span>
+                      <span className="text-3xl font-bold tracking-tight text-text-primary">AOS</span>
                       <span className="text-xs font-light text-gray-400 tracking-wider uppercase">
                         Agency Operating System
                       </span>
@@ -177,10 +177,10 @@ export default function LogoShowcasePage() {
                 <div>
                   <span className="text-xs text-gray-400 mb-2 block">Nav Size</span>
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
-                      <span className="text-white font-bold text-sm">A</span>
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber to-amber flex items-center justify-center">
+                      <span className="text-text-primary font-bold text-sm">A</span>
                     </div>
-                    <span className="text-xl font-bold tracking-tight text-white">AOS</span>
+                    <span className="text-xl font-bold tracking-tight text-text-primary">AOS</span>
                   </div>
                 </div>
               </div>
@@ -248,7 +248,7 @@ export default function LogoShowcasePage() {
                       <text x="24" y="29" textAnchor="middle" fill="white" fontWeight="bold" fontSize="16">A</text>
                     </svg>
                     <div className="flex flex-col">
-                      <span className="text-3xl font-bold tracking-tight text-white">AOS</span>
+                      <span className="text-3xl font-bold tracking-tight text-text-primary">AOS</span>
                       <span className="text-xs font-light text-gray-400 tracking-wider uppercase">
                         Agency Operating System
                       </span>
@@ -265,7 +265,7 @@ export default function LogoShowcasePage() {
                       />
                       <text x="24" y="29" textAnchor="middle" fill="white" fontWeight="bold" fontSize="16">A</text>
                     </svg>
-                    <span className="text-xl font-bold tracking-tight text-white">AOS</span>
+                    <span className="text-xl font-bold tracking-tight text-text-primary">AOS</span>
                   </div>
                 </div>
               </div>
@@ -333,7 +333,7 @@ export default function LogoShowcasePage() {
                       />
                     </svg>
                     <div className="flex flex-col">
-                      <span className="text-3xl font-bold tracking-tight text-white">AOS</span>
+                      <span className="text-3xl font-bold tracking-tight text-text-primary">AOS</span>
                       <span className="text-xs font-light text-gray-400 tracking-wider uppercase">
                         Agency Operating System
                       </span>
@@ -350,7 +350,7 @@ export default function LogoShowcasePage() {
                         fillRule="evenodd"
                       />
                     </svg>
-                    <span className="text-xl font-bold tracking-tight text-white">AOS</span>
+                    <span className="text-xl font-bold tracking-tight text-text-primary">AOS</span>
                   </div>
                 </div>
               </div>
@@ -449,8 +449,8 @@ export default function LogoShowcasePage() {
                   <span className="text-xs text-gray-500 mb-2 block">Full Size</span>
                   <div className="flex flex-col items-center">
                     <div className="flex flex-col items-center leading-none">
-                      <span className="text-4xl font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">A</span>
-                      <span className="text-3xl font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent -mt-2">OS</span>
+                      <span className="text-4xl font-black bg-gradient-to-r from-amber to-amber bg-clip-text text-transparent">A</span>
+                      <span className="text-3xl font-black bg-gradient-to-r from-amber to-amber bg-clip-text text-transparent -mt-2">OS</span>
                     </div>
                     <span className="text-xs font-light text-gray-500 tracking-wider uppercase mt-2">
                       Agency Operating System
@@ -461,8 +461,8 @@ export default function LogoShowcasePage() {
                   <span className="text-xs text-gray-500 mb-2 block">Nav Size</span>
                   <div className="flex items-center gap-2">
                     <div className="flex flex-col items-center leading-none">
-                      <span className="text-xl font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">A</span>
-                      <span className="text-base font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent -mt-1">OS</span>
+                      <span className="text-xl font-black bg-gradient-to-r from-amber to-amber bg-clip-text text-transparent">A</span>
+                      <span className="text-base font-black bg-gradient-to-r from-amber to-amber bg-clip-text text-transparent -mt-1">OS</span>
                     </div>
                     <span className="text-sm font-medium text-gray-700">Agency OS</span>
                   </div>
@@ -476,8 +476,8 @@ export default function LogoShowcasePage() {
                   <span className="text-xs text-gray-400 mb-2 block">Full Size</span>
                   <div className="flex flex-col items-center">
                     <div className="flex flex-col items-center leading-none">
-                      <span className="text-4xl font-black bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">A</span>
-                      <span className="text-3xl font-black bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent -mt-2">OS</span>
+                      <span className="text-4xl font-black bg-gradient-to-r from-text-secondary to-amber bg-clip-text text-transparent">A</span>
+                      <span className="text-3xl font-black bg-gradient-to-r from-text-secondary to-amber bg-clip-text text-transparent -mt-2">OS</span>
                     </div>
                     <span className="text-xs font-light text-gray-400 tracking-wider uppercase mt-2">
                       Agency Operating System
@@ -488,8 +488,8 @@ export default function LogoShowcasePage() {
                   <span className="text-xs text-gray-400 mb-2 block">Nav Size</span>
                   <div className="flex items-center gap-2">
                     <div className="flex flex-col items-center leading-none">
-                      <span className="text-xl font-black bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">A</span>
-                      <span className="text-base font-black bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent -mt-1">OS</span>
+                      <span className="text-xl font-black bg-gradient-to-r from-text-secondary to-amber bg-clip-text text-transparent">A</span>
+                      <span className="text-base font-black bg-gradient-to-r from-text-secondary to-amber bg-clip-text text-transparent -mt-1">OS</span>
                     </div>
                     <span className="text-sm font-medium text-gray-300">Agency OS</span>
                   </div>
@@ -581,20 +581,20 @@ export default function LogoShowcasePage() {
             <LogoCard label="D1 - Circle">
               <div className="flex items-center gap-6">
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-                    <span className="text-white font-bold text-2xl">A</span>
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center">
+                    <span className="text-text-primary font-bold text-2xl">A</span>
                   </div>
                   <span className="text-xs text-gray-500">64px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-                    <span className="text-white font-bold text-lg">A</span>
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center">
+                    <span className="text-text-primary font-bold text-lg">A</span>
                   </div>
                   <span className="text-xs text-gray-500">40px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-                    <span className="text-white font-bold text-xs">A</span>
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center">
+                    <span className="text-text-primary font-bold text-xs">A</span>
                   </div>
                   <span className="text-xs text-gray-500">24px</span>
                 </div>
@@ -604,20 +604,20 @@ export default function LogoShowcasePage() {
             <LogoCardDark label="D1 - Circle (Dark)">
               <div className="flex items-center gap-6">
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
-                    <span className="text-white font-bold text-2xl">A</span>
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center">
+                    <span className="text-text-primary font-bold text-2xl">A</span>
                   </div>
                   <span className="text-xs text-gray-400">64px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
-                    <span className="text-white font-bold text-lg">A</span>
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center">
+                    <span className="text-text-primary font-bold text-lg">A</span>
                   </div>
                   <span className="text-xs text-gray-400">40px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
-                    <span className="text-white font-bold text-xs">A</span>
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center">
+                    <span className="text-text-primary font-bold text-xs">A</span>
                   </div>
                   <span className="text-xs text-gray-400">24px</span>
                 </div>
@@ -628,20 +628,20 @@ export default function LogoShowcasePage() {
             <LogoCard label="D2 - Rounded Square">
               <div className="flex items-center gap-6">
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-                    <span className="text-white font-bold text-2xl">A</span>
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber to-amber flex items-center justify-center">
+                    <span className="text-text-primary font-bold text-2xl">A</span>
                   </div>
                   <span className="text-xs text-gray-500">64px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-                    <span className="text-white font-bold text-lg">A</span>
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber to-amber flex items-center justify-center">
+                    <span className="text-text-primary font-bold text-lg">A</span>
                   </div>
                   <span className="text-xs text-gray-500">40px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-                    <span className="text-white font-bold text-xs">A</span>
+                  <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber to-amber flex items-center justify-center">
+                    <span className="text-text-primary font-bold text-xs">A</span>
                   </div>
                   <span className="text-xs text-gray-500">24px</span>
                 </div>
@@ -651,20 +651,20 @@ export default function LogoShowcasePage() {
             <LogoCardDark label="D2 - Rounded Square (Dark)">
               <div className="flex items-center gap-6">
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
-                    <span className="text-white font-bold text-2xl">A</span>
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber to-amber flex items-center justify-center">
+                    <span className="text-text-primary font-bold text-2xl">A</span>
                   </div>
                   <span className="text-xs text-gray-400">64px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
-                    <span className="text-white font-bold text-lg">A</span>
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber to-amber flex items-center justify-center">
+                    <span className="text-text-primary font-bold text-lg">A</span>
                   </div>
                   <span className="text-xs text-gray-400">40px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
-                    <span className="text-white font-bold text-xs">A</span>
+                  <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber to-amber flex items-center justify-center">
+                    <span className="text-text-primary font-bold text-xs">A</span>
                   </div>
                   <span className="text-xs text-gray-400">24px</span>
                 </div>
@@ -741,19 +741,19 @@ export default function LogoShowcasePage() {
               <div className="flex items-center gap-6">
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-16 h-16 rounded-2xl bg-black flex items-center justify-center">
-                    <span className="text-white font-bold text-2xl">A</span>
+                    <span className="text-text-primary font-bold text-2xl">A</span>
                   </div>
                   <span className="text-xs text-gray-500">64px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center">
-                    <span className="text-white font-bold text-lg">A</span>
+                    <span className="text-text-primary font-bold text-lg">A</span>
                   </div>
                   <span className="text-xs text-gray-500">40px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-6 h-6 rounded-lg bg-black flex items-center justify-center">
-                    <span className="text-white font-bold text-xs">A</span>
+                    <span className="text-text-primary font-bold text-xs">A</span>
                   </div>
                   <span className="text-xs text-gray-500">24px</span>
                 </div>
@@ -763,19 +763,19 @@ export default function LogoShowcasePage() {
             <LogoCardDark label="D4 - Solid White">
               <div className="flex items-center gap-6">
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-2xl bg-bg-surface flex items-center justify-center">
                     <span className="text-black font-bold text-2xl">A</span>
                   </div>
                   <span className="text-xs text-gray-400">64px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-bg-surface flex items-center justify-center">
                     <span className="text-black font-bold text-lg">A</span>
                   </div>
                   <span className="text-xs text-gray-400">40px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-white flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-lg bg-bg-surface flex items-center justify-center">
                     <span className="text-black font-bold text-xs">A</span>
                   </div>
                   <span className="text-xs text-gray-400">24px</span>
@@ -786,7 +786,7 @@ export default function LogoShowcasePage() {
         </section>
 
         {/* Summary */}
-        <section className="bg-white rounded-xl p-6 shadow-sm border">
+        <section className="bg-bg-surface rounded-xl p-6 shadow-sm border">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">Summary</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
             <div>
@@ -814,7 +814,7 @@ export default function LogoShowcasePage() {
 
 function LogoCard({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border">
+    <div className="bg-bg-surface rounded-xl p-6 shadow-sm border">
       <span className="text-sm font-medium text-gray-700 mb-4 block">{label}</span>
       {children}
     </div>

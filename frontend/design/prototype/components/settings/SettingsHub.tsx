@@ -90,7 +90,7 @@ function PermissionModeCard({
       className={`flex-1 p-4 rounded-lg border-2 text-left transition-all ${
         isSelected
           ? "border-[#3B82F6] bg-[#EFF6FF]"
-          : "border-[#E2E8F0] bg-white hover:border-[#94A3B8]"
+          : "border-[#E2E8F0] bg-bg-surface hover:border-[#94A3B8]"
       }`}
     >
       <div className="flex items-center gap-3 mb-2">
@@ -100,7 +100,7 @@ function PermissionModeCard({
           }`}
         >
           <Icon
-            className={`h-4 w-4 ${isSelected ? "text-white" : "text-[#64748B]"}`}
+            className={`h-4 w-4 ${isSelected ? "text-text-primary" : "text-[#64748B]"}`}
           />
         </div>
         <span
@@ -151,12 +151,12 @@ export function SettingsHub() {
         {/* ICP Link Card */}
         <button
           type="button"
-          className="w-full bg-white rounded-xl border border-[#E2E8F0] shadow-sm p-6 text-left hover:border-[#3B82F6] hover:shadow-md transition-all group"
+          className="w-full bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm p-6 text-left hover:border-[#3B82F6] hover:shadow-md transition-all group"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-[#EFF6FF] rounded-lg group-hover:bg-[#3B82F6] transition-colors">
-                <Target className="h-6 w-6 text-[#3B82F6] group-hover:text-white transition-colors" />
+                <Target className="h-6 w-6 text-[#3B82F6] group-hover:text-text-primary transition-colors" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-[#1E293B]">
@@ -172,7 +172,7 @@ export function SettingsHub() {
         </button>
 
         {/* Organization Card */}
-        <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+        <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-[#E2E8F0]">
             <div className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-[#64748B]" />
@@ -214,7 +214,7 @@ export function SettingsHub() {
               </div>
             </div>
             <div className="mt-6">
-              <button className="px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-sm font-medium rounded-lg transition-colors">
+              <button className="px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-text-primary text-sm font-medium rounded-lg transition-colors">
                 Save Changes
               </button>
             </div>
@@ -222,7 +222,7 @@ export function SettingsHub() {
         </div>
 
         {/* Permission Mode Card */}
-        <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+        <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-[#E2E8F0]">
             <div className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-[#64748B]" />
@@ -273,7 +273,7 @@ export function SettingsHub() {
         />
 
         {/* Integrations Card */}
-        <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+        <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-[#E2E8F0]">
             <h2 className="text-sm font-semibold text-[#64748B] uppercase tracking-wider">
               Integrations
@@ -294,7 +294,7 @@ export function SettingsHub() {
         </div>
 
         {/* Danger Zone */}
-        <div className="bg-white rounded-xl border border-[#EF4444] shadow-sm overflow-hidden">
+        <div className="bg-bg-surface rounded-xl border border-[#EF4444] shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-[#FEE2E2] bg-[#FEF2F2]">
             <h2 className="text-sm font-semibold text-[#DC2626] uppercase tracking-wider">
               Danger Zone
@@ -313,7 +313,7 @@ export function SettingsHub() {
               </div>
               <button
                 type="button"
-                className="flex items-center gap-2 px-4 py-2 bg-[#EF4444] hover:bg-[#DC2626] text-white text-sm font-medium rounded-lg transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-[#EF4444] hover:bg-[#DC2626] text-text-primary text-sm font-medium rounded-lg transition-colors"
               >
                 <Trash2 className="h-4 w-4" />
                 Delete

@@ -14,11 +14,11 @@ export default function HowItWorksClient() {
   return (
     <main className="min-h-screen bg-[#fafafa] text-[#1d1d1f] antialiased">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-white/70 border-b border-black/5">
+      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-bg-surface/70 border-b border-black/5">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center">
-              <span className="text-white font-bold text-sm">A</span>
+              <span className="text-text-primary font-bold text-sm">A</span>
             </div>
             <span className="font-semibold text-lg tracking-tight">Agency OS</span>
           </Link>
@@ -32,7 +32,7 @@ export default function HowItWorksClient() {
             <Link href="/login" className="text-sm text-[#1d1d1f]/60 hover:text-[#1d1d1f] transition-colors hidden sm:block">
               Sign in
             </Link>
-            <Link href="/#waitlist" className="text-sm font-medium px-4 py-2 rounded-full bg-[#1d1d1f] text-white hover:bg-[#1d1d1f]/90 transition-all hover:scale-105">
+            <Link href="/#waitlist" className="text-sm font-medium px-4 py-2 rounded-full bg-[#1d1d1f] text-text-primary hover:bg-[#1d1d1f]/90 transition-all hover:scale-105">
               Join Waitlist
             </Link>
           </div>
@@ -55,13 +55,13 @@ export default function HowItWorksClient() {
       </section>
 
       {/* Step 1: ICP Discovery */}
-      <section className="px-6 py-24 bg-white">
+      <section className="px-6 py-24 bg-bg-surface">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-2 gap-16 items-center">
             <ScrollReveal animation="fade-right">
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0066CC]/10 text-[#0066CC] text-sm font-medium mb-6">
-                  <span className="w-6 h-6 rounded-full bg-[#0066CC] text-white flex items-center justify-center text-xs font-bold">1</span>
+                  <span className="w-6 h-6 rounded-full bg-[#0066CC] text-text-primary flex items-center justify-center text-xs font-bold">1</span>
                   <span>ICP Discovery</span>
                 </div>
                 <h2 className="text-4xl font-semibold tracking-tight mb-4">
@@ -78,7 +78,7 @@ export default function HowItWorksClient() {
                     "Decision-maker titles you typically work with",
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-3">
-                      <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-5 h-5 text-amber mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                       <span className="text-[#1d1d1f]/70">{item}</span>
@@ -89,7 +89,7 @@ export default function HowItWorksClient() {
             </ScrollReveal>
             <ScrollReveal animation="fade-left" delay={100}>
               <div className="bg-[#f5f5f7] rounded-2xl p-8 border border-black/5">
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-black/5">
+                <div className="bg-bg-surface rounded-xl p-6 shadow-sm border border-black/5">
                   <p className="text-sm text-[#1d1d1f]/40 uppercase tracking-wider mb-4">Extracted ICP</p>
                   <div className="space-y-4">
                     <div>
@@ -129,10 +129,10 @@ export default function HowItWorksClient() {
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-2 gap-16 items-center">
             <ScrollReveal animation="fade-right" className="order-2 md:order-1">
-              <div className="bg-white rounded-2xl p-8 border border-black/5 shadow-sm">
+              <div className="bg-bg-surface rounded-2xl p-8 border border-black/5 shadow-sm">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber to-green-600 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                   </div>
@@ -152,7 +152,7 @@ export default function HowItWorksClient() {
                         <p className="font-medium text-sm">{lead.name}</p>
                         <p className="text-xs text-[#1d1d1f]/50">{lead.title} at {lead.company}</p>
                       </div>
-                      <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                      <span className="text-xs font-medium text-amber bg-green-50 px-2 py-1 rounded-full">
                         {lead.confidence} match
                       </span>
                     </div>
@@ -164,7 +164,7 @@ export default function HowItWorksClient() {
             <ScrollReveal animation="fade-left" delay={100} className="order-1 md:order-2">
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0066CC]/10 text-[#0066CC] text-sm font-medium mb-6">
-                  <span className="w-6 h-6 rounded-full bg-[#0066CC] text-white flex items-center justify-center text-xs font-bold">2</span>
+                  <span className="w-6 h-6 rounded-full bg-[#0066CC] text-text-primary flex items-center justify-center text-xs font-bold">2</span>
                   <span>Lead Enrichment</span>
                 </div>
                 <h2 className="text-4xl font-semibold tracking-tight mb-4">
@@ -181,7 +181,7 @@ export default function HowItWorksClient() {
                     "Company firmographics for personalization",
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-3">
-                      <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-5 h-5 text-amber mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                       <span className="text-[#1d1d1f]/70">{item}</span>
@@ -196,13 +196,13 @@ export default function HowItWorksClient() {
 
 
       {/* Step 3: ALS Scoring */}
-      <section className="px-6 py-24 bg-white">
+      <section className="px-6 py-24 bg-bg-surface">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-2 gap-16 items-center">
             <ScrollReveal animation="fade-right">
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0066CC]/10 text-[#0066CC] text-sm font-medium mb-6">
-                  <span className="w-6 h-6 rounded-full bg-[#0066CC] text-white flex items-center justify-center text-xs font-bold">3</span>
+                  <span className="w-6 h-6 rounded-full bg-[#0066CC] text-text-primary flex items-center justify-center text-xs font-bold">3</span>
                   <span>ALS Scoring</span>
                 </div>
                 <h2 className="text-4xl font-semibold tracking-tight mb-4">
@@ -221,7 +221,7 @@ export default function HowItWorksClient() {
                   ].map((dim, i) => (
                     <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-[#f5f5f7]">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center text-white text-xs font-bold">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center text-text-primary text-xs font-bold">
                           {dim.points.split(' ')[0]}
                         </div>
                         <div>
@@ -236,24 +236,24 @@ export default function HowItWorksClient() {
               </div>
             </ScrollReveal>
             <ScrollReveal animation="fade-left" delay={100}>
-              <div className="bg-[#1d1d1f] rounded-2xl p-8 text-white">
-                <p className="text-sm text-white/40 uppercase tracking-wider mb-6">Lead Tiers</p>
+              <div className="bg-[#1d1d1f] rounded-2xl p-8 text-text-primary">
+                <p className="text-sm text-text-primary/40 uppercase tracking-wider mb-6">Lead Tiers</p>
                 <div className="space-y-4">
                   {[
-                    { tier: "Hot", range: "85-100", color: "from-red-500 to-orange-500", channels: "All 5 channels" },
+                    { tier: "Hot", range: "85-100", color: "from-amber to-amber-light", channels: "All 5 channels" },
                     { tier: "Warm", range: "60-84", color: "from-orange-400 to-yellow-400", channels: "Email, LinkedIn, Voice" },
-                    { tier: "Cool", range: "35-59", color: "from-blue-400 to-cyan-400", channels: "Email, LinkedIn" },
+                    { tier: "Cool", range: "35-59", color: "from-text-secondary to-amber", channels: "Email, LinkedIn" },
                     { tier: "Cold", range: "20-34", color: "from-gray-400 to-gray-500", channels: "Email only" },
                   ].map((t, i) => (
-                    <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+                    <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-bg-surface/5 border border-white/10">
                       <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${t.color} flex items-center justify-center font-bold`}>
                         {t.range.split('-')[0]}+
                       </div>
                       <div className="flex-1">
                         <p className="font-medium">{t.tier} Lead</p>
-                        <p className="text-sm text-white/50">{t.channels}</p>
+                        <p className="text-sm text-text-primary/50">{t.channels}</p>
                       </div>
-                      <span className="text-sm text-white/40">{t.range}</span>
+                      <span className="text-sm text-text-primary/40">{t.range}</span>
                     </div>
                   ))}
                 </div>
@@ -277,10 +277,10 @@ export default function HowItWorksClient() {
                   { icon: "📬", name: "Direct Mail", desc: "Postcards + letters", status: "Active" },
                   { icon: "🧠", name: "AI Content", desc: "Per-prospect copy", status: "Learning" },
                 ].map((ch, i) => (
-                  <div key={i} className="p-4 rounded-xl bg-white border border-black/5 shadow-sm">
+                  <div key={i} className="p-4 rounded-xl bg-bg-surface border border-black/5 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-2xl">{ch.icon}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${ch.status === 'Active' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${ch.status === 'Active' ? 'bg-amber-glow text-amber' : 'bg-amber-glow text-text-secondary'}`}>
                         {ch.status}
                       </span>
                     </div>
@@ -293,7 +293,7 @@ export default function HowItWorksClient() {
             <ScrollReveal animation="fade-left" delay={100} className="order-1 md:order-2">
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0066CC]/10 text-[#0066CC] text-sm font-medium mb-6">
-                  <span className="w-6 h-6 rounded-full bg-[#0066CC] text-white flex items-center justify-center text-xs font-bold">4</span>
+                  <span className="w-6 h-6 rounded-full bg-[#0066CC] text-text-primary flex items-center justify-center text-xs font-bold">4</span>
                   <span>Multi-Channel Outreach</span>
                 </div>
                 <h2 className="text-4xl font-semibold tracking-tight mb-4">
@@ -302,7 +302,7 @@ export default function HowItWorksClient() {
                 <p className="text-lg text-[#1d1d1f]/60 mb-6 leading-relaxed">
                   Each channel is coordinated to maximize touchpoints without overwhelming prospects. Hot leads get all channels. Cool leads get email-first.
                 </p>
-                <div className="p-4 rounded-xl bg-white border border-black/5">
+                <div className="p-4 rounded-xl bg-bg-surface border border-black/5">
                   <p className="text-sm font-medium mb-3">Example Hot Lead sequence:</p>
                   <div className="space-y-2 text-sm">
                     {[
@@ -326,13 +326,13 @@ export default function HowItWorksClient() {
       </section>
 
       {/* Step 5: Meetings & Conversion */}
-      <section className="px-6 py-24 bg-white">
+      <section className="px-6 py-24 bg-bg-surface">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-2 gap-16 items-center">
             <ScrollReveal animation="fade-right">
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0066CC]/10 text-[#0066CC] text-sm font-medium mb-6">
-                  <span className="w-6 h-6 rounded-full bg-[#0066CC] text-white flex items-center justify-center text-xs font-bold">5</span>
+                  <span className="w-6 h-6 rounded-full bg-[#0066CC] text-text-primary flex items-center justify-center text-xs font-bold">5</span>
                   <span>Meetings & Conversion</span>
                 </div>
                 <h2 className="text-4xl font-semibold tracking-tight mb-4">
@@ -350,7 +350,7 @@ export default function HowItWorksClient() {
                     "Full pipeline visibility from first touch to close",
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-3">
-                      <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-5 h-5 text-amber mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                       <span className="text-[#1d1d1f]/70">{item}</span>
@@ -360,8 +360,8 @@ export default function HowItWorksClient() {
               </div>
             </ScrollReveal>
             <ScrollReveal animation="fade-left" delay={100}>
-              <div className="bg-gradient-to-br from-[#0066CC] to-[#5856D6] rounded-2xl p-8 text-white">
-                <p className="text-sm text-white/60 uppercase tracking-wider mb-6">This Month's Results</p>
+              <div className="bg-gradient-to-br from-[#0066CC] to-[#5856D6] rounded-2xl p-8 text-text-primary">
+                <p className="text-sm text-text-primary/60 uppercase tracking-wider mb-6">This Month's Results</p>
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   {[
                     { value: "2,847", label: "Leads Contacted" },
@@ -369,14 +369,14 @@ export default function HowItWorksClient() {
                     { value: "47", label: "Meetings Booked" },
                     { value: "$284K", label: "Pipeline Value" },
                   ].map((stat, i) => (
-                    <div key={i} className="p-4 rounded-xl bg-white/10 backdrop-blur">
+                    <div key={i} className="p-4 rounded-xl bg-bg-surface/10 backdrop-blur">
                       <p className="text-2xl font-bold">{stat.value}</p>
-                      <p className="text-sm text-white/60">{stat.label}</p>
+                      <p className="text-sm text-text-primary/60">{stat.label}</p>
                     </div>
                   ))}
                 </div>
-                <div className="p-4 rounded-xl bg-white/10 backdrop-blur">
-                  <p className="text-sm text-white/60 mb-2">Conversion Intelligence Insight</p>
+                <div className="p-4 rounded-xl bg-bg-surface/10 backdrop-blur">
+                  <p className="text-sm text-text-primary/60 mb-2">Conversion Intelligence Insight</p>
                   <p className="font-medium">"Healthcare leads convert 2.3x better when contacted on Tuesday mornings with case study content."</p>
                 </div>
               </div>
@@ -403,21 +403,21 @@ export default function HowItWorksClient() {
       </section>
 
       {/* Footer */}
-      <footer className="px-6 py-12 bg-[#1d1d1f] text-white">
+      <footer className="px-6 py-12 bg-[#1d1d1f] text-text-primary">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <Link href="/" className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center">
-                <span className="text-white font-bold text-sm">A</span>
+                <span className="text-text-primary font-bold text-sm">A</span>
               </div>
               <span className="font-semibold text-lg">Agency OS</span>
             </Link>
-            <div className="flex items-center gap-8 text-sm text-white/60">
-              <Link href="/how-it-works" className="hover:text-white transition-colors">How it Works</Link>
-              <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
-              <Link href="/about" className="hover:text-white transition-colors">About</Link>
+            <div className="flex items-center gap-8 text-sm text-text-primary/60">
+              <Link href="/how-it-works" className="hover:text-text-primary transition-colors">How it Works</Link>
+              <Link href="/pricing" className="hover:text-text-primary transition-colors">Pricing</Link>
+              <Link href="/about" className="hover:text-text-primary transition-colors">About</Link>
             </div>
-            <p className="text-sm text-white/40">© 2025 Agency OS. Made in Australia 🇦🇺</p>
+            <p className="text-sm text-text-primary/40">© 2025 Agency OS. Made in Australia 🇦🇺</p>
           </div>
         </div>
       </footer>

@@ -292,7 +292,7 @@ export default function NotificationsSettingsPage() {
 
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4 text-green-500" />
+                        <TrendingUp className="h-4 w-4 text-amber" />
                         <div className="space-y-0.5">
                           <Label htmlFor="email_conversion_alerts">Conversion Alerts</Label>
                           <p className="text-sm text-muted-foreground">
@@ -309,7 +309,7 @@ export default function NotificationsSettingsPage() {
 
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-blue-500" />
+                        <Calendar className="h-4 w-4 text-text-secondary" />
                         <div className="space-y-0.5">
                           <Label htmlFor="email_campaign_alerts">Campaign Alerts</Label>
                           <p className="text-sm text-muted-foreground">
@@ -326,7 +326,7 @@ export default function NotificationsSettingsPage() {
 
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4 text-red-500" />
+                        <AlertCircle className="h-4 w-4 text-amber" />
                         <div className="space-y-0.5">
                           <Label htmlFor="email_system_alerts">System Alerts</Label>
                           <p className="text-sm text-muted-foreground">

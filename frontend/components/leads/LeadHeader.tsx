@@ -10,9 +10,9 @@ interface LeadHeaderProps {
 }
 
 const tierGradients = {
-  hot: 'from-tier-hot to-orange-500',
+  hot: 'from-tier-hot to-amber-light',
   warm: 'from-tier-warm to-yellow-400',
-  cool: 'from-tier-cool to-cyan-400',
+  cool: 'from-tier-cool to-amber',
   cold: 'from-tier-cold to-slate-500',
 };
 
@@ -49,7 +49,7 @@ export function LeadHeader({ lead }: LeadHeaderProps) {
         <div className="flex gap-6 flex-1">
           {/* Avatar with tier gradient */}
           <div
-            className={`w-20 h-20 rounded-2xl flex items-center justify-center text-white font-bold text-2xl bg-gradient-to-br ${tierGradients[lead.tier]} shrink-0 shadow-lg`}
+            className={`w-20 h-20 rounded-2xl flex items-center justify-center text-text-primary font-bold text-2xl bg-gradient-to-br ${tierGradients[lead.tier]} shrink-0 shadow-lg`}
           >
             {initials}
           </div>
@@ -120,7 +120,7 @@ export function LeadHeader({ lead }: LeadHeaderProps) {
 
       {/* Action Buttons Row */}
       <div className="mt-6 pt-6 border-t border-border-subtle flex gap-3">
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-primary to-accent-blue text-white font-medium rounded-lg hover:opacity-90 transition-opacity">
+        <button className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-primary to-accent-blue text-text-primary font-medium rounded-lg hover:opacity-90 transition-opacity">
           <Calendar className="w-4 h-4" />
           Book Meeting
         </button>

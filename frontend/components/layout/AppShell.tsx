@@ -68,7 +68,7 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
         {/* Logo */}
         <div className="mb-8">
           <div className="w-[42px] h-[42px] bg-gradient-to-br from-accent-primary to-accent-blue rounded-xl flex items-center justify-center shadow-glow-sm">
-            <Check className="w-5 h-5 text-white" strokeWidth={3} />
+            <Check className="w-5 h-5 text-text-primary" strokeWidth={3} />
           </div>
         </div>
 
@@ -130,7 +130,7 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
           title="Maya AI Assistant"
         >
           {/* Avatar placeholder - using "M" for Maya */}
-          <span className="text-white font-bold text-lg">M</span>
+          <span className="text-text-primary font-bold text-lg">M</span>
           {/* Online indicator */}
           <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-status-success rounded-full border-2 border-bg-void">
             <span className="absolute inset-0 bg-status-success rounded-full animate-ping opacity-75" />

@@ -46,21 +46,21 @@ const defaultActions: QuickAction[] = [
     id: "new-campaign",
     label: "New Campaign",
     icon: <IconRocket className="h-5 w-5" />,
-    color: "from-cyan-500 to-blue-500",
+    color: "from-amber to-amber",
     href: "/dashboard/campaigns/new",
   },
   {
     id: "add-leads",
     label: "Add Leads",
     icon: <IconUsers className="h-5 w-5" />,
-    color: "from-emerald-500 to-teal-500",
+    color: "from-amber to-amber",
     href: "/dashboard/leads/import",
   },
   {
     id: "send-email",
     label: "Send Email",
     icon: <IconMail className="h-5 w-5" />,
-    color: "from-violet-500 to-purple-500",
+    color: "from-amber to-amber",
     href: "/dashboard/outreach/compose",
   },
   {
@@ -74,7 +74,7 @@ const defaultActions: QuickAction[] = [
     id: "view-reports",
     label: "View Reports",
     icon: <IconChartBar className="h-5 w-5" />,
-    color: "from-pink-500 to-rose-500",
+    color: "from-amber-light to-rose-500",
     href: "/dashboard/analytics",
   },
 ];
@@ -192,7 +192,7 @@ export function QuickActionsPanel({
                     // Glassmorphic styling
                     "bg-neutral-900/90 backdrop-blur-xl",
                     "border border-white/10",
-                    "text-white shadow-lg shadow-black/30",
+                    "text-text-primary shadow-lg shadow-black/30",
                     "whitespace-nowrap"
                   )}
                 >
@@ -215,7 +215,7 @@ export function QuickActionsPanel({
                     `bg-gradient-to-br ${action.color}`,
                     // Glassmorphic overlay
                     "before:absolute before:inset-0 before:rounded-full",
-                    "before:bg-white/10 before:opacity-0 before:transition-opacity",
+                    "before:bg-bg-surface/10 before:opacity-0 before:transition-opacity",
                     "hover:before:opacity-100",
                     // Shadow and glow
                     "shadow-lg shadow-black/30",
@@ -227,7 +227,7 @@ export function QuickActionsPanel({
                   )}
                   aria-label={action.label}
                 >
-                  <span className="relative z-10 text-white">
+                  <span className="relative z-10 text-text-primary">
                     {action.icon}
                   </span>
                 </a>
@@ -247,13 +247,13 @@ export function QuickActionsPanel({
           "bg-neutral-900/90 backdrop-blur-xl",
           "border border-white/10",
           // Cyan accent glow on hover
-          "hover:border-cyan-500/50",
+          "hover:border-amber/50",
           "hover:shadow-[0_0_30px_rgba(6,182,212,0.3)]",
           // Shadow
           "shadow-2xl shadow-black/50",
           // Ring
           "ring-1 ring-inset ring-white/5",
-          "focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+          "focus:outline-none focus:ring-2 focus:ring-amber/50"
         )}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
@@ -275,7 +275,7 @@ export function QuickActionsPanel({
                 exit={{ opacity: 0, scale: 0.5 }}
                 transition={{ duration: 0.1 }}
               >
-                <IconX className="h-6 w-6 text-white" />
+                <IconX className="h-6 w-6 text-text-primary" />
               </motion.div>
             ) : (
               <motion.div
@@ -285,7 +285,7 @@ export function QuickActionsPanel({
                 exit={{ opacity: 0, scale: 0.5 }}
                 transition={{ duration: 0.1 }}
               >
-                <IconPlus className="h-6 w-6 text-cyan-400" />
+                <IconPlus className="h-6 w-6 text-amber" />
               </motion.div>
             )}
           </AnimatePresence>
@@ -294,7 +294,7 @@ export function QuickActionsPanel({
         {/* Pulse ring effect when closed */}
         {!isOpen && (
           <motion.span
-            className="absolute inset-0 rounded-full border-2 border-cyan-500/30"
+            className="absolute inset-0 rounded-full border-2 border-amber/30"
             initial={{ scale: 1, opacity: 0.5 }}
             animate={{
               scale: [1, 1.3, 1.3],

@@ -49,8 +49,8 @@ const mockSuppressionList = [
 ];
 
 const reasonColors = {
-  spam: "bg-red-500/10 text-red-700 border-red-500/20",
-  unsubscribe: "bg-blue-500/10 text-blue-700 border-blue-500/20",
+  spam: "bg-amber-glow text-error border-amber/20",
+  unsubscribe: "bg-bg-elevated/10 text-amber border-default/20",
   bounce: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
   manual: "bg-gray-500/10 text-gray-700 border-gray-500/20",
 };
@@ -167,7 +167,7 @@ export default function AdminSuppressionPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
+            <div className="text-2xl font-bold text-amber">
               {mockSuppressionList.filter((s) => s.reason === "spam").length}
             </div>
           </CardContent>
@@ -179,7 +179,7 @@ export default function AdminSuppressionPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-text-secondary">
               {mockSuppressionList.filter((s) => s.reason === "unsubscribe").length}
             </div>
           </CardContent>
@@ -263,7 +263,7 @@ export default function AdminSuppressionPage() {
                     {formatDate(item.addedAt)}
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-amber">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </TableCell>

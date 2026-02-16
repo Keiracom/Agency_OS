@@ -132,11 +132,11 @@ const SUMMARY_STATS = {
 function getStatusStyles(status: "active" | "paused" | "completed") {
   switch (status) {
     case "active":
-      return "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+      return "bg-amber-glow text-amber border-amber/30";
     case "paused":
       return "bg-amber-500/10 text-amber-400 border-amber-500/30";
     case "completed":
-      return "bg-violet-500/10 text-violet-400 border-violet-500/30";
+      return "bg-amber/10 text-amber border-amber/30";
   }
 }
 
@@ -145,13 +145,13 @@ function ChannelIcon({ channel }: { channel: string }) {
   const iconClasses = "w-4 h-4";
   switch (channel) {
     case "email":
-      return <Mail className={`${iconClasses} text-blue-400`} />;
+      return <Mail className={`${iconClasses} text-text-secondary`} />;
     case "linkedin":
-      return <Linkedin className={`${iconClasses} text-sky-400`} />;
+      return <Linkedin className={`${iconClasses} text-amber`} />;
     case "sms":
-      return <MessageSquare className={`${iconClasses} text-emerald-400`} />;
+      return <MessageSquare className={`${iconClasses} text-amber`} />;
     case "voice":
-      return <Phone className={`${iconClasses} text-violet-400`} />;
+      return <Phone className={`${iconClasses} text-amber`} />;
     case "mail":
       return <Send className={`${iconClasses} text-orange-400`} />;
     default:
@@ -193,7 +193,7 @@ export default function CampaignsPage() {
             </button>
             <Link
               href="/dashboard/campaigns/new"
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white gradient-premium hover:opacity-90 transition-opacity"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-text-primary gradient-premium hover:opacity-90 transition-opacity"
             >
               <Plus className="w-4 h-4" />
               New Campaign
@@ -273,7 +273,7 @@ export default function CampaignsPage() {
                         <Pause className="w-4 h-4" />
                       </button>
                     ) : campaign.status === "paused" ? (
-                      <button className="p-1.5 rounded-lg text-text-muted hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors">
+                      <button className="p-1.5 rounded-lg text-text-muted hover:text-amber hover:bg-amber-glow transition-colors">
                         <Play className="w-4 h-4" />
                       </button>
                     ) : null}

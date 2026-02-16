@@ -33,11 +33,11 @@ type SourceType = "hackernews" | "producthunt" | "github" | "manual" | "conversa
 
 const sourceConfig: Record<string, { icon: typeof Newspaper; label: string; color: string }> = {
   hackernews: { icon: Newspaper, label: "Hacker News", color: "text-orange-500" },
-  producthunt: { icon: Rocket, label: "Product Hunt", color: "text-red-500" },
+  producthunt: { icon: Rocket, label: "Product Hunt", color: "text-amber" },
   github: { icon: Github, label: "GitHub", color: "text-gray-700 dark:text-gray-300" },
   manual: { icon: Lightbulb, label: "Manual", color: "text-yellow-500" },
-  conversation: { icon: MessageSquare, label: "Conversation", color: "text-blue-500" },
-  inference: { icon: Sparkles, label: "Inference", color: "text-purple-500" },
+  conversation: { icon: MessageSquare, label: "Conversation", color: "text-text-secondary" },
+  inference: { icon: Sparkles, label: "Inference", color: "text-amber" },
 };
 
 function formatTimeAgo(dateString: string): string {
@@ -55,10 +55,10 @@ function formatTimeAgo(dateString: string): string {
 }
 
 function getScoreColor(score: number): string {
-  if (score >= 0.8) return "text-green-500";
+  if (score >= 0.8) return "text-amber";
   if (score >= 0.6) return "text-yellow-500";
   if (score >= 0.4) return "text-orange-500";
-  return "text-red-500";
+  return "text-amber";
 }
 
 function KnowledgeCard({ entry }: { entry: KnowledgeEntry }) {
@@ -81,7 +81,7 @@ function KnowledgeCard({ entry }: { entry: KnowledgeEntry }) {
             {config.label}
           </Badge>
           {entry.applied && (
-            <Badge variant="default" className="text-xs bg-green-600">
+            <Badge variant="default" className="text-xs bg-amber">
               <CheckCircle2 className="h-3 w-3 mr-1" />
               Applied
             </Badge>
@@ -152,7 +152,7 @@ function StatsOverview({ stats }: { stats: { bySource: Record<string, number>; t
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Applied</CardTitle>
-          <CheckCircle2 className="h-4 w-4 text-green-500" />
+          <CheckCircle2 className="h-4 w-4 text-amber" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{stats.applied}</div>

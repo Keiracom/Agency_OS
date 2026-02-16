@@ -64,7 +64,7 @@ export function LinkedInCredentialForm({
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+        <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-error text-sm">
           {error}
         </div>
       )}
@@ -80,26 +80,26 @@ export function LinkedInCredentialForm({
 
 function SecurityNotice() {
   return (
-    <Card className="bg-blue-50 border-blue-200">
+    <Card className="bg-bg-surface border-blue-200">
       <CardContent className="p-4">
-        <h4 className="font-medium text-blue-900 mb-2">
+        <h4 className="font-medium text-bg-void mb-2">
           Your credentials are secure
         </h4>
-        <ul className="space-y-1 text-sm text-blue-700">
+        <ul className="space-y-1 text-sm text-amber">
           <li className="flex items-center gap-2">
-            <CheckIcon className="h-4 w-4 text-blue-500 flex-shrink-0" />
+            <CheckIcon className="h-4 w-4 text-text-secondary flex-shrink-0" />
             Encrypted at rest using AES-256
           </li>
           <li className="flex items-center gap-2">
-            <CheckIcon className="h-4 w-4 text-blue-500 flex-shrink-0" />
+            <CheckIcon className="h-4 w-4 text-text-secondary flex-shrink-0" />
             Only used for outreach automation
           </li>
           <li className="flex items-center gap-2">
-            <CheckIcon className="h-4 w-4 text-blue-500 flex-shrink-0" />
+            <CheckIcon className="h-4 w-4 text-text-secondary flex-shrink-0" />
             We never post to your feed
           </li>
           <li className="flex items-center gap-2">
-            <CheckIcon className="h-4 w-4 text-blue-500 flex-shrink-0" />
+            <CheckIcon className="h-4 w-4 text-text-secondary flex-shrink-0" />
             Disconnect anytime from settings
           </li>
         </ul>

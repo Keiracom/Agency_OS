@@ -187,7 +187,7 @@ function TimelineItem({ activity }: { activity: ActivityItem }) {
               </button>
             ) : (
               <div className="mt-2">
-                <div className="bg-white border border-[#E2E8F0] rounded-lg p-3">
+                <div className="bg-bg-surface border border-[#E2E8F0] rounded-lg p-3">
                   <p className="text-sm text-[#374151] whitespace-pre-wrap">
                     {activity.content || activity.contentPreview}
                   </p>
@@ -252,7 +252,7 @@ function TimelineItem({ activity }: { activity: ActivityItem }) {
 export function LeadTimeline({ activities }: LeadTimelineProps) {
   if (activities.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+      <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm">
         <div className="px-6 py-4 border-b border-[#E2E8F0]">
           <h2 className="text-sm font-semibold text-[#64748B] uppercase tracking-wider">
             Activity Timeline
@@ -266,7 +266,7 @@ export function LeadTimeline({ activities }: LeadTimelineProps) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+    <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm">
       {/* Header */}
       <div className="px-6 py-4 border-b border-[#E2E8F0]">
         <div className="flex items-center justify-between">

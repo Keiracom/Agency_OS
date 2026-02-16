@@ -16,7 +16,7 @@ const channelIcons: Record<ChannelType, typeof Mail> = {
 const channelStyles: Record<ChannelType, string> = {
   email: 'text-accent-primary',
   linkedin: 'text-[#0A66C2]',
-  sms: 'text-teal-400',
+  sms: 'text-amber',
   voice: 'text-status-warning',
 };
 
@@ -24,7 +24,7 @@ export function ChannelBadge({ channel }: { channel: ChannelType }) {
   const Icon = channelIcons[channel];
   return (
     <span className={cn(
-      'flex items-center gap-1 px-2 py-0.5 bg-white/5 rounded text-[11px]',
+      'flex items-center gap-1 px-2 py-0.5 bg-bg-surface/5 rounded text-[11px]',
       channelStyles[channel]
     )}>
       <Icon className="w-3.5 h-3.5" />

@@ -277,12 +277,12 @@ export function SplineAbstract({ className }: SplineAbstractProps) {
       </svg>
 
       {/* Glow accents */}
-      <div className="absolute top-0 left-0 w-24 h-24 bg-cyan-500/5 blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-24 h-24 bg-purple-500/5 blur-3xl pointer-events-none" />
+      <div className="absolute top-0 left-0 w-24 h-24 bg-amber/5 blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-24 h-24 bg-amber/5 blur-3xl pointer-events-none" />
 
       {/* Label */}
       <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none">
-        <p className="text-cyan-400/40 text-[10px] font-mono tracking-wider">
+        <p className="text-amber/40 text-[10px] font-mono tracking-wider">
           ABSTRACT 3D SCENE
         </p>
       </div>

@@ -38,7 +38,7 @@ export function BillingSection({ billing }: BillingSectionProps) {
         <div className="flex items-center justify-between p-5 bg-bg-surface-hover rounded-xl border border-border-subtle">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4956A] to-[#C4854A] flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-white" />
+              <TrendingUp className="w-6 h-6 text-text-primary" />
             </div>
             <div>
               <div className="text-lg font-semibold text-text-primary">{billing.plan} Plan</div>

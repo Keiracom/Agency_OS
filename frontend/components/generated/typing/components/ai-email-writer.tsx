@@ -69,40 +69,40 @@ export default function AIEmailWriter({ className = "" }: AIEmailWriterProps) {
   return (
     <div className={`w-full max-w-2xl ${className}`}>
       {/* Glass morphism card */}
-      <div className="bg-white/5 backdrop-blur-[20px] border border-white/10 rounded-lg overflow-hidden">
+      <div className="bg-bg-surface/5 backdrop-blur-[20px] border border-white/10 rounded-lg overflow-hidden">
         {/* Status indicator */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
           <div className="relative">
-            <Sparkles className="w-4 h-4 text-purple-400" />
+            <Sparkles className="w-4 h-4 text-amber" />
             {!isComplete && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber rounded-full animate-pulse" />
             )}
           </div>
-          <span className="text-sm text-white/70">{isComplete ? "AI finished" : "AI is writing..."}</span>
+          <span className="text-sm text-text-primary/70">{isComplete ? "AI finished" : "AI is writing..."}</span>
         </div>
 
         {/* Email compose UI */}
         <div className="p-4 space-y-3">
           {/* To field */}
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-white/50 min-w-[60px]">To:</span>
-            <span className="text-white">sarah@bloomdigital.com.au</span>
+            <span className="text-text-primary/50 min-w-[60px]">To:</span>
+            <span className="text-text-primary">sarah@bloomdigital.com.au</span>
           </div>
 
           {/* Subject field */}
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-white/50 min-w-[60px]">Subject:</span>
-            <span className="text-white">Quick question about your healthcare marketing expansion</span>
+            <span className="text-text-primary/50 min-w-[60px]">Subject:</span>
+            <span className="text-text-primary">Quick question about your healthcare marketing expansion</span>
           </div>
 
           {/* Divider */}
           <div className="border-t border-white/10" />
 
           {/* Email body with typewriter effect */}
-          <div className="min-h-[300px] text-sm text-white/90 leading-relaxed font-mono whitespace-pre-wrap">
+          <div className="min-h-[300px] text-sm text-text-primary/90 leading-relaxed font-mono whitespace-pre-wrap">
             {displayedText}
             <span
-              className={`inline-block w-[2px] h-4 bg-gradient-to-b from-blue-500 to-purple-600 ml-0.5 ${
+              className={`inline-block w-[2px] h-4 bg-gradient-to-b from-amber to-amber ml-0.5 ${
                 showCursor ? "opacity-100" : "opacity-0"
               } transition-opacity`}
             />

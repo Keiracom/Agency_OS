@@ -260,25 +260,25 @@ const mockConversations: InboxConversation[] = [
 // ============================================
 
 const intentConfig: Record<IntentType, { bg: string; text: string; label: string }> = {
-  meeting: { bg: "bg-green-500/15", text: "text-green-400", label: "Meeting Request" },
-  interested: { bg: "bg-violet-500/15", text: "text-violet-400", label: "Interested" },
-  objection: { bg: "bg-red-500/15", text: "text-red-400", label: "Objection" },
+  meeting: { bg: "bg-amber/15", text: "text-amber", label: "Meeting Request" },
+  interested: { bg: "bg-amber/15", text: "text-amber", label: "Interested" },
+  objection: { bg: "bg-amber-glow", text: "text-amber", label: "Objection" },
   later: { bg: "bg-amber-500/15", text: "text-amber-400", label: "Not Now" },
-  question: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Question" },
+  question: { bg: "bg-bg-elevated/15", text: "text-text-secondary", label: "Question" },
 };
 
 const sentimentConfig: Record<SentimentType, { color: string; emoji: string; border: string }> = {
-  positive: { color: "text-green-400", emoji: "😊", border: "border-l-green-500" },
-  negative: { color: "text-red-400", emoji: "😟", border: "border-l-red-500" },
-  neutral: { color: "text-slate-400", emoji: "😐", border: "border-l-slate-500" },
+  positive: { color: "text-amber", emoji: "😊", border: "border-l-amber" },
+  negative: { color: "text-amber", emoji: "😟", border: "border-l-amber" },
+  neutral: { color: "text-text-secondary", emoji: "😐", border: "border-l-slate-500" },
 };
 
 const tierScoreConfig: Record<ALSTier, { text: string; bg: string }> = {
-  hot: { text: "text-red-400", bg: "bg-gradient-to-br from-red-500 to-orange-500" },
+  hot: { text: "text-amber", bg: "bg-gradient-to-br from-amber to-amber-light" },
   warm: { text: "text-amber-400", bg: "bg-gradient-to-br from-amber-500 to-yellow-500" },
-  cool: { text: "text-blue-400", bg: "bg-gradient-to-br from-blue-500 to-cyan-500" },
-  cold: { text: "text-slate-400", bg: "bg-gradient-to-br from-slate-500 to-slate-600" },
-  dead: { text: "text-slate-500", bg: "bg-slate-600" },
+  cool: { text: "text-text-secondary", bg: "bg-gradient-to-br from-amber to-amber" },
+  cold: { text: "text-text-secondary", bg: "bg-gradient-to-br from-slate-500 to-slate-600" },
+  dead: { text: "text-text-muted", bg: "bg-bg-elevated" },
 };
 
 // ============================================
@@ -309,7 +309,7 @@ function ScoreDisplay({ score, tier }: { score: number; tier: ALSTier }) {
   return (
     <div className="text-right">
       <div className={`text-xl font-extrabold font-mono ${config.text}`}>{score}</div>
-      <div className="text-[9px] text-slate-500 uppercase tracking-wide">Score</div>
+      <div className="text-[9px] text-text-muted uppercase tracking-wide">Score</div>
     </div>
   );
 }
@@ -317,7 +317,7 @@ function ScoreDisplay({ score, tier }: { score: number; tier: ALSTier }) {
 function MessageAvatar({ initials, tier }: { initials: string; tier: ALSTier }) {
   const config = tierScoreConfig[tier];
   return (
-    <div className={`w-11 h-11 rounded-lg flex items-center justify-center text-white font-semibold text-sm ${config.bg}`}>
+    <div className={`w-11 h-11 rounded-lg flex items-center justify-center text-text-primary font-semibold text-sm ${config.bg}`}>
       {initials}
     </div>
   );
@@ -357,24 +357,24 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#05050A]">
+    <div className="flex flex-col h-full bg-bg-void">
       {/* Header */}
-      <header className="bg-[#12121D] border-b border-[#1E1E2E] px-6 py-4 flex items-center justify-between">
+      <header className="bg-bg-base border-b border-default px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <h1 className="text-lg font-bold text-white flex items-center gap-3">
-            <Mail className="w-5 h-5 text-violet-500" />
+          <h1 className="text-lg font-bold text-text-primary flex items-center gap-3">
+            <Mail className="w-5 h-5 text-amber" />
             Inbox Command Center
-            <span className="bg-violet-500/15 text-violet-400 px-2.5 py-1 rounded-full text-xs font-semibold">
+            <span className="bg-amber/15 text-amber px-2.5 py-1 rounded-full text-xs font-semibold">
               {unreadCount} unread
             </span>
           </h1>
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-[#1A1A28] border border-[#1E1E2E] rounded-lg text-slate-400 text-sm font-medium hover:bg-[#222233] hover:text-slate-200 transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-bg-elevated border border-default rounded-lg text-text-secondary text-sm font-medium hover:bg-bg-elevated hover:text-slate-200 transition-colors">
             <Filter className="w-4 h-4" />
             Filters
           </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-[#1A1A28] border border-[#1E1E2E] rounded-lg text-slate-400 text-sm font-medium hover:bg-[#222233] hover:text-slate-200 transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-bg-elevated border border-default rounded-lg text-text-secondary text-sm font-medium hover:bg-bg-elevated hover:text-slate-200 transition-colors">
             <RefreshCw className="w-4 h-4" />
             Sync
           </button>
@@ -384,17 +384,17 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
       {/* Content */}
       <div className="flex-1 grid grid-cols-[420px_1fr] overflow-hidden">
         {/* Inbox List */}
-        <div className="bg-[#12121D] border-r border-[#1E1E2E] flex flex-col overflow-hidden">
+        <div className="bg-bg-base border-r border-default flex flex-col overflow-hidden">
           {/* Filters */}
-          <div className="p-4 border-b border-[#1E1E2E]">
+          <div className="p-4 border-b border-default">
             <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
               <input
                 type="text"
                 placeholder="Search conversations..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-[#0A0A12] border border-[#1E1E2E] rounded-lg text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20"
+                className="w-full pl-10 pr-4 py-2.5 bg-bg-void border border-default rounded-lg text-text-primary text-sm placeholder:text-text-muted focus:outline-none focus:border-amber focus:ring-2 focus:ring-amber/20"
               />
             </div>
             <div className="flex gap-2">
@@ -409,8 +409,8 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
                   onClick={() => setFilter(tab.key as typeof filter)}
                   className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                     filter === tab.key
-                      ? "bg-violet-500/15 text-violet-400"
-                      : "text-slate-500 hover:bg-[#1A1A28] hover:text-slate-300"
+                      ? "bg-amber/15 text-amber"
+                      : "text-text-muted hover:bg-bg-elevated hover:text-slate-300"
                   }`}
                 >
                   {tab.label}
@@ -432,12 +432,12 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
                 <div
                   key={conv.id}
                   onClick={() => setSelectedId(conv.id)}
-                  className={`p-4 border-b border-[#1E1E2E] border-l-3 cursor-pointer transition-colors ${sentimentBorder} ${
+                  className={`p-4 border-b border-default border-l-3 cursor-pointer transition-colors ${sentimentBorder} ${
                     isActive
-                      ? "bg-violet-500/8 border-l-violet-500"
+                      ? "bg-amber/8 border-l-amber"
                       : conv.unread
-                      ? "bg-violet-500/4 hover:bg-[#1A1A28]"
-                      : "hover:bg-[#1A1A28]"
+                      ? "bg-amber/4 hover:bg-bg-elevated"
+                      : "hover:bg-bg-elevated"
                   }`}
                 >
                   {/* Header */}
@@ -445,15 +445,15 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
                     <MessageAvatar initials={conv.initials} tier={conv.tier} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-0.5">
-                        <span className="font-semibold text-sm text-white flex items-center gap-2">
+                        <span className="font-semibold text-sm text-text-primary flex items-center gap-2">
                           {conv.name}
                           {conv.unread && (
-                            <span className="w-2 h-2 rounded-full bg-violet-500" />
+                            <span className="w-2 h-2 rounded-full bg-amber" />
                           )}
                         </span>
                         <ScoreDisplay score={conv.score} tier={conv.tier} />
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-text-muted">
                         {conv.company} • {conv.title}
                       </div>
                     </div>
@@ -461,20 +461,20 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
 
                   {/* Preview */}
                   <p className={`text-sm leading-relaxed mb-2.5 line-clamp-2 ${
-                    conv.unread ? "text-white" : "text-slate-400"
+                    conv.unread ? "text-text-primary" : "text-text-secondary"
                   }`}>
                     {conv.preview}
                   </p>
 
                   {/* Footer */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex items-center gap-1 px-2 py-0.5 bg-[#222233] rounded text-[11px] text-slate-400">
+                    <div className="flex items-center gap-1 px-2 py-0.5 bg-bg-elevated rounded text-[11px] text-text-secondary">
                       <ChannelIcon channel={conv.channel} size="sm" bare />
                       <span className="capitalize">{conv.channel}</span>
                     </div>
                     <IntentBadge intent={conv.intent} />
                     <SentimentBadge sentiment={conv.sentiment} />
-                    <span className="text-xs text-slate-500 ml-auto">{conv.timestamp}</span>
+                    <span className="text-xs text-text-muted ml-auto">{conv.timestamp}</span>
                   </div>
                 </div>
               );
@@ -484,16 +484,16 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
 
         {/* Preview Panel */}
         {selected && (
-          <div className="flex flex-col overflow-hidden bg-[#05050A]">
+          <div className="flex flex-col overflow-hidden bg-bg-void">
             {/* Preview Header */}
-            <div className="bg-[#12121D] border-b border-[#1E1E2E] px-6 py-5 flex items-center justify-between">
+            <div className="bg-bg-base border-b border-default px-6 py-5 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className={`w-13 h-13 rounded-xl flex items-center justify-center text-white font-bold text-lg ${tierScoreConfig[selected.tier].bg}`}>
+                <div className={`w-13 h-13 rounded-xl flex items-center justify-center text-text-primary font-bold text-lg ${tierScoreConfig[selected.tier].bg}`}>
                   {selected.initials}
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-white mb-1">{selected.name}</h2>
-                  <p className="text-sm text-slate-500">
+                  <h2 className="text-lg font-bold text-text-primary mb-1">{selected.name}</h2>
+                  <p className="text-sm text-text-muted">
                     {selected.title} at {selected.company} • {selected.email}
                   </p>
                 </div>
@@ -501,19 +501,19 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
               <div className="flex items-center gap-3">
                 <button 
                   onClick={() => onViewDetail?.(selected)}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500 rounded-lg text-white text-sm font-semibold transition-colors"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-amber hover:bg-amber rounded-lg text-text-primary text-sm font-semibold transition-colors"
                 >
                   <Calendar className="w-4 h-4" />
                   Schedule Meeting
                 </button>
-                <button className="flex items-center gap-2 px-4 py-2.5 bg-[#1A1A28] border border-[#1E1E2E] rounded-lg text-white text-sm font-semibold hover:bg-[#222233] transition-colors">
+                <button className="flex items-center gap-2 px-4 py-2.5 bg-bg-elevated border border-default rounded-lg text-text-primary text-sm font-semibold hover:bg-bg-elevated transition-colors">
                   <Phone className="w-4 h-4" />
                   Call
                 </button>
-                <button className="w-10 h-10 flex items-center justify-center bg-[#1A1A28] border border-[#1E1E2E] rounded-lg text-slate-400 hover:bg-[#222233] hover:text-white transition-colors">
+                <button className="w-10 h-10 flex items-center justify-center bg-bg-elevated border border-default rounded-lg text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors">
                   <User className="w-4 h-4" />
                 </button>
-                <button className="w-10 h-10 flex items-center justify-center bg-[#1A1A28] border border-[#1E1E2E] rounded-lg text-slate-400 hover:bg-[#222233] hover:text-white transition-colors">
+                <button className="w-10 h-10 flex items-center justify-center bg-bg-elevated border border-default rounded-lg text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors">
                   <Archive className="w-4 h-4" />
                 </button>
               </div>
@@ -528,38 +528,38 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
                   return (
                     <div key={msg.id}>
                       {isFirst && (
-                        <div className="text-center text-xs text-slate-500 py-4">
+                        <div className="text-center text-xs text-text-muted py-4">
                           {msg.timestamp.split(",")[0]}
                         </div>
                       )}
-                      <div className={`bg-[#12121D] border rounded-xl p-5 mb-4 ${
+                      <div className={`bg-bg-base border rounded-xl p-5 mb-4 ${
                         msg.sender === "you"
-                          ? "bg-violet-500/8 border-violet-500/20"
-                          : "border-[#1E1E2E] border-l-3 border-l-green-500"
+                          ? "bg-amber/8 border-amber/20"
+                          : "border-default border-l-3 border-l-amber"
                       }`}>
-                        <div className="flex items-center justify-between mb-3 pb-3 border-b border-[#1E1E2E]">
+                        <div className="flex items-center justify-between mb-3 pb-3 border-b border-default">
                           <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-semibold text-xs ${
-                              msg.sender === "you" ? "bg-gradient-to-br from-violet-500 to-blue-500" : tierScoreConfig[selected.tier].bg
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-text-primary font-semibold text-xs ${
+                              msg.sender === "you" ? "bg-gradient-to-br from-amber to-amber-light" : tierScoreConfig[selected.tier].bg
                             }`}>
                               {msg.sender === "you" ? "Y" : selected.initials}
                             </div>
-                            <span className="font-semibold text-sm text-white">
+                            <span className="font-semibold text-sm text-text-primary">
                               {msg.sender === "you" ? "You" : selected.name}
                             </span>
                           </div>
-                          <span className="text-xs text-slate-500">{msg.timestamp}</span>
+                          <span className="text-xs text-text-muted">{msg.timestamp}</span>
                         </div>
                         {msg.subject && (
-                          <div className="text-sm font-semibold text-white mb-4">
+                          <div className="text-sm font-semibold text-text-primary mb-4">
                             {msg.subject}
                           </div>
                         )}
-                        <div className="text-sm text-slate-400 leading-relaxed whitespace-pre-line">
+                        <div className="text-sm text-text-secondary leading-relaxed whitespace-pre-line">
                           {msg.content}
                         </div>
                         {msg.sender === "them" && (
-                          <div className="inline-flex items-center gap-2 mt-4 px-3 py-1.5 bg-green-500/10 rounded-md text-xs font-medium text-green-400">
+                          <div className="inline-flex items-center gap-2 mt-4 px-3 py-1.5 bg-amber/10 rounded-md text-xs font-medium text-amber">
                             😊 Positive sentiment • Meeting intent detected
                           </div>
                         )}
@@ -570,8 +570,8 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
 
                 {/* AI Suggestions */}
                 {selected.aiSuggestions.length > 0 && (
-                  <div className="bg-[#12121D] border border-[#1E1E2E] rounded-xl p-5 mt-5">
-                    <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-violet-400">
+                  <div className="bg-bg-base border border-default rounded-xl p-5 mt-5">
+                    <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-amber">
                       <Lightbulb className="w-4 h-4" />
                       Suggested Responses
                     </div>
@@ -580,14 +580,14 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
                         <div
                           key={sug.id}
                           onClick={() => handleSuggestionClick(sug)}
-                          className="p-4 bg-violet-500/5 border border-violet-500/15 rounded-lg cursor-pointer hover:bg-violet-500/10 hover:border-violet-500/30 hover:-translate-y-0.5 transition-all"
+                          className="p-4 bg-amber/5 border border-amber/15 rounded-lg cursor-pointer hover:bg-amber/10 hover:border-amber/30 hover:-translate-y-0.5 transition-all"
                         >
-                          <div className="flex items-center gap-2 mb-2 text-[10px] font-semibold uppercase tracking-wide text-violet-400">
+                          <div className="flex items-center gap-2 mb-2 text-[10px] font-semibold uppercase tracking-wide text-amber">
                             {sug.icon === "chart" && <BarChart3 className="w-3 h-3" />}
                             {sug.icon === "target" && <Target className="w-3 h-3" />}
                             {sug.label}
                           </div>
-                          <p className="text-sm text-slate-400 leading-relaxed">
+                          <p className="text-sm text-text-secondary leading-relaxed">
                             {sug.text}
                           </p>
                         </div>
@@ -599,30 +599,30 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
             </div>
 
             {/* Reply Composer */}
-            <div className="bg-[#12121D] border-t border-[#1E1E2E] px-6 py-5">
+            <div className="bg-bg-base border-t border-default px-6 py-5">
               <div className="max-w-[720px]">
                 <textarea
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   placeholder="Write your reply..."
-                  className="w-full p-4 bg-[#0A0A12] border border-[#1E1E2E] rounded-xl text-white text-sm placeholder:text-slate-500 resize-none min-h-[100px] focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20"
+                  className="w-full p-4 bg-bg-void border border-default rounded-xl text-text-primary text-sm placeholder:text-text-muted resize-none min-h-[100px] focus:outline-none focus:border-amber focus:ring-2 focus:ring-amber/20"
                 />
                 <div className="flex items-center justify-between mt-3">
                   <div className="flex gap-2">
-                    <button className="flex items-center gap-2 px-3 py-2 bg-[#1A1A28] border border-[#1E1E2E] rounded-md text-xs text-slate-400 hover:bg-[#222233] hover:text-slate-200 transition-colors">
+                    <button className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-default rounded-md text-xs text-text-secondary hover:bg-bg-elevated hover:text-slate-200 transition-colors">
                       <Paperclip className="w-3.5 h-3.5" />
                       Attach
                     </button>
-                    <button className="flex items-center gap-2 px-3 py-2 bg-[#1A1A28] border border-[#1E1E2E] rounded-md text-xs text-slate-400 hover:bg-[#222233] hover:text-slate-200 transition-colors">
+                    <button className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-default rounded-md text-xs text-text-secondary hover:bg-bg-elevated hover:text-slate-200 transition-colors">
                       <Calendar className="w-3.5 h-3.5" />
                       Schedule
                     </button>
-                    <button className="flex items-center gap-2 px-3 py-2 bg-[#1A1A28] border border-[#1E1E2E] rounded-md text-xs text-slate-400 hover:bg-[#222233] hover:text-slate-200 transition-colors">
+                    <button className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-default rounded-md text-xs text-text-secondary hover:bg-bg-elevated hover:text-slate-200 transition-colors">
                       <Zap className="w-3.5 h-3.5" />
                       AI Write
                     </button>
                   </div>
-                  <button className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-500 rounded-lg text-white text-sm font-semibold transition-colors">
+                  <button className="flex items-center gap-2 px-5 py-2.5 bg-amber hover:bg-amber rounded-lg text-text-primary text-sm font-semibold transition-colors">
                     <Send className="w-4 h-4" />
                     Send Reply
                   </button>

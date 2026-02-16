@@ -66,7 +66,7 @@ export function LeadBulkActions({
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-lg shadow-black/10 px-4 py-3">
+      <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-lg shadow-black/10 px-4 py-3">
         <div className="flex items-center gap-4">
           {/* Selection count */}
           <div className="flex items-center gap-2">
@@ -86,7 +86,7 @@ export function LeadBulkActions({
             <button
               onClick={onEnrich}
               disabled={isProcessing}
-              className="flex items-center gap-2 px-3 py-1.5 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-3 py-1.5 bg-[#3B82F6] hover:bg-[#2563EB] text-text-primary text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
             >
               {processingAction === "enrich" ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

@@ -52,15 +52,15 @@ export function ReplyComposer({ recipientEmail, initialValue = '', onSend }: Rep
         <div className="flex items-center justify-between mt-3">
           {/* Tools */}
           <div className="flex gap-2">
-            <button className="flex items-center gap-1.5 px-3 py-2 glass-surface border border-border-subtle rounded-md text-xs text-text-muted hover:text-text-secondary hover:bg-white/[0.05] transition-colors">
+            <button className="flex items-center gap-1.5 px-3 py-2 glass-surface border border-border-subtle rounded-md text-xs text-text-muted hover:text-text-secondary hover:bg-bg-surface/[0.05] transition-colors">
               <Paperclip className="w-3.5 h-3.5" />
               Attach
             </button>
-            <button className="flex items-center gap-1.5 px-3 py-2 glass-surface border border-border-subtle rounded-md text-xs text-text-muted hover:text-text-secondary hover:bg-white/[0.05] transition-colors">
+            <button className="flex items-center gap-1.5 px-3 py-2 glass-surface border border-border-subtle rounded-md text-xs text-text-muted hover:text-text-secondary hover:bg-bg-surface/[0.05] transition-colors">
               <Calendar className="w-3.5 h-3.5" />
               Schedule
             </button>
-            <button className="flex items-center gap-1.5 px-3 py-2 glass-surface border border-border-subtle rounded-md text-xs text-text-muted hover:text-text-secondary hover:bg-white/[0.05] transition-colors">
+            <button className="flex items-center gap-1.5 px-3 py-2 glass-surface border border-border-subtle rounded-md text-xs text-text-muted hover:text-text-secondary hover:bg-bg-surface/[0.05] transition-colors">
               <Zap className="w-3.5 h-3.5" />
               AI Write
             </button>
@@ -73,8 +73,8 @@ export function ReplyComposer({ recipientEmail, initialValue = '', onSend }: Rep
             className={cn(
               'flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all',
               message.trim()
-                ? 'bg-amber-600 hover:bg-amber-500 text-white hover:-translate-y-0.5'
-                : 'bg-amber-600/50 text-white/50 cursor-not-allowed'
+                ? 'bg-amber-600 hover:bg-amber-500 text-text-primary hover:-translate-y-0.5'
+                : 'bg-amber-600/50 text-text-primary/50 cursor-not-allowed'
             )}
           >
             <Send className="w-4 h-4" />

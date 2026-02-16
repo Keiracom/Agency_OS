@@ -222,7 +222,7 @@ export default function ProspectDetailPage() {
             <div className="flex gap-6 flex-1">
               {/* Avatar */}
               <div
-                className="w-20 h-20 rounded-2xl flex items-center justify-center text-white font-bold text-2xl flex-shrink-0"
+                className="w-20 h-20 rounded-2xl flex items-center justify-center text-text-primary font-bold text-2xl flex-shrink-0"
                 style={{ background: "linear-gradient(135deg, #EF4444, #F97316)" }}
               >
                 {prospect.name.split(" ").map(n => n[0]).join("")}
@@ -309,7 +309,7 @@ export default function ProspectDetailPage() {
         {/* Quick Actions */}
         <div className="glass-surface rounded-xl p-4">
           <div className="grid grid-cols-4 gap-3">
-            <button className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium gradient-premium text-white hover:opacity-90 transition-opacity">
+            <button className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium gradient-premium text-text-primary hover:opacity-90 transition-opacity">
               <Mail className="w-4 h-4" />
               Send Email
             </button>

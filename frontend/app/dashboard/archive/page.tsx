@@ -47,10 +47,10 @@ import type { ArchiveContentItem, ContentArchiveFilters } from "@/lib/api/types"
 
 // Channel icons and colors
 const channelConfig: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
-  email: { icon: <Mail className="h-4 w-4" />, color: "bg-blue-500/10 text-blue-400", label: "Email" },
-  sms: { icon: <MessageSquare className="h-4 w-4" />, color: "bg-purple-500/10 text-purple-400", label: "SMS" },
-  linkedin: { icon: <Linkedin className="h-4 w-4" />, color: "bg-sky-500/10 text-sky-400", label: "LinkedIn" },
-  voice: { icon: <Phone className="h-4 w-4" />, color: "bg-green-500/10 text-green-400", label: "Voice" },
+  email: { icon: <Mail className="h-4 w-4" />, color: "bg-bg-elevated/10 text-text-secondary", label: "Email" },
+  sms: { icon: <MessageSquare className="h-4 w-4" />, color: "bg-amber/10 text-amber", label: "SMS" },
+  linkedin: { icon: <Linkedin className="h-4 w-4" />, color: "bg-amber-glow text-amber", label: "LinkedIn" },
+  voice: { icon: <Phone className="h-4 w-4" />, color: "bg-amber/10 text-amber", label: "Voice" },
   mail: { icon: <Send className="h-4 w-4" />, color: "bg-orange-500/10 text-orange-400", label: "Direct Mail" },
 };
 
@@ -90,7 +90,7 @@ function ContentCard({
           <div className="flex-1 min-w-0">
             {/* Header */}
             <div className="flex items-center justify-between gap-2 mb-1">
-              <span className="text-sm font-medium text-white truncate">
+              <span className="text-sm font-medium text-text-primary truncate">
                 {item.lead_name || item.lead_email || "Unknown recipient"}
               </span>
               <span className="text-xs text-gray-500 flex-shrink-0">
@@ -124,13 +124,13 @@ function ContentCard({
 
               {/* Engagement */}
               {item.email_opened && (
-                <span className="flex items-center gap-1 text-xs text-green-400">
+                <span className="flex items-center gap-1 text-xs text-amber">
                   <Eye className="h-3 w-3" />
                   {item.email_open_count}
                 </span>
               )}
               {item.email_clicked && (
-                <span className="flex items-center gap-1 text-xs text-blue-400">
+                <span className="flex items-center gap-1 text-xs text-text-secondary">
                   <MousePointer className="h-3 w-3" />
                   {item.email_click_count}
                 </span>
@@ -197,12 +197,12 @@ function ContentDetailModal({
           </div>
 
           {/* Engagement */}
-          <div className="flex items-center gap-4 p-3 bg-white/5 rounded-lg">
+          <div className="flex items-center gap-4 p-3 bg-bg-surface/5 rounded-lg">
             <div className="flex items-center gap-2">
               <Eye className="h-4 w-4 text-gray-400" />
               <span className="text-sm">
                 {item.email_opened ? (
-                  <span className="text-green-400">
+                  <span className="text-amber">
                     Opened {item.email_open_count} time{item.email_open_count !== 1 ? "s" : ""}
                   </span>
                 ) : (
@@ -214,7 +214,7 @@ function ContentDetailModal({
               <MousePointer className="h-4 w-4 text-gray-400" />
               <span className="text-sm">
                 {item.email_clicked ? (
-                  <span className="text-blue-400">
+                  <span className="text-text-secondary">
                     Clicked {item.email_click_count} time{item.email_click_count !== 1 ? "s" : ""}
                   </span>
                 ) : (
@@ -235,7 +235,7 @@ function ContentDetailModal({
           {/* Full Content */}
           <div>
             <h4 className="text-sm font-medium text-gray-400 mb-1">Content</h4>
-            <div className="p-4 bg-white/5 rounded-lg">
+            <div className="p-4 bg-bg-surface/5 rounded-lg">
               <pre className="whitespace-pre-wrap text-sm text-gray-300 font-sans">
                 {item.full_message_body || item.content_preview || "No content available"}
               </pre>
@@ -248,7 +248,7 @@ function ContentDetailModal({
               <h4 className="text-sm font-medium text-gray-400 mb-1">Links Included</h4>
               <ul className="space-y-1">
                 {item.links_included.map((link, idx) => (
-                  <li key={idx} className="text-sm text-blue-400 truncate">
+                  <li key={idx} className="text-sm text-text-secondary truncate">
                     {link}
                   </li>
                 ))}
@@ -332,7 +332,7 @@ export default function ContentArchivePage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-white">Content Archive</h1>
+        <h1 className="text-2xl font-semibold text-text-primary">Content Archive</h1>
         <p className="text-gray-400 mt-1">
           Browse all content sent on your behalf
         </p>
@@ -442,14 +442,14 @@ export default function ContentArchivePage() {
         <div className="grid gap-4 md:grid-cols-2">
           {[...Array(6)].map((_, i) => (
             <Card key={i} className="animate-pulse">
-              <CardContent className="p-4 h-32 bg-white/5" />
+              <CardContent className="p-4 h-32 bg-bg-surface/5" />
             </Card>
           ))}
         </div>
       ) : error ? (
         <Card>
           <CardContent className="p-8 text-center">
-            <p className="text-red-400">Failed to load content archive</p>
+            <p className="text-amber">Failed to load content archive</p>
           </CardContent>
         </Card>
       ) : archiveData?.items.length === 0 ? (

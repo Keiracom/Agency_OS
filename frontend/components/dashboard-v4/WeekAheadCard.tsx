@@ -51,7 +51,7 @@ function MeetingItem({ meeting }: { meeting: UpcomingMeeting }) {
         </div>
       </div>
       <div className="text-right flex-shrink-0">
-        <p className="text-lg font-bold text-emerald-500">
+        <p className="text-lg font-bold text-amber">
           {formatCurrency(meeting.potentialValue)}
         </p>
         <p className="text-[10px] text-muted-foreground">Potential</p>

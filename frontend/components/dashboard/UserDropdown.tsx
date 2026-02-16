@@ -73,13 +73,13 @@ function TierIndicator({ tier }: { tier?: UserData["tier"] }) {
     },
     velocity: {
       label: "Velocity",
-      gradient: "from-blue-500 to-cyan-500",
-      glow: "shadow-blue-500/20",
+      gradient: "from-amber to-amber",
+      glow: "shadow-amber/20",
     },
     dominance: {
       label: "Dominance",
-      gradient: "from-purple-500 to-pink-500",
-      glow: "shadow-purple-500/20",
+      gradient: "from-amber to-amber-light",
+      glow: "shadow-amber/20",
     },
   };
 
@@ -90,7 +90,7 @@ function TierIndicator({ tier }: { tier?: UserData["tier"] }) {
       className={`
         inline-flex items-center gap-1 px-2 py-0.5
         bg-gradient-to-r ${config.gradient}
-        rounded-full text-[10px] font-semibold text-white
+        rounded-full text-[10px] font-semibold text-text-primary
         shadow-lg ${config.glow}
       `}
     >
@@ -137,8 +137,8 @@ function MenuItem({
     transition-all duration-150 outline-none
     ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
     ${danger
-      ? "text-red-400 hover:bg-red-500/10 focus:bg-red-500/10"
-      : "text-slate-300 hover:text-white hover:bg-white/5 focus:bg-white/5"
+      ? "text-amber hover:bg-amber-glow focus:bg-amber-glow"
+      : "text-slate-300 hover:text-text-primary hover:bg-bg-surface/5 focus:bg-bg-surface/5"
     }
   `;
 
@@ -258,13 +258,13 @@ export function UserDropdown({
           className={`
             flex items-center gap-2
             ${compact ? "p-1" : "pl-1 pr-2.5 py-1"}
-            bg-white/5 backdrop-blur-xl
+            bg-bg-surface/5 backdrop-blur-xl
             border border-white/10 hover:border-white/20
             rounded-xl
-            hover:bg-white/10
+            hover:bg-bg-surface/10
             transition-all duration-200
-            outline-none focus:ring-2 focus:ring-blue-500/40
-            ${open ? "bg-white/10 border-white/20" : ""}
+            outline-none focus:ring-2 focus:ring-amber/40
+            ${open ? "bg-bg-surface/10 border-white/20" : ""}
             ${className}
           `}
           aria-label="User menu"
@@ -279,8 +279,8 @@ export function UserDropdown({
             <Avatar.Fallback
               className="
                 w-full h-full flex items-center justify-center
-                bg-gradient-to-br from-blue-500 to-blue-600
-                text-white text-sm font-semibold
+                bg-gradient-to-br from-amber to-amber
+                text-text-primary text-sm font-semibold
               "
               delayMs={100}
             >
@@ -290,7 +290,7 @@ export function UserDropdown({
 
           {/* Name (hidden in compact mode) */}
           {!compact && (
-            <span className="text-sm font-medium text-white hidden sm:block max-w-24 truncate">
+            <span className="text-sm font-medium text-text-primary hidden sm:block max-w-24 truncate">
               {displayName}
             </span>
           )}
@@ -298,7 +298,7 @@ export function UserDropdown({
           {/* Chevron */}
           <ChevronDown
             className={`
-              w-4 h-4 text-slate-400
+              w-4 h-4 text-text-secondary
               transition-transform duration-200
               ${open ? "rotate-180" : ""}
             `}
@@ -340,8 +340,8 @@ export function UserDropdown({
                       <Avatar.Fallback
                         className="
                           w-full h-full flex items-center justify-center
-                          bg-gradient-to-br from-blue-500 to-blue-600
-                          text-white text-lg font-semibold
+                          bg-gradient-to-br from-amber to-amber
+                          text-text-primary text-lg font-semibold
                         "
                         delayMs={100}
                       >
@@ -350,11 +350,11 @@ export function UserDropdown({
                     </Avatar.Root>
 
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">
+                      <p className="text-sm font-semibold text-text-primary truncate">
                         {displayName}
                       </p>
                       {displayEmail && (
-                        <p className="text-xs text-slate-400 truncate mt-0.5">
+                        <p className="text-xs text-text-secondary truncate mt-0.5">
                           {displayEmail}
                         </p>
                       )}
@@ -385,7 +385,7 @@ export function UserDropdown({
                     onClick={handleBillingClick}
                   />
 
-                  <DropdownMenu.Separator className="my-2 h-px bg-white/10" />
+                  <DropdownMenu.Separator className="my-2 h-px bg-bg-surface/10" />
 
                   <MenuItem
                     icon={HelpCircle}
@@ -394,7 +394,7 @@ export function UserDropdown({
                     external
                   />
 
-                  <DropdownMenu.Separator className="my-2 h-px bg-white/10" />
+                  <DropdownMenu.Separator className="my-2 h-px bg-bg-surface/10" />
 
                   <MenuItem
                     icon={LogOut}

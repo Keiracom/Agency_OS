@@ -22,7 +22,7 @@ export function EmailMessage({ message }: EmailMessageProps) {
         'max-w-[720px] rounded-2xl p-6 mb-5',
         isSent
           ? 'ml-auto bg-amber-500/8 border border-amber-500/20'
-          : 'bg-surface-dark border border-border-subtle border-l-[3px] border-l-green-500'
+          : 'bg-surface-dark border border-border-subtle border-l-[3px] border-l-amber'
       )}
     >
       {/* Header */}
@@ -30,10 +30,10 @@ export function EmailMessage({ message }: EmailMessageProps) {
         <div className="flex items-center gap-3">
           <div
             className={cn(
-              'w-10 h-10 rounded-xl flex items-center justify-center font-semibold text-sm text-white',
+              'w-10 h-10 rounded-xl flex items-center justify-center font-semibold text-sm text-text-primary',
               isSent
                 ? 'bg-gradient-to-br from-amber-500 to-orange-400'
-                : 'bg-gradient-to-br from-red-500 to-orange-500'
+                : 'bg-gradient-to-br from-amber to-amber-light'
             )}
           >
             {isSent ? 'Y' : message.senderName.split(' ').map(n => n[0]).join('')}
@@ -64,7 +64,7 @@ export function EmailMessage({ message }: EmailMessageProps) {
       
       {/* Sentiment Tag (for received messages) */}
       {!isSent && message.sentiment && (
-        <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 bg-green-500/10 rounded-md text-xs font-medium text-green-400">
+        <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 bg-amber/10 rounded-md text-xs font-medium text-amber">
           {sentimentEmoji[message.sentiment]} {message.sentiment.charAt(0).toUpperCase() + message.sentiment.slice(1)}
           {message.intent === 'meeting' && (
             <>

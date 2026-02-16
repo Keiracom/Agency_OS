@@ -61,7 +61,7 @@ function StatusBadge({ status }: { status: IntegrationStatus }) {
     connected: {
       icon: <Check className="w-3 h-3" />,
       text: "Connected",
-      className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+      className: "bg-amber-glow text-amber border-amber/30",
     },
     pending: {
       icon: <Clock className="w-3 h-3" />,
@@ -71,12 +71,12 @@ function StatusBadge({ status }: { status: IntegrationStatus }) {
     disconnected: {
       icon: <AlertCircle className="w-3 h-3" />,
       text: "Disconnected",
-      className: "bg-[#2A2A3D] text-[#6E6E82] border-[#2A2A3D]",
+      className: "bg-[#2A2A3D] text-text-muted border-default",
     },
     error: {
       icon: <AlertCircle className="w-3 h-3" />,
       text: "Error",
-      className: "bg-red-500/15 text-red-400 border-red-500/30",
+      className: "bg-amber-glow text-amber border-amber/30",
     },
   };
 
@@ -111,7 +111,7 @@ function ActionButton({
     return (
       <button
         onClick={onManage}
-        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#B4B4C4] bg-[#1A1A28] border border-[#2A2A3D] rounded-lg hover:bg-[#222233] hover:border-[#3A3A4D] transition-all"
+        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-text-secondary bg-bg-elevated border border-default rounded-lg hover:bg-bg-elevated hover:border-[#3A3A4D] transition-all"
       >
         <Settings className="w-4 h-4" />
         Manage
@@ -146,7 +146,7 @@ function ActionButton({
   return (
     <button
       onClick={onConnect}
-      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-500 rounded-lg hover:bg-purple-400 transition-all"
+      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-text-primary bg-amber rounded-lg hover:bg-amber transition-all"
     >
       <Zap className="w-4 h-4" />
       Connect
@@ -170,7 +170,7 @@ function IntegrationCard({
   onReconnect: (id: string) => void;
 }) {
   return (
-    <div className="group bg-[#12121D]/60 backdrop-blur-xl border border-[#1E1E2E] rounded-xl overflow-hidden hover:border-[#2A2A3D] transition-all duration-200">
+    <div className="group bg-bg-base/60 backdrop-blur-xl border border-default rounded-xl overflow-hidden hover:border-default transition-all duration-200">
       {/* Card Header */}
       <div className="p-5">
         <div className="flex items-start justify-between mb-4">
@@ -181,8 +181,8 @@ function IntegrationCard({
               <span className={integration.colorClass}>{integration.icon}</span>
             </div>
             <div>
-              <h3 className="font-semibold text-white">{integration.name}</h3>
-              <p className="text-xs text-[#6E6E82] mt-0.5">
+              <h3 className="font-semibold text-text-primary">{integration.name}</h3>
+              <p className="text-xs text-text-muted mt-0.5">
                 {integration.description}
               </p>
             </div>
@@ -191,24 +191,24 @@ function IntegrationCard({
         </div>
 
         {/* Stats / Last Sync */}
-        <div className="flex items-center justify-between pt-4 border-t border-[#1E1E2E]">
+        <div className="flex items-center justify-between pt-4 border-t border-default">
           <div className="flex items-center gap-4">
             {integration.lastSync && (
-              <div className="flex items-center gap-1.5 text-xs text-[#6E6E82]">
+              <div className="flex items-center gap-1.5 text-xs text-text-muted">
                 <RefreshCw className="w-3 h-3" />
                 Last sync: {integration.lastSync}
               </div>
             )}
             {integration.stats && (
               <div className="text-xs">
-                <span className="text-[#6E6E82]">{integration.stats.label}: </span>
-                <span className="text-[#B4B4C4] font-medium">
+                <span className="text-text-muted">{integration.stats.label}: </span>
+                <span className="text-text-secondary font-medium">
                   {integration.stats.value}
                 </span>
               </div>
             )}
             {!integration.lastSync && !integration.stats && (
-              <div className="text-xs text-[#6E6E82]">Not configured</div>
+              <div className="text-xs text-text-muted">Not configured</div>
             )}
           </div>
           <ActionButton
@@ -235,8 +235,8 @@ const initialIntegrations: ChannelIntegration[] = [
     icon: <Mail className="w-5 h-5" />,
     status: "connected",
     lastSync: "2 min ago",
-    colorClass: "text-purple-400",
-    bgColorClass: "bg-purple-500/15",
+    colorClass: "text-amber",
+    bgColorClass: "bg-amber/15",
     stats: { label: "Active sequences", value: 12 },
   },
   {
@@ -246,8 +246,8 @@ const initialIntegrations: ChannelIntegration[] = [
     icon: <Briefcase className="w-5 h-5" />,
     status: "connected",
     lastSync: "5 min ago",
-    colorClass: "text-blue-400",
-    bgColorClass: "bg-blue-500/15",
+    colorClass: "text-text-secondary",
+    bgColorClass: "bg-bg-elevated/15",
     stats: { label: "Connections pending", value: 47 },
   },
   {
@@ -257,8 +257,8 @@ const initialIntegrations: ChannelIntegration[] = [
     icon: <MessageSquare className="w-5 h-5" />,
     status: "connected",
     lastSync: "15 min ago",
-    colorClass: "text-teal-400",
-    bgColorClass: "bg-teal-500/15",
+    colorClass: "text-amber",
+    bgColorClass: "bg-amber-glow",
     stats: { label: "Messages today", value: 234 },
   },
   {
@@ -276,8 +276,8 @@ const initialIntegrations: ChannelIntegration[] = [
     description: "Physical mail automation",
     icon: <FileText className="w-5 h-5" />,
     status: "disconnected",
-    colorClass: "text-pink-400",
-    bgColorClass: "bg-pink-500/15",
+    colorClass: "text-amber-light",
+    bgColorClass: "bg-amber-glow",
   },
 ];
 
@@ -328,14 +328,14 @@ export function ChannelIntegrations({ className = "" }: ChannelIntegrationsProps
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-purple-500/15 rounded-xl flex items-center justify-center">
-            <Link2 className="w-5 h-5 text-purple-400" />
+          <div className="w-10 h-10 bg-amber/15 rounded-xl flex items-center justify-center">
+            <Link2 className="w-5 h-5 text-amber" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-text-primary">
               Channel Integrations
             </h2>
-            <p className="text-sm text-[#6E6E82]">
+            <p className="text-sm text-text-muted">
               {connectedCount} of {totalCount} channels connected
             </p>
           </div>
@@ -344,14 +344,14 @@ export function ChannelIntegrations({ className = "" }: ChannelIntegrationsProps
           <button
             onClick={handleRefreshAll}
             disabled={isRefreshing}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#B4B4C4] bg-[#1A1A28] border border-[#2A2A3D] rounded-lg hover:bg-[#222233] hover:border-[#3A3A4D] transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-text-secondary bg-bg-elevated border border-default rounded-lg hover:bg-bg-elevated hover:border-[#3A3A4D] transition-all disabled:opacity-50"
           >
             <RefreshCw
               className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`}
             />
             Refresh All
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-500 rounded-lg hover:bg-purple-400 transition-all">
+          <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-text-primary bg-amber rounded-lg hover:bg-amber transition-all">
             <ExternalLink className="w-4 h-4" />
             Integration Docs
           </button>
@@ -360,15 +360,15 @@ export function ChannelIntegrations({ className = "" }: ChannelIntegrationsProps
 
       {/* Connection Status Banner */}
       {connectedCount === totalCount && (
-        <div className="flex items-center gap-3 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-          <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
-            <Check className="w-5 h-5 text-emerald-400" />
+        <div className="flex items-center gap-3 p-4 bg-amber-glow border border-amber/20 rounded-xl">
+          <div className="w-10 h-10 bg-amber/20 rounded-lg flex items-center justify-center">
+            <Check className="w-5 h-5 text-amber" />
           </div>
           <div className="flex-1">
-            <div className="font-medium text-emerald-400">
+            <div className="font-medium text-amber">
               All Channels Connected
             </div>
-            <div className="text-xs text-emerald-400/70">
+            <div className="text-xs text-amber/70">
               Your omnichannel outreach is fully operational
             </div>
           </div>
@@ -406,16 +406,16 @@ export function ChannelIntegrations({ className = "" }: ChannelIntegrationsProps
       </div>
 
       {/* Help Section */}
-      <div className="bg-[#12121D]/40 border border-[#1E1E2E] rounded-xl p-5">
+      <div className="bg-bg-base/40 border border-default rounded-xl p-5">
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 bg-[#1A1A28] rounded-lg flex items-center justify-center flex-shrink-0">
-            <Zap className="w-5 h-5 text-[#6E6E82]" />
+          <div className="w-10 h-10 bg-bg-elevated rounded-lg flex items-center justify-center flex-shrink-0">
+            <Zap className="w-5 h-5 text-text-muted" />
           </div>
           <div>
-            <h4 className="font-medium text-[#B4B4C4] mb-1">
+            <h4 className="font-medium text-text-secondary mb-1">
               Need help connecting?
             </h4>
-            <p className="text-sm text-[#6E6E82] leading-relaxed">
+            <p className="text-sm text-text-muted leading-relaxed">
               Each channel integration comes with step-by-step setup guides.
               Contact support if you need assistance configuring your
               connections or troubleshooting sync issues.

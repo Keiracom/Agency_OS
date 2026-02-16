@@ -50,7 +50,7 @@ export function LinkedInTwoFactor({
   return (
     <div className="space-y-6 text-center">
       <div className="space-y-2">
-        <PhoneIcon className="mx-auto h-12 w-12 text-blue-500" />
+        <PhoneIcon className="mx-auto h-12 w-12 text-text-secondary" />
         <h3 className="text-lg font-semibold">Verification Required</h3>
         <p className="text-muted-foreground text-sm">
           {getMethodDescription()}
@@ -74,7 +74,7 @@ export function LinkedInTwoFactor({
         />
 
         {error && (
-          <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+          <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-error text-sm">
             {error}
           </div>
         )}

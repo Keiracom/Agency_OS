@@ -24,7 +24,7 @@ export function SettingsHeader({ onSave, isSaving }: SettingsHeaderProps) {
           onClick={onSave}
           disabled={isSaving}
           className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg
-            bg-gradient-to-r from-[#D4956A] to-[#C4854A] text-white
+            bg-gradient-to-r from-[#D4956A] to-[#C4854A] text-text-primary
             hover:from-[#E4A57A] hover:to-[#D4956A] hover:-translate-y-px
             disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >

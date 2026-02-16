@@ -8,38 +8,60 @@ interface GlassCardProps {
   className?: string;
   glow?: boolean;
   accentTop?: boolean;
+  hover?: boolean;
 }
 
 /**
- * GlassCard - Thick Glass Effect Component
+ * GlassCard - Pure Bloomberg Glassmorphism
  * 
- * Implements "physical frosted glass" aesthetic:
- * 1. TOP REFLECTION - overhead light gradient
- * 2. INNER DEPTH - bottom inner shadow for thickness
- * 3. EDGE HIGHLIGHT - gradient border (light source top-left)
- * 4. SUBTLE COLOR SHIFT - purple-blue refraction gradient
- * 5. FROSTED BLUR - backdrop-filter for frosted glass
+ * Implements aggressive frosted glass with visible depth:
+ * - Frosted glass background with blur
+ * - Gradient borders (light source top-left)
+ * - Inner glow on top edge
+ * - Optional amber glow on hover
+ * 
+ * CEO Directive #027 — Design System Overhaul
  */
-export function GlassCard({ children, className, glow, accentTop }: GlassCardProps) {
+export function GlassCard({ 
+  children, 
+  className, 
+  glow = false, 
+  accentTop = false,
+  hover = true 
+}: GlassCardProps) {
   return (
     <div
       className={cn(
-        'glass-card relative rounded-2xl p-6 transition-all duration-200',
+        'glass-card relative rounded-xl p-6',
+        hover && 'glass-card-hover',
         glow && 'glass-card-glow',
         className
       )}
     >
-      {/* Top reflection overlay */}
+      {/* Top edge light refraction */}
       <div 
-        className="absolute inset-0 rounded-2xl pointer-events-none"
+        className="absolute inset-x-0 top-0 h-px rounded-t-xl pointer-events-none"
         style={{
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.07) 0%, transparent 30%)',
+          background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 20%, rgba(255,255,255,0.15) 80%, transparent 100%)',
         }}
       />
       
-      {/* Accent top line (optional) */}
+      {/* Left edge light refraction */}
+      <div 
+        className="absolute inset-y-0 left-0 w-px rounded-l-xl pointer-events-none"
+        style={{
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%)',
+        }}
+      />
+      
+      {/* Accent top line (optional amber) */}
       {accentTop && (
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-accent-primary to-accent-blue rounded-t-2xl z-10" />
+        <div 
+          className="absolute top-0 left-4 right-4 h-0.5 rounded-full z-10"
+          style={{
+            background: 'linear-gradient(90deg, transparent 0%, #D4956A 30%, #E8B48A 50%, #D4956A 70%, transparent 100%)',
+          }}
+        />
       )}
       
       {/* Content */}
@@ -49,72 +71,82 @@ export function GlassCard({ children, className, glow, accentTop }: GlassCardPro
       
       <style jsx>{`
         .glass-card {
-          /* Base background with color refraction gradient */
-          background: 
-            linear-gradient(135deg, rgba(124,58,237,0.03), rgba(59,130,246,0.03)),
-            rgba(23, 22, 34, 0.7);
-          
-          /* Frosted glass blur */
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          
-          /* Multi-layer shadow for depth + inner thickness */
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.10);
+          border-top-color: rgba(255,255,255,0.15);
+          border-left-color: rgba(255,255,255,0.12);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
           box-shadow: 
-            /* Outer shadow - depth */
-            0 12px 40px rgba(0, 0, 0, 0.5),
-            0 2px 8px rgba(0, 0, 0, 0.3),
-            /* Top inner highlight - light from above */
-            inset 0 1px 0 rgba(255, 255, 255, 0.08),
-            /* Bottom inner shadow - glass thickness */
-            inset 0 -2px 6px rgba(0, 0, 0, 0.2);
-          
-          /* Gradient border effect using pseudo-element */
-          border: 1px solid transparent;
-          background-clip: padding-box;
-          position: relative;
+            0 4px 24px rgba(0,0,0,0.3),
+            inset 0 1px 0 rgba(255,255,255,0.06);
+          transition: all 0.2s ease;
         }
         
-        .glass-card::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          border-radius: inherit;
-          padding: 1px;
-          background: linear-gradient(
-            135deg,
-            rgba(255, 255, 255, 0.12) 0%,
-            rgba(255, 255, 255, 0.06) 50%,
-            rgba(255, 255, 255, 0.02) 100%
-          );
-          -webkit-mask: 
-            linear-gradient(#fff 0 0) content-box, 
-            linear-gradient(#fff 0 0);
-          mask: 
-            linear-gradient(#fff 0 0) content-box, 
-            linear-gradient(#fff 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-          pointer-events: none;
-        }
-        
-        .glass-card:hover::before {
-          background: linear-gradient(
-            135deg,
-            rgba(255, 255, 255, 0.18) 0%,
-            rgba(255, 255, 255, 0.09) 50%,
-            rgba(255, 255, 255, 0.03) 100%
-          );
+        .glass-card-hover:hover {
+          background: rgba(255,255,255,0.06);
+          border-color: rgba(255,255,255,0.15);
+          box-shadow: 
+            0 8px 32px rgba(0,0,0,0.35),
+            inset 0 1px 0 rgba(255,255,255,0.08);
         }
         
         .glass-card-glow:hover {
           box-shadow: 
-            0 12px 40px rgba(0, 0, 0, 0.5),
-            0 2px 8px rgba(0, 0, 0, 0.3),
-            0 0 20px rgba(124, 58, 237, 0.15),
-            inset 0 1px 0 rgba(255, 255, 255, 0.08),
-            inset 0 -2px 6px rgba(0, 0, 0, 0.2);
+            0 8px 32px rgba(0,0,0,0.35),
+            0 0 24px rgba(212,149,106,0.12),
+            inset 0 1px 0 rgba(255,255,255,0.08);
         }
       `}</style>
+    </div>
+  );
+}
+
+/**
+ * GlassCardCompact - Smaller padding variant
+ */
+export function GlassCardCompact({ 
+  children, 
+  className, 
+  glow = false,
+  hover = true 
+}: Omit<GlassCardProps, 'accentTop'>) {
+  return (
+    <GlassCard 
+      className={cn('p-4', className)} 
+      glow={glow}
+      hover={hover}
+    >
+      {children}
+    </GlassCard>
+  );
+}
+
+/**
+ * GlassPanel - Full-width glass panel (no border-radius on sides)
+ */
+export function GlassPanel({ 
+  children, 
+  className 
+}: { 
+  children: ReactNode; 
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        'relative p-6',
+        className
+      )}
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        borderTop: '1px solid rgba(255,255,255,0.10)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+      }}
+    >
+      {children}
     </div>
   );
 }

@@ -64,9 +64,9 @@ const mockClientRates: ClientBounceRate[] = [
 ];
 
 const typeColors = {
-  hard: "bg-red-500/10 text-red-700 border-red-500/20",
+  hard: "bg-amber-glow text-error border-amber/20",
   soft: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
-  spam: "bg-purple-500/10 text-purple-700 border-purple-500/20",
+  spam: "bg-amber/10 text-amber border-amber/20",
 };
 
 function formatTimeAgo(date: Date): string {
@@ -103,7 +103,7 @@ export default function AdminBouncesPage() {
 
       {/* Alert if clients at risk */}
       {clientsAtRisk > 0 && (
-        <div className="flex items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-700">
+        <div className="flex items-center gap-3 rounded-lg border border-amber/20 bg-amber-glow p-4 text-error">
           <AlertTriangle className="h-5 w-5" />
           <div>
             <p className="font-medium">{clientsAtRisk} client(s) with high bounce rate</p>
@@ -133,7 +133,7 @@ export default function AdminBouncesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{hardBounces}</div>
+            <div className="text-2xl font-bold text-amber">{hardBounces}</div>
             <p className="text-xs text-muted-foreground">Permanent failures</p>
           </CardContent>
         </Card>
@@ -155,7 +155,7 @@ export default function AdminBouncesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{spamComplaints}</div>
+            <div className="text-2xl font-bold text-amber">{spamComplaints}</div>
             <p className="text-xs text-muted-foreground">User reports</p>
           </CardContent>
         </Card>
@@ -191,7 +191,7 @@ export default function AdminBouncesPage() {
                         className="h-2 w-16"
                       />
                       <span className={
-                        client.bounceRate > 5 ? "text-red-600 font-medium" :
+                        client.bounceRate > 5 ? "text-amber font-medium" :
                         client.bounceRate > 2 ? "text-yellow-600" : ""
                       }>
                         {client.bounceRate}%
@@ -201,7 +201,7 @@ export default function AdminBouncesPage() {
                   <TableCell>{client.spamComplaints}</TableCell>
                   <TableCell>
                     {client.bounceRate > 5 ? (
-                      <Badge variant="outline" className="bg-red-500/10 text-red-700">
+                      <Badge variant="outline" className="bg-amber-glow text-error">
                         <XCircle className="mr-1 h-3 w-3" />
                         At Risk
                       </Badge>
@@ -211,7 +211,7 @@ export default function AdminBouncesPage() {
                         Monitor
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="bg-green-500/10 text-green-700">
+                      <Badge variant="outline" className="bg-amber/10 text-amber">
                         Healthy
                       </Badge>
                     )}

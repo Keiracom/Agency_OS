@@ -8,8 +8,8 @@ interface Props {
 
 export function BestContentCard({ content }: Props) {
   return (
-    <div className="bg-white rounded-2xl p-6 border border-slate-200 mb-5">
-      <div className="text-[13px] text-slate-500 uppercase tracking-wide font-semibold mb-4">
+    <div className="bg-bg-surface rounded-2xl p-6 border border-slate-200 mb-5">
+      <div className="text-[13px] text-text-muted uppercase tracking-wide font-semibold mb-4">
         Best Performing Content
       </div>
       <div className="space-y-2">
@@ -18,10 +18,10 @@ export function BestContentCard({ content }: Props) {
             key={idx}
             className="flex justify-between items-center px-4 py-3 bg-slate-50 rounded-lg"
           >
-            <span className="text-sm text-slate-600">
+            <span className="text-sm text-text-muted">
               {channelEmoji[item.channel]} {item.text}
             </span>
-            <span className="text-xs text-emerald-500 font-semibold">
+            <span className="text-xs text-amber font-semibold">
               {item.result}
             </span>
           </div>

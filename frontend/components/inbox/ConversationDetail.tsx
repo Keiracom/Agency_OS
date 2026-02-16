@@ -14,13 +14,13 @@ function MessageBubble({ message }: { message: Message }) {
       <div
         className={`px-4 py-3.5 rounded-2xl text-sm leading-relaxed ${
           isSent
-            ? 'bg-blue-500 text-white rounded-br-sm'
-            : 'bg-white border border-slate-200 text-slate-700 rounded-bl-sm'
+            ? 'bg-bg-elevated text-text-primary rounded-br-sm'
+            : 'bg-bg-surface border border-slate-200 text-slate-700 rounded-bl-sm'
         }`}
       >
         {message.content}
       </div>
-      <div className="flex items-center gap-2 mt-1.5 text-[11px] text-slate-400">
+      <div className="flex items-center gap-2 mt-1.5 text-[11px] text-text-secondary">
         <span>{channelEmoji[message.channel]}</span>
         <span className="capitalize">{message.channel}</span>
         <span>│</span>
@@ -32,26 +32,26 @@ function MessageBubble({ message }: { message: Message }) {
 
 function AISuggestedReply({ suggestedReply }: { suggestedReply: string }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 mt-auto">
+    <div className="bg-bg-surface border border-slate-200 rounded-2xl p-5 mt-auto">
       <div className="flex items-center gap-2 mb-3">
-        <span className="px-2.5 py-1 bg-violet-100 text-violet-600 rounded-md text-[11px] font-semibold">
+        <span className="px-2.5 py-1 bg-violet-100 text-amber rounded-md text-[11px] font-semibold">
           🤖 AI
         </span>
-        <span className="text-sm font-semibold text-slate-600">Suggested Reply</span>
+        <span className="text-sm font-semibold text-text-muted">Suggested Reply</span>
       </div>
       
-      <div className="text-sm leading-relaxed text-slate-600 p-4 bg-slate-50 rounded-lg mb-4 whitespace-pre-wrap">
+      <div className="text-sm leading-relaxed text-text-muted p-4 bg-slate-50 rounded-lg mb-4 whitespace-pre-wrap">
         {suggestedReply}
       </div>
       
       <div className="flex gap-2.5">
-        <button className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors">
+        <button className="flex items-center gap-2 px-5 py-2.5 bg-bg-elevated text-text-primary rounded-lg text-sm font-semibold hover:bg-bg-elevated transition-colors">
           Send
         </button>
-        <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors">
+        <button className="flex items-center gap-2 px-5 py-2.5 bg-bg-surface border border-slate-200 text-text-muted rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors">
           Edit
         </button>
-        <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors">
+        <button className="flex items-center gap-2 px-5 py-2.5 bg-bg-surface border border-slate-200 text-text-muted rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors">
           Different tone
         </button>
       </div>
@@ -66,7 +66,7 @@ function EmptyState() {
         <span className="text-2xl">💬</span>
       </div>
       <h3 className="text-lg font-semibold text-slate-800 mb-2">No Conversation Selected</h3>
-      <p className="text-sm text-slate-500 max-w-xs">
+      <p className="text-sm text-text-muted max-w-xs">
         Select a conversation from the list to view messages and AI-suggested replies.
       </p>
     </div>
@@ -81,9 +81,9 @@ export function ConversationDetail({ conversation }: ConversationDetailProps) {
   return (
     <div className="flex flex-col h-full bg-slate-50">
       {/* Header */}
-      <div className="px-6 py-5 bg-white border-b border-slate-200">
+      <div className="px-6 py-5 bg-bg-surface border-b border-slate-200">
         <h2 className="text-lg font-bold text-slate-800">{conversation.leadName}</h2>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-text-muted">
           {conversation.leadTitle}, {conversation.company}
           {conversation.leadCompanyInfo && ` │ ${conversation.leadCompanyInfo}`}
         </p>

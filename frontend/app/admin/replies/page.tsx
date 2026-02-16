@@ -120,11 +120,11 @@ const mockReplies: Reply[] = [
 ];
 
 const intentColors: Record<string, string> = {
-  interested: "bg-green-500/10 text-green-700 border-green-500/20",
-  meeting_request: "bg-blue-500/10 text-blue-700 border-blue-500/20",
-  question: "bg-purple-500/10 text-purple-700 border-purple-500/20",
-  not_interested: "bg-red-500/10 text-red-700 border-red-500/20",
-  unsubscribe: "bg-red-500/10 text-red-700 border-red-500/20",
+  interested: "bg-amber/10 text-amber border-amber/20",
+  meeting_request: "bg-bg-elevated/10 text-amber border-default/20",
+  question: "bg-amber/10 text-amber border-amber/20",
+  not_interested: "bg-amber-glow text-error border-amber/20",
+  unsubscribe: "bg-amber-glow text-error border-amber/20",
   out_of_office: "bg-gray-500/10 text-gray-700 border-gray-500/20",
   auto_reply: "bg-gray-500/10 text-gray-700 border-gray-500/20",
 };
@@ -136,9 +136,9 @@ const channelIcons = {
 };
 
 const channelColors = {
-  email: "bg-blue-500/10 text-blue-600",
-  sms: "bg-green-500/10 text-green-600",
-  linkedin: "bg-sky-500/10 text-sky-600",
+  email: "bg-bg-elevated/10 text-text-secondary",
+  sms: "bg-amber/10 text-amber",
+  linkedin: "bg-amber-glow text-amber",
 };
 
 function formatTimeAgo(date: Date): string {
@@ -202,7 +202,7 @@ export default function AdminRepliesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{interestedCount}</div>
+            <div className="text-2xl font-bold text-amber">{interestedCount}</div>
           </CardContent>
         </Card>
         <Card>
@@ -212,7 +212,7 @@ export default function AdminRepliesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{meetingCount}</div>
+            <div className="text-2xl font-bold text-text-secondary">{meetingCount}</div>
           </CardContent>
         </Card>
         <Card>
@@ -222,7 +222,7 @@ export default function AdminRepliesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{questionCount}</div>
+            <div className="text-2xl font-bold text-amber">{questionCount}</div>
           </CardContent>
         </Card>
       </div>

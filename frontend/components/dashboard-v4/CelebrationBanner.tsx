@@ -31,7 +31,7 @@ export function CelebrationBanner({ title, subtitle, onDismiss }: CelebrationBan
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="relative bg-gradient-to-r from-mint-500 to-mint-600 rounded-2xl p-5 flex items-center gap-4 text-white shadow-lg shadow-mint-500/25"
+      className="relative bg-gradient-to-r from-mint-500 to-mint-600 rounded-2xl p-5 flex items-center gap-4 text-text-primary shadow-lg shadow-mint-500/25"
     >
       <div className="flex-shrink-0 text-3xl">
         <PartyPopper className="h-8 w-8" />
@@ -43,7 +43,7 @@ export function CelebrationBanner({ title, subtitle, onDismiss }: CelebrationBan
       {onDismiss && (
         <button
           onClick={handleDismiss}
-          className="absolute top-3 right-3 p-1 rounded-full hover:bg-white/10 transition-colors"
+          className="absolute top-3 right-3 p-1 rounded-full hover:bg-bg-surface/10 transition-colors"
           aria-label="Dismiss"
         >
           <X className="h-4 w-4" />

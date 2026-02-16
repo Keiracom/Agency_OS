@@ -89,7 +89,7 @@ function ComponentLoader({ name, color = "#00d4ff" }: { name: string; color?: st
             borderTopColor: color,
           }}
         />
-        <p className="text-slate-400 text-sm font-mono">Loading {name}...</p>
+        <p className="text-text-secondary text-sm font-mono">Loading {name}...</p>
         <div className="flex justify-center gap-1 mt-3">
           {[0, 1, 2].map((i) => (
             <div
@@ -114,8 +114,8 @@ function PlaceholderCard({ name, color = "#666" }: { name: string; color?: strin
         >
           <span style={{ color }} className="text-2xl">+</span>
         </div>
-        <p className="text-slate-400 text-sm font-mono">{name}</p>
-        <p className="text-slate-600 text-xs mt-1">Coming soon</p>
+        <p className="text-text-secondary text-sm font-mono">{name}</p>
+        <p className="text-text-muted text-xs mt-1">Coming soon</p>
       </div>
     </div>
   );
@@ -157,12 +157,12 @@ function ShowcaseCard({ title, engine, description, accentColor, children, codeS
               <div className="h-full flex flex-col">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
                   <div>
-                    <h2 className="text-xl font-bold text-white">{title}</h2>
-                    <p className="text-slate-500 text-sm font-mono">{engine}</p>
+                    <h2 className="text-xl font-bold text-text-primary">{title}</h2>
+                    <p className="text-text-muted text-sm font-mono">{engine}</p>
                   </div>
                   <button
                     onClick={() => setIsFullscreen(false)}
-                    className="w-10 h-10 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+                    className="w-10 h-10 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -191,14 +191,14 @@ function ShowcaseCard({ title, engine, description, accentColor, children, codeS
           {/* Header */}
           <div className="px-4 py-3 border-b border-slate-700/50 flex items-center justify-between flex-shrink-0">
             <div>
-              <h3 className="text-white font-semibold">{title}</h3>
-              <p className="text-slate-500 text-xs font-mono">{engine}</p>
+              <h3 className="text-text-primary font-semibold">{title}</h3>
+              <p className="text-text-muted text-xs font-mono">{engine}</p>
             </div>
             <div className="flex items-center gap-2">
               {/* Fullscreen button */}
               <button
                 onClick={() => setIsFullscreen(true)}
-                className="w-7 h-7 rounded-md bg-slate-800/50 hover:bg-slate-700 flex items-center justify-center text-slate-500 hover:text-white transition-colors"
+                className="w-7 h-7 rounded-md bg-slate-800/50 hover:bg-slate-700 flex items-center justify-center text-text-muted hover:text-text-primary transition-colors"
                 title="Fullscreen"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -210,8 +210,8 @@ function ShowcaseCard({ title, engine, description, accentColor, children, codeS
                   onClick={() => setShowCode(!showCode)}
                   className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
                     showCode
-                      ? 'bg-slate-700 text-white'
-                      : 'bg-slate-800/50 hover:bg-slate-700 text-slate-500 hover:text-white'
+                      ? 'bg-slate-700 text-text-primary'
+                      : 'bg-slate-800/50 hover:bg-slate-700 text-text-muted hover:text-text-primary'
                   }`}
                   title="Show code"
                 >
@@ -237,7 +237,7 @@ function ShowcaseCard({ title, engine, description, accentColor, children, codeS
           {tags.length > 0 && (
             <div className="px-4 py-2 border-b border-slate-700/30 flex gap-2 flex-wrap flex-shrink-0">
               {tags.map((tag) => (
-                <span key={tag} className="px-2 py-0.5 bg-slate-800/50 rounded text-xs text-slate-400 font-mono">
+                <span key={tag} className="px-2 py-0.5 bg-slate-800/50 rounded text-xs text-text-secondary font-mono">
                   {tag}
                 </span>
               ))}
@@ -275,7 +275,7 @@ function ShowcaseCard({ title, engine, description, accentColor, children, codeS
 
           {/* Footer */}
           <div className="px-4 py-3 border-t border-slate-700/50 bg-slate-950/50 mt-auto">
-            <p className="text-slate-500 text-xs leading-relaxed">{description}</p>
+            <p className="text-text-muted text-xs leading-relaxed">{description}</p>
           </div>
         </div>
       </div>
@@ -339,26 +339,26 @@ export default function ShowroomPage() {
           }}
         />
         {/* Floating orbs */}
-        <div className="absolute top-20 left-[10%] w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
-        <div className="absolute bottom-20 right-[10%] w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '10s' }} />
+        <div className="absolute top-20 left-[10%] w-96 h-96 bg-amber/5 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
+        <div className="absolute bottom-20 right-[10%] w-96 h-96 bg-amber/5 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '10s' }} />
       </div>
 
       {/* Content */}
       <div className="relative z-10">
         {/* Header */}
-        <header className={`border-b backdrop-blur-md sticky top-0 z-20 transition-colors duration-300 ${isDark ? "border-slate-800/50 bg-slate-950/80" : "border-gray-200 bg-white/80"}`}>
+        <header className={`border-b backdrop-blur-md sticky top-0 z-20 transition-colors duration-300 ${isDark ? "border-slate-800/50 bg-slate-950/80" : "border-gray-200 bg-bg-surface/80"}`}>
           <div className="max-w-[1800px] mx-auto px-6 py-4">
             <div className="flex items-center justify-between gap-8">
               <div className="flex items-center gap-4">
                 <div className="relative">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center">
-                    <span className="text-white font-bold text-lg">S</span>
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber to-amber flex items-center justify-center">
+                    <span className="text-text-primary font-bold text-lg">S</span>
                   </div>
-                  <div className={`absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 ${isDark ? "border-slate-950" : "border-white"}`} />
+                  <div className={`absolute -bottom-1 -right-1 w-3 h-3 bg-amber rounded-full border-2 ${isDark ? "border-slate-950" : "border-white"}`} />
                 </div>
                 <div>
-                  <h1 className={`text-xl font-bold ${isDark ? "text-white" : "text-gray-900"}`}>Component Showroom</h1>
-                  <p className={`text-xs font-mono ${isDark ? "text-slate-500" : "text-gray-500"}`}>R3F • SPLINE • RIVE • UI EFFECTS</p>
+                  <h1 className={`text-xl font-bold ${isDark ? "text-text-primary" : "text-gray-900"}`}>Component Showroom</h1>
+                  <p className={`text-xs font-mono ${isDark ? "text-text-muted" : "text-gray-500"}`}>R3F • SPLINE • RIVE • UI EFFECTS</p>
                 </div>
               </div>
 
@@ -372,11 +372,11 @@ export default function ShowroomPage() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className={`w-full border rounded-lg px-4 py-2 pl-10 text-sm focus:outline-none transition-colors ${
                       isDark
-                        ? "bg-slate-800/50 border-slate-700/50 text-white placeholder-slate-500 focus:border-cyan-500/50"
-                        : "bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-cyan-500"
+                        ? "bg-slate-800/50 border-slate-700/50 text-text-primary placeholder-slate-500 focus:border-amber/50"
+                        : "bg-bg-surface border-gray-300 text-gray-900 placeholder-gray-400 focus:border-amber"
                     }`}
                   />
-                  <svg className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? "text-slate-500" : "text-gray-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? "text-text-muted" : "text-gray-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
@@ -403,8 +403,8 @@ export default function ShowroomPage() {
                     </svg>
                   )}
                 </button>
-                <span className={`flex items-center gap-2 text-xs font-mono ${isDark ? "text-slate-500" : "text-gray-500"}`}>
-                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span className={`flex items-center gap-2 text-xs font-mono ${isDark ? "text-text-muted" : "text-gray-500"}`}>
+                  <span className="w-2 h-2 bg-amber rounded-full animate-pulse" />
                   {categories[0].count} COMPONENTS
                 </span>
               </div>
@@ -756,7 +756,7 @@ export default function ShowroomPage() {
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
                       <span className="text-3xl mb-2 block">✨</span>
-                      <span className="text-white/90 font-bold text-lg">Click for more!</span>
+                      <span className="text-text-primary/90 font-bold text-lg">Click for more!</span>
                     </div>
                   </div>
                 </div>
@@ -769,9 +769,9 @@ export default function ShowroomPage() {
         {/* Import Reference */}
         <section className="max-w-[1800px] mx-auto px-6 pb-12">
           <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 p-6">
-            <h2 className="text-white font-semibold text-lg mb-6 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500/20 to-purple-500/20 flex items-center justify-center">
-                <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <h2 className="text-text-primary font-semibold text-lg mb-6 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber/20 to-amber/20 flex items-center justify-center">
+                <svg className="w-4 h-4 text-amber" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                 </svg>
               </div>
@@ -786,15 +786,15 @@ export default function ShowroomPage() {
               ].map((group) => (
                 <div key={group.title} className="p-4 bg-slate-800/30 rounded-xl border border-slate-700/30">
                   <h3 className="font-mono text-sm mb-3" style={{ color: group.color }}>{group.title}</h3>
-                  <code className="text-slate-400 text-xs block space-y-1">
-                    <span className="text-slate-500">import {"{"}</span>
+                  <code className="text-text-secondary text-xs block space-y-1">
+                    <span className="text-text-muted">import {"{"}</span>
                     {group.imports.map((imp, i) => (
                       <span key={imp} className="block pl-2">
                         <span className="text-cyan-300">{imp}</span>
-                        {i < group.imports.length - 1 && <span className="text-slate-500">,</span>}
+                        {i < group.imports.length - 1 && <span className="text-text-muted">,</span>}
                       </span>
                     ))}
-                    <span className="text-slate-500">{"}"} from <span className="text-green-400">&quot;@/src/components/library&quot;</span></span>
+                    <span className="text-text-muted">{"}"} from <span className="text-amber">&quot;@/src/components/library&quot;</span></span>
                   </code>
                 </div>
               ))}
@@ -805,14 +805,14 @@ export default function ShowroomPage() {
         {/* Footer */}
         <footer className="border-t border-slate-800/50 bg-slate-950/80 backdrop-blur-sm">
           <div className="max-w-[1800px] mx-auto px-6 py-4">
-            <div className="flex items-center justify-between text-xs text-slate-600 font-mono">
+            <div className="flex items-center justify-between text-xs text-text-muted font-mono">
               <span>AGENCY_OS.SHOWROOM.V2</span>
               <div className="flex items-center gap-4">
                 <span className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full" /> R3F
+                  <span className="w-1.5 h-1.5 bg-amber rounded-full" /> R3F
                 </span>
                 <span className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-purple-500 rounded-full" /> SPLINE
+                  <span className="w-1.5 h-1.5 bg-amber rounded-full" /> SPLINE
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 bg-orange-500 rounded-full" /> RIVE

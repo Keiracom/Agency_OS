@@ -178,7 +178,7 @@ export default function DashboardPage() {
               <div className="w-10 h-10 rounded-lg bg-status-warning/15 flex items-center justify-center text-status-warning">
                 <VoiceIcon />
               </div>
-              <div className="w-10 h-10 rounded-lg bg-pink-500/15 flex items-center justify-center text-pink-500">
+              <div className="w-10 h-10 rounded-lg bg-amber-glow flex items-center justify-center text-amber-light">
                 <MailIcon />
               </div>
             </div>
@@ -232,9 +232,9 @@ export default function DashboardPage() {
                   key={prospect.id}
                   className="flex items-center gap-4 py-4 border-b border-border-subtle last:border-0 cursor-pointer hover:bg-bg-surface-hover hover:-mx-6 hover:px-6 transition-all"
                 >
-                  <div className={`w-11 h-11 rounded-lg flex items-center justify-center text-white text-sm font-semibold ${
+                  <div className={`w-11 h-11 rounded-lg flex items-center justify-center text-text-primary text-sm font-semibold ${
                     prospect.tier === 'hot' 
-                      ? 'bg-gradient-to-br from-tier-hot to-orange-500' 
+                      ? 'bg-gradient-to-br from-tier-hot to-amber-light' 
                       : 'bg-gradient-to-br from-tier-warm to-yellow-400'
                   }`}>
                     {prospect.initials}

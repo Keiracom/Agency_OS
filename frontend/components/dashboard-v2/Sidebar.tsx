@@ -34,7 +34,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center px-6 border-b border-[#2D4A6F]">
         <Zap className="h-6 w-6 text-[#3B82F6] mr-2" />
-        <span className="text-xl font-bold text-white tracking-tight">
+        <span className="text-xl font-bold text-text-primary tracking-tight">
           AGENCY OS
         </span>
       </div>
@@ -54,8 +54,8 @@ export function Sidebar() {
                 flex items-center gap-3 px-4 py-3 rounded-lg
                 text-sm font-medium transition-all duration-200
                 ${isActive
-                  ? "bg-[#2563EB] text-white shadow-lg shadow-blue-500/25"
-                  : "text-[#94A3B8] hover:text-white hover:bg-[#2D4A6F]"
+                  ? "bg-[#2563EB] text-text-primary shadow-lg shadow-amber/25"
+                  : "text-[#94A3B8] hover:text-text-primary hover:bg-[#2D4A6F]"
                 }
               `}
             >

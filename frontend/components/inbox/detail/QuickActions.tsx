@@ -46,11 +46,11 @@ export function QuickActions({ onScheduleCall, onAddNote, onSendToCRM, onViewPro
             className={cn(
               'w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-medium transition-all',
               action.primary
-                ? 'bg-amber-600 text-white hover:bg-amber-500'
-                : 'glass-surface border border-border-subtle text-text-primary hover:bg-white/[0.05] hover:translate-x-0.5'
+                ? 'bg-amber-600 text-text-primary hover:bg-amber-500'
+                : 'glass-surface border border-border-subtle text-text-primary hover:bg-bg-surface/[0.05] hover:translate-x-0.5'
             )}
           >
-            <action.icon className={cn('w-[18px] h-[18px]', action.primary ? 'text-white/80' : 'text-text-muted')} />
+            <action.icon className={cn('w-[18px] h-[18px]', action.primary ? 'text-text-primary/80' : 'text-text-muted')} />
             {action.label}
           </button>
         ))}

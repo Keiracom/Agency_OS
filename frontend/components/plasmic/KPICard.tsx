@@ -43,14 +43,14 @@ export function KPICard({
           "border",
           isDark
             ? "bg-[#1a1a1f] border-white/10"
-            : "bg-white border-[#E5E7EB]",
+            : "bg-bg-surface border-[#E5E7EB]",
           className
         )}
       >
         <CardContent className="p-6">
-          <Skeleton className={cn("h-4 w-32 mb-4", isDark ? "bg-white/10" : "bg-gray-200")} />
-          <Skeleton className={cn("h-10 w-20 mb-2", isDark ? "bg-white/10" : "bg-gray-200")} />
-          <Skeleton className={cn("h-4 w-24", isDark ? "bg-white/10" : "bg-gray-200")} />
+          <Skeleton className={cn("h-4 w-32 mb-4", isDark ? "bg-bg-surface/10" : "bg-gray-200")} />
+          <Skeleton className={cn("h-10 w-20 mb-2", isDark ? "bg-bg-surface/10" : "bg-gray-200")} />
+          <Skeleton className={cn("h-4 w-24", isDark ? "bg-bg-surface/10" : "bg-gray-200")} />
         </CardContent>
       </Card>
     );
@@ -64,10 +64,10 @@ export function KPICard({
   };
 
   const getTrendColor = () => {
-    if (trend === undefined || trend === null) return isDark ? "text-white/40" : "text-gray-400";
+    if (trend === undefined || trend === null) return isDark ? "text-text-primary/40" : "text-gray-400";
     if (trend > 0) return "text-[#10B981]"; // emerald
     if (trend < 0) return "text-[#F59E0B]"; // amber (not red, less alarming)
-    return isDark ? "text-white/40" : "text-gray-400";
+    return isDark ? "text-text-primary/40" : "text-gray-400";
   };
 
   const TrendIcon = getTrendIcon();
@@ -78,7 +78,7 @@ export function KPICard({
         "border transition-shadow hover:shadow-lg",
         isDark
           ? "bg-[#1a1a1f] border-white/10"
-          : "bg-white border-[#E5E7EB]",
+          : "bg-bg-surface border-[#E5E7EB]",
         className
       )}
     >
@@ -88,7 +88,7 @@ export function KPICard({
           <span
             className={cn(
               "text-sm font-medium",
-              isDark ? "text-white/60" : "text-[#6B7280]"
+              isDark ? "text-text-primary/60" : "text-[#6B7280]"
             )}
           >
             {label}
@@ -97,7 +97,7 @@ export function KPICard({
             <Icon
               className={cn(
                 "h-5 w-5",
-                isDark ? "text-white/40" : "text-[#9CA3AF]"
+                isDark ? "text-text-primary/40" : "text-[#9CA3AF]"
               )}
             />
           )}
@@ -108,7 +108,7 @@ export function KPICard({
           <span
             className={cn(
               "text-4xl font-bold tracking-tight",
-              isDark ? "text-white" : "text-[#1F2937]"
+              isDark ? "text-text-primary" : "text-[#1F2937]"
             )}
           >
             {value}
@@ -120,7 +120,7 @@ export function KPICard({
           <p
             className={cn(
               "text-sm",
-              isDark ? "text-white/60" : "text-[#6B7280]"
+              isDark ? "text-text-primary/60" : "text-[#6B7280]"
             )}
           >
             {subtitle}
@@ -132,7 +132,7 @@ export function KPICard({
               {trend > 0 && "+"}
               {trend}
             </span>
-            <span className={isDark ? "text-white/40" : "text-[#9CA3AF]"}>
+            <span className={isDark ? "text-text-primary/40" : "text-[#9CA3AF]"}>
               {trendLabel}
             </span>
           </div>

@@ -41,19 +41,19 @@ const mockLeads = [
 ];
 
 const tierColors = {
-  hot: "bg-red-500/10 text-red-700 border-red-500/20",
+  hot: "bg-amber-glow text-error border-amber/20",
   warm: "bg-orange-500/10 text-orange-700 border-orange-500/20",
-  cold: "bg-blue-500/10 text-blue-700 border-blue-500/20",
+  cold: "bg-bg-elevated/10 text-amber border-default/20",
 };
 
 const statusColors = {
   new: "bg-gray-500/10 text-gray-700 border-gray-500/20",
-  enriched: "bg-blue-500/10 text-blue-700 border-blue-500/20",
-  scored: "bg-purple-500/10 text-purple-700 border-purple-500/20",
+  enriched: "bg-bg-elevated/10 text-amber border-default/20",
+  scored: "bg-amber/10 text-amber border-amber/20",
   in_sequence: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
-  converted: "bg-green-500/10 text-green-700 border-green-500/20",
-  unsubscribed: "bg-red-500/10 text-red-700 border-red-500/20",
-  bounced: "bg-red-500/10 text-red-700 border-red-500/20",
+  converted: "bg-amber/10 text-amber border-amber/20",
+  unsubscribed: "bg-amber-glow text-error border-amber/20",
+  bounced: "bg-amber-glow text-error border-amber/20",
 };
 
 export default function AdminLeadsPage() {
@@ -104,7 +104,7 @@ export default function AdminLeadsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{hotLeads}</div>
+            <div className="text-2xl font-bold text-amber">{hotLeads}</div>
           </CardContent>
         </Card>
         <Card>
@@ -124,7 +124,7 @@ export default function AdminLeadsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{coldLeads}</div>
+            <div className="text-2xl font-bold text-text-secondary">{coldLeads}</div>
           </CardContent>
         </Card>
       </div>

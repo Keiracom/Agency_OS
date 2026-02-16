@@ -270,7 +270,7 @@ export function LeadList({ onLeadClick, onNavigate }: LeadListProps) {
             placeholder="Search by name, email, company..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-white border border-[#E2E8F0] rounded-xl text-sm text-[#1E293B] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent"
+            className="w-full pl-12 pr-4 py-3 bg-bg-surface border border-[#E2E8F0] rounded-xl text-sm text-[#1E293B] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent"
           />
         </div>
 
@@ -284,7 +284,7 @@ export function LeadList({ onLeadClick, onNavigate }: LeadListProps) {
               <button
                 key={tier}
                 onClick={() => setSelectedTier(isSelected ? null : tier)}
-                className={`p-4 bg-white rounded-xl border transition-all duration-200 ${
+                className={`p-4 bg-bg-surface rounded-xl border transition-all duration-200 ${
                   isSelected
                     ? "border-[#3B82F6] ring-2 ring-[#3B82F6]/20"
                     : `border-[#E2E8F0] ${config.bgHover}`
@@ -302,7 +302,7 @@ export function LeadList({ onLeadClick, onNavigate }: LeadListProps) {
         </div>
 
         {/* Lead Table */}
-        <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+        <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm">
           {/* Table Header */}
           <div className="px-6 py-4 border-b border-[#E2E8F0] flex items-center justify-between">
             <h2 className="text-sm font-semibold text-[#64748B] uppercase tracking-wider">

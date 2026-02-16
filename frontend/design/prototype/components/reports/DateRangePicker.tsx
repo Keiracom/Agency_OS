@@ -106,7 +106,7 @@ export function DateRangePicker({
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-3 px-4 py-2.5 bg-white border border-[#E2E8F0] rounded-lg hover:bg-[#F8FAFC] transition-colors"
+        className="flex items-center gap-3 px-4 py-2.5 bg-bg-surface border border-[#E2E8F0] rounded-lg hover:bg-[#F8FAFC] transition-colors"
       >
         <Calendar className="h-4 w-4 text-[#64748B]" />
         <div className="flex flex-col items-start">
@@ -125,7 +125,7 @@ export function DateRangePicker({
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-lg border border-[#E2E8F0] shadow-lg z-10">
+        <div className="absolute top-full left-0 mt-2 w-48 bg-bg-surface rounded-lg border border-[#E2E8F0] shadow-lg z-10">
           <div className="p-1">
             {presetOptions.map((option) => (
               <button

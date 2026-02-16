@@ -88,11 +88,11 @@ export function MayaCompanion({
         >
           {/* Header */}
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#9D5CFF] flex items-center justify-center text-white font-bold shadow-lg shadow-purple-500/30">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#9D5CFF] flex items-center justify-center text-text-primary font-bold shadow-lg shadow-amber/30">
               M
             </div>
             <div>
-              <p className="font-semibold text-white text-sm">Maya</p>
+              <p className="font-semibold text-text-primary text-sm">Maya</p>
               <p className="text-xs text-[#6B6B7B]">Your Digital Employee</p>
             </div>
           </div>
@@ -106,7 +106,7 @@ export function MayaCompanion({
           <div className="flex gap-2">
             <button
               onClick={handleNext}
-              className="flex-1 px-4 py-2.5 bg-[#7C3AED] hover:bg-[#9D5CFF] text-white text-sm font-medium rounded-lg transition-colors"
+              className="flex-1 px-4 py-2.5 bg-[#7C3AED] hover:bg-[#9D5CFF] text-text-primary text-sm font-medium rounded-lg transition-colors"
             >
               {currentMayaStep.action}
             </button>
@@ -124,7 +124,7 @@ export function MayaCompanion({
       <button
         onClick={toggleBubble}
         className={cn(
-          "w-16 h-16 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#9D5CFF] border-[3px] border-[#12121A] shadow-lg shadow-purple-500/40 flex items-center justify-center text-white text-2xl font-bold transition-transform hover:scale-105",
+          "w-16 h-16 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#9D5CFF] border-[3px] border-[#12121A] shadow-lg shadow-amber/40 flex items-center justify-center text-text-primary text-2xl font-bold transition-transform hover:scale-105",
           isPulsing && "animate-pulse"
         )}
         style={{

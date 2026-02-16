@@ -29,7 +29,7 @@ export function SectionHeader({ title, action, badge, className }: SectionHeader
   return (
     <div className={cn("flex items-center justify-between mb-4", className)}>
       <div className="flex items-center gap-3">
-        <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">
+        <h2 className="text-sm font-semibold text-text-primary/60 uppercase tracking-wider">
           {title}
         </h2>
         {badge && (
@@ -39,7 +39,7 @@ export function SectionHeader({ title, action, badge, className }: SectionHeader
               badge.variant === "live"
                 ? "bg-[#10B981]/20 text-[#10B981] animate-pulse"
                 : badge.variant === "count"
-                ? "bg-white/10 text-white/60"
+                ? "bg-bg-surface/10 text-text-primary/60"
                 : "bg-[#2196F3]/20 text-[#2196F3]"
             )}
           >

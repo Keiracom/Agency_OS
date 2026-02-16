@@ -121,21 +121,21 @@ const initialIntegrations: Integration[] = [
     name: "Email",
     icon: <Mail className="w-5 h-5" />,
     status: "connected",
-    colorClass: "bg-purple-500/15 text-purple-400",
+    colorClass: "bg-amber/15 text-amber",
   },
   {
     id: "linkedin",
     name: "LinkedIn",
     icon: <Briefcase className="w-5 h-5" />,
     status: "connected",
-    colorClass: "bg-blue-500/15 text-blue-400",
+    colorClass: "bg-bg-elevated/15 text-text-secondary",
   },
   {
     id: "sms",
     name: "SMS",
     icon: <MessageSquare className="w-5 h-5" />,
     status: "connected",
-    colorClass: "bg-teal-500/15 text-teal-400",
+    colorClass: "bg-amber-glow text-amber",
   },
   {
     id: "voice",
@@ -149,7 +149,7 @@ const initialIntegrations: Integration[] = [
     name: "Calendar",
     icon: <Calendar className="w-5 h-5" />,
     status: "connected",
-    colorClass: "bg-pink-500/15 text-pink-400",
+    colorClass: "bg-amber-glow text-amber-light",
   },
   {
     id: "crm",
@@ -198,16 +198,16 @@ function TagInput({
   };
 
   return (
-    <div className="min-h-[48px] p-2 bg-[#1A1A28] border border-[#2A2A3D] rounded-lg flex flex-wrap gap-2 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-500/20 transition-all">
+    <div className="min-h-[48px] p-2 bg-bg-elevated border border-default rounded-lg flex flex-wrap gap-2 focus-within:border-amber focus-within:ring-2 focus-within:ring-amber/20 transition-all">
       {tags.map((tag) => (
         <span
           key={tag.id}
-          className="inline-flex items-center gap-1 px-3 py-1 bg-purple-500/15 text-purple-400 text-sm rounded-full"
+          className="inline-flex items-center gap-1 px-3 py-1 bg-amber/15 text-amber text-sm rounded-full"
         >
           {tag.value}
           <button
             onClick={() => onRemove(tag.id)}
-            className="hover:text-purple-300 transition-colors"
+            className="hover:text-amber-light transition-colors"
           >
             <X className="w-3 h-3" />
           </button>
@@ -219,7 +219,7 @@ function TagInput({
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={tags.length === 0 ? placeholder : ""}
-        className="flex-1 min-w-[120px] bg-transparent text-white text-sm outline-none placeholder:text-[#6E6E82]"
+        className="flex-1 min-w-[120px] bg-transparent text-text-primary text-sm outline-none placeholder:text-text-muted"
       />
     </div>
   );
@@ -238,12 +238,12 @@ function Toggle({
       onClick={onToggle}
       className={`w-12 h-6 rounded-full relative transition-all duration-200 ${
         enabled
-          ? "bg-purple-500"
-          : "bg-[#222233] border border-[#2A2A3D]"
+          ? "bg-amber"
+          : "bg-bg-elevated border border-default"
       }`}
     >
       <span
-        className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-all duration-200 ${
+        className={`absolute top-0.5 w-5 h-5 rounded-full bg-bg-surface shadow-md transition-all duration-200 ${
           enabled ? "left-6" : "left-0.5"
         }`}
       />
@@ -254,9 +254,9 @@ function Toggle({
 /** Status Badge Component */
 function StatusBadge({ status }: { status: IntegrationStatus }) {
   const config = {
-    connected: { color: "text-emerald-400", bg: "bg-emerald-400", label: "Connected" },
+    connected: { color: "text-amber", bg: "bg-amber", label: "Connected" },
     pending: { color: "text-amber-400", bg: "bg-amber-400", label: "Pending Setup" },
-    disconnected: { color: "text-[#6E6E82]", bg: "bg-[#6E6E82]", label: "Not Connected" },
+    disconnected: { color: "text-text-muted", bg: "bg-[#6E6E82]", label: "Not Connected" },
   };
 
   const { color, bg, label } = config[status];
@@ -274,7 +274,7 @@ function IntegrationButton({ status }: { status: IntegrationStatus }) {
   const config = {
     connected: {
       label: "Disconnect",
-      className: "bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20",
+      className: "bg-amber-glow text-amber border-amber/30 hover:bg-amber/20",
     },
     pending: {
       label: "Complete Setup",
@@ -282,7 +282,7 @@ function IntegrationButton({ status }: { status: IntegrationStatus }) {
     },
     disconnected: {
       label: "Connect",
-      className: "bg-purple-500/15 text-purple-400 border-purple-500/30 hover:bg-purple-500/25",
+      className: "bg-amber/15 text-amber border-amber/30 hover:bg-amber/25",
     },
   };
 
@@ -382,26 +382,26 @@ export function SettingsPanel() {
   // Render
   // ----------------------------------------
   return (
-    <div className="min-h-screen bg-[#05050A] text-white">
+    <div className="min-h-screen bg-bg-void text-text-primary">
       {/* Header */}
-      <header className="bg-[#12121D]/80 backdrop-blur-xl border-b border-[#1E1E2E] px-8 py-5">
+      <header className="bg-bg-base/80 backdrop-blur-xl border-b border-default px-8 py-5">
         <h1 className="text-xl font-bold">Settings</h1>
-        <p className="text-sm text-[#6E6E82] mt-1">
+        <p className="text-sm text-text-muted mt-1">
           Manage your account, ICP, and integrations
         </p>
       </header>
 
       <div className="max-w-4xl mx-auto px-8 py-8">
         {/* Tabs */}
-        <div className="inline-flex gap-1 p-1.5 bg-[#12121D]/80 backdrop-blur-xl rounded-xl border border-[#1E1E2E] mb-8">
+        <div className="inline-flex gap-1 p-1.5 bg-bg-base/80 backdrop-blur-xl rounded-xl border border-default mb-8">
           {TABS.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all ${
                 activeTab === tab.key
-                  ? "bg-purple-500/15 text-purple-400"
-                  : "text-[#6E6E82] hover:text-[#B4B4C4] hover:bg-[#1A1A28]"
+                  ? "bg-amber/15 text-amber"
+                  : "text-text-muted hover:text-text-secondary hover:bg-bg-elevated"
               }`}
             >
               {tab.icon}
@@ -414,26 +414,26 @@ export function SettingsPanel() {
         {activeTab === "profile" && (
           <div className="space-y-6">
             {/* Profile Card */}
-            <div className="bg-[#12121D]/60 backdrop-blur-xl border border-[#1E1E2E] rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-[#1E1E2E] flex items-center gap-3">
-                <User className="w-5 h-5 text-purple-400" />
+            <div className="bg-bg-base/60 backdrop-blur-xl border border-default rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-default flex items-center gap-3">
+                <User className="w-5 h-5 text-amber" />
                 <span className="font-semibold">Profile Information</span>
               </div>
               <div className="p-6">
                 {/* Avatar Section */}
                 <div className="flex items-center gap-6 mb-8">
                   <div className="relative">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-2xl font-bold ring-4 ring-[#12121D] ring-offset-2 ring-offset-purple-500/20">
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center text-2xl font-bold ring-4 ring-[#12121D] ring-offset-2 ring-offset-amber/20">
                       {profile.firstName[0]}{profile.lastName[0]}
                     </div>
-                    <button className="absolute -bottom-1 -right-1 w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center ring-4 ring-[#12121D] hover:bg-purple-400 transition-colors">
+                    <button className="absolute -bottom-1 -right-1 w-8 h-8 bg-amber rounded-full flex items-center justify-center ring-4 ring-[#12121D] hover:bg-amber transition-colors">
                       <Camera className="w-4 h-4" />
                     </button>
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold">{profile.firstName} {profile.lastName}</h3>
-                    <p className="text-sm text-[#B4B4C4]">{profile.email}</p>
-                    <span className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 bg-purple-500/15 text-purple-400 text-xs font-medium rounded-full">
+                    <p className="text-sm text-text-secondary">{profile.email}</p>
+                    <span className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 bg-amber/15 text-amber text-xs font-medium rounded-full">
                       <Check className="w-3 h-3" />
                       Growth Plan
                     </span>
@@ -443,56 +443,56 @@ export function SettingsPanel() {
                 {/* Form Grid */}
                 <div className="grid grid-cols-2 gap-5">
                   <div className="space-y-2">
-                    <label className="text-sm text-[#B4B4C4]">First Name</label>
+                    <label className="text-sm text-text-secondary">First Name</label>
                     <input
                       type="text"
                       value={profile.firstName}
                       onChange={(e) => handleProfileChange("firstName", e.target.value)}
-                      className="w-full px-4 py-3 bg-[#1A1A28] border border-[#2A2A3D] rounded-lg text-white text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-bg-elevated border border-default rounded-lg text-text-primary text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm text-[#B4B4C4]">Last Name</label>
+                    <label className="text-sm text-text-secondary">Last Name</label>
                     <input
                       type="text"
                       value={profile.lastName}
                       onChange={(e) => handleProfileChange("lastName", e.target.value)}
-                      className="w-full px-4 py-3 bg-[#1A1A28] border border-[#2A2A3D] rounded-lg text-white text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-bg-elevated border border-default rounded-lg text-text-primary text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm text-[#B4B4C4]">Email Address</label>
+                    <label className="text-sm text-text-secondary">Email Address</label>
                     <input
                       type="email"
                       value={profile.email}
                       onChange={(e) => handleProfileChange("email", e.target.value)}
-                      className="w-full px-4 py-3 bg-[#1A1A28] border border-[#2A2A3D] rounded-lg text-white text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-bg-elevated border border-default rounded-lg text-text-primary text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm text-[#B4B4C4]">Phone Number</label>
+                    <label className="text-sm text-text-secondary">Phone Number</label>
                     <input
                       type="tel"
                       value={profile.phone}
                       onChange={(e) => handleProfileChange("phone", e.target.value)}
-                      className="w-full px-4 py-3 bg-[#1A1A28] border border-[#2A2A3D] rounded-lg text-white text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-bg-elevated border border-default rounded-lg text-text-primary text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm text-[#B4B4C4]">Company</label>
+                    <label className="text-sm text-text-secondary">Company</label>
                     <input
                       type="text"
                       value={profile.company}
                       onChange={(e) => handleProfileChange("company", e.target.value)}
-                      className="w-full px-4 py-3 bg-[#1A1A28] border border-[#2A2A3D] rounded-lg text-white text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-bg-elevated border border-default rounded-lg text-text-primary text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm text-[#B4B4C4]">Timezone</label>
+                    <label className="text-sm text-text-secondary">Timezone</label>
                     <select
                       value={profile.timezone}
                       onChange={(e) => handleProfileChange("timezone", e.target.value)}
-                      className="w-full px-4 py-3 bg-[#1A1A28] border border-[#2A2A3D] rounded-lg text-white text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all cursor-pointer"
+                      className="w-full px-4 py-3 bg-bg-elevated border border-default rounded-lg text-text-primary text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all cursor-pointer"
                     >
                       {TIMEZONES.map((tz) => (
                         <option key={tz} value={tz}>{tz}</option>
@@ -502,11 +502,11 @@ export function SettingsPanel() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-[#1E1E2E]">
-                  <button className="px-5 py-2.5 text-sm font-medium text-[#B4B4C4] border border-[#2A2A3D] rounded-lg hover:bg-[#1A1A28] transition-all">
+                <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-default">
+                  <button className="px-5 py-2.5 text-sm font-medium text-text-secondary border border-default rounded-lg hover:bg-bg-elevated transition-all">
                     Cancel
                   </button>
-                  <button className="px-5 py-2.5 text-sm font-medium bg-purple-500 text-white rounded-lg hover:bg-purple-400 transition-all">
+                  <button className="px-5 py-2.5 text-sm font-medium bg-amber text-text-primary rounded-lg hover:bg-amber transition-all">
                     Save Changes
                   </button>
                 </div>
@@ -514,13 +514,13 @@ export function SettingsPanel() {
             </div>
 
             {/* API Keys Card */}
-            <div className="bg-[#12121D]/60 backdrop-blur-xl border border-[#1E1E2E] rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-[#1E1E2E] flex items-center justify-between">
+            <div className="bg-bg-base/60 backdrop-blur-xl border border-default rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-default flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Key className="w-5 h-5 text-purple-400" />
+                  <Key className="w-5 h-5 text-amber" />
                   <span className="font-semibold">API Keys</span>
                 </div>
-                <button className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-[#B4B4C4] border border-[#2A2A3D] rounded-lg hover:bg-[#1A1A28] transition-all">
+                <button className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-text-secondary border border-default rounded-lg hover:bg-bg-elevated transition-all">
                   <Plus className="w-3 h-3" />
                   Generate New Key
                 </button>
@@ -532,22 +532,22 @@ export function SettingsPanel() {
                 ].map((key) => (
                   <div
                     key={key.name}
-                    className="flex items-center justify-between p-4 bg-[#1A1A28] rounded-lg"
+                    className="flex items-center justify-between p-4 bg-bg-elevated rounded-lg"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-purple-500/15 rounded-lg flex items-center justify-center">
-                        <Key className="w-5 h-5 text-purple-400" />
+                      <div className="w-10 h-10 bg-amber/15 rounded-lg flex items-center justify-center">
+                        <Key className="w-5 h-5 text-amber" />
                       </div>
                       <div>
                         <div className="font-medium text-sm">{key.name}</div>
-                        <div className="text-xs text-[#6E6E82] font-mono mt-0.5">{key.value}</div>
+                        <div className="text-xs text-text-muted font-mono mt-0.5">{key.value}</div>
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <button className="px-3 py-1.5 text-xs font-medium text-[#B4B4C4] bg-[#222233] rounded-md hover:bg-[#2A2A3D] transition-all">
+                      <button className="px-3 py-1.5 text-xs font-medium text-text-secondary bg-bg-elevated rounded-md hover:bg-[#2A2A3D] transition-all">
                         Copy
                       </button>
-                      <button className="px-3 py-1.5 text-xs font-medium text-[#B4B4C4] bg-[#222233] rounded-md hover:bg-[#2A2A3D] transition-all">
+                      <button className="px-3 py-1.5 text-xs font-medium text-text-secondary bg-bg-elevated rounded-md hover:bg-[#2A2A3D] transition-all">
                         Regenerate
                       </button>
                     </div>
@@ -557,17 +557,17 @@ export function SettingsPanel() {
             </div>
 
             {/* Danger Zone */}
-            <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-6">
-              <h3 className="flex items-center gap-2 text-red-400 font-semibold mb-4">
+            <div className="bg-amber/5 border border-amber/20 rounded-xl p-6">
+              <h3 className="flex items-center gap-2 text-amber font-semibold mb-4">
                 <AlertTriangle className="w-5 h-5" />
                 Danger Zone
               </h3>
               <div className="flex gap-3">
-                <button className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/20 transition-all">
+                <button className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-amber-glow text-amber border border-amber/30 rounded-lg hover:bg-amber/20 transition-all">
                   <Download className="w-4 h-4" />
                   Export All Data
                 </button>
-                <button className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/20 transition-all">
+                <button className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-amber-glow text-amber border border-amber/30 rounded-lg hover:bg-amber/20 transition-all">
                   <Trash2 className="w-4 h-4" />
                   Delete Account
                 </button>
@@ -579,15 +579,15 @@ export function SettingsPanel() {
         {/* ICP Tab */}
         {activeTab === "icp" && (
           <div className="space-y-6">
-            <div className="bg-[#12121D]/60 backdrop-blur-xl border border-[#1E1E2E] rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-[#1E1E2E] flex items-center gap-3">
-                <Target className="w-5 h-5 text-purple-400" />
+            <div className="bg-bg-base/60 backdrop-blur-xl border border-default rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-default flex items-center gap-3">
+                <Target className="w-5 h-5 text-amber" />
                 <span className="font-semibold">Ideal Customer Profile</span>
               </div>
               <div className="p-6 space-y-6">
                 {/* Industries */}
                 <div className="space-y-2">
-                  <label className="text-sm text-[#B4B4C4]">Target Industries</label>
+                  <label className="text-sm text-text-secondary">Target Industries</label>
                   <TagInput
                     tags={icp.industries}
                     onAdd={(value) => addTag("industries", value)}
@@ -598,7 +598,7 @@ export function SettingsPanel() {
 
                 {/* Job Titles */}
                 <div className="space-y-2">
-                  <label className="text-sm text-[#B4B4C4]">Target Job Titles</label>
+                  <label className="text-sm text-text-secondary">Target Job Titles</label>
                   <TagInput
                     tags={icp.titles}
                     onAdd={(value) => addTag("titles", value)}
@@ -609,11 +609,11 @@ export function SettingsPanel() {
 
                 {/* Company Size */}
                 <div className="space-y-2">
-                  <label className="text-sm text-[#B4B4C4]">Company Size</label>
+                  <label className="text-sm text-text-secondary">Company Size</label>
                   <select
                     value={icp.companySize}
                     onChange={(e) => setIcp((prev) => ({ ...prev, companySize: e.target.value }))}
-                    className="w-full px-4 py-3 bg-[#1A1A28] border border-[#2A2A3D] rounded-lg text-white text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all cursor-pointer"
+                    className="w-full px-4 py-3 bg-bg-elevated border border-default rounded-lg text-text-primary text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all cursor-pointer"
                   >
                     {COMPANY_SIZES.map((size) => (
                       <option key={size} value={size}>{size}</option>
@@ -623,7 +623,7 @@ export function SettingsPanel() {
 
                 {/* Regions */}
                 <div className="space-y-2">
-                  <label className="text-sm text-[#B4B4C4]">Target Regions</label>
+                  <label className="text-sm text-text-secondary">Target Regions</label>
                   <TagInput
                     tags={icp.regions}
                     onAdd={(value) => addTag("regions", value)}
@@ -634,24 +634,24 @@ export function SettingsPanel() {
 
                 {/* Excluded Domains */}
                 <div className="space-y-2">
-                  <label className="text-sm text-[#B4B4C4]">Excluded Domains</label>
+                  <label className="text-sm text-text-secondary">Excluded Domains</label>
                   <TagInput
                     tags={icp.excludedDomains}
                     onAdd={(value) => addTag("excludedDomains", value)}
                     onRemove={(id) => removeTag("excludedDomains", id)}
                     placeholder="Add domain to exclude..."
                   />
-                  <p className="text-xs text-[#6E6E82]">
+                  <p className="text-xs text-text-muted">
                     Leads from these domains will be automatically excluded
                   </p>
                 </div>
 
                 {/* Actions */}
-                <div className="flex justify-end gap-3 pt-6 border-t border-[#1E1E2E]">
-                  <button className="px-5 py-2.5 text-sm font-medium text-[#B4B4C4] border border-[#2A2A3D] rounded-lg hover:bg-[#1A1A28] transition-all">
+                <div className="flex justify-end gap-3 pt-6 border-t border-default">
+                  <button className="px-5 py-2.5 text-sm font-medium text-text-secondary border border-default rounded-lg hover:bg-bg-elevated transition-all">
                     Reset to Defaults
                   </button>
-                  <button className="px-5 py-2.5 text-sm font-medium bg-purple-500 text-white rounded-lg hover:bg-purple-400 transition-all">
+                  <button className="px-5 py-2.5 text-sm font-medium bg-amber text-text-primary rounded-lg hover:bg-amber transition-all">
                     Save ICP Settings
                   </button>
                 </div>
@@ -663,25 +663,25 @@ export function SettingsPanel() {
         {/* Integrations Tab */}
         {activeTab === "integrations" && (
           <div className="space-y-6">
-            <div className="bg-[#12121D]/60 backdrop-blur-xl border border-[#1E1E2E] rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-[#1E1E2E] flex items-center gap-3">
-                <Link2 className="w-5 h-5 text-purple-400" />
+            <div className="bg-bg-base/60 backdrop-blur-xl border border-default rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-default flex items-center gap-3">
+                <Link2 className="w-5 h-5 text-amber" />
                 <span className="font-semibold">Connected Services</span>
               </div>
               <div className="p-6">
                 {/* LinkedIn Status Highlight (per requirement) */}
                 {linkedInStatus === "connected" && (
-                  <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                      <Briefcase className="w-5 h-5 text-blue-400" />
+                  <div className="mb-6 p-4 bg-bg-elevated/10 border border-default/20 rounded-lg flex items-center gap-3">
+                    <div className="w-10 h-10 bg-bg-elevated/20 rounded-lg flex items-center justify-center">
+                      <Briefcase className="w-5 h-5 text-text-secondary" />
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium text-blue-400">LinkedIn Connected</div>
-                      <div className="text-xs text-blue-400/70">
+                      <div className="font-medium text-text-secondary">LinkedIn Connected</div>
+                      <div className="text-xs text-text-secondary/70">
                         Automation is active • Last sync 2 minutes ago
                       </div>
                     </div>
-                    <Check className="w-5 h-5 text-blue-400" />
+                    <Check className="w-5 h-5 text-text-secondary" />
                   </div>
                 )}
 
@@ -690,7 +690,7 @@ export function SettingsPanel() {
                   {integrations.map((integration) => (
                     <div
                       key={integration.id}
-                      className="flex items-center justify-between p-5 bg-[#1A1A28] border border-[#1E1E2E] rounded-xl hover:border-[#2A2A3D] transition-all"
+                      className="flex items-center justify-between p-5 bg-bg-elevated border border-default rounded-xl hover:border-default transition-all"
                     >
                       <div className="flex items-center gap-4">
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${integration.colorClass}`}>
@@ -713,20 +713,20 @@ export function SettingsPanel() {
         {/* Notifications Tab */}
         {activeTab === "notifications" && (
           <div className="space-y-6">
-            <div className="bg-[#12121D]/60 backdrop-blur-xl border border-[#1E1E2E] rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-[#1E1E2E] flex items-center gap-3">
-                <Bell className="w-5 h-5 text-purple-400" />
+            <div className="bg-bg-base/60 backdrop-blur-xl border border-default rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-default flex items-center gap-3">
+                <Bell className="w-5 h-5 text-amber" />
                 <span className="font-semibold">Notification Preferences</span>
               </div>
               <div className="p-6 space-y-4">
                 {notifications.map((notif) => (
                   <div
                     key={notif.id}
-                    className="flex items-center justify-between p-4 bg-[#1A1A28] rounded-xl"
+                    className="flex items-center justify-between p-4 bg-bg-elevated rounded-xl"
                   >
                     <div>
                       <div className="font-medium text-sm">{notif.label}</div>
-                      <div className="text-xs text-[#6E6E82] mt-1">{notif.description}</div>
+                      <div className="text-xs text-text-muted mt-1">{notif.description}</div>
                     </div>
                     <Toggle
                       enabled={notif.enabled}

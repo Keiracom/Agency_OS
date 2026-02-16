@@ -15,22 +15,22 @@ export function getInitials(name: string): string {
 }
 
 const avatarColors = [
-  "bg-red-500",
+  "bg-amber",
   "bg-orange-500",
   "bg-amber-500",
   "bg-yellow-500",
   "bg-lime-500",
-  "bg-green-500",
-  "bg-emerald-500",
-  "bg-teal-500",
-  "bg-cyan-500",
-  "bg-sky-500",
-  "bg-blue-500",
+  "bg-amber",
+  "bg-amber",
+  "bg-amber",
+  "bg-amber",
+  "bg-amber",
+  "bg-bg-elevated",
   "bg-indigo-500",
-  "bg-violet-500",
-  "bg-purple-500",
+  "bg-amber",
+  "bg-amber",
   "bg-fuchsia-500",
-  "bg-pink-500",
+  "bg-amber-light",
   "bg-rose-500",
 ]
 
@@ -45,10 +45,10 @@ export function getAvatarColor(name: string): string {
 
 export function getTierColor(tier: string): string {
   const tierColors: Record<string, string> = {
-    hot: "text-red-500",
+    hot: "text-amber",
     warm: "text-orange-500",
-    cool: "text-blue-500",
-    cold: "text-cyan-500",
+    cool: "text-text-secondary",
+    cold: "text-amber",
     dead: "text-gray-500",
   }
   return tierColors[tier?.toLowerCase()] || "text-gray-500"

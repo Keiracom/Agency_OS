@@ -37,11 +37,11 @@ export default function SocialProofBar({
               <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-mint-400 to-mint-500 bg-clip-text text-transparent">
                 {stat.value}
               </div>
-              <div className="text-sm font-medium text-white mt-2">
+              <div className="text-sm font-medium text-text-primary mt-2">
                 {stat.label}
               </div>
               {stat.sublabel && (
-                <div className="text-xs text-white/50 mt-0.5">
+                <div className="text-xs text-text-primary/50 mt-0.5">
                   {stat.sublabel}
                 </div>
               )}

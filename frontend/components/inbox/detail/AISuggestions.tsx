@@ -25,8 +25,8 @@ export function AISuggestions({ suggestions, onUseSuggestion }: AISuggestionsPro
     <div className="max-w-[720px] bg-surface-dark border border-border-subtle rounded-2xl p-6 mt-6">
       {/* Header - VIOLET stays for AI icon */}
       <div className="flex items-center gap-3 mb-5">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center">
-          <Lightbulb className="w-5 h-5 text-white" />
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber to-amber-light flex items-center justify-center">
+          <Lightbulb className="w-5 h-5 text-text-primary" />
         </div>
         <div>
           <h3 className="font-serif text-base font-bold text-text-primary">Suggested Responses</h3>
@@ -42,11 +42,11 @@ export function AISuggestions({ suggestions, onUseSuggestion }: AISuggestionsPro
           return (
             <div
               key={suggestion.id}
-              className="group p-4 bg-violet-500/5 border border-violet-500/15 rounded-xl cursor-pointer hover:bg-violet-500/10 hover:border-violet-500/30 hover:-translate-y-0.5 transition-all"
+              className="group p-4 bg-amber/5 border border-amber/15 rounded-xl cursor-pointer hover:bg-amber/10 hover:border-amber/30 hover:-translate-y-0.5 transition-all"
               onClick={() => onUseSuggestion(suggestion.text)}
             >
               <div className="flex items-center justify-between mb-2.5">
-                <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-violet-400">
+                <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-amber">
                   {suggestion.label.includes('✨') ? (
                     <>
                       <Sparkles className="w-3.5 h-3.5" />
@@ -59,7 +59,7 @@ export function AISuggestions({ suggestions, onUseSuggestion }: AISuggestionsPro
                     </>
                   )}
                 </span>
-                <button className="px-3 py-1.5 bg-violet-500 text-white text-[11px] font-semibold rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                <button className="px-3 py-1.5 bg-amber text-text-primary text-[11px] font-semibold rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
                   Use This
                 </button>
               </div>

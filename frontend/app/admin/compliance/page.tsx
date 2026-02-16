@@ -52,7 +52,7 @@ export default function AdminCompliancePage() {
           variant="outline"
           className={
             mockCompliance.status === "healthy"
-              ? "bg-green-500/10 text-green-700"
+              ? "bg-amber/10 text-amber"
               : "bg-yellow-500/10 text-yellow-700"
           }
         >
@@ -84,8 +84,8 @@ export default function AdminCompliancePage() {
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${
-              bounceStatus === "good" ? "text-green-600" :
-              bounceStatus === "warning" ? "text-yellow-600" : "text-red-600"
+              bounceStatus === "good" ? "text-amber" :
+              bounceStatus === "warning" ? "text-yellow-600" : "text-amber"
             }`}>
               {mockCompliance.bounceRate}%
             </div>
@@ -102,7 +102,7 @@ export default function AdminCompliancePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${mockCompliance.spamComplaints > 10 ? "text-red-600" : ""}`}>
+            <div className={`text-2xl font-bold ${mockCompliance.spamComplaints > 10 ? "text-amber" : ""}`}>
               {mockCompliance.spamComplaints}
             </div>
             <p className="text-xs text-muted-foreground">this month</p>
@@ -191,7 +191,7 @@ export default function AdminCompliancePage() {
                       variant="outline"
                       className={
                         issue.type === "spam"
-                          ? "bg-red-500/10 text-red-700"
+                          ? "bg-amber-glow text-error"
                           : issue.type === "bounce"
                           ? "bg-yellow-500/10 text-yellow-700"
                           : "bg-gray-500/10 text-gray-700"
@@ -219,7 +219,7 @@ export default function AdminCompliancePage() {
             <div className="p-4 border rounded-lg">
               <p className="text-sm text-muted-foreground">Bounce Rate</p>
               <p className="text-lg font-medium">&lt; 2%</p>
-              <Badge variant="outline" className="mt-2 bg-green-500/10 text-green-700">
+              <Badge variant="outline" className="mt-2 bg-amber/10 text-amber">
                 Target
               </Badge>
             </div>
@@ -233,14 +233,14 @@ export default function AdminCompliancePage() {
             <div className="p-4 border rounded-lg">
               <p className="text-sm text-muted-foreground">Bounce Rate</p>
               <p className="text-lg font-medium">&gt; 5%</p>
-              <Badge variant="outline" className="mt-2 bg-red-500/10 text-red-700">
+              <Badge variant="outline" className="mt-2 bg-amber-glow text-error">
                 Critical
               </Badge>
             </div>
             <div className="p-4 border rounded-lg">
               <p className="text-sm text-muted-foreground">Spam Complaints</p>
               <p className="text-lg font-medium">&lt; 0.1%</p>
-              <Badge variant="outline" className="mt-2 bg-green-500/10 text-green-700">
+              <Badge variant="outline" className="mt-2 bg-amber/10 text-amber">
                 Industry Standard
               </Badge>
             </div>

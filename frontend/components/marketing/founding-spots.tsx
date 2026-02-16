@@ -83,7 +83,7 @@ export function FoundingSpots({
   // If sold out
   if (remaining !== null && remaining <= 0) {
     return (
-      <span className={`text-red-500 font-semibold ${className}`}>
+      <span className={`text-amber font-semibold ${className}`}>
         Founding spots sold out
       </span>
     );
@@ -91,10 +91,10 @@ export function FoundingSpots({
 
   // Urgency styling based on remaining spots
   const urgencyColor = remaining !== null && remaining <= 5
-    ? "text-red-500"
+    ? "text-amber"
     : remaining !== null && remaining <= 10
     ? "text-amber-500"
-    : "text-green-500";
+    : "text-amber";
 
   if (variant === "compact") {
     return (
@@ -118,10 +118,10 @@ export function FoundingSpots({
       {showPulse && (
         <span className="relative flex h-2.5 w-2.5">
           <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-            remaining !== null && remaining <= 5 ? "bg-red-500" : "bg-amber-500"
+            remaining !== null && remaining <= 5 ? "bg-amber" : "bg-amber-500"
           }`} />
           <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-            remaining !== null && remaining <= 5 ? "bg-red-500" : "bg-amber-500"
+            remaining !== null && remaining <= 5 ? "bg-amber" : "bg-amber-500"
           }`} />
         </span>
       )}

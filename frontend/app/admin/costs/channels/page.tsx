@@ -28,7 +28,7 @@ const mockChannelCosts = {
       name: "Email",
       provider: "Resend",
       icon: Mail,
-      color: "bg-blue-500",
+      color: "bg-bg-elevated",
       sent: 18470,
       cost: 456.23,
       costPer: 0.025,
@@ -38,7 +38,7 @@ const mockChannelCosts = {
       name: "SMS",
       provider: "Twilio",
       icon: MessageSquare,
-      color: "bg-green-500",
+      color: "bg-amber",
       sent: 2340,
       cost: 389.45,
       costPer: 0.166,
@@ -48,7 +48,7 @@ const mockChannelCosts = {
       name: "LinkedIn",
       provider: "HeyReach",
       icon: Linkedin,
-      color: "bg-sky-500",
+      color: "bg-amber",
       sent: 4560,
       cost: 534.12,
       costPer: 0.117,
@@ -58,7 +58,7 @@ const mockChannelCosts = {
       name: "Voice",
       provider: "Synthflow",
       icon: Phone,
-      color: "bg-purple-500",
+      color: "bg-amber",
       sent: 156,
       cost: 156.00,
       costPer: 1.00,
@@ -116,7 +116,7 @@ export default function AdminChannelCostsPage() {
             <Card key={channel.name}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <div className={`p-1.5 rounded ${channel.color} text-white`}>
+                  <div className={`p-1.5 rounded ${channel.color} text-text-primary`}>
                     <Icon className="h-4 w-4" />
                   </div>
                   {channel.name}

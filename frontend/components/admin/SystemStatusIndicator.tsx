@@ -49,11 +49,11 @@ export function SystemStatusIndicator({
   const getStatusColor = (status: ServiceStatus["status"]) => {
     switch (status) {
       case "healthy":
-        return "bg-green-500";
+        return "bg-amber";
       case "degraded":
         return "bg-yellow-500";
       case "down":
-        return "bg-red-500";
+        return "bg-amber";
     }
   };
 
@@ -80,7 +80,7 @@ export function SystemStatusIndicator({
             <div
               className={cn(
                 "h-2 w-2 rounded-full",
-                allHealthy ? "bg-green-500" : hasCritical ? "bg-red-500" : "bg-yellow-500"
+                allHealthy ? "bg-amber" : hasCritical ? "bg-amber" : "bg-yellow-500"
               )}
             />
             <span className="text-xs text-muted-foreground">

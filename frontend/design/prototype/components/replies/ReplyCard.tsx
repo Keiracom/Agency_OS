@@ -132,7 +132,7 @@ export function ReplyCard({
       onClick={onClick}
       className={`
         relative px-4 py-4 border-b border-[#E2E8F0] cursor-pointer transition-colors
-        ${isSelected ? "bg-[#EFF6FF] border-l-4 border-l-[#3B82F6]" : "bg-white hover:bg-[#F8FAFC]"}
+        ${isSelected ? "bg-[#EFF6FF] border-l-4 border-l-[#3B82F6]" : "bg-bg-surface hover:bg-[#F8FAFC]"}
         ${isUnread ? "bg-[#F8FAFC]" : ""}
       `}
     >

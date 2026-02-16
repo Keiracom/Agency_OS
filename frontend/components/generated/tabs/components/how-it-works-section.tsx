@@ -155,25 +155,25 @@ export default function HowItWorksSection({ autoRotate = true, rotateInterval = 
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">How It Works</h2>
-          <p className="text-white/70 text-lg">From discovery to closed deals in 5 simple steps</p>
+          <h2 className="text-3xl md:text-4xl font-bold text-text-primary mb-3">How It Works</h2>
+          <p className="text-text-primary/70 text-lg">From discovery to closed deals in 5 simple steps</p>
         </div>
 
         {/* Tab Bar */}
         <div className="flex justify-center mb-8">
-          <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-white/5 backdrop-blur-[20px] border border-white/10">
+          <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-bg-surface/5 backdrop-blur-[20px] border border-white/10">
             {steps.map((step, index) => (
               <button
                 key={step.id}
                 onClick={() => handleTabClick(index)}
                 className={`
                   relative px-4 py-2.5 text-sm font-medium rounded-md transition-all duration-300
-                  ${activeStep === index ? "text-white" : "text-white/50 hover:text-white/70"}
+                  ${activeStep === index ? "text-text-primary" : "text-text-primary/50 hover:text-text-primary/70"}
                 `}
               >
                 {step.label}
                 {activeStep === index && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full" />
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber to-amber rounded-full" />
                 )}
               </button>
             ))}
@@ -190,8 +190,8 @@ export default function HowItWorksSection({ autoRotate = true, rotateInterval = 
                 w-2 h-2 rounded-full transition-all duration-300
                 ${
                   activeStep === index
-                    ? "bg-gradient-to-r from-blue-500 to-purple-600 w-8"
-                    : "bg-white/20 hover:bg-white/30"
+                    ? "bg-gradient-to-r from-amber to-amber w-8"
+                    : "bg-bg-surface/20 hover:bg-bg-surface/30"
                 }
               `}
               aria-label={`Go to step ${index + 1}`}
@@ -213,24 +213,24 @@ export default function HowItWorksSection({ autoRotate = true, rotateInterval = 
                 }
               `}
             >
-              <div className="bg-white/5 backdrop-blur-[20px] border border-white/10 rounded-lg p-8 md:p-10">
+              <div className="bg-bg-surface/5 backdrop-blur-[20px] border border-white/10 rounded-lg p-8 md:p-10">
                 <div className="flex items-start gap-6">
                   {/* Step Number Badge */}
                   <div className="flex-shrink-0">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                      <span className="text-white font-bold text-xl">{step.number}</span>
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center">
+                      <span className="text-text-primary font-bold text-xl">{step.number}</span>
                     </div>
                   </div>
 
                   {/* Content */}
                   <div className="flex-1">
                     <div className="flex items-start gap-4 mb-4">
-                      <div className="p-3 rounded-lg bg-white/5 border border-white/10">
-                        <Icon className="w-6 h-6 text-white" />
+                      <div className="p-3 rounded-lg bg-bg-surface/5 border border-white/10">
+                        <Icon className="w-6 h-6 text-text-primary" />
                       </div>
-                      <h3 className="text-2xl font-bold text-white leading-tight flex-1">{step.title}</h3>
+                      <h3 className="text-2xl font-bold text-text-primary leading-tight flex-1">{step.title}</h3>
                     </div>
-                    <p className="text-white/70 text-lg leading-relaxed">{step.description}</p>
+                    <p className="text-text-primary/70 text-lg leading-relaxed">{step.description}</p>
                   </div>
                 </div>
               </div>
@@ -241,7 +241,7 @@ export default function HowItWorksSection({ autoRotate = true, rotateInterval = 
         {/* Auto-rotate indicator */}
         {autoRotate && !isPaused && isInView && (
           <div className="text-center mt-6">
-            <p className="text-white/30 text-xs">Auto-advancing</p>
+            <p className="text-text-primary/30 text-xs">Auto-advancing</p>
           </div>
         )}
       </div>

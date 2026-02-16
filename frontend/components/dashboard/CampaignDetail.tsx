@@ -165,10 +165,10 @@ const mockCampaign: Campaign = {
     { type: "mail", count: 48, active: true },
   ],
   funnel: [
-    { label: "Leads", value: 1245, rate: "100%", color: "from-violet-600 to-purple-500" },
-    { label: "Contacted", value: 987, rate: "79.3%", color: "from-blue-600 to-blue-400" },
-    { label: "Engaged", value: 142, rate: "11.4%", color: "from-teal-500 to-emerald-400" },
-    { label: "Meetings", value: 12, rate: "0.96%", color: "from-green-500 to-green-400" },
+    { label: "Leads", value: 1245, rate: "100%", color: "from-violet-600 to-amber" },
+    { label: "Contacted", value: 987, rate: "79.3%", color: "from-amber to-text-secondary" },
+    { label: "Engaged", value: 142, rate: "11.4%", color: "from-amber to-amber" },
+    { label: "Meetings", value: 12, rate: "0.96%", color: "from-amber to-amber" },
   ],
   sequence: [
     {
@@ -278,36 +278,36 @@ const channelLabels: Record<ChannelType, string> = {
 };
 
 const stepTypeColors: Record<ChannelType, string> = {
-  email: "bg-violet-500/20 text-violet-400",
-  linkedin: "bg-blue-500/20 text-blue-400",
-  sms: "bg-teal-500/20 text-teal-400",
+  email: "bg-amber/20 text-amber",
+  linkedin: "bg-bg-elevated/20 text-text-secondary",
+  sms: "bg-amber/20 text-amber",
   voice: "bg-amber-500/20 text-amber-400",
-  mail: "bg-pink-500/20 text-pink-400",
+  mail: "bg-amber-light/20 text-amber-light",
 };
 
 const tierColors: Record<LeadTier, string> = {
-  hot: "from-red-500 to-orange-500",
+  hot: "from-amber to-amber-light",
   warm: "from-amber-500 to-yellow-500",
-  cool: "from-blue-500 to-cyan-500",
+  cool: "from-amber to-amber",
 };
 
 const scoreColors: Record<LeadTier, string> = {
-  hot: "text-red-400",
+  hot: "text-amber",
   warm: "text-amber-400",
-  cool: "text-blue-400",
+  cool: "text-text-secondary",
 };
 
 const statusConfig: Record<LeadStatus, { label: string; icon: LucideIcon; class: string }> = {
-  meeting: { label: "Meeting", icon: Calendar, class: "bg-green-500/20 text-green-400" },
-  replied: { label: "Replied", icon: Reply, class: "bg-blue-500/20 text-blue-400" },
-  opened: { label: "Opened", icon: Eye, class: "bg-violet-500/20 text-violet-400" },
-  sent: { label: "Sent", icon: Send, class: "bg-slate-500/20 text-slate-400" },
+  meeting: { label: "Meeting", icon: Calendar, class: "bg-amber/20 text-amber" },
+  replied: { label: "Replied", icon: Reply, class: "bg-bg-elevated/20 text-text-secondary" },
+  opened: { label: "Opened", icon: Eye, class: "bg-amber/20 text-amber" },
+  sent: { label: "Sent", icon: Send, class: "bg-slate-500/20 text-text-secondary" },
 };
 
 const activityIcons: Record<string, { icon: LucideIcon; bg: string }> = {
-  meeting: { icon: Calendar, bg: "bg-green-500/20" },
-  reply: { icon: Reply, bg: "bg-blue-500/20" },
-  open: { icon: Eye, bg: "bg-violet-500/20" },
+  meeting: { icon: Calendar, bg: "bg-amber/20" },
+  reply: { icon: Reply, bg: "bg-bg-elevated/20" },
+  open: { icon: Eye, bg: "bg-amber/20" },
   sent: { icon: Send, bg: "bg-slate-500/20" },
   call: { icon: Phone, bg: "bg-amber-500/20" },
 };
@@ -332,26 +332,26 @@ function CampaignHero({
   return (
     <div className="relative bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl p-8 overflow-hidden">
       {/* Top gradient bar */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-600 via-blue-500 to-teal-400" />
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-600 via-amber to-amber" />
 
       <div className="flex items-start justify-between mb-6">
         <div>
           <div className="flex items-center gap-4 mb-3">
-            <h1 className="text-3xl font-bold text-white">{campaign.name}</h1>
+            <h1 className="text-3xl font-bold text-text-primary">{campaign.name}</h1>
             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide ${
               campaign.status === "active"
-                ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                ? "bg-amber/20 text-amber border border-amber/30"
                 : campaign.status === "paused"
                 ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                : "bg-slate-500/20 text-slate-400 border border-slate-500/30"
+                : "bg-slate-500/20 text-text-secondary border border-slate-500/30"
             }`}>
               {campaign.status === "active" && (
-                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                <span className="w-2 h-2 bg-amber rounded-full animate-pulse" />
               )}
               {campaign.status}
             </span>
           </div>
-          <div className="flex items-center gap-8 text-slate-400 text-sm">
+          <div className="flex items-center gap-8 text-text-secondary text-sm">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               <span>{campaign.dateRange.start} — {campaign.dateRange.end}</span>
@@ -370,7 +370,7 @@ function CampaignHero({
         <div className="flex items-center gap-3">
           <button
             onClick={onEdit}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-800/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-sm text-white transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-800/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-sm text-text-primary transition-colors"
           >
             <Edit2 className="w-4 h-4" />
             Edit
@@ -379,7 +379,7 @@ function CampaignHero({
             onClick={onPause}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${
               isPaused
-                ? "bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30"
+                ? "bg-amber/20 text-amber border border-amber/30 hover:bg-amber/30"
                 : "bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30"
             }`}
           >
@@ -388,7 +388,7 @@ function CampaignHero({
           </button>
           <button
             onClick={onAddLeads}
-            className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 rounded-lg text-sm text-white font-medium transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-amber hover:bg-amber rounded-lg text-sm text-text-primary font-medium transition-colors"
           >
             <Plus className="w-4 h-4" />
             Add Leads
@@ -407,11 +407,11 @@ function CampaignHero({
                 !channel.active ? "opacity-40" : ""
               }`}
             >
-              <Icon className="w-6 h-6 text-slate-400" />
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              <Icon className="w-6 h-6 text-text-secondary" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
                 {channelLabels[channel.type]}
               </span>
-              <span className="text-lg font-bold font-mono text-white">
+              <span className="text-lg font-bold font-mono text-text-primary">
                 {channel.count.toLocaleString()}
               </span>
             </div>
@@ -430,8 +430,8 @@ function FunnelVisualization({ funnel }: { funnel: FunnelStep[] }) {
   return (
     <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl p-6">
       <div className="flex items-center gap-3 mb-6">
-        <Shield className="w-5 h-5 text-violet-400" />
-        <h3 className="text-lg font-semibold text-white">Campaign Funnel</h3>
+        <Shield className="w-5 h-5 text-amber" />
+        <h3 className="text-lg font-semibold text-text-primary">Campaign Funnel</h3>
       </div>
       
       <div className="flex items-stretch gap-0">
@@ -450,12 +450,12 @@ function FunnelVisualization({ funnel }: { funnel: FunnelStep[] }) {
                 marginLeft: idx === 0 ? 0 : "-20px",
               }}
             >
-              <span className="text-3xl font-bold font-mono text-white">
+              <span className="text-3xl font-bold font-mono text-text-primary">
                 {step.value.toLocaleString()}
               </span>
             </div>
-            <p className="mt-3 text-sm font-semibold text-white">{step.label}</p>
-            <p className="text-xs text-slate-500">{step.rate}</p>
+            <p className="mt-3 text-sm font-semibold text-text-primary">{step.label}</p>
+            <p className="text-xs text-text-muted">{step.rate}</p>
           </div>
         ))}
       </div>
@@ -471,8 +471,8 @@ function SequenceFlow({ steps }: { steps: SequenceStep[] }) {
   return (
     <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="flex items-center gap-3 p-5 border-b border-white/10">
-        <Activity className="w-5 h-5 text-violet-400" />
-        <h3 className="text-base font-semibold text-white">Sequence Flow</h3>
+        <Activity className="w-5 h-5 text-amber" />
+        <h3 className="text-base font-semibold text-text-primary">Sequence Flow</h3>
       </div>
       <div className="p-5 space-y-3">
         {steps.map((step) => {
@@ -485,19 +485,19 @@ function SequenceFlow({ steps }: { steps: SequenceStep[] }) {
               key={step.id}
               className={`flex items-start gap-4 p-4 rounded-xl transition-colors ${
                 isActive
-                  ? "bg-violet-500/10 border border-violet-500/30"
+                  ? "bg-amber/10 border border-amber/30"
                   : isCompleted
-                  ? "bg-green-500/5 border border-green-500/20"
+                  ? "bg-amber/5 border border-amber/20"
                   : "bg-slate-950/40 border border-transparent hover:border-white/10"
               }`}
             >
               <div
                 className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
                   isCompleted
-                    ? "bg-green-500 text-white"
+                    ? "bg-amber text-text-primary"
                     : isActive
-                    ? "bg-violet-600 text-white"
-                    : "bg-slate-700 text-slate-400"
+                    ? "bg-amber text-text-primary"
+                    : "bg-slate-700 text-text-secondary"
                 }`}
               >
                 {isCompleted ? (
@@ -512,10 +512,10 @@ function SequenceFlow({ steps }: { steps: SequenceStep[] }) {
                   <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${stepTypeColors[step.type]}`}>
                     {channelLabels[step.type]}
                   </span>
-                  <span className="text-xs text-slate-500">Day {step.day}</span>
+                  <span className="text-xs text-text-muted">Day {step.day}</span>
                 </div>
-                <p className="text-sm font-medium text-white mb-2">{step.title}</p>
-                <div className="flex items-center gap-4 text-xs text-slate-400">
+                <p className="text-sm font-medium text-text-primary mb-2">{step.title}</p>
+                <div className="flex items-center gap-4 text-xs text-text-secondary">
                   {step.stats.sent && <span>📤 {step.stats.sent.toLocaleString()} sent</span>}
                   {step.stats.opened && <span>👀 {step.stats.opened.toLocaleString()} opened</span>}
                   {step.stats.replied && <span>↩️ {step.stats.replied.toLocaleString()} replied</span>}
@@ -523,7 +523,7 @@ function SequenceFlow({ steps }: { steps: SequenceStep[] }) {
                   {step.stats.called && <span>📞 {step.stats.called.toLocaleString()} called</span>}
                   {step.stats.connected && <span>📱 {step.stats.connected.toLocaleString()} connected</span>}
                   {step.stats.booked && <span>📅 {step.stats.booked.toLocaleString()} booked</span>}
-                  {step.status === "pending" && <span className="text-slate-500">Pending...</span>}
+                  {step.status === "pending" && <span className="text-text-muted">Pending...</span>}
                 </div>
               </div>
             </div>
@@ -548,8 +548,8 @@ function ChannelPerformance({
   return (
     <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="flex items-center gap-3 p-5 border-b border-white/10">
-        <BarChart3 className="w-5 h-5 text-violet-400" />
-        <h3 className="text-base font-semibold text-white">Channel Performance</h3>
+        <BarChart3 className="w-5 h-5 text-amber" />
+        <h3 className="text-base font-semibold text-text-primary">Channel Performance</h3>
       </div>
       <div className="p-5">
         {/* Channel grid */}
@@ -558,15 +558,15 @@ function ChannelPerformance({
             const Icon = channelIcons[channel.channel];
             return (
               <div key={channel.channel} className="bg-slate-950/40 rounded-xl p-4 text-center">
-                <Icon className="w-7 h-7 mx-auto mb-3 text-slate-400" />
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                <Icon className="w-7 h-7 mx-auto mb-3 text-text-secondary" />
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-2">
                   {channelLabels[channel.channel]}
                 </p>
                 <div className="space-y-2">
                   {channel.stats.map((stat) => (
                     <div key={stat.label} className="flex justify-between items-center text-xs">
-                      <span className="text-slate-400">{stat.label}</span>
-                      <span className="font-mono font-semibold text-white">{stat.value}</span>
+                      <span className="text-text-secondary">{stat.label}</span>
+                      <span className="font-mono font-semibold text-text-primary">{stat.value}</span>
                     </div>
                   ))}
                 </div>
@@ -577,15 +577,15 @@ function ChannelPerformance({
 
         {/* A/B Tests */}
         <div className="pt-4 border-t border-white/10">
-          <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-white">
-            <Zap className="w-4 h-4 text-teal-400" />
+          <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-text-primary">
+            <Zap className="w-4 h-4 text-amber" />
             A/B Test Results
           </div>
           {abTests.map((test) => (
             <div key={test.id} className="bg-slate-950/40 rounded-xl p-4">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-semibold text-white">{test.name}</span>
-                <span className="flex items-center gap-1.5 px-2 py-1 bg-green-500/20 text-green-400 rounded text-[10px] font-semibold uppercase">
+                <span className="text-sm font-semibold text-text-primary">{test.name}</span>
+                <span className="flex items-center gap-1.5 px-2 py-1 bg-amber/20 text-amber rounded text-[10px] font-semibold uppercase">
                   <Trophy className="w-3 h-3" />
                   Winner
                 </span>
@@ -596,22 +596,22 @@ function ChannelPerformance({
                     key={variant.id}
                     className={`p-4 rounded-lg border ${
                       variant.isWinner
-                        ? "bg-green-500/5 border-green-500/30"
+                        ? "bg-amber/5 border-amber/30"
                         : "bg-slate-800/40 border-white/5"
                     }`}
                   >
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted mb-2">
                       {variant.label}
                     </p>
                     <p className="text-xs text-slate-300 italic mb-3">"{variant.subject}"</p>
                     <div className="flex gap-4">
                       <div className="text-center">
-                        <p className="text-xl font-bold font-mono text-white">{variant.openRate}%</p>
-                        <p className="text-[9px] uppercase text-slate-500">Open</p>
+                        <p className="text-xl font-bold font-mono text-text-primary">{variant.openRate}%</p>
+                        <p className="text-[9px] uppercase text-text-muted">Open</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-xl font-bold font-mono text-white">{variant.replyRate}%</p>
-                        <p className="text-[9px] uppercase text-slate-500">Reply</p>
+                        <p className="text-xl font-bold font-mono text-text-primary">{variant.replyRate}%</p>
+                        <p className="text-[9px] uppercase text-text-muted">Reply</p>
                       </div>
                     </div>
                   </div>
@@ -642,20 +642,20 @@ function LeadsTable({
     <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="flex items-center justify-between p-5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <Users className="w-5 h-5 text-violet-400" />
-          <h3 className="text-base font-semibold text-white">Leads in Campaign</h3>
+          <Users className="w-5 h-5 text-amber" />
+          <h3 className="text-base font-semibold text-text-primary">Leads in Campaign</h3>
         </div>
-        <span className="text-sm text-slate-500">{totalLeads.toLocaleString()} total</span>
+        <span className="text-sm text-text-muted">{totalLeads.toLocaleString()} total</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="bg-slate-800/40">
-              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Lead</th>
-              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Status</th>
-              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Step</th>
-              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Score</th>
-              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Last Activity</th>
+              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Lead</th>
+              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Status</th>
+              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Step</th>
+              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Score</th>
+              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Last Activity</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -666,12 +666,12 @@ function LeadsTable({
                 <tr key={lead.id} className="hover:bg-slate-800/20 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${tierColors[lead.tier]} flex items-center justify-center text-white text-xs font-bold`}>
+                      <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${tierColors[lead.tier]} flex items-center justify-center text-text-primary text-xs font-bold`}>
                         {lead.initials}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-white">{lead.name}</p>
-                        <p className="text-xs text-slate-500">{lead.company}</p>
+                        <p className="text-sm font-semibold text-text-primary">{lead.name}</p>
+                        <p className="text-xs text-text-muted">{lead.company}</p>
                       </div>
                     </div>
                   </td>
@@ -685,7 +685,7 @@ function LeadsTable({
                   <td className="px-4 py-3">
                     <span className={`text-base font-bold font-mono ${scoreColors[lead.tier]}`}>{lead.score}</span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">{lead.lastActivity}</td>
+                  <td className="px-4 py-3 text-xs text-text-muted">{lead.lastActivity}</td>
                 </tr>
               );
             })}
@@ -694,7 +694,7 @@ function LeadsTable({
       </div>
       <button
         onClick={onViewAll}
-        className="w-full py-4 text-sm font-medium text-violet-400 hover:text-violet-300 hover:bg-slate-800/20 transition-colors border-t border-white/10"
+        className="w-full py-4 text-sm font-medium text-amber hover:text-violet-300 hover:bg-slate-800/20 transition-colors border-t border-white/10"
       >
         Explore All Leads →
       </button>
@@ -712,9 +712,9 @@ function ActivityFeed({ activities }: { activities: ActivityItem[] }) {
       <div className="flex items-center justify-between p-5 border-b border-white/10">
         <div className="flex items-center gap-3">
           <Zap className="w-5 h-5 text-amber-400" />
-          <h3 className="text-base font-semibold text-white">Activity Feed</h3>
+          <h3 className="text-base font-semibold text-text-primary">Activity Feed</h3>
         </div>
-        <span className="text-xs text-slate-500">Live</span>
+        <span className="text-xs text-text-muted">Live</span>
       </div>
       <div className="p-5 space-y-0">
         {activities.map((item, idx) => {
@@ -726,11 +726,11 @@ function ActivityFeed({ activities }: { activities: ActivityItem[] }) {
                 <Icon className="w-4 h-4 text-slate-300" />
               </div>
               <div className="flex-1">
-                <p className="text-sm text-white">
+                <p className="text-sm text-text-primary">
                   <span className="font-semibold">{item.text.split(" ")[0]} {item.text.split(" ")[1]}</span>
                   {" "}{item.text.split(" ").slice(2).join(" ")}
                 </p>
-                <p className="text-xs text-slate-500">{item.time} • {item.detail}</p>
+                <p className="text-xs text-text-muted">{item.time} • {item.detail}</p>
               </div>
             </div>
           );
@@ -779,12 +779,12 @@ export function CampaignDetail({
       {/* Back navigation */}
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-300 transition-colors"
+        className="flex items-center gap-2 text-sm text-text-muted hover:text-slate-300 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         <span>Back to Campaigns</span>
-        <span className="mx-2 text-slate-600">/</span>
-        <span className="text-slate-400">{campaign.name}</span>
+        <span className="mx-2 text-text-muted">/</span>
+        <span className="text-text-secondary">{campaign.name}</span>
       </button>
 
       {/* Hero */}

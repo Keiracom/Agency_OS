@@ -36,10 +36,10 @@ import type { BestOfContentItem } from "@/lib/api/types";
 
 // Channel configuration
 const channelConfig: Record<string, { icon: React.ReactNode; color: string }> = {
-  email: { icon: <Mail className="h-4 w-4" />, color: "bg-blue-500/10 text-blue-400" },
-  sms: { icon: <MessageSquare className="h-4 w-4" />, color: "bg-purple-500/10 text-purple-400" },
-  linkedin: { icon: <Linkedin className="h-4 w-4" />, color: "bg-sky-500/10 text-sky-400" },
-  voice: { icon: <Phone className="h-4 w-4" />, color: "bg-green-500/10 text-green-400" },
+  email: { icon: <Mail className="h-4 w-4" />, color: "bg-bg-elevated/10 text-text-secondary" },
+  sms: { icon: <MessageSquare className="h-4 w-4" />, color: "bg-amber/10 text-amber" },
+  linkedin: { icon: <Linkedin className="h-4 w-4" />, color: "bg-amber-glow text-amber" },
+  voice: { icon: <Phone className="h-4 w-4" />, color: "bg-amber/10 text-amber" },
   mail: { icon: <Send className="h-4 w-4" />, color: "bg-orange-500/10 text-orange-400" },
 };
 
@@ -54,7 +54,7 @@ function formatDate(dateString: string): string {
 function PerformanceBadge({ item }: { item: BestOfContentItem }) {
   if (item.got_conversion) {
     return (
-      <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+      <Badge className="bg-amber/20 text-amber border-amber/30">
         <Calendar className="h-3 w-3 mr-1" />
         Meeting
       </Badge>
@@ -62,7 +62,7 @@ function PerformanceBadge({ item }: { item: BestOfContentItem }) {
   }
   if (item.got_reply) {
     return (
-      <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+      <Badge className="bg-bg-elevated/20 text-text-secondary border-default/30">
         <MessageCircle className="h-3 w-3 mr-1" />
         Reply
       </Badge>
@@ -70,7 +70,7 @@ function PerformanceBadge({ item }: { item: BestOfContentItem }) {
   }
   if (item.email_click_count > 0) {
     return (
-      <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+      <Badge className="bg-amber/20 text-amber border-amber/30">
         <MousePointer className="h-3 w-3 mr-1" />
         Clicked
       </Badge>
@@ -97,11 +97,11 @@ function BestOfCard({
 
   return (
     <div
-      className="flex items-start gap-3 p-3 rounded-lg hover:bg-white/5 cursor-pointer transition-colors"
+      className="flex items-start gap-3 p-3 rounded-lg hover:bg-bg-surface/5 cursor-pointer transition-colors"
       onClick={onClick}
     >
       {/* Rank */}
-      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-yellow-500/20 to-orange-500/20 flex items-center justify-center">
+      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-yellow-500/20 to-amber-light/20 flex items-center justify-center">
         <span className="text-xs font-bold text-yellow-400">
           {rank <= 3 ? <Star className="h-3 w-3 fill-yellow-400" /> : rank}
         </span>
@@ -115,7 +115,7 @@ function BestOfCard({
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-sm font-medium text-white truncate">
+          <span className="text-sm font-medium text-text-primary truncate">
             {item.lead_name || item.lead_email || "Unknown"}
           </span>
           <PerformanceBadge item={item} />
@@ -156,7 +156,7 @@ function ContentDetailModal({
 
         <div className="space-y-4">
           {/* Performance Summary */}
-          <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 rounded-lg border border-yellow-500/20">
+          <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-yellow-500/10 to-amber-light/10 rounded-lg border border-yellow-500/20">
             <Sparkles className="h-5 w-5 text-yellow-400" />
             <span className="text-sm text-yellow-200">{item.performance_reason}</span>
           </div>
@@ -182,7 +182,7 @@ function ContentDetailModal({
           </div>
 
           {/* Engagement Stats */}
-          <div className="flex items-center gap-6 p-3 bg-white/5 rounded-lg">
+          <div className="flex items-center gap-6 p-3 bg-bg-surface/5 rounded-lg">
             <div className="flex items-center gap-2">
               <Eye className="h-4 w-4 text-gray-400" />
               <span className="text-sm text-gray-300">{item.email_open_count} opens</span>
@@ -193,14 +193,14 @@ function ContentDetailModal({
             </div>
             {item.got_reply && (
               <div className="flex items-center gap-2">
-                <MessageCircle className="h-4 w-4 text-green-400" />
-                <span className="text-sm text-green-400">Got reply</span>
+                <MessageCircle className="h-4 w-4 text-amber" />
+                <span className="text-sm text-amber">Got reply</span>
               </div>
             )}
             {item.got_conversion && (
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-green-400" />
-                <span className="text-sm text-green-400">Led to meeting</span>
+                <Calendar className="h-4 w-4 text-amber" />
+                <span className="text-sm text-amber">Led to meeting</span>
               </div>
             )}
           </div>
@@ -216,7 +216,7 @@ function ContentDetailModal({
           {/* Full Content */}
           <div>
             <h4 className="text-sm font-medium text-gray-400 mb-1">Content</h4>
-            <div className="p-4 bg-white/5 rounded-lg">
+            <div className="p-4 bg-bg-surface/5 rounded-lg">
               <pre className="whitespace-pre-wrap text-sm text-gray-300 font-sans">
                 {item.full_message_body || item.content_preview || "No content available"}
               </pre>
@@ -259,11 +259,11 @@ export function BestOfShowcase({
           <div className="space-y-3">
             {[...Array(3)].map((_, i) => (
               <div key={i} className="flex items-center gap-3 animate-pulse">
-                <div className="w-6 h-6 rounded-full bg-white/10" />
-                <div className="w-8 h-8 rounded bg-white/10" />
+                <div className="w-6 h-6 rounded-full bg-bg-surface/10" />
+                <div className="w-8 h-8 rounded bg-bg-surface/10" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-white/10 rounded w-3/4" />
-                  <div className="h-3 bg-white/10 rounded w-1/2" />
+                  <div className="h-4 bg-bg-surface/10 rounded w-3/4" />
+                  <div className="h-3 bg-bg-surface/10 rounded w-1/2" />
                 </div>
               </div>
             ))}

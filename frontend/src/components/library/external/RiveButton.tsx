@@ -90,12 +90,12 @@ export function RiveButton({ label = "ACTIVATE", onClick }: RiveButtonProps) {
 
       {/* Status indicators */}
       <div className="flex gap-4 text-xs font-mono">
-        <span className={`flex items-center gap-1 ${isHovered ? "text-orange-400" : "text-slate-500"}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${isHovered ? "bg-orange-400" : "bg-slate-600"}`} />
+        <span className={`flex items-center gap-1 ${isHovered ? "text-orange-400" : "text-text-muted"}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${isHovered ? "bg-orange-400" : "bg-bg-elevated"}`} />
           HOVER
         </span>
-        <span className={`flex items-center gap-1 ${isPressed ? "text-orange-400" : "text-slate-500"}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${isPressed ? "bg-orange-400" : "bg-slate-600"}`} />
+        <span className={`flex items-center gap-1 ${isPressed ? "text-orange-400" : "text-text-muted"}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${isPressed ? "bg-orange-400" : "bg-bg-elevated"}`} />
           PRESS
         </span>
       </div>

@@ -175,9 +175,9 @@ const mockSearch = async (query: string): Promise<SearchResult[]> => {
 
 function CategoryBadge({ category }: { category: SearchCategory }) {
   const styles: Record<SearchCategory, { bg: string; text: string; label: string }> = {
-    lead: { bg: "bg-blue-500/20", text: "text-blue-400", label: "Lead" },
-    campaign: { bg: "bg-purple-500/20", text: "text-purple-400", label: "Campaign" },
-    reply: { bg: "bg-emerald-500/20", text: "text-emerald-400", label: "Reply" },
+    lead: { bg: "bg-bg-elevated/20", text: "text-text-secondary", label: "Lead" },
+    campaign: { bg: "bg-amber/20", text: "text-amber", label: "Campaign" },
+    reply: { bg: "bg-amber/20", text: "text-amber", label: "Reply" },
     action: { bg: "bg-amber-500/20", text: "text-amber-400", label: "Action" },
   };
   
@@ -198,8 +198,8 @@ function TierIndicator({ tier }: { tier?: string }) {
   if (!tier) return null;
   
   const styles: Record<string, string> = {
-    hot: "bg-gradient-to-r from-orange-500 to-red-500",
-    warm: "bg-gradient-to-r from-amber-500 to-orange-500",
+    hot: "bg-gradient-to-r from-orange-500 to-amber",
+    warm: "bg-gradient-to-r from-amber-500 to-amber-light",
     cold: "bg-gradient-to-r from-slate-500 to-slate-600",
   };
   
@@ -228,8 +228,8 @@ function ResultItem({
         w-full flex items-center gap-3 px-4 py-3
         transition-all duration-150 text-left
         ${isSelected
-          ? "bg-white/10 border-l-2 border-blue-500"
-          : "hover:bg-white/5 border-l-2 border-transparent"
+          ? "bg-bg-surface/10 border-l-2 border-default"
+          : "hover:bg-bg-surface/5 border-l-2 border-transparent"
         }
       `}
     >
@@ -239,7 +239,7 @@ function ResultItem({
       {/* Icon */}
       <div className={`
         flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center
-        ${result.category === "action" ? "bg-amber-500/20 text-amber-400" : "bg-white/5 text-slate-400"}
+        ${result.category === "action" ? "bg-amber-500/20 text-amber-400" : "bg-bg-surface/5 text-text-secondary"}
       `}>
         {result.icon}
       </div>
@@ -247,12 +247,12 @@ function ResultItem({
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className={`text-sm font-medium truncate ${isSelected ? "text-white" : "text-slate-200"}`}>
+          <span className={`text-sm font-medium truncate ${isSelected ? "text-text-primary" : "text-slate-200"}`}>
             {result.title}
           </span>
           <CategoryBadge category={result.category} />
         </div>
-        <p className="text-xs text-slate-500 truncate mt-0.5">
+        <p className="text-xs text-text-muted truncate mt-0.5">
           {result.subtitle}
         </p>
       </div>
@@ -261,14 +261,14 @@ function ResultItem({
       {result.meta && (
         <span className={`
           text-xs flex-shrink-0
-          ${result.category === "lead" && result.tier === "hot" ? "text-orange-400 font-medium" : "text-slate-500"}
+          ${result.category === "lead" && result.tier === "hot" ? "text-orange-400 font-medium" : "text-text-muted"}
         `}>
           {result.meta}
         </span>
       )}
       
       {/* Arrow */}
-      <ArrowRight className={`w-4 h-4 flex-shrink-0 transition-opacity ${isSelected ? "text-blue-400 opacity-100" : "text-slate-600 opacity-0"}`} />
+      <ArrowRight className={`w-4 h-4 flex-shrink-0 transition-opacity ${isSelected ? "text-text-secondary opacity-100" : "text-text-muted opacity-0"}`} />
     </button>
   );
 }
@@ -322,10 +322,10 @@ function GroupedResults({
         return (
           <div key={category}>
             {/* Category Header */}
-            <div className="flex items-center gap-2 px-4 py-2 text-xs text-slate-500 font-medium uppercase tracking-wider">
+            <div className="flex items-center gap-2 px-4 py-2 text-xs text-text-muted font-medium uppercase tracking-wider">
               {icon}
               {label}
-              <span className="ml-auto bg-white/5 px-1.5 py-0.5 rounded text-[10px]">
+              <span className="ml-auto bg-bg-surface/5 px-1.5 py-0.5 rounded text-[10px]">
                 {items.length}
               </span>
             </div>
@@ -371,9 +371,9 @@ function EmptyState({
   if (query && query.length > 0) {
     return (
       <div className="py-12 text-center">
-        <Search className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-        <p className="text-sm text-slate-400">No results found for "{query}"</p>
-        <p className="text-xs text-slate-600 mt-1">Try a different search term</p>
+        <Search className="w-12 h-12 text-text-muted mx-auto mb-3" />
+        <p className="text-sm text-text-secondary">No results found for "{query}"</p>
+        <p className="text-xs text-text-muted mt-1">Try a different search term</p>
       </div>
     );
   }
@@ -383,7 +383,7 @@ function EmptyState({
       {/* Recent Searches */}
       {recentSearches.length > 0 && (
         <>
-          <div className="flex items-center gap-2 px-4 py-2 text-xs text-slate-500 font-medium uppercase tracking-wider">
+          <div className="flex items-center gap-2 px-4 py-2 text-xs text-text-muted font-medium uppercase tracking-wider">
             <Clock className="w-3.5 h-3.5" />
             Recent Searches
           </div>
@@ -392,7 +392,7 @@ function EmptyState({
               <button
                 key={i}
                 onClick={() => onRecentClick(search)}
-                className="px-3 py-1.5 text-xs text-slate-400 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+                className="px-3 py-1.5 text-xs text-text-secondary bg-bg-surface/5 hover:bg-bg-surface/10 rounded-lg transition-colors"
               >
                 {search}
               </button>
@@ -560,7 +560,7 @@ export function GlobalSearch({
       >
         {/* Search Input */}
         <div className="flex items-center gap-3 px-4 py-4 border-b border-white/10">
-          <Search className={`w-5 h-5 flex-shrink-0 ${loading ? "animate-pulse text-blue-400" : "text-slate-400"}`} />
+          <Search className={`w-5 h-5 flex-shrink-0 ${loading ? "animate-pulse text-text-secondary" : "text-text-secondary"}`} />
           <input
             ref={inputRef}
             type="text"
@@ -569,20 +569,20 @@ export function GlobalSearch({
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             className="
-              flex-1 bg-transparent text-white text-base
-              placeholder:text-slate-500 focus:outline-none
+              flex-1 bg-transparent text-text-primary text-base
+              placeholder:text-text-muted focus:outline-none
             "
           />
           {query && (
             <button
               onClick={() => setQuery("")}
-              className="p-1 text-slate-400 hover:text-white transition-colors"
+              className="p-1 text-text-secondary hover:text-text-primary transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           )}
-          <div className="flex items-center gap-1 text-slate-600 text-xs">
-            <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[10px]">esc</kbd>
+          <div className="flex items-center gap-1 text-text-muted text-xs">
+            <kbd className="px-1.5 py-0.5 bg-bg-surface/5 border border-white/10 rounded text-[10px]">esc</kbd>
             <span>to close</span>
           </div>
         </div>
@@ -598,8 +598,8 @@ export function GlobalSearch({
               />
             ) : loading ? (
               <div className="py-12 text-center">
-                <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-sm text-slate-400">Searching...</p>
+                <div className="w-8 h-8 border-2 border-default/30 border-t-amber rounded-full animate-spin mx-auto mb-3" />
+                <p className="text-sm text-text-secondary">Searching...</p>
               </div>
             ) : (
               <EmptyState
@@ -624,23 +624,23 @@ export function GlobalSearch({
         </div>
 
         {/* Footer with keyboard hints */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/10 bg-white/[0.02]">
-          <div className="flex items-center gap-4 text-xs text-slate-500">
+        <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/10 bg-bg-surface/[0.02]">
+          <div className="flex items-center gap-4 text-xs text-text-muted">
             <div className="flex items-center gap-1.5">
-              <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[10px] flex items-center gap-0.5">
+              <kbd className="px-1.5 py-0.5 bg-bg-surface/5 border border-white/10 rounded text-[10px] flex items-center gap-0.5">
                 <ChevronUp className="w-2.5 h-2.5" />
                 <ChevronDown className="w-2.5 h-2.5" />
               </kbd>
               <span>navigate</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[10px]">
+              <kbd className="px-1.5 py-0.5 bg-bg-surface/5 border border-white/10 rounded text-[10px]">
                 <CornerDownLeft className="w-2.5 h-2.5" />
               </kbd>
               <span>select</span>
             </div>
           </div>
-          <div className="text-xs text-slate-600">
+          <div className="text-xs text-text-muted">
             Powered by Agency OS
           </div>
         </div>

@@ -45,9 +45,9 @@ export function CapacityGauge({
 
   const statusConfig = {
     healthy: {
-      color: "from-green-500 to-emerald-400",
-      bgColor: "bg-green-500/20",
-      textColor: "text-green-400",
+      color: "from-amber to-amber",
+      bgColor: "bg-amber/20",
+      textColor: "text-amber",
       icon: CheckCircle2,
       message: "Capacity available",
     },
@@ -59,9 +59,9 @@ export function CapacityGauge({
       message: "Running low",
     },
     critical: {
-      color: "from-red-500 to-orange-500",
-      bgColor: "bg-red-500/20",
-      textColor: "text-red-400",
+      color: "from-amber to-amber-light",
+      bgColor: "bg-amber/20",
+      textColor: "text-amber",
       icon: AlertTriangle,
       message: "Near capacity",
     },
@@ -79,8 +79,8 @@ export function CapacityGauge({
     return (
       <Card className="bg-[#1a1a1f] border-white/10">
         <CardHeader className="pb-2">
-          <CardTitle className="text-white text-sm flex items-center gap-2">
-            <Fuel className="h-4 w-4 text-blue-400" />
+          <CardTitle className="text-text-primary text-sm flex items-center gap-2">
+            <Fuel className="h-4 w-4 text-text-secondary" />
             {label}
           </CardTitle>
         </CardHeader>
@@ -104,12 +104,12 @@ export function CapacityGauge({
               <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop
                   offset="0%"
-                  className={status === "critical" ? "text-red-500" : status === "warning" ? "text-yellow-500" : "text-green-500"}
+                  className={status === "critical" ? "text-amber" : status === "warning" ? "text-yellow-500" : "text-amber"}
                   stopColor="currentColor"
                 />
                 <stop
                   offset="100%"
-                  className={status === "critical" ? "text-orange-500" : status === "warning" ? "text-orange-400" : "text-emerald-400"}
+                  className={status === "critical" ? "text-orange-500" : status === "warning" ? "text-orange-400" : "text-amber"}
                   stopColor="currentColor"
                 />
               </linearGradient>
@@ -155,7 +155,7 @@ export function CapacityGauge({
           {/* Stats below gauge */}
           <div className="flex items-center justify-between w-full mt-4 px-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-white">
+              <p className="text-2xl font-bold text-text-primary">
                 {current.toLocaleString()}
               </p>
               <p className="text-xs text-gray-500">Used</p>
@@ -167,7 +167,7 @@ export function CapacityGauge({
               </span>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-white">
+              <p className="text-2xl font-bold text-text-primary">
                 {limit.toLocaleString()}
               </p>
               <p className="text-xs text-gray-500">Limit</p>
@@ -184,8 +184,8 @@ export function CapacityGauge({
       <Card className="bg-[#1a1a1f] border-white/10">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-white text-sm flex items-center gap-2">
-              <Fuel className="h-4 w-4 text-blue-400" />
+            <CardTitle className="text-text-primary text-sm flex items-center gap-2">
+              <Fuel className="h-4 w-4 text-text-secondary" />
               {label}
             </CardTitle>
             {showPercentage && (
@@ -206,7 +206,7 @@ export function CapacityGauge({
 
           {/* Labels */}
           <div className="flex items-center justify-between text-sm">
-            <span className="text-white font-medium">
+            <span className="text-text-primary font-medium">
               {current.toLocaleString()} / {limit.toLocaleString()}
             </span>
             <div className={`flex items-center gap-1.5 ${config.textColor}`}>
@@ -227,8 +227,8 @@ export function CapacityGauge({
   return (
     <Card className="bg-[#1a1a1f] border-white/10">
       <CardHeader className="pb-2">
-        <CardTitle className="text-white text-sm flex items-center gap-2">
-          <Fuel className="h-4 w-4 text-blue-400" />
+        <CardTitle className="text-text-primary text-sm flex items-center gap-2">
+          <Fuel className="h-4 w-4 text-text-secondary" />
           {label}
         </CardTitle>
       </CardHeader>
@@ -266,18 +266,18 @@ export function CapacityGauge({
           </svg>
           {/* Center text */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl font-bold text-white">{percentage}%</span>
+            <span className="text-2xl font-bold text-text-primary">{percentage}%</span>
           </div>
         </div>
 
         {/* Stats below */}
         <div className="flex items-center justify-between w-full mt-4">
           <div className="text-center flex-1">
-            <p className="text-lg font-bold text-white">{current.toLocaleString()}</p>
+            <p className="text-lg font-bold text-text-primary">{current.toLocaleString()}</p>
             <p className="text-xs text-gray-500">Used</p>
           </div>
           <div className="text-center flex-1">
-            <p className="text-lg font-bold text-white">{(limit - current).toLocaleString()}</p>
+            <p className="text-lg font-bold text-text-primary">{(limit - current).toLocaleString()}</p>
             <p className="text-xs text-gray-500">Remaining</p>
           </div>
         </div>

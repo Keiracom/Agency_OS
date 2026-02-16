@@ -230,11 +230,11 @@ const MOCK_CAMPAIGN = {
 function getStatusStyles(status: "active" | "paused" | "completed") {
   switch (status) {
     case "active":
-      return "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+      return "bg-amber-glow text-amber border-amber/30";
     case "paused":
       return "bg-amber-500/10 text-amber-400 border-amber-500/30";
     case "completed":
-      return "bg-violet-500/10 text-violet-400 border-violet-500/30";
+      return "bg-amber/10 text-amber border-amber/30";
   }
 }
 
@@ -242,11 +242,11 @@ function getStatusStyles(status: "active" | "paused" | "completed") {
 function getLeadStatusStyles(status: "meeting" | "replied" | "opened" | "sent") {
   switch (status) {
     case "meeting":
-      return "bg-emerald-500/15 text-emerald-400";
+      return "bg-amber-glow text-amber";
     case "replied":
-      return "bg-blue-500/15 text-blue-400";
+      return "bg-bg-elevated/15 text-text-secondary";
     case "opened":
-      return "bg-violet-500/15 text-violet-400";
+      return "bg-amber/15 text-amber";
     case "sent":
       return "bg-gray-500/15 text-text-muted";
   }
@@ -280,13 +280,13 @@ function getAvatarGradient(tier: "hot" | "warm" | "cool") {
 function ChannelIcon({ type, className = "w-4 h-4" }: { type: string; className?: string }) {
   switch (type) {
     case "email":
-      return <Mail className={`${className} text-blue-400`} />;
+      return <Mail className={`${className} text-text-secondary`} />;
     case "linkedin":
-      return <Linkedin className={`${className} text-sky-400`} />;
+      return <Linkedin className={`${className} text-amber`} />;
     case "sms":
-      return <MessageSquare className={`${className} text-emerald-400`} />;
+      return <MessageSquare className={`${className} text-amber`} />;
     case "voice":
-      return <Phone className={`${className} text-violet-400`} />;
+      return <Phone className={`${className} text-amber`} />;
     case "mail":
       return <Send className={`${className} text-orange-400`} />;
     default:
@@ -300,20 +300,20 @@ function ActivityIcon({ type }: { type: string }) {
   switch (type) {
     case "meeting":
       return (
-        <div className={`${baseClass} bg-emerald-500/15`}>
-          <Calendar className="w-4 h-4 text-emerald-400" />
+        <div className={`${baseClass} bg-amber-glow`}>
+          <Calendar className="w-4 h-4 text-amber" />
         </div>
       );
     case "reply":
       return (
-        <div className={`${baseClass} bg-blue-500/15`}>
-          <Mail className="w-4 h-4 text-blue-400" />
+        <div className={`${baseClass} bg-bg-elevated/15`}>
+          <Mail className="w-4 h-4 text-text-secondary" />
         </div>
       );
     case "open":
       return (
-        <div className={`${baseClass} bg-violet-500/15`}>
-          <Mail className="w-4 h-4 text-violet-400" />
+        <div className={`${baseClass} bg-amber/15`}>
+          <Mail className="w-4 h-4 text-amber" />
         </div>
       );
     case "call":
@@ -334,10 +334,10 @@ function ActivityIcon({ type }: { type: string }) {
 // Step type badge
 function StepTypeBadge({ type }: { type: string }) {
   const styles: Record<string, string> = {
-    email: "bg-blue-500/15 text-blue-400",
-    linkedin: "bg-sky-500/15 text-sky-400",
-    sms: "bg-emerald-500/15 text-emerald-400",
-    voice: "bg-violet-500/15 text-violet-400",
+    email: "bg-bg-elevated/15 text-text-secondary",
+    linkedin: "bg-amber-glow text-amber",
+    sms: "bg-amber-glow text-amber",
+    voice: "bg-amber/15 text-amber",
   };
   return (
     <span
@@ -426,7 +426,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                   <Pause className="w-4 h-4" />
                   Pause
                 </button>
-                <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white gradient-premium hover:opacity-90 transition-opacity">
+                <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-text-primary gradient-premium hover:opacity-90 transition-opacity">
                   <UserPlus className="w-4 h-4" />
                   Add Leads
                 </button>
@@ -466,7 +466,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             {campaign.funnel.map((stage, idx) => (
               <div key={stage.stage} className="flex-1 text-center relative">
                 <div
-                  className="h-20 flex flex-col items-center justify-center text-white mx-[-1px]"
+                  className="h-20 flex flex-col items-center justify-center text-text-primary mx-[-1px]"
                   style={{
                     background: funnelColors[idx],
                     clipPath:
@@ -503,7 +503,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                   key={step.step}
                   className={`flex items-start gap-4 p-4 rounded-xl border transition-colors ${
                     step.status === "completed"
-                      ? "bg-emerald-500/5 border-emerald-500/30"
+                      ? "bg-amber/5 border-amber/30"
                       : step.status === "active"
                       ? "bg-accent-primary/5 border-accent-primary/30"
                       : "bg-bg-surface border-border-subtle"
@@ -512,9 +512,9 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                   <div
                     className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
                       step.status === "completed"
-                        ? "bg-emerald-500 text-white"
+                        ? "bg-amber text-text-primary"
                         : step.status === "active"
-                        ? "bg-accent-primary text-white"
+                        ? "bg-accent-primary text-text-primary"
                         : "bg-bg-elevated text-text-muted"
                     }`}
                   >
@@ -564,7 +564,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
               <div className="grid grid-cols-3 gap-3">
                 {/* Email */}
                 <div className="bg-bg-surface rounded-xl p-4 text-center">
-                  <Mail className="w-6 h-6 text-blue-400 mx-auto mb-2" />
+                  <Mail className="w-6 h-6 text-text-secondary mx-auto mb-2" />
                   <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
                     Email
                   </p>
@@ -586,7 +586,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
                 {/* LinkedIn */}
                 <div className="bg-bg-surface rounded-xl p-4 text-center">
-                  <Linkedin className="w-6 h-6 text-sky-400 mx-auto mb-2" />
+                  <Linkedin className="w-6 h-6 text-amber mx-auto mb-2" />
                   <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
                     LinkedIn
                   </p>
@@ -608,7 +608,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
                 {/* Voice */}
                 <div className="bg-bg-surface rounded-xl p-4 text-center">
-                  <Phone className="w-6 h-6 text-violet-400 mx-auto mb-2" />
+                  <Phone className="w-6 h-6 text-amber mx-auto mb-2" />
                   <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
                     Smart Calls
                   </p>
@@ -636,7 +636,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                     <Trophy className="w-4 h-4 text-accent-primary" />
                     {campaign.abTest.label}
                   </span>
-                  <span className="px-2 py-1 rounded text-[10px] font-bold uppercase bg-emerald-500/15 text-emerald-400 flex items-center gap-1">
+                  <span className="px-2 py-1 rounded text-[10px] font-bold uppercase bg-amber-glow text-amber flex items-center gap-1">
                     <Trophy className="w-3 h-3" />
                     Winner
                   </span>
@@ -647,7 +647,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                       key={idx}
                       className={`p-3 rounded-lg border ${
                         variant.isWinner
-                          ? "bg-emerald-500/5 border-emerald-500/30"
+                          ? "bg-amber/5 border-amber/30"
                           : "bg-bg-elevated border-border-subtle"
                       }`}
                     >
@@ -719,7 +719,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <div
-                          className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-semibold"
+                          className="w-9 h-9 rounded-lg flex items-center justify-center text-text-primary text-xs font-semibold"
                           style={{ background: getAvatarGradient(lead.tier) }}
                         >
                           {lead.initials}

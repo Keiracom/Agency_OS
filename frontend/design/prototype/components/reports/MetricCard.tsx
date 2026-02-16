@@ -45,7 +45,7 @@ export function MetricCard({
   const hasChange = change !== undefined;
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm p-6">
+    <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm p-6">
       <div className="flex items-center justify-between mb-3">
         <span className="text-sm font-medium text-[#64748B]">{label}</span>
         {Icon && <Icon className="h-5 w-5 text-[#94A3B8]" />}

@@ -70,9 +70,9 @@ export function Sidebar({ activePath = "/dashboard", onNavigate }: SidebarProps)
       <div className="px-6 py-6 border-b border-[#2D4A6F]">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-[#2563EB] rounded-lg">
-            <Zap className="h-5 w-5 text-white" />
+            <Zap className="h-5 w-5 text-text-primary" />
           </div>
-          <span className="text-lg font-bold text-white tracking-wide">
+          <span className="text-lg font-bold text-text-primary tracking-wide">
             AGENCY OS
           </span>
         </div>
@@ -90,8 +90,8 @@ export function Sidebar({ activePath = "/dashboard", onNavigate }: SidebarProps)
               onClick={() => handleClick(item.href)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                 isActive
-                  ? "bg-[#2563EB] text-white shadow-lg shadow-blue-500/25"
-                  : "text-[#94A3B8] hover:text-white hover:bg-[#2D4A6F]"
+                  ? "bg-[#2563EB] text-text-primary shadow-lg shadow-amber/25"
+                  : "text-[#94A3B8] hover:text-text-primary hover:bg-[#2D4A6F]"
               }`}
             >
               <Icon className="h-5 w-5" />
@@ -108,12 +108,12 @@ export function Sidebar({ activePath = "/dashboard", onNavigate }: SidebarProps)
             <div className="p-2 bg-[#1E3A5F] rounded-lg">
               <HelpCircle className="h-4 w-4 text-[#94A3B8]" />
             </div>
-            <span className="text-sm font-medium text-white">Need help?</span>
+            <span className="text-sm font-medium text-text-primary">Need help?</span>
           </div>
           <p className="text-xs text-[#94A3B8] mb-3">
             Check our documentation or contact support for assistance.
           </p>
-          <button className="w-full px-3 py-2 bg-[#1E3A5F] hover:bg-[#162D4D] text-white text-xs font-medium rounded-lg transition-colors">
+          <button className="w-full px-3 py-2 bg-[#1E3A5F] hover:bg-[#162D4D] text-text-primary text-xs font-medium rounded-lg transition-colors">
             View Documentation
           </button>
         </div>

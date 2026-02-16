@@ -6,6 +6,7 @@ module.exports = {
     './components/**/*.{ts,tsx}',
     './app/**/*.{ts,tsx}',
     './src/**/*.{ts,tsx}',
+    './design/**/*.{ts,tsx}',
   ],
   prefix: "",
   theme: {
@@ -17,49 +18,41 @@ module.exports = {
       }
     },
     extend: {
-      // Bloomberg Dark Theme Tokens (v2 - Warmed up)
+      // Pure Bloomberg Dark Theme — Warm Charcoal + Amber ONLY
       colors: {
-        // Base layers (warmed up for glassmorphism)
-        'bg-void': '#08070D',
-        'bg-base': '#0D0C14',
-        'bg-surface': '#171622',
-        'bg-surface-hover': '#1E1C2D',
-        'bg-elevated': '#262438',
+        // Background layers (warm charcoal)
+        'bg-void': '#0C0A08',
+        'bg-base': '#141210',
+        'bg-surface': '#1C1A17',
+        'bg-elevated': '#242220',
         
-        // Borders (warmed up)
-        'border-subtle': '#221F30',
-        'border-default': '#2E2B40',
-        'border-strong': '#3D3955',
+        // Borders (subtle glass edges)
+        'border-subtle': 'rgba(255,255,255,0.06)',
+        'border-default': 'rgba(255,255,255,0.10)',
+        'border-focus': 'rgba(255,255,255,0.20)',
         
-        // Glass (new tokens for glassmorphism)
+        // Text (warm cream palette)
+        'text-primary': '#F5F0EB',
+        'text-secondary': '#A39E96',
+        'text-muted': '#6B6660',
+        
+        // Accent — AMBER ONLY (the only color)
+        'amber': '#D4956A',
+        'amber-light': '#E8B48A',
+        'amber-glow': 'rgba(212,149,106,0.12)',
+        
+        // Error state (muted warm red — SPARINGLY)
+        'error': '#C0675A',
+        'error-glow': 'rgba(192,103,90,0.12)',
+        
+        // Glass
         glass: {
-          surface: 'rgba(23, 22, 34, 0.7)',
-          border: 'rgba(255, 255, 255, 0.06)',
-          'border-hover': 'rgba(255, 255, 255, 0.1)',
+          surface: 'rgba(255,255,255,0.04)',
+          border: 'rgba(255,255,255,0.10)',
+          'border-hover': 'rgba(255,255,255,0.15)',
         },
         
-        // Text
-        'text-primary': '#F8F8FC',
-        'text-secondary': '#B4B4C4',
-        'text-muted': '#6E6E82',
-        
-        // Accent
-        'accent-primary': '#7C3AED',
-        'accent-primary-hover': '#9061F9',
-        'accent-teal': '#14B8A6',
-        'accent-blue': '#3B82F6',
-        
-        // Status
-        'status-success': '#22C55E',
-        'status-warning': '#F59E0B',
-        'status-error': '#EF4444',
-        
-        // Tiers (ALS Lead Scoring)
-        'tier-hot': '#EF4444',
-        'tier-warm': '#F59E0B',
-        'tier-cool': '#3B82F6',
-        
-        // shadcn/ui compatibility
+        // shadcn/ui compatibility layer
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
@@ -102,7 +95,8 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        sans: ['DM Sans', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        serif: ['Instrument Serif', 'Georgia', 'serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       borderRadius: {
@@ -111,11 +105,11 @@ module.exports = {
         sm: 'calc(var(--radius) - 4px)'
       },
       boxShadow: {
-        'glow-sm': '0 0 10px rgba(124, 58, 237, 0.2)',
-        'glow-md': '0 0 20px rgba(124, 58, 237, 0.3)',
-        'glow-lg': '0 0 30px rgba(124, 58, 237, 0.4)',
-        'glass': '0 12px 40px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
-        'glass-glow': '0 0 20px rgba(124, 58, 237, 0.15)',
+        'glow-sm': '0 0 10px rgba(212,149,106,0.15)',
+        'glow-md': '0 0 20px rgba(212,149,106,0.20)',
+        'glow-lg': '0 0 30px rgba(212,149,106,0.25)',
+        'glass': '0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)',
+        'glass-lg': '0 12px 40px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)',
       },
       keyframes: {
         'accordion-down': {
@@ -127,14 +121,18 @@ module.exports = {
           to: { height: '0' }
         },
         'pulse-glow': {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgba(124, 58, 237, 0.4)' },
-          '50%': { boxShadow: '0 0 0 8px rgba(124, 58, 237, 0)' }
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(212,149,106,0.4)' },
+          '50%': { boxShadow: '0 0 0 8px rgba(212,149,106,0)' }
+        },
+        'shimmer': {
+          '100%': { transform: 'translateX(100%)' }
         }
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
-        'pulse-glow': 'pulse-glow 2s ease-in-out infinite'
+        'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
+        'shimmer': 'shimmer 2s infinite'
       }
     }
   },

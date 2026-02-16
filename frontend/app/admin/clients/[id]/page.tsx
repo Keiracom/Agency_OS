@@ -75,24 +75,24 @@ const mockClient = {
 };
 
 const tierColors = {
-  ignition: "bg-blue-500/10 text-blue-700 border-blue-500/20",
-  velocity: "bg-purple-500/10 text-purple-700 border-purple-500/20",
+  ignition: "bg-bg-elevated/10 text-amber border-default/20",
+  velocity: "bg-amber/10 text-amber border-amber/20",
   dominance: "bg-amber-500/10 text-amber-700 border-amber-500/20",
 };
 
 const statusColors = {
-  active: "bg-green-500/10 text-green-700",
-  trialing: "bg-blue-500/10 text-blue-700",
-  past_due: "bg-red-500/10 text-red-700",
+  active: "bg-amber/10 text-amber",
+  trialing: "bg-bg-elevated/10 text-amber",
+  past_due: "bg-amber-glow text-error",
   paused: "bg-yellow-500/10 text-yellow-700",
   cancelled: "bg-gray-500/10 text-gray-700",
 };
 
 const campaignStatusColors = {
-  active: "bg-green-500/10 text-green-700 border-green-500/20",
+  active: "bg-amber/10 text-amber border-amber/20",
   paused: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
   completed: "bg-gray-500/10 text-gray-700 border-gray-500/20",
-  draft: "bg-blue-500/10 text-blue-700 border-blue-500/20",
+  draft: "bg-bg-elevated/10 text-amber border-default/20",
 };
 
 function formatDate(date: Date): string {
@@ -369,7 +369,7 @@ export default function AdminClientDetailPage() {
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className="bg-green-500/10 text-green-700 border-green-500/20"
+                          className="bg-amber/10 text-amber border-amber/20"
                         >
                           {payment.status}
                         </Badge>

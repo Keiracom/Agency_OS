@@ -49,7 +49,7 @@ function Toggle({
       }`}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+        className={`inline-block h-4 w-4 transform rounded-full bg-bg-surface shadow transition-transform ${
           enabled ? "translate-x-6" : "translate-x-1"
         }`}
       />
@@ -81,11 +81,11 @@ function Checkbox({
       />
       <div
         className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-          checked ? `${color} border-transparent` : "bg-white border-[#D1D5DB]"
+          checked ? `${color} border-transparent` : "bg-bg-surface border-[#D1D5DB]"
         }`}
       >
         {checked && (
-          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 12 12">
+          <svg className="w-3 h-3 text-text-primary" fill="currentColor" viewBox="0 0 12 12">
             <path d="M10.28 2.28a.75.75 0 0 1 0 1.06l-5.5 5.5a.75.75 0 0 1-1.06 0l-2.5-2.5a.75.75 0 1 1 1.06-1.06L4.5 7.22l4.97-4.94a.75.75 0 0 1 1.06 0z" />
           </svg>
         )}
@@ -152,7 +152,7 @@ export function NotificationSettingsForm({
   return (
     <div className="space-y-6">
       {/* Daily Digest Section */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+      <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-[#E2E8F0]">
           <div className="flex items-center gap-2">
             <Mail className="h-5 w-5 text-[#64748B]" />
@@ -207,7 +207,7 @@ export function NotificationSettingsForm({
       </div>
 
       {/* Real-time Alerts Section */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+      <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-[#E2E8F0]">
           <div className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-[#64748B]" />
@@ -307,7 +307,7 @@ export function NotificationSettingsForm({
       </div>
 
       {/* Dashboard Section */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+      <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-[#E2E8F0]">
           <div className="flex items-center gap-2">
             <Activity className="h-5 w-5 text-[#64748B]" />
@@ -338,7 +338,7 @@ export function NotificationSettingsForm({
       <div className="flex justify-end">
         <button
           onClick={handleSave}
-          className="px-6 py-2.5 bg-[#3B82F6] hover:bg-[#2563EB] text-white font-medium rounded-lg transition-colors shadow-lg shadow-blue-500/25"
+          className="px-6 py-2.5 bg-[#3B82F6] hover:bg-[#2563EB] text-text-primary font-medium rounded-lg transition-colors shadow-lg shadow-amber/25"
         >
           Save Changes
         </button>

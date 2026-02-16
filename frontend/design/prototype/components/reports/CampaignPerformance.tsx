@@ -71,7 +71,7 @@ export function CampaignPerformance({ campaigns }: CampaignPerformanceProps) {
   }));
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+    <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm">
       <div className="px-6 py-4 border-b border-[#E2E8F0]">
         <h2 className="text-sm font-semibold text-[#64748B] uppercase tracking-wider">
           Campaign Performance

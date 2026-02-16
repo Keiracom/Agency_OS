@@ -131,7 +131,7 @@ export default function AdminSystemPage() {
         <Badge
           className={
             allHealthy
-              ? "bg-green-500/10 text-green-700"
+              ? "bg-amber/10 text-amber"
               : "bg-yellow-500/10 text-yellow-700"
           }
         >
@@ -148,10 +148,10 @@ export default function AdminSystemPage() {
                 <div
                   className={`h-3 w-3 rounded-full ${
                     service.status === "healthy"
-                      ? "bg-green-500 animate-pulse"
+                      ? "bg-amber animate-pulse"
                       : service.status === "degraded"
                       ? "bg-yellow-500"
-                      : "bg-red-500"
+                      : "bg-amber"
                   }`}
                 />
                 <span className="font-medium">{service.name}</span>
@@ -196,9 +196,9 @@ export default function AdminSystemPage() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {flow.status === "success" ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <CheckCircle className="h-4 w-4 text-amber" />
                       ) : flow.status === "failed" ? (
-                        <XCircle className="h-4 w-4 text-red-500" />
+                        <XCircle className="h-4 w-4 text-amber" />
                       ) : (
                         <Clock className="h-4 w-4 text-yellow-500" />
                       )}
@@ -240,7 +240,7 @@ export default function AdminSystemPage() {
                   <TableCell className="text-muted-foreground">
                     {formatTimeAgo(error.time)}
                   </TableCell>
-                  <TableCell className="font-mono text-red-600">
+                  <TableCell className="font-mono text-amber">
                     {error.error}
                   </TableCell>
                   <TableCell className="font-mono">{error.service}</TableCell>

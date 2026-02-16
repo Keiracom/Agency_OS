@@ -61,22 +61,22 @@ const CHANNEL_CONFIG: Record<
   email: {
     label: "Email",
     icon: <Mail className="h-4 w-4" />,
-    color: "bg-blue-500",
+    color: "bg-bg-elevated",
   },
   sms: {
     label: "SMS",
     icon: <MessageSquare className="h-4 w-4" />,
-    color: "bg-green-500",
+    color: "bg-amber",
   },
   linkedin: {
     label: "LinkedIn",
     icon: <Linkedin className="h-4 w-4" />,
-    color: "bg-sky-500",
+    color: "bg-amber",
   },
   voice: {
     label: "Voice",
     icon: <Phone className="h-4 w-4" />,
-    color: "bg-purple-500",
+    color: "bg-amber",
   },
   mail: {
     label: "Direct Mail",
@@ -111,13 +111,13 @@ function getPerformanceStatus(replyRate: number): {
   color: string;
 } {
   if (replyRate >= 5) {
-    return { label: "Excellent", color: "text-green-600 dark:text-green-400" };
+    return { label: "Excellent", color: "text-amber dark:text-amber" };
   } else if (replyRate >= 3) {
-    return { label: "Good", color: "text-blue-600 dark:text-blue-400" };
+    return { label: "Good", color: "text-text-secondary dark:text-text-secondary" };
   } else if (replyRate >= 1) {
     return { label: "Average", color: "text-amber-600 dark:text-amber-400" };
   }
-  return { label: "Needs attention", color: "text-red-600 dark:text-red-400" };
+  return { label: "Needs attention", color: "text-amber dark:text-amber" };
 }
 
 // ============================================
@@ -176,7 +176,7 @@ export function CampaignMetricsPanel({
         >
           {/* Meetings Booked - Hero Metric */}
           <MetricCard
-            icon={<Target className="h-5 w-5 text-green-500" />}
+            icon={<Target className="h-5 w-5 text-amber" />}
             label="Meetings"
             value={formatNumber(campaign.meetings_booked)}
             compact={compact}
@@ -184,7 +184,7 @@ export function CampaignMetricsPanel({
 
           {/* Show Rate */}
           <MetricCard
-            icon={<TrendingUp className="h-5 w-5 text-purple-500" />}
+            icon={<TrendingUp className="h-5 w-5 text-amber" />}
             label="Show Rate"
             value={formatPercent(campaign.show_rate)}
             compact={compact}
@@ -192,7 +192,7 @@ export function CampaignMetricsPanel({
 
           {/* Reply Rate */}
           <MetricCard
-            icon={<MessageCircle className="h-5 w-5 text-blue-500" />}
+            icon={<MessageCircle className="h-5 w-5 text-text-secondary" />}
             label="Reply Rate"
             value={formatPercent(campaign.reply_rate)}
             compact={compact}

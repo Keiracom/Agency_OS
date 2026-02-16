@@ -112,7 +112,7 @@ export function DashboardHome() {
           </span>
           <button
             onClick={handleConfirmActivate}
-            className="px-6 py-2.5 bg-[#3B82F6] hover:bg-[#2563EB] text-white font-medium rounded-lg transition-colors shadow-lg shadow-blue-500/25"
+            className="px-6 py-2.5 bg-[#3B82F6] hover:bg-[#2563EB] text-text-primary font-medium rounded-lg transition-colors shadow-lg shadow-amber/25"
           >
             Confirm & Activate
           </button>

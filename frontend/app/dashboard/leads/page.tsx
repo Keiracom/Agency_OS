@@ -292,7 +292,7 @@ export default function ProspectsPage() {
               <Upload className="w-4 h-4" />
               Import
             </button>
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium gradient-premium text-white hover:opacity-90 transition-opacity">
+            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium gradient-premium text-text-primary hover:opacity-90 transition-opacity">
               <Plus className="w-4 h-4" />
               Add Prospect
             </button>
@@ -425,7 +425,7 @@ export default function ProspectsPage() {
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div
-                          className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-semibold text-sm"
+                          className="w-11 h-11 rounded-xl flex items-center justify-center text-text-primary font-semibold text-sm"
                           style={{ background: tierColors.gradient }}
                         >
                           {getInitials(prospect.name)}

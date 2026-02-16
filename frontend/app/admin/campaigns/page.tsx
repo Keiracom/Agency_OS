@@ -41,10 +41,10 @@ const mockCampaigns = [
 ];
 
 const statusColors = {
-  active: "bg-green-500/10 text-green-700 border-green-500/20",
+  active: "bg-amber/10 text-amber border-amber/20",
   paused: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
   completed: "bg-gray-500/10 text-gray-700 border-gray-500/20",
-  draft: "bg-blue-500/10 text-blue-700 border-blue-500/20",
+  draft: "bg-bg-elevated/10 text-amber border-default/20",
 };
 
 export default function AdminCampaignsPage() {

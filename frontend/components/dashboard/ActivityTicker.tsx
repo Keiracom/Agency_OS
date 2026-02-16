@@ -143,16 +143,16 @@ const getActivityColor = (type: Activity["type"]) => {
     case "email_opened":
     case "email_clicked":
     case "email_replied":
-      return "text-blue-400 bg-blue-500/10";
+      return "text-text-secondary bg-bg-elevated/10";
     case "linkedin_connection":
     case "linkedin_message":
-      return "text-sky-400 bg-sky-500/10";
+      return "text-amber bg-amber-glow";
     case "voice_call":
     case "meeting_booked":
-      return "text-green-400 bg-green-500/10";
+      return "text-amber bg-amber/10";
     case "sms_delivered":
     case "sms_replied":
-      return "text-purple-400 bg-purple-500/10";
+      return "text-amber bg-amber/10";
     default:
       return "text-gray-400 bg-gray-500/10";
   }
@@ -236,10 +236,10 @@ export function ActivityTicker({
           ) : (
             <>
               <div className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber" />
               </div>
-              <span className="text-xs font-medium text-white uppercase tracking-wider">
+              <span className="text-xs font-medium text-text-primary uppercase tracking-wider">
                 Live Activity
               </span>
             </>
@@ -255,7 +255,7 @@ export function ActivityTicker({
         {displayActivities.slice(0, maxVisible).map((activity, index) => (
           <div
             key={`${activity.id}-${index}`}
-            className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors"
+            className="flex items-center gap-3 px-4 py-2.5 hover:bg-bg-surface/5 transition-colors"
           >
             {/* Icon */}
             <div
@@ -282,9 +282,9 @@ export function ActivityTicker({
             {activity.status && (
               <div className="flex-shrink-0">
                 {activity.status === "success" ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-amber" />
                 ) : activity.status === "failed" ? (
-                  <XCircle className="h-3.5 w-3.5 text-red-500" />
+                  <XCircle className="h-3.5 w-3.5 text-amber" />
                 ) : (
                   <div className="h-3.5 w-3.5 rounded-full border-2 border-gray-500 border-t-transparent animate-spin" />
                 )}

@@ -98,8 +98,8 @@ export function UserDropdown({ user, className }: UserDropdownProps) {
           className={cn(
             "flex items-center gap-2 rounded-lg px-2 py-1.5",
             "transition-all duration-200 ease-out",
-            "hover:bg-white/5 focus:bg-white/5",
-            "focus:outline-none focus:ring-2 focus:ring-cyan-500/50",
+            "hover:bg-bg-surface/5 focus:bg-bg-surface/5",
+            "focus:outline-none focus:ring-2 focus:ring-amber/50",
             "border border-transparent hover:border-white/10",
             className
           )}
@@ -109,7 +109,7 @@ export function UserDropdown({ user, className }: UserDropdownProps) {
           <div
             className={cn(
               "relative h-8 w-8 rounded-full flex items-center justify-center",
-              "text-sm font-medium text-white",
+              "text-sm font-medium text-text-primary",
               "ring-2 ring-white/20",
               user.avatar_url ? "" : avatarColor
             )}
@@ -124,7 +124,7 @@ export function UserDropdown({ user, className }: UserDropdownProps) {
               <span>{initials}</span>
             )}
             {/* Online indicator */}
-            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-neutral-900" />
+            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-amber ring-2 ring-neutral-900" />
           </div>
 
           {/* Name (hidden on mobile) */}
@@ -171,7 +171,7 @@ export function UserDropdown({ user, className }: UserDropdownProps) {
                     <div
                       className={cn(
                         "h-10 w-10 rounded-full flex items-center justify-center",
-                        "text-sm font-semibold text-white",
+                        "text-sm font-semibold text-text-primary",
                         user.avatar_url ? "" : avatarColor
                       )}
                     >
@@ -186,7 +186,7 @@ export function UserDropdown({ user, className }: UserDropdownProps) {
                       )}
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium text-white truncate max-w-[150px]">
+                      <span className="text-sm font-medium text-text-primary truncate max-w-[150px]">
                         {displayName}
                       </span>
                       <span className="text-xs text-neutral-400 truncate max-w-[150px]">
@@ -206,9 +206,9 @@ export function UserDropdown({ user, className }: UserDropdownProps) {
                           "flex items-center gap-3 px-3 py-2 mx-1.5 rounded-lg",
                           "text-sm text-neutral-300",
                           "cursor-pointer transition-colors duration-150",
-                          "hover:bg-white/10 hover:text-white",
-                          "focus:bg-white/10 focus:text-white focus:outline-none",
-                          "data-[highlighted]:bg-white/10 data-[highlighted]:text-white"
+                          "hover:bg-bg-surface/10 hover:text-text-primary",
+                          "focus:bg-bg-surface/10 focus:text-text-primary focus:outline-none",
+                          "data-[highlighted]:bg-bg-surface/10 data-[highlighted]:text-text-primary"
                         )}
                       >
                         <span className="text-neutral-400 group-hover:text-neutral-300">
@@ -228,11 +228,11 @@ export function UserDropdown({ user, className }: UserDropdownProps) {
                       disabled={isSigningOut}
                       className={cn(
                         "flex items-center gap-3 px-3 py-2 mx-1.5 rounded-lg w-[calc(100%-12px)]",
-                        "text-sm text-red-400",
+                        "text-sm text-amber",
                         "cursor-pointer transition-colors duration-150",
-                        "hover:bg-red-500/10 hover:text-red-300",
-                        "focus:bg-red-500/10 focus:text-red-300 focus:outline-none",
-                        "data-[highlighted]:bg-red-500/10 data-[highlighted]:text-red-300",
+                        "hover:bg-amber-glow hover:text-amber-light",
+                        "focus:bg-amber-glow focus:text-amber-light focus:outline-none",
+                        "data-[highlighted]:bg-amber-glow data-[highlighted]:text-amber-light",
                         "disabled:opacity-50 disabled:cursor-not-allowed"
                       )}
                     >

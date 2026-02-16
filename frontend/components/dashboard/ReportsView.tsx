@@ -327,7 +327,7 @@ const FunnelStage: React.FC<{
             background: `linear-gradient(90deg, ${stageColors[index]}40, ${stageColors[index]})`,
           }}
         >
-          <span className="text-xs font-semibold font-mono text-white">
+          <span className="text-xs font-semibold font-mono text-text-primary">
             {percentage}%
           </span>
         </div>
@@ -757,7 +757,7 @@ export const ReportsView: React.FC = () => {
                           background: `linear-gradient(90deg, ${tierColors[tier.tier]}4D, ${tierColors[tier.tier]})`,
                         }}
                       >
-                        <span className="text-[11px] font-semibold font-mono text-white">
+                        <span className="text-[11px] font-semibold font-mono text-text-primary">
                           {tier.leads} leads
                         </span>
                       </div>

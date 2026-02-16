@@ -28,17 +28,17 @@ export function RiveLoader({
       {/* Main loader container */}
       <div className="relative" style={{ width: size, height: size }}>
         {/* Outer glow effect */}
-        <div className="absolute inset-0 bg-cyan-500/20 blur-2xl rounded-full animate-pulse" />
+        <div className="absolute inset-0 bg-amber/20 blur-2xl rounded-full animate-pulse" />
 
         {/* Secondary glow ring */}
         <div
-          className="absolute inset-[-10%] border-2 border-cyan-500/30 rounded-full animate-spin"
+          className="absolute inset-[-10%] border-2 border-amber/30 rounded-full animate-spin"
           style={{ animationDuration: "3s" }}
         />
 
         {/* Inner glow ring */}
         <div
-          className="absolute inset-[5%] border border-cyan-400/20 rounded-full animate-spin"
+          className="absolute inset-[5%] border border-amber/20 rounded-full animate-spin"
           style={{ animationDuration: "2s", animationDirection: "reverse" }}
         />
 
@@ -48,28 +48,28 @@ export function RiveLoader({
         </div>
 
         {/* Corner accent dots */}
-        <div className="absolute -top-1 left-1/2 w-2 h-2 bg-cyan-400 rounded-full transform -translate-x-1/2 animate-pulse" />
-        <div className="absolute -bottom-1 left-1/2 w-2 h-2 bg-cyan-400 rounded-full transform -translate-x-1/2 animate-pulse" />
-        <div className="absolute top-1/2 -left-1 w-2 h-2 bg-cyan-400 rounded-full transform -translate-y-1/2 animate-pulse" />
-        <div className="absolute top-1/2 -right-1 w-2 h-2 bg-cyan-400 rounded-full transform -translate-y-1/2 animate-pulse" />
+        <div className="absolute -top-1 left-1/2 w-2 h-2 bg-amber rounded-full transform -translate-x-1/2 animate-pulse" />
+        <div className="absolute -bottom-1 left-1/2 w-2 h-2 bg-amber rounded-full transform -translate-x-1/2 animate-pulse" />
+        <div className="absolute top-1/2 -left-1 w-2 h-2 bg-amber rounded-full transform -translate-y-1/2 animate-pulse" />
+        <div className="absolute top-1/2 -right-1 w-2 h-2 bg-amber rounded-full transform -translate-y-1/2 animate-pulse" />
       </div>
 
       {/* Loading text with animated dots */}
       {showLabel && (
         <div className="flex items-center gap-2">
-          <span className="text-cyan-400 text-sm font-mono tracking-widest">
+          <span className="text-amber text-sm font-mono tracking-widest">
             {label}
           </span>
           <span className="flex gap-1">
-            <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-            <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-            <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+            <span className="w-1.5 h-1.5 bg-amber rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+            <span className="w-1.5 h-1.5 bg-amber rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+            <span className="w-1.5 h-1.5 bg-amber rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
           </span>
         </div>
       )}
 
       {/* Bottom label */}
-      <p className="absolute bottom-4 text-cyan-400/60 text-xs font-mono">
+      <p className="absolute bottom-4 text-amber/60 text-xs font-mono">
         RIVE LOADER
       </p>
 

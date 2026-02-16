@@ -437,7 +437,7 @@ class WaterfallV2:
         # Company Fit (25 points)
         if lead.industry:
             score_breakdown["company_fit"] += 10
-        if lead.company_size and "11-50" in lead.company_size or "51-200" in lead.company_size:
+        if lead.company_size and ("11-50" in lead.company_size or "51-200" in lead.company_size):
             score_breakdown["company_fit"] += 10  # Sweet spot for agencies
         if lead.specialties:
             score_breakdown["company_fit"] += 5

@@ -11,7 +11,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Globe, Linkedin, ArrowRight, Sparkles } from "lucide-react";
-import { MayaChatBubble } from "@/components/layout/AppShell";
+// MayaChatBubble - Sprint 4 work, not yet implemented
 
 type OnboardingStep = 'website' | 'integrations' | 'complete';
 
@@ -357,8 +357,7 @@ export default function OnboardingPage() {
         )}
       </div>
 
-      {/* Maya Chat Bubble - Static placeholder */}
-      <MayaChatBubble />
+      {/* Maya Chat Bubble - Sprint 4 work, not yet implemented */}
     </div>
   );
 }

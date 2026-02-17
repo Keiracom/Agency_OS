@@ -1,3 +1,10 @@
+# ============================================================================
+# DEPRECATED — Replaced by Bright Data Google Maps SERP (CEO Directive #031, Feb 2026)
+# See skills/enrichment/brightdata-gmb/
+# Cost reduction: $0.006/lead (DIY) → $0.0015/request (Bright Data) = 75% savings
+# Do NOT delete - marked for future cleanup by Dave
+# ============================================================================
+
 """
 Contract: src/integrations/gmb_scraper.py
 Purpose: DIY Google Maps Business scraper using Autonomous Stealth Browser

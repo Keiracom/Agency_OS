@@ -240,7 +240,10 @@ class Campaign(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         "Client",
         back_populates="campaigns",
     )
-    creator: Mapped[Optional["User"]] = relationship("User")
+    creator: Mapped[Optional["User"]] = relationship(
+        "User",
+        foreign_keys=[created_by],
+    )
     leads: Mapped[list["Lead"]] = relationship(
         "Lead",
         back_populates="campaign",

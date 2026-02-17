@@ -94,11 +94,15 @@ TEST_BUSINESSES = [
 ]
 
 
-async def test_single_business(
+async def enrich_single_business(
     waterfall: SiegeWaterfall,
     business: dict,
 ) -> dict:
-    """Test a single business through Tiers 1-3."""
+    """Enrich a single business through Tiers 1-3.
+    
+    Note: Renamed from test_single_business to avoid pytest collection.
+    This is a script helper, not a pytest test.
+    """
     logger.info(f"\n{'='*60}")
     logger.info(f"Testing: {business['company_name']} (ABN: {business.get('abn', 'N/A')})")
     logger.info(f"{'='*60}")
@@ -155,7 +159,7 @@ async def run_tests():
     
     results = []
     for business in TEST_BUSINESSES:
-        result = await test_single_business(waterfall, business)
+        result = await enrich_single_business(waterfall, business)
         results.append(result)
     
     # Calculate stats

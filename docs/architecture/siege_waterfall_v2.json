@@ -1,0 +1,120 @@
+{
+  "version": "2.0",
+  "directive": "CEO Directive #039",
+  "ratified_date": "2026-02-17",
+  "status": "active",
+  "waterfall_tiers": {
+    "T1": {
+      "name": "ABN Lookup",
+      "source": "data.gov.au",
+      "cost_aud": 0.00,
+      "status": "active",
+      "output": ["abn", "legal_name", "entity_type", "acn", "state", "postcode"],
+      "notes": "Free public API. Seed tier for Australian businesses."
+    },
+    "T1.25": {
+      "name": "ASIC Business Registry",
+      "source": "ABR SearchByASIC (pending: ASIC EDGE)",
+      "cost_aud": 0.00,
+      "status": "active",
+      "output": ["registered_name", "acn", "business_names"],
+      "directors_status": "pending_asic_dsp",
+      "notes": "Normalizes business name for T2 fuzzy match. Directors pending ASIC DSP approval."
+    },
+    "T1.5": {
+      "name": "LinkedIn Company",
+      "source": "Bright Data LinkedIn Companies API",
+      "cost_aud": 0.025,
+      "status": "active",
+      "output": ["employees_in_linkedin", "followers", "about", "specialties"],
+      "notes": "Company-level signals. Does NOT return individual employee names."
+    },
+    "T2": {
+      "name": "GMB Bright Data",
+      "source": "Bright Data Google Maps (gd_m8ebnr0q2qlklc02fz)",
+      "cost_aud": 0.001,
+      "status": "active",
+      "output": ["phone", "website", "address", "rating", "review_count", "categories"],
+      "notes": "Uses T1.25 registered_name for improved fuzzy matching."
+    },
+    "T2.5": {
+      "name": "GMB Reviews",
+      "source": "Bright Data Google Maps Reviews",
+      "cost_aud": 0.001,
+      "status": "active_hot_leads_only",
+      "output": ["reviews", "sentiment"],
+      "notes": "Only for hot leads (ALS ≥85). Intent signal enrichment."
+    },
+    "T3": {
+      "name": "Hunter.io Email",
+      "source": "Hunter.io Domain Search",
+      "cost_aud": 0.012,
+      "status": "active",
+      "output": ["email", "email_confidence", "email_type"],
+      "notes": "Primary email discovery. Often returns founder-level for SME agencies."
+    },
+    "T_DM0": {
+      "name": "ASIC Directors",
+      "source": "ASIC Company Extract (via T1.25)",
+      "cost_aud": 0.00,
+      "status": "pending_asic_dsp",
+      "output": ["director_names", "positions", "appointment_dates"],
+      "notes": "Seeded from T1.25 when ASIC DSP approved. Currently null."
+    },
+    "T_DM1": {
+      "name": "LinkedIn by Name",
+      "source": "Bright Data LinkedIn Profiles API",
+      "cost_aud": 0.05,
+      "status": "pending_asic_dsp",
+      "output": ["profile_url", "current_company", "about"],
+      "notes": "Requires director names from T-DM0. Blocked until ASIC DSP."
+    },
+    "T_DM2": {
+      "name": "Hunter Domain Search DM",
+      "source": "Hunter.io Domain Search",
+      "cost_aud": 0.012,
+      "status": "active_fallback",
+      "output": ["dm_email", "dm_name", "dm_position"],
+      "notes": "Fallback DM identification via domain email patterns."
+    },
+    "T4": {
+      "name": "ZeroBounce Email Validation",
+      "source": "ZeroBounce API",
+      "cost_aud": 0.010,
+      "status": "parked",
+      "output": ["email_valid", "activity_score"],
+      "notes": "Escalation for catch-all or low confidence emails."
+    },
+    "T5": {
+      "name": "Kaspr DM Verification",
+      "source": "Kaspr API",
+      "cost_aud": 0.45,
+      "status": "parked_als_85_only",
+      "output": ["mobile_number", "direct_email"],
+      "notes": "Premium tier. Only for ALS ≥85 leads."
+    }
+  },
+  "dependencies": {
+    "T1.25": ["T1"],
+    "T2": ["T1.25"],
+    "T_DM0": ["T1.25"],
+    "T_DM1": ["T_DM0"],
+    "T3": ["T2"]
+  },
+  "blockers": {
+    "asic_dsp_application": {
+      "status": "draft_ready",
+      "submitted_date": null,
+      "expected_resolution": "unknown",
+      "impact": ["T_DM0", "T_DM1"]
+    }
+  },
+  "cost_summary": {
+    "minimum_per_lead": 0.013,
+    "typical_per_lead": 0.039,
+    "maximum_per_lead": 0.56,
+    "weighted_average": 0.105,
+    "currency": "AUD",
+    "notes": "Compared to Apollo $0.50+ per lead"
+  }
+}

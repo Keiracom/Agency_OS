@@ -26,6 +26,7 @@ DESCRIPTION: Moved from Apollo SPOF (deprecated) to ABN + GMB + Hunter.io + Zero
 
 import asyncio
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime, date
 from decimal import Decimal
@@ -33,6 +34,7 @@ from enum import Enum
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
+import httpx
 from fuzzywuzzy import fuzz
 from sqlalchemy import select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,6 +52,7 @@ logger = logging.getLogger(__name__)
 class VerificationTier(str, Enum):
     """Waterfall verification tiers."""
     ABN_SEED = "abn_seed"
+    ASIC_VERIFY = "asic_verify"  # T1.25: ABR SearchByASIC for registered_name
     GMB_SCRAPER = "gmb_scraper"
     HUNTER_IO = "hunter_io"
     ZEROBOUNCE = "zerobounce"
@@ -67,6 +70,7 @@ class MatchConfidence(str, Enum):
 # Cost per operation in AUD (2026 pricing)
 COSTS_AUD = {
     VerificationTier.ABN_SEED: Decimal("0.00"),      # Free (data.gov.au)
+    VerificationTier.ASIC_VERIFY: Decimal("0.00"),   # Free (ABR SearchByASIC) - CEO Directive #039
     VerificationTier.GMB_SCRAPER: Decimal("0.0062"), # GMB scraper (Apify deprecated)
     VerificationTier.HUNTER_IO: Decimal("0.0064"),   # Hunter.io Growth tier
     VerificationTier.ZEROBOUNCE: Decimal("0.010"),   # ZeroBounce average
@@ -97,6 +101,26 @@ class ABNRecord:
     postcode: str
     gst_registered: bool
     acn: Optional[str] = None
+
+
+@dataclass
+class ASICVerifyRecord:
+    """
+    Record from ASIC verification (T1.25).
+    
+    CEO Directive #039: Uses ABR SearchByASIC to get ASIC-registered business name
+    for improved T2 GMB fuzzy matching. Directors[] pending ASIC DSP approval.
+    
+    Source: ABR SearchByASICv201408
+    Cost: $0.00 AUD (FREE)
+    """
+    acn: str
+    registered_name: str  # ASIC-registered business name (clean, official)
+    business_names: list[str]  # All ASIC-registered trading names
+    entity_type: str
+    state: str
+    postcode: str
+    directors: Optional[list[str]] = None  # Pending ASIC DSP approval
 
 
 @dataclass
@@ -154,13 +178,15 @@ class WaterfallResult:
     """Complete result from waterfall verification."""
     lead_id: UUID
     abn: Optional[str]
-    email: Optional[str]
-    phone: Optional[str]
-    website: Optional[str]
+    acn: Optional[str] = None  # T1.25: ASIC company number
+    asic_registered_name: Optional[str] = None  # T1.25: Clean registered name for fuzzy match
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    website: Optional[str] = None
     
     # Match quality
-    abn_gmb_match_confidence: MatchConfidence
-    abn_gmb_match_score: int
+    abn_gmb_match_confidence: MatchConfidence = MatchConfidence.NO_MATCH
+    abn_gmb_match_score: int = 0
     
     # Verification
     verification_method: str  # single_source, dual_match, triple_check
@@ -306,11 +332,53 @@ class WaterfallVerificationWorker(BaseEngine):
             else:
                 errors.append("ABN seed: No match found for company name/postcode")
             
+            # ========== TIER 1.25: ASIC VERIFICATION (CEO Directive #039) ==========
+            # Purpose: Get ASIC-registered business name for improved T2 fuzzy matching
+            asic_result: Optional[ASICVerifyRecord] = None
+            gmb_search_name = company_name  # Default: use original company name
+            
+            if abn_result and abn_result.acn:
+                step_number += 1
+                start_time = datetime.utcnow()
+                
+                asic_result = await self._tier1_25_asic_verify(
+                    acn=abn_result.acn,
+                    abn=abn_result.abn,
+                )
+                
+                latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                asic_success = asic_result is not None
+                
+                step = LineageStep(
+                    step_number=step_number,
+                    step_type="verification",
+                    source_name=VerificationTier.ASIC_VERIFY.value,
+                    cost_aud=COSTS_AUD[VerificationTier.ASIC_VERIFY],
+                    success=asic_success,
+                    data_added=["registered_name", "acn"] if asic_success else [],
+                    latency_ms=latency_ms,
+                )
+                lineage.append(step)
+                total_cost += step.cost_aud
+                
+                if asic_result:
+                    result.acn = asic_result.acn
+                    result.asic_registered_name = asic_result.registered_name
+                    # Use ASIC registered_name for GMB search (cleaner, improves match rate)
+                    gmb_search_name = asic_result.registered_name
+                    logger.info(
+                        f"T1.25: Using ASIC registered_name '{gmb_search_name}' for T2 GMB search "
+                        f"(was: '{company_name}')"
+                    )
+                else:
+                    errors.append(f"T1.25: ASIC verify failed for ACN {abn_result.acn}")
+            
             # ========== TIER 2: GMB SCRAPER ==========
             step_number += 1
             start_time = datetime.utcnow()
             
-            gmb_result = await self._tier2_gmb_scraper(company_name, postcode, state)
+            # Use ASIC registered_name if available, otherwise original company_name
+            gmb_result = await self._tier2_gmb_scraper(gmb_search_name, postcode, state)
             
             latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
             
@@ -323,8 +391,9 @@ class WaterfallVerificationWorker(BaseEngine):
             if gmb_result:
                 if abn_result:
                     # Both ABN and GMB found — attempt fuzzy match
+                    # CEO Directive #039: Use ASIC registered_name if available
                     match_confidence, match_score = self._match_abn_gmb(
-                        abn_result, gmb_result
+                        abn_result, gmb_result, asic_result
                     )
                     
                     if match_confidence != MatchConfidence.NO_MATCH:
@@ -338,8 +407,9 @@ class WaterfallVerificationWorker(BaseEngine):
                         data_added = ["phone", "website", "address", "rating"]
                     else:
                         # ABN and GMB don't match — CRITICAL ERROR HANDLING
+                        match_name = asic_result.registered_name if asic_result else abn_result.legal_name
                         errors.append(
-                            f"ABN↔GMB mismatch: ABN name '{abn_result.legal_name}' "
+                            f"ABN↔GMB mismatch: '{match_name}' "
                             f"vs GMB name '{gmb_result.business_name}' "
                             f"(score: {match_score}%, threshold: {FUZZY_MATCH_THRESHOLD}%)"
                         )
@@ -631,6 +701,94 @@ class WaterfallVerificationWorker(BaseEngine):
             logger.error(f"ABN lookup failed: {e}")
             return None
     
+    async def _tier1_25_asic_verify(
+        self,
+        acn: Optional[str],
+        abn: Optional[str],
+    ) -> Optional[ASICVerifyRecord]:
+        """
+        Tier 1.25: ASIC Business Registry verification via ABR SearchByASIC.
+        
+        CEO Directive #039: Implemented to fix 55% fuzzy match failure.
+        Uses ABR Web Services (SearchByASICv201408) to get ASIC-registered
+        business name for improved T2 GMB matching.
+        
+        Directors[] left null pending ASIC DSP application approval.
+        
+        Args:
+            acn: Australian Company Number from T1 (preferred)
+            abn: Australian Business Number fallback
+            
+        Returns:
+            ASICVerifyRecord with registered_name, or None if lookup fails
+        """
+        if self._abn_client is None:
+            logger.warning("ABN client not configured — skipping T1.25 ASIC verify")
+            return None
+        
+        # Need ACN for ASIC lookup
+        if not acn:
+            logger.info("T1.25: No ACN available — skipping ASIC verify")
+            return None
+        
+        try:
+            # Use ABR SearchByASIC to get ASIC-registered data
+            result = await self._abn_client.search_by_acn(acn)
+            
+            if not result:
+                logger.info(f"T1.25: No ASIC record found for ACN {acn}")
+                return None
+            
+            # Extract registered business name (clean, official)
+            # Priority: business_names (ASIC-registered) > legal_name
+            business_names = result.get("business_names", [])
+            legal_name = result.get("legal_name", "") or result.get("entity_name", "")
+            
+            # Use first ASIC-registered business name if available
+            # These are cleaner for GMB matching (e.g., "Efficient Media" vs "EFFICIENT MEDIA PTY LTD")
+            if business_names and len(business_names) > 0:
+                registered_name = business_names[0]
+            else:
+                # Fallback to legal name, cleaned
+                registered_name = self._clean_company_name(legal_name)
+            
+            logger.info(f"T1.25: ASIC registered_name = '{registered_name}' for ACN {acn}")
+            
+            return ASICVerifyRecord(
+                acn=acn,
+                registered_name=registered_name,
+                business_names=business_names,
+                entity_type=result.get("entity_type", ""),
+                state=result.get("state", ""),
+                postcode=result.get("postcode", ""),
+                directors=None,  # Pending ASIC DSP approval - CEO Directive #039
+            )
+            
+        except Exception as e:
+            logger.error(f"T1.25 ASIC verify failed for ACN {acn}: {e}")
+            return None
+    
+    def _clean_company_name(self, name: str) -> str:
+        """
+        Clean company name for better fuzzy matching.
+        
+        Removes common suffixes like PTY LTD, LIMITED, etc.
+        Normalizes case to title case.
+        """
+        if not name:
+            return ""
+        
+        import re
+        
+        # Remove common Australian company suffixes
+        suffixes_pattern = r'\s+(PTY\.?\s*LTD\.?|LIMITED|LTD\.?|PROPRIETARY|INC\.?|INCORPORATED|HOLDINGS?|GROUP|AUSTRALIA|AUST\.?|AU)\s*$'
+        cleaned = re.sub(suffixes_pattern, '', name.upper(), flags=re.IGNORECASE)
+        
+        # Normalize to title case
+        cleaned = cleaned.strip().title()
+        
+        return cleaned
+    
     async def _tier2_gmb_scraper(
         self,
         company_name: str,
@@ -638,43 +796,122 @@ class WaterfallVerificationWorker(BaseEngine):
         state: str,
     ) -> Optional[GMBRecord]:
         """
-        Tier 2: Scrape Google Maps for business info.
+        Tier 2: Scrape Google Maps for business info via Bright Data.
         
-        Uses GMB Scraper (Apify deprecated FCO-003).
+        CEO Directive #036: Replaced deprecated Apify with Bright Data Web Scraper API.
+        Dataset: gd_m8ebnr0q2qlklc02fz (Google Maps Business Information)
+        Method: discover_by=location
         """
-        if self._gmb_scraper is None:
-            logger.warning("GMB scraper not configured — skipping Tier 2")
+        api_key = os.getenv("BRIGHTDATA_API_KEY")
+        if not api_key:
+            logger.warning("BRIGHTDATA_API_KEY not set — skipping Tier 2")
             return None
         
+        # Map state code to city for better search results
+        state_city_map = {
+            "NSW": "Sydney", "VIC": "Melbourne", "QLD": "Brisbane",
+            "WA": "Perth", "SA": "Adelaide", "TAS": "Hobart",
+            "ACT": "Canberra", "NT": "Darwin",
+        }
+        city = state_city_map.get(state, state)
+        
         try:
-            # Search by company name + location
-            results = await self._gmb_scraper.search(
-                query=f"{company_name} {postcode} {state} Australia",
-                limit=5,
-            )
-            
-            if results and len(results) > 0:
-                # Find best match by name similarity
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                # Step 1: Trigger collection
+                trigger_resp = await client.post(
+                    "https://api.brightdata.com/datasets/v3/trigger",
+                    params={
+                        "dataset_id": "gd_m8ebnr0q2qlklc02fz",
+                        "type": "discover_new",
+                        "discover_by": "location",
+                        "notify": "false",
+                        "include_errors": "true",
+                    },
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={"input": [{"country": "AU", "keyword": f"{company_name} {city}", "lat": ""}]},
+                )
+                trigger_resp.raise_for_status()
+                snapshot_id = trigger_resp.json().get("snapshot_id")
+                if not snapshot_id:
+                    logger.error("Bright Data trigger returned no snapshot_id")
+                    return None
+                
+                logger.info(f"Bright Data T2 triggered: {snapshot_id}")
+                
+                # Step 2: Poll for completion (max 3 minutes)
+                for _ in range(18):  # 18 x 10s = 180s
+                    await asyncio.sleep(10)
+                    status_resp = await client.get(
+                        f"https://api.brightdata.com/datasets/v3/progress/{snapshot_id}",
+                        headers={"Authorization": f"Bearer {api_key}"},
+                    )
+                    status_data = status_resp.json()
+                    if status_data.get("status") == "ready":
+                        break
+                else:
+                    logger.warning(f"Bright Data T2 timeout for {company_name}")
+                    return None
+                
+                # Step 3: Fetch results
+                data_resp = await client.get(
+                    f"https://api.brightdata.com/datasets/v3/snapshot/{snapshot_id}",
+                    params={"format": "json"},
+                    headers={"Authorization": f"Bearer {api_key}"},
+                )
+                results = data_resp.json()
+                
+                if not results or len(results) == 0:
+                    logger.info(f"Bright Data T2 returned no results for {company_name}")
+                    return None
+                
+                # Step 4: Find best match by fuzzy name similarity
                 best_match = None
                 best_score = 0
                 
                 for r in results:
-                    score = fuzz.ratio(
-                        company_name.lower(),
-                        r.business_name.lower()
-                    )
+                    if "error" in r:
+                        continue
+                    name = r.get("name", "")
+                    score = fuzz.ratio(company_name.lower(), name.lower())
                     if score > best_score:
                         best_score = score
                         best_match = r
                 
-                if best_score >= FUZZY_MATCH_THRESHOLD:
-                    return best_match
-            
+                if best_score < FUZZY_MATCH_THRESHOLD:
+                    logger.info(f"Bright Data T2: best match score {best_score} below threshold for {company_name}")
+                    return None
+                
+                # Step 5: Parse into GMBRecord
+                return GMBRecord(
+                    google_place_id=best_match.get("place_id", ""),
+                    business_name=best_match.get("name", ""),
+                    phone=best_match.get("phone_number"),
+                    website=best_match.get("open_website"),
+                    address=best_match.get("address", ""),
+                    postcode=self._extract_postcode(best_match.get("address", "")),
+                    state=state,
+                    lat=best_match.get("lat", 0.0),
+                    lng=best_match.get("lon", 0.0),
+                    rating=best_match.get("rating"),
+                    review_count=best_match.get("reviews_count", 0) or 0,
+                    categories=best_match.get("all_categories", []),
+                )
+                
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Bright Data T2 HTTP error: {e.response.status_code} - {e.response.text[:200]}")
             return None
-            
         except Exception as e:
-            logger.error(f"GMB scraper failed: {e}")
+            logger.error(f"Bright Data T2 failed: {e}")
             return None
+    
+    def _extract_postcode(self, address: str) -> str:
+        """Extract Australian postcode (4 digits) from address string."""
+        import re
+        match = re.search(r'\b(\d{4})\b', address)
+        return match.group(1) if match else ""
     
     async def _tier3_hunter_io(
         self,
@@ -731,9 +968,18 @@ class WaterfallVerificationWorker(BaseEngine):
         self,
         abn: ABNRecord,
         gmb: GMBRecord,
+        asic: Optional[ASICVerifyRecord] = None,
     ) -> tuple[MatchConfidence, int]:
         """
         Match ABN record to GMB record using fuzzy matching.
+        
+        CEO Directive #039: Prioritizes ASIC registered_name when available
+        for improved match rates (fixes 55% failure).
+        
+        Args:
+            abn: ABN record from T1
+            gmb: GMB record from T2
+            asic: Optional ASIC verify record from T1.25
         
         Returns:
             Tuple of (MatchConfidence, match_score_percentage)
@@ -747,16 +993,44 @@ class WaterfallVerificationWorker(BaseEngine):
             except ValueError:
                 return MatchConfidence.NO_MATCH, 0
         
-        # Fuzzy match on business name
-        # Try legal name and all trading names
-        names_to_check = [abn.legal_name] + abn.business_names
+        # Build list of names to check
+        # CEO Directive #039: ASIC registered_name takes priority (cleaner, normalized)
+        names_to_check = []
+        
+        if asic and asic.registered_name:
+            # Priority 1: ASIC registered name (clean, normalized)
+            names_to_check.append(asic.registered_name)
+            # Priority 2: All ASIC business names
+            names_to_check.extend(asic.business_names or [])
+        
+        # Priority 3: ABN legal name and business names (fallback)
+        names_to_check.append(abn.legal_name)
+        names_to_check.extend(abn.business_names)
+        
+        # Also try cleaned version of legal name
+        cleaned_legal = self._clean_company_name(abn.legal_name)
+        if cleaned_legal and cleaned_legal not in names_to_check:
+            names_to_check.append(cleaned_legal)
         
         best_score = 0
+        best_match_name = ""
+        
         for name in names_to_check:
+            if not name:
+                continue
             score = fuzz.ratio(name.lower(), gmb.business_name.lower())
             # Also try token_set_ratio for word order independence
             token_score = fuzz.token_set_ratio(name.lower(), gmb.business_name.lower())
-            best_score = max(best_score, score, token_score)
+            current_best = max(score, token_score)
+            if current_best > best_score:
+                best_score = current_best
+                best_match_name = name
+        
+        # Log the match attempt for debugging
+        logger.debug(
+            f"ABN↔GMB match: best='{best_match_name}' vs GMB='{gmb.business_name}' "
+            f"score={best_score}% (threshold={FUZZY_MATCH_THRESHOLD}%)"
+        )
         
         # Determine confidence level
         if best_score >= 95:

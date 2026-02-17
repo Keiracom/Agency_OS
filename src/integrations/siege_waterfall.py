@@ -30,7 +30,9 @@ SIEGE CONTEXT:
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -228,46 +230,94 @@ class ABNClientStub:
 
 class GMBScraperAdapter:
     """
-    Adapter for Google Maps Business scraper.
+    Adapter for Google Maps Business scraper via Bright Data.
     
-    Wraps the real GMBScraper to match the Siege Waterfall interface.
-    Implements: Tier 2 of Siege Waterfall - GMB/Ads Signals.
-    Cost: ~$0.006/lead (proxy cost only).
+    CEO Directive #036: Replaced deprecated Apify with Bright Data Web Scraper API.
+    Dataset: gd_m8ebnr0q2qlklc02fz (Google Maps Business Information)
+    Method: discover_by=location
+    Cost: ~$0.001/lead AUD
     """
+    
+    DATASET_ID = "gd_m8ebnr0q2qlklc02fz"
+    STATE_CITY_MAP = {
+        "NSW": "Sydney", "VIC": "Melbourne", "QLD": "Brisbane",
+        "WA": "Perth", "SA": "Adelaide", "TAS": "Hobart",
+        "ACT": "Canberra", "NT": "Darwin",
+    }
 
     def __init__(self):
-        self._scraper = None
+        self._api_key = os.getenv("BRIGHTDATA_API_KEY")
     
-    def _get_scraper(self):
-        """Lazy-load the real GMB scraper."""
-        if self._scraper is None:
-            try:
-                from src.integrations.gmb_scraper import get_gmb_scraper
-                self._scraper = get_gmb_scraper()
-            except Exception as e:
-                logger.warning(f"[GMB] Could not initialize scraper: {e}")
-                self._scraper = None
-        return self._scraper
+    def _is_available(self) -> bool:
+        """Check if Bright Data API is configured."""
+        return bool(self._api_key)
 
     async def scrape_business(
         self,
         business_name: str,
         location: str | None = None,
     ) -> dict[str, Any] | None:
-        """Scrape business from Google Maps."""
-        scraper = self._get_scraper()
-        if not scraper:
-            logger.warning("[GMB] Scraper not available")
+        """Scrape business from Google Maps via Bright Data."""
+        if not self._is_available():
+            logger.warning("[GMB] BRIGHTDATA_API_KEY not set")
             return None
         
+        city = location or "Australia"
+        
         try:
-            result = await scraper.search_business(
-                business_name, 
-                location or "Australia"
-            )
-            if result.get("found"):
-                return result
-            return None
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                # Trigger collection
+                resp = await client.post(
+                    "https://api.brightdata.com/datasets/v3/trigger",
+                    params={
+                        "dataset_id": self.DATASET_ID,
+                        "type": "discover_new",
+                        "discover_by": "location",
+                        "notify": "false",
+                        "include_errors": "true",
+                    },
+                    headers={
+                        "Authorization": f"Bearer {self._api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={"input": [{"country": "AU", "keyword": f"{business_name} {city}", "lat": ""}]},
+                )
+                resp.raise_for_status()
+                snapshot_id = resp.json().get("snapshot_id")
+                if not snapshot_id:
+                    return None
+                
+                # Poll for completion
+                for _ in range(18):
+                    await asyncio.sleep(10)
+                    status = await client.get(
+                        f"https://api.brightdata.com/datasets/v3/progress/{snapshot_id}",
+                        headers={"Authorization": f"Bearer {self._api_key}"},
+                    )
+                    if status.json().get("status") == "ready":
+                        break
+                else:
+                    return None
+                
+                # Fetch results
+                data = await client.get(
+                    f"https://api.brightdata.com/datasets/v3/snapshot/{snapshot_id}",
+                    params={"format": "json"},
+                    headers={"Authorization": f"Bearer {self._api_key}"},
+                )
+                results = data.json()
+                
+                if results and len(results) > 0:
+                    # Find best match
+                    best = max(
+                        [r for r in results if "error" not in r],
+                        key=lambda r: fuzz.ratio(business_name.lower(), r.get("name", "").lower()),
+                        default=None,
+                    )
+                    if best and fuzz.ratio(business_name.lower(), best.get("name", "").lower()) >= FUZZY_MATCH_THRESHOLD:
+                        return {"found": True, **best}
+                
+                return None
         except Exception as e:
             logger.warning(f"[GMB] scrape_business failed: {e}")
             return None
@@ -278,40 +328,36 @@ class GMBScraperAdapter:
         domain: str | None = None,
         location: str | None = None,
     ) -> dict[str, Any]:
-        """Enrich lead with GMB signals."""
-        scraper = self._get_scraper()
-        if not scraper:
-            logger.warning("[GMB] Scraper not available")
+        """Enrich lead with GMB signals via Bright Data."""
+        if not self._is_available():
+            logger.warning("[GMB] BRIGHTDATA_API_KEY not set")
             return {"found": False, "source": "gmb_unavailable"}
         
         try:
-            # Search for the business
-            result = await scraper.search_business(
-                business_name,
-                location or "Australia"
-            )
+            result = await self.scrape_business(business_name, location)
             
-            if result.get("found"):
-                # Transform to enrichment format
+            if result and result.get("found"):
                 return {
                     "found": True,
-                    "source": "gmb",
-                    "phone": result.get("phone"),
-                    "website": result.get("website"),
+                    "source": "brightdata_gmb",
+                    "phone": result.get("phone_number"),
+                    "website": result.get("open_website"),
                     "address": result.get("address"),
                     "rating": result.get("rating"),
-                    "review_count": result.get("review_count"),
+                    "review_count": result.get("reviews_count", 0),
                     "category": result.get("category"),
-                    "opening_hours": result.get("opening_hours"),
-                    "google_maps_url": result.get("google_maps_url"),
+                    "categories": result.get("all_categories", []),
+                    "google_maps_url": result.get("url"),
                     "place_id": result.get("place_id"),
-                    "cost_aud": result.get("cost_aud", 0.006),
+                    "lat": result.get("lat"),
+                    "lng": result.get("lon"),
+                    "cost_aud": 0.001,
                 }
             
-            return {"found": False, "source": "gmb"}
+            return {"found": False, "source": "brightdata_gmb"}
         except Exception as e:
             logger.warning(f"[GMB] enrich_from_gmb failed: {e}")
-            return {"found": False, "source": "gmb", "error": str(e)}
+            return {"found": False, "source": "brightdata_gmb", "error": str(e)}
 
 
 # Alias for backwards compatibility

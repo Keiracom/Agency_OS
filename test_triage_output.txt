@@ -1,0 +1,749 @@
+FF...............FFFFFFFFFFFFFFFFFFFF..F.....EEEEE.FFFF.......F..FFFFFFF [  9%]
+FFFFFFFFFFFFsssss...ssssss..ssssss....sEEEEEEEEEEEEEEEEEEEEEEEEFFFFFFFFF [ 19%]
+FFFEEEEEEEEEEEEEEEEEEEEEEFF.FFF.FFFF.FFFssFFFFFFFFFFFFFFF.F...FF..FFF.FF [ 29%]
+F.........F..........F...........................FF.................F... [ 38%]
+.F...............FF...............FFFFFFF.FFF...F.F........EEEEEEEEEE.EE [ 48%]
+EEEEEE.EEEEEEEEEEE.FFFFFFFFFFFFFFFFFFFF........................F........ [ 58%]
+.................FFF................................................FFFF [ 67%]
+FFFF........FE.EEEEEEEE.FFFFFFFFFFFFFFFFF+++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~ Stack of APILogWorkerThread (139011548681920) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 180, in get
+    self.not_empty.wait(remaining)
+  File "/usr/lib/python3.12/threading.py", line 359, in wait
+    gotit = waiter.acquire(True, timeout)
+~~~~~~~~~~~~~~~~ Stack of EventsWorkerThread (139011558123200) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 171, in get
+    self.not_empty.wait()
+  File "/usr/lib/python3.12/threading.py", line 355, in wait
+    waiter.acquire()
+~~~~~~~~~~~~~~~ Stack of GlobalEventLoopThread (139011596502720) ~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 263, in _entrypoint
+    asyncio.run(self._run_until_shutdown())
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 674, in run_until_complete
+    self.run_forever()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 641, in run_forever
+    self._run_once()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1949, in _run_once
+    event_list = self._selector.select(timeout)
+  File "/usr/lib/python3.12/selectors.py", line 468, in select
+    fd_event_list = self._selector.poll(timeout, max_ev)
++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+F+++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~ Stack of APILogWorkerThread (139011548681920) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 180, in get
+    self.not_empty.wait(remaining)
+  File "/usr/lib/python3.12/threading.py", line 359, in wait
+    gotit = waiter.acquire(True, timeout)
+~~~~~~~~~~~~~~~~ Stack of EventsWorkerThread (139011558123200) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 171, in get
+    self.not_empty.wait()
+  File "/usr/lib/python3.12/threading.py", line 355, in wait
+    waiter.acquire()
+~~~~~~~~~~~~~~~ Stack of GlobalEventLoopThread (139011596502720) ~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 263, in _entrypoint
+    asyncio.run(self._run_until_shutdown())
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 674, in run_until_complete
+    self.run_forever()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 641, in run_forever
+    self._run_once()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1949, in _run_once
+    event_list = self._selector.select(timeout)
+  File "/usr/lib/python3.12/selectors.py", line 468, in select
+    fd_event_list = self._selector.poll(timeout, max_ev)
++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+F+++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~ Stack of APILogWorkerThread (139011548681920) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 180, in get
+    self.not_empty.wait(remaining)
+  File "/usr/lib/python3.12/threading.py", line 359, in wait
+    gotit = waiter.acquire(True, timeout)
+~~~~~~~~~~~~~~~~ Stack of EventsWorkerThread (139011558123200) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 171, in get
+    self.not_empty.wait()
+  File "/usr/lib/python3.12/threading.py", line 355, in wait
+    waiter.acquire()
+~~~~~~~~~~~~~~~ Stack of GlobalEventLoopThread (139011596502720) ~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 263, in _entrypoint
+    asyncio.run(self._run_until_shutdown())
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 674, in run_until_complete
+    self.run_forever()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 641, in run_forever
+    self._run_once()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1949, in _run_once
+    event_list = self._selector.select(timeout)
+  File "/usr/lib/python3.12/selectors.py", line 468, in select
+    fd_event_list = self._selector.poll(timeout, max_ev)
++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+F.+++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~ Stack of APILogWorkerThread (139011548681920) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 180, in get
+    self.not_empty.wait(remaining)
+  File "/usr/lib/python3.12/threading.py", line 359, in wait
+    gotit = waiter.acquire(True, timeout)
+~~~~~~~~~~~~~~~~ Stack of EventsWorkerThread (139011558123200) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 171, in get
+    self.not_empty.wait()
+  File "/usr/lib/python3.12/threading.py", line 355, in wait
+    waiter.acquire()
+~~~~~~~~~~~~~~~ Stack of GlobalEventLoopThread (139011596502720) ~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 263, in _entrypoint
+    asyncio.run(self._run_until_shutdown())
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 674, in run_until_complete
+    self.run_forever()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 641, in run_forever
+    self._run_once()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1949, in _run_once
+    event_list = self._selector.select(timeout)
+  File "/usr/lib/python3.12/selectors.py", line 468, in select
+    fd_event_list = self._selector.poll(timeout, max_ev)
++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+F..F+++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~ Stack of APILogWorkerThread (139011548681920) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 180, in get
+    self.not_empty.wait(remaining)
+  File "/usr/lib/python3.12/threading.py", line 359, in wait
+    gotit = waiter.acquire(True, timeout)
+~~~~~~~~~~~~~~~~ Stack of EventsWorkerThread (139011558123200) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 171, in get
+    self.not_empty.wait()
+  File "/usr/lib/python3.12/threading.py", line 355, in wait
+    waiter.acquire()
+~~~~~~~~~~~~~~~ Stack of GlobalEventLoopThread (139011596502720) ~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 263, in _entrypoint
+    asyncio.run(self._run_until_shutdown())
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 674, in run_until_complete
+    self.run_forever()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 641, in run_forever
+    self._run_once()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1949, in _run_once
+    event_list = self._selector.select(timeout)
+  File "/usr/lib/python3.12/selectors.py", line 468, in select
+    fd_event_list = self._selector.poll(timeout, max_ev)
++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+F+++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~ Stack of APILogWorkerThread (139011548681920) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 180, in get
+    self.not_empty.wait(remaining)
+  File "/usr/lib/python3.12/threading.py", line 359, in wait
+    gotit = waiter.acquire(True, timeout)
+~~~~~~~~~~~~~~~~ Stack of EventsWorkerThread (139011558123200) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 171, in get
+    self.not_empty.wait()
+  File "/usr/lib/python3.12/threading.py", line 355, in wait
+    waiter.acquire()
+~~~~~~~~~~~~~~~ Stack of GlobalEventLoopThread (139011596502720) ~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 263, in _entrypoint
+    asyncio.run(self._run_until_shutdown())
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 674, in run_until_complete
+    self.run_forever()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 641, in run_forever
+    self._run_once()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1949, in _run_once
+    event_list = self._selector.select(timeout)
+  File "/usr/lib/python3.12/selectors.py", line 468, in select
+    fd_event_list = self._selector.poll(timeout, max_ev)
++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+F.+++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~ Stack of APILogWorkerThread (139011548681920) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 180, in get
+    self.not_empty.wait(remaining)
+  File "/usr/lib/python3.12/threading.py", line 359, in wait
+    gotit = waiter.acquire(True, timeout)
+~~~~~~~~~~~~~~~~ Stack of EventsWorkerThread (139011558123200) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 171, in get
+    self.not_empty.wait()
+  File "/usr/lib/python3.12/threading.py", line 355, in wait
+    waiter.acquire()
+~~~~~~~~~~~~~~~ Stack of GlobalEventLoopThread (139011596502720) ~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 263, in _entrypoint
+    asyncio.run(self._run_until_shutdown())
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 674, in run_until_complete
+    self.run_forever()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 641, in run_forever
+    self._run_once()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1949, in _run_once
+    event_list = self._selector.select(timeout)
+  File "/usr/lib/python3.12/selectors.py", line 468, in select
+    fd_event_list = self._selector.poll(timeout, max_ev)
++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+F+++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~ Stack of APILogWorkerThread (139011548681920) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 180, in get
+    self.not_empty.wait(remaining)
+  File "/usr/lib/python3.12/threading.py", line 359, in wait
+    gotit = waiter.acquire(True, timeout)
+~~~~~~~~~~~~~~~~ Stack of EventsWorkerThread (139011558123200) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 171, in get
+    self.not_empty.wait()
+  File "/usr/lib/python3.12/threading.py", line 355, in wait
+    waiter.acquire()
+~~~~~~~~~~~~~~~ Stack of GlobalEventLoopThread (139011596502720) ~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 263, in _entrypoint
+    asyncio.run(self._run_until_shutdown())
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 674, in run_until_complete
+    self.run_forever()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 641, in run_forever
+    self._run_once()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1949, in _run_once
+    event_list = self._selector.select(timeout)
+  File "/usr/lib/python3.12/selectors.py", line 468, in select
+    fd_event_list = self._selector.poll(timeout, max_ev)
++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+F+++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~~ Stack of asyncio_0 (139011539240640) ~~~~~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/usr/lib/python3.12/concurrent/futures/thread.py", line 89, in _worker
+    work_item = work_queue.get(block=True)
+~~~~~~~~~~~~~~~~ Stack of APILogWorkerThread (139011548681920) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 180, in get
+    self.not_empty.wait(remaining)
+  File "/usr/lib/python3.12/threading.py", line 359, in wait
+    gotit = waiter.acquire(True, timeout)
+~~~~~~~~~~~~~~~~ Stack of EventsWorkerThread (139011558123200) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 171, in get
+    self.not_empty.wait()
+  File "/usr/lib/python3.12/threading.py", line 355, in wait
+    waiter.acquire()
+~~~~~~~~~~~~~~~ Stack of GlobalEventLoopThread (139011596502720) ~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 263, in _entrypoint
+    asyncio.run(self._run_until_shutdown())
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 674, in run_until_complete
+    self.run_forever()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 641, in run_forever
+    self._run_once()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1949, in _run_once
+    event_list = self._selector.select(timeout)
+  File "/usr/lib/python3.12/selectors.py", line 468, in select
+    fd_event_list = self._selector.poll(timeout, max_ev)
++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+FFFFF+++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~ Stack of APILogWorkerThread (139011548681920) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 180, in get
+    self.not_empty.wait(remaining)
+  File "/usr/lib/python3.12/threading.py", line 359, in wait
+    gotit = waiter.acquire(True, timeout)
+~~~~~~~~~~~~~~~~ Stack of EventsWorkerThread (139011558123200) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 171, in get
+    self.not_empty.wait()
+  File "/usr/lib/python3.12/threading.py", line 355, in wait
+    waiter.acquire()
+~~~~~~~~~~~~~~~ Stack of GlobalEventLoopThread (139011596502720) ~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 263, in _entrypoint
+    asyncio.run(self._run_until_shutdown())
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 674, in run_until_complete
+    self.run_forever()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 641, in run_forever
+    self._run_once()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1949, in _run_once
+    event_list = self._selector.select(timeout)
+  File "/usr/lib/python3.12/selectors.py", line 468, in select
+    fd_event_list = self._selector.poll(timeout, max_ev)
++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+F+++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~ Stack of APILogWorkerThread (139011548681920) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 180, in get
+    self.not_empty.wait(remaining)
+  File "/usr/lib/python3.12/threading.py", line 359, in wait
+    gotit = waiter.acquire(True, timeout)
+~~~~~~~~~~~~~~~~ Stack of EventsWorkerThread (139011558123200) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 171, in get
+    self.not_empty.wait()
+  File "/usr/lib/python3.12/threading.py", line 355, in wait
+    waiter.acquire()
+~~~~~~~~~~~~~~~ Stack of GlobalEventLoopThread (139011596502720) ~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 263, in _entrypoint
+    asyncio.run(self._run_until_shutdown())
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 674, in run_until_complete
+    self.run_forever()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 641, in run_forever
+    self._run_once()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1949, in _run_once
+    event_list = self._selector.select(timeout)
+  File "/usr/lib/python3.12/selectors.py", line 468, in select
+    fd_event_list = self._selector.poll(timeout, max_ev)
++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+FFFF+++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~ Stack of APILogWorkerThread (139011548681920) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 180, in get
+    self.not_empty.wait(remaining)
+  File "/usr/lib/python3.12/threading.py", line 359, in wait
+    gotit = waiter.acquire(True, timeout)
+~~~~~~~~~~~~~~~~ Stack of EventsWorkerThread (139011558123200) ~~~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 135, in _entrypoint
+    self._run_until_shutdown()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 150, in _run_until_shutdown
+    task = call.run()
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 329, in run
+    coro = self.context.run(self._run_sync)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/calls.py", line 399, in _run_sync
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/lib/python3.12/queue.py", line 171, in get
+    self.not_empty.wait()
+  File "/usr/lib/python3.12/threading.py", line 355, in wait
+    waiter.acquire()
+~~~~~~~~~~~~~~~ Stack of GlobalEventLoopThread (139011596502720) ~~~~~~~~~~~~~~~
+  File "/usr/lib/python3.12/threading.py", line 1030, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/elliotbot/clawd/.venv/lib/python3.12/site-packages/prefect/_internal/concurrency/threads.py", line 263, in _entrypoint
+    asyncio.run(self._run_until_shutdown())
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 674, in run_until_complete
+    self.run_forever()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 641, in run_forever
+    self._run_once()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1949, in _run_once
+    event_list = self._selector.select(timeout)
+  File "/usr/lib/python3.12/selectors.py", line 468, in select
+    fd_event_list = self._selector.poll(timeout, max_ev)
++++++++++++++++++++++++++++++++++++ Timeout ++++++++++++++++++++++++++++++++++++
+F.F

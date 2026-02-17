@@ -21,7 +21,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 from fastapi import status
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from src.api.main import app
 from src.models.base import CampaignStatus, ChannelType, MembershipRole, PermissionMode
@@ -172,7 +172,9 @@ async def test_list_campaigns_empty(mock_client_context, mock_db_session, mock_c
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get(
                 f"/clients/{mock_client.id}/campaigns",
                 headers={"Authorization": "Bearer test-token"},
@@ -203,7 +205,9 @@ async def test_list_campaigns_with_results(
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get(
                 f"/clients/{mock_client.id}/campaigns",
                 headers={"Authorization": "Bearer test-token"},
@@ -234,7 +238,9 @@ async def test_list_campaigns_with_status_filter(
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get(
                 f"/clients/{mock_client.id}/campaigns?status=active",
                 headers={"Authorization": "Bearer test-token"},
@@ -261,7 +267,9 @@ async def test_list_campaigns_with_search(
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get(
                 f"/clients/{mock_client.id}/campaigns?search=Test",
                 headers={"Authorization": "Bearer test-token"},
@@ -288,7 +296,9 @@ async def test_get_campaign_success(
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get(
                 f"/clients/{mock_client.id}/campaigns/{mock_campaign.id}",
                 headers={"Authorization": "Bearer test-token"},
@@ -311,7 +321,9 @@ async def test_get_campaign_not_found(mock_client_context, mock_db_session, mock
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get(
                 f"/clients/{mock_client.id}/campaigns/{uuid4()}",
                 headers={"Authorization": "Bearer test-token"},
@@ -372,7 +384,9 @@ async def test_create_campaign_success(mock_client_context, mock_db_session, moc
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 f"/clients/{mock_client.id}/campaigns",
                 headers={"Authorization": "Bearer test-token"},
@@ -395,7 +409,9 @@ async def test_create_campaign_invalid_allocation(mock_client_context, mock_db_s
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 f"/clients/{mock_client.id}/campaigns",
                 headers={"Authorization": "Bearer test-token"},
@@ -464,7 +480,9 @@ async def test_create_campaign_with_all_fields(mock_client_context, mock_db_sess
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 f"/clients/{mock_client.id}/campaigns",
                 headers={"Authorization": "Bearer test-token"},
@@ -510,7 +528,9 @@ async def test_update_campaign_success(
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.put(
                 f"/clients/{mock_client.id}/campaigns/{mock_campaign.id}",
                 headers={"Authorization": "Bearer test-token"},
@@ -533,7 +553,9 @@ async def test_update_campaign_allocation(
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             # Update allocation to still sum to 100
             response = await client.put(
                 f"/clients/{mock_client.id}/campaigns/{mock_campaign.id}",
@@ -566,7 +588,9 @@ async def test_delete_campaign_success(
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.delete(
                 f"/clients/{mock_client.id}/campaigns/{mock_campaign.id}",
                 headers={"Authorization": "Bearer test-token"},
@@ -595,7 +619,9 @@ async def test_activate_campaign_from_draft(
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 f"/clients/{mock_client.id}/campaigns/{mock_campaign.id}/activate",
                 headers={"Authorization": "Bearer test-token"},
@@ -619,7 +645,9 @@ async def test_activate_campaign_from_paused(
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 f"/clients/{mock_client.id}/campaigns/{mock_campaign.id}/activate",
                 headers={"Authorization": "Bearer test-token"},
@@ -643,7 +671,9 @@ async def test_pause_campaign(
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 f"/clients/{mock_client.id}/campaigns/{mock_campaign.id}/pause",
                 headers={"Authorization": "Bearer test-token"},
@@ -667,7 +697,9 @@ async def test_pause_non_active_campaign_fails(
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 f"/clients/{mock_client.id}/campaigns/{mock_campaign.id}/pause",
                 headers={"Authorization": "Bearer test-token"},
@@ -691,7 +723,9 @@ async def test_status_update_valid_transition(
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.patch(
                 f"/clients/{mock_client.id}/campaigns/{mock_campaign.id}/status",
                 headers={"Authorization": "Bearer test-token"},
@@ -716,7 +750,9 @@ async def test_status_update_invalid_transition(
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.patch(
                 f"/clients/{mock_client.id}/campaigns/{mock_campaign.id}/status",
                 headers={"Authorization": "Bearer test-token"},
@@ -765,7 +801,9 @@ async def test_list_sequences(
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get(
                 f"/clients/{mock_client.id}/campaigns/{mock_campaign.id}/sequences",
                 headers={"Authorization": "Bearer test-token"},
@@ -797,7 +835,9 @@ async def test_create_sequence(
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 f"/clients/{mock_client.id}/campaigns/{mock_campaign.id}/sequences",
                 headers={"Authorization": "Bearer test-token"},
@@ -855,7 +895,9 @@ async def test_list_resources(
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get(
                 f"/clients/{mock_client.id}/campaigns/{mock_campaign.id}/resources",
                 headers={"Authorization": "Bearer test-token"},
@@ -887,7 +929,9 @@ async def test_create_resource(
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 f"/clients/{mock_client.id}/campaigns/{mock_campaign.id}/resources",
                 headers={"Authorization": "Bearer test-token"},
@@ -921,7 +965,9 @@ async def test_list_campaigns_pagination(mock_client_context, mock_db_session, m
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get(
                 f"/clients/{mock_client.id}/campaigns?page=2&page_size=10",
                 headers={"Authorization": "Bearer test-token"},
@@ -953,7 +999,9 @@ async def test_campaign_response_structure(
     patches = create_auth_patches(mock_client_context, mock_db_session)
 
     with patches[0], patches[1], patches[2], patches[3]:
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get(
                 f"/clients/{mock_client.id}/campaigns/{mock_campaign.id}",
                 headers={"Authorization": "Bearer test-token"},

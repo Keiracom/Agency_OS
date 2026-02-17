@@ -14,26 +14,26 @@ from src.models.base import ChannelType, LeadStatus
 
 
 @pytest.fixture
-def mock_heyreach_client():
-    """Mock HeyReach client."""
-    class MockHeyReachClient:
-        async def send_connection_request(self, seat_id, linkedin_url, message=None):
+def mock_unipile_client():
+    """Mock Unipile client."""
+    class MockUnipileClient:
+        async def send_connection_request(self, account_id, linkedin_url, message=None):
             return {
                 "success": True,
                 "request_id": f"req_{uuid4().hex[:16]}",
                 "status": "pending",
-                "provider": "heyreach",
+                "provider": "unipile",
             }
 
-        async def send_message(self, seat_id, linkedin_url, message):
+        async def send_message(self, account_id, linkedin_url, message):
             return {
                 "success": True,
                 "message_id": f"msg_{uuid4().hex[:16]}",
                 "status": "sent",
-                "provider": "heyreach",
+                "provider": "unipile",
             }
 
-        async def get_new_replies(self, seat_id):
+        async def get_new_replies(self, account_id):
             return [
                 {
                     "message_id": "reply_1",
@@ -44,13 +44,13 @@ def mock_heyreach_client():
                 }
             ]
 
-    return MockHeyReachClient()
+    return MockUnipileClient()
 
 
 @pytest.fixture
-def linkedin_engine(mock_heyreach_client):
+def linkedin_engine(mock_unipile_client):
     """Create LinkedIn engine with mock client."""
-    return LinkedInEngine(heyreach_client=mock_heyreach_client)
+    return LinkedInEngine(unipile_client=mock_unipile_client)
 
 
 @pytest.fixture
@@ -126,8 +126,8 @@ class TestLinkedInEngine:
         assert engine1 is engine2
 
     @pytest.mark.asyncio
-    async def test_send_missing_seat_id(self, linkedin_engine, mock_db, mock_lead, mock_campaign):
-        """Test send fails without seat_id."""
+    async def test_send_missing_account_id(self, linkedin_engine, mock_db, mock_lead, mock_campaign):
+        """Test send fails without account_id."""
         async def mock_get_lead(db, lead_id):
             return mock_lead
 
@@ -142,11 +142,11 @@ class TestLinkedInEngine:
             lead_id=mock_lead.id,
             campaign_id=mock_campaign.id,
             content="Test LinkedIn message",
-            # seat_id missing
+            # account_id missing
         )
 
         assert not result.success
-        assert "seat_id is required" in result.error.lower()
+        assert "account_id is required" in result.error.lower()
 
     @pytest.mark.asyncio
     async def test_send_invalid_action(self, linkedin_engine, mock_db, mock_lead, mock_campaign):
@@ -165,7 +165,7 @@ class TestLinkedInEngine:
             lead_id=mock_lead.id,
             campaign_id=mock_campaign.id,
             content="Test message",
-            seat_id="seat_123",
+            account_id="seat_123",
             action="invalid",
         )
 
@@ -191,7 +191,7 @@ class TestLinkedInEngine:
             lead_id=mock_lead.id,
             campaign_id=mock_campaign.id,
             content="Test message",
-            seat_id="seat_123",
+            account_id="seat_123",
         )
 
         assert not result.success
@@ -224,14 +224,14 @@ class TestLinkedInEngine:
                 lead_id=mock_lead.id,
                 campaign_id=mock_campaign.id,
                 content="Test LinkedIn message",
-                seat_id="seat_123",
+                account_id="seat_123",
                 action="message",
             )
 
             assert result.success
             assert result.data["provider_id"] is not None
             assert result.data["linkedin_url"] == mock_lead.linkedin_url
-            assert result.data["seat_id"] == "seat_123"
+            assert result.data["account_id"] == "seat_123"
             assert result.data["action"] == "message"
             assert mock_db.committed
 
@@ -265,7 +265,7 @@ class TestLinkedInEngine:
                 lead_id=mock_lead.id,
                 campaign_id=mock_campaign.id,
                 content="Nice to connect!",
-                seat_id="seat_123",
+                account_id="seat_123",
                 action="connection",
             )
 
@@ -297,7 +297,7 @@ class TestLinkedInEngine:
             lead_id=mock_lead.id,
             campaign_id=mock_campaign.id,
             message="Let's connect!",
-            seat_id="seat_123",
+            account_id="seat_123",
         )
 
         assert result.success
@@ -323,7 +323,7 @@ class TestLinkedInEngine:
             lead_id=mock_lead.id,
             campaign_id=mock_campaign.id,
             message="Hello!",
-            seat_id="seat_123",
+            account_id="seat_123",
         )
 
         assert result.success
@@ -345,7 +345,7 @@ class TestLinkedInEngine:
             result = await linkedin_engine.get_seat_status("seat_123")
 
             assert result.success
-            assert result.data["seat_id"] == "seat_123"
+            assert result.data["account_id"] == "seat_123"
             assert result.data["daily_limit"] == 17
             assert result.data["daily_used"] == 5
             assert result.data["remaining"] == 12
@@ -359,11 +359,11 @@ class TestLinkedInEngine:
         """Test get new replies."""
         result = await linkedin_engine.get_new_replies(
             db=mock_db,
-            seat_id="seat_123",
+            account_id="seat_123",
         )
 
         assert result.success
-        assert result.data["seat_id"] == "seat_123"
+        assert result.data["account_id"] == "seat_123"
         assert result.data["reply_count"] == 1
         assert len(result.data["replies"]) == 1
         assert result.data["replies"][0]["message"] == "Thanks for reaching out!"
@@ -394,21 +394,21 @@ class TestLinkedInEngine:
                 "lead_id": uuid4(),
                 "campaign_id": uuid4(),
                 "content": "Message 1",
-                "seat_id": "seat_123",
+                "account_id": "seat_123",
                 "action": "message",
             },
             {
                 "lead_id": uuid4(),
                 "campaign_id": uuid4(),
                 "content": "Connection request",
-                "seat_id": "seat_123",
+                "account_id": "seat_123",
                 "action": "connection",
             },
             {
                 "lead_id": uuid4(),
                 "campaign_id": uuid4(),
                 "content": "Message 3",
-                "seat_id": "seat_123",
+                "account_id": "seat_123",
                 "action": "message",
             },
         ]

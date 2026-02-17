@@ -5,7 +5,21 @@
 **Source:** Bright Data SERP API (Google Maps)  
 **Zone:** `serp_api1`  
 **Credentials Required:** `BRIGHTDATA_API_KEY`  
-**Status:** ✅ Working (validated Directive #020a, 2026-02-16)
+**Status:** ⚠️ BLOCKED — Bright Data disabled Google Maps SERP endpoint (2026-02-17)
+
+---
+
+## ⚠️ SERVICE BLOCKER
+
+As of 2026-02-17, Bright Data has **disabled** the Google Maps SERP endpoint with message:
+> "This endpoint has been disabled due to low success rate, we are working on re-adding support"
+
+**Workaround options:**
+1. Use Google Maps Full Information dataset (`gd_m8ebnr0q2qlklc02fz`) with place_id
+2. Wait for Bright Data to re-enable the endpoint
+3. Fall back to Hunter.io domain search for business discovery
+
+This skill will work once Bright Data re-enables the endpoint. Test with `test.py` to check current status.
 
 ---
 

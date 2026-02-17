@@ -1,0 +1,21 @@
+{
+  "siege_waterfall_tier2": {
+    "provider": "bright_data_google_maps_serp",
+    "cost_per_request_aud": 0.0015,
+    "replaces": "gmb_scraper.py",
+    "directive": "#031",
+    "validated": "2026-02-16",
+    "skill": "skills/enrichment/brightdata-gmb/"
+  },
+  "enrichment_skills_status": {
+    "tiers_with_skills": [
+      "abn-lookup",
+      "brightdata-linkedin",
+      "brightdata-gmb",
+      "hunter-verify"
+    ],
+    "location": "skills/enrichment/",
+    "created_directive": "#031",
+    "date": "2026-02-17"
+  }
+}

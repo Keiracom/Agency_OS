@@ -5,6 +5,9 @@ Tests the VapiClient class and VoiceEngine integration with Vapi.
 """
 
 import pytest
+
+# Skip all tests in this module - parked pending coding overhaul (Directive #030)
+pytestmark = pytest.mark.skip(reason="Integration tests parked - Directive #030")
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 

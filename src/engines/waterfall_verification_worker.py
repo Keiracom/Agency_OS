@@ -57,6 +57,8 @@ class VerificationTier(str, Enum):
     HUNTER_IO = "hunter_io"
     ZEROBOUNCE = "zerobounce"
     DM0_LINKEDIN_DISCOVERY = "dm0_linkedin_discovery"  # T-DM0: DataForSEO SERP + Bright Data Profile
+    DM2_LINKEDIN_POSTS = "dm2_linkedin_posts"  # T-DM2: Bright Data LinkedIn Posts (gd_lyy3tktm25m4avu764)
+    DM3_X_POSTS = "dm3_x_posts"  # T-DM3: Bright Data X/Twitter Posts (gd_lwxkxvnf1cynvib9co)
 
 
 class MatchConfidence(str, Enum):
@@ -76,7 +78,13 @@ COSTS_AUD = {
     VerificationTier.HUNTER_IO: Decimal("0.0064"),   # Hunter.io Growth tier
     VerificationTier.ZEROBOUNCE: Decimal("0.010"),   # ZeroBounce average
     VerificationTier.DM0_LINKEDIN_DISCOVERY: Decimal("0.0165"),  # DataForSEO SERP ($0.009) + Bright Data Profile ($0.0015 × 5 max)
+    VerificationTier.DM2_LINKEDIN_POSTS: Decimal("0.0015"),  # Bright Data LinkedIn Posts (gd_lyy3tktm25m4avu764)
+    VerificationTier.DM3_X_POSTS: Decimal("0.0030"),  # Bright Data X Posts ($0.0015) + X handle discovery ($0.0015)
 }
+
+# Bright Data Dataset IDs for T-DM2 and T-DM3
+BRIGHTDATA_LINKEDIN_POSTS_DATASET = "gd_lyy3tktm25m4avu764"
+BRIGHTDATA_X_POSTS_DATASET = "gd_lwxkxvnf1cynvib9co"
 
 # T-DM0 Title priority scores for decision maker identification
 DM_TITLE_SCORES = {
@@ -195,6 +203,36 @@ class DMCandidate:
 
 
 @dataclass
+class LinkedInPost:
+    """
+    LinkedIn post from T-DM2.
+    
+    CEO Directive #041: Social intelligence for outreach personalisation.
+    """
+    post_text: str
+    date_posted: str
+    num_likes: int
+    num_comments: int
+    hashtags: list[str] = field(default_factory=list)
+    topic: Optional[str] = None  # AI-inferred topic from content
+
+
+@dataclass
+class XPost:
+    """
+    X/Twitter post from T-DM3.
+    
+    CEO Directive #041: Social intelligence for outreach personalisation.
+    """
+    content: str
+    date_posted: str
+    likes: int
+    reposts: int
+    views: int = 0
+    hashtags: list[str] = field(default_factory=list)
+
+
+@dataclass
 class LineageStep:
     """Single step in the enrichment lineage."""
     step_number: int
@@ -228,6 +266,13 @@ class WaterfallResult:
     dm_title: Optional[str] = None
     dm_linkedin_url: Optional[str] = None
     dm_candidates_found: int = 0
+    
+    # T-DM2: LinkedIn Posts (CEO Directive #041)
+    dm_linkedin_posts: list[LinkedInPost] = field(default_factory=list)
+    
+    # T-DM3: X Posts (CEO Directive #041)
+    dm_x_handle: Optional[str] = None
+    dm_x_posts: list[XPost] = field(default_factory=list)
     
     # Verification
     verification_method: str  # single_source, dual_match, triple_check
@@ -459,6 +504,91 @@ class WaterfallVerificationWorker(BaseEngine):
                 )
             else:
                 errors.append(f"T-DM0: No decision maker found for '{dm_search_name}'")
+            
+            # ========== TIER DM-2: LINKEDIN POSTS (CEO Directive #041) ==========
+            # Only run for ALS ≥70 leads with a valid LinkedIn URL
+            should_get_social = current_als_score >= 70 or force_full_waterfall
+            
+            if should_get_social and result.dm_linkedin_url:
+                step_number += 1
+                start_time = datetime.utcnow()
+                
+                linkedin_posts = await self._tier_dm2_linkedin_posts(
+                    dm_linkedin_url=result.dm_linkedin_url,
+                    max_posts=5,
+                )
+                
+                latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                dm2_success = len(linkedin_posts) > 0
+                
+                step = LineageStep(
+                    step_number=step_number,
+                    step_type="enrichment",
+                    source_name=VerificationTier.DM2_LINKEDIN_POSTS.value,
+                    cost_aud=COSTS_AUD[VerificationTier.DM2_LINKEDIN_POSTS],
+                    success=dm2_success,
+                    data_added=["dm_linkedin_posts"] if dm2_success else [],
+                    latency_ms=latency_ms,
+                )
+                lineage.append(step)
+                total_cost += step.cost_aud
+                
+                if linkedin_posts:
+                    result.dm_linkedin_posts = linkedin_posts
+                    result.verification_sources.append("dm2_linkedin_posts")
+                    logger.info(
+                        f"T-DM2: Retrieved {len(linkedin_posts)} LinkedIn posts for "
+                        f"'{result.dm_name}'"
+                    )
+                else:
+                    errors.append(f"T-DM2: No LinkedIn posts found for '{result.dm_name}'")
+            
+            # ========== TIER DM-3: X POSTS (CEO Directive #041) ==========
+            # Only run for ALS ≥70 leads — discover X handle first
+            if should_get_social:
+                step_number += 1
+                start_time = datetime.utcnow()
+                
+                # Discover X handle from website or SERP
+                x_handle = await self._discover_x_handle(
+                    website=result.website,
+                    dm_name=result.dm_name or "",
+                    registered_name=gmb_search_name,
+                )
+                
+                x_posts = []
+                if x_handle:
+                    result.dm_x_handle = x_handle
+                    x_posts = await self._tier_dm3_x_posts(
+                        x_handle=x_handle,
+                        max_posts=5,
+                    )
+                
+                latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                dm3_success = len(x_posts) > 0
+                
+                step = LineageStep(
+                    step_number=step_number,
+                    step_type="enrichment",
+                    source_name=VerificationTier.DM3_X_POSTS.value,
+                    cost_aud=COSTS_AUD[VerificationTier.DM3_X_POSTS],
+                    success=dm3_success,
+                    data_added=["dm_x_handle", "dm_x_posts"] if dm3_success else (["dm_x_handle"] if x_handle else []),
+                    latency_ms=latency_ms,
+                )
+                lineage.append(step)
+                total_cost += step.cost_aud
+                
+                if x_posts:
+                    result.dm_x_posts = x_posts
+                    result.verification_sources.append("dm3_x_posts")
+                    logger.info(
+                        f"T-DM3: Retrieved {len(x_posts)} X posts for '{x_handle}'"
+                    )
+                elif x_handle:
+                    errors.append(f"T-DM3: X handle found ({x_handle}) but no posts retrieved")
+                else:
+                    errors.append(f"T-DM3: No X handle found for '{result.dm_name}'")
             
             # ========== TIER 2: GMB SCRAPER ==========
             step_number += 1
@@ -1077,6 +1207,347 @@ class WaterfallVerificationWorker(BaseEngine):
         except Exception as e:
             logger.error(f"T-DM0 failed for '{registered_name}': {e}")
             return None
+    
+    async def _tier_dm2_linkedin_posts(
+        self,
+        dm_linkedin_url: str,
+        max_posts: int = 5,
+    ) -> list[LinkedInPost]:
+        """
+        Tier DM-2: LinkedIn Posts scraping.
+        
+        CEO Directive #041 Part A: Uses Bright Data LinkedIn Posts API to fetch
+        recent posts from the decision maker's LinkedIn profile.
+        
+        Dataset: gd_lyy3tktm25m4avu764 (LinkedIn Posts)
+        
+        Args:
+            dm_linkedin_url: LinkedIn profile URL from T-DM0
+            max_posts: Maximum posts to retrieve (default 5)
+        
+        Returns:
+            List of LinkedInPost objects (up to max_posts)
+        
+        Cost: ~$0.0015 AUD per request
+        """
+        brightdata_api_key = os.getenv("BRIGHTDATA_API_KEY")
+        
+        if not brightdata_api_key:
+            logger.warning("BRIGHTDATA_API_KEY not set — skipping T-DM2")
+            return []
+        
+        if not dm_linkedin_url:
+            logger.info("T-DM2: No LinkedIn URL provided — skipping")
+            return []
+        
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                # ========== Step 1: Trigger LinkedIn Posts collection ==========
+                # Using discover_by profile URL to get posts
+                trigger_resp = await client.post(
+                    "https://api.brightdata.com/datasets/v3/trigger",
+                    params={
+                        "dataset_id": BRIGHTDATA_LINKEDIN_POSTS_DATASET,
+                        "include_errors": "true",
+                    },
+                    headers={
+                        "Authorization": f"Bearer {brightdata_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=[{"url": dm_linkedin_url}],
+                )
+                trigger_resp.raise_for_status()
+                snapshot_id = trigger_resp.json().get("snapshot_id")
+                
+                if not snapshot_id:
+                    logger.warning(f"T-DM2: No snapshot_id returned for {dm_linkedin_url}")
+                    return []
+                
+                logger.info(f"T-DM2: Triggered LinkedIn Posts scrape: {snapshot_id}")
+                
+                # ========== Step 2: Poll for completion (max 2 minutes) ==========
+                for _ in range(24):  # 24 × 5s = 120s
+                    await asyncio.sleep(5)
+                    status_resp = await client.get(
+                        f"https://api.brightdata.com/datasets/v3/progress/{snapshot_id}",
+                        headers={"Authorization": f"Bearer {brightdata_api_key}"},
+                    )
+                    status_data = status_resp.json()
+                    
+                    if status_data.get("status") == "ready":
+                        break
+                    elif status_data.get("status") == "failed":
+                        logger.warning(f"T-DM2: Scrape failed for {dm_linkedin_url}")
+                        return []
+                else:
+                    logger.warning(f"T-DM2: Timeout waiting for {dm_linkedin_url}")
+                    return []
+                
+                # ========== Step 3: Download results ==========
+                data_resp = await client.get(
+                    f"https://api.brightdata.com/datasets/v3/snapshot/{snapshot_id}",
+                    params={"format": "json"},
+                    headers={"Authorization": f"Bearer {brightdata_api_key}"},
+                )
+                results = data_resp.json()
+                
+                if not results:
+                    logger.info(f"T-DM2: No posts found for {dm_linkedin_url}")
+                    return []
+                
+                # ========== Step 4: Parse posts ==========
+                posts = []
+                for post_data in results[:max_posts]:
+                    if "error" in post_data:
+                        continue
+                    
+                    # Extract topic from hashtags or infer from content
+                    hashtags = post_data.get("hashtags", []) or []
+                    topic = hashtags[0] if hashtags else None
+                    
+                    posts.append(LinkedInPost(
+                        post_text=post_data.get("post_text", "") or post_data.get("title", ""),
+                        date_posted=post_data.get("date_posted", ""),
+                        num_likes=post_data.get("num_likes", 0) or 0,
+                        num_comments=post_data.get("num_comments", 0) or 0,
+                        hashtags=hashtags,
+                        topic=topic,
+                    ))
+                
+                logger.info(f"T-DM2: Retrieved {len(posts)} LinkedIn posts for {dm_linkedin_url}")
+                return posts
+        
+        except httpx.HTTPStatusError as e:
+            logger.error(f"T-DM2 HTTP error: {e.response.status_code} - {e.response.text[:200]}")
+            return []
+        except Exception as e:
+            logger.error(f"T-DM2 failed for '{dm_linkedin_url}': {e}")
+            return []
+    
+    async def _discover_x_handle(
+        self,
+        website: Optional[str],
+        dm_name: str,
+        registered_name: str,
+    ) -> Optional[str]:
+        """
+        Discover X/Twitter handle via website scraping or SERP fallback.
+        
+        CEO Directive #041 Part B: X handle discovery in order of preference:
+        1. Scrape company website for social links (open_website from T2)
+        2. SERP fallback: site:x.com "{dm_name}" "{registered_name}"
+        
+        Returns:
+            X handle (e.g., "@username") or None if not found
+        """
+        import re
+        
+        # ========== Method 1: Scrape website for X/Twitter links ==========
+        if website:
+            try:
+                async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                    resp = await client.get(website)
+                    html = resp.text
+                    
+                    # Look for X/Twitter profile links
+                    patterns = [
+                        r'https?://(?:www\.)?(?:twitter|x)\.com/([a-zA-Z0-9_]+)',
+                        r'href=["\']https?://(?:www\.)?(?:twitter|x)\.com/([a-zA-Z0-9_]+)["\']',
+                    ]
+                    
+                    for pattern in patterns:
+                        matches = re.findall(pattern, html, re.IGNORECASE)
+                        # Filter out common non-profile paths
+                        valid_handles = [
+                            m for m in matches 
+                            if m.lower() not in ('share', 'intent', 'home', 'search', 'explore', 'i', 'hashtag')
+                        ]
+                        if valid_handles:
+                            handle = valid_handles[0]
+                            logger.info(f"T-DM3: Found X handle @{handle} from website {website}")
+                            return f"@{handle}"
+            except Exception as e:
+                logger.debug(f"T-DM3: Website scrape failed for {website}: {e}")
+        
+        # ========== Method 2: SERP fallback ==========
+        import base64
+        
+        dataforseo_login = os.getenv("DATAFORSEO_LOGIN")
+        dataforseo_password = os.getenv("DATAFORSEO_PASSWORD")
+        
+        if not dataforseo_login or not dataforseo_password:
+            logger.warning("DataForSEO credentials not set — skipping X handle SERP discovery")
+            return None
+        
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                # Query: site:x.com "{dm_name}" "{registered_name}"
+                search_query = f'site:x.com "{dm_name}" "{registered_name}"'
+                
+                serp_payload = [{
+                    "keyword": search_query,
+                    "location_code": 2036,  # Australia
+                    "language_code": "en",
+                    "depth": 5,
+                }]
+                
+                auth_str = f"{dataforseo_login}:{dataforseo_password}"
+                auth_bytes = base64.b64encode(auth_str.encode()).decode()
+                
+                serp_resp = await client.post(
+                    "https://api.dataforseo.com/v3/serp/google/organic/live/advanced",
+                    headers={
+                        "Authorization": f"Basic {auth_bytes}",
+                        "Content-Type": "application/json",
+                    },
+                    json=serp_payload,
+                )
+                serp_resp.raise_for_status()
+                serp_data = serp_resp.json()
+                
+                # Extract X profile URLs
+                items = []
+                if (serp_data.get("tasks") and 
+                    serp_data["tasks"][0].get("result") and
+                    serp_data["tasks"][0]["result"][0].get("items")):
+                    items = serp_data["tasks"][0]["result"][0]["items"]
+                
+                for item in items[:5]:
+                    url = item.get("url", "")
+                    # Match x.com/username or twitter.com/username
+                    match = re.search(r'https?://(?:www\.)?(?:twitter|x)\.com/([a-zA-Z0-9_]+)', url)
+                    if match:
+                        handle = match.group(1)
+                        if handle.lower() not in ('share', 'intent', 'home', 'search', 'explore', 'i', 'hashtag'):
+                            logger.info(f"T-DM3: Found X handle @{handle} via SERP for {dm_name}")
+                            return f"@{handle}"
+                
+                logger.info(f"T-DM3: No X handle found for {dm_name} at {registered_name}")
+                return None
+        
+        except Exception as e:
+            logger.error(f"T-DM3 X handle SERP discovery failed: {e}")
+            return None
+    
+    async def _tier_dm3_x_posts(
+        self,
+        x_handle: str,
+        max_posts: int = 5,
+    ) -> list[XPost]:
+        """
+        Tier DM-3: X/Twitter Posts scraping.
+        
+        CEO Directive #041 Part B: Uses Bright Data X/Twitter Posts API to fetch
+        recent posts from the discovered X handle.
+        
+        Dataset: gd_lwxkxvnf1cynvib9co (X/Twitter Posts - discover by profile)
+        
+        Args:
+            x_handle: X handle (with or without @)
+            max_posts: Maximum posts to retrieve (default 5)
+        
+        Returns:
+            List of XPost objects (up to max_posts)
+        
+        Cost: ~$0.0015 AUD per request
+        """
+        brightdata_api_key = os.getenv("BRIGHTDATA_API_KEY")
+        
+        if not brightdata_api_key:
+            logger.warning("BRIGHTDATA_API_KEY not set — skipping T-DM3")
+            return []
+        
+        if not x_handle:
+            logger.info("T-DM3: No X handle provided — skipping")
+            return []
+        
+        # Normalize handle (remove @ if present)
+        handle = x_handle.lstrip("@")
+        profile_url = f"https://x.com/{handle}"
+        
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                # ========== Step 1: Trigger X Posts collection ==========
+                trigger_resp = await client.post(
+                    "https://api.brightdata.com/datasets/v3/trigger",
+                    params={
+                        "dataset_id": BRIGHTDATA_X_POSTS_DATASET,
+                        "include_errors": "true",
+                    },
+                    headers={
+                        "Authorization": f"Bearer {brightdata_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=[{"url": profile_url}],
+                )
+                trigger_resp.raise_for_status()
+                snapshot_id = trigger_resp.json().get("snapshot_id")
+                
+                if not snapshot_id:
+                    logger.warning(f"T-DM3: No snapshot_id returned for {profile_url}")
+                    return []
+                
+                logger.info(f"T-DM3: Triggered X Posts scrape: {snapshot_id}")
+                
+                # ========== Step 2: Poll for completion (max 2 minutes) ==========
+                for _ in range(24):  # 24 × 5s = 120s
+                    await asyncio.sleep(5)
+                    status_resp = await client.get(
+                        f"https://api.brightdata.com/datasets/v3/progress/{snapshot_id}",
+                        headers={"Authorization": f"Bearer {brightdata_api_key}"},
+                    )
+                    status_data = status_resp.json()
+                    
+                    if status_data.get("status") == "ready":
+                        break
+                    elif status_data.get("status") == "failed":
+                        logger.warning(f"T-DM3: Scrape failed for {profile_url}")
+                        return []
+                else:
+                    logger.warning(f"T-DM3: Timeout waiting for {profile_url}")
+                    return []
+                
+                # ========== Step 3: Download results ==========
+                data_resp = await client.get(
+                    f"https://api.brightdata.com/datasets/v3/snapshot/{snapshot_id}",
+                    params={"format": "json"},
+                    headers={"Authorization": f"Bearer {brightdata_api_key}"},
+                )
+                results = data_resp.json()
+                
+                if not results:
+                    logger.info(f"T-DM3: No posts found for {profile_url}")
+                    return []
+                
+                # ========== Step 4: Parse posts ==========
+                posts = []
+                for post_data in results[:max_posts]:
+                    if "error" in post_data:
+                        continue
+                    
+                    # Extract hashtags from description
+                    import re
+                    description = post_data.get("description", "") or ""
+                    hashtags = re.findall(r'#(\w+)', description)
+                    
+                    posts.append(XPost(
+                        content=description,
+                        date_posted=post_data.get("date_posted", ""),
+                        likes=post_data.get("likes", 0) or 0,
+                        reposts=post_data.get("reposts", 0) or 0,
+                        views=post_data.get("views", 0) or 0,
+                        hashtags=hashtags,
+                    ))
+                
+                logger.info(f"T-DM3: Retrieved {len(posts)} X posts for {profile_url}")
+                return posts
+        
+        except httpx.HTTPStatusError as e:
+            logger.error(f"T-DM3 HTTP error: {e.response.status_code} - {e.response.text[:200]}")
+            return []
+        except Exception as e:
+            logger.error(f"T-DM3 failed for '{x_handle}': {e}")
+            return []
     
     def _clean_company_name(self, name: str) -> str:
         """

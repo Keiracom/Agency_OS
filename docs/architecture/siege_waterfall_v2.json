@@ -1,6 +1,6 @@
 {
-  "version": "2.1",
-  "directive": "CEO Directive #040",
+  "version": "2.2",
+  "directive": "CEO Directive #041",
   "ratified_date": "2026-02-18",
   "status": "active",
   "waterfall_tiers": {
@@ -70,12 +70,38 @@
       "notes": "Replaced by T-DM0 which uses SERP discovery. No longer dependent on ASIC DSP."
     },
     "T_DM2": {
+      "name": "LinkedIn Posts",
+      "source": "Bright Data LinkedIn Posts API (gd_lyy3tktm25m4avu764)",
+      "cost_aud": 0.0015,
+      "status": "active",
+      "trigger": "ALS ≥70 only",
+      "input": ["dm_linkedin_url from T-DM0"],
+      "output": ["dm_linkedin_posts[]"],
+      "post_fields": ["post_text", "date_posted", "num_likes", "num_comments", "hashtags", "topic"],
+      "notes": "CEO Directive #041: Social intelligence for outreach personalisation. Async via Bright Data Datasets API."
+    },
+    "T_DM3": {
+      "name": "X Posts",
+      "source": "Bright Data X/Twitter Posts API (gd_lwxkxvnf1cynvib9co)",
+      "cost_aud": 0.0030,
+      "status": "active",
+      "trigger": "ALS ≥70 only",
+      "input": ["X handle discovered from website or SERP"],
+      "output": ["dm_x_handle", "dm_x_posts[]"],
+      "post_fields": ["content", "date_posted", "likes", "reposts", "views", "hashtags"],
+      "x_handle_discovery": [
+        "1. Scrape company website for social links (open_website from T2)",
+        "2. SERP fallback: site:x.com \"{dm_name}\" \"{registered_name}\""
+      ],
+      "notes": "CEO Directive #041: Social intelligence for outreach personalisation. Graceful skip if X handle not found."
+    },
+    "T_DM2_LEGACY": {
       "name": "Hunter Domain Search DM",
       "source": "Hunter.io Domain Search",
       "cost_aud": 0.012,
-      "status": "active_fallback",
+      "status": "deprecated_replaced_by_tdm2",
       "output": ["dm_email", "dm_name", "dm_position"],
-      "notes": "Fallback DM identification via domain email patterns."
+      "notes": "Legacy fallback. Replaced by T-DM2 LinkedIn Posts in Directive #041."
     },
     "T4": {
       "name": "ZeroBounce Email Validation",
@@ -98,6 +124,8 @@
     "T1.25": ["T1"],
     "T2": ["T1.25"],
     "T_DM0": ["T1.25"],
+    "T_DM2": ["T_DM0"],
+    "T_DM3": ["T2", "T_DM0"],
     "T3": ["T2"]
   },
   "blockers": {
@@ -111,10 +139,10 @@
   },
   "cost_summary": {
     "minimum_per_lead": 0.013,
-    "typical_per_lead": 0.055,
-    "maximum_per_lead": 0.56,
-    "weighted_average": 0.115,
+    "typical_per_lead": 0.060,
+    "maximum_per_lead": 0.57,
+    "weighted_average": 0.120,
     "currency": "AUD",
-    "notes": "Updated for T-DM0. Compared to Apollo $0.50+ per lead."
+    "notes": "Updated for T-DM2 + T-DM3 (CEO Directive #041). Social intelligence adds ~$0.005/lead for ALS≥70. Compared to Apollo $0.50+ per lead."
   }
 }

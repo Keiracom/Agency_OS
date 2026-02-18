@@ -7,7 +7,7 @@ Consumers: lead_pool_service, waterfall_verification_worker, pool_population_flo
 
 FILE: src/services/icp_filter_service.py
 PURPOSE: Strict ICP filtering for Australian marketing/digital agencies
-PHASE: Directive #044 (ICP Filter Critical Fix)
+PHASE: Directive #044 (ICP Filter Critical Fix), updated Directive #046
 TASK: ICP-001
 DEPENDENCIES: None
 RULES APPLIED:
@@ -15,6 +15,8 @@ RULES APPLIED:
   - No non-ICP leads enter pipeline
 
 CEO DIRECTIVE #044: Non-ICP leads are a critical defect.
+CEO DIRECTIVE #046: Added underscore-format industry values, normalized matching,
+  fixed blacklist to only check category fields (not company name).
 Agency OS targets Australian marketing/digital agencies EXCLUSIVELY.
 """
 
@@ -63,7 +65,9 @@ ICP_CATEGORY_WHITELIST = {
 }
 
 # Industry strings that indicate agency (from Apollo/LinkedIn)
+# Includes both space-separated and underscore-separated formats (Directive #046)
 ICP_INDUSTRY_WHITELIST = {
+    # Space-separated formats (LinkedIn/Apollo standard)
     "marketing and advertising",
     "marketing & advertising",
     "advertising services",
@@ -74,6 +78,17 @@ ICP_INDUSTRY_WHITELIST = {
     "public relations and communications",
     "public relations",
     "media production",
+    # Underscore-separated formats (Directive #046 fix)
+    "digital_marketing",
+    "marketing_and_advertising",
+    "advertising_and_marketing",
+    "seo",
+    "social_media",
+    "public_relations",
+    "web_design",
+    "creative_services",
+    "media",
+    "branding",
 }
 
 
@@ -234,6 +249,20 @@ class ICPFilterService:
             return ""
         return text.lower().strip()
     
+    @staticmethod
+    def normalize_for_industry_match(text: str | None) -> str:
+        """
+        Normalize text for industry matching (Directive #046).
+        
+        Converts both underscore and space formats to underscore format
+        so 'digital_marketing' matches 'digital marketing' and vice versa.
+        """
+        if not text:
+            return ""
+        # Lowercase, strip, replace spaces with underscores
+        normalized = text.lower().strip().replace(" ", "_").replace("&", "and")
+        return normalized
+    
     @classmethod
     def check_category_whitelist(
         cls,
@@ -270,15 +299,19 @@ class ICPFilterService:
         cls,
         categories: list[str] | None,
         gmb_category: str | None = None,
-        company_name: str | None = None,
+        company_name: str | None = None,  # Kept for signature compat, NOT used (Directive #046)
     ) -> tuple[bool, str | None]:
         """
         Layer 2: Check if ANY category matches HARD EXCLUDE list.
         
+        DIRECTIVE #046 FIX: Only checks GMB category and all_categories fields.
+        Company name is NOT checked — "Property Marketing Agency" is valid ICP
+        because the GMB category will be marketing agency, not real estate.
+        
         Args:
             categories: List of GMB all_categories or similar
             gmb_category: Primary GMB category
-            company_name: Company name (checked for blacklist terms)
+            company_name: IGNORED (kept for signature compatibility)
             
         Returns:
             Tuple of (is_blacklisted, matched_term)
@@ -291,8 +324,12 @@ class ICPFilterService:
         if categories:
             all_text.extend([cls.normalize_text(c) for c in categories])
         
-        if company_name:
-            all_text.append(cls.normalize_text(company_name))
+        # NOTE: company_name deliberately NOT included (Directive #046)
+        # Property Marketing Agency should pass — their GMB category is "marketing agency"
+        
+        if not all_text:
+            # No categories to check = not blacklisted
+            return False, None
         
         combined = " ".join(all_text)
         
@@ -313,6 +350,10 @@ class ICPFilterService:
         """
         Check if industry matches ICP whitelist.
         
+        Uses dual normalization (Directive #046):
+        - Standard lowercase/strip for exact matches
+        - Underscore normalization for format-agnostic matching
+        
         Args:
             industry: Apollo/LinkedIn industry field
             sub_industry: Sub-industry if available
@@ -327,12 +368,26 @@ class ICPFilterService:
         if sub_industry:
             industries.append(cls.normalize_text(sub_industry))
         
+        # Build normalized whitelist for underscore matching
+        normalized_whitelist = {cls.normalize_for_industry_match(t) for t in ICP_INDUSTRY_WHITELIST}
+        
         for ind in industries:
+            # Direct match against whitelist
             if ind in ICP_INDUSTRY_WHITELIST:
                 return True, ind
+            
+            # Normalized match (underscore format) — Directive #046
+            normalized_ind = cls.normalize_for_industry_match(ind)
+            if normalized_ind in normalized_whitelist:
+                return True, ind
+            
             # Partial match for flexibility
             for whitelist_term in ICP_INDUSTRY_WHITELIST:
                 if whitelist_term in ind or ind in whitelist_term:
+                    return True, ind
+                # Also check normalized partial match
+                norm_term = cls.normalize_for_industry_match(whitelist_term)
+                if norm_term in normalized_ind or normalized_ind in norm_term:
                     return True, ind
         
         return False, None

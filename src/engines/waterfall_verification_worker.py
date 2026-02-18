@@ -28,7 +28,7 @@ import asyncio
 import logging
 import os
 from dataclasses import dataclass, field
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Optional
@@ -1243,11 +1243,14 @@ class WaterfallVerificationWorker(BaseEngine):
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:
                 # ========== Step 1: Trigger LinkedIn Posts collection ==========
-                # Using discover_by profile URL to get posts
+                # CEO Directive #043: Use discover_by=profile_url mode (VALIDATED 2026-02-18)
+                # Note: Date filtering NOT supported in API - must filter locally
                 trigger_resp = await client.post(
                     "https://api.brightdata.com/datasets/v3/trigger",
                     params={
                         "dataset_id": BRIGHTDATA_LINKEDIN_POSTS_DATASET,
+                        "type": "discover_new",
+                        "discover_by": "profile_url",
                         "include_errors": "true",
                     },
                     headers={
@@ -1295,11 +1298,25 @@ class WaterfallVerificationWorker(BaseEngine):
                     logger.info(f"T-DM2: No posts found for {dm_linkedin_url}")
                     return []
                 
-                # ========== Step 4: Parse posts ==========
+                # ========== Step 4: Parse posts with 90-day local filter ==========
+                # CEO Directive #043: Date filter not supported in API, filter locally
+                cutoff_date = datetime.utcnow() - timedelta(days=90)
+                
                 posts = []
-                for post_data in results[:max_posts]:
+                for post_data in results:
                     if "error" in post_data:
                         continue
+                    
+                    # Parse and filter by date (90-day window)
+                    date_str = post_data.get("date_posted", "")
+                    if date_str:
+                        try:
+                            # Handle ISO format dates
+                            post_date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                            if post_date.replace(tzinfo=None) < cutoff_date:
+                                continue  # Skip posts older than 90 days
+                        except (ValueError, TypeError):
+                            pass  # Keep posts with unparseable dates
                     
                     # Extract topic from hashtags or infer from content
                     hashtags = post_data.get("hashtags", []) or []
@@ -1307,14 +1324,20 @@ class WaterfallVerificationWorker(BaseEngine):
                     
                     posts.append(LinkedInPost(
                         post_text=post_data.get("post_text", "") or post_data.get("title", ""),
-                        date_posted=post_data.get("date_posted", ""),
+                        date_posted=date_str,
                         num_likes=post_data.get("num_likes", 0) or 0,
                         num_comments=post_data.get("num_comments", 0) or 0,
                         hashtags=hashtags,
                         topic=topic,
                     ))
+                    
+                    if len(posts) >= max_posts:
+                        break
                 
-                logger.info(f"T-DM2: Retrieved {len(posts)} LinkedIn posts for {dm_linkedin_url}")
+                logger.info(
+                    f"T-DM2: Retrieved {len(posts)} LinkedIn posts within 90 days "
+                    f"(filtered from {len(results)} total) for {dm_linkedin_url}"
+                )
                 return posts
         
         except httpx.HTTPStatusError as e:
@@ -1468,10 +1491,14 @@ class WaterfallVerificationWorker(BaseEngine):
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:
                 # ========== Step 1: Trigger X Posts collection ==========
+                # CEO Directive #043: Use discover_by=profile_url mode (VALIDATED 2026-02-18)
+                # Note: Date filtering NOT supported in API - must filter locally
                 trigger_resp = await client.post(
                     "https://api.brightdata.com/datasets/v3/trigger",
                     params={
                         "dataset_id": BRIGHTDATA_X_POSTS_DATASET,
+                        "type": "discover_new",
+                        "discover_by": "profile_url",
                         "include_errors": "true",
                     },
                     headers={
@@ -1519,11 +1546,24 @@ class WaterfallVerificationWorker(BaseEngine):
                     logger.info(f"T-DM3: No posts found for {profile_url}")
                     return []
                 
-                # ========== Step 4: Parse posts ==========
+                # ========== Step 4: Parse posts with 90-day local filter ==========
+                # CEO Directive #043: Date filter not supported in API, filter locally
+                cutoff_date = datetime.utcnow() - timedelta(days=90)
+                
                 posts = []
-                for post_data in results[:max_posts]:
+                for post_data in results:
                     if "error" in post_data:
                         continue
+                    
+                    # Parse and filter by date (90-day window)
+                    date_str = post_data.get("date_posted", "")
+                    if date_str:
+                        try:
+                            post_date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                            if post_date.replace(tzinfo=None) < cutoff_date:
+                                continue  # Skip posts older than 90 days
+                        except (ValueError, TypeError):
+                            pass  # Keep posts with unparseable dates
                     
                     # Extract hashtags from description
                     import re
@@ -1532,14 +1572,20 @@ class WaterfallVerificationWorker(BaseEngine):
                     
                     posts.append(XPost(
                         content=description,
-                        date_posted=post_data.get("date_posted", ""),
+                        date_posted=date_str,
                         likes=post_data.get("likes", 0) or 0,
                         reposts=post_data.get("reposts", 0) or 0,
                         views=post_data.get("views", 0) or 0,
                         hashtags=hashtags,
                     ))
+                    
+                    if len(posts) >= max_posts:
+                        break
                 
-                logger.info(f"T-DM3: Retrieved {len(posts)} X posts for {profile_url}")
+                logger.info(
+                    f"T-DM3: Retrieved {len(posts)} X posts within 90 days "
+                    f"(filtered from {len(results)} total) for {profile_url}"
+                )
                 return posts
         
         except httpx.HTTPStatusError as e:

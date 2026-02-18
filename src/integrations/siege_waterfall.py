@@ -59,6 +59,25 @@ FUZZY_MATCH_THRESHOLD = 70
 HIGH_CONFIDENCE_THRESHOLD = 90
 MEDIUM_CONFIDENCE_THRESHOLD = 80
 
+# CEO Directive #014: Generic name patterns to skip for Tier 2 GMB
+# These holding company patterns have low GMB match probability
+GENERIC_NAME_PATTERNS = (
+    "holdings",
+    "enterprises", 
+    "investments",
+    "trust",
+    "group",
+    "services",
+    "management",
+    "properties",
+    "consulting",
+    "solutions",
+    "international",
+    "ventures",
+    "capital",
+    "partners",
+)
+
 
 # ============================================
 # CUSTOM EXCEPTIONS
@@ -946,6 +965,75 @@ class SiegeWaterfall:
                 error=str(e),
             )
 
+    def _is_generic_name(self, name: str) -> bool:
+        """
+        CEO Directive #014: Check if name matches generic holding company patterns.
+        These have low GMB match probability and should skip Tier 2.
+        """
+        if not name:
+            return False
+        name_lower = name.lower()
+        return any(pattern in name_lower for pattern in GENERIC_NAME_PATTERNS)
+
+    def _strip_legal_suffixes(self, name: str) -> str:
+        """Strip common legal entity suffixes for better GMB matching."""
+        import re
+        if not name:
+            return name
+        # Remove Pty Ltd, Ltd, Pty, PTY LTD, etc.
+        patterns = [
+            r'\s+pty\.?\s*ltd\.?$',
+            r'\s+ltd\.?$',
+            r'\s+pty\.?$',
+            r'\s+proprietary\s+limited$',
+            r'\s+limited$',
+        ]
+        result = name
+        for pattern in patterns:
+            result = re.sub(pattern, '', result, flags=re.IGNORECASE)
+        return result.strip()
+
+    async def _log_tier2_gmb_match(
+        self,
+        lead: dict[str, Any],
+        search_name: str,
+        waterfall_step: str,
+        location_query: str,
+        gmb_result: str,
+        gmb_name: str | None = None,
+        match_score: int | None = None,
+        passed: bool = False,
+        skip_reason: str | None = None,
+        names_tried: int = 0,
+        processing_ms: int = 0,
+    ) -> None:
+        """
+        CEO Directive #014: Log Tier 2 GMB match attempt to Supabase for monitoring.
+        """
+        try:
+            from src.integrations.supabase import get_supabase_client
+            
+            supabase = get_supabase_client()
+            log_entry = {
+                "abn": lead.get("abn"),
+                "lead_id": lead.get("lead_id") or lead.get("id"),
+                "abn_name": lead.get("business_name") or lead.get("company_name"),
+                "search_name_used": search_name,
+                "waterfall_step": waterfall_step,
+                "location_query": location_query,
+                "gmb_result": gmb_result,
+                "gmb_name": gmb_name,
+                "match_score": match_score,
+                "pass": passed,
+                "skip_reason": skip_reason,
+                "names_tried": names_tried,
+                "processing_ms": processing_ms,
+            }
+            await supabase.table("tier2_gmb_match_log").insert(log_entry).execute()
+        except Exception as e:
+            # Don't fail enrichment if logging fails
+            logger.warning(f"[Siege] Failed to log Tier 2 GMB match: {e}")
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -955,18 +1043,20 @@ class SiegeWaterfall:
         """
         Tier 2: GMB/Ads Signals - $0.006/lead AUD
         
-        Scrapes Google Maps for business signals:
-        - Phone numbers
-        - Website
-        - Hours
-        - Reviews/rating
-        - Categories
+        CEO Directive #014: Enhanced waterfall name resolution
         
-        Name matching waterfall (integrated from waterfall_verification_worker):
-        1. Try original company_name first
-        2. If ABN data exists, try legal name (business_name from Tier 1)
-        3. Try each ASIC-registered business_names
-        4. Use ABN postcode to narrow location
+        Scrapes Google Maps for business signals:
+        - Phone numbers, Website, Hours, Reviews/rating, Categories
+        
+        Waterfall order (CEO Directive #014 + #016):
+        a) ASIC business names from business_names[] (try each)
+        b) ABN trading_name (pre-2012 legacy)
+        c) Legal name stripped of "Pty Ltd" / "Ltd" / "Pty"
+        c.5) LinkedIn company name from Bright Data (fallback after govt data)
+        d) Location-pinned search (name + postcode + state + "Australia")
+        
+        Generic filter: Skip if no ASIC business names, no linkedin_company_name,
+        AND legal name matches generic patterns (Holdings, Trust, Enterprises, etc.)
         
         Args:
             lead: Lead data (needs company_name, may have ABN data from Tier 1)
@@ -974,31 +1064,88 @@ class SiegeWaterfall:
         Returns:
             TierResult with GMB data
         """
+        import time
         tier = EnrichmentTier.GMB
         cost = TIER_COSTS_AUD[tier]
+        start_time = time.time()
         
         try:
-            # Build name search waterfall from ABN data (Tier 1)
-            names_to_try = []
+            business_names = lead.get("business_names", [])
+            trading_name = lead.get("trading_name")
+            legal_name = lead.get("business_name") or lead.get("company_name")
+            # CEO Directive #016: Bright Data LinkedIn company name (high priority)
+            linkedin_company_name = lead.get("linkedin_company_name")
             
-            # 1. Original company_name (highest priority)
-            if lead.get("company_name"):
-                names_to_try.append(lead["company_name"])
+            # CEO Directive #014 + #016: Generic name filter
+            # Skip Tier 2 if no ASIC business names, no linkedin_company_name,
+            # AND legal name is generic
+            if not business_names and not linkedin_company_name and legal_name and self._is_generic_name(legal_name):
+                skip_reason = "tier2_skipped_generic_name"
+                logger.info(
+                    f"[Siege] Tier 2 GMB: Skipping generic name '{legal_name}' "
+                    f"(no ASIC business names available)"
+                )
+                await self._log_tier2_gmb_match(
+                    lead=lead,
+                    search_name=legal_name,
+                    waterfall_step="c",
+                    location_query="",
+                    gmb_result="skipped",
+                    passed=False,
+                    skip_reason=skip_reason,
+                )
+                return TierResult(
+                    tier=tier,
+                    success=False,
+                    skipped=True,
+                    skip_reason=skip_reason,
+                )
             
-            # 2. ABN legal name (from Tier 1)
-            if lead.get("business_name") and lead["business_name"] not in names_to_try:
-                names_to_try.append(lead["business_name"])
+            # Build location string
+            location_parts = []
+            if lead.get("postcode"):
+                location_parts.append(lead["postcode"])
+            if lead.get("city"):
+                location_parts.append(lead["city"])
+            state = lead.get("state") or lead.get("company_state")
+            if state:
+                location_parts.append(state)
             
-            # 3. ABN trading name
-            if lead.get("trading_name") and lead["trading_name"] not in names_to_try:
-                names_to_try.append(lead["trading_name"])
+            base_location = ", ".join(location_parts) if location_parts else ""
+            domain = lead.get("domain") or lead.get("company_domain")
             
-            # 4. ASIC-registered business names (from ABN Tier 1)
-            for bn in lead.get("business_names", []):
-                if bn not in names_to_try:
-                    names_to_try.append(bn)
+            # Build waterfall search list with step tracking
+            # Format: (name, step, location)
+            waterfall_searches: list[tuple[str, str, str]] = []
             
-            if not names_to_try:
+            # Step a: ASIC business names (highest priority for GMB matching)
+            for bn in business_names:
+                if bn:
+                    waterfall_searches.append((bn, "a", base_location or "Australia"))
+            
+            # Step b: ABN trading_name (pre-2012 legacy)
+            if trading_name:
+                waterfall_searches.append((trading_name, "b", base_location or "Australia"))
+            
+            # Step c: Legal name stripped of suffixes
+            if legal_name:
+                stripped_name = self._strip_legal_suffixes(legal_name)
+                if stripped_name and stripped_name != legal_name:
+                    waterfall_searches.append((stripped_name, "c", base_location or "Australia"))
+                elif stripped_name:
+                    waterfall_searches.append((stripped_name, "c", base_location or "Australia"))
+            
+            # Step c.5: LinkedIn company name from Bright Data (CEO Directive #016)
+            # Fallback after official govt data exhausted
+            if linkedin_company_name:
+                waterfall_searches.append((linkedin_company_name, "c5", base_location or "Australia"))
+            
+            # Step d: Location-pinned search (name + full location + "Australia")
+            if legal_name and base_location:
+                location_pinned = f"{base_location}, Australia"
+                waterfall_searches.append((legal_name, "d", location_pinned))
+            
+            if not waterfall_searches:
                 return TierResult(
                     tier=tier,
                     success=False,
@@ -1006,26 +1153,16 @@ class SiegeWaterfall:
                     skip_reason="No company_name or ABN business names available",
                 )
             
-            # Build location string - prefer ABN postcode if available
-            location_parts = []
-            
-            # Use ABN postcode to narrow location (more precise)
-            if lead.get("postcode"):
-                location_parts.append(lead["postcode"])
-            if lead.get("city"):
-                location_parts.append(lead["city"])
-            if lead.get("state") or lead.get("company_state"):
-                location_parts.append(lead.get("state") or lead.get("company_state"))
-            
-            location = ", ".join(location_parts) if location_parts else "Australia"
-            domain = lead.get("domain") or lead.get("company_domain")
-            
-            # Try each name variant until we find a match
+            # Try each waterfall step until match found
             enriched = None
             matched_name = None
+            matched_step = None
+            names_tried = 0
             
-            for name in names_to_try:
-                logger.debug(f"[Siege] Tier 2 GMB: Trying name '{name}' in {location}")
+            for name, step, location in waterfall_searches:
+                names_tried += 1
+                step_start = time.time()
+                logger.debug(f"[Siege] Tier 2 GMB: Step {step} - Trying '{name}' in {location}")
                 
                 result = await self.gmb_scraper.enrich_from_gmb(
                     business_name=name,
@@ -1033,29 +1170,62 @@ class SiegeWaterfall:
                     location=location,
                 )
                 
+                step_ms = int((time.time() - step_start) * 1000)
+                
                 if result.get("found"):
-                    # Validate match with fuzzy scoring
                     gmb_name = result.get("business_name", "")
                     match_score = max(
                         fuzz.ratio(name.lower(), gmb_name.lower()),
                         fuzz.token_set_ratio(name.lower(), gmb_name.lower()),
                     )
                     
-                    if match_score >= FUZZY_MATCH_THRESHOLD:
+                    passed = match_score >= FUZZY_MATCH_THRESHOLD
+                    
+                    # Log this attempt
+                    await self._log_tier2_gmb_match(
+                        lead=lead,
+                        search_name=name,
+                        waterfall_step=step,
+                        location_query=location,
+                        gmb_result="found",
+                        gmb_name=gmb_name,
+                        match_score=match_score,
+                        passed=passed,
+                        names_tried=names_tried,
+                        processing_ms=step_ms,
+                    )
+                    
+                    if passed:
                         enriched = result
                         matched_name = name
+                        matched_step = step
                         enriched["match_score"] = match_score
                         enriched["matched_query"] = name
+                        enriched["waterfall_step"] = step
                         logger.info(
-                            f"[Siege] Tier 2 GMB: Matched '{gmb_name}' "
+                            f"[Siege] Tier 2 GMB: Step {step} matched '{gmb_name}' "
                             f"with query '{name}' (score: {match_score})"
                         )
                         break
                     else:
                         logger.debug(
-                            f"[Siege] Tier 2 GMB: Low confidence match "
+                            f"[Siege] Tier 2 GMB: Step {step} low confidence "
                             f"'{gmb_name}' for '{name}' (score: {match_score})"
                         )
+                else:
+                    # Log not found
+                    await self._log_tier2_gmb_match(
+                        lead=lead,
+                        search_name=name,
+                        waterfall_step=step,
+                        location_query=location,
+                        gmb_result="not_found",
+                        passed=False,
+                        names_tried=names_tried,
+                        processing_ms=step_ms,
+                    )
+            
+            total_ms = int((time.time() - start_time) * 1000)
             
             if enriched:
                 await self._log_enrichment_operation(
@@ -1065,10 +1235,12 @@ class SiegeWaterfall:
                     success=True,
                     cost_aud=cost,
                     metadata={
-                        "location": location,
+                        "location": base_location,
                         "matched_name": matched_name,
                         "match_score": enriched.get("match_score"),
-                        "names_tried": len(names_to_try),
+                        "waterfall_step": matched_step,
+                        "names_tried": names_tried,
+                        "processing_ms": total_ms,
                     },
                 )
                 return TierResult(
@@ -1083,13 +1255,17 @@ class SiegeWaterfall:
                     operation="gmb_scrape",
                     lead_data=lead,
                     success=False,
-                    error=f"No GMB listing found (tried {len(names_to_try)} name variants)",
-                    metadata={"names_tried": names_to_try},
+                    error=f"No GMB listing found (tried {names_tried} waterfall steps)",
+                    metadata={
+                        "names_tried": names_tried,
+                        "waterfall_steps": [s[1] for s in waterfall_searches],
+                        "processing_ms": total_ms,
+                    },
                 )
                 return TierResult(
                     tier=tier,
                     success=False,
-                    error=f"No GMB listing found (tried {len(names_to_try)} name variants)",
+                    error=f"No GMB listing found (tried {names_tried} waterfall steps)",
                 )
                 
         except Exception as e:

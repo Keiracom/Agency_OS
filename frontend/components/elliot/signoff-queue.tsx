@@ -30,9 +30,9 @@ import { useToast } from "@/hooks/use-toast";
 type SignoffStatus = "pending" | "approved" | "rejected" | "all";
 
 const actionTypeConfig: Record<string, { icon: typeof Microscope; label: string; color: string }> = {
-  evaluate_tool: { icon: Microscope, label: "Evaluate Tool", color: "text-blue-500" },
-  build_poc: { icon: Hammer, label: "Build PoC", color: "text-purple-500" },
-  research: { icon: Search, label: "Research", color: "text-green-500" },
+  evaluate_tool: { icon: Microscope, label: "Evaluate Tool", color: "text-text-secondary" },
+  build_poc: { icon: Hammer, label: "Build PoC", color: "text-amber" },
+  research: { icon: Search, label: "Research", color: "text-amber" },
 };
 
 function formatTimeAgo(dateString: string): string {
@@ -100,7 +100,7 @@ function SignoffCard({
               variant="default"
               onClick={onApprove}
               disabled={isProcessing}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-amber hover:bg-amber"
             >
               {isProcessing ? (
                 <Loader2 className="h-4 w-4 mr-1 animate-spin" />

@@ -123,19 +123,19 @@ function SearchTrigger({
       onClick={onOpen}
       className="
         relative flex items-center gap-2 w-64
-        bg-white/5 backdrop-blur-xl
+        bg-bg-surface/5 backdrop-blur-xl
         border border-white/10 hover:border-white/20
         rounded-xl px-3 py-2.5
         transition-all duration-200
-        hover:bg-white/10 hover:w-72
+        hover:bg-bg-surface/10 hover:w-72
         group
       "
     >
-      <Search className="w-4 h-4 text-slate-400 group-hover:text-slate-300" />
-      <span className="text-sm text-slate-500 group-hover:text-slate-400 flex-1 text-left truncate">
+      <Search className="w-4 h-4 text-text-secondary group-hover:text-text-secondary" />
+      <span className="text-sm text-text-muted group-hover:text-text-secondary flex-1 text-left truncate">
         {placeholder}
       </span>
-      <kbd className="hidden sm:flex items-center gap-1 text-[10px] text-slate-500 bg-white/5 px-1.5 py-0.5 rounded border border-white/10">
+      <kbd className="hidden sm:flex items-center gap-1 text-[10px] text-text-muted bg-bg-surface/5 px-1.5 py-0.5 rounded border border-white/10">
         <span className="text-xs">⌘</span>K
       </kbd>
     </button>
@@ -156,13 +156,13 @@ function CreditsDisplay({
   const isMedium = percentage >= 20 && percentage < 50;
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 bg-white/5 backdrop-blur-xl rounded-xl border border-white/10">
-      <div className={`p-1.5 rounded-lg ${isLow ? "bg-red-500/20" : isMedium ? "bg-amber-500/20" : "bg-emerald-500/20"}`}>
-        <Coins className={`w-4 h-4 ${isLow ? "text-red-400" : isMedium ? "text-amber-400" : "text-emerald-400"}`} />
+    <div className="flex items-center gap-2 px-3 py-2 bg-bg-surface/5 backdrop-blur-xl rounded-xl border border-white/10">
+      <div className={`p-1.5 rounded-lg ${isLow ? "bg-amber/20" : isMedium ? "bg-amber-500/20" : "bg-amber/20"}`}>
+        <Coins className={`w-4 h-4 ${isLow ? "text-amber" : isMedium ? "text-amber-400" : "text-amber"}`} />
       </div>
       <div className="flex flex-col">
-        <span className="text-xs text-slate-400">{label}</span>
-        <span className={`text-sm font-semibold ${isLow ? "text-red-400" : isMedium ? "text-amber-400" : "text-white"}`}>
+        <span className="text-xs text-text-secondary">{label}</span>
+        <span className={`text-sm font-semibold ${isLow ? "text-amber" : isMedium ? "text-amber-400" : "text-text-primary"}`}>
           {credits.toLocaleString()}
         </span>
       </div>
@@ -197,10 +197,10 @@ function NotificationBell({
   }, [open]);
 
   const typeStyles = {
-    info: "bg-blue-500/20 text-blue-400",
-    success: "bg-emerald-500/20 text-emerald-400",
+    info: "bg-bg-elevated/20 text-text-secondary",
+    success: "bg-amber/20 text-amber",
     warning: "bg-amber-500/20 text-amber-400",
-    error: "bg-red-500/20 text-red-400",
+    error: "bg-amber/20 text-amber",
   };
 
   return (
@@ -209,31 +209,31 @@ function NotificationBell({
         onClick={() => setOpen(!open)}
         className={`
           relative p-2.5 rounded-xl
-          bg-white/5 backdrop-blur-xl border border-white/10
-          text-slate-400 hover:text-white hover:bg-white/10
+          bg-bg-surface/5 backdrop-blur-xl border border-white/10
+          text-text-secondary hover:text-text-primary hover:bg-bg-surface/10
           transition-all duration-200
-          ${open ? "bg-white/10 text-white" : ""}
+          ${open ? "bg-bg-surface/10 text-text-primary" : ""}
         `}
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white animate-pulse">
+          <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber rounded-full flex items-center justify-center text-[10px] font-bold text-text-primary animate-pulse">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-bg-void/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-            <h3 className="text-sm font-semibold text-white">Notifications</h3>
+            <h3 className="text-sm font-semibold text-text-primary">Notifications</h3>
             {unreadCount > 0 && onMarkAllRead && (
               <button
                 onClick={() => {
                   onMarkAllRead();
                   setOpen(false);
                 }}
-                className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                className="text-xs text-text-secondary hover:text-amber-light transition-colors"
               >
                 Mark all read
               </button>
@@ -242,8 +242,8 @@ function NotificationBell({
           <div className="max-h-80 overflow-y-auto">
             {notifications.length === 0 ? (
               <div className="px-4 py-8 text-center">
-                <Bell className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">No notifications</p>
+                <Bell className="w-8 h-8 text-text-muted mx-auto mb-2" />
+                <p className="text-sm text-text-muted">No notifications</p>
               </div>
             ) : (
               notifications.map((notification) => (
@@ -255,9 +255,9 @@ function NotificationBell({
                   }}
                   className={`
                     w-full px-4 py-3 text-left
-                    hover:bg-white/5 transition-colors
+                    hover:bg-bg-surface/5 transition-colors
                     border-b border-white/5 last:border-0
-                    ${!notification.read ? "bg-blue-500/5" : ""}
+                    ${!notification.read ? "bg-bg-elevated/5" : ""}
                   `}
                 >
                   <div className="flex items-start gap-3">
@@ -265,18 +265,18 @@ function NotificationBell({
                       <Sparkles className="w-3.5 h-3.5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium truncate ${!notification.read ? "text-white" : "text-slate-300"}`}>
+                      <p className={`text-sm font-medium truncate ${!notification.read ? "text-text-primary" : "text-text-secondary"}`}>
                         {notification.title}
                       </p>
-                      <p className="text-xs text-slate-500 truncate mt-0.5">
+                      <p className="text-xs text-text-muted truncate mt-0.5">
                         {notification.message}
                       </p>
-                      <p className="text-[10px] text-slate-600 mt-1">
+                      <p className="text-[10px] text-text-muted mt-1">
                         {notification.time}
                       </p>
                     </div>
                     {!notification.read && (
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2" />
+                      <div className="w-2 h-2 bg-bg-elevated rounded-full mt-2" />
                     )}
                   </div>
                 </button>
@@ -322,10 +322,10 @@ function UserDropdown({
         onClick={() => setOpen(!open)}
         className={`
           flex items-center gap-2 pl-1 pr-2 py-1
-          bg-white/5 backdrop-blur-xl border border-white/10
+          bg-bg-surface/5 backdrop-blur-xl border border-white/10
           rounded-xl
-          hover:bg-white/10 transition-all duration-200
-          ${open ? "bg-white/10" : ""}
+          hover:bg-bg-surface/10 transition-all duration-200
+          ${open ? "bg-bg-surface/10" : ""}
         `}
       >
         {user?.avatarUrl ? (
@@ -335,23 +335,23 @@ function UserDropdown({
             className="w-8 h-8 rounded-lg object-cover"
           />
         ) : (
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-sm font-semibold">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber to-amber flex items-center justify-center text-text-primary text-sm font-semibold">
             {initial}
           </div>
         )}
-        <span className="text-sm font-medium text-white hidden sm:block max-w-24 truncate">
+        <span className="text-sm font-medium text-text-primary hidden sm:block max-w-24 truncate">
           {displayName}
         </span>
-        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`w-4 h-4 text-text-secondary transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-56 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
+        <div className="absolute right-0 top-full mt-2 w-56 bg-bg-void/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
           {/* User Info Header */}
           <div className="px-4 py-3 border-b border-white/10">
-            <p className="text-sm font-medium text-white truncate">{displayName}</p>
+            <p className="text-sm font-medium text-text-primary truncate">{displayName}</p>
             {displayEmail && (
-              <p className="text-xs text-slate-400 truncate">{displayEmail}</p>
+              <p className="text-xs text-text-secondary truncate">{displayEmail}</p>
             )}
           </div>
 
@@ -371,8 +371,8 @@ function UserDropdown({
                     w-full flex items-center gap-3 px-4 py-2.5
                     text-sm transition-colors
                     ${action.danger
-                      ? "text-red-400 hover:bg-red-500/10"
-                      : "text-slate-300 hover:text-white hover:bg-white/5"
+                      ? "text-amber hover:bg-amber-glow"
+                      : "text-text-secondary hover:text-text-primary hover:bg-bg-surface/5"
                     }
                   `}
                 >

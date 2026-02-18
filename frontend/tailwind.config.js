@@ -6,6 +6,7 @@ module.exports = {
     './components/**/*.{ts,tsx}',
     './app/**/*.{ts,tsx}',
     './src/**/*.{ts,tsx}',
+    './design/**/*.{ts,tsx}',
   ],
   prefix: "",
   theme: {
@@ -17,45 +18,41 @@ module.exports = {
       }
     },
     extend: {
-      // Agency OS Design Tokens - Bloomberg Terminal Dark Mode
-      // Sprint 1: Theme Foundation (CEO Directive #008)
+      // Pure Bloomberg Dark Theme — Warm Charcoal + Amber ONLY
       colors: {
-        // Base layers - Warm Charcoal
-        'bg-void': '#080604',
-        'bg-base': '#0C0A08',
-        'bg-surface': 'rgba(255, 255, 255, 0.03)',
-        'bg-surface-hover': 'rgba(255, 255, 255, 0.06)',
-        'bg-elevated': 'rgba(255, 255, 255, 0.08)',
+        // Background layers (warm charcoal)
+        'bg-void': '#0C0A08',
+        'bg-base': '#141210',
+        'bg-surface': '#1C1A17',
+        'bg-elevated': '#242220',
         
-        // Borders - Glassmorphism
-        'border-subtle': 'rgba(255, 255, 255, 0.06)',
-        'border-default': 'rgba(255, 255, 255, 0.08)',
-        'border-strong': 'rgba(255, 255, 255, 0.12)',
+        // Borders (subtle glass edges)
+        'border-subtle': 'rgba(255,255,255,0.06)',
+        'border-default': 'rgba(255,255,255,0.10)',
+        'border-focus': 'rgba(255,255,255,0.20)',
         
-        // Text - Warm Cream
-        'text-primary': '#FAF5F0',
-        'text-secondary': '#A09890',
-        'text-muted': '#6B6560',
+        // Text (warm cream palette)
+        'text-primary': '#F5F0EB',
+        'text-secondary': '#A39E96',
+        'text-muted': '#6B6660',
         
-        // Accent - Amber Primary, Violet for AI only
-        'accent-primary': '#D4956A',
-        'accent-primary-hover': '#E0A87D',
-        'accent-ai': '#7C3AED',
-        'accent-ai-hover': '#9061F9',
-        'accent-teal': '#14B8A6',
-        'accent-blue': '#3B82F6',
+        // Accent — AMBER ONLY (the only color)
+        'amber': '#D4956A',
+        'amber-light': '#E8B48A',
+        'amber-glow': 'rgba(212,149,106,0.12)',
         
-        // Status
-        'status-success': '#10B981',
-        'status-warning': '#F59E0B',
-        'status-error': '#EF4444',
+        // Error state (muted warm red — SPARINGLY)
+        'error': '#C0675A',
+        'error-glow': 'rgba(192,103,90,0.12)',
         
-        // Tiers (ALS Lead Scoring)
-        'tier-hot': '#EF4444',
-        'tier-warm': '#F59E0B',
-        'tier-cool': '#3B82F6',
+        // Glass
+        glass: {
+          surface: 'rgba(255,255,255,0.04)',
+          border: 'rgba(255,255,255,0.10)',
+          'border-hover': 'rgba(255,255,255,0.15)',
+        },
         
-        // shadcn/ui compatibility
+        // shadcn/ui compatibility layer
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
@@ -108,14 +105,11 @@ module.exports = {
         sm: 'calc(var(--radius) - 4px)'
       },
       boxShadow: {
-        'glow-sm': '0 0 10px rgba(212, 149, 106, 0.2)',
-        'glow-md': '0 0 20px rgba(212, 149, 106, 0.3)',
-        'glow-lg': '0 0 30px rgba(212, 149, 106, 0.4)',
-        'glow-ai-sm': '0 0 10px rgba(124, 58, 237, 0.2)',
-        'glow-ai-md': '0 0 20px rgba(124, 58, 237, 0.3)',
-      },
-      backdropBlur: {
-        'glass': '12px',
+        'glow-sm': '0 0 10px rgba(212,149,106,0.15)',
+        'glow-md': '0 0 20px rgba(212,149,106,0.20)',
+        'glow-lg': '0 0 30px rgba(212,149,106,0.25)',
+        'glass': '0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)',
+        'glass-lg': '0 12px 40px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)',
       },
       keyframes: {
         'accordion-down': {
@@ -127,14 +121,18 @@ module.exports = {
           to: { height: '0' }
         },
         'pulse-glow': {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgba(124, 58, 237, 0.4)' },
-          '50%': { boxShadow: '0 0 0 8px rgba(124, 58, 237, 0)' }
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(212,149,106,0.4)' },
+          '50%': { boxShadow: '0 0 0 8px rgba(212,149,106,0)' }
+        },
+        'shimmer': {
+          '100%': { transform: 'translateX(100%)' }
         }
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
-        'pulse-glow': 'pulse-glow 2s ease-in-out infinite'
+        'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
+        'shimmer': 'shimmer 2s infinite'
       }
     }
   },

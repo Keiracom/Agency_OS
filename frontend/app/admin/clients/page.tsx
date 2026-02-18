@@ -41,17 +41,17 @@ import { ClientHealthBadge } from "@/components/admin/ClientHealthIndicator";
 import { useAdminClients } from "@/hooks/use-admin";
 
 const tierColors: Record<string, string> = {
-  ignition: "bg-blue-500/10 text-blue-700 border-blue-500/20",
-  velocity: "bg-purple-500/10 text-purple-700 border-purple-500/20",
+  ignition: "bg-bg-elevated/10 text-amber border-default/20",
+  velocity: "bg-amber/10 text-amber border-amber/20",
   dominance: "bg-amber-500/10 text-amber-700 border-amber-500/20",
 };
 
 const statusColors: Record<string, string> = {
-  active: "bg-green-500/10 text-green-700 border-green-500/20",
-  trialing: "bg-blue-500/10 text-blue-700 border-blue-500/20",
-  past_due: "bg-red-500/10 text-red-700 border-red-500/20",
+  active: "bg-amber/10 text-amber border-amber/20",
+  trialing: "bg-bg-elevated/10 text-amber border-default/20",
+  past_due: "bg-amber-glow text-error border-amber/20",
   paused: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
-  cancelled: "bg-gray-500/10 text-gray-700 border-gray-500/20",
+  cancelled: "bg-bg-surface0/10 text-text-muted border-gray-500/20",
 };
 
 function formatTimeAgo(dateStr: string | null): string {
@@ -250,7 +250,7 @@ export default function AdminClientsPage() {
                             <Pause className="mr-2 h-4 w-4" />
                             Pause Subscription
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">
+                          <DropdownMenuItem className="text-amber">
                             <X className="mr-2 h-4 w-4" />
                             Cancel Subscription
                           </DropdownMenuItem>

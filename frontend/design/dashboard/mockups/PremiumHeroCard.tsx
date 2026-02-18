@@ -25,8 +25,8 @@ export function PremiumHeroCard({
   status = "on_track",
 }: PremiumHeroCardProps) {
   const statusConfig = {
-    ahead: { label: "Ahead of pace", color: "text-emerald-400", glow: "shadow-emerald-500/20" },
-    on_track: { label: "On track", color: "text-cyan-400", glow: "shadow-cyan-500/20" },
+    ahead: { label: "Ahead of pace", color: "text-amber", glow: "shadow-amber/20" },
+    on_track: { label: "On track", color: "text-amber", glow: "shadow-amber/20" },
     behind: { label: "Behind pace", color: "text-amber-400", glow: "shadow-amber-500/20" },
   };
 
@@ -67,25 +67,25 @@ export function PremiumHeroCard({
 
       {/* Glass card content */}
       <div 
-        className={`relative z-10 p-8 backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-2xl ${glow} shadow-2xl`}
+        className={`relative z-10 p-8 backdrop-blur-xl bg-bg-surface/[0.03] border border-white/[0.08] rounded-2xl ${glow} shadow-2xl`}
       >
         <div className="grid grid-cols-2 gap-8">
           {/* Meetings Booked */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-gray-400 text-sm font-medium">
+            <div className="flex items-center gap-2 text-text-muted text-sm font-medium">
               <Calendar className="w-4 h-4" />
               <span>Meetings Booked</span>
             </div>
             <div className="flex items-baseline gap-3">
-              <span className="text-5xl font-light text-white tracking-tight">
+              <span className="text-5xl font-light text-text-primary tracking-tight">
                 {meetingsBooked}
               </span>
-              <div className={`flex items-center gap-1 text-sm ${isPositive ? "text-emerald-400" : "text-red-400"}`}>
+              <div className={`flex items-center gap-1 text-sm ${isPositive ? "text-amber" : "text-amber"}`}>
                 {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                 <span>{isPositive ? "+" : ""}{vsLastMonth} vs last month</span>
               </div>
             </div>
-            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${color} bg-white/[0.05]`}>
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${color} bg-bg-surface/[0.05]`}>
               <Zap className="w-3 h-3" />
               {label}
             </div>
@@ -93,19 +93,19 @@ export function PremiumHeroCard({
 
           {/* Show Rate */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-gray-400 text-sm font-medium">
+            <div className="flex items-center gap-2 text-text-muted text-sm font-medium">
               <span>Show Rate</span>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-5xl font-light text-white tracking-tight">
+              <span className="text-5xl font-light text-text-primary tracking-tight">
                 {showRate}
               </span>
-              <span className="text-2xl text-gray-500">%</span>
+              <span className="text-2xl text-text-primary0">%</span>
             </div>
             {/* Mini progress bar */}
-            <div className="w-full h-1.5 bg-white/[0.08] rounded-full overflow-hidden">
+            <div className="w-full h-1.5 bg-bg-surface/[0.08] rounded-full overflow-hidden">
               <div 
-                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500"
+                className="h-full rounded-full bg-gradient-to-r from-amber to-amber"
                 style={{ width: `${showRate}%` }}
               />
             </div>

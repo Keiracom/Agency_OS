@@ -17,7 +17,7 @@ interface SectionCardProps {
 
 export function SectionCard({ title, action, badge, children, className = "" }: SectionCardProps) {
   return (
-    <div className={`bg-white rounded-xl border border-[#E2E8F0] shadow-sm ${className}`}>
+    <div className={`bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0]">
         <div className="flex items-center gap-3">

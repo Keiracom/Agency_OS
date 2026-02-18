@@ -42,22 +42,22 @@ interface LeadTableProps {
 
 // Glass-themed status labels per LEADS.md spec
 const statusLabels: Record<LeadStatus, { label: string; style: string }> = {
-  new: { label: "New", style: "bg-slate-500/20 text-slate-300 border border-slate-500/20" },
-  enriched: { label: "Enriched", style: "bg-blue-500/20 text-blue-400 border border-blue-500/20" },
-  scored: { label: "Scored", style: "bg-blue-500/20 text-blue-400 border border-blue-500/20" },
-  in_sequence: { label: "In Sequence", style: "bg-purple-500/20 text-purple-400 border border-purple-500/20" },
-  converted: { label: "Meeting Booked", style: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20" },
-  unsubscribed: { label: "Unsubscribed", style: "bg-slate-500/20 text-slate-400 border border-slate-500/20" },
-  bounced: { label: "Bounced", style: "bg-red-500/20 text-red-400 border border-red-500/20" },
+  new: { label: "New", style: "bg-slate-500/20 text-text-secondary border border-slate-500/20" },
+  enriched: { label: "Enriched", style: "bg-bg-elevated/20 text-text-secondary border border-default/20" },
+  scored: { label: "Scored", style: "bg-bg-elevated/20 text-text-secondary border border-default/20" },
+  in_sequence: { label: "In Sequence", style: "bg-amber/20 text-amber border border-amber/20" },
+  converted: { label: "Meeting Booked", style: "bg-amber/20 text-amber border border-amber/20" },
+  unsubscribed: { label: "Unsubscribed", style: "bg-slate-500/20 text-text-secondary border border-slate-500/20" },
+  bounced: { label: "Bounced", style: "bg-amber/20 text-amber border border-amber/20" },
 };
 
 // Glass-themed tier filter cards configuration
 const tierFilters: { tier: ALSTier; label: string; color: string; textColor: string }[] = [
   { tier: "hot", label: "High Priority", color: "border-orange-500/40 bg-orange-500/10 backdrop-blur-md", textColor: "text-orange-400" },
   { tier: "warm", label: "Engaged", color: "border-yellow-500/40 bg-yellow-500/10 backdrop-blur-md", textColor: "text-yellow-400" },
-  { tier: "cool", label: "Nurturing", color: "border-blue-500/40 bg-blue-500/10 backdrop-blur-md", textColor: "text-blue-400" },
-  { tier: "cold", label: "Low Activity", color: "border-slate-400/40 bg-slate-500/10 backdrop-blur-md", textColor: "text-slate-400" },
-  { tier: "dead", label: "Inactive", color: "border-slate-500/40 bg-slate-600/10 backdrop-blur-md", textColor: "text-slate-500" },
+  { tier: "cool", label: "Nurturing", color: "border-default/40 bg-bg-elevated/10 backdrop-blur-md", textColor: "text-text-secondary" },
+  { tier: "cold", label: "Low Activity", color: "border-slate-400/40 bg-bg-surface backdrop-blur-md", textColor: "text-text-secondary" },
+  { tier: "dead", label: "Inactive", color: "border-slate-500/40 bg-bg-elevated/10 backdrop-blur-md", textColor: "text-text-muted" },
 ];
 
 // ============================================
@@ -94,11 +94,11 @@ function TierFilterCard({
     <button
       onClick={onClick}
       className={`p-4 rounded-lg border text-left transition-all ${color} ${
-        isSelected ? "ring-2 ring-blue-500/50 ring-offset-2 ring-offset-transparent" : "hover:bg-white/5"
+        isSelected ? "ring-2 ring-amber/50 ring-offset-2 ring-offset-transparent" : "hover:bg-bg-surface/5"
       }`}
     >
       <div className={`text-2xl font-bold ${textColor} drop-shadow-sm`}>{count}</div>
-      <div className="text-sm text-slate-400">{label}</div>
+      <div className="text-sm text-text-secondary">{label}</div>
     </button>
   );
 }
@@ -174,9 +174,9 @@ export function LeadTable({
   // Loading state
   if (isLoading) {
     return (
-      <div className="bg-slate-900/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg shadow-black/20 p-8">
+      <div className="bg-bg-void/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg shadow-black/20 p-8">
         <div className="flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-default border-t-transparent rounded-full animate-spin" />
         </div>
       </div>
     );
@@ -185,9 +185,9 @@ export function LeadTable({
   // Error state
   if (error) {
     return (
-      <div className="bg-slate-900/40 backdrop-blur-md rounded-xl border border-red-500/30 shadow-lg shadow-black/20 p-8 text-center">
-        <p className="text-red-400">Failed to load leads</p>
-        <p className="text-sm text-slate-400 mt-1">{error.message}</p>
+      <div className="bg-bg-void/40 backdrop-blur-md rounded-xl border border-amber/30 shadow-lg shadow-black/20 p-8 text-center">
+        <p className="text-amber">Failed to load leads</p>
+        <p className="text-sm text-text-secondary mt-1">{error.message}</p>
       </div>
     );
   }
@@ -197,20 +197,20 @@ export function LeadTable({
       {/* Header & Search */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-white drop-shadow-sm">Leads</h2>
-          <p className="text-sm text-slate-400">
+          <h2 className="text-xl font-semibold text-text-primary drop-shadow-sm">Leads</h2>
+          <p className="text-sm text-text-secondary">
             {filteredLeads.length} prospects in pipeline
           </p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
             <input
               type="text"
               placeholder="Search name, email, company..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-64 pl-9 pr-4 py-2 text-sm bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 backdrop-blur-sm"
+              className="w-64 pl-9 pr-4 py-2 text-sm bg-bg-surface/10 border border-white/20 rounded-lg text-text-primary placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber/50 backdrop-blur-sm"
             />
           </div>
         </div>
@@ -237,10 +237,10 @@ export function LeadTable({
       )}
 
       {/* Lead Table - Glass themed */}
-      <div className="bg-slate-900/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg shadow-black/20 overflow-hidden">
+      <div className="bg-bg-void/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg shadow-black/20 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10 text-xs text-slate-400 bg-white/5">
+            <tr className="border-b border-white/10 text-xs text-text-secondary bg-bg-surface/5">
               <th className="text-left p-4 font-medium">Lead</th>
               <th className="text-left p-4 font-medium">Company</th>
               <th className="text-left p-4 font-medium">Priority</th>
@@ -255,18 +255,18 @@ export function LeadTable({
             {filteredLeads.map((lead) => (
               <tr
                 key={lead.id}
-                className="border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors"
+                className="border-b border-white/5 hover:bg-bg-surface/5 cursor-pointer transition-colors"
                 onClick={() => handleRowClick(lead)}
               >
                 <td className="p-4">
-                  <div className="font-medium text-white">
+                  <div className="font-medium text-text-primary">
                     {lead.first_name} {lead.last_name}
                   </div>
-                  <div className="text-xs text-slate-400">{lead.email}</div>
+                  <div className="text-xs text-text-secondary">{lead.email}</div>
                 </td>
                 <td className="p-4">
-                  <div className="text-slate-200">{lead.company}</div>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-text-secondary">{lead.company}</div>
+                  <div className="text-xs text-text-muted">
                     {lead.organization_industry}
                   </div>
                 </td>
@@ -278,14 +278,14 @@ export function LeadTable({
                   <StatusBadge status={lead.status} />
                 </td>
                 {!compact && (
-                  <td className="p-4 text-slate-400 text-xs">
+                  <td className="p-4 text-text-secondary text-xs">
                     {lead.updated_at
                       ? new Date(lead.updated_at).toLocaleDateString()
                       : "—"}
                   </td>
                 )}
                 <td className="p-4 text-right">
-                  <button className="text-blue-400 hover:text-blue-300 text-xs font-medium transition-colors">
+                  <button className="text-text-secondary hover:text-amber-light text-xs font-medium transition-colors">
                     View
                   </button>
                 </td>
@@ -295,7 +295,7 @@ export function LeadTable({
               <tr>
                 <td
                   colSpan={compact ? 5 : 6}
-                  className="p-8 text-center text-slate-400"
+                  className="p-8 text-center text-text-secondary"
                 >
                   No leads found
                 </td>
@@ -321,7 +321,7 @@ export function LeadTable({
             id: selectedLead.id,
             name: selectedLead.company ?? "Unknown Company",
             domain: selectedLead.domain ?? "",
-            logoEmoji: "🏢",
+            logoEmoji: "",
             employees: selectedLead.organization_employee_count?.toString() ?? "Unknown",
             industry: selectedLead.organization_industry ?? "Unknown",
             estimatedRevenue: "Unknown",

@@ -71,7 +71,7 @@ export function CampaignMetricsPanel({
         return (
           <div
             key={metric.label}
-            className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm p-6"
+            className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm p-6"
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-[#64748B]">{metric.label}</span>

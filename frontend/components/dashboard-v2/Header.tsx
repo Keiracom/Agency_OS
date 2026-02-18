@@ -13,7 +13,7 @@ interface HeaderProps {
 
 export function Header({ title = "Dashboard" }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between bg-white border-b border-[#E2E8F0] px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between bg-bg-surface border-b border-[#E2E8F0] px-6">
       {/* Page Title */}
       <h1 className="text-xl font-semibold text-[#1E293B]">{title}</h1>
 
@@ -40,7 +40,7 @@ export function Header({ title = "Dashboard" }: HeaderProps) {
         {/* Profile */}
         <button className="flex items-center gap-2 p-2 rounded-lg hover:bg-[#F1F5F9] transition-colors">
           <div className="h-8 w-8 rounded-full bg-[#3B82F6] flex items-center justify-center">
-            <User className="h-4 w-4 text-white" />
+            <User className="h-4 w-4 text-text-primary" />
           </div>
           <span className="text-sm font-medium text-[#1E293B]">Acme Agency</span>
           <ChevronDown className="h-4 w-4 text-[#64748B]" />

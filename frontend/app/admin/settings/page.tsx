@@ -189,9 +189,9 @@ export default function AdminSettingsPage() {
       </Card>
 
       {/* Danger Zone */}
-      <Card className="border-red-500/20">
+      <Card className="border-amber/20">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-red-600">
+          <CardTitle className="flex items-center gap-2 text-amber">
             <AlertTriangle className="h-5 w-5" />
             Danger Zone
           </CardTitle>
@@ -200,7 +200,7 @@ export default function AdminSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-4 border border-red-500/20 rounded-lg">
+          <div className="flex items-center justify-between p-4 border border-amber/20 rounded-lg">
             <div>
               <p className="font-medium">Pause All Campaigns</p>
               <p className="text-sm text-muted-foreground">
@@ -209,7 +209,7 @@ export default function AdminSettingsPage() {
             </div>
             <Button variant="destructive">Pause All</Button>
           </div>
-          <div className="flex items-center justify-between p-4 border border-red-500/20 rounded-lg">
+          <div className="flex items-center justify-between p-4 border border-amber/20 rounded-lg">
             <div>
               <p className="font-medium">Reset Rate Limits</p>
               <p className="text-sm text-muted-foreground">
@@ -218,7 +218,7 @@ export default function AdminSettingsPage() {
             </div>
             <Button variant="destructive">Reset Limits</Button>
           </div>
-          <div className="flex items-center justify-between p-4 border border-red-500/20 rounded-lg">
+          <div className="flex items-center justify-between p-4 border border-amber/20 rounded-lg">
             <div>
               <p className="font-medium">Clear Redis Cache</p>
               <p className="text-sm text-muted-foreground">

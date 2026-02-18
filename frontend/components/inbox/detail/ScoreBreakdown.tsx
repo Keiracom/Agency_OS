@@ -27,7 +27,7 @@ export function ScoreBreakdown({ score, factors }: ScoreBreakdownProps) {
               {factor.icon}
             </div>
             <span className="flex-1 text-xs text-text-secondary">{factor.label}</span>
-            <span className="text-xs font-semibold font-mono text-green-400">+{factor.value}</span>
+            <span className="text-xs font-semibold font-mono text-amber">+{factor.value}</span>
           </div>
         ))}
       </div>

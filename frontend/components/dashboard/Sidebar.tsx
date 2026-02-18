@@ -155,7 +155,7 @@ export function Sidebar({
     <div 
       className={`
         ${collapsed ? "w-[72px]" : "w-60"} 
-        bg-slate-900/80 backdrop-blur-xl 
+        bg-bg-void/80 backdrop-blur-xl 
         flex flex-col h-screen fixed left-0 top-0 z-40 
         border-r border-white/10
         transition-all duration-300 ease-in-out
@@ -165,12 +165,12 @@ export function Sidebar({
       <div className="p-4 border-b border-white/10 relative">
         {logo ?? (
           <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3"}`}>
-            <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 flex-shrink-0">
-              <Zap className="w-5 h-5 text-white" />
+            <div className="w-9 h-9 bg-gradient-to-br from-amber to-amber rounded-xl flex items-center justify-center shadow-lg shadow-amber/30 flex-shrink-0">
+              <Zap className="w-5 h-5 text-text-primary" />
             </div>
             {!collapsed && (
               <div className="overflow-hidden">
-                <span className="text-lg font-bold text-white drop-shadow-sm whitespace-nowrap">
+                <span className="text-lg font-bold text-text-primary drop-shadow-sm whitespace-nowrap">
                   Agency OS
                 </span>
               </div>
@@ -184,9 +184,9 @@ export function Sidebar({
           className={`
             absolute -right-3 top-1/2 -translate-y-1/2
             w-6 h-6 rounded-full
-            bg-slate-800 border border-white/20
+            bg-bg-base border border-white/20
             flex items-center justify-center
-            text-slate-400 hover:text-white hover:bg-slate-700
+            text-text-secondary hover:text-text-primary hover:bg-slate-700
             transition-all duration-200
             shadow-lg
             z-50
@@ -215,10 +215,10 @@ export function Sidebar({
               py-2.5 rounded-lg text-sm font-medium 
               transition-all duration-200 transform
               ${activePage === item.key
-                ? "bg-blue-600/80 text-white shadow-lg shadow-blue-600/30 scale-100 backdrop-blur-sm"
+                ? "bg-bg-elevated/80 text-text-primary shadow-lg shadow-amber/30 scale-100 backdrop-blur-sm"
                 : clickedItem === item.key
-                ? "bg-blue-500/60 text-white scale-95"
-                : "text-slate-400 hover:text-white hover:bg-white/10 hover:scale-[1.02] active:scale-95"
+                ? "bg-bg-elevated/60 text-text-primary scale-95"
+                : "text-text-secondary hover:text-text-primary hover:bg-bg-surface/10 hover:scale-[1.02] active:scale-95"
               }
             `}
           >
@@ -234,8 +234,8 @@ export function Sidebar({
                   <span
                     className={`px-2 py-0.5 rounded-full text-xs transition-all duration-200 ${
                       activePage === item.key
-                        ? "bg-blue-500/50 text-white"
-                        : "bg-white/10 text-slate-300 border border-white/10"
+                        ? "bg-bg-elevated/50 text-text-primary"
+                        : "bg-bg-surface/10 text-text-secondary border border-white/10"
                     } ${clickedItem === item.key ? "scale-110" : ""}`}
                   >
                     {item.badge}
@@ -245,7 +245,7 @@ export function Sidebar({
             )}
             {/* Badge indicator when collapsed */}
             {collapsed && item.badge && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-bg-elevated rounded-full" />
             )}
           </Link>
         ))}
@@ -261,15 +261,15 @@ export function Sidebar({
               className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-white/20"
             />
           ) : (
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-emerald-500/30 flex-shrink-0">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber to-emerald-600 flex items-center justify-center text-text-primary text-sm font-bold shadow-lg shadow-amber/30 flex-shrink-0">
               {user.initial ?? user.name.charAt(0).toUpperCase()}
             </div>
           )}
           {!collapsed && (
             <div className="flex-1 min-w-0 overflow-hidden">
-              <p className="text-sm font-medium text-white truncate">{user.name}</p>
+              <p className="text-sm font-medium text-text-primary truncate">{user.name}</p>
               {user.plan && (
-                <p className="text-xs text-slate-400 truncate">{user.plan}</p>
+                <p className="text-xs text-text-secondary truncate">{user.plan}</p>
               )}
             </div>
           )}

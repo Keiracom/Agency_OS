@@ -51,8 +51,8 @@ export function ICPProgressBanner({
     <div
       className={cn(
         'relative rounded-lg border p-4 shadow-sm transition-all duration-300',
-        isRunning && 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800',
-        isCompleted && 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800',
+        isRunning && 'bg-bg-surface border-blue-200 dark:bg-blue-950/30 dark:border-blue-800',
+        isCompleted && 'bg-amber-glow border-amber dark:bg-amber-glow dark:border-amber',
         isFailed && 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800',
         className
       )}
@@ -63,24 +63,24 @@ export function ICPProgressBanner({
           {isRunning && (
             <div className="space-y-3">
               <div className="flex items-center gap-3">
-                <Loader2 className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                <Loader2 className="h-5 w-5 animate-spin text-text-secondary dark:text-text-secondary flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-blue-900 dark:text-blue-100">
+                  <p className="font-medium text-bg-void dark:text-amber-glow">
                     Setting up your profile...
                   </p>
                   {status.current_step && (
-                    <p className="text-sm text-blue-700 dark:text-blue-300 truncate">
+                    <p className="text-sm text-amber dark:text-amber-light truncate">
                       {status.current_step}
                     </p>
                   )}
                 </div>
-                <span className="text-sm font-medium text-blue-700 dark:text-blue-300 flex-shrink-0">
+                <span className="text-sm font-medium text-amber dark:text-amber-light flex-shrink-0">
                   {Math.round(status.progress_percent)}%
                 </span>
               </div>
               <Progress
                 value={status.progress_percent}
-                className="h-2 bg-blue-100 dark:bg-blue-900"
+                className="h-2 bg-amber-glow dark:bg-bg-void"
               />
             </div>
           )}
@@ -88,15 +88,15 @@ export function ICPProgressBanner({
           {/* Completed State */}
           {isCompleted && (
             <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-              <p className="font-medium text-green-900 dark:text-green-100 flex-1">
+              <CheckCircle2 className="h-5 w-5 text-amber dark:text-amber flex-shrink-0" />
+              <p className="font-medium text-amber dark:text-amber-glow flex-1">
                 Your ICP is ready!
               </p>
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={onReview}
-                className="text-green-700 hover:text-green-800 hover:bg-green-100 dark:text-green-300 dark:hover:bg-green-900/50 flex-shrink-0"
+                className="text-amber hover:text-amber hover:bg-amber-glow dark:text-amber-light dark:hover:bg-amber-glow flex-shrink-0"
               >
                 Review Now
                 <ArrowRight className="ml-1 h-4 w-4" />
@@ -107,13 +107,13 @@ export function ICPProgressBanner({
           {/* Failed State */}
           {isFailed && (
             <div className="flex items-center gap-3">
-              <XCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+              <XCircle className="h-5 w-5 text-amber dark:text-amber flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-red-900 dark:text-red-100">
+                <p className="font-medium text-error dark:text-amber-glow">
                   Couldn&apos;t analyze your website
                 </p>
                 {status.error_message && (
-                  <p className="text-sm text-red-700 dark:text-red-300 truncate">
+                  <p className="text-sm text-error dark:text-amber-light truncate">
                     {status.error_message}
                   </p>
                 )}
@@ -122,7 +122,7 @@ export function ICPProgressBanner({
                 size="sm"
                 variant="ghost"
                 onClick={onRetry}
-                className="text-red-700 hover:text-red-800 hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900/50 flex-shrink-0"
+                className="text-error hover:text-error hover:bg-amber-glow dark:text-amber-light dark:hover:bg-error-glow flex-shrink-0"
               >
                 <RefreshCw className="mr-1 h-4 w-4" />
                 Try Again
@@ -136,9 +136,9 @@ export function ICPProgressBanner({
           onClick={onDismiss}
           className={cn(
             'rounded-md p-1 transition-colors flex-shrink-0',
-            isRunning && 'text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/50',
-            isCompleted && 'text-green-500 hover:bg-green-100 dark:hover:bg-green-900/50',
-            isFailed && 'text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50'
+            isRunning && 'text-text-secondary hover:bg-amber-glow dark:hover:bg-bg-void/50',
+            isCompleted && 'text-amber hover:bg-amber-glow dark:hover:bg-amber-glow',
+            isFailed && 'text-amber hover:bg-amber-glow dark:hover:bg-red-900/50'
           )}
           aria-label="Dismiss banner"
         >

@@ -23,7 +23,7 @@ export function LinkedInSuccess({
   return (
     <div className="space-y-6 text-center py-8">
       <div className="space-y-4">
-        <SuccessIcon className="mx-auto h-16 w-16 text-green-500" />
+        <SuccessIcon className="mx-auto h-16 w-16 text-amber" />
         <h3 className="text-lg font-semibold">LinkedIn Connected!</h3>
         <p className="text-muted-foreground text-sm">
           Your LinkedIn account is now connected for automated outreach.
@@ -44,7 +44,7 @@ export function LinkedInSuccess({
                     href={profileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:underline"
+                    className="text-sm text-text-secondary hover:underline"
                   >
                     View Profile
                   </a>

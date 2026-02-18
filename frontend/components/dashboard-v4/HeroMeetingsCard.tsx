@@ -85,7 +85,7 @@ export function HeroMeetingsCard({ meetingsGoal, momentum }: HeroMeetingsCardPro
   const momentumColor = momentum.direction === "up" 
     ? "text-mint-500" 
     : momentum.direction === "down" 
-      ? "text-red-500" 
+      ? "text-amber" 
       : "text-muted-foreground";
 
   return (

@@ -33,11 +33,11 @@ export function ProfileSection({ profile }: ProfileSectionProps) {
         {/* Avatar Section */}
         <div className="flex items-center gap-6 mb-8">
           <div className="relative">
-            <div className="w-[88px] h-[88px] bg-gradient-to-br from-[#D4956A] to-[#C4854A] rounded-full flex items-center justify-center text-white font-bold text-3xl border-[3px] border-bg-surface shadow-[0_0_0_3px_rgba(212,149,106,0.15)]">
+            <div className="w-[88px] h-[88px] bg-gradient-to-br from-[#D4956A] to-[#C4854A] rounded-full flex items-center justify-center text-text-primary font-bold text-3xl border-[3px] border-bg-surface shadow-[0_0_0_3px_rgba(212,149,106,0.15)]">
               {profile.initials}
             </div>
             <button className="absolute bottom-0 right-0 w-8 h-8 bg-[#D4956A] rounded-full flex items-center justify-center cursor-pointer border-[3px] border-bg-surface hover:bg-[#E4A57A] hover:scale-110 transition-all">
-              <Camera className="w-3.5 h-3.5 text-white" />
+              <Camera className="w-3.5 h-3.5 text-text-primary" />
             </button>
           </div>
           <div>

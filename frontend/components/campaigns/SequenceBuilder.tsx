@@ -99,22 +99,22 @@ const CHANNEL_CONFIG: Record<
   email: {
     label: "Email",
     icon: <Mail className="h-4 w-4" />,
-    color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+    color: "bg-amber-glow text-amber dark:bg-bg-void/30 dark:text-text-secondary",
   },
   sms: {
     label: "SMS",
     icon: <MessageSquare className="h-4 w-4" />,
-    color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+    color: "bg-amber-glow text-amber dark:bg-amber-glow dark:text-amber",
   },
   linkedin: {
     label: "LinkedIn",
     icon: <Linkedin className="h-4 w-4" />,
-    color: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400",
+    color: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-amber",
   },
   voice: {
     label: "Voice",
     icon: <Phone className="h-4 w-4" />,
-    color: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+    color: "bg-amber-glow text-amber dark:bg-amber-glow dark:text-amber",
   },
   mail: {
     label: "Direct Mail",
@@ -420,7 +420,7 @@ function SequenceStepCard({
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               {step.skip_if_replied && (
                 <span className="flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber" />
                   Skip if replied
                 </span>
               )}

@@ -18,15 +18,15 @@ interface HotProspectsCardProps {
 
 function ProspectItem({ prospect }: { prospect: HotProspect }) {
   const bgColor = prospect.isVeryHot 
-    ? "bg-red-50 dark:bg-red-950/30 border-l-red-500" 
+    ? "bg-red-50 dark:bg-red-950/30 border-l-amber" 
     : "bg-amber-50 dark:bg-amber-950/30 border-l-amber-500";
   
   const signalColor = prospect.isVeryHot 
-    ? "text-red-600 dark:text-red-400" 
+    ? "text-amber dark:text-amber" 
     : "text-amber-600 dark:text-amber-400";
   
   const scoreColor = prospect.isVeryHot 
-    ? "text-red-500" 
+    ? "text-amber" 
     : "text-amber-500";
 
   return (
@@ -35,7 +35,7 @@ function ProspectItem({ prospect }: { prospect: HotProspect }) {
       className={`flex items-center gap-4 p-4 rounded-xl border-l-4 ${bgColor} hover:shadow-md transition-shadow`}
     >
       <Avatar className="h-11 w-11">
-        <AvatarFallback className="bg-gradient-to-br from-mint-500 to-mint-600 text-white font-bold">
+        <AvatarFallback className="bg-gradient-to-br from-mint-500 to-mint-600 text-text-primary font-bold">
           {prospect.initials}
         </AvatarFallback>
       </Avatar>

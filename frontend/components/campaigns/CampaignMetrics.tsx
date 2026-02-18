@@ -12,8 +12,8 @@ export function CampaignMetrics({ metrics }: Props) {
       {metrics.map((metric, idx) => (
         <div key={idx} className="text-center">
           <div className="text-2xl font-bold text-slate-800">{metric.value}</div>
-          <div className="text-[11px] text-slate-500 uppercase tracking-wide">{metric.label}</div>
-          <div className={`text-[11px] ${metric.change >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+          <div className="text-[11px] text-text-muted uppercase tracking-wide">{metric.label}</div>
+          <div className={`text-[11px] ${metric.change >= 0 ? 'text-amber' : 'text-amber'}`}>
             {metric.change >= 0 ? '+' : ''}{metric.change}{metric.isPercentage ? '%' : ''} {metric.change >= 0 ? '↑' : '↓'}
           </div>
         </div>

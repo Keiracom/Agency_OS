@@ -112,7 +112,7 @@ export default function AdminRevenuePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-amber">
               +${mockRevenue.newMrr.toLocaleString()}
             </div>
           </CardContent>
@@ -124,7 +124,7 @@ export default function AdminRevenuePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
+            <div className="text-2xl font-bold text-amber">
               -${mockRevenue.churnedMrr.toLocaleString()}
             </div>
           </CardContent>
@@ -136,7 +136,7 @@ export default function AdminRevenuePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-amber">
               +${mockRevenue.netGrowth.toLocaleString()}
             </div>
           </CardContent>
@@ -225,7 +225,7 @@ export default function AdminRevenuePage() {
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className="bg-green-500/10 text-green-700"
+                        className="bg-amber/10 text-amber"
                       >
                         {tx.status}
                       </Badge>
@@ -269,9 +269,9 @@ export default function AdminRevenuePage() {
 
       {/* At Risk */}
       {mockAtRisk.length > 0 && (
-        <Card className="border-red-500/20">
+        <Card className="border-amber/20">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-600">
+            <CardTitle className="flex items-center gap-2 text-amber">
               <AlertCircle className="h-5 w-5" />
               At-Risk Clients
             </CardTitle>
@@ -294,12 +294,12 @@ export default function AdminRevenuePage() {
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className="bg-red-500/10 text-red-700"
+                        className="bg-amber-glow text-error"
                       >
                         {client.status.replace("_", " ")}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-red-600">
+                    <TableCell className="text-amber">
                       {client.daysPastDue} days
                     </TableCell>
                   </TableRow>

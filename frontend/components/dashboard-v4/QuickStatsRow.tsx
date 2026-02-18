@@ -24,7 +24,7 @@ function StatCard({ stat, index }: { stat: QuickStat; index: number }) {
   const changeColor = stat.changeDirection === "up" 
     ? "text-mint-500" 
     : stat.changeDirection === "down" 
-      ? "text-red-500" 
+      ? "text-amber" 
       : "text-muted-foreground";
 
   const numericValue = extractNumber(stat.value);

@@ -17,9 +17,9 @@ const channelIcons: Record<ChannelType, typeof Mail> = {
 };
 
 const channelColors: Record<ChannelType, string> = {
-  email: 'bg-violet-500/15 text-violet-400',
-  sms: 'bg-teal-500/15 text-teal-400',
-  linkedin: 'bg-blue-500/15 text-blue-400',
+  email: 'bg-amber/15 text-amber',
+  sms: 'bg-amber-glow text-amber',
+  linkedin: 'bg-bg-elevated/15 text-text-secondary',
   voice: 'bg-amber-500/15 text-amber-400',
 };
 

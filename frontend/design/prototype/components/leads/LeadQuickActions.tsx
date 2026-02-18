@@ -50,11 +50,11 @@ function ActionButton({
 
   const variantClasses = {
     default: isActive
-      ? "bg-[#3B82F6] text-white"
+      ? "bg-[#3B82F6] text-text-primary"
       : "bg-[#F1F5F9] text-[#64748B] hover:bg-[#E2E8F0] hover:text-[#1E293B]",
     danger: "bg-[#FEE2E2] text-[#991B1B] hover:bg-[#FECACA]",
     warning: isActive
-      ? "bg-[#F97316] text-white"
+      ? "bg-[#F97316] text-text-primary"
       : "bg-[#FEF3C7] text-[#92400E] hover:bg-[#FDE68A]",
   };
 

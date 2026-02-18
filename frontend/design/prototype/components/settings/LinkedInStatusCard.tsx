@@ -108,7 +108,7 @@ export function LinkedInStatusCard({
   return (
     <div className="space-y-6">
       {/* Main Status Card */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+      <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-[#E2E8F0] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-[#0077B5]/10 rounded-lg">
@@ -136,7 +136,7 @@ export function LinkedInStatusCard({
               {/* Profile Info */}
               <div className="flex items-center gap-4 p-4 bg-[#F8FAFC] rounded-lg">
                 <div className="w-12 h-12 bg-[#0077B5] rounded-full flex items-center justify-center">
-                  <Linkedin className="h-6 w-6 text-white" />
+                  <Linkedin className="h-6 w-6 text-text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-[#1E293B]">{profileName}</p>
@@ -189,7 +189,7 @@ export function LinkedInStatusCard({
               <button
                 type="button"
                 onClick={onConnect}
-                className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#0077B5] hover:bg-[#005C8F] text-white font-medium rounded-lg transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#0077B5] hover:bg-[#005C8F] text-text-primary font-medium rounded-lg transition-colors"
               >
                 <Linkedin className="h-5 w-5" />
                 Connect LinkedIn
@@ -200,7 +200,7 @@ export function LinkedInStatusCard({
       </div>
 
       {/* Security Information */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+      <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-[#E2E8F0]">
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-[#64748B]" />

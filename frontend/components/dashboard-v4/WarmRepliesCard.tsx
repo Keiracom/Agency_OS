@@ -47,7 +47,7 @@ export function WarmRepliesCard({ replies }: WarmRepliesCardProps) {
     <Card>
       <CardHeader className="pb-4">
         <div className="flex items-center gap-3">
-          <Badge className="bg-emerald-500 hover:bg-emerald-500 text-white px-3 py-1 text-sm font-bold">
+          <Badge className="bg-amber hover:bg-amber text-text-primary px-3 py-1 text-sm font-bold">
             {replies.length}
           </Badge>
           <h3 className="font-semibold text-foreground">Warm replies to review</h3>

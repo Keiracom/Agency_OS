@@ -36,10 +36,10 @@ const defaultActivities: ActivityItem[] = [
 ];
 
 const channelConfig = {
-  email: { icon: Mail, color: "text-blue-400", bg: "bg-blue-500/20" },
-  linkedin: { icon: Linkedin, color: "text-blue-400", bg: "bg-blue-500/20" },
-  sms: { icon: MessageSquare, color: "text-purple-400", bg: "bg-purple-500/20" },
-  voice: { icon: Phone, color: "text-green-400", bg: "bg-green-500/20" },
+  email: { icon: Mail, color: "text-text-secondary", bg: "bg-bg-elevated/20" },
+  linkedin: { icon: Linkedin, color: "text-text-secondary", bg: "bg-bg-elevated/20" },
+  sms: { icon: MessageSquare, color: "text-amber", bg: "bg-amber/20" },
+  voice: { icon: Phone, color: "text-amber", bg: "bg-amber/20" },
   mail: { icon: FileText, color: "text-orange-400", bg: "bg-orange-500/20" },
 };
 
@@ -77,14 +77,14 @@ export default function ActivityFeed({
   }, [items, maxVisible, rotateInterval]);
 
   return (
-    <div className={`rounded-lg bg-white/5 backdrop-blur-[20px] border border-white/10 overflow-hidden ${className}`}>
+    <div className={`rounded-lg bg-bg-surface/5 backdrop-blur-[20px] border border-white/10 overflow-hidden ${className}`}>
       {/* Header */}
       <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
         <span className="relative flex h-2.5 w-2.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber"></span>
         </span>
-        <span className="text-sm font-medium text-white">Live Activity</span>
+        <span className="text-sm font-medium text-text-primary">Live Activity</span>
       </div>
 
       {/* Activity Items */}
@@ -105,12 +105,12 @@ export default function ActivityFeed({
                 <Icon className={`w-4 h-4 ${config.color}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-white/80 truncate">
-                  {item.action} <span className="font-medium text-white">{item.name}</span>
+                <p className="text-sm text-text-primary/80 truncate">
+                  {item.action} <span className="font-medium text-text-primary">{item.name}</span>
                 </p>
               </div>
               {item.status === "success" && (
-                <span className="text-xs text-green-400">Just now</span>
+                <span className="text-xs text-amber">Just now</span>
               )}
             </div>
           );

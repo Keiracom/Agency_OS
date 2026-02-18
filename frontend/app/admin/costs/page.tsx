@@ -62,11 +62,11 @@ export default function AdminCostsOverviewPage() {
             <div className="text-3xl font-bold">${mockCosts.totalMTD.toLocaleString()}</div>
             <div className="flex items-center gap-1 mt-1">
               {changePercent > 0 ? (
-                <TrendingUp className="h-4 w-4 text-red-500" />
+                <TrendingUp className="h-4 w-4 text-amber" />
               ) : (
-                <TrendingDown className="h-4 w-4 text-green-500" />
+                <TrendingDown className="h-4 w-4 text-amber" />
               )}
-              <span className={changePercent > 0 ? "text-red-500" : "text-green-500"}>
+              <span className={changePercent > 0 ? "text-amber" : "text-amber"}>
                 {changePercent > 0 ? "+" : ""}
                 {changePercent.toFixed(1)}% vs last month
               </span>
@@ -182,13 +182,13 @@ export default function AdminCostsOverviewPage() {
         <CardContent>
           <div className="flex h-8 rounded-lg overflow-hidden">
             <div
-              className="bg-purple-500 flex items-center justify-center text-white text-sm font-medium"
+              className="bg-amber flex items-center justify-center text-text-primary text-sm font-medium"
               style={{ width: `${aiPercent}%` }}
             >
               AI {aiPercent}%
             </div>
             <div
-              className="bg-blue-500 flex items-center justify-center text-white text-sm font-medium"
+              className="bg-bg-elevated flex items-center justify-center text-text-primary text-sm font-medium"
               style={{ width: `${channelPercent}%` }}
             >
               Channels {channelPercent}%
@@ -196,11 +196,11 @@ export default function AdminCostsOverviewPage() {
           </div>
           <div className="flex justify-between mt-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded bg-purple-500" />
+              <div className="h-3 w-3 rounded bg-amber" />
               AI Costs (Anthropic)
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded bg-blue-500" />
+              <div className="h-3 w-3 rounded bg-bg-elevated" />
               Channel Costs (Email, SMS, LinkedIn, Voice, Mail)
             </div>
           </div>

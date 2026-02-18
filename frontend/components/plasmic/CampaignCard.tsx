@@ -72,16 +72,16 @@ export function CampaignCard({
             {isAI ? (
               <Bot className="h-5 w-5 text-[#2196F3]" />
             ) : (
-              <Pencil className="h-5 w-5 text-white/40" />
+              <Pencil className="h-5 w-5 text-text-primary/40" />
             )}
-            <span className="font-semibold text-white">{name}</span>
+            <span className="font-semibold text-text-primary">{name}</span>
           </div>
           <Badge
             className={cn(
               "text-xs font-medium",
               isAI
                 ? "bg-[#2196F3]/20 text-[#2196F3] hover:bg-[#2196F3]/30"
-                : "bg-white/10 text-white/60 hover:bg-white/20"
+                : "bg-bg-surface/10 text-text-primary/60 hover:bg-bg-surface/20"
             )}
           >
             {isAI ? "AI SUGGESTED" : "CUSTOM"}
@@ -90,7 +90,7 @@ export function CampaignCard({
 
         {/* Priority Slider */}
         <div className="mb-4">
-          <div className="flex justify-between text-xs text-white/40 mb-2">
+          <div className="flex justify-between text-xs text-text-primary/40 mb-2">
             <span>Low</span>
             <span>High</span>
           </div>
@@ -104,24 +104,24 @@ export function CampaignCard({
             className="mb-2"
           />
           <div className="text-center">
-            <span className="text-2xl font-bold text-white">{priority}%</span>
+            <span className="text-2xl font-bold text-text-primary">{priority}%</span>
           </div>
         </div>
 
         {/* Stats Row */}
-        <div className="flex items-center gap-4 text-sm text-white/60 mb-4">
+        <div className="flex items-center gap-4 text-sm text-text-primary/60 mb-4">
           <span>
-            <span className="font-medium text-white">{meetings}</span> meetings
+            <span className="font-medium text-text-primary">{meetings}</span> meetings
           </span>
-          <span className="text-white/20">|</span>
+          <span className="text-text-primary/20">|</span>
           <span>
-            <span className="font-medium text-white">{replyRate.toFixed(1)}%</span> reply rate
+            <span className="font-medium text-text-primary">{replyRate.toFixed(1)}%</span> reply rate
           </span>
           {showRate !== undefined && (
             <>
-              <span className="text-white/20">|</span>
+              <span className="text-text-primary/20">|</span>
               <span>
-                <span className="font-medium text-white">{showRate}%</span> show rate
+                <span className="font-medium text-text-primary">{showRate}%</span> show rate
               </span>
             </>
           )}
@@ -135,7 +135,7 @@ export function CampaignCard({
               return (
                 <div
                   key={channel}
-                  className="flex items-center gap-1 px-2 py-1 rounded bg-white/5 text-xs text-white/60"
+                  className="flex items-center gap-1 px-2 py-1 rounded bg-bg-surface/5 text-xs text-text-primary/60"
                 >
                   <Icon className="h-3 w-3" />
                   <span className="capitalize">{channel}</span>

@@ -131,7 +131,7 @@ export function EmptyState({ page, className = "" }: EmptyStateProps) {
       {content.mayaMessage && (
         <div className="flex items-start gap-4 max-w-lg mb-8 p-4 rounded-xl bg-gradient-to-r from-accent-primary/10 to-accent-blue/10 border border-accent-primary/20">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent-primary to-accent-blue flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-5 h-5 text-white" />
+            <Sparkles className="w-5 h-5 text-text-primary" />
           </div>
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -149,7 +149,7 @@ export function EmptyState({ page, className = "" }: EmptyStateProps) {
       {content.action && (
         <a
           href={content.action.href}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-accent-primary hover:bg-accent-primary-hover text-white font-semibold rounded-lg transition-all hover:-translate-y-0.5"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-accent-primary hover:bg-accent-primary-hover text-text-primary font-semibold rounded-lg transition-all hover:-translate-y-0.5"
         >
           <Zap className="w-4 h-4" />
           {content.action.label}

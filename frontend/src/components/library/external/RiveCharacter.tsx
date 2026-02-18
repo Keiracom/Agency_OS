@@ -72,13 +72,13 @@ export function RiveCharacter({
   // State color mapping (green color scheme)
   const stateColors: Record<AnimationState, { bg: string; text: string; glow: string }> = {
     idle: {
-      bg: "bg-emerald-500/10",
-      text: "text-emerald-400",
+      bg: "bg-amber-glow",
+      text: "text-amber",
       glow: "rgba(52, 211, 153, 0.2)",
     },
     waving: {
-      bg: "bg-green-500/20",
-      text: "text-green-400",
+      bg: "bg-amber/20",
+      text: "text-amber",
       glow: "rgba(74, 222, 128, 0.4)",
     },
     jumping: {
@@ -110,8 +110,8 @@ export function RiveCharacter({
         <div
           className={`
             absolute inset-[-5%] border-2 rounded-xl transition-all duration-300
-            ${currentState === "idle" ? "border-emerald-500/30" : ""}
-            ${currentState === "waving" ? "border-green-400/50 animate-pulse" : ""}
+            ${currentState === "idle" ? "border-amber/30" : ""}
+            ${currentState === "waving" ? "border-amber/50 animate-pulse" : ""}
             ${currentState === "jumping" ? "border-lime-400/70" : ""}
           `}
           style={{
@@ -130,13 +130,13 @@ export function RiveCharacter({
         </div>
 
         {/* Corner accents (green theme) */}
-        <div className="absolute -top-1 -left-1 w-4 h-4 border-l-2 border-t-2 border-emerald-500 transition-all duration-300" />
-        <div className="absolute -top-1 -right-1 w-4 h-4 border-r-2 border-t-2 border-emerald-500 transition-all duration-300" />
-        <div className="absolute -bottom-1 -left-1 w-4 h-4 border-l-2 border-b-2 border-emerald-500 transition-all duration-300" />
-        <div className="absolute -bottom-1 -right-1 w-4 h-4 border-r-2 border-b-2 border-emerald-500 transition-all duration-300" />
+        <div className="absolute -top-1 -left-1 w-4 h-4 border-l-2 border-t-2 border-amber transition-all duration-300" />
+        <div className="absolute -top-1 -right-1 w-4 h-4 border-r-2 border-t-2 border-amber transition-all duration-300" />
+        <div className="absolute -bottom-1 -left-1 w-4 h-4 border-l-2 border-b-2 border-amber transition-all duration-300" />
+        <div className="absolute -bottom-1 -right-1 w-4 h-4 border-r-2 border-b-2 border-amber transition-all duration-300" />
 
         {/* Interaction hint */}
-        <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-mono text-emerald-400/60 whitespace-nowrap">
+        <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-mono text-amber/60 whitespace-nowrap">
           Hover or Click
         </div>
       </div>
@@ -146,8 +146,8 @@ export function RiveCharacter({
         {/* Current state display */}
         <div className={`
           px-6 py-2 rounded-lg border-2 transition-all duration-300 font-mono text-sm tracking-widest
-          ${currentState === "idle" ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400" : ""}
-          ${currentState === "waving" ? "border-green-400/50 bg-green-500/20 text-green-400" : ""}
+          ${currentState === "idle" ? "border-amber/50 bg-amber-glow text-amber" : ""}
+          ${currentState === "waving" ? "border-amber/50 bg-amber/20 text-amber" : ""}
           ${currentState === "jumping" ? "border-lime-400/50 bg-lime-500/20 text-lime-300" : ""}
         `}>
           STATE: {currentState.toUpperCase()}
@@ -155,28 +155,28 @@ export function RiveCharacter({
 
         {/* State indicators */}
         <div className="flex gap-6 text-xs font-mono">
-          <span className={`flex items-center gap-2 transition-colors ${currentState === "idle" ? "text-emerald-400" : "text-slate-500"}`}>
-            <span className={`w-2 h-2 rounded-full transition-colors ${currentState === "idle" ? "bg-emerald-400" : "bg-slate-600"}`} />
+          <span className={`flex items-center gap-2 transition-colors ${currentState === "idle" ? "text-amber" : "text-text-muted"}`}>
+            <span className={`w-2 h-2 rounded-full transition-colors ${currentState === "idle" ? "bg-amber" : "bg-bg-elevated"}`} />
             IDLE
           </span>
-          <span className={`flex items-center gap-2 transition-colors ${currentState === "waving" ? "text-green-400" : "text-slate-500"}`}>
-            <span className={`w-2 h-2 rounded-full transition-colors ${currentState === "waving" ? "bg-green-400" : "bg-slate-600"}`} />
+          <span className={`flex items-center gap-2 transition-colors ${currentState === "waving" ? "text-amber" : "text-text-muted"}`}>
+            <span className={`w-2 h-2 rounded-full transition-colors ${currentState === "waving" ? "bg-amber" : "bg-bg-elevated"}`} />
             WAVE
           </span>
-          <span className={`flex items-center gap-2 transition-colors ${currentState === "jumping" ? "text-lime-300" : "text-slate-500"}`}>
-            <span className={`w-2 h-2 rounded-full transition-colors ${currentState === "jumping" ? "bg-lime-400" : "bg-slate-600"}`} />
+          <span className={`flex items-center gap-2 transition-colors ${currentState === "jumping" ? "text-lime-300" : "text-text-muted"}`}>
+            <span className={`w-2 h-2 rounded-full transition-colors ${currentState === "jumping" ? "bg-lime-400" : "bg-bg-elevated"}`} />
             JUMP
           </span>
         </div>
 
         {/* Interaction counter */}
-        <div className="text-xs font-mono text-slate-500">
-          Interactions: <span className="text-emerald-400">{interactionCount}</span>
+        <div className="text-xs font-mono text-text-muted">
+          Interactions: <span className="text-amber">{interactionCount}</span>
         </div>
       </div>
 
       {/* Bottom label */}
-      <p className="absolute bottom-4 text-emerald-400/60 text-xs font-mono">
+      <p className="absolute bottom-4 text-amber/60 text-xs font-mono">
         RIVE CHARACTER
       </p>
 
@@ -195,8 +195,8 @@ export function RiveCharacter({
         />
 
         {/* Floating particles */}
-        <div className="absolute top-1/4 left-1/4 w-1 h-1 bg-emerald-400/30 rounded-full animate-ping" />
-        <div className="absolute top-1/3 right-1/4 w-1 h-1 bg-green-400/30 rounded-full animate-ping" style={{ animationDelay: "500ms" }} />
+        <div className="absolute top-1/4 left-1/4 w-1 h-1 bg-amber/30 rounded-full animate-ping" />
+        <div className="absolute top-1/3 right-1/4 w-1 h-1 bg-amber/30 rounded-full animate-ping" style={{ animationDelay: "500ms" }} />
         <div className="absolute bottom-1/3 left-1/3 w-1 h-1 bg-lime-400/30 rounded-full animate-ping" style={{ animationDelay: "1000ms" }} />
       </div>
     </div>

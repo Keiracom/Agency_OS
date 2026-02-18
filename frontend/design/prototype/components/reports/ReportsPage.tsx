@@ -245,7 +245,7 @@ export function ReportsPage() {
         {/* ALS Distribution Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* ALS Distribution Donut */}
-          <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm p-6">
+          <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm p-6">
             <h2 className="text-sm font-semibold text-[#64748B] uppercase tracking-wider mb-6">
               ALS Score Distribution
             </h2>
@@ -260,7 +260,7 @@ export function ReportsPage() {
           </div>
 
           {/* Quick Stats */}
-          <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm p-6">
+          <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm p-6">
             <h2 className="text-sm font-semibold text-[#64748B] uppercase tracking-wider mb-6">
               Key Insights
             </h2>

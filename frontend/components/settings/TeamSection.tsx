@@ -44,7 +44,7 @@ export function TeamSection({ members, maxSeats = 5 }: TeamSectionProps) {
             return (
               <div key={member.id} className="flex items-center justify-between px-5 py-4 bg-bg-surface-hover rounded-xl">
                 <div className="flex items-center gap-4">
-                  <div className={`w-11 h-11 rounded-full flex items-center justify-center font-semibold text-sm text-white ${style.avatarBg}`}>
+                  <div className={`w-11 h-11 rounded-full flex items-center justify-center font-semibold text-sm text-text-primary ${style.avatarBg}`}>
                     {member.initials}
                   </div>
                   <div>

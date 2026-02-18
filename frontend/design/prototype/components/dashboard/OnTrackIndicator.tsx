@@ -55,7 +55,7 @@ export function OnTrackIndicator({
   const targetLowMarker = (targetLow / targetHigh) * 100;
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm p-4">
+    <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm p-4">
       <div className="flex items-center justify-between mb-3">
         {/* Status badge */}
         <span

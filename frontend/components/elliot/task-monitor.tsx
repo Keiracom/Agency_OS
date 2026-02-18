@@ -24,9 +24,9 @@ import {
 } from "lucide-react";
 
 const statusConfig: Record<TaskStatus, { icon: typeof Bot; color: string; label: string }> = {
-  running: { icon: Play, color: "bg-blue-500", label: "Running" },
-  completed: { icon: CheckCircle2, color: "bg-green-500", label: "Completed" },
-  failed: { icon: XCircle, color: "bg-red-500", label: "Failed" },
+  running: { icon: Play, color: "bg-bg-elevated", label: "Running" },
+  completed: { icon: CheckCircle2, color: "bg-amber", label: "Completed" },
+  failed: { icon: XCircle, color: "bg-amber", label: "Failed" },
   retry: { icon: RefreshCw, color: "bg-yellow-500", label: "Retry" },
 };
 
@@ -110,7 +110,7 @@ function StatsCards({ stats }: { stats: { running: number; completed: number; fa
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Running</CardTitle>
-          <Play className="h-4 w-4 text-blue-500" />
+          <Play className="h-4 w-4 text-text-secondary" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{stats.running}</div>
@@ -119,7 +119,7 @@ function StatsCards({ stats }: { stats: { running: number; completed: number; fa
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Completed</CardTitle>
-          <CheckCircle2 className="h-4 w-4 text-green-500" />
+          <CheckCircle2 className="h-4 w-4 text-amber" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{stats.completed}</div>
@@ -128,7 +128,7 @@ function StatsCards({ stats }: { stats: { running: number; completed: number; fa
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Failed</CardTitle>
-          <XCircle className="h-4 w-4 text-red-500" />
+          <XCircle className="h-4 w-4 text-amber" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{stats.failed}</div>

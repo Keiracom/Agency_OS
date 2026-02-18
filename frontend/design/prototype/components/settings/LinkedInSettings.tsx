@@ -91,7 +91,7 @@ export function LinkedInSettings() {
 
         {/* Connection Form */}
         {formState === "form" && (
-          <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden mb-6">
+          <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden mb-6">
             <div className="px-6 py-4 border-b border-[#E2E8F0]">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-[#0077B5]/10 rounded-lg">
@@ -155,7 +155,7 @@ export function LinkedInSettings() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#0077B5] hover:bg-[#005C8F] text-white text-sm font-medium rounded-lg transition-colors"
+                  className="px-4 py-2 bg-[#0077B5] hover:bg-[#005C8F] text-text-primary text-sm font-medium rounded-lg transition-colors"
                 >
                   Connect
                 </button>
@@ -166,7 +166,7 @@ export function LinkedInSettings() {
 
         {/* 2FA Form */}
         {formState === "2fa" && (
-          <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden mb-6">
+          <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden mb-6">
             <div className="px-6 py-4 border-b border-[#E2E8F0]">
               <h3 className="text-sm font-semibold text-[#1E293B]">
                 Verification Required
@@ -201,7 +201,7 @@ export function LinkedInSettings() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#0077B5] hover:bg-[#005C8F] text-white text-sm font-medium rounded-lg transition-colors"
+                  className="px-4 py-2 bg-[#0077B5] hover:bg-[#005C8F] text-text-primary text-sm font-medium rounded-lg transition-colors"
                 >
                   Verify
                 </button>
@@ -212,7 +212,7 @@ export function LinkedInSettings() {
 
         {/* Connecting State */}
         {formState === "connecting" && (
-          <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm p-8 text-center mb-6">
+          <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm p-8 text-center mb-6">
             <div className="w-16 h-16 bg-[#0077B5]/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <Linkedin className="h-8 w-8 text-[#0077B5] animate-pulse" />
             </div>

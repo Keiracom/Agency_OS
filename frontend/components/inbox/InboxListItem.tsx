@@ -9,15 +9,15 @@ import { SentimentBadge } from './SentimentBadge';
 import { cn } from '@/lib/utils';
 
 const tierColors: Record<TierType, string> = {
-  hot: 'bg-gradient-to-br from-red-500 to-orange-500',
+  hot: 'bg-gradient-to-br from-amber to-amber-light',
   warm: 'bg-gradient-to-br from-amber-500 to-yellow-400',
-  cool: 'bg-gradient-to-br from-blue-500 to-blue-400',
+  cool: 'bg-gradient-to-br from-amber to-text-secondary',
 };
 
 const scoreColors: Record<TierType, string> = {
   hot: 'text-status-error',
   warm: 'text-status-warning',
-  cool: 'text-blue-400',
+  cool: 'text-text-secondary',
 };
 
 const sentimentBorders: Record<string, string> = {
@@ -41,11 +41,11 @@ export function InboxListItem({ message, isActive, onClick }: InboxListItemProps
         sentimentBorders[message.sentiment],
         isActive && 'bg-accent-primary/10 border-l-accent-primary',
         message.unread && !isActive && 'bg-accent-primary/5',
-        !isActive && 'hover:bg-white/[0.03]'
+        !isActive && 'hover:bg-bg-surface/[0.03]'
       )}
     >
       <div className="flex gap-3 mb-2">
-        <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center text-white font-semibold text-sm', tierColors[message.tier])}>
+        <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center text-text-primary font-semibold text-sm', tierColors[message.tier])}>
           {message.initials}
         </div>
         <div className="flex-1 min-w-0">

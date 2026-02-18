@@ -111,7 +111,7 @@ export function Header({ title = "Dashboard", user, client }: HeaderProps) {
           className="relative text-text-secondary hover:bg-bg-elevated hover:text-text-primary"
         >
           <Bell className="h-5 w-5" />
-          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-status-error text-[10px] font-medium text-white">
+          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-status-error text-[10px] font-medium text-text-primary">
             3
           </span>
         </Button>

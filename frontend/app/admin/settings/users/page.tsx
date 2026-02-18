@@ -119,16 +119,16 @@ const mockUsers: User[] = [
 ];
 
 const roleColors: Record<string, string> = {
-  owner: "bg-purple-500/10 text-purple-700 border-purple-500/20",
-  admin: "bg-blue-500/10 text-blue-700 border-blue-500/20",
-  member: "bg-green-500/10 text-green-700 border-green-500/20",
-  viewer: "bg-gray-500/10 text-gray-700 border-gray-500/20",
+  owner: "bg-amber/10 text-amber border-amber/20",
+  admin: "bg-bg-elevated/10 text-amber border-default/20",
+  member: "bg-amber/10 text-amber border-amber/20",
+  viewer: "bg-bg-surface0/10 text-text-muted border-gray-500/20",
 };
 
 const statusColors = {
-  active: "bg-green-500/10 text-green-700 border-green-500/20",
+  active: "bg-amber/10 text-amber border-amber/20",
   inactive: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
-  suspended: "bg-red-500/10 text-red-700 border-red-500/20",
+  suspended: "bg-amber-glow text-error border-amber/20",
 };
 
 function formatTimeAgo(date: Date): string {
@@ -193,7 +193,7 @@ export default function AdminUsersPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{activeCount}</div>
+            <div className="text-2xl font-bold text-amber">{activeCount}</div>
           </CardContent>
         </Card>
         <Card>
@@ -203,7 +203,7 @@ export default function AdminUsersPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{adminCount}</div>
+            <div className="text-2xl font-bold text-amber">{adminCount}</div>
           </CardContent>
         </Card>
         <Card>
@@ -213,7 +213,7 @@ export default function AdminUsersPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
+            <div className="text-2xl font-bold text-amber">
               {mockUsers.filter((u) => u.status === "suspended").length}
             </div>
           </CardContent>
@@ -275,7 +275,7 @@ export default function AdminUsersPage() {
                           {user.isPlatformAdmin && (
                             <Badge
                               variant="outline"
-                              className="bg-purple-500/10 text-purple-700 flex items-center gap-1"
+                              className="bg-amber/10 text-amber flex items-center gap-1"
                             >
                               <Shield className="h-3 w-3" />
                               Admin
@@ -328,7 +328,7 @@ export default function AdminUsersPage() {
                               Make Admin
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">
+                            <DropdownMenuItem className="text-amber">
                               <UserX className="mr-2 h-4 w-4" />
                               {user.status === "suspended" ? "Unsuspend" : "Suspend"}
                             </DropdownMenuItem>

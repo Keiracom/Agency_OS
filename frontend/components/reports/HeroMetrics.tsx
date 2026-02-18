@@ -21,25 +21,25 @@ export function HeroMetrics() {
       {heroMetrics.map((metric) => (
         <div
           key={metric.id}
-          className="bg-[#12121D] border border-[#1E1E2E] rounded-xl p-5 relative overflow-hidden"
+          className="bg-bg-base border border-default rounded-xl p-5 relative overflow-hidden"
         >
           <div
             className="absolute top-0 left-0 right-0 h-0.5"
             style={{ backgroundColor: accentColors[metric.accentColor] }}
           />
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#6E6E82] mb-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-2">
             {metric.label}
           </p>
-          <p className="text-4xl font-extrabold font-mono text-[#F8F8FC] leading-none">
+          <p className="text-4xl font-extrabold font-mono text-text-primary leading-none">
             {metric.prefix}
             {metric.value}
-            {metric.suffix && <span className="text-lg text-[#6E6E82]">{metric.suffix}</span>}
+            {metric.suffix && <span className="text-lg text-text-muted">{metric.suffix}</span>}
           </p>
           <div className="flex items-center gap-2 mt-3 text-xs">
             <span className="flex items-center gap-1 font-semibold text-[#22C55E]">
               <TrendingUp className="w-3 h-3" />↑ {metric.change}%
             </span>
-            <span className="text-[#6E6E82]">{metric.changeLabel}</span>
+            <span className="text-text-muted">{metric.changeLabel}</span>
           </div>
         </div>
       ))}

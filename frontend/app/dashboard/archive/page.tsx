@@ -47,10 +47,10 @@ import type { ArchiveContentItem, ContentArchiveFilters } from "@/lib/api/types"
 
 // Channel icons and colors
 const channelConfig: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
-  email: { icon: <Mail className="h-4 w-4" />, color: "bg-blue-500/10 text-blue-400", label: "Email" },
-  sms: { icon: <MessageSquare className="h-4 w-4" />, color: "bg-purple-500/10 text-purple-400", label: "SMS" },
-  linkedin: { icon: <Linkedin className="h-4 w-4" />, color: "bg-sky-500/10 text-sky-400", label: "LinkedIn" },
-  voice: { icon: <Phone className="h-4 w-4" />, color: "bg-green-500/10 text-green-400", label: "Voice" },
+  email: { icon: <Mail className="h-4 w-4" />, color: "bg-bg-elevated/10 text-text-secondary", label: "Email" },
+  sms: { icon: <MessageSquare className="h-4 w-4" />, color: "bg-amber/10 text-amber", label: "SMS" },
+  linkedin: { icon: <Linkedin className="h-4 w-4" />, color: "bg-amber-glow text-amber", label: "LinkedIn" },
+  voice: { icon: <Phone className="h-4 w-4" />, color: "bg-amber/10 text-amber", label: "Voice" },
   mail: { icon: <Send className="h-4 w-4" />, color: "bg-orange-500/10 text-orange-400", label: "Direct Mail" },
 };
 
@@ -90,26 +90,26 @@ function ContentCard({
           <div className="flex-1 min-w-0">
             {/* Header */}
             <div className="flex items-center justify-between gap-2 mb-1">
-              <span className="text-sm font-medium text-white truncate">
+              <span className="text-sm font-medium text-text-primary truncate">
                 {item.lead_name || item.lead_email || "Unknown recipient"}
               </span>
-              <span className="text-xs text-gray-500 flex-shrink-0">
+              <span className="text-xs text-text-primary0 flex-shrink-0">
                 {formatDate(item.timestamp)}
               </span>
             </div>
 
             {/* Company */}
             {item.lead_company && (
-              <p className="text-xs text-gray-400 mb-1">{item.lead_company}</p>
+              <p className="text-xs text-text-muted mb-1">{item.lead_company}</p>
             )}
 
             {/* Subject */}
             {item.subject && (
-              <p className="text-sm text-gray-300 truncate mb-2">{item.subject}</p>
+              <p className="text-sm text-text-secondary truncate mb-2">{item.subject}</p>
             )}
 
             {/* Preview */}
-            <p className="text-xs text-gray-500 line-clamp-2">
+            <p className="text-xs text-text-primary0 line-clamp-2">
               {item.content_preview || "No preview available"}
             </p>
 
@@ -124,13 +124,13 @@ function ContentCard({
 
               {/* Engagement */}
               {item.email_opened && (
-                <span className="flex items-center gap-1 text-xs text-green-400">
+                <span className="flex items-center gap-1 text-xs text-amber">
                   <Eye className="h-3 w-3" />
                   {item.email_open_count}
                 </span>
               )}
               {item.email_clicked && (
-                <span className="flex items-center gap-1 text-xs text-blue-400">
+                <span className="flex items-center gap-1 text-xs text-text-secondary">
                   <MousePointer className="h-3 w-3" />
                   {item.email_click_count}
                 </span>
@@ -138,7 +138,7 @@ function ContentCard({
 
               {/* Sequence position */}
               {item.sequence_step && (
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-text-primary0">
                   Step {item.sequence_step}
                 </span>
               )}
@@ -179,46 +179,46 @@ function ContentDetailModal({
           {/* Metadata */}
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-gray-500">Sent:</span>
-              <span className="ml-2 text-gray-300">{formatDate(item.timestamp)}</span>
+              <span className="text-text-primary0">Sent:</span>
+              <span className="ml-2 text-text-secondary">{formatDate(item.timestamp)}</span>
             </div>
             <div>
-              <span className="text-gray-500">Campaign:</span>
-              <span className="ml-2 text-gray-300">{item.campaign_name || "—"}</span>
+              <span className="text-text-primary0">Campaign:</span>
+              <span className="ml-2 text-text-secondary">{item.campaign_name || "—"}</span>
             </div>
             <div>
-              <span className="text-gray-500">Recipient:</span>
-              <span className="ml-2 text-gray-300">{item.lead_email || "—"}</span>
+              <span className="text-text-primary0">Recipient:</span>
+              <span className="ml-2 text-text-secondary">{item.lead_email || "—"}</span>
             </div>
             <div>
-              <span className="text-gray-500">Company:</span>
-              <span className="ml-2 text-gray-300">{item.lead_company || "—"}</span>
+              <span className="text-text-primary0">Company:</span>
+              <span className="ml-2 text-text-secondary">{item.lead_company || "—"}</span>
             </div>
           </div>
 
           {/* Engagement */}
-          <div className="flex items-center gap-4 p-3 bg-white/5 rounded-lg">
+          <div className="flex items-center gap-4 p-3 bg-bg-surface/5 rounded-lg">
             <div className="flex items-center gap-2">
-              <Eye className="h-4 w-4 text-gray-400" />
+              <Eye className="h-4 w-4 text-text-muted" />
               <span className="text-sm">
                 {item.email_opened ? (
-                  <span className="text-green-400">
+                  <span className="text-amber">
                     Opened {item.email_open_count} time{item.email_open_count !== 1 ? "s" : ""}
                   </span>
                 ) : (
-                  <span className="text-gray-500">Not opened</span>
+                  <span className="text-text-primary0">Not opened</span>
                 )}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <MousePointer className="h-4 w-4 text-gray-400" />
+              <MousePointer className="h-4 w-4 text-text-muted" />
               <span className="text-sm">
                 {item.email_clicked ? (
-                  <span className="text-blue-400">
+                  <span className="text-text-secondary">
                     Clicked {item.email_click_count} time{item.email_click_count !== 1 ? "s" : ""}
                   </span>
                 ) : (
-                  <span className="text-gray-500">No clicks</span>
+                  <span className="text-text-primary0">No clicks</span>
                 )}
               </span>
             </div>
@@ -227,16 +227,16 @@ function ContentDetailModal({
           {/* Subject */}
           {item.subject && (
             <div>
-              <h4 className="text-sm font-medium text-gray-400 mb-1">Subject</h4>
-              <p className="text-gray-200">{item.subject}</p>
+              <h4 className="text-sm font-medium text-text-muted mb-1">Subject</h4>
+              <p className="text-text-secondary">{item.subject}</p>
             </div>
           )}
 
           {/* Full Content */}
           <div>
-            <h4 className="text-sm font-medium text-gray-400 mb-1">Content</h4>
-            <div className="p-4 bg-white/5 rounded-lg">
-              <pre className="whitespace-pre-wrap text-sm text-gray-300 font-sans">
+            <h4 className="text-sm font-medium text-text-muted mb-1">Content</h4>
+            <div className="p-4 bg-bg-surface/5 rounded-lg">
+              <pre className="whitespace-pre-wrap text-sm text-text-secondary font-sans">
                 {item.full_message_body || item.content_preview || "No content available"}
               </pre>
             </div>
@@ -245,10 +245,10 @@ function ContentDetailModal({
           {/* Links */}
           {item.links_included && item.links_included.length > 0 && (
             <div>
-              <h4 className="text-sm font-medium text-gray-400 mb-1">Links Included</h4>
+              <h4 className="text-sm font-medium text-text-muted mb-1">Links Included</h4>
               <ul className="space-y-1">
                 {item.links_included.map((link, idx) => (
-                  <li key={idx} className="text-sm text-blue-400 truncate">
+                  <li key={idx} className="text-sm text-text-secondary truncate">
                     {link}
                   </li>
                 ))}
@@ -259,7 +259,7 @@ function ContentDetailModal({
           {/* Personalization */}
           {item.personalization_fields_used && item.personalization_fields_used.length > 0 && (
             <div>
-              <h4 className="text-sm font-medium text-gray-400 mb-1">Personalization Used</h4>
+              <h4 className="text-sm font-medium text-text-muted mb-1">Personalization Used</h4>
               <div className="flex flex-wrap gap-1">
                 {item.personalization_fields_used.map((field, idx) => (
                   <Badge key={idx} variant="secondary" className="text-xs">
@@ -272,7 +272,7 @@ function ContentDetailModal({
 
           {/* AI Info */}
           {item.ai_model_used && (
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-text-primary0">
               Generated by {item.ai_model_used}
             </div>
           )}
@@ -332,8 +332,8 @@ export default function ContentArchivePage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-white">Content Archive</h1>
-        <p className="text-gray-400 mt-1">
+        <h1 className="text-2xl font-semibold text-text-primary">Content Archive</h1>
+        <p className="text-text-muted mt-1">
           Browse all content sent on your behalf
         </p>
       </div>
@@ -345,7 +345,7 @@ export default function ContentArchivePage() {
             {/* Search */}
             <div className="flex-1 min-w-[200px]">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-primary0" />
                 <Input
                   placeholder="Search content..."
                   value={searchInput}
@@ -426,12 +426,12 @@ export default function ContentArchivePage() {
 
       {/* Results Summary */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-text-muted">
           {archiveData?.total ?? 0} items found
           {hasActiveFilters && " (filtered)"}
         </p>
         {archiveData && archiveData.total_pages > 1 && (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-text-primary0">
             Page {archiveData.page} of {archiveData.total_pages}
           </p>
         )}
@@ -442,21 +442,21 @@ export default function ContentArchivePage() {
         <div className="grid gap-4 md:grid-cols-2">
           {[...Array(6)].map((_, i) => (
             <Card key={i} className="animate-pulse">
-              <CardContent className="p-4 h-32 bg-white/5" />
+              <CardContent className="p-4 h-32 bg-bg-surface/5" />
             </Card>
           ))}
         </div>
       ) : error ? (
         <Card>
           <CardContent className="p-8 text-center">
-            <p className="text-red-400">Failed to load content archive</p>
+            <p className="text-amber">Failed to load content archive</p>
           </CardContent>
         </Card>
       ) : archiveData?.items.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center">
-            <Mail className="h-12 w-12 mx-auto text-gray-600 mb-4" />
-            <p className="text-gray-400">
+            <Mail className="h-12 w-12 mx-auto text-text-muted mb-4" />
+            <p className="text-text-muted">
               {hasActiveFilters
                 ? "No content matches your filters"
                 : "No content sent yet"}
@@ -487,7 +487,7 @@ export default function ContentArchivePage() {
             <ChevronLeft className="h-4 w-4" />
             Previous
           </Button>
-          <span className="text-sm text-gray-400 px-4">
+          <span className="text-sm text-text-muted px-4">
             Page {archiveData.page} of {archiveData.total_pages}
           </span>
           <Button

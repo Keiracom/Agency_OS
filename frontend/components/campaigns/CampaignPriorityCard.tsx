@@ -240,7 +240,7 @@ function StatusBadge({ status }: { status: CampaignStatus }) {
   > = {
     active: {
       label: "Active",
-      className: "text-green-600",
+      className: "text-amber",
     },
     paused: {
       label: "Paused",
@@ -252,7 +252,7 @@ function StatusBadge({ status }: { status: CampaignStatus }) {
     },
     completed: {
       label: "Completed",
-      className: "text-blue-600",
+      className: "text-text-secondary",
     },
   };
 

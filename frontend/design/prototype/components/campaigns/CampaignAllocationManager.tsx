@@ -184,7 +184,7 @@ export function CampaignAllocationManager({
           </p>
         </div>
         {campaigns.length < maxCampaigns && (
-          <button className="flex items-center gap-2 px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-blue-500/25">
+          <button className="flex items-center gap-2 px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-text-primary text-sm font-medium rounded-lg transition-colors shadow-lg shadow-amber/25">
             <Plus className="h-4 w-4" />
             Add Campaign
           </button>
@@ -199,7 +199,7 @@ export function CampaignAllocationManager({
           return (
             <div
               key={campaign.id}
-              className={`bg-white rounded-xl border shadow-sm transition-all ${
+              className={`bg-bg-surface rounded-xl border shadow-sm transition-all ${
                 isPending
                   ? "border-[#EAB308] ring-1 ring-[#EAB308]/20"
                   : "border-[#E2E8F0]"
@@ -298,14 +298,14 @@ export function CampaignAllocationManager({
               <button
                 onClick={handleCancel}
                 disabled={isConfirming}
-                className="px-4 py-2 text-sm font-medium text-[#64748B] hover:text-[#1E293B] hover:bg-white rounded-lg transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-[#64748B] hover:text-[#1E293B] hover:bg-bg-surface rounded-lg transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirm}
                 disabled={isConfirming || totalPercentage !== 100}
-                className="px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-text-primary text-sm font-medium rounded-lg transition-colors shadow-lg shadow-amber/25 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isConfirming ? "Processing..." : "Confirm & Activate"}
               </button>

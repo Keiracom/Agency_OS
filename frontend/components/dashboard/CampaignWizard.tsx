@@ -206,7 +206,7 @@ function ProgressStepper({ currentStep, totalSteps }: { currentStep: number; tot
   const steps = ["Basics", "Audience", "Channels", "Messaging", "Review"];
 
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md border-b border-white/10 py-6 px-8">
+    <div className="bg-bg-void/40 backdrop-blur-md border-b border-white/10 py-6 px-8">
       <div className="flex items-center justify-center gap-0 max-w-3xl mx-auto">
         {steps.map((step, idx) => {
           const stepNum = idx + 1;
@@ -219,17 +219,17 @@ function ProgressStepper({ currentStep, totalSteps }: { currentStep: number; tot
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                     isCompleted
-                      ? "bg-green-500 text-white"
+                      ? "bg-amber text-text-primary"
                       : isActive
-                      ? "bg-violet-600 text-white shadow-lg shadow-violet-500/30"
-                      : "bg-slate-700 text-slate-400"
+                      ? "bg-amber text-text-primary shadow-lg shadow-amber/30"
+                      : "bg-slate-700 text-text-secondary"
                   }`}
                 >
                   {isCompleted ? <Check className="w-5 h-5" /> : stepNum}
                 </div>
                 <span
                   className={`text-sm font-medium transition-colors ${
-                    isActive ? "text-white" : isCompleted ? "text-green-400" : "text-slate-500"
+                    isActive ? "text-text-primary" : isCompleted ? "text-amber" : "text-text-muted"
                   }`}
                 >
                   {step}
@@ -238,7 +238,7 @@ function ProgressStepper({ currentStep, totalSteps }: { currentStep: number; tot
               {idx < steps.length - 1 && (
                 <div
                   className={`w-16 h-0.5 mx-3 transition-colors ${
-                    stepNum < currentStep ? "bg-green-500" : "bg-slate-700"
+                    stepNum < currentStep ? "bg-amber" : "bg-slate-700"
                   }`}
                 />
               )}
@@ -262,30 +262,30 @@ function StepBasics({
   onChange: (updates: Partial<WizardState>) => void;
 }) {
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3 mb-1">
-          <FileText className="w-5 h-5 text-violet-400" />
-          <h2 className="text-lg font-semibold text-white">Campaign Basics</h2>
+          <FileText className="w-5 h-5 text-amber" />
+          <h2 className="text-lg font-semibold text-text-primary">Campaign Basics</h2>
         </div>
-        <p className="text-sm text-slate-500 ml-8">Start by naming your campaign and setting your primary goal</p>
+        <p className="text-sm text-text-muted ml-8">Start by naming your campaign and setting your primary goal</p>
       </div>
       <div className="p-6 space-y-6">
         {/* Campaign Name */}
         <div>
-          <label className="block text-sm font-medium text-white mb-2">Campaign Name</label>
+          <label className="block text-sm font-medium text-text-primary mb-2">Campaign Name</label>
           <input
             type="text"
             value={state.name}
             onChange={(e) => onChange({ name: e.target.value })}
             placeholder="e.g., Q1 SaaS Founder Blitz"
-            className="w-full px-4 py-3 bg-slate-950/60 border border-white/10 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30"
+            className="w-full px-4 py-3 bg-slate-950/60 border border-white/10 rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:border-amber focus:ring-1 focus:ring-amber/30"
           />
         </div>
 
         {/* Campaign Goal */}
         <div>
-          <label className="block text-sm font-medium text-white mb-3">Campaign Goal</label>
+          <label className="block text-sm font-medium text-text-primary mb-3">Campaign Goal</label>
           <div className="grid grid-cols-3 gap-4">
             {goalOptions.map((goal) => {
               const Icon = goal.icon;
@@ -296,19 +296,19 @@ function StepBasics({
                   onClick={() => onChange({ goal: goal.value })}
                   className={`p-5 rounded-xl border-2 text-center transition-all ${
                     isSelected
-                      ? "border-violet-500 bg-violet-500/10"
+                      ? "border-amber bg-amber/10"
                       : "border-white/10 bg-slate-950/40 hover:border-white/20"
                   }`}
                 >
                   <div
                     className={`w-12 h-12 mx-auto mb-3 rounded-xl flex items-center justify-center ${
-                      isSelected ? "bg-violet-600" : "bg-slate-700"
+                      isSelected ? "bg-amber" : "bg-slate-700"
                     }`}
                   >
-                    <Icon className={`w-6 h-6 ${isSelected ? "text-white" : "text-slate-400"}`} />
+                    <Icon className={`w-6 h-6 ${isSelected ? "text-text-primary" : "text-text-secondary"}`} />
                   </div>
-                  <p className="text-sm font-semibold text-white">{goal.label}</p>
-                  <p className="text-xs text-slate-500">{goal.desc}</p>
+                  <p className="text-sm font-semibold text-text-primary">{goal.label}</p>
+                  <p className="text-xs text-text-muted">{goal.desc}</p>
                 </button>
               );
             })}
@@ -317,35 +317,35 @@ function StepBasics({
 
         {/* Target Meetings */}
         <div>
-          <label className="block text-sm font-medium text-white mb-2">Target Monthly Meetings</label>
+          <label className="block text-sm font-medium text-text-primary mb-2">Target Monthly Meetings</label>
           <input
             type="number"
             value={state.targetMeetings}
             onChange={(e) => onChange({ targetMeetings: parseInt(e.target.value) || 0 })}
-            className="w-48 px-4 py-3 bg-slate-950/60 border border-white/10 rounded-lg text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30"
+            className="w-48 px-4 py-3 bg-slate-950/60 border border-white/10 rounded-lg text-text-primary focus:outline-none focus:border-amber focus:ring-1 focus:ring-amber/30"
           />
         </div>
 
         {/* Dates */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-white mb-2">Start Date</label>
+            <label className="block text-sm font-medium text-text-primary mb-2">Start Date</label>
             <input
               type="date"
               value={state.startDate}
               onChange={(e) => onChange({ startDate: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-950/60 border border-white/10 rounded-lg text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30"
+              className="w-full px-4 py-3 bg-slate-950/60 border border-white/10 rounded-lg text-text-primary focus:outline-none focus:border-amber focus:ring-1 focus:ring-amber/30"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
-              End Date <span className="font-normal text-slate-500">(or ongoing)</span>
+            <label className="block text-sm font-medium text-text-primary mb-2">
+              End Date <span className="font-normal text-text-muted">(or ongoing)</span>
             </label>
             <input
               type="date"
               value={state.endDate}
               onChange={(e) => onChange({ endDate: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-950/60 border border-white/10 rounded-lg text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30"
+              className="w-full px-4 py-3 bg-slate-950/60 border border-white/10 rounded-lg text-text-primary focus:outline-none focus:border-amber focus:ring-1 focus:ring-amber/30"
             />
           </div>
         </div>
@@ -370,18 +370,18 @@ function StepAudience({
   onFilterToggle: (groupId: string, optionId: string) => void;
 }) {
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3 mb-1">
-          <Users className="w-5 h-5 text-violet-400" />
-          <h2 className="text-lg font-semibold text-white">Target Audience</h2>
+          <Users className="w-5 h-5 text-amber" />
+          <h2 className="text-lg font-semibold text-text-primary">Target Audience</h2>
         </div>
-        <p className="text-sm text-slate-500 ml-8">Select an existing ICP or create a custom segment</p>
+        <p className="text-sm text-text-muted ml-8">Select an existing ICP or create a custom segment</p>
       </div>
       <div className="p-6 space-y-6">
         {/* ICP Selection */}
         <div>
-          <label className="block text-sm font-medium text-white mb-3">Select ICP</label>
+          <label className="block text-sm font-medium text-text-primary mb-3">Select ICP</label>
           <div className="space-y-3">
             {icpOptions.map((icp) => {
               const isSelected = state.selectedICP === icp.id;
@@ -391,22 +391,22 @@ function StepAudience({
                   onClick={() => onICPChange(icp.id)}
                   className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${
                     isSelected
-                      ? "border-violet-500 bg-violet-500/10"
+                      ? "border-amber bg-amber/10"
                       : "border-white/10 bg-slate-950/40 hover:border-white/20"
                   }`}
                 >
                   <div
                     className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                      isSelected ? "border-violet-500 bg-violet-500" : "border-slate-500"
+                      isSelected ? "border-amber bg-amber" : "border-slate-500"
                     }`}
                   >
-                    {isSelected && <div className="w-2 h-2 bg-white rounded-full" />}
+                    {isSelected && <div className="w-2 h-2 bg-bg-surface rounded-full" />}
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-white">{icp.name}</p>
-                    <p className="text-xs text-slate-500">{icp.details}</p>
+                    <p className="text-sm font-semibold text-text-primary">{icp.name}</p>
+                    <p className="text-xs text-text-muted">{icp.details}</p>
                   </div>
-                  <span className="text-sm font-semibold font-mono text-teal-400">
+                  <span className="text-sm font-semibold font-mono text-amber">
                     {icp.leadCount > 0 ? icp.leadCount.toLocaleString() : "—"}
                   </span>
                 </button>
@@ -417,11 +417,11 @@ function StepAudience({
 
         {/* Additional Filters */}
         <div className="pt-6 border-t border-white/10">
-          <label className="block text-sm font-medium text-white mb-4">Additional Filters</label>
+          <label className="block text-sm font-medium text-text-primary mb-4">Additional Filters</label>
           <div className="grid grid-cols-2 gap-4">
             {filterState.map((group) => (
               <div key={group.id} className="bg-slate-950/40 border border-white/5 rounded-xl p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-3">
                   {group.label}
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -431,8 +431,8 @@ function StepAudience({
                       onClick={() => onFilterToggle(group.id, option.id)}
                       className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
                         option.selected
-                          ? "bg-violet-500/20 border-violet-500/50 text-violet-400"
-                          : "bg-slate-800/60 border-white/10 text-slate-400 hover:bg-slate-700/60"
+                          ? "bg-amber/20 border-amber/50 text-amber"
+                          : "bg-bg-base/60 border-white/10 text-text-secondary hover:bg-slate-700/60"
                       }`}
                     >
                       {option.label}
@@ -447,15 +447,15 @@ function StepAudience({
         {/* Lead Preview */}
         <div className="flex items-center justify-between p-5 bg-slate-950/40 border border-white/10 rounded-xl">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-teal-500 flex items-center justify-center">
-              <Users className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 rounded-xl bg-amber flex items-center justify-center">
+              <Users className="w-6 h-6 text-text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold font-mono text-white">~{state.estimatedLeads.toLocaleString()} leads</p>
-              <p className="text-sm text-slate-500">match this criteria</p>
+              <p className="text-2xl font-bold font-mono text-text-primary">~{state.estimatedLeads.toLocaleString()} leads</p>
+              <p className="text-sm text-text-muted">match this criteria</p>
             </div>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-600 to-blue-600 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-violet-500/25 transition-shadow">
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-600 to-amber text-text-primary text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-amber/25 transition-shadow">
             <Zap className="w-4 h-4" />
             Use AI to find best matches
           </button>
@@ -477,13 +477,13 @@ function StepChannels({
   onChannelToggle: (channel: ChannelType) => void;
 }) {
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3 mb-1">
-          <MessageCircle className="w-5 h-5 text-violet-400" />
-          <h2 className="text-lg font-semibold text-white">Channel Strategy</h2>
+          <MessageCircle className="w-5 h-5 text-amber" />
+          <h2 className="text-lg font-semibold text-text-primary">Channel Strategy</h2>
         </div>
-        <p className="text-sm text-slate-500 ml-8">Select which channels to use in your outreach sequence</p>
+        <p className="text-sm text-text-muted ml-8">Select which channels to use in your outreach sequence</p>
       </div>
       <div className="p-6 space-y-6">
         {/* Channel Toggles */}
@@ -497,24 +497,24 @@ function StepChannels({
                 onClick={() => onChannelToggle(channel.type)}
                 className={`flex flex-col items-center p-5 rounded-xl border-2 transition-all ${
                   isActive
-                    ? "border-violet-500 bg-violet-500/10"
+                    ? "border-amber bg-amber/10"
                     : "border-white/10 bg-slate-950/40 hover:border-white/20"
                 }`}
               >
                 <div
                   className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 ${
-                    isActive ? "bg-violet-600" : "bg-slate-700"
+                    isActive ? "bg-amber" : "bg-slate-700"
                   }`}
                 >
-                  <Icon className={`w-6 h-6 ${isActive ? "text-white" : "text-slate-400"}`} />
+                  <Icon className={`w-6 h-6 ${isActive ? "text-text-primary" : "text-text-secondary"}`} />
                 </div>
-                <span className="text-sm font-semibold text-white mb-3">{channel.label}</span>
+                <span className="text-sm font-semibold text-text-primary mb-3">{channel.label}</span>
                 <div
                   className={`w-5 h-5 rounded flex items-center justify-center border-2 ${
-                    isActive ? "bg-green-500 border-green-500" : "border-slate-500"
+                    isActive ? "bg-amber border-amber" : "border-slate-500"
                   }`}
                 >
-                  {isActive && <Check className="w-3.5 h-3.5 text-white" />}
+                  {isActive && <Check className="w-3.5 h-3.5 text-text-primary" />}
                 </div>
               </button>
             );
@@ -523,8 +523,8 @@ function StepChannels({
 
         {/* Sequence Preview */}
         <div className="bg-slate-950/40 border border-white/10 rounded-xl p-6">
-          <div className="flex items-center gap-2 mb-5 text-sm font-semibold text-white">
-            <TrendingUp className="w-4 h-4 text-violet-400" />
+          <div className="flex items-center gap-2 mb-5 text-sm font-semibold text-text-primary">
+            <TrendingUp className="w-4 h-4 text-amber" />
             Sequence Preview
           </div>
           <div className="flex items-center flex-wrap gap-2">
@@ -536,35 +536,35 @@ function StepChannels({
                 const Icon = config.icon;
                 const borderColor =
                   step.type === "email"
-                    ? "border-l-violet-500"
+                    ? "border-l-amber"
                     : step.type === "linkedin"
-                    ? "border-l-blue-500"
+                    ? "border-l-amber"
                     : step.type === "sms"
-                    ? "border-l-teal-500"
+                    ? "border-l-amber"
                     : step.type === "voice"
                     ? "border-l-amber-500"
-                    : "border-l-pink-500";
+                    : "border-l-amber-light";
 
                 return (
                   <div key={`${step.type}-${step.day}`} className="flex items-center gap-2">
-                    <div className={`flex items-center gap-2 px-3 py-2 bg-slate-800/60 border border-white/10 ${borderColor} border-l-2 rounded-lg`}>
-                      <Icon className="w-4 h-4 text-slate-400" />
-                      <span className="text-xs text-slate-400">Day {step.day}</span>
+                    <div className={`flex items-center gap-2 px-3 py-2 bg-bg-base/60 border border-white/10 ${borderColor} border-l-2 rounded-lg`}>
+                      <Icon className="w-4 h-4 text-text-secondary" />
+                      <span className="text-xs text-text-secondary">Day {step.day}</span>
                     </div>
-                    {idx < arr.length - 1 && <ChevronRight className="w-4 h-4 text-slate-600" />}
+                    {idx < arr.length - 1 && <ChevronRight className="w-4 h-4 text-text-muted" />}
                   </div>
                 );
               })}
           </div>
 
           {/* AI Recommendation */}
-          <div className="flex items-start gap-3 mt-5 p-4 bg-violet-500/10 border border-violet-500/30 rounded-lg">
-            <div className="w-9 h-9 rounded-lg bg-violet-600 flex items-center justify-center flex-shrink-0">
-              <Lightbulb className="w-5 h-5 text-white" />
+          <div className="flex items-start gap-3 mt-5 p-4 bg-amber/10 border border-amber/30 rounded-lg">
+            <div className="w-9 h-9 rounded-lg bg-amber flex items-center justify-center flex-shrink-0">
+              <Lightbulb className="w-5 h-5 text-text-primary" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-white">Recommended for your ICP</p>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-sm font-semibold text-text-primary">Recommended for your ICP</p>
+              <p className="text-xs text-text-secondary mt-1">
                 Based on SaaS Founders, we recommend Email + LinkedIn + Voice AI. This combination has a 23% higher
                 meeting book rate for similar audiences.
               </p>
@@ -590,18 +590,18 @@ function StepMessaging({
   onValuePropToggle: (prop: string) => void;
 }) {
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3 mb-1">
-          <Send className="w-5 h-5 text-violet-400" />
-          <h2 className="text-lg font-semibold text-white">Messaging</h2>
+          <Send className="w-5 h-5 text-amber" />
+          <h2 className="text-lg font-semibold text-text-primary">Messaging</h2>
         </div>
-        <p className="text-sm text-slate-500 ml-8">Define your tone and let AI craft your outreach messages</p>
+        <p className="text-sm text-text-muted ml-8">Define your tone and let AI craft your outreach messages</p>
       </div>
       <div className="p-6 space-y-6">
         {/* Tone Selection */}
         <div>
-          <label className="block text-sm font-medium text-white mb-3">Tone</label>
+          <label className="block text-sm font-medium text-text-primary mb-3">Tone</label>
           <div className="grid grid-cols-3 gap-4">
             {toneOptions.map((tone) => {
               const isSelected = state.tone === tone.value;
@@ -611,12 +611,12 @@ function StepMessaging({
                   onClick={() => onChange({ tone: tone.value })}
                   className={`p-5 rounded-xl border-2 text-left transition-all ${
                     isSelected
-                      ? "border-violet-500 bg-violet-500/10"
+                      ? "border-amber bg-amber/10"
                       : "border-white/10 bg-slate-950/40 hover:border-white/20"
                   }`}
                 >
-                  <p className="text-sm font-semibold text-white mb-1">{tone.label}</p>
-                  <p className="text-xs text-slate-500 italic">{tone.example}</p>
+                  <p className="text-sm font-semibold text-text-primary mb-1">{tone.label}</p>
+                  <p className="text-xs text-text-muted italic">{tone.example}</p>
                 </button>
               );
             })}
@@ -625,7 +625,7 @@ function StepMessaging({
 
         {/* Value Props */}
         <div>
-          <label className="block text-sm font-medium text-white mb-3">Key Value Props to Emphasize</label>
+          <label className="block text-sm font-medium text-text-primary mb-3">Key Value Props to Emphasize</label>
           <div className="flex flex-wrap gap-2">
             {valuePropOptions.map((prop) => {
               const isSelected = state.valueProps.includes(prop);
@@ -635,8 +635,8 @@ function StepMessaging({
                   onClick={() => onValuePropToggle(prop)}
                   className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
                     isSelected
-                      ? "bg-violet-500/20 border-violet-500/50 text-violet-400"
-                      : "bg-slate-950/40 border-white/10 text-slate-400 hover:bg-slate-800/60"
+                      ? "bg-amber/20 border-amber/50 text-amber"
+                      : "bg-slate-950/40 border-white/10 text-text-secondary hover:bg-bg-base/60"
                   }`}
                 >
                   {prop}
@@ -648,43 +648,43 @@ function StepMessaging({
 
         {/* Message Generation */}
         <div className="pt-6 border-t border-white/10">
-          <label className="block text-sm font-medium text-white mb-4">Message Generation</label>
+          <label className="block text-sm font-medium text-text-primary mb-4">Message Generation</label>
           <div className="grid grid-cols-2 gap-4 mb-6">
             <button
               onClick={() => onChange({ messageGeneration: "ai" })}
               className={`p-6 rounded-xl border-2 text-center transition-all ${
                 state.messageGeneration === "ai"
-                  ? "border-violet-500 bg-violet-500/10"
+                  ? "border-amber bg-amber/10"
                   : "border-white/10 bg-slate-950/40 hover:border-white/20"
               }`}
             >
               <div
                 className={`w-14 h-14 mx-auto mb-4 rounded-xl flex items-center justify-center ${
-                  state.messageGeneration === "ai" ? "bg-violet-600" : "bg-slate-700"
+                  state.messageGeneration === "ai" ? "bg-amber" : "bg-slate-700"
                 }`}
               >
-                <Zap className={`w-7 h-7 ${state.messageGeneration === "ai" ? "text-white" : "text-slate-400"}`} />
+                <Zap className={`w-7 h-7 ${state.messageGeneration === "ai" ? "text-text-primary" : "text-text-secondary"}`} />
               </div>
-              <p className="text-sm font-semibold text-white">Let AI generate messaging</p>
-              <p className="text-xs text-slate-500 mt-1">Based on your tone and value props</p>
+              <p className="text-sm font-semibold text-text-primary">Let AI generate messaging</p>
+              <p className="text-xs text-text-muted mt-1">Based on your tone and value props</p>
             </button>
             <button
               onClick={() => onChange({ messageGeneration: "manual" })}
               className={`p-6 rounded-xl border-2 text-center transition-all ${
                 state.messageGeneration === "manual"
-                  ? "border-violet-500 bg-violet-500/10"
+                  ? "border-amber bg-amber/10"
                   : "border-white/10 bg-slate-950/40 hover:border-white/20"
               }`}
             >
               <div
                 className={`w-14 h-14 mx-auto mb-4 rounded-xl flex items-center justify-center ${
-                  state.messageGeneration === "manual" ? "bg-violet-600" : "bg-slate-700"
+                  state.messageGeneration === "manual" ? "bg-amber" : "bg-slate-700"
                 }`}
               >
-                <Edit2 className={`w-7 h-7 ${state.messageGeneration === "manual" ? "text-white" : "text-slate-400"}`} />
+                <Edit2 className={`w-7 h-7 ${state.messageGeneration === "manual" ? "text-text-primary" : "text-text-secondary"}`} />
               </div>
-              <p className="text-sm font-semibold text-white">I'll provide templates</p>
-              <p className="text-xs text-slate-500 mt-1">Write your own copy</p>
+              <p className="text-sm font-semibold text-text-primary">I'll provide templates</p>
+              <p className="text-xs text-text-muted mt-1">Write your own copy</p>
             </button>
           </div>
         </div>
@@ -692,19 +692,19 @@ function StepMessaging({
         {/* AI Preview */}
         {state.messageGeneration === "ai" && (
           <div className="bg-slate-950/40 border border-white/10 rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 bg-slate-800/40 border-b border-white/10">
-              <div className="flex items-center gap-2 text-sm font-semibold text-white">
-                <Eye className="w-4 h-4 text-violet-400" />
+            <div className="flex items-center justify-between px-5 py-4 bg-bg-base/40 border-b border-white/10">
+              <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
+                <Eye className="w-4 h-4 text-amber" />
                 First Touch Preview
               </div>
-              <span className="flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-violet-600 to-blue-600 text-[10px] font-semibold uppercase tracking-wide text-white rounded">
+              <span className="flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-violet-600 to-amber text-[10px] font-semibold uppercase tracking-wide text-text-primary rounded">
                 <Sparkles className="w-3 h-3" />
                 AI Generated
               </span>
             </div>
             <div className="p-5">
-              <p className="text-sm font-semibold text-white mb-3">Re: Quick question about {"{{company}}"}'s growth</p>
-              <div className="text-sm text-slate-400 space-y-3 leading-relaxed">
+              <p className="text-sm font-semibold text-text-primary mb-3">Re: Quick question about {"{{company}}"}'s growth</p>
+              <div className="text-sm text-text-secondary space-y-3 leading-relaxed">
                 <p>Hi {"{{firstName}}"},</p>
                 <p>
                   I noticed {"{{company}}"} has been scaling rapidly — congrats on the recent momentum.
@@ -724,12 +724,12 @@ function StepMessaging({
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 px-5 py-4 bg-slate-800/40 border-t border-white/10">
-              <button className="flex items-center gap-2 px-4 py-2 bg-slate-700/60 hover:bg-slate-600/60 border border-white/10 rounded-lg text-sm text-slate-300 transition-colors">
+            <div className="flex items-center gap-3 px-5 py-4 bg-bg-base/40 border-t border-white/10">
+              <button className="flex items-center gap-2 px-4 py-2 bg-slate-700/60 hover:bg-bg-elevated/60 border border-white/10 rounded-lg text-sm text-text-secondary transition-colors">
                 <RefreshCw className="w-4 h-4" />
                 Regenerate
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-slate-700/60 hover:bg-slate-600/60 border border-white/10 rounded-lg text-sm text-slate-300 transition-colors">
+              <button className="flex items-center gap-2 px-4 py-2 bg-slate-700/60 hover:bg-bg-elevated/60 border border-white/10 rounded-lg text-sm text-text-secondary transition-colors">
                 <Edit2 className="w-4 h-4" />
                 Edit
               </button>
@@ -757,55 +757,55 @@ function StepReview({
   const toneLabel = toneOptions.find((t) => t.value === state.tone)?.label || "Professional";
 
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3 mb-1">
-          <Target className="w-5 h-5 text-violet-400" />
-          <h2 className="text-lg font-semibold text-white">Review & Launch</h2>
+          <Target className="w-5 h-5 text-amber" />
+          <h2 className="text-lg font-semibold text-text-primary">Review & Launch</h2>
         </div>
-        <p className="text-sm text-slate-500 ml-8">Review your campaign settings before going live</p>
+        <p className="text-sm text-text-muted ml-8">Review your campaign settings before going live</p>
       </div>
       <div className="p-6 space-y-6">
         {/* Summary Card */}
         <div className="bg-slate-950/40 border border-white/10 rounded-xl overflow-hidden divide-y divide-white/5">
           <div className="p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-3">Campaign Details</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-3">Campaign Details</p>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Campaign Name</span>
-                <span className="font-semibold text-white">{state.name || "Untitled Campaign"}</span>
+                <span className="text-text-secondary">Campaign Name</span>
+                <span className="font-semibold text-text-primary">{state.name || "Untitled Campaign"}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Goal</span>
-                <span className="font-semibold text-white">{goalLabel}</span>
+                <span className="text-text-secondary">Goal</span>
+                <span className="font-semibold text-text-primary">{goalLabel}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Target</span>
-                <span className="font-semibold text-white">{state.targetMeetings} meetings / month</span>
+                <span className="text-text-secondary">Target</span>
+                <span className="font-semibold text-text-primary">{state.targetMeetings} meetings / month</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Duration</span>
-                <span className="font-semibold text-white">
+                <span className="text-text-secondary">Duration</span>
+                <span className="font-semibold text-text-primary">
                   {state.startDate || "TBD"} — {state.endDate || "Ongoing"}
                 </span>
               </div>
             </div>
           </div>
           <div className="p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-3">Audience</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-3">Audience</p>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-400">ICP</span>
-                <span className="font-semibold text-white">{icpLabel}</span>
+                <span className="text-text-secondary">ICP</span>
+                <span className="font-semibold text-text-primary">{icpLabel}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Total Leads</span>
-                <span className="font-semibold text-teal-400">{state.estimatedLeads.toLocaleString()} leads</span>
+                <span className="text-text-secondary">Total Leads</span>
+                <span className="font-semibold text-amber">{state.estimatedLeads.toLocaleString()} leads</span>
               </div>
             </div>
           </div>
           <div className="p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-3">Channels</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-3">Channels</p>
             <div className="flex gap-2">
               {state.selectedChannels.map((channel) => {
                 const config = channelConfig.find((c) => c.type === channel);
@@ -814,7 +814,7 @@ function StepReview({
                 return (
                   <span
                     key={channel}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800/60 rounded-lg text-xs font-medium text-slate-300"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-bg-base/60 rounded-lg text-xs font-medium text-text-secondary"
                   >
                     <Icon className="w-3.5 h-3.5" />
                     {config.label}
@@ -824,15 +824,15 @@ function StepReview({
             </div>
           </div>
           <div className="p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-3">Messaging</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-3">Messaging</p>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Tone</span>
-                <span className="font-semibold text-white">{toneLabel}</span>
+                <span className="text-text-secondary">Tone</span>
+                <span className="font-semibold text-text-primary">{toneLabel}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Generation</span>
-                <span className="font-semibold text-white">
+                <span className="text-text-secondary">Generation</span>
+                <span className="font-semibold text-text-primary">
                   {state.messageGeneration === "ai" ? "AI Generated" : "Custom Templates"}
                 </span>
               </div>
@@ -843,65 +843,65 @@ function StepReview({
         {/* Projected Metrics */}
         <div className="grid grid-cols-3 gap-4">
           <div className="p-6 bg-slate-950/40 border border-white/10 rounded-xl text-center">
-            <p className="text-3xl font-bold font-mono text-white mb-1">~42%</p>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Projected Opens</p>
-            <p className="text-[10px] text-slate-600 mt-2">Industry avg: 35%</p>
+            <p className="text-3xl font-bold font-mono text-text-primary mb-1">~42%</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Projected Opens</p>
+            <p className="text-[10px] text-text-muted mt-2">Industry avg: 35%</p>
           </div>
           <div className="p-6 bg-slate-950/40 border border-white/10 rounded-xl text-center">
-            <p className="text-3xl font-bold font-mono text-white mb-1">~8%</p>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Projected Replies</p>
-            <p className="text-[10px] text-slate-600 mt-2">Industry avg: 4%</p>
+            <p className="text-3xl font-bold font-mono text-text-primary mb-1">~8%</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Projected Replies</p>
+            <p className="text-[10px] text-text-muted mt-2">Industry avg: 4%</p>
           </div>
           <div className="p-6 bg-slate-950/40 border border-white/10 rounded-xl text-center">
-            <p className="text-3xl font-bold font-mono text-teal-400 mb-1">8-12</p>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Projected Meetings</p>
-            <p className="text-[10px] text-slate-600 mt-2">Based on similar campaigns</p>
+            <p className="text-3xl font-bold font-mono text-amber mb-1">8-12</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Projected Meetings</p>
+            <p className="text-[10px] text-text-muted mt-2">Based on similar campaigns</p>
           </div>
         </div>
 
         {/* Schedule Options */}
         <div className="pt-6 border-t border-white/10">
-          <label className="block text-sm font-medium text-white mb-4">Launch Schedule</label>
+          <label className="block text-sm font-medium text-text-primary mb-4">Launch Schedule</label>
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => onChange({ launchSchedule: "now" })}
               className={`p-5 rounded-xl border-2 text-left transition-all ${
                 state.launchSchedule === "now"
-                  ? "border-violet-500 bg-violet-500/10"
+                  ? "border-amber bg-amber/10"
                   : "border-white/10 bg-slate-950/40 hover:border-white/20"
               }`}
             >
               <div className="flex items-center gap-3 mb-2">
                 <div
                   className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    state.launchSchedule === "now" ? "bg-violet-600" : "bg-slate-700"
+                    state.launchSchedule === "now" ? "bg-amber" : "bg-slate-700"
                   }`}
                 >
-                  <Zap className={`w-5 h-5 ${state.launchSchedule === "now" ? "text-white" : "text-slate-400"}`} />
+                  <Zap className={`w-5 h-5 ${state.launchSchedule === "now" ? "text-text-primary" : "text-text-secondary"}`} />
                 </div>
-                <span className="text-sm font-semibold text-white">Launch Now</span>
+                <span className="text-sm font-semibold text-text-primary">Launch Now</span>
               </div>
-              <p className="text-xs text-slate-500 ml-13">Start sending immediately</p>
+              <p className="text-xs text-text-muted ml-13">Start sending immediately</p>
             </button>
             <button
               onClick={() => onChange({ launchSchedule: "scheduled" })}
               className={`p-5 rounded-xl border-2 text-left transition-all ${
                 state.launchSchedule === "scheduled"
-                  ? "border-violet-500 bg-violet-500/10"
+                  ? "border-amber bg-amber/10"
                   : "border-white/10 bg-slate-950/40 hover:border-white/20"
               }`}
             >
               <div className="flex items-center gap-3 mb-2">
                 <div
                   className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    state.launchSchedule === "scheduled" ? "bg-violet-600" : "bg-slate-700"
+                    state.launchSchedule === "scheduled" ? "bg-amber" : "bg-slate-700"
                   }`}
                 >
-                  <Clock className={`w-5 h-5 ${state.launchSchedule === "scheduled" ? "text-white" : "text-slate-400"}`} />
+                  <Clock className={`w-5 h-5 ${state.launchSchedule === "scheduled" ? "text-text-primary" : "text-text-secondary"}`} />
                 </div>
-                <span className="text-sm font-semibold text-white">Schedule</span>
+                <span className="text-sm font-semibold text-text-primary">Schedule</span>
               </div>
-              <p className="text-xs text-slate-500 ml-13">Pick a date and time</p>
+              <p className="text-xs text-text-muted ml-13">Pick a date and time</p>
             </button>
           </div>
         </div>
@@ -1001,17 +1001,17 @@ export function CampaignWizard({ onBack, onComplete, isSubmitting = false }: Cam
   return (
     <div className="min-h-screen bg-slate-950">
       {/* Header */}
-      <div className="bg-slate-900/40 backdrop-blur-md border-b border-white/10 px-8 py-4">
+      <div className="bg-bg-void/40 backdrop-blur-md border-b border-white/10 px-8 py-4">
         <div className="flex items-center gap-4">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-500 hover:text-slate-300 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-text-muted hover:text-text-secondary rounded-lg transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
           </button>
-          <div className="w-px h-6 bg-white/10" />
-          <h1 className="text-lg font-semibold text-white">New Campaign</h1>
+          <div className="w-px h-6 bg-bg-surface/10" />
+          <h1 className="text-lg font-semibold text-text-primary">New Campaign</h1>
         </div>
       </div>
 
@@ -1040,7 +1040,7 @@ export function CampaignWizard({ onBack, onComplete, isSubmitting = false }: Cam
           {currentStep > 1 ? (
             <button
               onClick={prevStep}
-              className="flex items-center gap-2 px-5 py-2.5 bg-slate-800/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-sm text-white transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 bg-bg-base/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-sm text-text-primary transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
@@ -1052,7 +1052,7 @@ export function CampaignWizard({ onBack, onComplete, isSubmitting = false }: Cam
           {currentStep < 5 ? (
             <button
               onClick={nextStep}
-              className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-500 rounded-lg text-sm font-medium text-white transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 bg-amber hover:bg-amber rounded-lg text-sm font-medium text-text-primary transition-colors"
             >
               Continue
               <ArrowRight className="w-4 h-4" />
@@ -1061,7 +1061,7 @@ export function CampaignWizard({ onBack, onComplete, isSubmitting = false }: Cam
             <button
               onClick={handleLaunch}
               disabled={isSubmitting}
-              className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-violet-600 to-blue-600 hover:shadow-lg hover:shadow-violet-500/25 rounded-lg text-sm font-semibold text-white transition-all disabled:opacity-50"
+              className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-violet-600 to-amber hover:shadow-lg hover:shadow-amber/25 rounded-lg text-sm font-semibold text-text-primary transition-all disabled:opacity-50"
             >
               <Rocket className="w-4 h-4" />
               {isSubmitting ? "Launching..." : "Launch Campaign"}

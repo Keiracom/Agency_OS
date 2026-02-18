@@ -38,7 +38,7 @@ export function InboxFilters({ activeFilter, onFilterChange, tabs }: InboxFilter
               'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
               activeFilter === tab.id
                 ? 'bg-accent-primary/15 text-accent-primary'
-                : 'text-text-muted hover:text-text-secondary hover:bg-white/5'
+                : 'text-text-muted hover:text-text-secondary hover:bg-bg-surface/5'
             )}
           >
             {tab.label}

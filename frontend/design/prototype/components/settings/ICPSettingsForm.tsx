@@ -56,7 +56,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+    <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
       <div className="px-6 py-4 border-b border-[#E2E8F0]">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-[#EFF6FF] rounded-lg">
@@ -142,7 +142,7 @@ export function ICPSettingsForm({
       {values.lastExtractedAt && (
         <div className="flex items-center justify-between p-4 bg-[#EFF6FF] rounded-xl border border-[#BFDBFE]">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-white rounded-lg">
+            <div className="p-2 bg-bg-surface rounded-lg">
               <Sparkles className="h-5 w-5 text-[#3B82F6]" />
             </div>
             <div>
@@ -160,7 +160,7 @@ export function ICPSettingsForm({
             type="button"
             onClick={onReanalyze}
             disabled={isReanalyzing}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-[#3B82F6] rounded-lg text-sm font-medium text-[#3B82F6] hover:bg-[#EFF6FF] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-bg-surface border border-[#3B82F6] rounded-lg text-sm font-medium text-[#3B82F6] hover:bg-[#EFF6FF] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <RefreshCw className={`h-4 w-4 ${isReanalyzing ? "animate-spin" : ""}`} />
             {isReanalyzing ? "Analyzing..." : "Re-analyze Website"}
@@ -361,7 +361,7 @@ export function ICPSettingsForm({
         </button>
         <button
           onClick={handleSave}
-          className="px-6 py-2.5 bg-[#3B82F6] hover:bg-[#2563EB] text-white font-medium rounded-lg transition-colors shadow-lg shadow-blue-500/25"
+          className="px-6 py-2.5 bg-[#3B82F6] hover:bg-[#2563EB] text-text-primary font-medium rounded-lg transition-colors shadow-lg shadow-amber/25"
         >
           Save Changes
         </button>

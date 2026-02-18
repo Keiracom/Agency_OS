@@ -1,384 +1,425 @@
 "use client";
 
 /**
- * FILE: frontend/app/dashboard/page.tsx
- * PURPOSE: Main dashboard home - customer command center
- * SPRINT: Dashboard Sprint 2 - Dashboard Home
- * SSOT: frontend/design/html-prototypes/dashboard-v4-customer.html
- * THEME: Bloomberg Terminal dark mode (charcoal #0C0A08, amber #D4956A)
+ * Dashboard (Command Center)
+ * CEO Directive #027 — Pure Bloomberg Design System
+ * Warm Charcoal + Amber ONLY
  */
 
-import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
-import { 
-  Flame, 
-  Calendar, 
-  Lightbulb, 
-  ArrowUpRight,
-  TrendingUp,
+import { GlassCard, HeroMetricCard } from "@/components/ui/GlassCard";
+import {
+  Flame,
+  PhoneCall,
+  Lightbulb,
+  Zap,
+  Calendar,
+  CheckCircle2,
+  Clock,
   Mail,
   Linkedin,
+  MessageSquare,
   Phone,
-  MessageSquare
+  Send,
+  Play,
+  FileText,
+  TrendingUp,
+  ArrowUpRight,
 } from "lucide-react";
+import {
+  mockMeetingsHero,
+  mockChannelOrchestration,
+  mockStatsGrid,
+  mockHotProspects,
+  mockVoiceStats,
+  mockRecentCalls,
+  mockInsights,
+  mockActivityFeed,
+  mockWeekAhead,
+  mockWarmReplies,
+} from "@/data/mock-dashboard";
+import Link from "next/link";
 
-// Australian mock data - Melbourne digital marketing agency
-const MOCK_DATA = {
-  meetings: {
-    current: 18,
-    goal: 20,
-    percentChange: 28,
-  },
-  stats: [
-    { label: "Show Rate", value: "87%", change: "↑ vs 65% avg", positive: true },
-    { label: "Deals Started", value: "4", change: "↑ 2 this week", positive: true },
-    { label: "Pipeline Value", value: "$285K", change: "↑ 28% vs last month", positive: true },
-    { label: "ROI", value: "38x", change: "$285K from $7.5K", positive: true },
-  ],
-  hotProspects: [
-    {
-      id: "1",
-      initials: "SC",
-      name: "Sarah Chen",
-      company: "Bloom Digital",
-      title: "Marketing Director",
-      signal: "Opened 5x, clicked case study, replied \"interested\"",
-      score: 94,
-      tier: "hot" as const,
-    },
-    {
-      id: "2",
-      initials: "MJ",
-      name: "Marcus Johnson",
-      company: "TradeFlow Plumbing",
-      title: "Owner",
-      signal: "LinkedIn reply: \"Let's chat this week\"",
-      score: 87,
-      tier: "hot" as const,
-    },
-    {
-      id: "3",
-      initials: "LP",
-      name: "Lisa Park",
-      company: "Smile Dental Fitzroy",
-      title: "Practice Manager",
-      signal: "Opened email 3x in the last hour",
-      score: 82,
-      tier: "warm" as const,
-    },
-  ],
-  meetings_upcoming: [
-    {
-      day: "Today",
-      date: 12,
-      name: "Sarah Chen",
-      company: "Bloom Digital",
-      time: "2:00 PM",
-      type: "Discovery • 30min",
-      value: 85000,
-    },
-    {
-      day: "Thu",
-      date: 13,
-      name: "Marcus Johnson",
-      company: "TradeFlow Plumbing",
-      time: "10:00 AM",
-      type: "Demo • 45min",
-      value: 45000,
-    },
-    {
-      day: "Fri",
-      date: 14,
-      name: "Emma Wilson",
-      company: "Coastal Electrical",
-      time: "3:30 PM",
-      type: "Follow-up • 30min",
-      value: 62000,
-    },
-  ],
-  warmReplies: [
-    {
-      initials: "JK",
-      name: "James Kim",
-      company: "Velocity Trades",
-      preview: "\"Can you send more details about pricing?\"",
-    },
-    {
-      initials: "RN",
-      name: "Rachel Nguyen",
-      company: "Growth Dental",
-      preview: "\"Interested, but timing is Q2. Follow up then?\"",
-    },
-    {
-      initials: "DL",
-      name: "David Lee",
-      company: "Nexus Plumbing",
-      preview: "\"This looks relevant. Can we do a quick call?\"",
-    },
-  ],
+// Channel icon component
+const ChannelIcon = ({ type }: { type: string }) => {
+  const icons: Record<string, React.ReactNode> = {
+    email: <Mail className="w-4 h-4" strokeWidth={1.5} />,
+    linkedin: <Linkedin className="w-4 h-4" strokeWidth={1.5} />,
+    sms: <MessageSquare className="w-4 h-4" strokeWidth={1.5} />,
+    voice: <Phone className="w-4 h-4" strokeWidth={1.5} />,
+    mail: <Send className="w-4 h-4" strokeWidth={1.5} />,
+  };
+  return <>{icons[type] || icons.email}</>;
 };
 
-// Get tier color classes
-function getTierColors(tier: "hot" | "warm" | "cool" | "cold") {
-  switch (tier) {
-    case "hot":
-      return { bg: "rgba(239, 68, 68, 0.1)", border: "rgba(239, 68, 68, 0.3)", text: "#EF4444" };
-    case "warm":
-      return { bg: "rgba(245, 158, 11, 0.1)", border: "rgba(245, 158, 11, 0.3)", text: "#F59E0B" };
-    case "cool":
-      return { bg: "rgba(59, 130, 246, 0.1)", border: "rgba(59, 130, 246, 0.3)", text: "#3B82F6" };
-    default:
-      return { bg: "rgba(107, 114, 128, 0.1)", border: "rgba(107, 114, 128, 0.3)", text: "#6B7280" };
-  }
-}
-
-// Format currency for AUD
-function formatAUD(value: number): string {
-  return new Intl.NumberFormat("en-AU", {
-    style: "currency",
-    currency: "AUD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
 export default function DashboardPage() {
-  const { meetings, stats, hotProspects, meetings_upcoming, warmReplies } = MOCK_DATA;
-  const gaugePercent = Math.min((meetings.current / meetings.goal) * 100, 100);
-  
-  // Calculate SVG arc for gauge
-  const gaugeArcLength = 251.2; // Circumference of semicircle
-  const gaugeDashOffset = gaugeArcLength - (gaugeArcLength * gaugePercent) / 100;
-
   return (
-    <AppShell pageTitle="Dashboard">
-      <div className="space-y-6">
-        {/* Greeting Header */}
-        <div className="mb-2">
-          <h1 className="text-2xl font-serif text-text-primary">
-            Good morning, Dave
-          </h1>
-          <p className="text-sm text-text-secondary mt-1">
-            February 12, 2026 • Here's what's happening with your pipeline
-          </p>
-        </div>
-
-        {/* Hero Card - Meetings vs Goal */}
-        <div className="glass-surface rounded-2xl p-8">
-          <div className="flex items-center gap-12">
-            {/* Left: Meeting count */}
-            <div className="flex-1">
-              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
-                Meetings This Month
-              </p>
-              <p className="text-6xl font-bold font-mono text-text-primary leading-none">
-                {meetings.current}
-              </p>
-              <p className="text-base text-text-secondary mt-2">
-                Goal: {meetings.goal} •{" "}
-                <span className="text-status-success font-medium">
-                  {gaugePercent >= 100 ? "Target hit ✓" : `${gaugePercent.toFixed(0)}% complete`}
+    <AppShell>
+      {/* Page background with ambient radials */}
+      <div 
+        className="relative p-8 min-h-screen overflow-hidden"
+        style={{
+          background: `
+            radial-gradient(ellipse at 20% 0%, rgba(212,149,106,0.08) 0%, transparent 50%),
+            radial-gradient(ellipse at 80% 100%, rgba(212,149,106,0.04) 0%, transparent 50%),
+            var(--bg-void)
+          `,
+        }}
+      >
+        <div className="relative z-10">
+          {/* ROW 1: Hero Section - 2 column grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Meetings Booked Hero - Accent Glass Card */}
+            <HeroMetricCard className="p-8">
+              <div className="text-[11px] font-mono font-semibold uppercase tracking-wider text-text-muted mb-3">
+                Meetings Booked
+              </div>
+              <div className="flex items-baseline gap-0">
+                <span className="text-6xl font-extrabold text-text-primary font-mono tracking-tight">
+                  {mockMeetingsHero.current}
                 </span>
-              </p>
-              <div className="flex items-center gap-3 mt-5 pt-5 border-t border-border-subtle">
-                <TrendingUp className="w-5 h-5 text-status-success" />
-                <p className="text-sm text-text-secondary">
-                  <span className="text-status-success font-medium">↑ {meetings.percentChange}% vs last month</span>
-                  {" "}• Momentum is strong
-                </p>
+                <span className="text-3xl font-extrabold text-text-muted font-mono">
+                  /{mockMeetingsHero.target}
+                </span>
               </div>
-            </div>
+              <div className="text-base text-text-secondary mt-3">
+                <span className="text-amber font-semibold">Target exceeded</span> — 3 days early
+              </div>
+              <div className="flex items-center gap-2 mt-4 pt-4 border-t border-amber/20 text-sm">
+                <ArrowUpRight className="w-4 h-4 text-amber" strokeWidth={1.5} />
+                <span className="text-amber font-mono">{mockMeetingsHero.trendPercent}%</span>
+                <span className="text-text-secondary">{mockMeetingsHero.trendLabel}</span>
+              </div>
+            </HeroMetricCard>
 
-            {/* Right: Gauge */}
-            <div className="w-[200px]">
-              <svg viewBox="0 0 200 120" width="200" height="120">
-                {/* Background arc */}
-                <path
-                  d="M 20 100 A 80 80 0 0 1 180 100"
-                  fill="none"
-                  stroke="rgba(255,255,255,0.08)"
-                  strokeWidth="20"
-                  strokeLinecap="round"
-                />
-                {/* Filled arc - amber gradient */}
-                <path
-                  d="M 20 100 A 80 80 0 0 1 180 100"
-                  fill="none"
-                  stroke="url(#gaugeGradientAmber)"
-                  strokeWidth="20"
-                  strokeLinecap="round"
-                  strokeDasharray={gaugeArcLength}
-                  strokeDashoffset={gaugeDashOffset}
-                />
-                <defs>
-                  <linearGradient id="gaugeGradientAmber" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#D4956A" />
-                    <stop offset="100%" stopColor="#E0A87D" />
-                  </linearGradient>
-                </defs>
-              </svg>
-              <p className="text-center text-sm font-semibold text-accent-primary mt-2">
-                {gaugePercent.toFixed(0)}%{gaugePercent >= 100 ? " — Target Hit" : ""}
-              </p>
-            </div>
+            {/* Channel Orchestration */}
+            <GlassCard className="p-8">
+              <div className="text-[11px] font-mono font-semibold uppercase tracking-wider text-text-muted mb-4 text-center">
+                5-Channel Orchestration
+              </div>
+              
+              {/* Donut Chart Container */}
+              <div className="flex justify-center mb-6">
+                <div className="relative w-48 h-48">
+                  <svg className="w-full h-full" viewBox="0 0 200 200">
+                    <circle cx="100" cy="100" r="80" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="12"/>
+                    <circle 
+                      cx="100" cy="100" r="80" 
+                      fill="none" 
+                      stroke="url(#donut-gradient)" 
+                      strokeWidth="12" 
+                      strokeDasharray="380 503" 
+                      strokeLinecap="round" 
+                      transform="rotate(-90 100 100)"
+                    />
+                    <defs>
+                      <linearGradient id="donut-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#D4956A"/>
+                        <stop offset="100%" stopColor="#E8B48A"/>
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+                    <div className="text-4xl font-extrabold font-mono text-amber">
+                      1.8K
+                    </div>
+                    <div className="text-xs text-text-muted uppercase tracking-wider font-mono">Touches</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Channel Icons - All amber */}
+              <div className="flex justify-center gap-4 mb-6">
+                {['email', 'linkedin', 'sms', 'voice', 'mail'].map((channel) => (
+                  <div key={channel} className="w-10 h-10 rounded-lg bg-amber-glow flex items-center justify-center text-amber">
+                    <ChannelIcon type={channel} />
+                  </div>
+                ))}
+              </div>
+
+              {/* Channel Stats */}
+              <div className="grid grid-cols-5 gap-2">
+                {mockChannelOrchestration.channels.map((channel) => (
+                  <div key={channel.id} className="text-center p-3 bg-bg-elevated rounded-lg">
+                    <div className="text-lg font-bold font-mono text-text-primary">{channel.value}</div>
+                    <div className="text-[10px] text-text-muted uppercase mt-1 font-mono">{channel.label}</div>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
           </div>
-        </div>
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-4 gap-4">
-          {stats.map((stat) => (
-            <div key={stat.label} className="glass-surface rounded-xl p-5 text-center">
-              <p className="text-2xl font-bold font-mono text-text-primary">{stat.value}</p>
-              <p className="text-xs text-text-muted uppercase tracking-wider mt-1">{stat.label}</p>
-              <p className={`text-xs mt-2 font-medium ${stat.positive ? "text-status-success" : "text-status-error"}`}>
-                {stat.change}
-              </p>
-            </div>
-          ))}
-        </div>
+          {/* ROW 2: Stats Grid - 4 column */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {mockStatsGrid.map((stat) => (
+              <GlassCard key={stat.id} glow className="p-6">
+                <div className="text-3xl font-extrabold font-mono text-text-primary">{stat.value}</div>
+                <div className="text-xs font-mono text-text-muted uppercase tracking-wider mt-2">
+                  {stat.label}
+                </div>
+                <div className={`text-sm font-mono mt-2 ${
+                  stat.positive === true ? 'text-amber' : 
+                  stat.positive === false ? 'text-error' : 'text-text-muted'
+                }`}>
+                  {stat.change}
+                </div>
+              </GlassCard>
+            ))}
+          </div>
 
-        {/* Two Column Grid: Hot Prospects + Week Ahead */}
-        <div className="grid grid-cols-2 gap-6">
-          {/* Hot Right Now */}
-          <div className="glass-surface rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between p-5 border-b border-border-subtle">
-              <div className="flex items-center gap-2">
-                <Flame className="w-5 h-5 text-tier-hot" />
-                <h3 className="font-serif font-semibold text-text-primary">Hot Right Now</h3>
+          {/* ROW 3: Main Grid - 3 column */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            {/* Hot Prospects */}
+            <GlassCard className="p-0 overflow-hidden">
+              <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
+                <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+                  <Flame className="w-5 h-5 text-amber" strokeWidth={1.5} />
+                  Hot Right Now
+                </div>
+                <Link href="/leads" className="text-sm text-amber hover:underline">
+                  See All →
+                </Link>
               </div>
-              <Link href="/dashboard/leads" className="text-sm text-accent-primary hover:underline">
-                View all →
-              </Link>
-            </div>
-            <div className="p-5 space-y-3">
-              {hotProspects.map((prospect) => {
-                const colors = getTierColors(prospect.tier);
-                return (
-                  <Link
+              <div className="px-6 py-4">
+                {mockHotProspects.map((prospect) => (
+                  <div 
                     key={prospect.id}
-                    href={`/dashboard/leads/${prospect.id}`}
-                    className="flex items-center gap-4 p-4 rounded-xl transition-all hover:translate-x-1"
-                    style={{
-                      backgroundColor: colors.bg,
-                      borderLeft: `4px solid ${colors.text}`,
-                    }}
+                    className="flex items-center gap-4 py-4 border-b border-border-subtle last:border-0 cursor-pointer hover:bg-bg-elevated hover:-mx-6 hover:px-6 transition-all"
                   >
-                    <div
-                      className="w-11 h-11 rounded-full flex items-center justify-center text-white font-semibold text-sm"
-                      style={{
-                        background: prospect.tier === "hot" 
-                          ? "linear-gradient(135deg, #EF4444, #F97316)" 
-                          : "linear-gradient(135deg, #F59E0B, #FBBF24)",
-                      }}
-                    >
+                    <div className="w-11 h-11 rounded-lg flex items-center justify-center text-bg-void text-sm font-semibold bg-gradient-to-br from-amber to-amber-light">
                       {prospect.initials}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-text-primary text-sm">{prospect.name}</p>
-                      <p className="text-xs text-text-secondary">{prospect.company} • {prospect.title}</p>
-                      <p className="text-xs mt-1" style={{ color: colors.text }}>{prospect.signal}</p>
+                      <div className="font-semibold text-sm text-text-primary">{prospect.name}</div>
+                      <div className="text-sm text-text-secondary mt-0.5">
+                        {prospect.company} • {prospect.title}
+                      </div>
+                      <div className="flex gap-1.5 mt-1.5">
+                        {prospect.badges.map((badge, i) => (
+                          <span 
+                            key={i}
+                            className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded uppercase tracking-wide bg-amber-glow text-amber"
+                          >
+                            {badge.label}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-xl font-bold font-mono" style={{ color: colors.text }}>
+                      <div className="text-2xl font-extrabold font-mono text-amber">
                         {prospect.score}
-                      </p>
-                      <p className="text-[10px] text-text-muted uppercase">Score</p>
+                      </div>
+                      <div className="text-[10px] text-text-muted uppercase font-mono">Score</div>
                     </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Your Week Ahead */}
-          <div className="glass-surface rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between p-5 border-b border-border-subtle">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-accent-primary" />
-                <h3 className="font-serif font-semibold text-text-primary">Your Week Ahead</h3>
+                  </div>
+                ))}
               </div>
-              <Link href="/meetings" className="text-sm text-accent-primary hover:underline">
-                See calendar →
-              </Link>
-            </div>
-            <div className="p-5 space-y-3">
-              {meetings_upcoming.map((meeting, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-4 p-4 rounded-xl"
-                  style={{ backgroundColor: "rgba(255,255,255,0.03)" }}
-                >
-                  <div className="text-center min-w-[50px]">
-                    <p className="text-xs text-text-muted uppercase">{meeting.day}</p>
-                    <p className="text-2xl font-bold font-mono text-text-primary">{meeting.date}</p>
+            </GlassCard>
+
+            {/* Smart Calling */}
+            <GlassCard className="p-0 overflow-hidden">
+              <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
+                <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+                  <PhoneCall className="w-5 h-5 text-amber" strokeWidth={1.5} />
+                  Smart Calling
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-glow border border-amber/30 rounded-full text-xs font-mono font-medium text-amber">
+                  <div className="w-2 h-2 bg-amber rounded-full animate-pulse" />
+                  Active
+                </div>
+              </div>
+              <div className="p-6">
+                {/* Voice Stats */}
+                <div className="grid grid-cols-4 gap-3 mb-5">
+                  <div className="text-center p-4 bg-bg-elevated rounded-lg">
+                    <div className="text-2xl font-bold font-mono text-text-primary">{mockVoiceStats.calls}</div>
+                    <div className="text-[11px] text-text-muted mt-1 font-mono">Calls</div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-text-primary text-sm">{meeting.name}</p>
-                    <p className="text-xs text-text-secondary">{meeting.company}</p>
-                    <div className="flex items-center gap-3 mt-1">
-                      <p className="text-xs text-accent-primary font-medium">{meeting.time}</p>
-                      <p className="text-xs text-text-muted">{meeting.type}</p>
+                  <div className="text-center p-4 bg-bg-elevated rounded-lg">
+                    <div className="text-2xl font-bold font-mono text-text-primary">{mockVoiceStats.connected}</div>
+                    <div className="text-[11px] text-text-muted mt-1 font-mono">Connect</div>
+                  </div>
+                  <div className="text-center p-4 bg-bg-elevated rounded-lg">
+                    <div className="text-2xl font-bold font-mono text-text-primary">{mockVoiceStats.booked}</div>
+                    <div className="text-[11px] text-text-muted mt-1 font-mono">Booked</div>
+                  </div>
+                  <div className="text-center p-4 bg-bg-elevated rounded-lg">
+                    <div className="text-2xl font-bold font-mono text-text-primary">{mockVoiceStats.rate}</div>
+                    <div className="text-[11px] text-text-muted mt-1 font-mono">Rate</div>
+                  </div>
+                </div>
+
+                {/* Recent Calls */}
+                {mockRecentCalls.map((call) => (
+                  <div key={call.id} className="flex items-start gap-3 py-3.5 border-b border-border-subtle last:border-0">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                      call.outcome === 'BOOKED' ? 'bg-amber-glow text-amber' : 'bg-bg-elevated text-text-secondary'
+                    }`}>
+                      {call.outcome === 'BOOKED' ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm">
+                        <span className="font-semibold text-text-primary">{call.name}</span>
+                        <span className={`ml-2 text-xs font-mono font-medium ${
+                          call.outcome === 'BOOKED' ? 'text-amber' : 'text-text-secondary'
+                        }`}>
+                          {call.outcome}
+                        </span>
+                      </div>
+                      <div className="text-sm text-text-secondary mt-1">{call.summary}</div>
+                      <div className="flex gap-4 mt-2">
+                        <button className="text-xs text-amber flex items-center gap-1 hover:underline">
+                          <Play className="w-3 h-3" /> Listen
+                        </button>
+                        <button className="text-xs text-amber flex items-center gap-1 hover:underline">
+                          <FileText className="w-3 h-3" /> Transcript
+                        </button>
+                      </div>
+                    </div>
+                    <div className="text-sm text-text-muted font-mono">{call.duration}</div>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
+
+            {/* What's Working */}
+            <GlassCard className="p-0 overflow-hidden">
+              <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
+                <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+                  <Lightbulb className="w-5 h-5 text-amber" strokeWidth={1.5} />
+                  What's Working
+                </div>
+                <span className="text-xs text-text-muted font-mono">Updated 2h ago</span>
+              </div>
+              <div className="p-6">
+                {/* Insights Grid */}
+                <div className="grid grid-cols-2 gap-4 mb-5">
+                  <div className="bg-bg-elevated rounded-lg p-4">
+                    <div className="text-[11px] font-mono font-semibold uppercase tracking-wider text-text-muted mb-3">
+                      Who Converts
+                    </div>
+                    {mockInsights.whoConverts.map((item, i) => (
+                      <div key={i} className="flex justify-between items-center py-2">
+                        <span className="text-sm text-text-secondary">{item.label}</span>
+                        <span className="text-sm font-semibold font-mono text-amber">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="bg-bg-elevated rounded-lg p-4">
+                    <div className="text-[11px] font-mono font-semibold uppercase tracking-wider text-text-muted mb-3">
+                      Best Channel Mix
+                    </div>
+                    {mockInsights.bestChannelMix.map((item, i) => (
+                      <div key={i} className="flex justify-between items-center py-2">
+                        <span className="text-sm text-text-secondary">{item.label}</span>
+                        <span className="text-sm font-semibold font-mono text-amber">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Discovery Banner */}
+                <div className="p-4 rounded-lg bg-amber-glow border border-amber/30">
+                  <div className="flex items-center gap-1.5 text-[11px] font-mono font-semibold uppercase tracking-wider text-amber mb-2">
+                    <Flame className="w-4 h-4" strokeWidth={1.5} />
+                    This Week's Discovery
+                  </div>
+                  <div className="text-sm text-text-primary leading-relaxed">
+                    {mockInsights.discovery}
+                  </div>
+                </div>
+              </div>
+            </GlassCard>
+          </div>
+
+          {/* ROW 4: Bottom Grid - 3 column */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Recent Activity */}
+            <GlassCard className="p-0 overflow-hidden">
+              <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
+                <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+                  <Zap className="w-5 h-5 text-amber" strokeWidth={1.5} />
+                  Recent Activity
+                </div>
+                <Link href="/activity" className="text-sm text-amber hover:underline">
+                  View All →
+                </Link>
+              </div>
+              <div className="px-6 py-4 max-h-80 overflow-y-auto">
+                {mockActivityFeed.map((item) => (
+                  <div key={item.id} className="flex items-start gap-3 py-3 border-b border-border-subtle last:border-0">
+                    <div className="w-8 h-8 rounded-lg bg-amber-glow flex items-center justify-center text-amber">
+                      <ChannelIcon type={item.type || 'email'} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-text-primary">{item.text}</div>
+                      <div className="text-xs text-text-muted mt-1 font-mono">{item.time}</div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-lg font-semibold font-mono text-status-success">
-                      {formatAUD(meeting.value)}
-                    </p>
-                    <p className="text-[10px] text-text-muted">Potential</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+                ))}
+              </div>
+            </GlassCard>
 
-        {/* Two Column Grid: Insight + Warm Replies */}
-        <div className="grid grid-cols-2 gap-6">
-          {/* What's Working - Insight Card */}
-          <div 
-            className="rounded-xl p-6"
-            style={{
-              background: "linear-gradient(135deg, rgba(212, 149, 106, 0.1), rgba(124, 58, 237, 0.05))",
-              border: "1px solid rgba(212, 149, 106, 0.2)",
-            }}
-          >
-            <Lightbulb className="w-8 h-8 text-accent-primary mb-4" />
-            <h3 className="font-serif text-xl font-semibold text-text-primary mb-2">
-              LinkedIn is your best channel
-            </h3>
-            <p className="text-sm text-text-secondary leading-relaxed">
-              Your LinkedIn outreach is booking{" "}
-              <strong className="text-text-primary">2.4x more meetings</strong> than email this month.
-              We've shifted 60% of your outreach there automatically.
-            </p>
-          </div>
-
-          {/* Warm Replies */}
-          <div className="glass-surface rounded-xl overflow-hidden">
-            <div className="flex items-center gap-3 p-5 border-b border-border-subtle">
-              <span className="px-3 py-1 rounded-full text-sm font-bold bg-status-success text-white">
-                {warmReplies.length}
-              </span>
-              <h3 className="font-serif font-semibold text-text-primary">Warm replies to review</h3>
-            </div>
-            <div className="divide-y divide-border-subtle">
-              {warmReplies.map((reply, idx) => (
-                <div key={idx} className="flex items-center gap-3 p-4">
-                  <div className="w-10 h-10 rounded-full bg-bg-elevated flex items-center justify-center text-text-muted font-semibold text-sm">
-                    {reply.initials}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-text-primary">
-                      {reply.name} • {reply.company}
-                    </p>
-                    <p className="text-xs text-text-secondary truncate">{reply.preview}</p>
-                  </div>
-                  <button className="px-4 py-2 rounded-lg text-sm font-medium gradient-premium text-white hover:opacity-90 transition-opacity">
-                    Reply
-                  </button>
+            {/* Week Ahead */}
+            <GlassCard className="p-0 overflow-hidden">
+              <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
+                <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+                  <Calendar className="w-5 h-5 text-amber" strokeWidth={1.5} />
+                  Week Ahead
                 </div>
-              ))}
-            </div>
+                <Link href="/calendar" className="text-sm text-amber hover:underline">
+                  Full Calendar →
+                </Link>
+              </div>
+              <div className="px-6 py-4">
+                {mockWeekAhead.map((meeting) => (
+                  <div key={meeting.id} className="flex items-center gap-4 py-3.5 border-b border-border-subtle last:border-0">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-text-primary">{meeting.type}</div>
+                      <div className="text-sm text-text-secondary mt-0.5">{meeting.contact} • {meeting.company}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-amber font-mono">{meeting.datetime}</div>
+                      {meeting.dealValue && <div className="text-xs text-text-muted font-mono">{meeting.dealValue}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
+
+            {/* Warm Replies */}
+            <GlassCard className="p-0 overflow-hidden">
+              <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
+                <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+                  <MessageSquare className="w-5 h-5 text-amber" strokeWidth={1.5} />
+                  Warm Replies
+                </div>
+                <Link href="/replies" className="text-sm text-amber hover:underline">
+                  See All →
+                </Link>
+              </div>
+              <div className="px-6 py-4">
+                {mockWarmReplies.map((reply) => (
+                  <div key={reply.id} className="py-3.5 border-b border-border-subtle last:border-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber to-amber-light flex items-center justify-center text-bg-void text-xs font-semibold">
+                          {reply.contact.split(' ').map(n => n[0]).join('')}
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-text-primary">{reply.contact}</div>
+                          <div className="text-xs text-text-muted">{reply.company}</div>
+                        </div>
+                      </div>
+                      <span className="text-xs font-mono text-text-muted">
+                        {reply.time}
+                      </span>
+                    </div>
+                    <p className="text-sm text-text-secondary line-clamp-2 italic">{reply.quote}</p>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
           </div>
         </div>
       </div>

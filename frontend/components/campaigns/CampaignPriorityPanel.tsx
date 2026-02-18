@@ -150,7 +150,7 @@ function ProcessingState() {
 function SuccessState({ onViewCampaigns }: { onViewCampaigns?: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
-      <CheckCircle className="h-10 w-10 text-green-500 mb-4" />
+      <CheckCircle className="h-10 w-10 text-amber mb-4" />
       <h3 className="text-lg font-medium mb-2">Campaigns ready!</h3>
       <p className="text-sm text-muted-foreground mb-6">
         Your priorities have been updated.

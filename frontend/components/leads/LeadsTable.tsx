@@ -173,7 +173,7 @@ export function LeadsTable({ leads, onLeadClick, className }: LeadsTableProps) {
                   <div className="flex items-center gap-3.5">
                     <div
                       className={cn(
-                        'w-11 h-11 rounded-[10px] flex items-center justify-center text-white font-semibold text-sm flex-shrink-0',
+                        'w-11 h-11 rounded-[10px] flex items-center justify-center text-text-primary font-semibold text-sm flex-shrink-0',
                         avatarGradients[lead.tier]
                       )}
                     >

@@ -40,7 +40,7 @@ const channelConfig: Record<ActivityChannel, { icon: typeof Mail; bgColor: strin
 
 export function ActivityFeed({ activities }: ActivityFeedProps) {
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+    <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm">
       {/* Header with Live badge */}
       <div className="px-6 py-4 border-b border-[#E2E8F0] flex items-center justify-between">
         <h2 className="text-sm font-semibold text-[#64748B] uppercase tracking-wider">

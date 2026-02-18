@@ -102,9 +102,9 @@ export default function NewCampaignPage() {
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                       currentStep > step.id
-                        ? "bg-status-success text-white"
+                        ? "bg-status-success text-text-primary"
                         : currentStep === step.id
-                        ? "gradient-premium text-white shadow-lg"
+                        ? "gradient-premium text-text-primary shadow-lg"
                         : "bg-bg-elevated text-text-muted border-2 border-border-default"
                     }`}
                     style={
@@ -199,7 +199,7 @@ export default function NewCampaignPage() {
                           >
                             <Icon
                               className={`w-6 h-6 ${
-                                isSelected ? "text-white" : "text-text-muted"
+                                isSelected ? "text-text-primary" : "text-text-muted"
                               }`}
                             />
                           </div>
@@ -331,7 +331,7 @@ export default function NewCampaignPage() {
             <button
               onClick={handleNext}
               disabled={currentStep === STEPS.length}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-white gradient-premium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-text-primary gradient-premium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {currentStep === STEPS.length ? "Create Campaign" : "Continue"}
               <ArrowRight className="w-4 h-4" />

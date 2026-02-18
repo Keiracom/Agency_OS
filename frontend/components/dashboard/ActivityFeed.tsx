@@ -244,16 +244,16 @@ const getActivityIcon = (type: ActivityType) => {
 
 const getActivityStyles = (type: ActivityType) => {
   const styleMap: Record<ActivityType, { bg: string; text: string; glow: string }> = {
-    email_sent: { bg: "bg-blue-500/20", text: "text-blue-400", glow: "shadow-blue-500/20" },
-    email_opened: { bg: "bg-cyan-500/20", text: "text-cyan-400", glow: "shadow-cyan-500/20" },
+    email_sent: { bg: "bg-bg-elevated/20", text: "text-text-secondary", glow: "shadow-amber/20" },
+    email_opened: { bg: "bg-amber/20", text: "text-amber", glow: "shadow-amber/20" },
     email_clicked: { bg: "bg-indigo-500/20", text: "text-indigo-400", glow: "shadow-indigo-500/20" },
-    email_replied: { bg: "bg-emerald-500/20", text: "text-emerald-400", glow: "shadow-emerald-500/20" },
-    linkedin_connection: { bg: "bg-sky-500/20", text: "text-sky-400", glow: "shadow-sky-500/20" },
-    linkedin_message: { bg: "bg-sky-500/20", text: "text-sky-400", glow: "shadow-sky-500/20" },
-    voice_call: { bg: "bg-purple-500/20", text: "text-purple-400", glow: "shadow-purple-500/20" },
+    email_replied: { bg: "bg-amber/20", text: "text-amber", glow: "shadow-amber/20" },
+    linkedin_connection: { bg: "bg-amber/20", text: "text-amber", glow: "shadow-amber/20" },
+    linkedin_message: { bg: "bg-amber/20", text: "text-amber", glow: "shadow-amber/20" },
+    voice_call: { bg: "bg-amber/20", text: "text-amber", glow: "shadow-amber/20" },
     meeting_booked: { bg: "bg-amber-500/20", text: "text-amber-400", glow: "shadow-amber-500/20" },
-    sms_sent: { bg: "bg-teal-500/20", text: "text-teal-400", glow: "shadow-teal-500/20" },
-    sms_replied: { bg: "bg-green-500/20", text: "text-green-400", glow: "shadow-green-500/20" },
+    sms_sent: { bg: "bg-amber/20", text: "text-amber", glow: "shadow-amber/20" },
+    sms_replied: { bg: "bg-amber/20", text: "text-amber", glow: "shadow-amber/20" },
   };
   return styleMap[type];
 };
@@ -261,9 +261,9 @@ const getActivityStyles = (type: ActivityType) => {
 const getStatusIcon = (status: ActivityStatus) => {
   switch (status) {
     case "success":
-      return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />;
+      return <CheckCircle2 className="w-3.5 h-3.5 text-amber" />;
     case "failed":
-      return <XCircle className="w-3.5 h-3.5 text-red-400" />;
+      return <XCircle className="w-3.5 h-3.5 text-amber" />;
     case "pending":
       return (
         <div className="w-3.5 h-3.5 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
@@ -289,7 +289,7 @@ function DetailModal({ activity, onClose }: DetailModalProps) {
       onClick={onClose}
     >
       <div
-        className="bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl shadow-black/40 w-full max-w-md mx-4 overflow-hidden"
+        className="bg-bg-void/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl shadow-black/40 w-full max-w-md mx-4 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -301,8 +301,8 @@ function DetailModal({ activity, onClose }: DetailModalProps) {
               {getActivityIcon(activity.type)}
             </div>
             <div>
-              <h3 className="text-white font-semibold">{activity.title}</h3>
-              <p className="text-xs text-slate-400 flex items-center gap-1">
+              <h3 className="text-text-primary font-semibold">{activity.title}</h3>
+              <p className="text-xs text-text-secondary flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {formatTimestamp(activity.timestamp)}
               </p>
@@ -310,54 +310,54 @@ function DetailModal({ activity, onClose }: DetailModalProps) {
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-bg-surface/10 transition-colors"
           >
-            <X className="w-5 h-5 text-slate-400" />
+            <X className="w-5 h-5 text-text-secondary" />
           </button>
         </div>
 
         {/* Content */}
         <div className="px-5 py-4 space-y-4">
           {/* Contact Info */}
-          <div className="bg-white/5 rounded-lg p-4 border border-white/5">
-            <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
+          <div className="bg-bg-surface/5 rounded-lg p-4 border border-white/5">
+            <h4 className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-2">
               Contact
             </h4>
             <div className="space-y-1.5">
-              <p className="text-white font-medium">{activity.contactName}</p>
+              <p className="text-text-primary font-medium">{activity.contactName}</p>
               {activity.contactCompany && (
-                <p className="text-sm text-slate-300">{activity.contactCompany}</p>
+                <p className="text-sm text-text-secondary">{activity.contactCompany}</p>
               )}
               {activity.contactEmail && (
-                <p className="text-sm text-slate-400">{activity.contactEmail}</p>
+                <p className="text-sm text-text-secondary">{activity.contactEmail}</p>
               )}
             </div>
           </div>
 
           {/* Activity Details */}
           <div>
-            <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
+            <h4 className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-2">
               Details
             </h4>
-            <p className="text-slate-200">{activity.description}</p>
+            <p className="text-text-secondary">{activity.description}</p>
           </div>
 
           {/* Metadata */}
           {activity.metadata && Object.keys(activity.metadata).length > 0 && (
             <div>
-              <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
+              <h4 className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-2">
                 Additional Info
               </h4>
               <div className="grid grid-cols-2 gap-2">
                 {Object.entries(activity.metadata).map(([key, value]) => (
                   <div
                     key={key}
-                    className="bg-white/5 rounded-lg px-3 py-2 border border-white/5"
+                    className="bg-bg-surface/5 rounded-lg px-3 py-2 border border-white/5"
                   >
-                    <span className="text-xs text-slate-400 capitalize">
+                    <span className="text-xs text-text-secondary capitalize">
                       {key.replace(/_/g, " ")}
                     </span>
-                    <p className="text-sm text-white">{String(value)}</p>
+                    <p className="text-sm text-text-primary">{String(value)}</p>
                   </div>
                 ))}
               </div>
@@ -368,9 +368,9 @@ function DetailModal({ activity, onClose }: DetailModalProps) {
           <div className="flex items-center justify-between pt-2">
             <div className="flex items-center gap-2">
               {getStatusIcon(activity.status)}
-              <span className="text-sm text-slate-300 capitalize">{activity.status}</span>
+              <span className="text-sm text-text-secondary capitalize">{activity.status}</span>
             </div>
-            <button className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 transition-colors">
+            <button className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-amber-light transition-colors">
               View Full Record
               <ExternalLink className="w-3.5 h-3.5" />
             </button>
@@ -398,9 +398,9 @@ function ActivityItem({ activity, onClick }: ActivityItemProps) {
       onClick={onClick}
       className={`
         group flex items-center gap-3 px-4 py-3 
-        hover:bg-white/5 cursor-pointer transition-all duration-200
+        hover:bg-bg-surface/5 cursor-pointer transition-all duration-200
         border-b border-white/5 last:border-b-0
-        ${activity.isNew ? "animate-pulse-once bg-white/[0.03]" : ""}
+        ${activity.isNew ? "animate-pulse-once bg-bg-surface/[0.03]" : ""}
       `}
     >
       {/* Icon */}
@@ -418,28 +418,28 @@ function ActivityItem({ activity, onClick }: ActivityItemProps) {
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-white truncate">
+          <p className="text-sm font-medium text-text-primary truncate">
             {activity.contactName}
           </p>
           {activity.contactCompany && (
-            <span className="text-xs text-slate-500 truncate hidden sm:inline">
+            <span className="text-xs text-text-muted truncate hidden sm:inline">
               · {activity.contactCompany}
             </span>
           )}
           {activity.isNew && (
-            <span className="flex-shrink-0 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 rounded">
+            <span className="flex-shrink-0 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-amber/20 text-amber rounded">
               New
             </span>
           )}
         </div>
-        <p className="text-xs text-slate-400 truncate mt-0.5">
+        <p className="text-xs text-text-secondary truncate mt-0.5">
           {activity.title}: {activity.description}
         </p>
       </div>
 
       {/* Timestamp & Status */}
       <div className="flex-shrink-0 flex items-center gap-2">
-        <span className="text-[11px] text-slate-500 tabular-nums">
+        <span className="text-[11px] text-text-muted tabular-nums">
           {formatTimestamp(activity.timestamp)}
         </span>
         {getStatusIcon(activity.status)}
@@ -529,14 +529,14 @@ export function ActivityFeed({
     <>
       <div
         className={`
-          bg-slate-900/40 backdrop-blur-md rounded-xl 
+          bg-bg-void/40 backdrop-blur-md rounded-xl 
           border border-white/10 shadow-xl shadow-black/20
           overflow-hidden flex flex-col
           ${className}
         `}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-slate-900/60">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-bg-void/60">
           <div className="flex items-center gap-3">
             {/* Live Indicator */}
             <div className="flex items-center gap-2">
@@ -544,17 +544,17 @@ export function ActivityFeed({
                 <div className="w-2 h-2 rounded-full bg-amber-500" />
               ) : (
                 <div className="relative w-2 h-2">
-                  <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75" />
-                  <span className="relative block w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="absolute inset-0 rounded-full bg-amber animate-ping opacity-75" />
+                  <span className="relative block w-2 h-2 rounded-full bg-amber" />
                 </div>
               )}
-              <span className="text-xs font-semibold text-white uppercase tracking-wider">
+              <span className="text-xs font-semibold text-text-primary uppercase tracking-wider">
                 {isDemo ? "Demo" : "Live"} Activity
               </span>
             </div>
 
             {/* Activity Counter */}
-            <span className="text-[10px] text-slate-500 bg-white/5 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] text-text-muted bg-bg-surface/5 px-2 py-0.5 rounded-full">
               {liveCount} in last 5m
             </span>
           </div>
@@ -567,8 +567,8 @@ export function ActivityFeed({
               transition-all duration-200
               ${
                 isPaused
-                  ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
-                  : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+                  ? "bg-amber/20 text-amber hover:bg-amber/30"
+                  : "bg-bg-surface/5 text-text-secondary hover:bg-bg-surface/10 hover:text-text-primary"
               }
             `}
           >
@@ -602,8 +602,8 @@ export function ActivityFeed({
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-2 border-t border-white/10 bg-slate-900/60">
-          <p className="text-[10px] text-slate-500 text-center">
+        <div className="px-4 py-2 border-t border-white/10 bg-bg-void/60">
+          <p className="text-[10px] text-text-muted text-center">
             {activities.length} total activities · {isPaused ? "Paused" : "Auto-updating"}
           </p>
         </div>

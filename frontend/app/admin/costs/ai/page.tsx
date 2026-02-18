@@ -45,7 +45,7 @@ export default function AdminAISpendPage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <AlertCircle className="h-12 w-12 text-amber mx-auto mb-4" />
           <p className="text-lg font-medium">Failed to load AI spend data</p>
           <p className="text-muted-foreground">Please try refreshing the page</p>
         </div>

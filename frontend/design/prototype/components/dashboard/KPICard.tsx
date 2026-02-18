@@ -44,7 +44,7 @@ export function KPICard({
   const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : null;
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm p-6">
+    <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] shadow-sm p-6">
       {/* Header row: label + icon */}
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-medium text-[#64748B]">{label}</span>

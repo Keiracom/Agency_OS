@@ -157,7 +157,7 @@ export function ReplyDetail({
   const ChannelIcon = channelInfo.icon;
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-bg-surface">
       {/* Header Section */}
       <div className="px-6 py-4 border-b border-[#E2E8F0]">
         {/* Lead Info Row */}
@@ -257,7 +257,7 @@ export function ReplyDetail({
                   className={`p-3 rounded-lg ${
                     message.sender === "agency"
                       ? "bg-[#DBEAFE] ml-4"
-                      : "bg-white border border-[#E2E8F0] mr-4"
+                      : "bg-bg-surface border border-[#E2E8F0] mr-4"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
@@ -296,7 +296,7 @@ export function ReplyDetail({
             <div className="bg-[#F5F3FF] rounded-xl p-4 border border-[#DDD6FE]">
               <div className="flex items-center gap-2 mb-3">
                 <div className="p-1.5 bg-[#8B5CF6] rounded-lg">
-                  <Sparkles className="h-4 w-4 text-white" />
+                  <Sparkles className="h-4 w-4 text-text-primary" />
                 </div>
                 <span className="text-sm font-semibold text-[#7C3AED]">
                   AI Suggested Response
@@ -319,14 +319,14 @@ export function ReplyDetail({
           <div className="flex items-center gap-2">
             <button
               onClick={onReply}
-              className="flex items-center gap-2 px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white font-medium rounded-lg transition-colors shadow-lg shadow-blue-500/25"
+              className="flex items-center gap-2 px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-text-primary font-medium rounded-lg transition-colors shadow-lg shadow-amber/25"
             >
               <Reply className="h-4 w-4" />
               <span>Reply</span>
             </button>
             <button
               onClick={onForward}
-              className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-[#F1F5F9] text-[#64748B] font-medium rounded-lg border border-[#E2E8F0] transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-bg-surface hover:bg-[#F1F5F9] text-[#64748B] font-medium rounded-lg border border-[#E2E8F0] transition-colors"
             >
               <Forward className="h-4 w-4" />
               <span>Forward</span>
@@ -335,7 +335,7 @@ export function ReplyDetail({
 
           <button
             onClick={onArchive}
-            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-[#F1F5F9] text-[#64748B] font-medium rounded-lg border border-[#E2E8F0] transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-bg-surface hover:bg-[#F1F5F9] text-[#64748B] font-medium rounded-lg border border-[#E2E8F0] transition-colors"
           >
             <Archive className="h-4 w-4" />
             <span>Archive</span>

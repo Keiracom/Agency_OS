@@ -35,9 +35,9 @@ export interface Conversation {
 // Intent badge styles
 export const intentStyles: Record<IntentType, { bg: string; text: string; label: string }> = {
   interested: { bg: 'bg-emerald-50', text: 'text-emerald-600', label: 'Interested' },
-  meeting: { bg: 'bg-violet-100', text: 'text-violet-600', label: 'Meeting Booked' },
+  meeting: { bg: 'bg-violet-100', text: 'text-amber', label: 'Meeting Booked' },
   future: { bg: 'bg-amber-100', text: 'text-amber-600', label: 'Future Interest' },
-  'not-interested': { bg: 'bg-slate-100', text: 'text-slate-500', label: 'Not Interested' },
+  'not-interested': { bg: 'bg-slate-100', text: 'text-text-muted', label: 'Not Interested' },
 };
 
 // Mock conversations (from HTML prototype)

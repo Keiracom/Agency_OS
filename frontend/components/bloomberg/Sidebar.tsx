@@ -65,12 +65,12 @@ export function BloombergSidebar() {
     <aside className="fixed left-0 top-0 bottom-0 w-60 bg-[#12121A] border-r border-[#2A2A3A] z-50 flex flex-col">
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-5">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#7C3AED] to-[#9D5CFF] flex items-center justify-center shadow-lg shadow-purple-500/20">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#7C3AED] to-[#9D5CFF] flex items-center justify-center shadow-lg shadow-amber/20">
           <svg viewBox="0 0 36 36" fill="none" className="w-5 h-5">
             <path d="M10 18L15 23L26 12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
-        <span className="text-lg font-bold text-white">Agency OS</span>
+        <span className="text-lg font-bold text-text-primary">Agency OS</span>
       </div>
 
       {/* Navigation */}
@@ -92,7 +92,7 @@ export function BloombergSidebar() {
                     flex items-center gap-3 px-5 py-3 mx-0 text-sm font-medium transition-all
                     ${active 
                       ? "bg-[#7C3AED]/10 text-[#9D5CFF] border-r-2 border-[#7C3AED]" 
-                      : "text-[#A0A0B0] hover:bg-[#1A1A24] hover:text-white"
+                      : "text-[#A0A0B0] hover:bg-[#1A1A24] hover:text-text-primary"
                     }
                   `}
                 >

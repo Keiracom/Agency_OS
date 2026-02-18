@@ -1,8 +1,8 @@
 # SKILL INDEX — Agency OS
 
 **Purpose:** Master index of all skills available for Claude Code agents.  
-**Location:** `C:\AI\Agency_OS\skills\`  
-**Last Updated:** January 5, 2026
+**Location:** `/home/elliotbot/clawd/skills/`  
+**Last Updated:** February 17, 2026
 
 ---
 
@@ -30,6 +30,28 @@ Skills are structured documentation that agents read before executing tasks. The
 - Success criteria
 
 **Usage:** All agents read the relevant SKILL.md before starting any related task.
+
+---
+
+## Enrichment Skills (Siege Waterfall)
+
+Skills for the 5-tier enrichment waterfall. Created CEO Directive #031 (Feb 2026).
+
+| Skill | Location | Purpose | Status |
+|-------|----------|---------|--------|
+| **ABN Lookup** | `skills/enrichment/abn-lookup/` | Tier 1: Australian Business Register | ✅ Working |
+| **Bright Data LinkedIn** | `skills/enrichment/brightdata-linkedin/` | Tier 1.5: LinkedIn company enrichment | ✅ Working |
+| **Bright Data GMB** | `skills/enrichment/brightdata-gmb/` | Tier 2: Google Maps SERP (replaces DIY scraper) | ✅ Working |
+| **Hunter Verify** | `skills/enrichment/hunter-verify/` | Tier 3: Email discovery & verification | ✅ Working |
+
+**Quick test all:**
+```bash
+cd /home/elliotbot/clawd && source .venv/bin/activate
+python skills/enrichment/abn-lookup/test.py
+python skills/enrichment/brightdata-linkedin/test.py
+python skills/enrichment/brightdata-gmb/test.py
+python skills/enrichment/hunter-verify/test.py
+```
 
 ---
 

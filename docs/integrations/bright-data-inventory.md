@@ -239,5 +239,130 @@ curl -H "Authorization: Bearer $API_KEY" \
 
 ---
 
+## Siege Waterfall v2 Architecture (Directive #023)
+
+### Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           PHASE 1: DISCOVERY                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   Mode A (ABN-First)          Mode B (Maps-First)       Mode C (Parallel)   │
+│   ─────────────────           ─────────────────         ────────────────    │
+│   Campaign Config             Campaign Config           Both modes          │
+│         ↓                           ↓                   run together        │
+│   ABN API Search              SERP Google Maps          Deduplicate on      │
+│   (FREE)                      ($0.0015/req)             ABN + fuzzy name    │
+│         ↓                           ↓                                       │
+│   Hard Filters:               ABN Lookup                                    │
+│   - Active only               (reverse verify)                              │
+│   - No trusts/funds                                                         │
+│   - GST registered                                                          │
+│         ↓                           ↓                                       │
+│   Qualified ABN Records       GMB Data + ABN                                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          PHASE 2: ENRICHMENT                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   Tier 1: ABN API ──────────────────────────────────────────── FREE         │
+│   └── Entity data, ASIC names, GST, state                                   │
+│                              │                                              │
+│   Tier 1.5a: SERP Maps ─────┼───────────────────────────── $0.0015/req      │
+│   └── Phone, website, address, rating, reviews                              │
+│                              │                                              │
+│   Tier 1.5b: SERP LinkedIn ─┼───────────────────────────── $0.0015/req      │
+│   └── site:linkedin.com/company "{name}" {location}                         │
+│   └── Returns LinkedIn company URL                                          │
+│                              │                                              │
+│   Tier 2: LinkedIn Company ─┼───────────────────────────── $0.0015/rec      │
+│   └── Dataset: gd_l1vikfnt1wgvvqz95w                                        │
+│   └── Returns: employees[], updates[], industry, size                       │
+│                              │                                              │
+│                     ════════════════════════════                            │
+│                     ║  PRE-ALS GATE: Score ≥ 30 ║                           │
+│                     ════════════════════════════                            │
+│                              │                                              │
+│   Tier 2.5: LinkedIn Profile ┼──────────────────────────── $0.0015/rec      │
+│   └── Dataset: gd_l1viktl72bvl7bjuj0                                        │
+│   └── Decision maker enrichment from Tier 2 employees[]                     │
+│                              │                                              │
+│   Tier 3: Hunter.io ────────┼───────────────────────────── $0.012/rec       │
+│   └── Domain → verified email                                               │
+│                              │                                              │
+│                     ════════════════════════════                            │
+│                     ║  HOT GATE: ALS ≥ 85        ║                          │
+│                     ════════════════════════════                            │
+│                              │                                              │
+│   Tier 5: Kaspr ────────────┴───────────────────────────── $0.45/rec        │
+│   └── Direct mobile + personal email (HOT leads only)                       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           PHASE 3: SCORING (ALS)                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   Component        Points    New Data Source            Signal              │
+│   ─────────────────────────────────────────────────────────────────────     │
+│   Company Fit        25      LinkedIn industries,       Industry match,     │
+│                              company_size, specialties  employee count      │
+│                                                                             │
+│   Authority          25      LinkedIn employees[]       Owner/CEO/Director  │
+│                              → title matching           identification      │
+│                                                                             │
+│   Timing             15      LinkedIn updates[]         "#hiring" in posts  │
+│                              → hiring posts             = active growth     │
+│                                                                             │
+│   Data Quality       20      Multiple verified sources  More tiers = higher │
+│                                                                             │
+│   Engagement         15      Email opens, replies       Existing signals    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Cost Model (AUD per lead)
+
+| Tier | Hot (≥85) | Warm (60-84) | Cool (35-59) | Cold (30-34) |
+|------|-----------|--------------|--------------|--------------|
+| ABN API | $0.000 | $0.000 | $0.000 | $0.000 |
+| SERP Maps | $0.0015 | $0.0015 | $0.0015 | $0.0015 |
+| SERP LinkedIn | $0.0015 | $0.0015 | $0.0015 | $0.0015 |
+| LinkedIn Company | $0.0015 | $0.0015 | $0.0015 | $0.0015 |
+| LinkedIn Profile | $0.0015 | $0.0015 | $0.0015 | $0.0015 |
+| Hunter.io | $0.012 | $0.012 | $0.012 | $0.012 |
+| Kaspr | $0.45 | — | — | — |
+| **Total** | **$0.468** | **$0.018** | **$0.018** | **$0.018** |
+
+### Key Constants
+
+```python
+DATASET_IDS = {
+    "linkedin_company": "gd_l1vikfnt1wgvvqz95w",
+    "linkedin_people": "gd_l1viktl72bvl7bjuj0", 
+    "linkedin_jobs": "gd_lpfll7v5hcqtkxl6l"
+}
+
+SERP_ZONE = "serp_api1"
+PRE_ALS_GATE = 30
+HOT_THRESHOLD = 85
+```
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `src/integrations/bright_data_client.py` | Unified SERP + Scrapers API client |
+| `src/enrichment/discovery_modes.py` | Mode A/B/C discovery logic |
+| `src/enrichment/waterfall_v2.py` | Full Phase 1→2→3 pipeline |
+
+---
+
 **Document Status:** SSOT Verified  
-**Last Test:** 2026-02-16T05:05 UTC
+**Last Test:** 2026-02-16T05:05 UTC  
+**Architecture:** Directive #023 (2026-02-16)

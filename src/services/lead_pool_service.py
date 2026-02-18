@@ -19,6 +19,7 @@ This service manages the platform-wide lead pool where all leads
 are stored with full enrichment data before being assigned to clients.
 """
 
+import logging
 from typing import Any
 from uuid import UUID
 
@@ -26,6 +27,9 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.exceptions import NotFoundError, ValidationError
+from src.services.icp_filter_service import get_icp_filter_service
+
+logger = logging.getLogger(__name__)
 
 
 class LeadPoolService:
@@ -46,21 +50,29 @@ class LeadPoolService:
         """
         self.session = session
 
-    async def create_or_update(self, lead_data: dict[str, Any]) -> dict[str, Any]:
+    async def create_or_update(
+        self, 
+        lead_data: dict[str, Any],
+        skip_icp_check: bool = False,
+    ) -> dict[str, Any]:
         """
         Create a new lead or update existing one.
 
         Uses email as the primary dedup key. If a lead with the same
         email exists, updates the existing record. Otherwise, creates new.
 
+        CEO DIRECTIVE #044: All new leads must pass ICP qualification.
+        Non-ICP leads are rejected with ValidationError.
+
         Args:
             lead_data: Lead data from enrichment (Apollo format)
+            skip_icp_check: Only set True for migrations/admin (default False)
 
         Returns:
             Created/updated lead pool record
 
         Raises:
-            ValidationError: If email is missing
+            ValidationError: If email is missing or lead fails ICP check
         """
         email = lead_data.get("email")
         if not email:
@@ -69,6 +81,21 @@ class LeadPoolService:
         # Normalize email
         email = email.lower().strip()
         lead_data["email"] = email
+
+        # CEO DIRECTIVE #044: ICP FILTER GATE
+        # Reject non-ICP leads before they enter the pool
+        if not skip_icp_check:
+            icp_service = get_icp_filter_service()
+            is_qualified, details = icp_service.is_icp_qualified(lead_data)
+            
+            if not is_qualified:
+                company = lead_data.get("company_name", "Unknown")
+                reason = details.get("reason", "Failed ICP check")
+                logger.warning(f"ICP REJECT: {company} — {reason}")
+                raise ValidationError(
+                    message=f"Lead rejected: not ICP qualified. {reason}",
+                    details=details,
+                )
 
         # Check for existing lead by email or apollo_id
         existing = await self.get_by_email(email)

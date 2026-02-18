@@ -26,13 +26,15 @@ DESCRIPTION: Moved from Apollo SPOF (deprecated) to ABN + GMB + Hunter.io + Zero
 
 import asyncio
 import logging
+import os
 from dataclasses import dataclass, field
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
+import httpx
 from fuzzywuzzy import fuzz
 from sqlalchemy import select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,9 +52,13 @@ logger = logging.getLogger(__name__)
 class VerificationTier(str, Enum):
     """Waterfall verification tiers."""
     ABN_SEED = "abn_seed"
+    ASIC_VERIFY = "asic_verify"  # T1.25: ABR SearchByASIC for registered_name
     GMB_SCRAPER = "gmb_scraper"
     HUNTER_IO = "hunter_io"
     ZEROBOUNCE = "zerobounce"
+    DM0_LINKEDIN_DISCOVERY = "dm0_linkedin_discovery"  # T-DM0: DataForSEO SERP + Bright Data Profile
+    DM2_LINKEDIN_POSTS = "dm2_linkedin_posts"  # T-DM2: Bright Data LinkedIn Posts (gd_lyy3tktm25m4avu764)
+    DM3_X_POSTS = "dm3_x_posts"  # T-DM3: Bright Data X/Twitter Posts (gd_lwxkxvnf1cynvib9co)
 
 
 class MatchConfidence(str, Enum):
@@ -67,10 +73,37 @@ class MatchConfidence(str, Enum):
 # Cost per operation in AUD (2026 pricing)
 COSTS_AUD = {
     VerificationTier.ABN_SEED: Decimal("0.00"),      # Free (data.gov.au)
+    VerificationTier.ASIC_VERIFY: Decimal("0.00"),   # Free (ABR SearchByASIC) - CEO Directive #039
     VerificationTier.GMB_SCRAPER: Decimal("0.0062"), # GMB scraper (Apify deprecated)
     VerificationTier.HUNTER_IO: Decimal("0.0064"),   # Hunter.io Growth tier
     VerificationTier.ZEROBOUNCE: Decimal("0.010"),   # ZeroBounce average
+    VerificationTier.DM0_LINKEDIN_DISCOVERY: Decimal("0.0165"),  # DataForSEO SERP ($0.009) + Bright Data Profile ($0.0015 × 5 max)
+    VerificationTier.DM2_LINKEDIN_POSTS: Decimal("0.0015"),  # Bright Data LinkedIn Posts (gd_lyy3tktm25m4avu764)
+    VerificationTier.DM3_X_POSTS: Decimal("0.0030"),  # Bright Data X Posts ($0.0015) + X handle discovery ($0.0015)
 }
+
+# Bright Data Dataset IDs for T-DM2 and T-DM3
+BRIGHTDATA_LINKEDIN_POSTS_DATASET = "gd_lyy3tktm25m4avu764"
+BRIGHTDATA_X_POSTS_DATASET = "gd_lwxkxvnf1cynvib9co"
+
+# T-DM0 Title priority scores for decision maker identification
+DM_TITLE_SCORES = {
+    "founder": 100,
+    "co-founder": 98,
+    "ceo": 95,
+    "chief executive": 95,
+    "managing director": 90,
+    "md": 90,
+    "owner": 80,
+    "director": 85,
+    "principal": 82,
+    "president": 88,
+    "partner": 75,
+}
+
+# DataForSEO configuration
+DATAFORSEO_SERP_COST_AUD = Decimal("0.009")  # Per SERP request
+BRIGHTDATA_PROFILE_COST_AUD = Decimal("0.0015")  # Per profile scrape
 
 # Thresholds
 FUZZY_MATCH_THRESHOLD = 70  # Minimum Levenshtein similarity for match
@@ -97,6 +130,26 @@ class ABNRecord:
     postcode: str
     gst_registered: bool
     acn: Optional[str] = None
+
+
+@dataclass
+class ASICVerifyRecord:
+    """
+    Record from ASIC verification (T1.25).
+    
+    CEO Directive #039: Uses ABR SearchByASIC to get ASIC-registered business name
+    for improved T2 GMB fuzzy matching. Directors[] pending ASIC DSP approval.
+    
+    Source: ABR SearchByASICv201408
+    Cost: $0.00 AUD (FREE)
+    """
+    acn: str
+    registered_name: str  # ASIC-registered business name (clean, official)
+    business_names: list[str]  # All ASIC-registered trading names
+    entity_type: str
+    state: str
+    postcode: str
+    directors: Optional[list[str]] = None  # Pending ASIC DSP approval
 
 
 @dataclass
@@ -136,6 +189,50 @@ class ZeroBounceResult:
 
 
 @dataclass
+class DMCandidate:
+    """
+    Decision Maker candidate from T-DM0 LinkedIn discovery.
+    
+    CEO Directive #040: DataForSEO SERP + Bright Data Profile scraping.
+    """
+    dm_name: str
+    dm_title: str
+    dm_linkedin_url: str
+    company_match_score: int  # Fuzzy match score against registered_name
+    title_score: int  # Title priority score (founder=100, CEO=95, MD=90, director=85, owner=80)
+
+
+@dataclass
+class LinkedInPost:
+    """
+    LinkedIn post from T-DM2.
+    
+    CEO Directive #041: Social intelligence for outreach personalisation.
+    """
+    post_text: str
+    date_posted: str
+    num_likes: int
+    num_comments: int
+    hashtags: list[str] = field(default_factory=list)
+    topic: Optional[str] = None  # AI-inferred topic from content
+
+
+@dataclass
+class XPost:
+    """
+    X/Twitter post from T-DM3.
+    
+    CEO Directive #041: Social intelligence for outreach personalisation.
+    """
+    content: str
+    date_posted: str
+    likes: int
+    reposts: int
+    views: int = 0
+    hashtags: list[str] = field(default_factory=list)
+
+
+@dataclass
 class LineageStep:
     """Single step in the enrichment lineage."""
     step_number: int
@@ -154,13 +251,28 @@ class WaterfallResult:
     """Complete result from waterfall verification."""
     lead_id: UUID
     abn: Optional[str]
-    email: Optional[str]
-    phone: Optional[str]
-    website: Optional[str]
+    acn: Optional[str] = None  # T1.25: ASIC company number
+    asic_registered_name: Optional[str] = None  # T1.25: Clean registered name for fuzzy match
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    website: Optional[str] = None
     
     # Match quality
-    abn_gmb_match_confidence: MatchConfidence
-    abn_gmb_match_score: int
+    abn_gmb_match_confidence: MatchConfidence = MatchConfidence.NO_MATCH
+    abn_gmb_match_score: int = 0
+    
+    # T-DM0: Decision Maker discovery (CEO Directive #040)
+    dm_name: Optional[str] = None
+    dm_title: Optional[str] = None
+    dm_linkedin_url: Optional[str] = None
+    dm_candidates_found: int = 0
+    
+    # T-DM2: LinkedIn Posts (CEO Directive #041)
+    dm_linkedin_posts: list[LinkedInPost] = field(default_factory=list)
+    
+    # T-DM3: X Posts (CEO Directive #041)
+    dm_x_handle: Optional[str] = None
+    dm_x_posts: list[XPost] = field(default_factory=list)
     
     # Verification
     verification_method: str  # single_source, dual_match, triple_check
@@ -306,11 +418,184 @@ class WaterfallVerificationWorker(BaseEngine):
             else:
                 errors.append("ABN seed: No match found for company name/postcode")
             
+            # ========== TIER 1.25: ASIC VERIFICATION (CEO Directive #039) ==========
+            # Purpose: Get ASIC-registered business name for improved T2 fuzzy matching
+            asic_result: Optional[ASICVerifyRecord] = None
+            gmb_search_name = company_name  # Default: use original company name
+            
+            if abn_result and abn_result.acn:
+                step_number += 1
+                start_time = datetime.utcnow()
+                
+                asic_result = await self._tier1_25_asic_verify(
+                    acn=abn_result.acn,
+                    abn=abn_result.abn,
+                )
+                
+                latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                asic_success = asic_result is not None
+                
+                step = LineageStep(
+                    step_number=step_number,
+                    step_type="verification",
+                    source_name=VerificationTier.ASIC_VERIFY.value,
+                    cost_aud=COSTS_AUD[VerificationTier.ASIC_VERIFY],
+                    success=asic_success,
+                    data_added=["registered_name", "acn"] if asic_success else [],
+                    latency_ms=latency_ms,
+                )
+                lineage.append(step)
+                total_cost += step.cost_aud
+                
+                if asic_result:
+                    result.acn = asic_result.acn
+                    result.asic_registered_name = asic_result.registered_name
+                    # Use ASIC registered_name for GMB search (cleaner, improves match rate)
+                    gmb_search_name = asic_result.registered_name
+                    logger.info(
+                        f"T1.25: Using ASIC registered_name '{gmb_search_name}' for T2 GMB search "
+                        f"(was: '{company_name}')"
+                    )
+                else:
+                    errors.append(f"T1.25: ASIC verify failed for ACN {abn_result.acn}")
+            
+            # ========== TIER DM-0: LINKEDIN DECISION MAKER DISCOVERY (CEO Directive #040) ==========
+            # Runs if we have a registered_name from T1.25 (or fallback to company_name)
+            dm_search_name = gmb_search_name  # Use ASIC registered_name if available
+            
+            step_number += 1
+            start_time = datetime.utcnow()
+            
+            dm_candidate = await self._tier_dm0_linkedin_discovery(
+                registered_name=dm_search_name,
+                state=state,
+            )
+            
+            latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            dm0_success = dm_candidate is not None
+            
+            # Calculate actual cost (SERP + profiles scraped)
+            dm0_cost = DATAFORSEO_SERP_COST_AUD  # Always pay for SERP
+            if dm0_success:
+                # Add Bright Data profile costs (estimated at 1 per successful result)
+                dm0_cost += BRIGHTDATA_PROFILE_COST_AUD
+            
+            step = LineageStep(
+                step_number=step_number,
+                step_type="enrichment",
+                source_name=VerificationTier.DM0_LINKEDIN_DISCOVERY.value,
+                cost_aud=dm0_cost,
+                success=dm0_success,
+                data_added=["dm_name", "dm_title", "dm_linkedin_url"] if dm0_success else [],
+                latency_ms=latency_ms,
+            )
+            lineage.append(step)
+            total_cost += dm0_cost
+            
+            if dm_candidate:
+                result.dm_name = dm_candidate.dm_name
+                result.dm_title = dm_candidate.dm_title
+                result.dm_linkedin_url = dm_candidate.dm_linkedin_url
+                result.dm_candidates_found = 1
+                result.verification_sources.append("dm0_linkedin")
+                logger.info(
+                    f"T-DM0: Found DM '{dm_candidate.dm_name}' ({dm_candidate.dm_title}) "
+                    f"for '{dm_search_name}'"
+                )
+            else:
+                errors.append(f"T-DM0: No decision maker found for '{dm_search_name}'")
+            
+            # ========== TIER DM-2: LINKEDIN POSTS (CEO Directive #041) ==========
+            # Only run for ALS ≥70 leads with a valid LinkedIn URL
+            should_get_social = current_als_score >= 70 or force_full_waterfall
+            
+            if should_get_social and result.dm_linkedin_url:
+                step_number += 1
+                start_time = datetime.utcnow()
+                
+                linkedin_posts = await self._tier_dm2_linkedin_posts(
+                    dm_linkedin_url=result.dm_linkedin_url,
+                    max_posts=5,
+                )
+                
+                latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                dm2_success = len(linkedin_posts) > 0
+                
+                step = LineageStep(
+                    step_number=step_number,
+                    step_type="enrichment",
+                    source_name=VerificationTier.DM2_LINKEDIN_POSTS.value,
+                    cost_aud=COSTS_AUD[VerificationTier.DM2_LINKEDIN_POSTS],
+                    success=dm2_success,
+                    data_added=["dm_linkedin_posts"] if dm2_success else [],
+                    latency_ms=latency_ms,
+                )
+                lineage.append(step)
+                total_cost += step.cost_aud
+                
+                if linkedin_posts:
+                    result.dm_linkedin_posts = linkedin_posts
+                    result.verification_sources.append("dm2_linkedin_posts")
+                    logger.info(
+                        f"T-DM2: Retrieved {len(linkedin_posts)} LinkedIn posts for "
+                        f"'{result.dm_name}'"
+                    )
+                else:
+                    errors.append(f"T-DM2: No LinkedIn posts found for '{result.dm_name}'")
+            
+            # ========== TIER DM-3: X POSTS (CEO Directive #041) ==========
+            # Only run for ALS ≥70 leads — discover X handle first
+            if should_get_social:
+                step_number += 1
+                start_time = datetime.utcnow()
+                
+                # Discover X handle from website or SERP
+                x_handle = await self._discover_x_handle(
+                    website=result.website,
+                    dm_name=result.dm_name or "",
+                    registered_name=gmb_search_name,
+                )
+                
+                x_posts = []
+                if x_handle:
+                    result.dm_x_handle = x_handle
+                    x_posts = await self._tier_dm3_x_posts(
+                        x_handle=x_handle,
+                        max_posts=5,
+                    )
+                
+                latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                dm3_success = len(x_posts) > 0
+                
+                step = LineageStep(
+                    step_number=step_number,
+                    step_type="enrichment",
+                    source_name=VerificationTier.DM3_X_POSTS.value,
+                    cost_aud=COSTS_AUD[VerificationTier.DM3_X_POSTS],
+                    success=dm3_success,
+                    data_added=["dm_x_handle", "dm_x_posts"] if dm3_success else (["dm_x_handle"] if x_handle else []),
+                    latency_ms=latency_ms,
+                )
+                lineage.append(step)
+                total_cost += step.cost_aud
+                
+                if x_posts:
+                    result.dm_x_posts = x_posts
+                    result.verification_sources.append("dm3_x_posts")
+                    logger.info(
+                        f"T-DM3: Retrieved {len(x_posts)} X posts for '{x_handle}'"
+                    )
+                elif x_handle:
+                    errors.append(f"T-DM3: X handle found ({x_handle}) but no posts retrieved")
+                else:
+                    errors.append(f"T-DM3: No X handle found for '{result.dm_name}'")
+            
             # ========== TIER 2: GMB SCRAPER ==========
             step_number += 1
             start_time = datetime.utcnow()
             
-            gmb_result = await self._tier2_gmb_scraper(company_name, postcode, state)
+            # Use ASIC registered_name if available, otherwise original company_name
+            gmb_result = await self._tier2_gmb_scraper(gmb_search_name, postcode, state)
             
             latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
             
@@ -323,8 +608,9 @@ class WaterfallVerificationWorker(BaseEngine):
             if gmb_result:
                 if abn_result:
                     # Both ABN and GMB found — attempt fuzzy match
+                    # CEO Directive #039: Use ASIC registered_name if available
                     match_confidence, match_score = self._match_abn_gmb(
-                        abn_result, gmb_result
+                        abn_result, gmb_result, asic_result
                     )
                     
                     if match_confidence != MatchConfidence.NO_MATCH:
@@ -338,8 +624,9 @@ class WaterfallVerificationWorker(BaseEngine):
                         data_added = ["phone", "website", "address", "rating"]
                     else:
                         # ABN and GMB don't match — CRITICAL ERROR HANDLING
+                        match_name = asic_result.registered_name if asic_result else abn_result.legal_name
                         errors.append(
-                            f"ABN↔GMB mismatch: ABN name '{abn_result.legal_name}' "
+                            f"ABN↔GMB mismatch: '{match_name}' "
                             f"vs GMB name '{gmb_result.business_name}' "
                             f"(score: {match_score}%, threshold: {FUZZY_MATCH_THRESHOLD}%)"
                         )
@@ -631,6 +918,704 @@ class WaterfallVerificationWorker(BaseEngine):
             logger.error(f"ABN lookup failed: {e}")
             return None
     
+    async def _tier1_25_asic_verify(
+        self,
+        acn: Optional[str],
+        abn: Optional[str],
+    ) -> Optional[ASICVerifyRecord]:
+        """
+        Tier 1.25: ASIC Business Registry verification via ABR SearchByASIC.
+        
+        CEO Directive #039: Implemented to fix 55% fuzzy match failure.
+        Uses ABR Web Services (SearchByASICv201408) to get ASIC-registered
+        business name for improved T2 GMB matching.
+        
+        Directors[] left null pending ASIC DSP application approval.
+        
+        Args:
+            acn: Australian Company Number from T1 (preferred)
+            abn: Australian Business Number fallback
+            
+        Returns:
+            ASICVerifyRecord with registered_name, or None if lookup fails
+        """
+        if self._abn_client is None:
+            logger.warning("ABN client not configured — skipping T1.25 ASIC verify")
+            return None
+        
+        # Need ACN for ASIC lookup
+        if not acn:
+            logger.info("T1.25: No ACN available — skipping ASIC verify")
+            return None
+        
+        try:
+            # Use ABR SearchByASIC to get ASIC-registered data
+            result = await self._abn_client.search_by_acn(acn)
+            
+            if not result:
+                logger.info(f"T1.25: No ASIC record found for ACN {acn}")
+                return None
+            
+            # Extract registered business name (clean, official)
+            # Priority: business_names (ASIC-registered) > legal_name
+            business_names = result.get("business_names", [])
+            legal_name = result.get("legal_name", "") or result.get("entity_name", "")
+            
+            # Use first ASIC-registered business name if available
+            # These are cleaner for GMB matching (e.g., "Efficient Media" vs "EFFICIENT MEDIA PTY LTD")
+            if business_names and len(business_names) > 0:
+                registered_name = business_names[0]
+            else:
+                # Fallback to legal name, cleaned
+                registered_name = self._clean_company_name(legal_name)
+            
+            logger.info(f"T1.25: ASIC registered_name = '{registered_name}' for ACN {acn}")
+            
+            return ASICVerifyRecord(
+                acn=acn,
+                registered_name=registered_name,
+                business_names=business_names,
+                entity_type=result.get("entity_type", ""),
+                state=result.get("state", ""),
+                postcode=result.get("postcode", ""),
+                directors=None,  # Pending ASIC DSP approval - CEO Directive #039
+            )
+            
+        except Exception as e:
+            logger.error(f"T1.25 ASIC verify failed for ACN {acn}: {e}")
+            return None
+    
+    async def _tier_dm0_linkedin_discovery(
+        self,
+        registered_name: str,
+        state: str = "AU",
+    ) -> Optional[DMCandidate]:
+        """
+        Tier DM-0: LinkedIn Decision Maker Discovery.
+        
+        CEO Directive #040 Part C: Uses DataForSEO SERP to find LinkedIn profiles,
+        then Bright Data to scrape profile details, with local title filtering.
+        
+        Pipeline:
+        1. DataForSEO SERP: site:linkedin.com/in "{registered_name}" founder OR director OR CEO OR owner OR MD
+        2. Extract LinkedIn profile URLs (max 5)
+        3. Bright Data LinkedIn Profile scrape per URL (gd_l1viktl72bvl7bjuj0)
+        4. Local title filter → return top 1 as dm_candidate
+        
+        Args:
+            registered_name: Company name from T1.25 (ASIC registered_name preferred)
+            state: Australian state for location filtering (default: "AU")
+        
+        Returns:
+            DMCandidate with dm_name, dm_title, dm_linkedin_url, or None if not found
+        
+        Cost: ~$0.0165 AUD (DataForSEO SERP $0.009 + up to 5 × Bright Data $0.0015)
+        """
+        import base64
+        
+        # DataForSEO credentials
+        dataforseo_login = os.getenv("DATAFORSEO_LOGIN")
+        dataforseo_password = os.getenv("DATAFORSEO_PASSWORD")
+        brightdata_api_key = os.getenv("BRIGHTDATA_API_KEY")
+        
+        if not dataforseo_login or not dataforseo_password:
+            logger.warning("DataForSEO credentials not set — skipping T-DM0")
+            return None
+        
+        if not brightdata_api_key:
+            logger.warning("BRIGHTDATA_API_KEY not set — skipping T-DM0 profile scraping")
+            return None
+        
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                # ========== STEP 1: DataForSEO SERP Query ==========
+                # Query: site:linkedin.com/in "{registered_name}" founder OR director OR CEO OR owner OR MD
+                search_query = f'site:linkedin.com/in "{registered_name}" founder OR director OR CEO OR owner OR MD'
+                
+                # DataForSEO location codes: 2036 = Australia
+                serp_payload = [{
+                    "keyword": search_query,
+                    "location_code": 2036,
+                    "language_code": "en",
+                    "depth": 10,
+                }]
+                
+                # Basic auth for DataForSEO
+                auth_str = f"{dataforseo_login}:{dataforseo_password}"
+                auth_bytes = base64.b64encode(auth_str.encode()).decode()
+                
+                serp_resp = await client.post(
+                    "https://api.dataforseo.com/v3/serp/google/organic/live/advanced",
+                    headers={
+                        "Authorization": f"Basic {auth_bytes}",
+                        "Content-Type": "application/json",
+                    },
+                    json=serp_payload,
+                )
+                serp_resp.raise_for_status()
+                serp_data = serp_resp.json()
+                
+                # Extract items from SERP response
+                items = []
+                if (serp_data.get("tasks") and 
+                    serp_data["tasks"][0].get("result") and
+                    serp_data["tasks"][0]["result"][0].get("items")):
+                    items = serp_data["tasks"][0]["result"][0]["items"]
+                
+                if not items:
+                    logger.info(f"T-DM0: No LinkedIn profiles found for '{registered_name}'")
+                    return None
+                
+                # ========== STEP 2: Extract LinkedIn Profile URLs (max 5) ==========
+                linkedin_urls = []
+                for item in items[:10]:  # Check top 10 SERP results
+                    url = item.get("url", "")
+                    if "linkedin.com/in/" in url and url not in linkedin_urls:
+                        linkedin_urls.append(url)
+                    if len(linkedin_urls) >= 5:
+                        break
+                
+                if not linkedin_urls:
+                    logger.info(f"T-DM0: No linkedin.com/in/ URLs in SERP results for '{registered_name}'")
+                    return None
+                
+                logger.info(f"T-DM0: Found {len(linkedin_urls)} LinkedIn profile URLs for '{registered_name}'")
+                
+                # ========== STEP 3: Bright Data LinkedIn Profile Scrape ==========
+                # Dataset: gd_l1viktl72bvl7bjuj0 (LinkedIn People)
+                profiles = []
+                
+                for profile_url in linkedin_urls:
+                    try:
+                        # Trigger scrape
+                        trigger_resp = await client.post(
+                            "https://api.brightdata.com/datasets/v3/trigger",
+                            params={
+                                "dataset_id": "gd_l1viktl72bvl7bjuj0",
+                                "include_errors": "true",
+                            },
+                            headers={
+                                "Authorization": f"Bearer {brightdata_api_key}",
+                                "Content-Type": "application/json",
+                            },
+                            json=[{"url": profile_url}],
+                        )
+                        trigger_resp.raise_for_status()
+                        snapshot_id = trigger_resp.json().get("snapshot_id")
+                        
+                        if not snapshot_id:
+                            logger.warning(f"T-DM0: No snapshot_id for {profile_url}")
+                            continue
+                        
+                        # Poll for completion (max 2 minutes per profile)
+                        profile_data = None
+                        for _ in range(24):  # 24 × 5s = 120s
+                            await asyncio.sleep(5)
+                            status_resp = await client.get(
+                                f"https://api.brightdata.com/datasets/v3/progress/{snapshot_id}",
+                                headers={"Authorization": f"Bearer {brightdata_api_key}"},
+                            )
+                            status_data = status_resp.json()
+                            if status_data.get("status") == "ready":
+                                # Download result
+                                data_resp = await client.get(
+                                    f"https://api.brightdata.com/datasets/v3/snapshot/{snapshot_id}",
+                                    params={"format": "json"},
+                                    headers={"Authorization": f"Bearer {brightdata_api_key}"},
+                                )
+                                result_list = data_resp.json()
+                                if result_list and len(result_list) > 0:
+                                    profile_data = result_list[0]
+                                break
+                            elif status_data.get("status") == "failed":
+                                logger.warning(f"T-DM0: Bright Data scrape failed for {profile_url}")
+                                break
+                        
+                        if profile_data and "error" not in profile_data:
+                            profiles.append({
+                                "url": profile_url,
+                                "data": profile_data,
+                            })
+                    
+                    except Exception as e:
+                        logger.warning(f"T-DM0: Error scraping {profile_url}: {e}")
+                        continue
+                
+                if not profiles:
+                    logger.info(f"T-DM0: No valid profiles scraped for '{registered_name}'")
+                    return None
+                
+                # ========== STEP 4: Local Title Filter ==========
+                candidates = []
+                
+                for profile in profiles:
+                    data = profile["data"]
+                    name = data.get("name", "") or data.get("full_name", "")
+                    title = data.get("headline", "") or data.get("occupation", "") or ""
+                    current_company = data.get("current_company_name", "") or ""
+                    
+                    # Check for experience entries with current company
+                    experiences = data.get("experience", []) or []
+                    for exp in experiences:
+                        if exp.get("is_current"):
+                            current_company = exp.get("company_name", "") or current_company
+                            title = exp.get("title", "") or title
+                            break
+                    
+                    # Calculate company match score
+                    company_match_score = fuzz.token_set_ratio(
+                        registered_name.lower(), 
+                        current_company.lower()
+                    )
+                    
+                    # Calculate title score based on DM_TITLE_SCORES
+                    title_score = 0
+                    title_lower = title.lower()
+                    for dm_title, score in DM_TITLE_SCORES.items():
+                        if dm_title in title_lower:
+                            title_score = max(title_score, score)
+                    
+                    # Only consider if company match is reasonable (>60%) and has DM title
+                    if company_match_score >= 60 and title_score > 0:
+                        candidates.append(DMCandidate(
+                            dm_name=name,
+                            dm_title=title,
+                            dm_linkedin_url=profile["url"],
+                            company_match_score=company_match_score,
+                            title_score=title_score,
+                        ))
+                
+                if not candidates:
+                    logger.info(f"T-DM0: No DM candidates passed title filter for '{registered_name}'")
+                    return None
+                
+                # Sort by title_score (desc), then company_match_score (desc)
+                candidates.sort(key=lambda c: (c.title_score, c.company_match_score), reverse=True)
+                
+                best_candidate = candidates[0]
+                logger.info(
+                    f"T-DM0: Found DM candidate '{best_candidate.dm_name}' ({best_candidate.dm_title}) "
+                    f"for '{registered_name}' — company_match={best_candidate.company_match_score}%, "
+                    f"title_score={best_candidate.title_score}"
+                )
+                
+                return best_candidate
+        
+        except httpx.HTTPStatusError as e:
+            logger.error(f"T-DM0 HTTP error: {e.response.status_code} - {e.response.text[:200]}")
+            return None
+        except Exception as e:
+            logger.error(f"T-DM0 failed for '{registered_name}': {e}")
+            return None
+    
+    async def _tier_dm2_linkedin_posts(
+        self,
+        dm_linkedin_url: str,
+        max_posts: int = 5,
+    ) -> list[LinkedInPost]:
+        """
+        Tier DM-2: LinkedIn Posts scraping.
+        
+        CEO Directive #041 Part A: Uses Bright Data LinkedIn Posts API to fetch
+        recent posts from the decision maker's LinkedIn profile.
+        
+        Dataset: gd_lyy3tktm25m4avu764 (LinkedIn Posts)
+        
+        Args:
+            dm_linkedin_url: LinkedIn profile URL from T-DM0
+            max_posts: Maximum posts to retrieve (default 5)
+        
+        Returns:
+            List of LinkedInPost objects (up to max_posts)
+        
+        Cost: ~$0.0015 AUD per request
+        """
+        brightdata_api_key = os.getenv("BRIGHTDATA_API_KEY")
+        
+        if not brightdata_api_key:
+            logger.warning("BRIGHTDATA_API_KEY not set — skipping T-DM2")
+            return []
+        
+        if not dm_linkedin_url:
+            logger.info("T-DM2: No LinkedIn URL provided — skipping")
+            return []
+        
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                # ========== Step 1: Trigger LinkedIn Posts collection ==========
+                # CEO Directive #043: Use discover_by=profile_url mode (VALIDATED 2026-02-18)
+                # Note: Date filtering NOT supported in API - must filter locally
+                trigger_resp = await client.post(
+                    "https://api.brightdata.com/datasets/v3/trigger",
+                    params={
+                        "dataset_id": BRIGHTDATA_LINKEDIN_POSTS_DATASET,
+                        "type": "discover_new",
+                        "discover_by": "profile_url",
+                        "include_errors": "true",
+                    },
+                    headers={
+                        "Authorization": f"Bearer {brightdata_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=[{"url": dm_linkedin_url}],
+                )
+                trigger_resp.raise_for_status()
+                snapshot_id = trigger_resp.json().get("snapshot_id")
+                
+                if not snapshot_id:
+                    logger.warning(f"T-DM2: No snapshot_id returned for {dm_linkedin_url}")
+                    return []
+                
+                logger.info(f"T-DM2: Triggered LinkedIn Posts scrape: {snapshot_id}")
+                
+                # ========== Step 2: Poll for completion (max 2 minutes) ==========
+                for _ in range(24):  # 24 × 5s = 120s
+                    await asyncio.sleep(5)
+                    status_resp = await client.get(
+                        f"https://api.brightdata.com/datasets/v3/progress/{snapshot_id}",
+                        headers={"Authorization": f"Bearer {brightdata_api_key}"},
+                    )
+                    status_data = status_resp.json()
+                    
+                    if status_data.get("status") == "ready":
+                        break
+                    elif status_data.get("status") == "failed":
+                        logger.warning(f"T-DM2: Scrape failed for {dm_linkedin_url}")
+                        return []
+                else:
+                    logger.warning(f"T-DM2: Timeout waiting for {dm_linkedin_url}")
+                    return []
+                
+                # ========== Step 3: Download results ==========
+                data_resp = await client.get(
+                    f"https://api.brightdata.com/datasets/v3/snapshot/{snapshot_id}",
+                    params={"format": "json"},
+                    headers={"Authorization": f"Bearer {brightdata_api_key}"},
+                )
+                results = data_resp.json()
+                
+                if not results:
+                    logger.info(f"T-DM2: No posts found for {dm_linkedin_url}")
+                    return []
+                
+                # ========== Step 4: Parse posts with 90-day local filter ==========
+                # CEO Directive #043: Date filter not supported in API, filter locally
+                cutoff_date = datetime.utcnow() - timedelta(days=90)
+                
+                posts = []
+                for post_data in results:
+                    if "error" in post_data:
+                        continue
+                    
+                    # Parse and filter by date (90-day window)
+                    date_str = post_data.get("date_posted", "")
+                    if date_str:
+                        try:
+                            # Handle ISO format dates
+                            post_date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                            if post_date.replace(tzinfo=None) < cutoff_date:
+                                continue  # Skip posts older than 90 days
+                        except (ValueError, TypeError):
+                            pass  # Keep posts with unparseable dates
+                    
+                    # Extract topic from hashtags or infer from content
+                    hashtags = post_data.get("hashtags", []) or []
+                    topic = hashtags[0] if hashtags else None
+                    
+                    posts.append(LinkedInPost(
+                        post_text=post_data.get("post_text", "") or post_data.get("title", ""),
+                        date_posted=date_str,
+                        num_likes=post_data.get("num_likes", 0) or 0,
+                        num_comments=post_data.get("num_comments", 0) or 0,
+                        hashtags=hashtags,
+                        topic=topic,
+                    ))
+                    
+                    if len(posts) >= max_posts:
+                        break
+                
+                logger.info(
+                    f"T-DM2: Retrieved {len(posts)} LinkedIn posts within 90 days "
+                    f"(filtered from {len(results)} total) for {dm_linkedin_url}"
+                )
+                return posts
+        
+        except httpx.HTTPStatusError as e:
+            logger.error(f"T-DM2 HTTP error: {e.response.status_code} - {e.response.text[:200]}")
+            return []
+        except Exception as e:
+            logger.error(f"T-DM2 failed for '{dm_linkedin_url}': {e}")
+            return []
+    
+    async def _discover_x_handle(
+        self,
+        website: Optional[str],
+        dm_name: str,
+        registered_name: str,
+    ) -> Optional[str]:
+        """
+        Discover X/Twitter handle via website scraping or SERP fallback.
+        
+        CEO Directive #041 Part B: X handle discovery in order of preference:
+        1. Scrape company website for social links (open_website from T2)
+        2. SERP fallback: site:x.com "{dm_name}" "{registered_name}"
+        
+        Returns:
+            X handle (e.g., "@username") or None if not found
+        """
+        import re
+        
+        # ========== Method 1: Scrape website for X/Twitter links ==========
+        if website:
+            try:
+                async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                    resp = await client.get(website)
+                    html = resp.text
+                    
+                    # Look for X/Twitter profile links
+                    patterns = [
+                        r'https?://(?:www\.)?(?:twitter|x)\.com/([a-zA-Z0-9_]+)',
+                        r'href=["\']https?://(?:www\.)?(?:twitter|x)\.com/([a-zA-Z0-9_]+)["\']',
+                    ]
+                    
+                    for pattern in patterns:
+                        matches = re.findall(pattern, html, re.IGNORECASE)
+                        # Filter out common non-profile paths
+                        valid_handles = [
+                            m for m in matches 
+                            if m.lower() not in ('share', 'intent', 'home', 'search', 'explore', 'i', 'hashtag')
+                        ]
+                        if valid_handles:
+                            handle = valid_handles[0]
+                            logger.info(f"T-DM3: Found X handle @{handle} from website {website}")
+                            return f"@{handle}"
+            except Exception as e:
+                logger.debug(f"T-DM3: Website scrape failed for {website}: {e}")
+        
+        # ========== Method 2: SERP fallback ==========
+        import base64
+        
+        dataforseo_login = os.getenv("DATAFORSEO_LOGIN")
+        dataforseo_password = os.getenv("DATAFORSEO_PASSWORD")
+        
+        if not dataforseo_login or not dataforseo_password:
+            logger.warning("DataForSEO credentials not set — skipping X handle SERP discovery")
+            return None
+        
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                # Query: site:x.com "{dm_name}" "{registered_name}"
+                search_query = f'site:x.com "{dm_name}" "{registered_name}"'
+                
+                serp_payload = [{
+                    "keyword": search_query,
+                    "location_code": 2036,  # Australia
+                    "language_code": "en",
+                    "depth": 5,
+                }]
+                
+                auth_str = f"{dataforseo_login}:{dataforseo_password}"
+                auth_bytes = base64.b64encode(auth_str.encode()).decode()
+                
+                serp_resp = await client.post(
+                    "https://api.dataforseo.com/v3/serp/google/organic/live/advanced",
+                    headers={
+                        "Authorization": f"Basic {auth_bytes}",
+                        "Content-Type": "application/json",
+                    },
+                    json=serp_payload,
+                )
+                serp_resp.raise_for_status()
+                serp_data = serp_resp.json()
+                
+                # Extract X profile URLs
+                items = []
+                if (serp_data.get("tasks") and 
+                    serp_data["tasks"][0].get("result") and
+                    serp_data["tasks"][0]["result"][0].get("items")):
+                    items = serp_data["tasks"][0]["result"][0]["items"]
+                
+                for item in items[:5]:
+                    url = item.get("url", "")
+                    # Match x.com/username or twitter.com/username
+                    match = re.search(r'https?://(?:www\.)?(?:twitter|x)\.com/([a-zA-Z0-9_]+)', url)
+                    if match:
+                        handle = match.group(1)
+                        if handle.lower() not in ('share', 'intent', 'home', 'search', 'explore', 'i', 'hashtag'):
+                            logger.info(f"T-DM3: Found X handle @{handle} via SERP for {dm_name}")
+                            return f"@{handle}"
+                
+                logger.info(f"T-DM3: No X handle found for {dm_name} at {registered_name}")
+                return None
+        
+        except Exception as e:
+            logger.error(f"T-DM3 X handle SERP discovery failed: {e}")
+            return None
+    
+    async def _tier_dm3_x_posts(
+        self,
+        x_handle: str,
+        max_posts: int = 5,
+    ) -> list[XPost]:
+        """
+        Tier DM-3: X/Twitter Posts scraping.
+        
+        CEO Directive #041 Part B: Uses Bright Data X/Twitter Posts API to fetch
+        recent posts from the discovered X handle.
+        
+        Dataset: gd_lwxkxvnf1cynvib9co (X/Twitter Posts - discover by profile)
+        
+        Args:
+            x_handle: X handle (with or without @)
+            max_posts: Maximum posts to retrieve (default 5)
+        
+        Returns:
+            List of XPost objects (up to max_posts)
+        
+        Cost: ~$0.0015 AUD per request
+        """
+        brightdata_api_key = os.getenv("BRIGHTDATA_API_KEY")
+        
+        if not brightdata_api_key:
+            logger.warning("BRIGHTDATA_API_KEY not set — skipping T-DM3")
+            return []
+        
+        if not x_handle:
+            logger.info("T-DM3: No X handle provided — skipping")
+            return []
+        
+        # Normalize handle (remove @ if present)
+        handle = x_handle.lstrip("@")
+        profile_url = f"https://x.com/{handle}"
+        
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                # ========== Step 1: Trigger X Posts collection ==========
+                # CEO Directive #043: Use discover_by=profile_url mode (VALIDATED 2026-02-18)
+                # Note: Date filtering NOT supported in API - must filter locally
+                trigger_resp = await client.post(
+                    "https://api.brightdata.com/datasets/v3/trigger",
+                    params={
+                        "dataset_id": BRIGHTDATA_X_POSTS_DATASET,
+                        "type": "discover_new",
+                        "discover_by": "profile_url",
+                        "include_errors": "true",
+                    },
+                    headers={
+                        "Authorization": f"Bearer {brightdata_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=[{"url": profile_url}],
+                )
+                trigger_resp.raise_for_status()
+                snapshot_id = trigger_resp.json().get("snapshot_id")
+                
+                if not snapshot_id:
+                    logger.warning(f"T-DM3: No snapshot_id returned for {profile_url}")
+                    return []
+                
+                logger.info(f"T-DM3: Triggered X Posts scrape: {snapshot_id}")
+                
+                # ========== Step 2: Poll for completion (max 2 minutes) ==========
+                for _ in range(24):  # 24 × 5s = 120s
+                    await asyncio.sleep(5)
+                    status_resp = await client.get(
+                        f"https://api.brightdata.com/datasets/v3/progress/{snapshot_id}",
+                        headers={"Authorization": f"Bearer {brightdata_api_key}"},
+                    )
+                    status_data = status_resp.json()
+                    
+                    if status_data.get("status") == "ready":
+                        break
+                    elif status_data.get("status") == "failed":
+                        logger.warning(f"T-DM3: Scrape failed for {profile_url}")
+                        return []
+                else:
+                    logger.warning(f"T-DM3: Timeout waiting for {profile_url}")
+                    return []
+                
+                # ========== Step 3: Download results ==========
+                data_resp = await client.get(
+                    f"https://api.brightdata.com/datasets/v3/snapshot/{snapshot_id}",
+                    params={"format": "json"},
+                    headers={"Authorization": f"Bearer {brightdata_api_key}"},
+                )
+                results = data_resp.json()
+                
+                if not results:
+                    logger.info(f"T-DM3: No posts found for {profile_url}")
+                    return []
+                
+                # ========== Step 4: Parse posts with 90-day local filter ==========
+                # CEO Directive #043: Date filter not supported in API, filter locally
+                cutoff_date = datetime.utcnow() - timedelta(days=90)
+                
+                posts = []
+                for post_data in results:
+                    if "error" in post_data:
+                        continue
+                    
+                    # Parse and filter by date (90-day window)
+                    date_str = post_data.get("date_posted", "")
+                    if date_str:
+                        try:
+                            post_date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                            if post_date.replace(tzinfo=None) < cutoff_date:
+                                continue  # Skip posts older than 90 days
+                        except (ValueError, TypeError):
+                            pass  # Keep posts with unparseable dates
+                    
+                    # Extract hashtags from description
+                    import re
+                    description = post_data.get("description", "") or ""
+                    hashtags = re.findall(r'#(\w+)', description)
+                    
+                    posts.append(XPost(
+                        content=description,
+                        date_posted=date_str,
+                        likes=post_data.get("likes", 0) or 0,
+                        reposts=post_data.get("reposts", 0) or 0,
+                        views=post_data.get("views", 0) or 0,
+                        hashtags=hashtags,
+                    ))
+                    
+                    if len(posts) >= max_posts:
+                        break
+                
+                logger.info(
+                    f"T-DM3: Retrieved {len(posts)} X posts within 90 days "
+                    f"(filtered from {len(results)} total) for {profile_url}"
+                )
+                return posts
+        
+        except httpx.HTTPStatusError as e:
+            logger.error(f"T-DM3 HTTP error: {e.response.status_code} - {e.response.text[:200]}")
+            return []
+        except Exception as e:
+            logger.error(f"T-DM3 failed for '{x_handle}': {e}")
+            return []
+    
+    def _clean_company_name(self, name: str) -> str:
+        """
+        Clean company name for better fuzzy matching.
+        
+        Removes common suffixes like PTY LTD, LIMITED, etc.
+        Normalizes case to title case.
+        """
+        if not name:
+            return ""
+        
+        import re
+        
+        # Remove common Australian company suffixes
+        suffixes_pattern = r'\s+(PTY\.?\s*LTD\.?|LIMITED|LTD\.?|PROPRIETARY|INC\.?|INCORPORATED|HOLDINGS?|GROUP|AUSTRALIA|AUST\.?|AU)\s*$'
+        cleaned = re.sub(suffixes_pattern, '', name.upper(), flags=re.IGNORECASE)
+        
+        # Normalize to title case
+        cleaned = cleaned.strip().title()
+        
+        return cleaned
+    
     async def _tier2_gmb_scraper(
         self,
         company_name: str,
@@ -638,43 +1623,122 @@ class WaterfallVerificationWorker(BaseEngine):
         state: str,
     ) -> Optional[GMBRecord]:
         """
-        Tier 2: Scrape Google Maps for business info.
+        Tier 2: Scrape Google Maps for business info via Bright Data.
         
-        Uses GMB Scraper (Apify deprecated FCO-003).
+        CEO Directive #036: Replaced deprecated Apify with Bright Data Web Scraper API.
+        Dataset: gd_m8ebnr0q2qlklc02fz (Google Maps Business Information)
+        Method: discover_by=location
         """
-        if self._gmb_scraper is None:
-            logger.warning("GMB scraper not configured — skipping Tier 2")
+        api_key = os.getenv("BRIGHTDATA_API_KEY")
+        if not api_key:
+            logger.warning("BRIGHTDATA_API_KEY not set — skipping Tier 2")
             return None
         
+        # Map state code to city for better search results
+        state_city_map = {
+            "NSW": "Sydney", "VIC": "Melbourne", "QLD": "Brisbane",
+            "WA": "Perth", "SA": "Adelaide", "TAS": "Hobart",
+            "ACT": "Canberra", "NT": "Darwin",
+        }
+        city = state_city_map.get(state, state)
+        
         try:
-            # Search by company name + location
-            results = await self._gmb_scraper.search(
-                query=f"{company_name} {postcode} {state} Australia",
-                limit=5,
-            )
-            
-            if results and len(results) > 0:
-                # Find best match by name similarity
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                # Step 1: Trigger collection
+                trigger_resp = await client.post(
+                    "https://api.brightdata.com/datasets/v3/trigger",
+                    params={
+                        "dataset_id": "gd_m8ebnr0q2qlklc02fz",
+                        "type": "discover_new",
+                        "discover_by": "location",
+                        "notify": "false",
+                        "include_errors": "true",
+                    },
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={"input": [{"country": "AU", "keyword": f"{company_name} {city}", "lat": ""}]},
+                )
+                trigger_resp.raise_for_status()
+                snapshot_id = trigger_resp.json().get("snapshot_id")
+                if not snapshot_id:
+                    logger.error("Bright Data trigger returned no snapshot_id")
+                    return None
+                
+                logger.info(f"Bright Data T2 triggered: {snapshot_id}")
+                
+                # Step 2: Poll for completion (max 3 minutes)
+                for _ in range(18):  # 18 x 10s = 180s
+                    await asyncio.sleep(10)
+                    status_resp = await client.get(
+                        f"https://api.brightdata.com/datasets/v3/progress/{snapshot_id}",
+                        headers={"Authorization": f"Bearer {api_key}"},
+                    )
+                    status_data = status_resp.json()
+                    if status_data.get("status") == "ready":
+                        break
+                else:
+                    logger.warning(f"Bright Data T2 timeout for {company_name}")
+                    return None
+                
+                # Step 3: Fetch results
+                data_resp = await client.get(
+                    f"https://api.brightdata.com/datasets/v3/snapshot/{snapshot_id}",
+                    params={"format": "json"},
+                    headers={"Authorization": f"Bearer {api_key}"},
+                )
+                results = data_resp.json()
+                
+                if not results or len(results) == 0:
+                    logger.info(f"Bright Data T2 returned no results for {company_name}")
+                    return None
+                
+                # Step 4: Find best match by fuzzy name similarity
                 best_match = None
                 best_score = 0
                 
                 for r in results:
-                    score = fuzz.ratio(
-                        company_name.lower(),
-                        r.business_name.lower()
-                    )
+                    if "error" in r:
+                        continue
+                    name = r.get("name", "")
+                    score = fuzz.ratio(company_name.lower(), name.lower())
                     if score > best_score:
                         best_score = score
                         best_match = r
                 
-                if best_score >= FUZZY_MATCH_THRESHOLD:
-                    return best_match
-            
+                if best_score < FUZZY_MATCH_THRESHOLD:
+                    logger.info(f"Bright Data T2: best match score {best_score} below threshold for {company_name}")
+                    return None
+                
+                # Step 5: Parse into GMBRecord
+                return GMBRecord(
+                    google_place_id=best_match.get("place_id", ""),
+                    business_name=best_match.get("name", ""),
+                    phone=best_match.get("phone_number"),
+                    website=best_match.get("open_website"),
+                    address=best_match.get("address", ""),
+                    postcode=self._extract_postcode(best_match.get("address", "")),
+                    state=state,
+                    lat=best_match.get("lat", 0.0),
+                    lng=best_match.get("lon", 0.0),
+                    rating=best_match.get("rating"),
+                    review_count=best_match.get("reviews_count", 0) or 0,
+                    categories=best_match.get("all_categories", []),
+                )
+                
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Bright Data T2 HTTP error: {e.response.status_code} - {e.response.text[:200]}")
             return None
-            
         except Exception as e:
-            logger.error(f"GMB scraper failed: {e}")
+            logger.error(f"Bright Data T2 failed: {e}")
             return None
+    
+    def _extract_postcode(self, address: str) -> str:
+        """Extract Australian postcode (4 digits) from address string."""
+        import re
+        match = re.search(r'\b(\d{4})\b', address)
+        return match.group(1) if match else ""
     
     async def _tier3_hunter_io(
         self,
@@ -731,9 +1795,18 @@ class WaterfallVerificationWorker(BaseEngine):
         self,
         abn: ABNRecord,
         gmb: GMBRecord,
+        asic: Optional[ASICVerifyRecord] = None,
     ) -> tuple[MatchConfidence, int]:
         """
         Match ABN record to GMB record using fuzzy matching.
+        
+        CEO Directive #039: Prioritizes ASIC registered_name when available
+        for improved match rates (fixes 55% failure).
+        
+        Args:
+            abn: ABN record from T1
+            gmb: GMB record from T2
+            asic: Optional ASIC verify record from T1.25
         
         Returns:
             Tuple of (MatchConfidence, match_score_percentage)
@@ -747,16 +1820,44 @@ class WaterfallVerificationWorker(BaseEngine):
             except ValueError:
                 return MatchConfidence.NO_MATCH, 0
         
-        # Fuzzy match on business name
-        # Try legal name and all trading names
-        names_to_check = [abn.legal_name] + abn.business_names
+        # Build list of names to check
+        # CEO Directive #039: ASIC registered_name takes priority (cleaner, normalized)
+        names_to_check = []
+        
+        if asic and asic.registered_name:
+            # Priority 1: ASIC registered name (clean, normalized)
+            names_to_check.append(asic.registered_name)
+            # Priority 2: All ASIC business names
+            names_to_check.extend(asic.business_names or [])
+        
+        # Priority 3: ABN legal name and business names (fallback)
+        names_to_check.append(abn.legal_name)
+        names_to_check.extend(abn.business_names)
+        
+        # Also try cleaned version of legal name
+        cleaned_legal = self._clean_company_name(abn.legal_name)
+        if cleaned_legal and cleaned_legal not in names_to_check:
+            names_to_check.append(cleaned_legal)
         
         best_score = 0
+        best_match_name = ""
+        
         for name in names_to_check:
+            if not name:
+                continue
             score = fuzz.ratio(name.lower(), gmb.business_name.lower())
             # Also try token_set_ratio for word order independence
             token_score = fuzz.token_set_ratio(name.lower(), gmb.business_name.lower())
-            best_score = max(best_score, score, token_score)
+            current_best = max(score, token_score)
+            if current_best > best_score:
+                best_score = current_best
+                best_match_name = name
+        
+        # Log the match attempt for debugging
+        logger.debug(
+            f"ABN↔GMB match: best='{best_match_name}' vs GMB='{gmb.business_name}' "
+            f"score={best_score}% (threshold={FUZZY_MATCH_THRESHOLD}%)"
+        )
         
         # Determine confidence level
         if best_score >= 95:

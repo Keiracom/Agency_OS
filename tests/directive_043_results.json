@@ -1,0 +1,68 @@
+{
+  "linkedin_posts": [
+    {
+      "lead": "Wayne Gant",
+      "linkedin_url": "https://www.linkedin.com/in/wayne-gant-32b665209",
+      "success": false,
+      "error": "Trigger failed: 400 - {\"error\":\"Invalid input provided\",\"code\":\"validation_error\",\"type\":\"validation\",\"line\":\"{\\\"url\\\":\\\"https://www.linkedin.com/in/wayne-gant-32b665209\\\",\\\"start_date\\\":\\\"2025-11-20\\\",\\\"end_date\\\":\\\"2026-02-18\\\"}\",\"index\":1,\"errors\":[[\"start_date\",\"This input should not contain a start_date field\"],[\"end_date\",\"This input should not contain a end_date field\"],[\"url\",\"Value should match pattern .*linkedin\\\\.com\\\\/(pulse|posts|feed\\\\/update)(\\\\/[^\\\\s]*)?.*\"]]}",
+      "posts_returned": 0,
+      "posts": [],
+      "oldest_post_date": null,
+      "newest_post_date": null
+    },
+    {
+      "lead": "Darren Costa",
+      "linkedin_url": "https://www.linkedin.com/in/darrendacosta",
+      "success": false,
+      "error": "Trigger failed: 400 - {\"error\":\"Invalid input provided\",\"code\":\"validation_error\",\"type\":\"validation\",\"line\":\"{\\\"url\\\":\\\"https://www.linkedin.com/in/darrendacosta\\\",\\\"start_date\\\":\\\"2025-11-20\\\",\\\"end_date\\\":\\\"2026-02-18\\\"}\",\"index\":1,\"errors\":[[\"start_date\",\"This input should not contain a start_date field\"],[\"end_date\",\"This input should not contain a end_date field\"],[\"url\",\"Value should match pattern .*linkedin\\\\.com\\\\/(pulse|posts|feed\\\\/update)(\\\\/[^\\\\s]*)?.*\"]]}",
+      "posts_returned": 0,
+      "posts": [],
+      "oldest_post_date": null,
+      "newest_post_date": null
+    },
+    {
+      "lead": "Ben L'estrange",
+      "linkedin_url": "https://www.linkedin.com/in/ben-l-estrange-006a2222",
+      "success": false,
+      "error": "Trigger failed: 400 - {\"error\":\"Invalid input provided\",\"code\":\"validation_error\",\"type\":\"validation\",\"line\":\"{\\\"url\\\":\\\"https://www.linkedin.com/in/ben-l-estrange-006a2222\\\",\\\"start_date\\\":\\\"2025-11-20\\\",\\\"end_date\\\":\\\"2026-02-18\\\"}\",\"index\":1,\"errors\":[[\"start_date\",\"This input should not contain a start_date field\"],[\"end_date\",\"This input should not contain a end_date field\"],[\"url\",\"Value should match pattern .*linkedin\\\\.com\\\\/(pulse|posts|feed\\\\/update)(\\\\/[^\\\\s]*)?.*\"]]}",
+      "posts_returned": 0,
+      "posts": [],
+      "oldest_post_date": null,
+      "newest_post_date": null
+    }
+  ],
+  "x_posts": [
+    {
+      "lead": "Wayne Gant",
+      "x_handle": null,
+      "x_handle_source": "not_found",
+      "success": true,
+      "error": "No X handle found",
+      "posts_returned": 0,
+      "posts": []
+    },
+    {
+      "lead": "Darren Costa",
+      "x_handle": null,
+      "x_handle_source": "not_found",
+      "success": true,
+      "error": "No X handle found",
+      "posts_returned": 0,
+      "posts": []
+    },
+    {
+      "lead": "Ben L'estrange",
+      "x_handle": "@rtl_plumbers",
+      "x_handle_source": "website",
+      "success": false,
+      "error": "Trigger failed: 400 - {\"error\":\"Invalid input provided\",\"code\":\"validation_error\",\"type\":\"validation\",\"line\":\"{\\\"url\\\":\\\"https://x.com/rtl_plumbers\\\",\\\"start_date\\\":\\\"11-20-2025\\\",\\\"end_date\\\":\\\"02-18-2026\\\"}\",\"index\":1,\"errors\":[[\"start_date\",\"This input should not contain a start_date field\"],[\"end_date\",\"This input should not contain a end_date field\"],[\"url\",\"Value should match pattern https:\\\\/\\\\/(www\\\\.)?(?:x\\\\.com|twitter\\\\.com)\\\\/(?:[a-zA-Z0-9_]+\\\\/)?status|statuses\\\\/\\\\d+\"]]}",
+      "posts_returned": 0,
+      "posts": []
+    }
+  ],
+  "timestamp": "2026-02-18T01:49:58.627096",
+  "date_range": {
+    "start": "2025-11-20",
+    "end": "2026-02-18"
+  }
+}

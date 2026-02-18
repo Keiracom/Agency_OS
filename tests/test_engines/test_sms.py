@@ -15,9 +15,9 @@ from src.exceptions import DNCRError
 
 
 @pytest.fixture
-def mock_twilio_client():
-    """Mock Twilio client."""
-    class MockTwilioClient:
+def mock_clicksend_client():
+    """Mock ClickSend client."""
+    class MockClickSendClient:
         def __init__(self):
             self.dncr_numbers = set()
 
@@ -32,19 +32,19 @@ def mock_twilio_client():
                 "success": True,
                 "message_sid": f"SM{uuid4().hex[:32]}",
                 "status": "queued",
-                "provider": "twilio",
+                "provider": "clicksend",
             }
 
         async def check_dncr(self, phone_number):
             return phone_number in self.dncr_numbers
 
-    return MockTwilioClient()
+    return MockClickSendClient()
 
 
 @pytest.fixture
-def sms_engine(mock_twilio_client):
+def sms_engine(mock_clicksend_client):
     """Create SMS engine with mock client."""
-    return SMSEngine(twilio_client=mock_twilio_client)
+    return SMSEngine(clicksend_client=mock_clicksend_client)
 
 
 @pytest.fixture
@@ -88,6 +88,9 @@ def mock_lead():
         last_name = "User"
         company = "Test Corp"
         status = LeadStatus.ENRICHED
+        dncr_checked = False
+        dncr_result = None
+        timezone = "Australia/Sydney"
 
     return MockLead()
 
@@ -207,10 +210,10 @@ class TestSMSEngine:
             redis.rate_limiter.check_and_increment = original_check
 
     @pytest.mark.asyncio
-    async def test_send_dncr_rejection(self, sms_engine, mock_db, mock_lead, mock_campaign, mock_twilio_client):
+    async def test_send_dncr_rejection(self, sms_engine, mock_db, mock_lead, mock_campaign, mock_clicksend_client):
         """Test SMS rejected by DNCR check."""
         # Add lead's phone to DNCR list
-        mock_twilio_client.dncr_numbers.add(mock_lead.phone)
+        mock_clicksend_client.dncr_numbers.add(mock_lead.phone)
 
         async def mock_get_lead(db, lead_id):
             return mock_lead
@@ -248,10 +251,10 @@ class TestSMSEngine:
             redis.rate_limiter.check_and_increment = original_check
 
     @pytest.mark.asyncio
-    async def test_send_skip_dncr(self, sms_engine, mock_db, mock_lead, mock_campaign, mock_twilio_client):
+    async def test_send_skip_dncr(self, sms_engine, mock_db, mock_lead, mock_campaign, mock_clicksend_client):
         """Test SMS send with DNCR check skipped."""
         # Add lead's phone to DNCR list
-        mock_twilio_client.dncr_numbers.add(mock_lead.phone)
+        mock_clicksend_client.dncr_numbers.add(mock_lead.phone)
 
         async def mock_get_lead(db, lead_id):
             return mock_lead
@@ -288,7 +291,7 @@ class TestSMSEngine:
             redis.rate_limiter.check_and_increment = original_check
 
     @pytest.mark.asyncio
-    async def test_check_dncr(self, sms_engine, mock_twilio_client):
+    async def test_check_dncr(self, sms_engine, mock_clicksend_client):
         """Test DNCR check method."""
         # Not on DNCR
         result = await sms_engine.check_dncr("+61400000000")
@@ -297,7 +300,7 @@ class TestSMSEngine:
         assert result.data["can_contact"] is True
 
         # On DNCR
-        mock_twilio_client.dncr_numbers.add("+61400999999")
+        mock_clicksend_client.dncr_numbers.add("+61400999999")
         result = await sms_engine.check_dncr("+61400999999")
         assert result.success
         assert result.data["on_dncr"] is True

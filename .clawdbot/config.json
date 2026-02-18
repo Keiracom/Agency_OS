@@ -1,0 +1,14 @@
+{
+  "agents": {
+    "defaults": {
+      "heartbeat": {
+        "every": "24h",
+        "activeHours": {
+          "start": "18:00",
+          "end": "22:00",
+          "timezone": "Australia/Sydney"
+        }
+      }
+    }
+  }
+}

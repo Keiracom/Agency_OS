@@ -56,6 +56,7 @@ class VerificationTier(str, Enum):
     GMB_SCRAPER = "gmb_scraper"
     HUNTER_IO = "hunter_io"
     ZEROBOUNCE = "zerobounce"
+    DM0_LINKEDIN_DISCOVERY = "dm0_linkedin_discovery"  # T-DM0: DataForSEO SERP + Bright Data Profile
 
 
 class MatchConfidence(str, Enum):
@@ -74,7 +75,27 @@ COSTS_AUD = {
     VerificationTier.GMB_SCRAPER: Decimal("0.0062"), # GMB scraper (Apify deprecated)
     VerificationTier.HUNTER_IO: Decimal("0.0064"),   # Hunter.io Growth tier
     VerificationTier.ZEROBOUNCE: Decimal("0.010"),   # ZeroBounce average
+    VerificationTier.DM0_LINKEDIN_DISCOVERY: Decimal("0.0165"),  # DataForSEO SERP ($0.009) + Bright Data Profile ($0.0015 × 5 max)
 }
+
+# T-DM0 Title priority scores for decision maker identification
+DM_TITLE_SCORES = {
+    "founder": 100,
+    "co-founder": 98,
+    "ceo": 95,
+    "chief executive": 95,
+    "managing director": 90,
+    "md": 90,
+    "owner": 80,
+    "director": 85,
+    "principal": 82,
+    "president": 88,
+    "partner": 75,
+}
+
+# DataForSEO configuration
+DATAFORSEO_SERP_COST_AUD = Decimal("0.009")  # Per SERP request
+BRIGHTDATA_PROFILE_COST_AUD = Decimal("0.0015")  # Per profile scrape
 
 # Thresholds
 FUZZY_MATCH_THRESHOLD = 70  # Minimum Levenshtein similarity for match
@@ -160,6 +181,20 @@ class ZeroBounceResult:
 
 
 @dataclass
+class DMCandidate:
+    """
+    Decision Maker candidate from T-DM0 LinkedIn discovery.
+    
+    CEO Directive #040: DataForSEO SERP + Bright Data Profile scraping.
+    """
+    dm_name: str
+    dm_title: str
+    dm_linkedin_url: str
+    company_match_score: int  # Fuzzy match score against registered_name
+    title_score: int  # Title priority score (founder=100, CEO=95, MD=90, director=85, owner=80)
+
+
+@dataclass
 class LineageStep:
     """Single step in the enrichment lineage."""
     step_number: int
@@ -187,6 +222,12 @@ class WaterfallResult:
     # Match quality
     abn_gmb_match_confidence: MatchConfidence = MatchConfidence.NO_MATCH
     abn_gmb_match_score: int = 0
+    
+    # T-DM0: Decision Maker discovery (CEO Directive #040)
+    dm_name: Optional[str] = None
+    dm_title: Optional[str] = None
+    dm_linkedin_url: Optional[str] = None
+    dm_candidates_found: int = 0
     
     # Verification
     verification_method: str  # single_source, dual_match, triple_check
@@ -372,6 +413,52 @@ class WaterfallVerificationWorker(BaseEngine):
                     )
                 else:
                     errors.append(f"T1.25: ASIC verify failed for ACN {abn_result.acn}")
+            
+            # ========== TIER DM-0: LINKEDIN DECISION MAKER DISCOVERY (CEO Directive #040) ==========
+            # Runs if we have a registered_name from T1.25 (or fallback to company_name)
+            dm_search_name = gmb_search_name  # Use ASIC registered_name if available
+            
+            step_number += 1
+            start_time = datetime.utcnow()
+            
+            dm_candidate = await self._tier_dm0_linkedin_discovery(
+                registered_name=dm_search_name,
+                state=state,
+            )
+            
+            latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            dm0_success = dm_candidate is not None
+            
+            # Calculate actual cost (SERP + profiles scraped)
+            dm0_cost = DATAFORSEO_SERP_COST_AUD  # Always pay for SERP
+            if dm0_success:
+                # Add Bright Data profile costs (estimated at 1 per successful result)
+                dm0_cost += BRIGHTDATA_PROFILE_COST_AUD
+            
+            step = LineageStep(
+                step_number=step_number,
+                step_type="enrichment",
+                source_name=VerificationTier.DM0_LINKEDIN_DISCOVERY.value,
+                cost_aud=dm0_cost,
+                success=dm0_success,
+                data_added=["dm_name", "dm_title", "dm_linkedin_url"] if dm0_success else [],
+                latency_ms=latency_ms,
+            )
+            lineage.append(step)
+            total_cost += dm0_cost
+            
+            if dm_candidate:
+                result.dm_name = dm_candidate.dm_name
+                result.dm_title = dm_candidate.dm_title
+                result.dm_linkedin_url = dm_candidate.dm_linkedin_url
+                result.dm_candidates_found = 1
+                result.verification_sources.append("dm0_linkedin")
+                logger.info(
+                    f"T-DM0: Found DM '{dm_candidate.dm_name}' ({dm_candidate.dm_title}) "
+                    f"for '{dm_search_name}'"
+                )
+            else:
+                errors.append(f"T-DM0: No decision maker found for '{dm_search_name}'")
             
             # ========== TIER 2: GMB SCRAPER ==========
             step_number += 1
@@ -766,6 +853,229 @@ class WaterfallVerificationWorker(BaseEngine):
             
         except Exception as e:
             logger.error(f"T1.25 ASIC verify failed for ACN {acn}: {e}")
+            return None
+    
+    async def _tier_dm0_linkedin_discovery(
+        self,
+        registered_name: str,
+        state: str = "AU",
+    ) -> Optional[DMCandidate]:
+        """
+        Tier DM-0: LinkedIn Decision Maker Discovery.
+        
+        CEO Directive #040 Part C: Uses DataForSEO SERP to find LinkedIn profiles,
+        then Bright Data to scrape profile details, with local title filtering.
+        
+        Pipeline:
+        1. DataForSEO SERP: site:linkedin.com/in "{registered_name}" founder OR director OR CEO OR owner OR MD
+        2. Extract LinkedIn profile URLs (max 5)
+        3. Bright Data LinkedIn Profile scrape per URL (gd_l1viktl72bvl7bjuj0)
+        4. Local title filter → return top 1 as dm_candidate
+        
+        Args:
+            registered_name: Company name from T1.25 (ASIC registered_name preferred)
+            state: Australian state for location filtering (default: "AU")
+        
+        Returns:
+            DMCandidate with dm_name, dm_title, dm_linkedin_url, or None if not found
+        
+        Cost: ~$0.0165 AUD (DataForSEO SERP $0.009 + up to 5 × Bright Data $0.0015)
+        """
+        import base64
+        
+        # DataForSEO credentials
+        dataforseo_login = os.getenv("DATAFORSEO_LOGIN")
+        dataforseo_password = os.getenv("DATAFORSEO_PASSWORD")
+        brightdata_api_key = os.getenv("BRIGHTDATA_API_KEY")
+        
+        if not dataforseo_login or not dataforseo_password:
+            logger.warning("DataForSEO credentials not set — skipping T-DM0")
+            return None
+        
+        if not brightdata_api_key:
+            logger.warning("BRIGHTDATA_API_KEY not set — skipping T-DM0 profile scraping")
+            return None
+        
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                # ========== STEP 1: DataForSEO SERP Query ==========
+                # Query: site:linkedin.com/in "{registered_name}" founder OR director OR CEO OR owner OR MD
+                search_query = f'site:linkedin.com/in "{registered_name}" founder OR director OR CEO OR owner OR MD'
+                
+                # DataForSEO location codes: 2036 = Australia
+                serp_payload = [{
+                    "keyword": search_query,
+                    "location_code": 2036,
+                    "language_code": "en",
+                    "depth": 10,
+                }]
+                
+                # Basic auth for DataForSEO
+                auth_str = f"{dataforseo_login}:{dataforseo_password}"
+                auth_bytes = base64.b64encode(auth_str.encode()).decode()
+                
+                serp_resp = await client.post(
+                    "https://api.dataforseo.com/v3/serp/google/organic/live/advanced",
+                    headers={
+                        "Authorization": f"Basic {auth_bytes}",
+                        "Content-Type": "application/json",
+                    },
+                    json=serp_payload,
+                )
+                serp_resp.raise_for_status()
+                serp_data = serp_resp.json()
+                
+                # Extract items from SERP response
+                items = []
+                if (serp_data.get("tasks") and 
+                    serp_data["tasks"][0].get("result") and
+                    serp_data["tasks"][0]["result"][0].get("items")):
+                    items = serp_data["tasks"][0]["result"][0]["items"]
+                
+                if not items:
+                    logger.info(f"T-DM0: No LinkedIn profiles found for '{registered_name}'")
+                    return None
+                
+                # ========== STEP 2: Extract LinkedIn Profile URLs (max 5) ==========
+                linkedin_urls = []
+                for item in items[:10]:  # Check top 10 SERP results
+                    url = item.get("url", "")
+                    if "linkedin.com/in/" in url and url not in linkedin_urls:
+                        linkedin_urls.append(url)
+                    if len(linkedin_urls) >= 5:
+                        break
+                
+                if not linkedin_urls:
+                    logger.info(f"T-DM0: No linkedin.com/in/ URLs in SERP results for '{registered_name}'")
+                    return None
+                
+                logger.info(f"T-DM0: Found {len(linkedin_urls)} LinkedIn profile URLs for '{registered_name}'")
+                
+                # ========== STEP 3: Bright Data LinkedIn Profile Scrape ==========
+                # Dataset: gd_l1viktl72bvl7bjuj0 (LinkedIn People)
+                profiles = []
+                
+                for profile_url in linkedin_urls:
+                    try:
+                        # Trigger scrape
+                        trigger_resp = await client.post(
+                            "https://api.brightdata.com/datasets/v3/trigger",
+                            params={
+                                "dataset_id": "gd_l1viktl72bvl7bjuj0",
+                                "include_errors": "true",
+                            },
+                            headers={
+                                "Authorization": f"Bearer {brightdata_api_key}",
+                                "Content-Type": "application/json",
+                            },
+                            json=[{"url": profile_url}],
+                        )
+                        trigger_resp.raise_for_status()
+                        snapshot_id = trigger_resp.json().get("snapshot_id")
+                        
+                        if not snapshot_id:
+                            logger.warning(f"T-DM0: No snapshot_id for {profile_url}")
+                            continue
+                        
+                        # Poll for completion (max 2 minutes per profile)
+                        profile_data = None
+                        for _ in range(24):  # 24 × 5s = 120s
+                            await asyncio.sleep(5)
+                            status_resp = await client.get(
+                                f"https://api.brightdata.com/datasets/v3/progress/{snapshot_id}",
+                                headers={"Authorization": f"Bearer {brightdata_api_key}"},
+                            )
+                            status_data = status_resp.json()
+                            if status_data.get("status") == "ready":
+                                # Download result
+                                data_resp = await client.get(
+                                    f"https://api.brightdata.com/datasets/v3/snapshot/{snapshot_id}",
+                                    params={"format": "json"},
+                                    headers={"Authorization": f"Bearer {brightdata_api_key}"},
+                                )
+                                result_list = data_resp.json()
+                                if result_list and len(result_list) > 0:
+                                    profile_data = result_list[0]
+                                break
+                            elif status_data.get("status") == "failed":
+                                logger.warning(f"T-DM0: Bright Data scrape failed for {profile_url}")
+                                break
+                        
+                        if profile_data and "error" not in profile_data:
+                            profiles.append({
+                                "url": profile_url,
+                                "data": profile_data,
+                            })
+                    
+                    except Exception as e:
+                        logger.warning(f"T-DM0: Error scraping {profile_url}: {e}")
+                        continue
+                
+                if not profiles:
+                    logger.info(f"T-DM0: No valid profiles scraped for '{registered_name}'")
+                    return None
+                
+                # ========== STEP 4: Local Title Filter ==========
+                candidates = []
+                
+                for profile in profiles:
+                    data = profile["data"]
+                    name = data.get("name", "") or data.get("full_name", "")
+                    title = data.get("headline", "") or data.get("occupation", "") or ""
+                    current_company = data.get("current_company_name", "") or ""
+                    
+                    # Check for experience entries with current company
+                    experiences = data.get("experience", []) or []
+                    for exp in experiences:
+                        if exp.get("is_current"):
+                            current_company = exp.get("company_name", "") or current_company
+                            title = exp.get("title", "") or title
+                            break
+                    
+                    # Calculate company match score
+                    company_match_score = fuzz.token_set_ratio(
+                        registered_name.lower(), 
+                        current_company.lower()
+                    )
+                    
+                    # Calculate title score based on DM_TITLE_SCORES
+                    title_score = 0
+                    title_lower = title.lower()
+                    for dm_title, score in DM_TITLE_SCORES.items():
+                        if dm_title in title_lower:
+                            title_score = max(title_score, score)
+                    
+                    # Only consider if company match is reasonable (>60%) and has DM title
+                    if company_match_score >= 60 and title_score > 0:
+                        candidates.append(DMCandidate(
+                            dm_name=name,
+                            dm_title=title,
+                            dm_linkedin_url=profile["url"],
+                            company_match_score=company_match_score,
+                            title_score=title_score,
+                        ))
+                
+                if not candidates:
+                    logger.info(f"T-DM0: No DM candidates passed title filter for '{registered_name}'")
+                    return None
+                
+                # Sort by title_score (desc), then company_match_score (desc)
+                candidates.sort(key=lambda c: (c.title_score, c.company_match_score), reverse=True)
+                
+                best_candidate = candidates[0]
+                logger.info(
+                    f"T-DM0: Found DM candidate '{best_candidate.dm_name}' ({best_candidate.dm_title}) "
+                    f"for '{registered_name}' — company_match={best_candidate.company_match_score}%, "
+                    f"title_score={best_candidate.title_score}"
+                )
+                
+                return best_candidate
+        
+        except httpx.HTTPStatusError as e:
+            logger.error(f"T-DM0 HTTP error: {e.response.status_code} - {e.response.text[:200]}")
+            return None
+        except Exception as e:
+            logger.error(f"T-DM0 failed for '{registered_name}': {e}")
             return None
     
     def _clean_company_name(self, name: str) -> str:

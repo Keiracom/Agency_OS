@@ -1,7 +1,7 @@
 {
-  "version": "2.0",
-  "directive": "CEO Directive #039",
-  "ratified_date": "2026-02-17",
+  "version": "2.1",
+  "directive": "CEO Directive #040",
+  "ratified_date": "2026-02-18",
   "status": "active",
   "waterfall_tiers": {
     "T1": {
@@ -45,6 +45,14 @@
       "output": ["reviews", "sentiment"],
       "notes": "Only for hot leads (ALS ≥85). Intent signal enrichment."
     },
+    "T_DM0": {
+      "name": "LinkedIn DM Discovery",
+      "source": "DataForSEO SERP + Bright Data LinkedIn Profile (gd_l1viktl72bvl7bjuj0)",
+      "cost_aud": 0.0165,
+      "status": "active",
+      "output": ["dm_name", "dm_title", "dm_linkedin_url"],
+      "notes": "CEO Directive #040: DataForSEO SERP discovery + Bright Data profile scraping. Bypasses ASIC DSP dependency."
+    },
     "T3": {
       "name": "Hunter.io Email",
       "source": "Hunter.io Domain Search",
@@ -53,21 +61,13 @@
       "output": ["email", "email_confidence", "email_type"],
       "notes": "Primary email discovery. Often returns founder-level for SME agencies."
     },
-    "T_DM0": {
-      "name": "ASIC Directors",
-      "source": "ASIC Company Extract (via T1.25)",
-      "cost_aud": 0.00,
-      "status": "pending_asic_dsp",
-      "output": ["director_names", "positions", "appointment_dates"],
-      "notes": "Seeded from T1.25 when ASIC DSP approved. Currently null."
-    },
     "T_DM1": {
       "name": "LinkedIn by Name",
       "source": "Bright Data LinkedIn Profiles API",
       "cost_aud": 0.05,
-      "status": "pending_asic_dsp",
+      "status": "deprecated_replaced_by_dm0",
       "output": ["profile_url", "current_company", "about"],
-      "notes": "Requires director names from T-DM0. Blocked until ASIC DSP."
+      "notes": "Replaced by T-DM0 which uses SERP discovery. No longer dependent on ASIC DSP."
     },
     "T_DM2": {
       "name": "Hunter Domain Search DM",
@@ -98,7 +98,6 @@
     "T1.25": ["T1"],
     "T2": ["T1.25"],
     "T_DM0": ["T1.25"],
-    "T_DM1": ["T_DM0"],
     "T3": ["T2"]
   },
   "blockers": {
@@ -106,15 +105,16 @@
       "status": "draft_ready",
       "submitted_date": null,
       "expected_resolution": "unknown",
-      "impact": ["T_DM0", "T_DM1"]
+      "impact": ["T_DM1 (deprecated)"],
+      "notes": "T-DM0 now bypasses ASIC DSP dependency via SERP discovery"
     }
   },
   "cost_summary": {
     "minimum_per_lead": 0.013,
-    "typical_per_lead": 0.039,
+    "typical_per_lead": 0.055,
     "maximum_per_lead": 0.56,
-    "weighted_average": 0.105,
+    "weighted_average": 0.115,
     "currency": "AUD",
-    "notes": "Compared to Apollo $0.50+ per lead"
+    "notes": "Updated for T-DM0. Compared to Apollo $0.50+ per lead."
   }
 }

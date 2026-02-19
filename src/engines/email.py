@@ -73,6 +73,7 @@ from src.services.email_signature_service import (
     get_signature_for_persona,
     validate_display_name,
 )
+from src.services.unsubscribe_token_service import get_unsubscribe_token_service
 
 # Rate limit (Rule 17)
 EMAIL_DAILY_LIMIT_PER_DOMAIN = 50
@@ -145,6 +146,7 @@ class EmailEngine(OutreachEngine):
                 - personalization_fields_used: List of personalization fields (Phase 24B)
                 - include_signature: Whether to append signature (default: True) (Gap Fix #20)
                 - persona_id: ClientPersona UUID for signature generation (Gap Fix #20)
+                - lead_pool_id: Lead pool UUID for unsubscribe link (Directive 057)
 
         Returns:
             EngineResult with send result
@@ -272,17 +274,40 @@ class EmailEngine(OutreachEngine):
         final_content = content
         signature_used = False
 
+        # Directive 057: Generate unsubscribe URL and headers
+        unsubscribe_url = None
+        list_unsubscribe_headers = {}
+        lead_pool_id = kwargs.get("lead_pool_id")
+        
+        if lead_pool_id:
+            try:
+                unsubscribe_service = get_unsubscribe_token_service()
+                unsubscribe_url = unsubscribe_service.generate_unsubscribe_url(
+                    lead_pool_id=lead_pool_id,
+                    email=lead.email,
+                )
+                list_unsubscribe_headers = unsubscribe_service.generate_list_unsubscribe_header(
+                    lead_pool_id=lead_pool_id,
+                    email=lead.email,
+                )
+                logger.debug(f"Generated unsubscribe URL for lead {lead_id}")
+            except Exception as e:
+                logger.warning(f"Failed to generate unsubscribe URL: {e}")
+                # Continue without unsubscribe - not a blocking error
+
         if include_signature:
             try:
                 if persona_id:
-                    # Get signature from persona
+                    # Get signature from persona (with unsubscribe link - Directive 057)
                     signature = await get_signature_for_persona(
-                        db, persona_id, include_calendar=True, html=True
+                        db, persona_id, include_calendar=True, html=True,
+                        unsubscribe_url=unsubscribe_url,
                     )
                 elif campaign.client_id:
-                    # Fallback to client-level signature
+                    # Fallback to client-level signature (with unsubscribe link - Directive 057)
                     signature = await get_signature_for_client(
-                        db, campaign.client_id, sender_name=from_name, html=True
+                        db, campaign.client_id, sender_name=from_name, html=True,
+                        unsubscribe_url=unsubscribe_url,
                     )
                 else:
                     signature = ""
@@ -297,6 +322,7 @@ class EmailEngine(OutreachEngine):
 
         try:
             # Send via Salesforge (uses Warmforge-warmed mailboxes)
+            # Directive 057: Include List-Unsubscribe headers
             result = await self.salesforge.send_email(
                 from_email=sender,
                 to_email=lead.email,
@@ -311,6 +337,7 @@ class EmailEngine(OutreachEngine):
                     "lead_id": str(lead_id),
                     "client_id": str(campaign.client_id),
                 },
+                headers=list_unsubscribe_headers,  # Directive 057: List-Unsubscribe headers
             )
 
             message_id = result.get("message_id")
@@ -350,6 +377,8 @@ class EmailEngine(OutreachEngine):
                     "domain": domain,
                     "remaining_quota": EMAIL_DAILY_LIMIT_PER_DOMAIN - current_count,
                     "signature_included": signature_used,  # Gap Fix #20
+                    "unsubscribe_url": unsubscribe_url,  # Directive 057
+                    "list_unsubscribe_included": bool(list_unsubscribe_headers),  # Directive 057
                 },
                 metadata={
                     "engine": self.name,
@@ -357,6 +386,7 @@ class EmailEngine(OutreachEngine):
                     "lead_id": str(lead_id),
                     "campaign_id": str(campaign_id),
                     "persona_id": str(persona_id) if persona_id else None,  # Gap Fix #20
+                    "lead_pool_id": str(lead_pool_id) if lead_pool_id else None,  # Directive 057
                 },
             )
 
@@ -808,3 +838,7 @@ def get_email_engine() -> EmailEngine:
 # [x] Directive 057: Physical address validation gate in send()
 # [x] Directive 057: _validate_physical_address() helper method
 # [x] Directive 057: Blocks email if client.branding.address is missing
+# [x] Directive 057: Unsubscribe URL generation via unsubscribe_token_service
+# [x] Directive 057: Unsubscribe link in email signature/footer
+# [x] Directive 057: List-Unsubscribe header for RFC 8058 compliance
+# [x] Directive 057: lead_pool_id kwarg for unsubscribe token generation

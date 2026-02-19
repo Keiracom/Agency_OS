@@ -1,8 +1,8 @@
 """
 FILE: src/api/routes/webhooks.py
 PURPOSE: Inbound webhook routes for Postmark, Twilio, ClickSend, Unipile, Vapi, and Email Providers
-PHASE: 7 (API Routes), Phase 17 (Vapi Voice), Phase 24C (Email Engagement), Unipile Migration
-TASK: API-006, CRED-007, ENGAGE-002, P2-REPLY-WEBHOOKS
+PHASE: 7 (API Routes), Phase 17 (Vapi Voice), Phase 24C (Email Engagement), Unipile Migration, Directive 057
+TASK: API-006, CRED-007, ENGAGE-002, P2-REPLY-WEBHOOKS, UNSUB-001
 DEPENDENCIES:
   - src/engines/closer.py
   - src/engines/voice.py
@@ -12,6 +12,7 @@ DEPENDENCIES:
   - src/integrations/vapi.py
   - src/services/email_events_service.py
   - src/services/linkedin_connection_service.py (for account webhooks)
+  - src/services/unsubscribe_token_service.py (Directive 057)
   - src/models/lead.py
   - src/models/activity.py
 RULES APPLIED:
@@ -2025,6 +2026,156 @@ async def _handle_calcom_webhook(db, payload: dict, meeting_service) -> dict:
 
 
 # ============================================
+# Unsubscribe Endpoint (Directive 057 - Email Compliance)
+# ============================================
+
+
+@router.get("/unsubscribe/{token}")
+async def unsubscribe_get(
+    token: str,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Handle GET request for email unsubscribe link.
+
+    Directive 057: One-click unsubscribe with cross-channel suppression.
+    
+    When a user clicks the unsubscribe link in an email:
+    1. Validates the token (JWT with 60-day validity)
+    2. Marks the lead as unsubscribed in lead_pool
+    3. Cross-channel suppression is automatically enforced via JIT validator
+
+    Args:
+        token: Unsubscribe JWT token from email link
+        db: Database session
+
+    Returns:
+        HTML page confirming unsubscribe
+    """
+    from fastapi.responses import HTMLResponse
+    from src.services.unsubscribe_token_service import get_unsubscribe_token_service
+
+    try:
+        # Process unsubscribe
+        unsubscribe_service = get_unsubscribe_token_service(db)
+        result = await unsubscribe_service.process_unsubscribe(
+            token=token,
+            reason="User clicked unsubscribe link",
+            source="email_link",
+        )
+
+        if result["success"]:
+            # Return success HTML page
+            html_content = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Unsubscribed</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+               display: flex; justify-content: center; align-items: center; height: 100vh; 
+               margin: 0; background: #f5f5f5; }
+        .container { text-align: center; padding: 40px; background: white; 
+                     border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 400px; }
+        h1 { color: #333; margin-bottom: 10px; }
+        p { color: #666; line-height: 1.6; }
+        .checkmark { font-size: 48px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="checkmark">✓</div>
+        <h1>Unsubscribed</h1>
+        <p>You have been successfully unsubscribed and will no longer receive emails from us.</p>
+        <p style="font-size: 12px; color: #999; margin-top: 20px;">
+            This also removes you from all other outreach channels.
+        </p>
+    </div>
+</body>
+</html>
+"""
+            return HTMLResponse(content=html_content, status_code=200)
+        else:
+            raise HTTPException(status_code=500, detail="Failed to process unsubscribe")
+
+    except ValueError as e:
+        # Invalid or expired token
+        html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Unsubscribe Error</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+               display: flex; justify-content: center; align-items: center; height: 100vh; 
+               margin: 0; background: #f5f5f5; }}
+        .container {{ text-align: center; padding: 40px; background: white; 
+                     border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 400px; }}
+        h1 {{ color: #e74c3c; margin-bottom: 10px; }}
+        p {{ color: #666; line-height: 1.6; }}
+        .icon {{ font-size: 48px; margin-bottom: 20px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">⚠️</div>
+        <h1>Link Expired</h1>
+        <p>This unsubscribe link has expired or is invalid.</p>
+        <p>Please contact support if you wish to unsubscribe.</p>
+    </div>
+</body>
+</html>
+"""
+        return HTMLResponse(content=html_content, status_code=400)
+
+
+@router.post("/unsubscribe/{token}")
+async def unsubscribe_post(
+    token: str,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Handle POST request for List-Unsubscribe-Post (RFC 8058 one-click).
+
+    Directive 057: RFC 8058 compliant one-click unsubscribe.
+    
+    Email clients that support List-Unsubscribe-Post header will
+    send a POST request with body "List-Unsubscribe=One-Click".
+
+    Args:
+        token: Unsubscribe JWT token
+        db: Database session
+
+    Returns:
+        JSON response confirming unsubscribe
+    """
+    from src.services.unsubscribe_token_service import get_unsubscribe_token_service
+
+    try:
+        # Process unsubscribe
+        unsubscribe_service = get_unsubscribe_token_service(db)
+        result = await unsubscribe_service.process_unsubscribe(
+            token=token,
+            reason="One-click unsubscribe (RFC 8058)",
+            source="list_unsubscribe_post",
+        )
+
+        return {
+            "status": "unsubscribed" if result["success"] else "error",
+            "lead_pool_id": str(result["lead_pool_id"]),
+            "cross_channel_suppression": True,
+        }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )
+
+
+# ============================================
 # VERIFICATION CHECKLIST
 # ============================================
 # [x] Contract comment at top
@@ -2077,3 +2228,11 @@ async def _handle_calcom_webhook(db, payload: dict, meeting_service) -> dict:
 # [x] POST /webhooks/clicksend/status - SMS delivery status tracking
 # [x] Uses ClickSend parser methods (parse_inbound_sms, parse_sms_webhook)
 # [x] Processes via Closer engine for intent classification
+#
+# Directive 057 - Email Unsubscribe Compliance:
+# [x] GET /webhooks/unsubscribe/{token} - Browser-based unsubscribe
+# [x] POST /webhooks/unsubscribe/{token} - RFC 8058 one-click unsubscribe
+# [x] JWT token validation with 60-day validity (Spam Act requirement: 30+ days)
+# [x] Cross-channel suppression via lead_pool_service.mark_unsubscribed()
+# [x] HTML success/error pages for browser clicks
+# [x] JSON response for programmatic access

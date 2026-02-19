@@ -78,11 +78,14 @@ logger = logging.getLogger(__name__)
 @task(name="check_campaign_quality_gate", retries=2, retry_delay_seconds=5)
 async def check_campaign_quality_gate_task(campaign_id: str) -> dict[str, Any]:
     """
-    Pre-campaign quality gate check (Directive 048 Part E).
+    Pre-campaign quality gate check (Directive 048 Part E - Expanded).
 
-    Prevents campaigns from firing if:
-    - 100% of leads are Cold tier (ALS < 35)
-    - No qualified leads available
+    Halts and notifies if:
+    - Hot+Warm combined below 5% of total leads
+    - Verified email below 80% of leads
+    - DM (Decision Maker) identified below 60% of leads
+    
+    Triggers additional discovery if Hot+Warm below 25%.
 
     Args:
         campaign_id: Campaign UUID string
@@ -91,61 +94,160 @@ async def check_campaign_quality_gate_task(campaign_id: str) -> dict[str, Any]:
         Dict with quality gate result
     """
     async with get_db_session() as db:
-        # Get tier distribution for campaign leads
+        # Get comprehensive stats for campaign leads
         result = await db.execute(
             text("""
                 SELECT 
-                    als_tier,
-                    COUNT(*) as count
+                    COUNT(*) as total_leads,
+                    COUNT(CASE WHEN als_tier = 'hot' THEN 1 END) as hot_count,
+                    COUNT(CASE WHEN als_tier = 'warm' THEN 1 END) as warm_count,
+                    COUNT(CASE WHEN als_tier = 'cool' THEN 1 END) as cool_count,
+                    COUNT(CASE WHEN als_tier = 'cold' THEN 1 END) as cold_count,
+                    COUNT(CASE WHEN als_tier = 'dead' THEN 1 END) as dead_count,
+                    COUNT(CASE WHEN email_verified = TRUE THEN 1 END) as verified_email_count,
+                    COUNT(CASE WHEN seniority_level IN ('owner', 'founder', 'c_suite', 'vp', 'director') 
+                          OR title ILIKE '%owner%' OR title ILIKE '%ceo%' OR title ILIKE '%founder%'
+                          OR title ILIKE '%director%' OR title ILIKE '%managing%' THEN 1 END) as dm_count
                 FROM leads
                 WHERE campaign_id = :campaign_id
                 AND status = 'in_sequence'
                 AND deleted_at IS NULL
-                GROUP BY als_tier
             """),
             {"campaign_id": campaign_id},
         )
-        rows = result.fetchall()
+        row = result.fetchone()
 
-        tier_distribution = {row.als_tier: row.count for row in rows}
-        total_leads = sum(tier_distribution.values())
-
-        if total_leads == 0:
+        if not row or row.total_leads == 0:
+            await _create_campaign_halt_notification(
+                db, campaign_id, "no_leads", 
+                "Campaign has no leads in sequence", {}
+            )
             return {
                 "campaign_id": campaign_id,
                 "passed": False,
                 "reason": "no_leads",
-                "tier_distribution": {},
+                "halt_notification_sent": True,
             }
 
-        # Check for 100% Cold
-        cold_count = tier_distribution.get("cold", 0) + tier_distribution.get("dead", 0)
-        qualified_count = total_leads - cold_count
+        total = row.total_leads
+        hot_warm_count = row.hot_count + row.warm_count
+        hot_warm_pct = (hot_warm_count / total) * 100
+        verified_email_pct = (row.verified_email_count / total) * 100
+        dm_pct = (row.dm_count / total) * 100
 
-        if qualified_count == 0:
+        metrics = {
+            "total_leads": total,
+            "hot_count": row.hot_count,
+            "warm_count": row.warm_count,
+            "cool_count": row.cool_count,
+            "cold_count": row.cold_count,
+            "dead_count": row.dead_count,
+            "hot_warm_percentage": round(hot_warm_pct, 1),
+            "verified_email_percentage": round(verified_email_pct, 1),
+            "dm_identified_percentage": round(dm_pct, 1),
+        }
+
+        failures = []
+
+        # Check 1: Hot+Warm combined below 5%
+        if hot_warm_pct < 5:
+            failures.append({
+                "check": "hot_warm_ratio",
+                "threshold": "5%",
+                "actual": f"{hot_warm_pct:.1f}%",
+                "message": f"Hot+Warm leads ({hot_warm_pct:.1f}%) below 5% threshold",
+            })
+
+        # Check 2: Verified email below 80%
+        if verified_email_pct < 80:
+            failures.append({
+                "check": "verified_email_ratio",
+                "threshold": "80%",
+                "actual": f"{verified_email_pct:.1f}%",
+                "message": f"Verified emails ({verified_email_pct:.1f}%) below 80% threshold",
+            })
+
+        # Check 3: DM identified below 60%
+        if dm_pct < 60:
+            failures.append({
+                "check": "dm_identified_ratio",
+                "threshold": "60%",
+                "actual": f"{dm_pct:.1f}%",
+                "message": f"Decision Makers identified ({dm_pct:.1f}%) below 60% threshold",
+            })
+
+        if failures:
+            # Create detailed halt notification
+            failure_reasons = "; ".join([f["message"] for f in failures])
+            await _create_campaign_halt_notification(
+                db, campaign_id, "quality_gate_failed",
+                f"Campaign halted: {failure_reasons}",
+                {"failures": failures, "metrics": metrics}
+            )
             return {
                 "campaign_id": campaign_id,
                 "passed": False,
-                "reason": "100_percent_cold",
-                "tier_distribution": tier_distribution,
-                "cold_percentage": 100,
+                "reason": "quality_gate_failed",
+                "failures": failures,
+                "metrics": metrics,
+                "halt_notification_sent": True,
             }
 
-        # Calculate percentages
-        cold_percentage = (cold_count / total_leads) * 100
-        hot_count = tier_distribution.get("hot", 0)
-        warm_count = tier_distribution.get("warm", 0)
+        # Check if additional discovery needed (Hot+Warm below 25%)
+        needs_discovery = hot_warm_pct < 25
 
         return {
             "campaign_id": campaign_id,
             "passed": True,
-            "tier_distribution": tier_distribution,
-            "total_leads": total_leads,
-            "qualified_leads": qualified_count,
-            "cold_percentage": cold_percentage,
-            "hot_count": hot_count,
-            "warm_count": warm_count,
+            "metrics": metrics,
+            "needs_additional_discovery": needs_discovery,
+            "discovery_reason": f"Hot+Warm at {hot_warm_pct:.1f}% (below 25%)" if needs_discovery else None,
         }
+
+
+async def _create_campaign_halt_notification(
+    db, campaign_id: str, reason: str, message: str, metadata: dict
+) -> None:
+    """Create notification when campaign is halted by quality gate."""
+    try:
+        # Get campaign and client info
+        result = await db.execute(
+            text("""
+                SELECT c.name, c.client_id, cl.business_name
+                FROM campaigns c
+                JOIN clients cl ON c.client_id = cl.id
+                WHERE c.id = :campaign_id
+            """),
+            {"campaign_id": campaign_id},
+        )
+        row = result.fetchone()
+        
+        if row:
+            import json
+            await db.execute(
+                text("""
+                    SELECT create_admin_notification(
+                        'campaign_halt',
+                        :client_id,
+                        :title,
+                        :message,
+                        'high',
+                        NULL,
+                        :campaign_id,
+                        :metadata
+                    )
+                """),
+                {
+                    "client_id": str(row.client_id),
+                    "title": f"⚠️ Campaign Halted: {row.name}",
+                    "message": message,
+                    "campaign_id": campaign_id,
+                    "metadata": json.dumps(metadata),
+                },
+            )
+            await db.commit()
+    except Exception as e:
+        logger.error(f"Failed to create halt notification: {e}")
 
 
 @task(name="auto_assign_resources", retries=2, retry_delay_seconds=5)
@@ -154,6 +256,7 @@ async def auto_assign_resources_task(lead_id: str, campaign_id: str) -> dict[str
     Automatically assign resources to a lead based on tier and availability.
 
     Directive 048 Part E: Channel selection no longer requires manual assignment.
+    Reads CHANNEL_ACCESS_BY_ALS and auto-assigns on campaign entry.
 
     Args:
         lead_id: Lead UUID string
@@ -162,6 +265,8 @@ async def auto_assign_resources_task(lead_id: str, campaign_id: str) -> dict[str
     Returns:
         Dict with assigned resources
     """
+    from src.config.tiers import CHANNEL_ACCESS_BY_ALS, get_als_tier
+    
     async with get_db_session() as db:
         # Get lead tier and client resources
         result = await db.execute(
@@ -179,15 +284,20 @@ async def auto_assign_resources_task(lead_id: str, campaign_id: str) -> dict[str
         if not lead_row:
             return {"lead_id": lead_id, "success": False, "error": "Lead not found"}
 
-        als_tier = lead_row.als_tier or "cold"
+        als_score = lead_row.als_score or 0
+        als_tier = get_als_tier(als_score)
         client_id = lead_row.client_id
         assigned = {}
 
-        # Get available resources from resource_pool
-        resources = await db.execute(
+        # Get allowed channels directly from CHANNEL_ACCESS_BY_ALS
+        allowed_channels = CHANNEL_ACCESS_BY_ALS.get(als_tier, [])
+
+        # Get available resources from resource_pool with round-robin selection
+        resources_result = await db.execute(
             text("""
                 SELECT 
-                    channel_type, resource_id, is_available, daily_remaining
+                    channel_type, resource_id, daily_remaining,
+                    ROW_NUMBER() OVER (PARTITION BY channel_type ORDER BY daily_remaining DESC) as rn
                 FROM resource_pool
                 WHERE client_id = :client_id
                 AND is_available = TRUE
@@ -195,25 +305,43 @@ async def auto_assign_resources_task(lead_id: str, campaign_id: str) -> dict[str
             """),
             {"client_id": str(client_id)},
         )
-        available_resources = {row.channel_type: row.resource_id for row in resources.fetchall()}
+        
+        # Build resource map with best available resource per channel
+        available_resources = {}
+        for row in resources_result.fetchall():
+            if row.rn == 1:  # Best resource for this channel
+                available_resources[row.channel_type] = row.resource_id
 
-        # Assign based on tier channels
-        from src.config.tiers import get_available_channels
-        als_score = lead_row.als_score or 0
-        allowed_channels = get_available_channels(als_score)
-
-        # Auto-assign email (always allowed)
+        # Auto-assign email (always check first)
         if "email" in allowed_channels:
-            if not lead_row.assigned_email_resource and "email" in available_resources:
-                assigned["email"] = available_resources["email"]
+            if not lead_row.assigned_email_resource:
+                if "email" in available_resources:
+                    assigned["email"] = available_resources["email"]
+                else:
+                    # Fallback: get any email domain from client config
+                    fallback = await db.execute(
+                        text("""
+                            SELECT email_domains[1] as domain
+                            FROM clients WHERE id = :client_id
+                        """),
+                        {"client_id": str(client_id)},
+                    )
+                    fb_row = fallback.fetchone()
+                    if fb_row and fb_row.domain:
+                        assigned["email"] = fb_row.domain
 
         # Auto-assign LinkedIn (warm+ tiers)
         if "linkedin" in allowed_channels:
             if not lead_row.assigned_linkedin_seat and "linkedin" in available_resources:
                 assigned["linkedin"] = available_resources["linkedin"]
 
-        # Auto-assign phone/SMS (hot tier only)
-        if "sms" in allowed_channels or "voice" in allowed_channels:
+        # Auto-assign SMS (warm+ tiers per updated spec)
+        if "sms" in allowed_channels:
+            if not lead_row.assigned_phone_resource and "phone" in available_resources:
+                assigned["phone"] = available_resources["phone"]
+
+        # Auto-assign Voice (hot tier only)
+        if "voice" in allowed_channels:
             if not lead_row.assigned_phone_resource and "phone" in available_resources:
                 assigned["phone"] = available_resources["phone"]
 
@@ -243,13 +371,54 @@ async def auto_assign_resources_task(lead_id: str, campaign_id: str) -> dict[str
                     params,
                 )
                 await db.commit()
+                logger.info(f"Auto-assigned resources for lead {lead_id}: {assigned}")
 
         return {
             "lead_id": lead_id,
             "success": True,
             "tier": als_tier,
+            "als_score": als_score,
             "allowed_channels": allowed_channels,
             "assigned": assigned,
+        }
+
+
+@task(name="trigger_additional_discovery", retries=2, retry_delay_seconds=10)
+async def trigger_additional_discovery_task(campaign_id: str) -> dict[str, Any]:
+    """
+    Trigger one additional discovery batch when Hot+Warm below 25%.
+
+    Args:
+        campaign_id: Campaign UUID string
+
+    Returns:
+        Dict with discovery result
+    """
+    from src.orchestration.flows.batch_controller_flow import trigger_replacement_discovery_task
+    
+    async with get_db_session() as db:
+        # Get campaign client_id
+        result = await db.execute(
+            text("SELECT client_id FROM campaigns WHERE id = :campaign_id"),
+            {"campaign_id": campaign_id},
+        )
+        row = result.fetchone()
+        
+        if not row:
+            return {"campaign_id": campaign_id, "success": False, "error": "Campaign not found"}
+        
+        # Trigger discovery for 50 additional leads
+        discovery_result = await trigger_replacement_discovery_task(
+            campaign_id=campaign_id,
+            client_id=str(row.client_id),
+            count_needed=50,
+        )
+        
+        return {
+            "campaign_id": campaign_id,
+            "success": discovery_result.get("success", False),
+            "leads_discovered": discovery_result.get("leads_discovered", 0),
+            "reason": "hot_warm_below_25_percent",
         }
 
 

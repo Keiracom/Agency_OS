@@ -134,28 +134,58 @@ class BrightDataClient:
         
         return await self._serp_request(url)
     
-    async def _serp_request(self, url: str) -> Any:
-        """Execute SERP API request via proxy."""
+    async def _serp_request(self, url: str, max_retries: int = 2) -> Any:
+        """Execute SERP API request via proxy with retry and alerting."""
         proxy_url = f"http://brd-customer-hl_4af12f98-zone-{self.serp_zone}:{self.api_key}@brd.superproxy.io:33335"
         
         client = await self._get_client()
+        last_error = None
         
+        for attempt in range(max_retries + 1):
+            try:
+                response = await client.get(
+                    url,
+                    proxy=proxy_url,
+                    timeout=30.0
+                )
+                response.raise_for_status()
+                self.costs.serp_requests += 1
+                
+                logger.debug("serp_request_complete", url=url[:100], status=response.status_code)
+                return response.json()
+                
+            except httpx.HTTPStatusError as e:
+                last_error = f"HTTP {e.response.status_code}"
+                logger.warning("serp_request_error", attempt=attempt, error=last_error)
+            except httpx.RequestError as e:
+                last_error = str(e)
+                logger.warning("serp_request_error", attempt=attempt, error=last_error)
+            except Exception as e:
+                last_error = str(e)
+                logger.warning("serp_request_error", attempt=attempt, error=last_error)
+            
+            if attempt < max_retries:
+                await asyncio.sleep(2 ** attempt)  # Exponential backoff
+        
+        # All retries exhausted - fire alert
+        await self._fire_bright_data_alert(last_error, max_retries + 1)
+        raise BrightDataError(f"SERP request failed after {max_retries + 1} attempts: {last_error}")
+
+    async def _fire_bright_data_alert(self, error_message: str, retry_count: int) -> None:
+        """Fire alert for Bright Data failure (Directive 048 Part F)."""
         try:
-            response = await client.get(
-                url,
-                proxy=proxy_url,
-                timeout=30.0
-            )
-            response.raise_for_status()
-            self.costs.serp_requests += 1
+            from src.integrations.supabase import get_db_session
+            from src.services.alert_service import get_alert_service
             
-            logger.debug("serp_request_complete", url=url[:100], status=response.status_code)
-            return response.json()
-            
-        except httpx.HTTPStatusError as e:
-            raise BrightDataError(f"SERP request failed: HTTP {e.response.status_code}")
-        except httpx.RequestError as e:
-            raise BrightDataError(f"SERP request failed: {str(e)}")
+            async with get_db_session() as db:
+                alert_service = get_alert_service(db)
+                await alert_service.alert_bright_data_error(
+                    error_message=error_message,
+                    retry_count=retry_count,
+                    metadata={"api_type": "serp"},
+                )
+        except Exception as e:
+            logger.error("failed_to_fire_bright_data_alert", error=str(e))
     
     # Scrapers API Methods
     

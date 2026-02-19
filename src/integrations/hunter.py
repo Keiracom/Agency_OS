@@ -303,6 +303,30 @@ class HunterRateLimitError(HunterError):
             details["retry_after_seconds"] = retry_after
         super().__init__(message="Hunter rate limit exceeded", details=details)
         self.retry_after = retry_after
+        
+        # Directive 048 Part F: Fire alert on rate limit
+        asyncio.create_task(self._fire_rate_limit_alert(retry_after))
+    
+    @staticmethod
+    async def _fire_rate_limit_alert(retry_after: int | None) -> None:
+        """Fire alert for Hunter rate limit hit."""
+        try:
+            from datetime import timedelta
+            from src.integrations.supabase import get_db_session
+            from src.services.alert_service import get_alert_service
+            
+            reset_time = None
+            if retry_after:
+                reset_time = datetime.now(timezone.utc) + timedelta(seconds=retry_after)
+            
+            async with get_db_session() as db:
+                alert_service = get_alert_service(db)
+                await alert_service.alert_hunter_rate_limit(
+                    requests_remaining=0,
+                    reset_time=reset_time,
+                )
+        except Exception as e:
+            logger.error(f"Failed to fire Hunter rate limit alert: {e}")
 
 
 class HunterQuotaExceededError(HunterError):
@@ -313,6 +337,26 @@ class HunterQuotaExceededError(HunterError):
             message="Hunter usage quota exceeded - upgrade plan or wait for reset",
             details=details,
         )
+        
+        # Directive 048 Part F: Fire alert on quota exceeded
+        asyncio.create_task(self._fire_quota_alert())
+    
+    @staticmethod
+    async def _fire_quota_alert() -> None:
+        """Fire alert for Hunter quota exceeded."""
+        try:
+            from src.integrations.supabase import get_db_session
+            from src.services.alert_service import get_alert_service
+            
+            async with get_db_session() as db:
+                alert_service = get_alert_service(db)
+                await alert_service.alert_hunter_rate_limit(
+                    requests_remaining=0,
+                    reset_time=None,
+                    metadata={"quota_exceeded": True},
+                )
+        except Exception as e:
+            logger.error(f"Failed to fire Hunter quota alert: {e}")
 
 
 # ============================================

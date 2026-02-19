@@ -184,6 +184,16 @@ class CloserEngine(BaseEngine):
             intent_enum = INTENT_MAP.get(intent_str, IntentType.QUESTION)
             confidence = classification.get("confidence", 0.0)
             reasoning = classification.get("reasoning", "")
+            
+            # Directive 048 Part F: Flag low confidence replies for human review
+            if confidence < 0.6:
+                await self._flag_for_human_review(
+                    db=db,
+                    lead_id=lead_id,
+                    confidence=confidence,
+                    intent=intent_str,
+                    message_preview=message[:200],
+                )
 
             # Log reply activity
             activity = await self._log_reply_activity(
@@ -808,6 +818,44 @@ class CloserEngine(BaseEngine):
             return referral_info
 
         return None
+
+    async def _flag_for_human_review(
+        self,
+        db: AsyncSession,
+        lead_id: UUID,
+        confidence: float,
+        intent: str,
+        message_preview: str,
+    ) -> UUID | None:
+        """
+        Flag reply for human review (confidence <60%).
+
+        Directive 048 Part F: Low confidence replies go to human review queue,
+        not alerts.
+
+        Args:
+            db: Database session
+            lead_id: Lead UUID
+            confidence: Classification confidence
+            intent: Detected intent
+            message_preview: First 200 chars of message
+
+        Returns:
+            Review queue entry UUID or None
+        """
+        try:
+            from src.services.alert_service import get_alert_service
+            
+            alert_service = get_alert_service(db)
+            return await alert_service.flag_reply_for_review(
+                lead_id=lead_id,
+                confidence=confidence,
+                intent=intent,
+                message_preview=message_preview,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to flag reply for human review: {e}")
+            return None
 
     async def _fire_admin_notification(
         self,

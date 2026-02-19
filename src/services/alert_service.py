@@ -19,13 +19,14 @@ RULES APPLIED:
   - Campaign-level issues email agency owner
 
 ALERT TYPES:
-1. Bright Data API timeout/error after 2 retries
-2. Hunter rate limit hit (with estimated recovery time)
-3. LinkedIn daily rate limit per seat
-4. Email warmup health score below threshold
-5. Hot+Warm ratio drops below 20% in active campaign
-6. Batch quota shortfall after 3 replacement loops
-7. Reply confidence <60% → human review queue (not alert)
+1. Angry complaint → immediate notification + email
+2. Bright Data API timeout/error after 2 retries
+3. Hunter rate limit hit (with estimated recovery time)
+4. LinkedIn daily rate limit per seat
+5. Email warmup health score below threshold
+6. Hot+Warm ratio drops below 20% in active campaign
+7. Batch quota shortfall after 3 replacement loops
+8. Reply confidence <60% → human review queue (not alert)
 """
 
 import logging
@@ -46,6 +47,7 @@ logger = logging.getLogger(__name__)
 
 class AlertType:
     """Alert type constants."""
+    ANGRY_COMPLAINT = "angry_complaint"
     BRIGHT_DATA_ERROR = "bright_data_error"
     HUNTER_RATE_LIMIT = "hunter_rate_limit"
     LINKEDIN_RATE_LIMIT = "linkedin_rate_limit"
@@ -59,6 +61,7 @@ class AlertType:
 
 
 ALERT_SEVERITY = {
+    AlertType.ANGRY_COMPLAINT: "high",
     AlertType.BRIGHT_DATA_ERROR: "high",
     AlertType.HUNTER_RATE_LIMIT: "medium",
     AlertType.LINKEDIN_RATE_LIMIT: "medium",
@@ -73,6 +76,7 @@ ALERT_SEVERITY = {
 
 # Alerts that should email agency owner
 EMAIL_ALERT_TYPES = {
+    AlertType.ANGRY_COMPLAINT,
     AlertType.WARMUP_HEALTH_LOW,
     AlertType.HOT_WARM_RATIO_LOW,
     AlertType.QUOTA_SHORTFALL,
@@ -457,6 +461,48 @@ class AlertService:
             send_email=True,
         )
 
+    async def alert_angry_complaint(
+        self,
+        client_id: UUID,
+        lead_id: UUID,
+        lead_name: str,
+        lead_company: str,
+        message_preview: str,
+        campaign_id: UUID | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> UUID | None:
+        """
+        Alert: Angry/complaint reply requiring immediate attention.
+
+        Args:
+            client_id: Client UUID
+            lead_id: Lead UUID
+            lead_name: Lead's full name
+            lead_company: Lead's company
+            message_preview: Preview of the angry message
+            campaign_id: Related campaign UUID
+            metadata: Additional context
+
+        Returns:
+            Alert UUID
+        """
+        return await self.create_alert(
+            alert_type=AlertType.ANGRY_COMPLAINT,
+            title="🔴 Angry/Complaint Reply",
+            message=f"Angry or complaint reply received from {lead_name} ({lead_company}). "
+                   f"Preview: {message_preview[:100]}... Requires immediate attention.",
+            client_id=client_id,
+            campaign_id=campaign_id,
+            lead_id=lead_id,
+            metadata={
+                **(metadata or {}),
+                "lead_name": lead_name,
+                "lead_company": lead_company,
+                "message_preview": message_preview,
+            },
+            send_email=True,
+        )
+
     async def flag_reply_for_review(
         self,
         lead_id: UUID,
@@ -544,11 +590,12 @@ async def create_alert(
 # VERIFICATION CHECKLIST
 # =============================================================================
 # [x] Contract comment at top
-# [x] AlertType constants for all specified types
+# [x] AlertType constants for all specified types (including angry_complaint)
 # [x] Severity mapping per alert type
 # [x] create_alert creates Supabase notification record
 # [x] Dashboard flag set for client
 # [x] Email sent to agency owner for campaign-level issues
+# [x] alert_angry_complaint (immediate + email)
 # [x] alert_bright_data_error (after 2 retries)
 # [x] alert_hunter_rate_limit (with estimated recovery time)
 # [x] alert_linkedin_rate_limit (per seat)

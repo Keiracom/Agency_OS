@@ -59,6 +59,13 @@ FIELD_PRIORITIES: dict[str, tuple[FieldPriority, str]] = {
     # SDK agents deprecated - using Apollo enrichment data instead
     "engagement.previous_objections": (FieldPriority.HIGH, "Must address in follow-ups"),
     "engagement.reply_intent": (FieldPriority.HIGH, "Context from previous replies"),
+    # Social posts - HIGH priority for personalization hooks (Directive 052 Part A)
+    "social_posts.dm_linkedin_posts": (
+        FieldPriority.HIGH,
+        "LinkedIn posts for personalization hooks",
+    ),
+    "social_posts.dm_x_posts": (FieldPriority.HIGH, "X posts for personalization hooks"),
+    "social_posts.best_hook": (FieldPriority.HIGH, "Pre-extracted hook from social content"),
     # MEDIUM PRIORITY - Relevance context
     "person.title": (FieldPriority.MEDIUM, "Affects messaging tone and pitch angle"),
     "person.seniority": (FieldPriority.MEDIUM, "Affects formality and decision-maker angle"),
@@ -90,6 +97,15 @@ SMART_EMAIL_PROMPT = """Write a personalized cold outreach email using the lead 
 
 ## LEAD CONTEXT (organized by priority)
 {lead_context}
+
+## SOCIAL POST HOOKS (use if available)
+{social_post_hooks}
+
+If social posts are available, reference them naturally:
+- "I saw your recent LinkedIn post about [topic]..."
+- "Your take on [topic] resonated with me..."
+- DO NOT make up posts that aren't in the data
+- Only use hooks from posts ACTUALLY PROVIDED above
 
 ## CLIENT PROOF POINTS (use 1-2 naturally)
 {proof_points}
@@ -360,6 +376,19 @@ async def build_full_lead_context(
             "previous_objections": row.objections_raised or [],
         }
 
+    # Fetch social posts for personalization hooks (Directive 052 Part A)
+    social_posts_query = text("""
+        SELECT source, post_content, post_date, summary_hook
+        FROM lead_social_posts
+        WHERE lead_id = :lead_id
+        ORDER BY post_date DESC
+        LIMIT 5
+    """)
+    social_result = await db.execute(social_posts_query, {"lead_id": str(lead_id)})
+    social_rows = social_result.fetchall()
+
+    context["social_posts"] = _build_social_posts_context(social_rows)
+
     return context
 
 
@@ -504,6 +533,50 @@ async def build_full_pool_lead_context(
             "last_contacted": str(row.last_contacted_at) if row.last_contacted_at else None,
             "has_replied": row.has_replied,
             "reply_intent": row.reply_intent,
+        }
+
+    # Fetch social posts for pool leads (Directive 052 Part A)
+    # Pool leads may have social posts via lead assignments
+    # First, check if there's a linked lead_id
+    assignment_query = text("""
+        SELECT la.id as assignment_id
+        FROM lead_assignments la
+        WHERE la.lead_pool_id = :lead_pool_id
+        AND la.status = 'active'
+        LIMIT 1
+    """)
+    assignment_result = await db.execute(
+        assignment_query, {"lead_pool_id": str(lead_pool_id)}
+    )
+    assignment_row = assignment_result.fetchone()
+
+    # For pool leads, social posts are stored on the assignment or linked lead
+    # Check lead_social_posts by querying via any linked leads
+    social_posts_query = text("""
+        SELECT lsp.source, lsp.post_content, lsp.post_date, lsp.summary_hook
+        FROM lead_social_posts lsp
+        JOIN leads l ON lsp.lead_id = l.id
+        JOIN lead_assignments la ON la.client_id = l.client_id
+        WHERE la.lead_pool_id = :lead_pool_id
+        AND la.status = 'active'
+        ORDER BY lsp.post_date DESC
+        LIMIT 5
+    """)
+    try:
+        social_result = await db.execute(
+            social_posts_query, {"lead_pool_id": str(lead_pool_id)}
+        )
+        social_rows = social_result.fetchall()
+        context["social_posts"] = _build_social_posts_context(social_rows)
+    except Exception:
+        # If no linked leads/posts exist, provide empty social posts
+        context["social_posts"] = {
+            "dm_linkedin_posts": [],
+            "company_linkedin_posts": [],
+            "dm_x_posts": [],
+            "company_x_posts": [],
+            "has_recent_posts": False,
+            "best_hook": None,
         }
 
     return context
@@ -733,6 +806,179 @@ def _format_location(city: str | None, state: str | None, country: str | None) -
     return ", ".join(parts) if parts else ""
 
 
+def _build_social_posts_context(social_rows: list) -> dict[str, Any]:
+    """
+    Build categorized social posts context from query results.
+
+    Categorizes posts by source (LinkedIn, X/Twitter) and extracts
+    the best hook for personalization.
+
+    Args:
+        social_rows: List of rows from lead_social_posts query
+
+    Returns:
+        Dict with categorized posts and best hook
+    """
+    dm_linkedin_posts: list[dict[str, Any]] = []
+    company_linkedin_posts: list[dict[str, Any]] = []
+    dm_x_posts: list[dict[str, Any]] = []
+    company_x_posts: list[dict[str, Any]] = []
+    best_hook: str | None = None
+
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+
+    for row in social_rows:
+        post_data = {
+            "content": row.post_content[:200] if row.post_content else None,
+            "date": str(row.post_date) if row.post_date else None,
+            "hook": row.summary_hook,
+        }
+
+        # Categorize by source
+        source = row.source.lower() if row.source else ""
+        if source == "linkedin":
+            dm_linkedin_posts.append(post_data)
+        elif source == "linkedin_company":
+            company_linkedin_posts.append(post_data)
+        elif source in ("twitter", "x"):
+            dm_x_posts.append(post_data)
+        elif source in ("twitter_company", "x_company"):
+            company_x_posts.append(post_data)
+        else:
+            # Default to DM LinkedIn if source unclear
+            dm_linkedin_posts.append(post_data)
+
+        # Track best hook (prefer most recent with a hook)
+        if row.summary_hook and not best_hook:
+            best_hook = row.summary_hook
+
+    # Check if any posts are recent (last 30 days)
+    has_recent = False
+    for row in social_rows:
+        if row.post_date:
+            try:
+                if isinstance(row.post_date, str):
+                    post_dt = datetime.fromisoformat(row.post_date)
+                else:
+                    post_dt = datetime(row.post_date.year, row.post_date.month, row.post_date.day)
+                if post_dt >= thirty_days_ago:
+                    has_recent = True
+                    break
+            except Exception:
+                pass
+
+    return {
+        "dm_linkedin_posts": dm_linkedin_posts,
+        "company_linkedin_posts": company_linkedin_posts,
+        "dm_x_posts": dm_x_posts,
+        "company_x_posts": company_x_posts,
+        "has_recent_posts": has_recent,
+        "best_hook": best_hook,
+    }
+
+
+def adapt_for_channel(context: dict[str, Any], channel: str) -> dict[str, Any]:
+    """
+    Adapt lead context for specific outreach channel.
+
+    Different channels require different approaches:
+    - LinkedIn DM: Shorter, more casual, reference LinkedIn activity
+    - Email: Full format with proof points and structure
+    - SMS: Ultra-brief, no proof points, direct ask
+
+    Args:
+        context: Lead context dict from build_full_lead_context
+        channel: Target channel ('linkedin', 'email', 'sms')
+
+    Returns:
+        Adapted context dict for the channel
+    """
+    adapted = context.copy()
+
+    if channel == "linkedin":
+        # LinkedIn DMs should be shorter and more casual
+        # Prioritize LinkedIn-specific data
+        adapted["channel_guidance"] = {
+            "max_length": 300,  # LinkedIn DM character limit
+            "tone": "casual, conversational",
+            "avoid": ["formal salutations", "long proof points", "multiple CTAs"],
+            "prefer": ["LinkedIn activity references", "mutual connections", "quick ask"],
+        }
+        # Boost LinkedIn posts priority
+        social = adapted.get("social_posts", {})
+        if social.get("dm_linkedin_posts"):
+            adapted["primary_hook"] = social["dm_linkedin_posts"][0].get("hook")
+
+    elif channel == "sms":
+        # SMS needs to be ultra-brief
+        adapted["channel_guidance"] = {
+            "max_length": 160,  # SMS character limit
+            "tone": "direct, friendly",
+            "avoid": ["proof points", "company details", "links", "formal language"],
+            "prefer": ["first name only", "single question", "immediate value"],
+        }
+        # Strip out verbose context for SMS
+        adapted.pop("research", None)
+        adapted.pop("web_presence", None)
+
+    else:  # email (default)
+        adapted["channel_guidance"] = {
+            "max_length": 150,  # Words, not characters
+            "tone": "professional yet personable",
+            "avoid": ["generic openers", "walls of text", "multiple asks"],
+            "prefer": ["proof points", "specific personalization", "soft CTA"],
+        }
+
+    return adapted
+
+
+def format_social_posts_for_prompt(social_posts: dict[str, Any]) -> str:
+    """
+    Format social posts into a readable string for the prompt.
+
+    Args:
+        social_posts: Social posts dict from context
+
+    Returns:
+        Formatted string for {social_post_hooks} placeholder
+    """
+    if not social_posts:
+        return "No social posts available for this lead."
+
+    lines: list[str] = []
+
+    # Best hook first
+    if social_posts.get("best_hook"):
+        lines.append(f"**Best Hook:** \"{social_posts['best_hook']}\"")
+        lines.append("")
+
+    # LinkedIn posts
+    dm_linkedin = social_posts.get("dm_linkedin_posts", [])
+    if dm_linkedin:
+        lines.append("**LinkedIn Posts:**")
+        for post in dm_linkedin[:3]:
+            if post.get("hook"):
+                date_str = f" ({post['date']})" if post.get("date") else ""
+                lines.append(f"  - \"{post['hook']}\"{date_str}")
+        lines.append("")
+
+    # X/Twitter posts
+    dm_x = social_posts.get("dm_x_posts", [])
+    if dm_x:
+        lines.append("**X/Twitter Posts:**")
+        for post in dm_x[:3]:
+            if post.get("hook"):
+                date_str = f" ({post['date']})" if post.get("date") else ""
+                lines.append(f"  - \"{post['hook']}\"{date_str}")
+        lines.append("")
+
+    # Recent activity flag
+    if social_posts.get("has_recent_posts"):
+        lines.append("✓ Has recent social activity (last 30 days)")
+
+    return "\n".join(lines) if lines else "No social posts available for this lead."
+
+
 def _get_nested_value(data: dict[str, Any], path: str) -> Any:
     """
     Get a value from a nested dict using dot notation path.
@@ -928,6 +1174,25 @@ def format_lead_context_for_prompt(context: dict[str, Any]) -> str:
 
     if engagement.get("reply_intent"):
         high_lines.append(f"★ **Reply Intent:** {engagement['reply_intent']}")
+
+    # Social posts - HIGH priority (Directive 052 Part A)
+    social_posts = context.get("social_posts", {})
+    if social_posts.get("best_hook"):
+        high_lines.append(f"★ **Best Social Hook:** \"{social_posts['best_hook']}\"")
+
+    # Add recent LinkedIn posts
+    dm_linkedin = social_posts.get("dm_linkedin_posts", [])
+    for post in dm_linkedin[:2]:  # Max 2 posts
+        if post.get("hook"):
+            date_str = f" (posted {post['date']})" if post.get("date") else ""
+            high_lines.append(f"★ **Recent LinkedIn Post:** \"{post['hook']}\"{date_str}")
+
+    # Add recent X/Twitter posts
+    dm_x = social_posts.get("dm_x_posts", [])
+    for post in dm_x[:2]:  # Max 2 posts
+        if post.get("hook"):
+            date_str = f" (posted {post['date']})" if post.get("date") else ""
+            high_lines.append(f"★ **Recent X Post:** \"{post['hook']}\"{date_str}")
 
     # --- MEDIUM PRIORITY FIELDS ---
 

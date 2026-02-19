@@ -213,7 +213,7 @@ async def _create_campaign_halt_notification(
         # Get campaign and client info
         result = await db.execute(
             text("""
-                SELECT c.name, c.client_id, cl.business_name
+                SELECT c.name, c.client_id, cl.name as client_name
                 FROM campaigns c
                 JOIN clients cl ON c.client_id = cl.id
                 WHERE c.id = :campaign_id
@@ -224,28 +224,32 @@ async def _create_campaign_halt_notification(
         
         if row:
             import json
+            from uuid import uuid4
+            
+            notification_id = str(uuid4())
             await db.execute(
                 text("""
-                    SELECT create_admin_notification(
-                        'campaign_halt',
-                        :client_id,
-                        :title,
-                        :message,
-                        'high',
-                        NULL,
-                        :campaign_id,
-                        :metadata
+                    INSERT INTO admin_notifications (
+                        id, notification_type, client_id, campaign_id,
+                        title, message, severity, status, metadata,
+                        created_at, updated_at
+                    ) VALUES (
+                        :id, 'campaign_halt', :client_id, :campaign_id,
+                        :title, :message, 'high', 'pending', :metadata,
+                        NOW(), NOW()
                     )
                 """),
                 {
+                    "id": notification_id,
                     "client_id": str(row.client_id),
+                    "campaign_id": campaign_id,
                     "title": f"⚠️ Campaign Halted: {row.name}",
                     "message": message,
-                    "campaign_id": campaign_id,
                     "metadata": json.dumps(metadata),
                 },
             )
             await db.commit()
+            logger.info(f"Created campaign halt notification {notification_id} for campaign {campaign_id}")
     except Exception as e:
         logger.error(f"Failed to create halt notification: {e}")
 

@@ -1247,15 +1247,15 @@ class ScorerEngine(BaseEngine):
                                 signals_found.append(signal)
                                 boost_points += 2  # 2 points per company signal
 
-            # Also check lead_social_post table if we have lead_id
+            # Also check lead_social_posts table if we have lead_id
             if lead_id:
                 post_result = await db.execute(
                     text("""
-                        SELECT content, post_type
-                        FROM lead_social_post
+                        SELECT post_content, source, post_date, summary_hook
+                        FROM lead_social_posts
                         WHERE lead_id = :lead_id
-                        AND deleted_at IS NULL
-                        ORDER BY posted_at DESC
+                        AND post_date > CURRENT_DATE - INTERVAL '90 days'
+                        ORDER BY post_date DESC
                         LIMIT 20
                     """),
                     {"lead_id": str(lead_id)},
@@ -1263,13 +1263,14 @@ class ScorerEngine(BaseEngine):
                 posts = post_result.fetchall()
 
                 for post in posts:
-                    content = (post.content or "").lower()
-                    post_type = post.post_type or "dm"
+                    content = (post.post_content or "").lower()
+                    post_source = post.source or "linkedin"
                     
                     for signal in SOCIAL_POST_TIMING_SIGNALS:
                         if signal.lower() in content and signal not in signals_found:
                             signals_found.append(signal)
-                            if post_type == "company":
+                            # Company posts get 2 points, DM/personal posts get 3 points
+                            if post_source == "company":
                                 boost_points += 2
                             else:
                                 boost_points += 3

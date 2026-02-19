@@ -168,6 +168,24 @@ class EmailEngine(OutreachEngine):
         lead = await self.get_lead_by_id(db, lead_id)
         campaign = await self.get_campaign_by_id(db, campaign_id)
 
+        # Directive 057: Validate physical address before any email send
+        # This is a hard gate - no address = no email (CAN-SPAM/GDPR compliance)
+        address_result = await self._validate_physical_address(db, campaign.client_id)
+        if not address_result["valid"]:
+            logger.warning(
+                f"Email blocked for lead {lead_id}: {address_result['reason']} "
+                f"(client_id={campaign.client_id})"
+            )
+            return EngineResult.fail(
+                error=address_result["reason"],
+                metadata={
+                    "lead_id": str(lead_id),
+                    "campaign_id": str(campaign_id),
+                    "client_id": str(campaign.client_id),
+                    "block_code": "no_physical_address",
+                },
+            )
+
         # TEST_MODE: Redirect email to test recipient
         original_email = lead.email
         if settings.TEST_MODE:
@@ -601,6 +619,54 @@ class EmailEngine(OutreachEngine):
             return text[:max_length] + "..."
         return text
 
+    async def _validate_physical_address(
+        self,
+        db: AsyncSession,
+        client_id: UUID,
+    ) -> dict[str, Any]:
+        """
+        Validate that client has a physical address configured (Directive 057).
+
+        CAN-SPAM and GDPR require a physical mailing address in commercial emails.
+        This is a hard gate - if no address is configured, email channel is blocked.
+
+        Args:
+            db: Database session
+            client_id: Client UUID to validate
+
+        Returns:
+            Dict with 'valid' bool and 'reason' string if invalid
+        """
+        from sqlalchemy import text
+
+        query = text("""
+            SELECT branding FROM clients
+            WHERE id = :client_id AND deleted_at IS NULL
+        """)
+
+        result = await db.execute(query, {"client_id": str(client_id)})
+        row = result.fetchone()
+
+        if not row:
+            return {
+                "valid": False,
+                "reason": "Client not found",
+            }
+
+        branding = row.branding or {}
+        address = branding.get("address")
+
+        if not address or not str(address).strip():
+            return {
+                "valid": False,
+                "reason": (
+                    "Physical address required for email sends (CAN-SPAM/GDPR compliance). "
+                    "Please update your agency profile with a registered business address."
+                ),
+            }
+
+        return {"valid": True, "address": address}
+
     async def send_transactional(
         self,
         to_email: str,
@@ -739,3 +805,6 @@ def get_email_engine() -> EmailEngine:
 # [x] Gap Fix #21: format_from_header() creates RFC 5322 From header
 # [x] Gap Fix #21: Validation enforced in send() method
 # [x] Gap Fix #21: Validation enforced in send_transactional() method
+# [x] Directive 057: Physical address validation gate in send()
+# [x] Directive 057: _validate_physical_address() helper method
+# [x] Directive 057: Blocks email if client.branding.address is missing

@@ -18,7 +18,7 @@ VOICE AI STACK:
 - LLM: Hybrid architecture via Vapi Squads
   - Primary (90%): Groq Llama 4 Maverick (200ms) - fast responses
   - Complex (10%): Claude 3.5 Haiku (400ms) - objection handling
-- TTS: Cartesia Sonic-2 (90ms), ElevenLabs fallback
+- TTS: ElevenLabs Flash v2.5 (sole TTS engine)
 - Telephony: Twilio
 
 HYBRID LLM HANDOFF:
@@ -54,10 +54,10 @@ class VapiAssistantConfig(BaseModel):
     name: str
     first_message: str
     system_prompt: str
-    # Voice settings - Cartesia is primary, ElevenLabs fallback
-    voice_id: str = "a0e99841-438c-4a64-b679-ae501e7d6091"  # Cartesia professional
-    voice_provider: str = "cartesia"  # "cartesia" or "11labs"
-    voice_model: str = "sonic-2"  # "sonic-2" (90ms) or "sonic-turbo" (40ms)
+    # Voice settings - ElevenLabs is the sole TTS engine
+    voice_id: str = "pNInz6obpgDQGcFmaJgB"  # ElevenLabs "Adam" voice
+    voice_provider: str = "11labs"  # ElevenLabs only
+    voice_model: str = "eleven_flash_v2_5"  # Flash v2.5 for low latency
     # LLM settings - defaults to Groq for speed (squad handles complex)
     model_provider: str = "groq"
     model: str = "llama-4-maverick-17b-128e-instruct"
@@ -78,10 +78,10 @@ class VapiSquadConfig(BaseModel):
     fast_system_prompt: str
     # ComplexHandler (Claude) - 10% complex objections
     complex_system_prompt: str
-    # Shared voice settings
-    voice_id: str = "a0e99841-438c-4a64-b679-ae501e7d6091"
-    voice_provider: str = "cartesia"
-    voice_model: str = "sonic-2"
+    # Shared voice settings - ElevenLabs only
+    voice_id: str = "pNInz6obpgDQGcFmaJgB"  # ElevenLabs "Adam" voice
+    voice_provider: str = "11labs"
+    voice_model: str = "eleven_flash_v2_5"
     max_duration_seconds: int = 300
 
 
@@ -189,21 +189,14 @@ class VapiClient:
         Returns:
             dict with 'id' key for assistant_id
         """
-        # Build voice config based on provider
-        if config.voice_provider == "cartesia":
-            voice_config = {
-                "provider": "cartesia",
-                "voiceId": config.voice_id,
-                "model": config.voice_model,
-            }
-        else:
-            # ElevenLabs fallback
-            voice_config = {
-                "provider": "11labs",
-                "voiceId": config.voice_id,
-                "stability": 0.5,
-                "similarityBoost": 0.75,
-            }
+        # ElevenLabs is the sole TTS provider
+        voice_config = {
+            "provider": "11labs",
+            "voiceId": config.voice_id,
+            "model": config.voice_model,
+            "stability": 0.5,
+            "similarityBoost": 0.75,
+        }
 
         payload = {
             "name": config.name,
@@ -241,14 +234,11 @@ class VapiClient:
         Returns:
             dict with 'id' key for squad_id (use as assistant_id in calls)
         """
-        # Voice config (shared across squad members)
+        # Voice config (shared across squad members) - ElevenLabs only
         voice_config = {
-            "provider": config.voice_provider,
-            "voiceId": config.voice_id,
-            "model": config.voice_model,
-        } if config.voice_provider == "cartesia" else {
             "provider": "11labs",
             "voiceId": config.voice_id,
+            "model": config.voice_model,
             "stability": 0.5,
             "similarityBoost": 0.75,
         }

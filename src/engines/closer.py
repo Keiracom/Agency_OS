@@ -40,6 +40,7 @@ from src.integrations.calendar_booking import generate_booking_link, send_bookin
 from src.models.activity import Activity
 from src.models.base import ChannelType, IntentType, LeadStatus
 from src.models.lead import Lead
+from src.services.lead_pool_service import LeadPoolService
 from src.services.reply_analyzer import ReplyAnalyzer
 from src.services.thread_service import ThreadService
 
@@ -527,6 +528,17 @@ class CloserEngine(BaseEngine):
             # Phase 24D: Record as do_not_contact rejection
             await self._record_rejection(db, lead, "do_not_contact")
             actions.append("recorded_rejection_do_not_contact")
+
+            # Directive 055: Propagate STOP to lead_pool for cross-channel opt-out
+            # This ensures JIT validator blocks ALL channels (email, sms, linkedin, voice)
+            pool_service = LeadPoolService(db)
+            pool_lead = await pool_service.get_by_email(lead.email)
+            if pool_lead:
+                await pool_service.mark_unsubscribed(
+                    lead_pool_id=pool_lead["id"],
+                    reason=f"STOP reply via {channel.value}"
+                )
+                actions.append("pool_status_unsubscribed")
 
         elif intent == IntentType.OUT_OF_OFFICE:
             # Schedule follow-up for later (e.g., 2 weeks)

@@ -164,6 +164,8 @@ class TierResult:
     error: str | None = None
     skipped: bool = False
     skip_reason: str | None = None
+    # CEO Directive #057: Track source URL for Spam Act compliance
+    source_url: str | None = None
 
 
 @dataclass
@@ -181,6 +183,9 @@ class EnrichmentResult:
     enrichment_lineage: list[dict[str, Any]]
     started_at: str
     completed_at: str
+    # CEO Directive #057: Enrichment provenance for Spam Act compliance
+    enrichment_source_url: str | None = None
+    enrichment_captured_at: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for storage/API response."""
@@ -194,6 +199,9 @@ class EnrichmentResult:
             "enrichment_lineage": self.enrichment_lineage,
             "started_at": self.started_at,
             "completed_at": self.completed_at,
+            # CEO Directive #057: Enrichment provenance
+            "enrichment_source_url": self.enrichment_source_url,
+            "enrichment_captured_at": self.enrichment_captured_at,
         }
 
 
@@ -849,6 +857,15 @@ class SiegeWaterfall:
         enriched_data["enrichment_sources"] = sources_used
         enriched_data["enrichment_completed_at"] = completed_at
         
+        # ===== CEO Directive #057: Enrichment Provenance =====
+        # Determine best source URL for Spam Act "conspicuous publication" defence
+        # Priority: LinkedIn > GMB > Company Website > Hunter domain
+        enrichment_source_url = self._determine_source_url(enriched_data, tier_results)
+        enrichment_captured_at = started_at  # When we captured the data
+        
+        enriched_data["enrichment_source_url"] = enrichment_source_url
+        enriched_data["enrichment_captured_at"] = enrichment_captured_at
+        
         return EnrichmentResult(
             lead_id=lead.get("id") or lead.get("lead_id"),
             original_data=lead,
@@ -861,6 +878,8 @@ class SiegeWaterfall:
             enrichment_lineage=enrichment_lineage,
             started_at=started_at,
             completed_at=completed_at,
+            enrichment_source_url=enrichment_source_url,
+            enrichment_captured_at=enrichment_captured_at,
         )
 
     @retry(
@@ -922,6 +941,10 @@ class SiegeWaterfall:
             )
             
             if enriched.get("found"):
+                # CEO Directive #057: ABN register is valid public source
+                abn_value = result.get("abn") or abn
+                source_url = f"https://abr.business.gov.au/ABN/View?abn={abn_value}" if abn_value else None
+                
                 await self._log_enrichment_operation(
                     tier=tier,
                     operation="abn_lookup",
@@ -934,6 +957,7 @@ class SiegeWaterfall:
                     success=True,
                     data=enriched,
                     cost_aud=cost,
+                    source_url=source_url,
                 )
             else:
                 await self._log_enrichment_operation(
@@ -1228,6 +1252,9 @@ class SiegeWaterfall:
             total_ms = int((time.time() - start_time) * 1000)
             
             if enriched:
+                # CEO Directive #057: GMB URL is valid public source
+                gmb_source_url = enriched.get("google_maps_url")
+                
                 await self._log_enrichment_operation(
                     tier=tier,
                     operation="gmb_scrape",
@@ -1248,6 +1275,7 @@ class SiegeWaterfall:
                     success=True,
                     data=enriched,
                     cost_aud=cost,
+                    source_url=gmb_source_url,
                 )
             else:
                 await self._log_enrichment_operation(
@@ -1317,6 +1345,10 @@ class SiegeWaterfall:
             if email:
                 result = await self.hunter_client.verify_email(email)
                 
+                # CEO Directive #057: Construct source URL from domain
+                email_domain = email.split("@")[1] if "@" in email else None
+                hunter_source_url = f"https://{email_domain}" if email_domain else None
+                
                 await self._log_enrichment_operation(
                     tier=tier,
                     operation="verify_email",
@@ -1335,6 +1367,7 @@ class SiegeWaterfall:
                         "email_verified_by": "hunter",
                     },
                     cost_aud=cost,
+                    source_url=hunter_source_url,
                 )
             
             # Try to find email by name + domain
@@ -1346,6 +1379,9 @@ class SiegeWaterfall:
                 )
                 
                 if result.get("found"):
+                    # CEO Directive #057: Domain website is the source
+                    hunter_source_url = f"https://{domain}"
+                    
                     await self._log_enrichment_operation(
                         tier=tier,
                         operation="find_email",
@@ -1363,6 +1399,7 @@ class SiegeWaterfall:
                             "email_source": "hunter_finder",
                         },
                         cost_aud=cost,
+                        source_url=hunter_source_url,
                     )
                 else:
                     await self._log_enrichment_operation(
@@ -1427,6 +1464,10 @@ class SiegeWaterfall:
                     
                     if decision_makers:
                         best_contact = decision_makers[0][1]
+                        # CEO Directive #057: LinkedIn or domain website as source
+                        contact_linkedin = best_contact.get("linkedin_url")
+                        domain_source_url = contact_linkedin if contact_linkedin else f"https://{domain}"
+                        
                         await self._log_enrichment_operation(
                             tier=tier,
                             operation="domain_search",
@@ -1452,6 +1493,7 @@ class SiegeWaterfall:
                                 "decision_makers_found": len(decision_makers),
                             },
                             cost_aud=0.15,  # Domain search costs more
+                            source_url=domain_source_url,
                         )
                 
                 await self._log_enrichment_operation(
@@ -1595,6 +1637,9 @@ class SiegeWaterfall:
                 logger.info(
                     f"[Siege] Tier 5 Identity Gold success for ALS={als_score} lead"
                 )
+                # CEO Directive #057: LinkedIn is the primary source for Kaspr
+                identity_source_url = linkedin_url or enriched.get("linkedin_url")
+                
                 await self._log_enrichment_operation(
                     tier=tier,
                     operation="identity_gold",
@@ -1608,6 +1653,7 @@ class SiegeWaterfall:
                     success=True,
                     data=enriched,
                     cost_aud=cost,
+                    source_url=identity_source_url,
                 )
             else:
                 await self._log_enrichment_operation(
@@ -1702,6 +1748,74 @@ class SiegeWaterfall:
     # ============================================
     # HELPER METHODS
     # ============================================
+
+    def _determine_source_url(
+        self,
+        enriched_data: dict[str, Any],
+        tier_results: list[TierResult],
+    ) -> str | None:
+        """
+        CEO Directive #057: Determine best source URL for Spam Act compliance.
+        
+        Priority order (best evidence of "conspicuous publication"):
+        1. LinkedIn profile URL (most defensible - person's own profile)
+        2. Company LinkedIn page URL
+        3. Google Maps/GMB URL
+        4. Company website URL
+        5. ABN register URL
+        6. Hunter domain search URL
+        
+        Args:
+            enriched_data: The enriched lead data
+            tier_results: Results from each enrichment tier
+            
+        Returns:
+            Best source URL for compliance, or None if no URL found
+        """
+        # Check LinkedIn profile URL first (highest priority)
+        linkedin_url = enriched_data.get("linkedin_url")
+        if linkedin_url and "linkedin.com" in linkedin_url:
+            return linkedin_url
+        
+        # Check company LinkedIn URL
+        company_linkedin_url = enriched_data.get("company_linkedin_url")
+        if company_linkedin_url and "linkedin.com" in company_linkedin_url:
+            return company_linkedin_url
+        
+        # Check GMB/Google Maps URL from Tier 2
+        for tier_result in tier_results:
+            if tier_result.tier == EnrichmentTier.GMB and tier_result.success:
+                gmb_url = tier_result.data.get("google_maps_url")
+                if gmb_url:
+                    return gmb_url
+        
+        # Check company website URL (often has team/contact page)
+        company_website = enriched_data.get("company_website")
+        if company_website:
+            return company_website
+        
+        # Check domain (construct URL)
+        company_domain = enriched_data.get("company_domain")
+        if company_domain:
+            # Normalize to https URL
+            if not company_domain.startswith(("http://", "https://")):
+                return f"https://{company_domain}"
+            return company_domain
+        
+        # Check ABN register URL from Tier 1
+        for tier_result in tier_results:
+            if tier_result.tier == EnrichmentTier.ABN and tier_result.success:
+                abn = enriched_data.get("abn") or tier_result.data.get("abn")
+                if abn:
+                    # ABN lookup URL is a valid public record source
+                    return f"https://abr.business.gov.au/ABN/View?abn={abn}"
+        
+        # Check tier source URLs (fallback)
+        for tier_result in tier_results:
+            if tier_result.source_url:
+                return tier_result.source_url
+        
+        return None
 
     def _merge_data(
         self,

@@ -137,6 +137,7 @@ class LeadPoolService:
                 company_technologies, company_keywords,
                 email_status, enrichment_source, enrichment_confidence,
                 enriched_at, enrichment_data,
+                enrichment_source_url, enrichment_captured_at,
                 pool_status
             ) VALUES (
                 :apollo_id, :email, :linkedin_url,
@@ -156,6 +157,7 @@ class LeadPoolService:
                 :company_technologies, :company_keywords,
                 :email_status, :enrichment_source, :enrichment_confidence,
                 NOW(), :enrichment_data,
+                :enrichment_source_url, :enrichment_captured_at,
                 'available'
             )
             RETURNING *
@@ -228,6 +230,9 @@ class LeadPoolService:
             "email_status",
             "enrichment_confidence",
             "enrichment_data",
+            # CEO Directive #057: Enrichment provenance for Spam Act compliance
+            "enrichment_source_url",
+            "enrichment_captured_at",
         ]
 
         for field in updatable_fields:
@@ -579,6 +584,9 @@ class LeadPoolService:
             "enrichment_data": json.dumps(lead_data.get("enrichment_data"))
             if lead_data.get("enrichment_data")
             else None,
+            # CEO Directive #057: Enrichment provenance for Spam Act compliance
+            "enrichment_source_url": lead_data.get("enrichment_source_url"),
+            "enrichment_captured_at": lead_data.get("enrichment_captured_at"),
         }
 
     def _row_to_dict(self, row: Any) -> dict[str, Any]:

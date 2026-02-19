@@ -58,11 +58,14 @@ from src.models.base import (
 from src.models.campaign import Campaign
 from src.models.client import Client
 from src.models.lead import Lead
+from src.config.tiers import get_available_channels
 from src.services.content_qa_service import (
     validate_email_content,
     validate_linkedin_content,
     validate_sms_content,
 )
+
+from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +73,184 @@ logger = logging.getLogger(__name__)
 # ============================================
 # TASKS
 # ============================================
+
+
+@task(name="check_campaign_quality_gate", retries=2, retry_delay_seconds=5)
+async def check_campaign_quality_gate_task(campaign_id: str) -> dict[str, Any]:
+    """
+    Pre-campaign quality gate check (Directive 048 Part E).
+
+    Prevents campaigns from firing if:
+    - 100% of leads are Cold tier (ALS < 35)
+    - No qualified leads available
+
+    Args:
+        campaign_id: Campaign UUID string
+
+    Returns:
+        Dict with quality gate result
+    """
+    async with get_db_session() as db:
+        # Get tier distribution for campaign leads
+        result = await db.execute(
+            text("""
+                SELECT 
+                    als_tier,
+                    COUNT(*) as count
+                FROM leads
+                WHERE campaign_id = :campaign_id
+                AND status = 'in_sequence'
+                AND deleted_at IS NULL
+                GROUP BY als_tier
+            """),
+            {"campaign_id": campaign_id},
+        )
+        rows = result.fetchall()
+
+        tier_distribution = {row.als_tier: row.count for row in rows}
+        total_leads = sum(tier_distribution.values())
+
+        if total_leads == 0:
+            return {
+                "campaign_id": campaign_id,
+                "passed": False,
+                "reason": "no_leads",
+                "tier_distribution": {},
+            }
+
+        # Check for 100% Cold
+        cold_count = tier_distribution.get("cold", 0) + tier_distribution.get("dead", 0)
+        qualified_count = total_leads - cold_count
+
+        if qualified_count == 0:
+            return {
+                "campaign_id": campaign_id,
+                "passed": False,
+                "reason": "100_percent_cold",
+                "tier_distribution": tier_distribution,
+                "cold_percentage": 100,
+            }
+
+        # Calculate percentages
+        cold_percentage = (cold_count / total_leads) * 100
+        hot_count = tier_distribution.get("hot", 0)
+        warm_count = tier_distribution.get("warm", 0)
+
+        return {
+            "campaign_id": campaign_id,
+            "passed": True,
+            "tier_distribution": tier_distribution,
+            "total_leads": total_leads,
+            "qualified_leads": qualified_count,
+            "cold_percentage": cold_percentage,
+            "hot_count": hot_count,
+            "warm_count": warm_count,
+        }
+
+
+@task(name="auto_assign_resources", retries=2, retry_delay_seconds=5)
+async def auto_assign_resources_task(lead_id: str, campaign_id: str) -> dict[str, Any]:
+    """
+    Automatically assign resources to a lead based on tier and availability.
+
+    Directive 048 Part E: Channel selection no longer requires manual assignment.
+
+    Args:
+        lead_id: Lead UUID string
+        campaign_id: Campaign UUID string
+
+    Returns:
+        Dict with assigned resources
+    """
+    async with get_db_session() as db:
+        # Get lead tier and client resources
+        result = await db.execute(
+            text("""
+                SELECT 
+                    l.id, l.als_tier, l.als_score, l.client_id,
+                    l.assigned_email_resource, l.assigned_linkedin_seat, l.assigned_phone_resource
+                FROM leads l
+                WHERE l.id = :lead_id
+            """),
+            {"lead_id": lead_id},
+        )
+        lead_row = result.fetchone()
+
+        if not lead_row:
+            return {"lead_id": lead_id, "success": False, "error": "Lead not found"}
+
+        als_tier = lead_row.als_tier or "cold"
+        client_id = lead_row.client_id
+        assigned = {}
+
+        # Get available resources from resource_pool
+        resources = await db.execute(
+            text("""
+                SELECT 
+                    channel_type, resource_id, is_available, daily_remaining
+                FROM resource_pool
+                WHERE client_id = :client_id
+                AND is_available = TRUE
+                AND daily_remaining > 0
+            """),
+            {"client_id": str(client_id)},
+        )
+        available_resources = {row.channel_type: row.resource_id for row in resources.fetchall()}
+
+        # Assign based on tier channels
+        from src.config.tiers import get_available_channels
+        als_score = lead_row.als_score or 0
+        allowed_channels = get_available_channels(als_score)
+
+        # Auto-assign email (always allowed)
+        if "email" in allowed_channels:
+            if not lead_row.assigned_email_resource and "email" in available_resources:
+                assigned["email"] = available_resources["email"]
+
+        # Auto-assign LinkedIn (warm+ tiers)
+        if "linkedin" in allowed_channels:
+            if not lead_row.assigned_linkedin_seat and "linkedin" in available_resources:
+                assigned["linkedin"] = available_resources["linkedin"]
+
+        # Auto-assign phone/SMS (hot tier only)
+        if "sms" in allowed_channels or "voice" in allowed_channels:
+            if not lead_row.assigned_phone_resource and "phone" in available_resources:
+                assigned["phone"] = available_resources["phone"]
+
+        # Update lead with assignments
+        if assigned:
+            update_parts = []
+            params = {"lead_id": lead_id}
+            
+            if "email" in assigned:
+                update_parts.append("assigned_email_resource = :email_resource")
+                params["email_resource"] = assigned["email"]
+            if "linkedin" in assigned:
+                update_parts.append("assigned_linkedin_seat = :linkedin_seat")
+                params["linkedin_seat"] = assigned["linkedin"]
+            if "phone" in assigned:
+                update_parts.append("assigned_phone_resource = :phone_resource")
+                params["phone_resource"] = assigned["phone"]
+
+            if update_parts:
+                update_parts.append("updated_at = NOW()")
+                await db.execute(
+                    text(f"""
+                        UPDATE leads
+                        SET {', '.join(update_parts)}
+                        WHERE id = :lead_id
+                    """),
+                    params,
+                )
+                await db.commit()
+
+        return {
+            "lead_id": lead_id,
+            "success": True,
+            "tier": als_tier,
+            "allowed_channels": allowed_channels,
+            "assigned": assigned,
+        }
 
 
 @task(name="get_leads_ready_for_outreach", retries=2, retry_delay_seconds=5)
@@ -83,6 +264,7 @@ async def get_leads_ready_for_outreach_task(limit: int = 50) -> dict[str, Any]:
     - Client has credits
     - Campaign is active and not deleted
     - Lead is not unsubscribed/bounced/converted
+    - Campaign passes quality gate (not 100% Cold)
 
     Args:
         limit: Maximum leads to process
@@ -712,6 +894,11 @@ async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
     """
     logger.info(f"Starting hourly outreach flow (batch_size={batch_size})")
 
+    # Step 0: Pre-campaign quality gate (Directive 048 Part E)
+    # Get unique campaigns from leads and check each one
+    campaigns_checked = {}
+    skipped_campaigns = []
+
     # Step 1: Get leads ready for outreach
     leads_data = await get_leads_ready_for_outreach_task(limit=batch_size)
 
@@ -723,6 +910,59 @@ async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
             "linkedin_sent": 0,
             "sms_sent": 0,
             "message": "No leads ready for outreach",
+        }
+
+    # Collect unique campaign IDs for quality gate check
+    all_campaign_ids = set()
+    for channel_leads in leads_data["leads_by_channel"].values():
+        for lead_data in channel_leads:
+            all_campaign_ids.add(lead_data["campaign_id"])
+
+    # Check quality gate for each campaign
+    for campaign_id in all_campaign_ids:
+        quality_result = await check_campaign_quality_gate_task(campaign_id)
+        campaigns_checked[campaign_id] = quality_result
+        
+        if not quality_result.get("passed"):
+            logger.warning(
+                f"Campaign {campaign_id} failed quality gate: {quality_result.get('reason')} "
+                f"(cold_percentage={quality_result.get('cold_percentage', 0):.1f}%)"
+            )
+            skipped_campaigns.append(campaign_id)
+
+    # Filter out leads from skipped campaigns
+    for channel in leads_data["leads_by_channel"]:
+        leads_data["leads_by_channel"][channel] = [
+            lead for lead in leads_data["leads_by_channel"][channel]
+            if lead["campaign_id"] not in skipped_campaigns
+        ]
+
+    # Auto-assign resources for leads without assignments
+    for channel in ["email", "linkedin", "sms"]:
+        for lead_data in leads_data["leads_by_channel"].get(channel, []):
+            if not lead_data.get("resource"):
+                assignment = await auto_assign_resources_task(
+                    lead_id=lead_data["lead_id"],
+                    campaign_id=lead_data["campaign_id"],
+                )
+                if assignment.get("assigned", {}).get(channel):
+                    lead_data["resource"] = assignment["assigned"][channel]
+
+    # Recalculate totals after filtering
+    total_after_filter = sum(
+        len(leads) for leads in leads_data["leads_by_channel"].values()
+    )
+    
+    if total_after_filter == 0:
+        logger.info("No leads ready after quality gate filter")
+        return {
+            "total_leads": leads_data["total_leads"],
+            "total_after_filter": 0,
+            "emails_sent": 0,
+            "linkedin_sent": 0,
+            "sms_sent": 0,
+            "skipped_campaigns": skipped_campaigns,
+            "message": "All campaigns failed quality gate (100% Cold leads)",
         }
 
     # Step 2: Process outreach by channel
@@ -829,6 +1069,9 @@ async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
 
     summary = {
         "total_leads": leads_data["total_leads"],
+        "total_after_quality_gate": total_after_filter,
+        "campaigns_checked": len(campaigns_checked),
+        "skipped_campaigns": skipped_campaigns,
         "emails_sent": emails_sent,
         "linkedin_sent": linkedin_sent,
         "sms_sent": sms_sent,

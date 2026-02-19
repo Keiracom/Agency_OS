@@ -124,6 +124,19 @@ FUNNEL_HIGH_SHOW_RATE_BOOST = 4  # Tier has high show rate (80%+)
 FUNNEL_GOOD_DEAL_RATE_BOOST = 4  # Good meeting-to-deal conversion (40%+)
 FUNNEL_STRONG_WIN_RATE_BOOST = 4  # Strong win rate (30%+)
 
+# Directive 048: Multi-source verified boost (max 15 points)
+MAX_MULTI_SOURCE_BOOST = 15
+# Sources: ABN, GMB, Hunter, LinkedIn, Apollo, Prospeo, etc.
+
+# Directive 048: Social post timing signals for Timing component (max 15 points)
+SOCIAL_POST_TIMING_SIGNALS = [
+    "hiring", "join our team", "we're growing", "new role",
+    "excited to announce", "just launched", "new client", "award",
+    "recently funded", "funding announcement", "series a", "series b",
+    "expanding", "growth", "milestone", "anniversary"
+]
+MAX_SOCIAL_TIMING_BOOST = 15
+
 # Default component weights (Phase 16)
 # These are used when no learned weights are available
 DEFAULT_WEIGHTS = {
@@ -1054,6 +1067,231 @@ class ScorerEngine(BaseEngine):
             logger.warning(f"Error getting funnel boost for client {client_id}: {e}")
             return {"boost_points": 0, "signals": []}
 
+    async def _get_multi_source_boost(
+        self,
+        db: AsyncSession,
+        lead_pool_id: UUID | None,
+    ) -> dict[str, Any]:
+        """
+        Calculate multi-source verified boost (Directive 048 Part D).
+
+        Awards +15 when lead has confirmed data from 3+ independent sources:
+        - ABN (Australian Business Number verification)
+        - GMB (Google My Business)
+        - Hunter (email verification)
+        - LinkedIn (profile data)
+        - Apollo / Prospeo (enrichment)
+        - DataForSEO (web presence)
+
+        Args:
+            db: Database session
+            lead_pool_id: Lead pool UUID to check
+
+        Returns:
+            Dict with boost_points (int, max 15) and sources (list)
+        """
+        if not lead_pool_id:
+            return {"boost_points": 0, "sources": [], "reason": None}
+
+        try:
+            # Get enrichment_data and verification flags from lead_pool
+            result = await db.execute(
+                text("""
+                    SELECT 
+                        enrichment_data,
+                        enrichment_source,
+                        email_status
+                    FROM lead_pool
+                    WHERE id = :lead_pool_id
+                """),
+                {"lead_pool_id": str(lead_pool_id)},
+            )
+            row = result.fetchone()
+
+            if not row:
+                return {"boost_points": 0, "sources": [], "reason": None}
+
+            sources_verified = []
+            enrichment_data = row.enrichment_data or {}
+            
+            if isinstance(enrichment_data, str):
+                import json
+                try:
+                    enrichment_data = json.loads(enrichment_data)
+                except (json.JSONDecodeError, TypeError):
+                    enrichment_data = {}
+
+            # Check ABN verification
+            if enrichment_data.get("abn_verified") or enrichment_data.get("abn"):
+                sources_verified.append("ABN")
+
+            # Check GMB (Google My Business)
+            if enrichment_data.get("gmb_verified") or enrichment_data.get("gmb_place_id"):
+                sources_verified.append("GMB")
+
+            # Check Hunter email verification
+            if row.email_status == "verified" or enrichment_data.get("hunter_verified"):
+                sources_verified.append("Hunter")
+
+            # Check LinkedIn data
+            if enrichment_data.get("linkedin_person") or enrichment_data.get("linkedin_url"):
+                sources_verified.append("LinkedIn")
+
+            # Check Apollo/Prospeo enrichment
+            enrichment_source = row.enrichment_source or ""
+            if "apollo" in enrichment_source.lower():
+                sources_verified.append("Apollo")
+            if "prospeo" in enrichment_source.lower():
+                sources_verified.append("Prospeo")
+            
+            # Check if we have multiple enrichment sources in the data
+            if enrichment_data.get("siege_waterfall_sources"):
+                waterfall_sources = enrichment_data.get("siege_waterfall_sources", [])
+                if "hunter" in [s.lower() for s in waterfall_sources]:
+                    if "Hunter" not in sources_verified:
+                        sources_verified.append("Hunter")
+                if "prospeo" in [s.lower() for s in waterfall_sources]:
+                    if "Prospeo" not in sources_verified:
+                        sources_verified.append("Prospeo")
+
+            # Check DataForSEO / SERP data
+            if enrichment_data.get("dataforseo") or enrichment_data.get("serp_data"):
+                sources_verified.append("DataForSEO")
+
+            # Award boost if 3+ sources confirmed
+            source_count = len(sources_verified)
+            
+            if source_count >= 3:
+                boost_points = MAX_MULTI_SOURCE_BOOST  # 15 points
+                reason = f"Multi-source verified ({source_count} sources: {', '.join(sources_verified)})"
+                logger.info(f"Multi-source boost for {lead_pool_id}: +{boost_points} ({reason})")
+                return {
+                    "boost_points": boost_points,
+                    "sources": sources_verified,
+                    "reason": reason,
+                }
+            
+            return {"boost_points": 0, "sources": sources_verified, "reason": None}
+
+        except Exception as e:
+            logger.warning(f"Error getting multi-source boost for {lead_pool_id}: {e}")
+            return {"boost_points": 0, "sources": [], "reason": None}
+
+    async def _get_social_post_timing_boost(
+        self,
+        db: AsyncSession,
+        lead_pool_id: UUID | None,
+        lead_id: UUID | None = None,
+    ) -> dict[str, Any]:
+        """
+        Calculate social post timing boost (Directive 048 Part D).
+
+        Scans dm_linkedin_posts and company_linkedin_posts for signals:
+        - hiring, join our team, we're growing, new role
+        - excited to announce, just launched, new client, award
+        - recently funded, series a/b, expanding, milestone
+
+        Each confirmed signal adds to Timing score up to 15pt maximum.
+
+        Args:
+            db: Database session
+            lead_pool_id: Lead pool UUID to check
+            lead_id: Optional Lead UUID for backwards compatibility
+
+        Returns:
+            Dict with boost_points (int, max 15) and signals (list)
+        """
+        if not lead_pool_id and not lead_id:
+            return {"boost_points": 0, "signals": [], "reason": None}
+
+        try:
+            boost_points = 0
+            signals_found = []
+
+            # Check lead_pool.enrichment_data for social posts first
+            if lead_pool_id:
+                result = await db.execute(
+                    text("""
+                        SELECT enrichment_data
+                        FROM lead_pool
+                        WHERE id = :lead_pool_id
+                    """),
+                    {"lead_pool_id": str(lead_pool_id)},
+                )
+                row = result.fetchone()
+
+                if row and row.enrichment_data:
+                    enrichment_data = row.enrichment_data
+                    if isinstance(enrichment_data, str):
+                        import json
+                        try:
+                            enrichment_data = json.loads(enrichment_data)
+                        except (json.JSONDecodeError, TypeError):
+                            enrichment_data = {}
+
+                    # Check person LinkedIn posts
+                    person_posts = enrichment_data.get("linkedin_person", {}).get("posts", [])
+                    for post in person_posts[:10]:  # Check up to 10 recent posts
+                        content = (post.get("text", "") or "").lower()
+                        for signal in SOCIAL_POST_TIMING_SIGNALS:
+                            if signal.lower() in content and signal not in signals_found:
+                                signals_found.append(signal)
+                                boost_points += 3  # 3 points per signal
+
+                    # Check company LinkedIn posts
+                    company_posts = enrichment_data.get("linkedin_company", {}).get("posts", [])
+                    for post in company_posts[:10]:
+                        content = (post.get("text", "") or "").lower()
+                        for signal in SOCIAL_POST_TIMING_SIGNALS:
+                            if signal.lower() in content and signal not in signals_found:
+                                signals_found.append(signal)
+                                boost_points += 2  # 2 points per company signal
+
+            # Also check lead_social_post table if we have lead_id
+            if lead_id:
+                post_result = await db.execute(
+                    text("""
+                        SELECT content, post_type
+                        FROM lead_social_post
+                        WHERE lead_id = :lead_id
+                        AND deleted_at IS NULL
+                        ORDER BY posted_at DESC
+                        LIMIT 20
+                    """),
+                    {"lead_id": str(lead_id)},
+                )
+                posts = post_result.fetchall()
+
+                for post in posts:
+                    content = (post.content or "").lower()
+                    post_type = post.post_type or "dm"
+                    
+                    for signal in SOCIAL_POST_TIMING_SIGNALS:
+                        if signal.lower() in content and signal not in signals_found:
+                            signals_found.append(signal)
+                            if post_type == "company":
+                                boost_points += 2
+                            else:
+                                boost_points += 3
+
+            # Cap at maximum
+            boost_points = min(boost_points, MAX_SOCIAL_TIMING_BOOST)
+
+            if boost_points > 0:
+                reason = f"Social timing signals ({len(signals_found)} found: {', '.join(signals_found[:5])})"
+                logger.info(f"Social timing boost for lead: +{boost_points} ({reason})")
+                return {
+                    "boost_points": boost_points,
+                    "signals": signals_found,
+                    "reason": reason,
+                }
+
+            return {"boost_points": 0, "signals": [], "reason": None}
+
+        except Exception as e:
+            logger.warning(f"Error getting social post timing boost: {e}")
+            return {"boost_points": 0, "signals": [], "reason": None}
+
     async def _update_lead_score(
         self,
         db: AsyncSession,
@@ -1207,6 +1445,16 @@ class ScorerEngine(BaseEngine):
         linkedin_boost_points = linkedin_boost.get("boost_points", 0)
         weighted_score += linkedin_boost_points
 
+        # Directive 048: Multi-source verified boost (+15 max)
+        multi_source_boost = await self._get_multi_source_boost(db, lead_pool_id)
+        multi_source_boost_points = multi_source_boost.get("boost_points", 0)
+        weighted_score += multi_source_boost_points
+
+        # Directive 048: Social post timing boost (+15 max)
+        social_timing_boost = await self._get_social_post_timing_boost(db, lead_pool_id)
+        social_timing_boost_points = social_timing_boost.get("boost_points", 0)
+        weighted_score += social_timing_boost_points
+
         total_score = int(max(0, min(100, weighted_score)))
         tier = self._get_tier(total_score)
         channels = self._get_channels_for_tier(tier)
@@ -1226,6 +1474,11 @@ class ScorerEngine(BaseEngine):
                 "company_fit": raw_company_fit,
                 "timing": raw_timing,
                 "risk": raw_risk,
+                # Directive 048: Include boost components
+                "multi_source_boost": multi_source_boost_points,
+                "social_timing_boost": social_timing_boost_points,
+                "multi_source_sources": multi_source_boost.get("sources", []),
+                "social_timing_signals": social_timing_boost.get("signals", []),
             },
             "available_channels": [c.value for c in channels],
             "lead_pool_id": str(lead_pool_id),
@@ -1235,6 +1488,11 @@ class ScorerEngine(BaseEngine):
             # Phase 37: LinkedIn engagement boost from lead_pool
             "linkedin_boost": linkedin_boost_points,
             "linkedin_signals": linkedin_boost.get("signals", []),
+            # Directive 048: New boosts
+            "multi_source_boost": multi_source_boost_points,
+            "multi_source_sources": multi_source_boost.get("sources", []),
+            "social_timing_boost": social_timing_boost_points,
+            "social_timing_signals": social_timing_boost.get("signals", []),
         }
 
         # Phase 37: Update lead_pool directly (not lead_assignments)

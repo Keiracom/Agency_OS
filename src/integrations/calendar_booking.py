@@ -10,6 +10,7 @@ Environment Variables:
 - CAL_WEBHOOK_SECRET: Cal.com webhook signing secret
 - CALENDLY_API_KEY: Calendly API key (alternative)
 - CALENDLY_WEBHOOK_SECRET: Calendly webhook signing secret
+- CALENDLY_ORG_URI: Calendly organization URI for booking links
 """
 
 import os
@@ -17,14 +18,21 @@ import hmac
 import hashlib
 import logging
 from datetime import datetime
-from typing import Optional, Dict, Any, Literal
+from typing import Optional, Dict, Any, Literal, TYPE_CHECKING
 from dataclasses import dataclass
 from enum import Enum
+from uuid import UUID
+import httpx
 
 from fastapi import APIRouter, Request, HTTPException, Header
 from pydantic import BaseModel, EmailStr
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.integrations.supabase import get_supabase_client
+
+if TYPE_CHECKING:
+    from src.models.lead import Lead
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/bookings", tags=["bookings"])
@@ -34,6 +42,313 @@ CAL_API_KEY = os.getenv("CAL_API_KEY")
 CAL_WEBHOOK_SECRET = os.getenv("CAL_WEBHOOK_SECRET")
 CALENDLY_API_KEY = os.getenv("CALENDLY_API_KEY")
 CALENDLY_WEBHOOK_SECRET = os.getenv("CALENDLY_WEBHOOK_SECRET")
+CALENDLY_ORG_URI = os.getenv("CALENDLY_ORG_URI", "")
+CALENDLY_EVENT_TYPE = os.getenv("CALENDLY_EVENT_TYPE", "demo")
+
+
+# =============================================================================
+# Booking Link Generation (Directive 048)
+# =============================================================================
+
+async def generate_booking_link(
+    lead_email: str,
+    lead_name: str,
+    company_name: str | None = None,
+    client_id: UUID | None = None,
+) -> str:
+    """
+    Generate a personalized Calendly/Cal.com booking link.
+
+    Creates a unique booking link with lead information pre-filled.
+
+    Args:
+        lead_email: Lead's email address
+        lead_name: Lead's full name
+        company_name: Lead's company name
+        client_id: Agency client UUID for routing
+
+    Returns:
+        Personalized booking URL
+    """
+    # Try Calendly first (primary), fall back to Cal.com
+    if CALENDLY_API_KEY and CALENDLY_ORG_URI:
+        return await _generate_calendly_link(lead_email, lead_name, company_name, client_id)
+    elif CAL_API_KEY:
+        return await _generate_cal_link(lead_email, lead_name, company_name, client_id)
+    else:
+        # Fallback to static link with UTM parameters
+        logger.warning("No calendar API configured, using fallback link")
+        return _generate_fallback_link(lead_email, lead_name, company_name)
+
+
+async def _generate_calendly_link(
+    lead_email: str,
+    lead_name: str,
+    company_name: str | None,
+    client_id: UUID | None,
+) -> str:
+    """Generate a Calendly booking link with pre-filled info."""
+    from urllib.parse import urlencode
+    
+    # Build base URL
+    base_url = f"https://calendly.com/{CALENDLY_ORG_URI}/{CALENDLY_EVENT_TYPE}"
+    
+    # Add pre-fill parameters
+    params = {
+        "email": lead_email,
+        "name": lead_name,
+    }
+    
+    if company_name:
+        params["a1"] = company_name  # Custom question field for company
+    
+    if client_id:
+        params["utm_source"] = str(client_id)  # Track which agency client
+    
+    return f"{base_url}?{urlencode(params)}"
+
+
+async def _generate_cal_link(
+    lead_email: str,
+    lead_name: str,
+    company_name: str | None,
+    client_id: UUID | None,
+) -> str:
+    """Generate a Cal.com booking link with pre-filled info."""
+    from urllib.parse import urlencode
+    
+    # Cal.com uses different parameter format
+    base_url = os.getenv("CAL_BOOKING_URL", "https://cal.com/demo")
+    
+    params = {
+        "email": lead_email,
+        "name": lead_name,
+    }
+    
+    if company_name:
+        params["company"] = company_name
+    
+    if client_id:
+        params["metadata[client_id]"] = str(client_id)
+    
+    return f"{base_url}?{urlencode(params)}"
+
+
+def _generate_fallback_link(
+    lead_email: str,
+    lead_name: str,
+    company_name: str | None,
+) -> str:
+    """Generate a fallback static booking link."""
+    from urllib.parse import urlencode
+    
+    base_url = os.getenv("FALLBACK_BOOKING_URL", "https://calendly.com/agency-demo")
+    
+    params = {
+        "email": lead_email,
+        "name": lead_name,
+    }
+    
+    if company_name:
+        params["a1"] = company_name
+    
+    return f"{base_url}?{urlencode(params)}"
+
+
+async def send_booking_reply(
+    db: AsyncSession,
+    lead: "Lead",
+    booking_link: str,
+) -> bool:
+    """
+    Send automated reply with booking link to prospect.
+
+    Uses the same channel the lead replied on to send the booking link.
+
+    Args:
+        db: Database session
+        lead: Lead who requested the meeting
+        booking_link: Personalized booking URL
+
+    Returns:
+        True if reply sent successfully
+    """
+    try:
+        # Generate personalized message
+        first_name = lead.first_name or "there"
+        message = (
+            f"Hi {first_name},\n\n"
+            f"Thanks for your interest! I'd love to chat.\n\n"
+            f"Here's my calendar link to book a time that works for you:\n"
+            f"{booking_link}\n\n"
+            f"Looking forward to connecting!\n"
+        )
+
+        # Determine reply channel from last activity
+        last_channel = await _get_lead_last_channel(db, lead.id)
+        
+        if last_channel == "email":
+            # Send via email engine
+            from src.engines.email import get_email_engine
+            email_engine = get_email_engine()
+            
+            result = await email_engine.send_email(
+                db=db,
+                lead_id=lead.id,
+                subject=f"Re: Let's Schedule a Call",
+                body=message,
+                from_domain=lead.assigned_email_resource,
+            )
+            return result.success
+            
+        elif last_channel == "linkedin":
+            # Send via LinkedIn engine
+            from src.engines.linkedin import get_linkedin_engine
+            linkedin_engine = get_linkedin_engine()
+            
+            result = await linkedin_engine.send_message(
+                db=db,
+                lead_id=lead.id,
+                message=message,
+                account_id=lead.assigned_linkedin_seat,
+            )
+            return result.success
+            
+        elif last_channel == "sms":
+            # Send via SMS engine (shorter message)
+            from src.engines.sms import get_sms_engine
+            sms_engine = get_sms_engine()
+            
+            short_message = f"Hi {first_name}! Here's my calendar: {booking_link}"
+            result = await sms_engine.send_sms(
+                db=db,
+                lead_id=lead.id,
+                message=short_message,
+                from_number=lead.assigned_phone_resource,
+            )
+            return result.success
+        
+        else:
+            logger.warning(f"Unknown channel for lead {lead.id}, cannot send booking reply")
+            return False
+
+    except Exception as e:
+        logger.error(f"Failed to send booking reply to lead {lead.id}: {e}")
+        return False
+
+
+async def _get_lead_last_channel(db: AsyncSession, lead_id: UUID) -> str | None:
+    """Get the last channel a lead used to communicate."""
+    try:
+        result = await db.execute(
+            text("""
+                SELECT channel FROM activities
+                WHERE lead_id = :lead_id
+                AND action = 'replied'
+                ORDER BY created_at DESC
+                LIMIT 1
+            """),
+            {"lead_id": str(lead_id)},
+        )
+        row = result.fetchone()
+        return row.channel if row else "email"  # Default to email
+    except Exception:
+        return "email"
+
+
+# =============================================================================
+# Calendly Webhook Handler (Directive 048)
+# =============================================================================
+
+async def handle_calendly_booking_confirmed(
+    db: AsyncSession,
+    event: "BookingEvent",
+) -> None:
+    """
+    Handle Calendly booking confirmation webhook.
+
+    Updates lead status to CONVERTED and triggers agency owner notification.
+
+    Args:
+        db: Database session
+        event: Parsed booking event
+    """
+    try:
+        # Find lead by email
+        from sqlalchemy import text
+        
+        result = await db.execute(
+            text("""
+                SELECT id, client_id, campaign_id, full_name, company
+                FROM leads
+                WHERE email = :email
+                AND deleted_at IS NULL
+            """),
+            {"email": event.attendee_email.lower()},
+        )
+        row = result.fetchone()
+        
+        if not row:
+            logger.warning(f"No lead found for booking email: {event.attendee_email}")
+            return
+
+        lead_id = row.id
+        client_id = row.client_id
+        
+        # Update lead status to CONVERTED
+        await db.execute(
+            text("""
+                UPDATE leads
+                SET status = 'converted',
+                    metadata = COALESCE(metadata, '{}'::jsonb) || :booking_info,
+                    updated_at = NOW()
+                WHERE id = :lead_id
+            """),
+            {
+                "lead_id": str(lead_id),
+                "booking_info": {
+                    "booking_confirmed_at": datetime.utcnow().isoformat(),
+                    "booking_id": event.booking_id,
+                    "scheduled_time": event.scheduled_time.isoformat(),
+                    "meeting_url": event.meeting_url,
+                },
+            },
+        )
+
+        # Trigger agency owner notification
+        await db.execute(
+            text("""
+                SELECT create_admin_notification(
+                    'booking_confirmed',
+                    :client_id,
+                    :title,
+                    :message,
+                    'medium',
+                    :lead_id,
+                    NULL,
+                    :metadata
+                )
+            """),
+            {
+                "client_id": str(client_id),
+                "title": "New Demo Booked! 🎉",
+                "message": f"{row.full_name} from {row.company} has booked a demo "
+                          f"for {event.scheduled_time.strftime('%B %d at %I:%M %p')}.",
+                "lead_id": str(lead_id),
+                "metadata": {
+                    "booking_id": event.booking_id,
+                    "scheduled_time": event.scheduled_time.isoformat(),
+                    "lead_email": event.attendee_email,
+                },
+            },
+        )
+
+        await db.commit()
+        logger.info(f"Lead {lead_id} marked as CONVERTED after booking confirmation")
+
+    except Exception as e:
+        logger.error(f"Error handling booking confirmation: {e}")
+        raise
 
 
 class BookingProvider(str, Enum):
@@ -178,19 +493,31 @@ def parse_calendly_webhook(payload: Dict[str, Any]) -> BookingEvent:
 # =============================================================================
 
 async def handle_booking_created(event: BookingEvent) -> None:
-    """Handle new demo booking - update pipeline stage."""
+    """Handle new demo booking - update pipeline stage and convert lead."""
     logger.info(f"Demo booked: {event.attendee_email} at {event.scheduled_time}")
     
     try:
         supabase = get_supabase_client()
         
         # Find lead by email
-        lead_result = supabase.table("leads").select("id").eq(
+        lead_result = supabase.table("leads").select("id, client_id").eq(
             "email", event.attendee_email
         ).single().execute()
         
         if lead_result.data:
             lead_id = lead_result.data["id"]
+            client_id = lead_result.data.get("client_id")
+            
+            # Directive 048: Update lead status to CONVERTED
+            supabase.table("leads").update({
+                "status": "converted",
+                "metadata": {
+                    "booking_confirmed_at": datetime.utcnow().isoformat(),
+                    "booking_id": event.booking_id,
+                    "scheduled_time": event.scheduled_time.isoformat(),
+                    "meeting_url": event.meeting_url,
+                }
+            }).eq("id", lead_id).execute()
             
             # Update pipeline to demo_booked
             supabase.table("sales_pipeline").update({
@@ -200,14 +527,29 @@ async def handle_booking_created(event: BookingEvent) -> None:
                 "notes": f"Meeting URL: {event.meeting_url or 'TBD'}"
             }).eq("lead_id", lead_id).execute()
             
-            logger.info(f"Updated pipeline for lead {lead_id} to demo_booked")
+            # Directive 048: Trigger agency owner notification
+            if client_id:
+                supabase.rpc("create_admin_notification", {
+                    "p_notification_type": "booking_confirmed",
+                    "p_client_id": str(client_id),
+                    "p_title": "New Demo Booked! 🎉",
+                    "p_message": f"{event.attendee_name} has booked a demo for {event.scheduled_time.strftime('%B %d at %I:%M %p')}.",
+                    "p_severity": "medium",
+                    "p_lead_id": str(lead_id),
+                    "p_metadata": {
+                        "booking_id": event.booking_id,
+                        "scheduled_time": event.scheduled_time.isoformat(),
+                    }
+                }).execute()
+            
+            logger.info(f"Lead {lead_id} converted and pipeline updated")
         else:
             # Create lead if doesn't exist
             new_lead = supabase.table("leads").insert({
                 "email": event.attendee_email,
                 "full_name": event.attendee_name,
                 "source": f"demo_booking_{event.provider.value}",
-                "status": "demo_booked"
+                "status": "converted"  # Direct to converted since they booked
             }).execute()
             
             if new_lead.data:

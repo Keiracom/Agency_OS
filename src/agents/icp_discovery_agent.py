@@ -59,10 +59,6 @@ from src.engines.icp_scraper import (
 )
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
 from src.models.social_profile import (
-    FacebookPageProfile,
-    GoogleBusinessProfile,
-    InstagramProfile,
-    LinkedInCompanyProfile,
     SocialProfiles,
 )
 

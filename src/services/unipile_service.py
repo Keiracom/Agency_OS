@@ -164,6 +164,8 @@ class UnipileAccountService:
             return await self._handle_expired(db, account_id, parsed)
         elif event == "account_disconnected":
             return await self._handle_disconnected(db, account_id)
+        elif event == "connection_accepted":
+            return await self._handle_connection_accepted(db, parsed)
         else:
             logger.info(f"Unipile webhook event {event} for user {user_id}")
             return {"status": "acknowledged", "event": event}
@@ -289,6 +291,122 @@ class UnipileAccountService:
 
         logger.info(f"Unipile account {account_id} disconnected")
         return {"status": "disconnected", "account_id": account_id}
+
+    async def _handle_connection_accepted(
+        self,
+        db: AsyncSession,
+        parsed: dict,
+    ) -> dict[str, Any]:
+        """
+        Handle LinkedIn connection acceptance.
+
+        P0 fix: When a lead accepts a connection request, update status
+        and queue first DM via follow_up_scheduled_for.
+
+        Args:
+            db: Database session
+            parsed: Parsed webhook data with account_id, recipient_id, invitation_id
+
+        Returns:
+            Processing result
+        """
+        from datetime import datetime, timedelta
+
+        from sqlalchemy import select
+
+        from src.models.activity import Activity
+        from src.models.base import ChannelType
+        from src.models.lead_pool import LeadPool
+        from src.models.linkedin_connection import LinkedInConnection, LinkedInConnectionStatus
+
+        account_id = parsed.get("account_id")
+        recipient_id = parsed.get("recipient_id")  # LinkedIn profile URL/ID
+        invitation_id = parsed.get("invitation_id")
+
+        if not recipient_id:
+            logger.warning("connection_accepted webhook missing recipient_id")
+            return {"status": "ignored", "reason": "no_recipient_id"}
+
+        # Find the LinkedInConnection record
+        # Try by invitation_id first, then fall back to linkedin_url
+        connection = None
+
+        if invitation_id:
+            stmt = select(LinkedInConnection).where(
+                LinkedInConnection.unipile_request_id == invitation_id,
+                LinkedInConnection.status == LinkedInConnectionStatus.PENDING,
+            )
+            result = await db.execute(stmt)
+            connection = result.scalar_one_or_none()
+
+        if not connection:
+            # Fall back to matching by lead's LinkedIn URL
+            stmt = (
+                select(LinkedInConnection)
+                .join(LeadPool, LinkedInConnection.lead_id == LeadPool.id)
+                .where(
+                    LeadPool.linkedin_url == recipient_id,
+                    LinkedInConnection.status == LinkedInConnectionStatus.PENDING,
+                )
+            )
+            result = await db.execute(stmt)
+            connection = result.scalar_one_or_none()
+
+        if not connection:
+            logger.info(
+                f"connection_accepted: no matching pending connection for "
+                f"recipient_id={recipient_id}, invitation_id={invitation_id}"
+            )
+            return {
+                "status": "ignored",
+                "reason": "connection_not_found",
+                "recipient_id": recipient_id,
+                "invitation_id": invitation_id,
+            }
+
+        # Update connection status and schedule follow-up DM
+        # 15-minute delay for humanization
+        FOLLOW_UP_DELAY_MINUTES = 15
+        connection.status = LinkedInConnectionStatus.ACCEPTED
+        connection.responded_at = datetime.utcnow()
+        connection.follow_up_scheduled_for = datetime.utcnow() + timedelta(
+            minutes=FOLLOW_UP_DELAY_MINUTES
+        )
+
+        # Log activity
+        lead = connection.lead
+        activity = Activity(
+            client_id=lead.client_id if lead else None,
+            campaign_id=connection.campaign_id,
+            lead_id=connection.lead_id,
+            channel=ChannelType.LINKEDIN,
+            action="connection_accepted",
+            provider="unipile",
+            provider_message_id=invitation_id,
+            provider_status="accepted",
+            metadata={
+                "account_id": account_id,
+                "recipient_id": recipient_id,
+                "invitation_id": invitation_id,
+                "follow_up_scheduled_for": connection.follow_up_scheduled_for.isoformat(),
+            },
+        )
+        db.add(activity)
+
+        await db.commit()
+
+        logger.info(
+            f"connection_accepted: updated connection {connection.id}, "
+            f"DM scheduled for {connection.follow_up_scheduled_for}"
+        )
+
+        return {
+            "status": "processed",
+            "event": "connection_accepted",
+            "connection_id": str(connection.id),
+            "lead_id": str(connection.lead_id),
+            "follow_up_scheduled_for": connection.follow_up_scheduled_for.isoformat(),
+        }
 
     # ==========================================
     # Account Resolution (Multi-Tenant)

@@ -943,6 +943,36 @@ async def unipile_message_webhook(
         }
 
 
+@router.post("/unipile/connection")
+async def unipile_connection_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Handle LinkedIn connection acceptance webhooks from Unipile.
+
+    NOTE: This is a secondary endpoint. The primary webhook path is
+    /api/v1/unipile/webhook which routes through unipile_account_service.
+
+    This endpoint exists for direct testing or if a separate webhook
+    URL is registered with Unipile for connection events.
+
+    Routes to unipile_account_service._handle_connection_accepted().
+    """
+    from src.services.unipile_service import unipile_account_service
+
+    try:
+        payload = await request.json()
+
+        # Route through service (same as /api/v1/unipile/webhook)
+        result = await unipile_account_service.handle_webhook(db, payload)
+        return result
+
+    except Exception as e:
+        # Return 200 to prevent Unipile retries
+        return {"status": "error", "error": str(e)}
+
+
 # Legacy HeyReach webhook (redirects to Unipile handler for transition period)
 @router.post("/heyreach/inbound")
 async def heyreach_inbound_webhook_legacy(
@@ -2222,6 +2252,7 @@ async def unsubscribe_post(
 # Unipile Migration:
 # [x] POST /webhooks/unipile/account - Account connection webhooks
 # [x] POST /webhooks/unipile/message - LinkedIn message/reply webhooks
+# [x] POST /webhooks/unipile/connection - LinkedIn connection acceptance webhooks (P0 fix)
 # [x] POST /webhooks/heyreach/inbound - Legacy redirect (backwards compat)
 #
 # ClickSend SMS (Primary for Australia):

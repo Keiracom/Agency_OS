@@ -577,6 +577,122 @@ def get_optimal_send_time(
     )
 
 
+def get_optimal_linkedin_send_time(
+    state: str | None,
+    country: str | None = "Australia",
+) -> datetime:
+    """
+    Calculate optimal LinkedIn send time (9-11 AM or 1-2 PM recipient local).
+
+    Per P0 fix requirements:
+    - LinkedIn sends must occur during optimal engagement windows only
+    - Window 1: 9-11 AM in lead's local timezone
+    - Window 2: 1-2 PM in lead's local timezone
+    - Weekdays only (Monday-Friday)
+    - Returns next available slot within these windows
+
+    Timezone mapping from ABN state field:
+    - NSW/VIC/QLD/TAS/ACT → Australia/Sydney (AEST)
+    - SA/NT → Australia/Adelaide (ACST)
+    - WA → Australia/Perth (AWST)
+    - unknown → Australia/Sydney (default)
+
+    Args:
+        state: Australian state from ABN data (e.g., 'NSW', 'VIC', 'WA')
+        country: Country (defaults to Australia)
+
+    Returns:
+        UTC datetime for next optimal LinkedIn send slot
+    """
+    import zoneinfo
+
+    # Map state to timezone using existing mapping
+    # Normalize to handle ABN format (uppercase abbreviations)
+    tz_name = "Australia/Sydney"  # default for unknown
+    if state:
+        state_lower = state.lower().strip()
+        tz_name = AUSTRALIAN_STATE_TIMEZONES.get(state_lower, "Australia/Sydney")
+
+    try:
+        tz = zoneinfo.ZoneInfo(tz_name)
+    except Exception:
+        tz = zoneinfo.ZoneInfo("Australia/Sydney")
+
+    now_local = datetime.now(tz)
+
+    # Define the two optimal windows
+    # Window 1: 9-11 AM (2 hours = 120 minutes)
+    # Window 2: 1-2 PM (1 hour = 60 minutes)
+    WINDOW_1_START = 9
+    WINDOW_1_END = 11
+    WINDOW_2_START = 13
+    WINDOW_2_END = 14
+
+    current_hour = now_local.hour
+    current_minute = now_local.minute
+
+    def _random_time_in_window(base_date: datetime, start_hour: int, end_hour: int) -> datetime:
+        """Generate random time within a window."""
+        window_minutes = (end_hour - start_hour) * 60
+        random_minute = random.randint(0, window_minutes - 1)
+        return base_date.replace(
+            hour=start_hour + (random_minute // 60),
+            minute=random_minute % 60,
+            second=0,
+            microsecond=0,
+        )
+
+    def _next_weekday(dt: datetime) -> datetime:
+        """Skip to next weekday if on weekend."""
+        while dt.weekday() >= 5:  # Saturday=5, Sunday=6
+            dt += timedelta(days=1)
+        return dt
+
+    # Determine which window to use
+    target = now_local
+
+    # Check if we're currently in Window 1 (9-11 AM)
+    if WINDOW_1_START <= current_hour < WINDOW_1_END:
+        # Currently in morning window - use remaining time in this window
+        remaining_minutes = (WINDOW_1_END - current_hour) * 60 - current_minute
+        if remaining_minutes > 5:  # At least 5 mins left
+            random_offset = random.randint(0, remaining_minutes - 1)
+            target = now_local + timedelta(minutes=random_offset)
+        else:
+            # Not enough time, schedule for afternoon window today
+            target = _random_time_in_window(now_local, WINDOW_2_START, WINDOW_2_END)
+
+    # Check if we're currently in Window 2 (1-2 PM)
+    elif WINDOW_2_START <= current_hour < WINDOW_2_END:
+        # Currently in afternoon window - use remaining time in this window
+        remaining_minutes = (WINDOW_2_END - current_hour) * 60 - current_minute
+        if remaining_minutes > 5:  # At least 5 mins left
+            random_offset = random.randint(0, remaining_minutes - 1)
+            target = now_local + timedelta(minutes=random_offset)
+        else:
+            # Not enough time, schedule for tomorrow morning
+            target = _random_time_in_window(now_local + timedelta(days=1), WINDOW_1_START, WINDOW_1_END)
+
+    # Before Window 1 (before 9 AM)
+    elif current_hour < WINDOW_1_START:
+        target = _random_time_in_window(now_local, WINDOW_1_START, WINDOW_1_END)
+
+    # Between Window 1 and Window 2 (11 AM - 1 PM)
+    elif WINDOW_1_END <= current_hour < WINDOW_2_START:
+        target = _random_time_in_window(now_local, WINDOW_2_START, WINDOW_2_END)
+
+    # After Window 2 (after 2 PM)
+    else:
+        # Schedule for tomorrow morning window
+        target = _random_time_in_window(now_local + timedelta(days=1), WINDOW_1_START, WINDOW_1_END)
+
+    # Skip weekends
+    target = _next_weekday(target)
+
+    # Return as UTC for scheduling
+    return target.astimezone(UTC)
+
+
 # Singleton instance
 _timezone_service: TimezoneService | None = None
 

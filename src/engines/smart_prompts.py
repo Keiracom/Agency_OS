@@ -548,7 +548,7 @@ async def build_full_pool_lead_context(
     assignment_result = await db.execute(
         assignment_query, {"lead_pool_id": str(lead_pool_id)}
     )
-    assignment_row = assignment_result.fetchone()
+    assignment_result.fetchone()
 
     # For pool leads, social posts are stored on the assignment or linked lead
     # Check lead_social_posts by querying via any linked leads

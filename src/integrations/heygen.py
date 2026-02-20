@@ -456,7 +456,7 @@ class HeyGenClient:
             # Create parent directories if needed
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
-            async with httpx.AsyncClient(timeout=300.0) as client:  # 5 min timeout for large videos
+            async with httpx.AsyncClient(timeout=300.0) as client:  # noqa: SIM117 - nested context required
                 async with client.stream("GET", status.video_url) as response:
                     if response.status_code != 200:
                         raise IntegrationError(

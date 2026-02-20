@@ -88,16 +88,16 @@ COMPANY_NAMES = [
 BIO_TEMPLATES = [
     "Passionate about helping businesses scale through strategic partnerships. "
     "{years}+ years of experience driving growth across diverse industries.",
-    
+
     "Dedicated to building lasting business relationships that deliver measurable results. "
     "Specializing in {specialty} with a track record of exceeding targets.",
-    
+
     "Results-driven professional focused on identifying and capturing growth opportunities. "
     "Known for a consultative approach that puts client success first.",
-    
+
     "Strategic thinker with expertise in {specialty}. "
     "Committed to understanding unique business challenges and delivering tailored solutions.",
-    
+
     "Experienced in driving revenue growth through relationship-based strategies. "
     "{years}+ years helping organizations achieve their full potential.",
 ]

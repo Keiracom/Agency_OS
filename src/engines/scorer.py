@@ -485,16 +485,16 @@ class ScorerEngine(BaseEngine):
         - Country match from ICP: 7 points
         """
         score = 0
-        
+
         # Use ICP config or defaults
         config = icp_config or DEFAULT_ICP_CONFIG
         employee_range = config.get("employee_range", {"min": 5, "max": 50})
         emp_min = employee_range.get("min", 5)
         emp_max = employee_range.get("max", 50)
-        
+
         # Get target countries from ICP config
         icp_countries = config.get("countries", ["Australia"])
-        
+
         # Industries from ICP config or fallback to target_industries or defaults
         industries = config.get("industries") or target_industries or TARGET_INDUSTRIES
 
@@ -526,7 +526,7 @@ class ScorerEngine(BaseEngine):
                 "united states": ["united states", "us", "usa"],
                 "united kingdom": ["united kingdom", "uk", "gb", "great britain"],
             }
-            
+
             # Check if country matches any ICP target country
             country_matched = False
             for icp_country in icp_countries:
@@ -536,16 +536,16 @@ class ScorerEngine(BaseEngine):
                     country_matched = True
                     break
                 # Check alias match
-                for canonical, aliases in country_aliases.items():
+                for _canonical, aliases in country_aliases.items():
                     if icp_lower in aliases and country in aliases:
                         country_matched = True
                         break
                 if country_matched:
                     break
-            
+
             if country_matched:
                 score += SCORE_COUNTRY_AUSTRALIA  # Full points for ICP country match
-            elif country in ["new zealand", "nz", "united states", "us", "usa", 
+            elif country in ["new zealand", "nz", "united states", "us", "usa",
                            "united kingdom", "uk", "gb"]:
                 score += 4  # Partial credit for English-speaking countries
 
@@ -1097,7 +1097,7 @@ class ScorerEngine(BaseEngine):
             # Get enrichment_data and verification flags from lead_pool
             result = await db.execute(
                 text("""
-                    SELECT 
+                    SELECT
                         enrichment_data,
                         enrichment_source,
                         email_status
@@ -1113,7 +1113,7 @@ class ScorerEngine(BaseEngine):
 
             sources_verified = []
             enrichment_data = row.enrichment_data or {}
-            
+
             if isinstance(enrichment_data, str):
                 import json
                 try:
@@ -1143,7 +1143,7 @@ class ScorerEngine(BaseEngine):
                 sources_verified.append("Apollo")
             if "prospeo" in enrichment_source.lower():
                 sources_verified.append("Prospeo")
-            
+
             # Check if we have multiple enrichment sources in the data
             if enrichment_data.get("siege_waterfall_sources"):
                 waterfall_sources = enrichment_data.get("siege_waterfall_sources", [])
@@ -1160,7 +1160,7 @@ class ScorerEngine(BaseEngine):
 
             # Award boost if 3+ sources confirmed
             source_count = len(sources_verified)
-            
+
             if source_count >= 3:
                 boost_points = MAX_MULTI_SOURCE_BOOST  # 15 points
                 reason = f"Multi-source verified ({source_count} sources: {', '.join(sources_verified)})"
@@ -1170,7 +1170,7 @@ class ScorerEngine(BaseEngine):
                     "sources": sources_verified,
                     "reason": reason,
                 }
-            
+
             return {"boost_points": 0, "sources": sources_verified, "reason": None}
 
         except Exception as e:
@@ -1265,7 +1265,7 @@ class ScorerEngine(BaseEngine):
                 for post in posts:
                     content = (post.post_content or "").lower()
                     post_source = post.source or "linkedin"
-                    
+
                     for signal in SOCIAL_POST_TIMING_SIGNALS:
                         if signal.lower() in content and signal not in signals_found:
                             signals_found.append(signal)
@@ -2044,16 +2044,16 @@ class ScorerEngine(BaseEngine):
         Uses pool-specific company fields.
         """
         score = 0
-        
+
         # Use ICP config or defaults
         config = icp_config or DEFAULT_ICP_CONFIG
         employee_range = config.get("employee_range", {"min": 5, "max": 50})
         emp_min = employee_range.get("min", 5)
         emp_max = employee_range.get("max", 50)
-        
+
         # Get target countries from ICP config
         icp_countries = config.get("countries", ["Australia"])
-        
+
         # Industries from ICP config or fallback
         industries = config.get("industries") or target_industries or TARGET_INDUSTRIES
 
@@ -2087,7 +2087,7 @@ class ScorerEngine(BaseEngine):
                 "united states": ["united states", "us", "usa"],
                 "united kingdom": ["united kingdom", "uk", "gb", "great britain"],
             }
-            
+
             # Check if country matches any ICP target country
             country_matched = False
             for icp_country in icp_countries:
@@ -2095,13 +2095,13 @@ class ScorerEngine(BaseEngine):
                 if country_lower == icp_lower:
                     country_matched = True
                     break
-                for canonical, aliases in country_aliases.items():
+                for _canonical, aliases in country_aliases.items():
                     if icp_lower in aliases and country_lower in aliases:
                         country_matched = True
                         break
                 if country_matched:
                     break
-            
+
             if country_matched:
                 score += SCORE_COUNTRY_AUSTRALIA
             elif country_lower in ["new zealand", "nz", "united states", "us", "usa", "uk", "gb"]:

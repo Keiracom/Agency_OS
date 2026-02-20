@@ -24,7 +24,6 @@ from src.models.campaign_suggestion import (
 from src.models.client import Client
 from src.models.client_intelligence import ClientIntelligence
 from src.models.client_persona import PERSONA_ALLOCATIONS, ClientPersona
-from src.models.persona import PERSONA_TIER_ALLOCATIONS, Persona, PersonaStatus
 from src.models.conversion_patterns import ConversionPattern, ConversionPatternHistory
 from src.models.digest_log import DigestLog
 from src.models.icp_refinement_log import IcpRefinementLog
@@ -35,6 +34,7 @@ from src.models.linkedin_connection import LinkedInConnection, LinkedInConnectio
 from src.models.linkedin_credential import LinkedInCredential
 from src.models.linkedin_seat import LINKEDIN_WARMUP_SCHEDULE, LinkedInSeat, LinkedInSeatStatus
 from src.models.membership import Membership
+from src.models.persona import PERSONA_TIER_ALLOCATIONS, Persona, PersonaStatus
 from src.models.resource_pool import (
     HEALTH_DAILY_LIMITS,
     HEALTH_THRESHOLDS,

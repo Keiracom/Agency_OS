@@ -123,3 +123,4 @@ supabase/.temp/
 *xero*
 *accpay*
 *bills_*.json
+.env*.local

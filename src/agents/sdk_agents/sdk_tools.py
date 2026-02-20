@@ -12,7 +12,6 @@ Tools available:
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import re
 from collections.abc import Callable, Coroutine
@@ -259,7 +258,7 @@ async def linkedin_posts(
 ) -> str:
     """
     Fetch LinkedIn posts via Apify.
-    
+
     NOTE: FCO-003 deprecated Apify. This function is stubbed.
     LinkedIn post scraping disabled until Camoufox integration.
 

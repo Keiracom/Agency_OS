@@ -322,7 +322,7 @@ async def handle_webhook(
     """
     # Note: Signature verification is optional for Unipile
     # They recommend IP whitelisting instead
-    
+
     try:
         payload = await request.json()
     except Exception:

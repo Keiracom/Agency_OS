@@ -9,7 +9,7 @@ All tier limits are business decisions documented in PRICING_TIERS.md
 """
 
 from dataclasses import dataclass
-from enum import Enum, StrEnum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

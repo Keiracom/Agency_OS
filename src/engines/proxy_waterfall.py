@@ -26,7 +26,7 @@ import random
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from enum import Enum, StrEnum
+from enum import StrEnum
 
 import httpx
 

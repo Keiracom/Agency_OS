@@ -13,7 +13,7 @@ import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum, StrEnum
+from enum import StrEnum
 from typing import Any
 
 import stripe

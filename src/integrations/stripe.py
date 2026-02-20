@@ -33,7 +33,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
-from enum import Enum, StrEnum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID
 

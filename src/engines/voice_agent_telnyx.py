@@ -33,7 +33,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from enum import Enum, StrEnum
+from enum import StrEnum
 from uuid import UUID, uuid4
 
 import httpx

@@ -116,7 +116,7 @@ def generate_uuid_v7() -> UUID:
 # Enums (matching database types)
 # ============================================
 
-from enum import Enum, StrEnum
+from enum import StrEnum
 
 
 class TierType(StrEnum):

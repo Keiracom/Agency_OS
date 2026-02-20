@@ -7,7 +7,7 @@ Consumers: services, orchestration
 Spec: Persona pool allocation by tier (ignition: 2, velocity: 3, dominance: 4)
 """
 
-from enum import Enum, StrEnum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 from uuid import UUID
 

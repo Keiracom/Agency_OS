@@ -943,6 +943,145 @@ async def unipile_message_webhook(
         }
 
 
+@router.post("/unipile/connection")
+async def unipile_connection_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Handle LinkedIn connection acceptance webhooks from Unipile.
+
+    Called when a LinkedIn connection request is accepted by the recipient.
+
+    Actions on connection_accepted:
+    1. Update LinkedInConnection status to ACCEPTED
+    2. Schedule first DM via follow_up_scheduled_for (immediate queue)
+    3. Log activity for tracking
+
+    Webhook-first architecture (Rule 20).
+
+    Args:
+        request: FastAPI request
+        db: Database session
+
+    Returns:
+        Success response with connection_id and scheduled follow-up time
+    """
+    from datetime import datetime, timedelta
+
+    from sqlalchemy import select
+
+    from src.models.activity import Activity
+    from src.models.linkedin_connection import LinkedInConnection, LinkedInConnectionStatus
+
+    try:
+        payload = await request.json()
+
+        # Parse webhook
+        unipile = get_unipile_client()
+        parsed = unipile.parse_webhook(payload)
+
+        # Check event type - only process connection_accepted
+        event_type = parsed.get("event")
+        if event_type != "connection_accepted":
+            return {"status": "ignored", "reason": f"not_connection_accepted_event: {event_type}"}
+
+        # Extract data from parsed webhook
+        account_id = parsed.get("account_id")
+        recipient_id = parsed.get("recipient_id")  # LinkedIn profile URL/ID
+        invitation_id = parsed.get("invitation_id")
+
+        if not recipient_id:
+            return {"status": "ignored", "reason": "no_recipient_id"}
+
+        # Find the LinkedInConnection record by matching recipient LinkedIn URL
+        # Try to find by unipile_request_id first, then fall back to lead's linkedin_url
+        connection = None
+
+        if invitation_id:
+            # Try to match by Unipile invitation ID
+            stmt = select(LinkedInConnection).where(
+                LinkedInConnection.unipile_request_id == invitation_id,
+                LinkedInConnection.status == LinkedInConnectionStatus.PENDING,
+            )
+            result = await db.execute(stmt)
+            connection = result.scalar_one_or_none()
+
+        if not connection:
+            # Fall back to matching by lead's LinkedIn URL
+            # Join with lead_pool to find matching recipient
+            from src.models.lead_pool import LeadPool
+
+            stmt = (
+                select(LinkedInConnection)
+                .join(LeadPool, LinkedInConnection.lead_id == LeadPool.id)
+                .where(
+                    LeadPool.linkedin_url == recipient_id,
+                    LinkedInConnection.status == LinkedInConnectionStatus.PENDING,
+                )
+            )
+            result = await db.execute(stmt)
+            connection = result.scalar_one_or_none()
+
+        if not connection:
+            # Log for debugging but don't fail - connection might have been created differently
+            return {
+                "status": "ignored",
+                "reason": "connection_not_found",
+                "recipient_id": recipient_id,
+                "invitation_id": invitation_id,
+            }
+
+        # Update connection status to ACCEPTED with short follow-up delay
+        # Using 15 minutes delay for near-immediate DM queuing (humanization)
+        FOLLOW_UP_DELAY_MINUTES = 15
+        connection.status = LinkedInConnectionStatus.ACCEPTED
+        connection.responded_at = datetime.utcnow()
+        connection.follow_up_scheduled_for = datetime.utcnow() + timedelta(
+            minutes=FOLLOW_UP_DELAY_MINUTES
+        )
+
+        # Get lead for activity logging
+        lead = connection.lead
+
+        # Log activity for connection acceptance
+        activity = Activity(
+            client_id=lead.client_id if lead else None,
+            campaign_id=connection.campaign_id,
+            lead_id=connection.lead_id,
+            channel=ChannelType.LINKEDIN,
+            action="connection_accepted",
+            provider="unipile",
+            provider_message_id=invitation_id,
+            provider_status="accepted",
+            metadata={
+                "account_id": account_id,
+                "recipient_id": recipient_id,
+                "invitation_id": invitation_id,
+                "follow_up_scheduled_for": connection.follow_up_scheduled_for.isoformat(),
+            },
+        )
+        db.add(activity)
+
+        await db.commit()
+
+        return {
+            "status": "processed",
+            "event": "connection_accepted",
+            "connection_id": str(connection.id),
+            "lead_id": str(connection.lead_id),
+            "follow_up_scheduled_for": connection.follow_up_scheduled_for.isoformat(),
+            "follow_up_delay_minutes": FOLLOW_UP_DELAY_MINUTES,
+        }
+
+    except Exception as e:
+        # Return 200 to prevent Unipile retries
+        return {
+            "status": "error",
+            "error": str(e),
+        }
+
+
 # Legacy HeyReach webhook (redirects to Unipile handler for transition period)
 @router.post("/heyreach/inbound")
 async def heyreach_inbound_webhook_legacy(
@@ -2222,6 +2361,7 @@ async def unsubscribe_post(
 # Unipile Migration:
 # [x] POST /webhooks/unipile/account - Account connection webhooks
 # [x] POST /webhooks/unipile/message - LinkedIn message/reply webhooks
+# [x] POST /webhooks/unipile/connection - LinkedIn connection acceptance webhooks (P0 fix)
 # [x] POST /webhooks/heyreach/inbound - Legacy redirect (backwards compat)
 #
 # ClickSend SMS (Primary for Australia):

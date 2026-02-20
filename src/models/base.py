@@ -116,10 +116,10 @@ def generate_uuid_v7() -> UUID:
 # Enums (matching database types)
 # ============================================
 
-from enum import Enum
+from enum import Enum, StrEnum
 
 
-class TierType(str, Enum):
+class TierType(StrEnum):
     """Subscription tier types."""
 
     IGNITION = "ignition"
@@ -127,7 +127,7 @@ class TierType(str, Enum):
     DOMINANCE = "dominance"
 
 
-class SubscriptionStatus(str, Enum):
+class SubscriptionStatus(StrEnum):
     """Subscription status values."""
 
     TRIALING = "trialing"
@@ -137,7 +137,7 @@ class SubscriptionStatus(str, Enum):
     PAUSED = "paused"
 
 
-class MembershipRole(str, Enum):
+class MembershipRole(StrEnum):
     """Team membership roles."""
 
     OWNER = "owner"
@@ -146,7 +146,7 @@ class MembershipRole(str, Enum):
     VIEWER = "viewer"
 
 
-class PermissionMode(str, Enum):
+class PermissionMode(StrEnum):
     """Automation permission modes."""
 
     AUTOPILOT = "autopilot"
@@ -154,7 +154,7 @@ class PermissionMode(str, Enum):
     MANUAL = "manual"
 
 
-class CampaignStatus(str, Enum):
+class CampaignStatus(StrEnum):
     """Campaign lifecycle status."""
 
     DRAFT = "draft"
@@ -163,7 +163,7 @@ class CampaignStatus(str, Enum):
     COMPLETED = "completed"
 
 
-class LeadStatus(str, Enum):
+class LeadStatus(StrEnum):
     """Lead lifecycle status."""
 
     NEW = "new"
@@ -175,7 +175,7 @@ class LeadStatus(str, Enum):
     BOUNCED = "bounced"
 
 
-class ChannelType(str, Enum):
+class ChannelType(StrEnum):
     """Outreach channel types."""
 
     EMAIL = "email"
@@ -185,7 +185,7 @@ class ChannelType(str, Enum):
     MAIL = "mail"
 
 
-class IntentType(str, Enum):
+class IntentType(StrEnum):
     """Reply intent classification."""
 
     MEETING_REQUEST = "meeting_request"
@@ -200,7 +200,7 @@ class IntentType(str, Enum):
     ANGRY_COMPLAINT = "angry_or_complaint"
 
 
-class WebhookEventType(str, Enum):
+class WebhookEventType(StrEnum):
     """Webhook event types."""
 
     LEAD_CREATED = "lead.created"
@@ -214,7 +214,7 @@ class WebhookEventType(str, Enum):
     MEETING_BOOKED = "meeting.booked"
 
 
-class AuditAction(str, Enum):
+class AuditAction(StrEnum):
     """Audit action types."""
 
     CREATE = "create"
@@ -228,7 +228,7 @@ class AuditAction(str, Enum):
     WEBHOOK_FAILED = "webhook_failed"
 
 
-class PatternType(str, Enum):
+class PatternType(StrEnum):
     """Conversion intelligence pattern types."""
 
     WHO = "who"  # Lead attribute patterns

@@ -8,7 +8,7 @@ Phase: Phase D - Item 18
 """
 
 from datetime import datetime, timedelta
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
 from uuid import UUID
 
@@ -30,7 +30,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models.base import Base, SoftDeleteMixin, TimestampMixin, UUIDMixin
 
 
-class SuggestionType(str, Enum):
+class SuggestionType(StrEnum):
     """Types of campaign suggestions."""
 
     CREATE_CAMPAIGN = "create_campaign"
@@ -42,7 +42,7 @@ class SuggestionType(str, Enum):
     ADJUST_TIMING = "adjust_timing"
 
 
-class SuggestionStatus(str, Enum):
+class SuggestionStatus(StrEnum):
     """Suggestion lifecycle status."""
 
     PENDING = "pending"

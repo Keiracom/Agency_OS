@@ -31,7 +31,7 @@ import contextlib
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
 
 import httpx
@@ -73,13 +73,13 @@ REQUEST_DELAY_SECONDS = 0.1
 # ============================================
 
 
-class EmailType(str, Enum):
+class EmailType(StrEnum):
     """Email type classification."""
     PERSONAL = "personal"
     GENERIC = "generic"
 
 
-class VerificationStatus(str, Enum):
+class VerificationStatus(StrEnum):
     """Email verification status."""
     VALID = "valid"
     INVALID = "invalid"
@@ -89,14 +89,14 @@ class VerificationStatus(str, Enum):
     UNKNOWN = "unknown"
 
 
-class Seniority(str, Enum):
+class Seniority(StrEnum):
     """Job seniority level."""
     JUNIOR = "junior"
     SENIOR = "senior"
     EXECUTIVE = "executive"
 
 
-class Department(str, Enum):
+class Department(StrEnum):
     """Department classification."""
     EXECUTIVE = "executive"
     IT = "it"

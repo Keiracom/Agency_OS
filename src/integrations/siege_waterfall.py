@@ -35,7 +35,7 @@ import logging
 import os
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
 
 import httpx
@@ -121,7 +121,7 @@ class EnrichmentSkippedError(IntegrationError):
 # ============================================
 
 
-class EnrichmentTier(str, Enum):
+class EnrichmentTier(StrEnum):
     """Enrichment tier identifiers."""
 
     ABN = "tier1_abn"

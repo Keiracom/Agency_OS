@@ -7,7 +7,7 @@ Consumers: services, orchestration
 Spec: Persona pool allocation by tier (ignition: 2, velocity: 3, dominance: 4)
 """
 
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from src.models.client import Client
 
 
-class PersonaStatus(str, Enum):
+class PersonaStatus(StrEnum):
     """Persona lifecycle status."""
 
     AVAILABLE = "available"

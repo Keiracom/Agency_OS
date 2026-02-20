@@ -30,7 +30,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 # CONSTANTS & CONFIGURATION
 # ============================================
 
-class VerificationTier(str, Enum):
+class VerificationTier(StrEnum):
     """Waterfall verification tiers."""
     ABN_SEED = "abn_seed"
     ASIC_VERIFY = "asic_verify"  # T1.25: ABR SearchByASIC for registered_name
@@ -60,7 +60,7 @@ class VerificationTier(str, Enum):
     DM3_X_POSTS = "dm3_x_posts"  # T-DM3: Bright Data X/Twitter Posts (gd_lwxkxvnf1cynvib9co)
 
 
-class MatchConfidence(str, Enum):
+class MatchConfidence(StrEnum):
     """ABN ↔ GMB match confidence levels."""
     EXACT = "exact"           # Name + postcode + address exact match
     HIGH = "high"             # Name fuzzy ≥90% + postcode match

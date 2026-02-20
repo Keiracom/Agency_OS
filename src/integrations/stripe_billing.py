@@ -13,7 +13,7 @@ import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
 
 import stripe
@@ -32,7 +32,7 @@ FOUNDING_PRICE_ID = os.getenv("STRIPE_FOUNDING_PRICE_ID")
 STANDARD_PRICE_ID = os.getenv("STRIPE_STANDARD_PRICE_ID")
 
 
-class PlanType(str, Enum):
+class PlanType(StrEnum):
     FOUNDING = "founding"
     STANDARD = "standard"
 

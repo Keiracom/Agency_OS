@@ -19,7 +19,7 @@ import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID
 
@@ -349,7 +349,7 @@ async def handle_calendly_booking_confirmed(
         raise
 
 
-class BookingProvider(str, Enum):
+class BookingProvider(StrEnum):
     CAL = "cal.com"
     CALENDLY = "calendly"
 

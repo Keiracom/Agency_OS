@@ -33,7 +33,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from enum import Enum
+from enum import Enum, StrEnum
 from uuid import UUID, uuid4
 
 import httpx
@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 # CONSTANTS & CONFIGURATION
 # ============================================
 
-class CallState(str, Enum):
+class CallState(StrEnum):
     """Call state machine."""
     IDLE = "idle"
     RINGING = "ringing"

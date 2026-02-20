@@ -31,13 +31,13 @@ Design Decisions:
 import logging
 import re
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-class QAStatus(str, Enum):
+class QAStatus(StrEnum):
     """Content QA validation status."""
 
     PASSED = "passed"
@@ -45,7 +45,7 @@ class QAStatus(str, Enum):
     WARNING = "warning"  # Passed but has minor issues
 
 
-class ContentChannel(str, Enum):
+class ContentChannel(StrEnum):
     """Supported content channels."""
 
     EMAIL = "email"

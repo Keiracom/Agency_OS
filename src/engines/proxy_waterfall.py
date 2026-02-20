@@ -26,7 +26,7 @@ import random
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from enum import Enum
+from enum import Enum, StrEnum
 
 import httpx
 
@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 # CONSTANTS & CONFIGURATION
 # ============================================
 
-class ProxyTier(str, Enum):
+class ProxyTier(StrEnum):
     """Proxy tier levels."""
     DATACENTER = "datacenter"
     ISP = "isp"

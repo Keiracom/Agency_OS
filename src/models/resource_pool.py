@@ -13,7 +13,7 @@ Phase D additions:
 
 from datetime import datetime
 from decimal import Decimal
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 # ============================================
 
 
-class ResourceType(str, Enum):
+class ResourceType(StrEnum):
     """Resource types available in the pool."""
 
     EMAIL_DOMAIN = "email_domain"
@@ -45,7 +45,7 @@ class ResourceType(str, Enum):
     LINKEDIN_SEAT = "linkedin_seat"
 
 
-class ResourceStatus(str, Enum):
+class ResourceStatus(StrEnum):
     """Resource lifecycle status."""
 
     AVAILABLE = "available"
@@ -54,7 +54,7 @@ class ResourceStatus(str, Enum):
     RETIRED = "retired"
 
 
-class HealthStatus(str, Enum):
+class HealthStatus(StrEnum):
     """Domain health status based on bounce/complaint rates."""
 
     GOOD = "good"  # <2% bounce, <0.05% complaint → 50/day

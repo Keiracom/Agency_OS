@@ -33,7 +33,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
 from uuid import UUID
 
@@ -76,7 +76,7 @@ DEFAULT_TRIAL_DAYS = 14
 # ============================================
 
 
-class SubscriptionStatus(str, Enum):
+class SubscriptionStatus(StrEnum):
     """Stripe subscription status."""
     ACTIVE = "active"
     PAST_DUE = "past_due"
@@ -88,7 +88,7 @@ class SubscriptionStatus(str, Enum):
     PAUSED = "paused"
 
 
-class PaymentStatus(str, Enum):
+class PaymentStatus(StrEnum):
     """Payment intent status."""
     REQUIRES_PAYMENT_METHOD = "requires_payment_method"
     REQUIRES_CONFIRMATION = "requires_confirmation"
@@ -98,7 +98,7 @@ class PaymentStatus(str, Enum):
     CANCELED = "canceled"
 
 
-class PricingTier(str, Enum):
+class PricingTier(StrEnum):
     """Agency OS pricing tiers."""
     IGNITION = "ignition"
     GROWTH = "growth"

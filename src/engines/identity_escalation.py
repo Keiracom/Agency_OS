@@ -35,7 +35,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from enum import Enum
+from enum import Enum, StrEnum
 from uuid import UUID, uuid4
 
 from sqlalchemy import insert
@@ -95,14 +95,14 @@ DECISION_MAKER_TITLES = [
 # DATA CLASSES
 # ============================================
 
-class PhoneType(str, Enum):
+class PhoneType(StrEnum):
     """Phone number types."""
     MOBILE = "mobile"
     LANDLINE = "landline"
     UNKNOWN = "unknown"
 
 
-class IdentityTier(str, Enum):
+class IdentityTier(StrEnum):
     """Identity enrichment tiers."""
     TEAM_PAGE_SCRAPE = "team_page_scrape"
     LINKEDIN_EMPLOYEE = "linkedin_employee"

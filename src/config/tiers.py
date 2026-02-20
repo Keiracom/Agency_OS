@@ -9,14 +9,14 @@ All tier limits are business decisions documented in PRICING_TIERS.md
 """
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.models.base import ChannelType
 
 
-class TierName(str, Enum):
+class TierName(StrEnum):
     """Subscription tier names."""
 
     IGNITION = "ignition"

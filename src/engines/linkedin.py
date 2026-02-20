@@ -392,11 +392,15 @@ class LinkedInEngine(OutreachEngine):
             # Map state to timezone using existing service mapping
             tz_name = "Australia/Sydney"  # default
             if lead_state:
-                tz_name = AUSTRALIAN_STATE_TIMEZONES.get(lead_state.lower().strip(), "Australia/Sydney")
+                tz_name = AUSTRALIAN_STATE_TIMEZONES.get(
+                    lead_state.lower().strip(), "Australia/Sydney"
+                )
 
             if not _is_in_linkedin_optimal_window(tz_name):
                 # Not in optimal window - return scheduled time instead of sending
-                scheduled_time = get_optimal_linkedin_send_time(state=lead_state, country="Australia")
+                scheduled_time = get_optimal_linkedin_send_time(
+                    state=lead_state, country="Australia"
+                )
                 return EngineResult.ok(
                     data={
                         "status": "scheduled",

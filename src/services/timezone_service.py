@@ -671,7 +671,9 @@ def get_optimal_linkedin_send_time(
             target = now_local + timedelta(minutes=random_offset)
         else:
             # Not enough time, schedule for tomorrow morning
-            target = _random_time_in_window(now_local + timedelta(days=1), WINDOW_1_START, WINDOW_1_END)
+            target = _random_time_in_window(
+                now_local + timedelta(days=1), WINDOW_1_START, WINDOW_1_END
+            )
 
     # Before Window 1 (before 9 AM)
     elif current_hour < WINDOW_1_START:

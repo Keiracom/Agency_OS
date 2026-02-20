@@ -469,7 +469,7 @@ class BaseEngine(ABC):
                         created_at
                     ) VALUES (
                         :engine, :operation, :client_id, :lead_id, :campaign_id,
-                        :channel, :success, :cost_aud, :error_message, 
+                        :channel, :success, :cost_aud, :error_message,
                         CAST(:metadata AS jsonb), NOW()
                     )
                 """),

@@ -247,7 +247,7 @@ def get_instructions() -> str:
     lines.append(f"- Prefect: {LIVE_CONFIG['prefect_url']}")
     lines.append("")
     lines.append("### ALS Tier Thresholds (CRITICAL)")
-    for tier, config in ALS_TIERS.items():
+    for _tier, config in ALS_TIERS.items():
         lines.append(f"  {config['label']}: {config['min_score']}-{config['max_score']} ({config['color']})")
     lines.append("")
     lines.append("### Checks")

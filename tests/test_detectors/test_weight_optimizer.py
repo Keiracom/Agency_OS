@@ -84,7 +84,7 @@ class TestWeightNormalization:
 
     def test_normalize_weights_sums_to_1(self):
         """Normalized weights always sum to 1."""
-        optimizer = WeightOptimizer()
+        WeightOptimizer()
 
         # Test with various weight configurations
         test_weights = [

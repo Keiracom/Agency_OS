@@ -178,7 +178,7 @@ def get_next_group(state: dict) -> str | None:
 def cmd_status(args):
     """Show current E2E testing position and progress."""
     state = load_json(E2E_STATE_FILE)
-    config = load_json(E2E_CONFIG_FILE)
+    load_json(E2E_CONFIG_FILE)
 
     if not state:
         print("E2E state not initialized")

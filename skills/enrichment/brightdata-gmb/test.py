@@ -61,7 +61,7 @@ async def test():
         print(f"   Response ID: {response_id}")
 
         # Poll for results - first check happens quickly to catch disabled errors
-        for i in range(6):
+        for _i in range(6):
             await asyncio.sleep(2)  # Shorter wait
 
             try:
@@ -80,7 +80,7 @@ async def test():
                     if not text or text == "":
                         continue
                     result = poll.json()
-                except:
+                except Exception:
                     continue
 
                 # Check for disabled endpoint error FIRST

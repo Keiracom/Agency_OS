@@ -54,7 +54,7 @@ async def test():
         print(f"   Snapshot: {snapshot_id}")
 
         # Poll (max 15 seconds for test)
-        for i in range(5):
+        for _i in range(5):
             await asyncio.sleep(3)
             snap_response = await client.get(
                 f"https://api.brightdata.com/datasets/v3/snapshot/{snapshot_id}",

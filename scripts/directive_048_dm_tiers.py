@@ -183,7 +183,7 @@ async def find_x_handle(client, website, company_name, dfs_auth):
                     handle = match.group(1)
                     if handle not in ['share', 'intent', 'search', 'home']:
                         return handle
-        except:
+        except Exception:
             pass
 
     # Method 2: DataForSEO SERP fallback
@@ -211,7 +211,7 @@ async def find_x_handle(client, website, company_name, dfs_auth):
                     handle = match.group(1)
                     if handle not in ['share', 'intent', 'search', 'home', 'hashtag']:
                         return handle
-        except:
+        except Exception:
             pass
 
     return None
@@ -332,16 +332,16 @@ async def main():
                                             try:
                                                 # Try parsing date
                                                 if isinstance(post_date_str, str):
-                                                    for fmt in ["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%d %b %Y"]:
+                                                    for _fmt in ["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%d %b %Y"]:
                                                         try:
                                                             post_date = datetime.strptime(post_date_str[:10], "%Y-%m-%d")
                                                             post_date = post_date.replace(tzinfo=UTC)
                                                             if post_date < cutoff_date:
                                                                 include = False
                                                             break
-                                                        except:
+                                                        except ValueError:
                                                             continue
-                                            except:
+                                            except Exception:
                                                 pass
 
                                         if include and post_text:
@@ -448,10 +448,14 @@ async def main():
         x_handle = f"@{r['x_handle'][:10]}" if r["x_handle"] else "✗"
         x_posts = str(r["x_posts_90d"]) if r["x_posts_90d"] > 0 else "0"
 
-        if r["profile"]: profile_found += 1
-        if r["linkedin_posts_90d"] > 0: li_posts_found += 1
-        if r["x_handle"]: x_handle_found += 1
-        if r["x_posts_90d"] > 0: x_posts_found += 1
+        if r["profile"]:
+            profile_found += 1
+        if r["linkedin_posts_90d"] > 0:
+            li_posts_found += 1
+        if r["x_handle"]:
+            x_handle_found += 1
+        if r["x_posts_90d"] > 0:
+            x_posts_found += 1
 
         print(f"{i:<3} {r['company'][:24]:<25} {has_profile:<8} {li_posts:<10} {x_handle:<12} {x_posts:<8}", flush=True)
 

@@ -198,14 +198,14 @@ def get_instructions() -> str:
     lines.append("")
     lines.append("### Twilio Configuration")
     lines.append("  Required Environment Variables:")
-    for key, value in TWILIO_CONFIG["env_vars"].items():
+    for _key, value in TWILIO_CONFIG["env_vars"].items():
         lines.append(f"    - {value}")
     lines.append("  Webhook Paths:")
-    for key, value in TWILIO_CONFIG["webhook_paths"].items():
+    for _key, value in TWILIO_CONFIG["webhook_paths"].items():
         lines.append(f"    - {key}: {value}")
     lines.append("")
     lines.append("### SMS Provider Configuration")
-    for key, value in SMS_PROVIDER_CONFIG.items():
+    for _key, value in SMS_PROVIDER_CONFIG.items():
         lines.append(f"  {key}: {value}")
     lines.append("")
     lines.append("### Checks")

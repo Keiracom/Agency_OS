@@ -48,7 +48,7 @@ class TestSubscriptionValidation:
         # Arrange
         client = create_test_client(subscription_status="active")
         campaign = create_test_campaign(client["id"])
-        lead = create_hot_lead(client["id"], campaign["id"])
+        create_hot_lead(client["id"], campaign["id"])
 
         # Act - Simulate JIT validation
         def validate_subscription(client_data: dict) -> bool:
@@ -406,7 +406,7 @@ class TestStripeWebhooks:
 
         # Act - Simulate webhook processing
         event_type = webhook_payload["type"]
-        subscription_data = webhook_payload["data"]["object"]
+        webhook_payload["data"]["object"]
 
         if event_type == "customer.subscription.deleted":
             client["subscription_status"] = "cancelled"

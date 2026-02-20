@@ -104,13 +104,13 @@ class TestHotThreshold:
         mock_kaspr = Mock()
         mock_kaspr.get_contact = Mock(return_value={"mobile": "+61400000000"})
 
-        waterfall = WaterfallV2(
+        WaterfallV2(
             bright_data_client=mock_client,
             kaspr_client=mock_kaspr
         )
 
         # Hot lead
-        lead = LeadRecord(
+        LeadRecord(
             als_score=90,
             decision_makers=[{"linkedin_url": "https://linkedin.com/in/test"}]
         )

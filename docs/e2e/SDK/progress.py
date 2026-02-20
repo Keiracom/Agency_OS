@@ -102,7 +102,7 @@ def cmd_next(data: dict) -> None:
 def cmd_complete(data: dict, task_id: str) -> None:
     """Mark a task as completed."""
     # Find and update the task
-    for pid, phase in data['phases'].items():
+    for _pid, phase in data['phases'].items():
         for task in phase['tasks']:
             if task['id'] == task_id:
                 if task['status'] == 'completed':
@@ -147,7 +147,7 @@ def find_next_task(data: dict) -> dict | None:
 
 def update_phase_status(data: dict) -> None:
     """Update phase statuses based on task completion."""
-    for pid, phase in data['phases'].items():
+    for _pid, phase in data['phases'].items():
         all_completed = all(t['status'] == 'completed' for t in phase['tasks'])
         any_completed = any(t['status'] == 'completed' for t in phase['tasks'])
 

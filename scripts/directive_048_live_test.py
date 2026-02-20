@@ -10,7 +10,7 @@ Size: SME (1-50 employees)
 
 Waterfall Architecture v2.2:
 T1 → ABN lookup
-T1.25 → ABR registered name normalisation  
+T1.25 → ABR registered name normalisation
 T1.5 → BD LinkedIn Company
 T2 → BD GMB (async, poll until complete)
 T2.5 → BD GMB Reviews (hot leads ALS ≥75 only)
@@ -746,11 +746,16 @@ class Directive048Test:
             dm0 = "✓" if any(t.tier == "T-DM0_SERP" and t.success for t in r.tier_results) else "✗"
             dm1 = "✓" if any(t.tier == "T-DM1_PROFILE" and t.success for t in r.tier_results) else "✗"
 
-            if t1 == "✓": tier_success["T1_ABN"] += 1
-            if t15 == "✓": tier_success["T1.5_LINKEDIN_CO"] += 1
-            if t3 == "✓": tier_success["T3_HUNTER"] += 1
-            if dm0 == "✓": tier_success["T-DM0_SERP"] += 1
-            if dm1 == "✓": tier_success["T-DM1_PROFILE"] += 1
+            if t1 == "✓":
+                tier_success["T1_ABN"] += 1
+            if t15 == "✓":
+                tier_success["T1.5_LINKEDIN_CO"] += 1
+            if t3 == "✓":
+                tier_success["T3_HUNTER"] += 1
+            if dm0 == "✓":
+                tier_success["T-DM0_SERP"] += 1
+            if dm1 == "✓":
+                tier_success["T-DM1_PROFILE"] += 1
 
             print(f"{r.lead_number:<5} {r.company_name[:24]:<25} {t1:<4} {t15:<5} {t3:<4} {dm0:<5} {dm1:<5} ${r.total_cost_aud:.4f}")
 

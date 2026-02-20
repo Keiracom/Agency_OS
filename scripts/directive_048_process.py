@@ -119,7 +119,7 @@ async def main():
         if lead.get("website"):
             try:
                 domain = urlparse(lead["website"]).netloc.replace("www.", "")
-            except:
+            except Exception:
                 pass
 
         # T3: Hunter.io email discovery
@@ -229,8 +229,10 @@ async def main():
         has_email = "✓" if r.get("email") else "✗"
         has_dm = "✓" if r.get("dm_linkedin") or r.get("dm_first_name") else "✗"
 
-        if r.get("email"): email_found += 1
-        if r.get("dm_linkedin") or r.get("dm_first_name"): dm_found += 1
+        if r.get("email"):
+            email_found += 1
+        if r.get("dm_linkedin") or r.get("dm_first_name"):
+            dm_found += 1
 
         print(f"{i:<3} {r['company_name'][:29]:<30} ✓    {has_email:<6} {has_dm:<4} ${r['total_cost']:.4f}", flush=True)
 

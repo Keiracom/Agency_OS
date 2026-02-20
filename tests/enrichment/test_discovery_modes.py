@@ -66,19 +66,14 @@ class TestABNFirstDiscovery:
     async def test_filters_inactive_abns(self):
         from enrichment.discovery_modes import ABNFirstDiscovery, CampaignConfig, DiscoveryMode
 
-        discovery = ABNFirstDiscovery()
-        config = CampaignConfig(
+        ABNFirstDiscovery()
+        CampaignConfig(
             mode=DiscoveryMode.ABN_FIRST,
             industry="Creative Agency",
             location="Victoria"
         )
 
         # Mock ABN API response with mixed statuses
-        mock_abn_results = [
-            {"abn": "12345678901", "status": "Active", "entity_type": "Company"},
-            {"abn": "98765432109", "status": "Cancelled", "entity_type": "Company"},
-            {"abn": "11111111111", "status": "Active", "entity_type": "Trust"}
-        ]
 
         # Discovery should filter out cancelled and trusts
         # (implementation will do this)
@@ -87,8 +82,8 @@ class TestABNFirstDiscovery:
     async def test_filters_no_gst(self):
         from enrichment.discovery_modes import ABNFirstDiscovery, CampaignConfig, DiscoveryMode
 
-        discovery = ABNFirstDiscovery()
-        config = CampaignConfig(
+        ABNFirstDiscovery()
+        CampaignConfig(
             mode=DiscoveryMode.ABN_FIRST,
             industry="Services",
             location="NSW"
@@ -110,8 +105,8 @@ class TestMapsFirstDiscovery:
             {"name": "Test Business", "phone": "0398765432", "rating": 4.5}
         ])
 
-        discovery = MapsFirstDiscovery(bright_data_client=mock_client)
-        config = CampaignConfig(
+        MapsFirstDiscovery(bright_data_client=mock_client)
+        CampaignConfig(
             mode=DiscoveryMode.MAPS_FIRST,
             industry="Cafes",
             location="Melbourne CBD"
@@ -126,7 +121,7 @@ class TestMapsFirstDiscovery:
         from enrichment.discovery_modes import MapsFirstDiscovery
 
         mock_client = Mock()
-        discovery = MapsFirstDiscovery(bright_data_client=mock_client)
+        MapsFirstDiscovery(bright_data_client=mock_client)
 
         # After finding businesses via Maps, should verify with ABN lookup
         # This ensures Australian compliance
@@ -140,8 +135,8 @@ class TestParallelDiscovery:
         from enrichment.discovery_modes import CampaignConfig, DiscoveryMode, ParallelDiscovery
 
         mock_client = Mock()
-        discovery = ParallelDiscovery(bright_data_client=mock_client)
-        config = CampaignConfig(
+        ParallelDiscovery(bright_data_client=mock_client)
+        CampaignConfig(
             mode=DiscoveryMode.PARALLEL,
             industry="Retail",
             location="Brisbane"
@@ -154,12 +149,10 @@ class TestParallelDiscovery:
         from enrichment.discovery_modes import ParallelDiscovery
 
         mock_client = Mock()
-        discovery = ParallelDiscovery(bright_data_client=mock_client)
+        ParallelDiscovery(bright_data_client=mock_client)
 
         # Mode A result
-        abn_result = {"abn": "12345678901", "name": "Test Company Pty Ltd"}
         # Mode B result (same business, different name format)
-        maps_result = {"name": "Test Company", "abn": "12345678901"}
 
         # Should deduplicate on ABN match
         # Should also fuzzy match on name

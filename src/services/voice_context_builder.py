@@ -458,7 +458,6 @@ async def build_call_context(
         LeadExcludedError: If lead is on the exclusion list
         ValueError: If lead or agency not found
     """
-    should_close_session = db is None
 
     if db is None:
         async with get_db_session() as db:

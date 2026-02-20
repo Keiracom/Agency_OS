@@ -370,7 +370,6 @@ class VoiceAgentService:
 
     def _get_next_valid_window(self, local_time: datetime) -> datetime:
         """Calculate the next valid calling window."""
-        tz = local_time.tzinfo
         next_time = local_time
 
         # If it's a weekend or after hours, find next valid slot

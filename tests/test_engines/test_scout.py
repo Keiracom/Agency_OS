@@ -222,7 +222,7 @@ class TestCacheBehavior:
                     tier_results=[],
                 )
                 with patch.object(scout_engine, "_log_enrichment_audit", new_callable=AsyncMock):
-                    result = await scout_engine.enrich_lead(
+                    await scout_engine.enrich_lead(
                         db=mock_db_session,
                         lead_id=mock_lead.id,
                         force_refresh=True,

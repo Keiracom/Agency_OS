@@ -229,7 +229,7 @@ async def run_test():
         for i, record in enumerate(ABN_RECORDS):
             abn_name = record["name"]
             state = record["state"]
-            postcode = record["postcode"]
+            record["postcode"]
 
             # Build search query: business name + location
             query = f"{clean_abn_name(abn_name)} {state} Australia"

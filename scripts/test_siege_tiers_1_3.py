@@ -99,7 +99,7 @@ async def enrich_single_business(
     business: dict,
 ) -> dict:
     """Enrich a single business through Tiers 1-3.
-    
+
     Note: Renamed from test_single_business to avoid pytest collection.
     This is a script helper, not a pytest test.
     """

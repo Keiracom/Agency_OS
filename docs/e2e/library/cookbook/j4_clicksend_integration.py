@@ -197,13 +197,13 @@ def get_instructions() -> str:
     lines.append("")
     lines.append("### ClickSend Configuration")
     lines.append("  Required Environment Variables:")
-    for key, value in CLICKSEND_CONFIG["env_vars"].items():
+    for _key, value in CLICKSEND_CONFIG["env_vars"].items():
         lines.append(f"    - {value}")
     lines.append(f"  API Base: {CLICKSEND_CONFIG['api_base_url']}")
     lines.append(f"  Sender ID Max Length: {CLICKSEND_CONFIG['sender_id_max_length']}")
     lines.append("")
     lines.append("### SMS Provider Configuration")
-    for key, value in SMS_PROVIDER_CONFIG.items():
+    for _key, value in SMS_PROVIDER_CONFIG.items():
         lines.append(f"  {key}: {value}")
     lines.append("")
     lines.append("### Checks")

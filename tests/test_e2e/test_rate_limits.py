@@ -515,7 +515,7 @@ class TestAllocatorRoundRobin:
         campaign = create_test_campaign(client["id"])
         # Campaign has: email 60%, sms 20%, linkedin 20%
 
-        leads = create_lead_batch(client["id"], campaign["id"], count=100)
+        create_lead_batch(client["id"], campaign["id"], count=100)
 
         # Act - Simulate allocation distribution
         email_count = int(100 * (campaign["allocation_email"] / 100))
@@ -611,7 +611,7 @@ class TestCombinedRateLimitScenarios:
         linkedin_sent = 0
 
         # Act
-        for i, lead in enumerate(leads):
+        for i, _lead in enumerate(leads):
             # Simulate channel allocation based on campaign %
             channel_roll = i % 100
             if channel_roll < 60:  # 60% email

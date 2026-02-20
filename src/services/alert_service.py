@@ -533,7 +533,7 @@ class AlertService:
                         lead_id, review_type, priority, status,
                         data, created_at
                     ) VALUES (
-                        :lead_id, 'reply_classification', 
+                        :lead_id, 'reply_classification',
                         CASE WHEN :confidence < 0.4 THEN 'high' ELSE 'medium' END,
                         'pending',
                         :data, NOW()

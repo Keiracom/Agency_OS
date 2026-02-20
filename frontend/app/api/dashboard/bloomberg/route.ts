@@ -362,8 +362,8 @@ async function fetchAlerts(clientId: string): Promise<AlertsData | null> {
       .limit(5);
     
     const reviewQueue = (reviewItems || []).map(item => ({
-      leadName: item.leads ? 
-        [item.leads.first_name, item.leads.last_name].filter(Boolean).join(' ') : 
+      leadName: item.leads?.[0] ? 
+        [item.leads[0].first_name, item.leads[0].last_name].filter(Boolean).join(' ') : 
         'Unknown',
       reviewType: item.review_type,
       priority: item.priority
@@ -385,8 +385,8 @@ async function fetchAlerts(clientId: string): Promise<AlertsData | null> {
       .limit(5);
     
     const complaintQueue = (complaints || []).map(complaint => ({
-      leadName: complaint.leads ?
-        [complaint.leads.first_name, complaint.leads.last_name].filter(Boolean).join(' ') :
+      leadName: complaint.leads?.[0] ?
+        [complaint.leads[0].first_name, complaint.leads[0].last_name].filter(Boolean).join(' ') :
         'Unknown',
       content: complaint.content?.substring(0, 100) || ''
     }));
@@ -465,8 +465,9 @@ async function fetchDiscovery(clientId: string): Promise<DiscoveryData | null> {
       .single();
     
     const replacementLoops = quotaData?.discovery_loops_run || 0;
-    const quotaShortfall = quotaData?.replacement_needed > 0 ? 
-      { needed: quotaData.replacement_needed } : null;
+    const replacementNeeded = quotaData?.replacement_needed ?? 0;
+    const quotaShortfall = replacementNeeded > 0 ? 
+      { needed: replacementNeeded } : null;
     
     // Top discard reasons
     const topDiscardReasons = Object.entries(reasonCounts)

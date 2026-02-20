@@ -108,7 +108,7 @@ YOUTUBE_DESCRIPTION_TEMPLATE = """Day {day_number} of using Agency OS to sell Ag
 
 In this daily update:
 - {emails_sent} emails sent
-- {open_rate}% open rate  
+- {open_rate}% open rate
 - {replies} replies ({positive_replies} positive)
 - {meetings_booked} meetings booked
 - Pipeline: ${pipeline_value}
@@ -148,7 +148,7 @@ They came in through our own outbound.
 The product sells itself — literally.
 
 19 spots remaining.""",
-    "five_customers": """5 founding customers! 
+    "five_customers": """5 founding customers!
 
 All from automated outbound.
 $0 spent on ads.
@@ -231,7 +231,7 @@ async def get_marketing_metrics_task(metrics_date: date) -> dict[str, Any]:
         # Query email metrics for the date
         # In production, this queries the actual campaign_metrics and lead tables
         _metrics_query = """
-            SELECT 
+            SELECT
                 COALESCE(SUM(emails_sent), 0) as emails_sent,
                 COALESCE(SUM(opens), 0) as opens,
                 COALESCE(SUM(replies), 0) as replies,

@@ -17,10 +17,10 @@ SIEGE CONTEXT:
     - Domain Search: $0.15 AUD per search
     - Email Finder: $0.15 AUD per lookup
     - Email Verification: $0.08 AUD per verification
-  
+
   Primary use case: Find and verify business emails for outreach
   Secondary: Domain-wide email discovery for account mapping
-  
+
   API Reference: https://hunter.io/api-documentation/v2
 """
 
@@ -369,26 +369,26 @@ class HunterQuotaExceededError(HunterError):
 class HunterClient:
     """
     Hunter.io API client for email discovery and verification.
-    
+
     Tier 3 of Siege Waterfall - Email Discovery.
-    
+
     Costs (AUD):
         - Domain Search: $0.15/search
-        - Email Finder: $0.15/lookup  
+        - Email Finder: $0.15/lookup
         - Email Verification: $0.08/verification
-    
+
     Usage:
         client = HunterClient()
-        
+
         # Find emails for a domain
         result = await client.domain_search("acme.com")
-        
+
         # Find specific person's email
         result = await client.email_finder("acme.com", "John", "Doe")
-        
+
         # Verify an email
         result = await client.verify_email("john@acme.com")
-    
+
     Attributes:
         api_key: Hunter API key
         cost_tracking_enabled: Whether to track costs (default True)
@@ -402,11 +402,11 @@ class HunterClient:
     ):
         """
         Initialize Hunter client.
-        
+
         Args:
             api_key: Hunter API key (falls back to settings.hunter_api_key)
             cost_tracking_enabled: Track API costs in session
-            
+
         Raises:
             IntegrationError: If no API key provided or found in settings
         """
@@ -476,16 +476,16 @@ class HunterClient:
     ) -> dict:
         """
         Make authenticated API request with retry logic.
-        
+
         Args:
             method: HTTP method (GET, POST, etc.)
             endpoint: API endpoint path
             params: Query parameters
             data: Request body data
-            
+
         Returns:
             API response as dictionary
-            
+
         Raises:
             HunterRateLimitError: Rate limit exceeded (403)
             HunterQuotaExceededError: Usage quota exceeded (429)
@@ -584,10 +584,10 @@ class HunterClient:
     ) -> DomainSearchResult:
         """
         Search all email addresses for a domain.
-        
+
         Finds all publicly available email addresses for a company domain.
         Costs $0.15 AUD per search.
-        
+
         Args:
             domain: Domain name (e.g., "stripe.com")
             limit: Max emails to return (default 10, max 100)
@@ -595,10 +595,10 @@ class HunterClient:
             email_type: Filter by personal or generic
             seniority: Filter by seniority levels
             department: Filter by departments
-            
+
         Returns:
             DomainSearchResult with list of emails found
-            
+
         Raises:
             ValidationError: If domain is invalid
             HunterError: If API call fails
@@ -673,19 +673,19 @@ class HunterClient:
     ) -> EmailFinderResult:
         """
         Find the most likely email for a person at a domain.
-        
+
         Uses first name, last name, and domain to find the most likely
         email address. Costs $0.15 AUD per lookup.
-        
+
         Args:
             domain: Company domain (e.g., "stripe.com")
             first_name: Person's first name
             last_name: Person's last name
             company: Company name (optional, helps with lookup)
-            
+
         Returns:
             EmailFinderResult with found email and confidence score
-            
+
         Raises:
             ValidationError: If required params missing
             HunterError: If API call fails
@@ -759,16 +759,16 @@ class HunterClient:
     async def verify_email(self, email: str) -> EmailVerificationResult:
         """
         Verify email address deliverability.
-        
+
         Checks if an email address is valid, verifiable, and safe for outreach.
         Costs $0.08 AUD per verification.
-        
+
         Args:
             email: Email address to verify
-            
+
         Returns:
             EmailVerificationResult with verification details
-            
+
         Raises:
             ValidationError: If email is invalid format
             HunterError: If API call fails
@@ -840,14 +840,14 @@ class HunterClient:
     ) -> list[EmailFinderResult]:
         """
         Find emails for multiple prospects.
-        
+
         Each prospect dict should have: domain, first_name, last_name.
         Costs $0.15 AUD per successful lookup.
-        
+
         Args:
             prospects: List of dicts with domain, first_name, last_name
             max_concurrent: Max concurrent requests (default 5)
-            
+
         Returns:
             List of EmailFinderResult for each prospect
         """
@@ -909,13 +909,13 @@ class HunterClient:
     ) -> list[EmailVerificationResult]:
         """
         Verify multiple email addresses.
-        
+
         Costs $0.08 AUD per verification.
-        
+
         Args:
             emails: List of email addresses
             max_concurrent: Max concurrent requests (default 5)
-            
+
         Returns:
             List of EmailVerificationResult for each email
         """
@@ -1011,10 +1011,10 @@ _hunter_client: HunterClient | None = None
 def get_hunter_client() -> HunterClient:
     """
     Get or create HunterClient singleton instance.
-    
+
     Returns:
         HunterClient instance
-        
+
     Raises:
         IntegrationError: If HUNTER_API_KEY not configured
     """

@@ -831,7 +831,7 @@ async def auto_allocate_pool_task(
                 text("""
                     SELECT lp.id
                     FROM lead_pool lp
-                    LEFT JOIN lead_assignments la ON lp.id = la.lead_pool_id 
+                    LEFT JOIN lead_assignments la ON lp.id = la.lead_pool_id
                         AND la.campaign_id = :campaign_id
                     WHERE lp.pool_status = 'available'
                     AND lp.als_score >= 35

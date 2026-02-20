@@ -1097,7 +1097,7 @@ class ScorerEngine(BaseEngine):
             # Get enrichment_data and verification flags from lead_pool
             result = await db.execute(
                 text("""
-                    SELECT 
+                    SELECT
                         enrichment_data,
                         enrichment_source,
                         email_status

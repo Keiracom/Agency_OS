@@ -86,7 +86,7 @@ class DeliverabilityService:
         try:
             # Get domain status from database
             query = text("""
-                SELECT 
+                SELECT
                     dws.client_id,
                     c.business_name,
                     dws.domain,

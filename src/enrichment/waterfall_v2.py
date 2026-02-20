@@ -1,5 +1,5 @@
 """
-FILE: src/enrichment/waterfall_v2.py  
+FILE: src/enrichment/waterfall_v2.py
 PURPOSE: Full Phase 1→2→3 pipeline for Waterfall v2
 PHASE: SIEGE (CEO Directive #023)
 TASK: Waterfall v2 Pipeline Implementation
@@ -17,13 +17,13 @@ RULES APPLIED:
 
 WATERFALL V2 PIPELINE:
   PHASE 1: Discovery (Mode A/B/C) - Variable cost depending on mode
-  PHASE 2: Enrichment (Tiers 1 → 5) - Tiered cost structure with gates  
+  PHASE 2: Enrichment (Tiers 1 → 5) - Tiered cost structure with gates
   PHASE 3: Scoring (ALS) - Agency Lead Score calculation with quality gates
 
   Cost Structure (AUD):
     Tier 1: ABN API - FREE
     Tier 1.5a: SERP Google Maps - $0.0015
-    Tier 1.5b: SERP LinkedIn Discovery - $0.0015 
+    Tier 1.5b: SERP LinkedIn Discovery - $0.0015
     Tier 2: LinkedIn Company Scraper - $0.0015
     Tier 2.5: LinkedIn People Profile - $0.0015 (ALS >= 30)
     Tier 3: Hunter.io Email - $0.012 (ALS >= 30)
@@ -116,11 +116,11 @@ class LeadRecord:
 class WaterfallV2:
     """
     Siege Waterfall v2 — Full enrichment pipeline
-    
+
     PHASE 1: Discovery (Mode A/B/C)
     PHASE 2: Enrichment (Tiers 1 → 5, with gates)
     PHASE 3: Scoring (ALS)
-    
+
     Quality Gates:
     - PRE_ALS_GATE: Minimum score to continue past Tier 2 (cost control)
     - HOT_THRESHOLD: Minimum score for Tier 5 Kaspr enrichment (premium leads only)

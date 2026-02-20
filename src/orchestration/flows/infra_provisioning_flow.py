@@ -64,11 +64,11 @@ async def check_domain_availability_task(
 ) -> list[dict]:
     """
     Generate and check availability of alternative domains.
-    
+
     Args:
         base_name: Base company name for domain generation
         count: Number of alternatives to generate
-    
+
     Returns:
         List of available domains with pricing
     """
@@ -107,11 +107,11 @@ async def purchase_domains_task(
 ) -> dict:
     """
     Purchase domains via InfraForge/Mailforge.
-    
+
     Args:
         domains: List of domain dicts with 'domain' key
         client_id: Client UUID for tracking
-    
+
     Returns:
         Purchase result with domain IDs
     """
@@ -152,16 +152,16 @@ async def create_mailboxes_task(
 ) -> dict:
     """
     Create mailboxes on purchased domains.
-    
+
     Automatically configures:
     - DKIM, SPF, DMARC (via InfraForge)
     - Mailbox credentials
-    
+
     Args:
         domains: List of domain names
         mailboxes_per_domain: Number of mailboxes per domain
         client_id: Client UUID for tracking
-    
+
     Returns:
         Mailbox creation result
     """
@@ -214,15 +214,15 @@ async def export_to_warmup_task(
 ) -> dict:
     """
     Export mailboxes to Salesforge + WarmForge for warmup.
-    
+
     This is the key automation that saves 15+ hours vs manual setup.
-    
+
     Args:
         from_workspace_id: InfraForge/Mailforge workspace
         to_salesforge_workspace_id: Target Salesforge workspace
         to_warmforge_workspace_id: Target WarmForge workspace
         tag_name: Tag for organizing mailboxes
-    
+
     Returns:
         Export result
     """
@@ -310,14 +310,14 @@ async def infra_provisioning_flow(
 ) -> dict:
     """
     Main flow: Provision complete email infrastructure for a client.
-    
+
     Steps:
     1. Generate and check domain availability
     2. Purchase domains
     3. Create mailboxes (DNS auto-configured)
     4. Export to Salesforge + WarmForge
     5. Log costs
-    
+
     Args:
         client_id: Client UUID
         company_name: Base name for domain generation
@@ -325,7 +325,7 @@ async def infra_provisioning_flow(
         mailboxes_per_domain: Mailboxes per domain
         salesforge_workspace_id: Target Salesforge workspace
         warmforge_workspace_id: Target WarmForge workspace
-    
+
     Returns:
         Complete provisioning result with costs
     """

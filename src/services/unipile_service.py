@@ -82,8 +82,8 @@ class UnipileAccountService:
             # Update existing to pending
             await db.execute(
                 text("""
-                    UPDATE unipile_accounts 
-                    SET status = 'PENDING', 
+                    UPDATE unipile_accounts
+                    SET status = 'PENDING',
                         error_message = NULL,
                         updated_at = NOW()
                     WHERE user_id = :user_id
@@ -317,8 +317,8 @@ class UnipileAccountService:
         """
         result = await db.execute(
             text("""
-                SELECT 
-                    id, unipile_account_id, status, display_name, 
+                SELECT
+                    id, unipile_account_id, status, display_name,
                     email, profile_url, connected_at, last_used_at,
                     error_message
                 FROM unipile_accounts
@@ -363,7 +363,7 @@ class UnipileAccountService:
         """
         result = await db.execute(
             text("""
-                SELECT 
+                SELECT
                     ua.unipile_account_id,
                     ua.status,
                     ua.display_name,

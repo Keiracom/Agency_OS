@@ -227,7 +227,7 @@ class ParseError(GMBScraperError):
 class GMBParser:
     """
     Parser for Google Maps HTML/JSON data.
-    
+
     Google Maps embeds business data in JavaScript arrays within the HTML.
     This parser extracts that data using regex and JSON parsing.
     """
@@ -258,11 +258,11 @@ class GMBParser:
     def parse_business_data(cls, html: str, url: str = "") -> GMBResult:
         """
         Parse business data from Google Maps HTML.
-        
+
         Args:
             html: Raw HTML content from Google Maps
             url: Original URL for reference
-        
+
         Returns:
             GMBResult with extracted data
         """
@@ -299,7 +299,7 @@ class GMBParser:
     def _extract_structured_data(cls, html: str) -> dict | None:
         """
         Extract structured JSON data from Google Maps script tags.
-        
+
         Google embeds business data in JavaScript arrays like:
         window.APP_INITIALIZATION_STATE=[[...business data...]]
         """
@@ -442,7 +442,7 @@ class GMBParser:
     def extract_search_results(cls, html: str) -> list[dict]:
         """
         Extract business listings from Google Maps search results.
-        
+
         Returns list of basic business info from search page.
         """
         results = []
@@ -481,17 +481,17 @@ class GMBParser:
 class GMBScraper:
     """
     Google Maps Business scraper using Autonomous Stealth Browser.
-    
+
     Tier 2 of Siege Waterfall - $0.006/lead (proxy cost only).
     Replaces Apify google-maps-scraper (~$0.02/lead).
-    
+
     Features:
     - Stealth browser with proxy rotation
     - Automatic retry with identity rotation
     - Rate limiting to avoid blocks
     - Cost tracking in AUD
     - Fallback parsing strategies
-    
+
     Usage:
         scraper = GMBScraper()
         result = await scraper.search_business("Acme Corp", "Sydney, Australia")
@@ -505,7 +505,7 @@ class GMBScraper:
     ):
         """
         Initialize GMB scraper.
-        
+
         Args:
             proxy_list: Optional list of proxy URLs. If not provided,
                        loads from proxy_manager.
@@ -567,14 +567,14 @@ class GMBScraper:
     ) -> dict[str, Any]:
         """
         Search Google Maps for a business by name + location.
-        
+
         This searches Google Maps and returns the first matching result's
         full details.
-        
+
         Args:
             name: Business name to search for
             location: Location (city, state, country)
-        
+
         Returns:
             dict with business data matching Apify output format:
             - found: bool
@@ -637,10 +637,10 @@ class GMBScraper:
     ) -> dict[str, Any]:
         """
         Scrape full business details from a Google Maps URL.
-        
+
         Args:
             place_url: Full Google Maps URL for the place
-        
+
         Returns:
             dict with business data matching Apify output format
         """
@@ -680,12 +680,12 @@ class GMBScraper:
     ) -> list[dict[str, Any]]:
         """
         Bulk scrape multiple businesses.
-        
+
         Args:
             businesses: List of dicts with 'name' and 'location' keys,
                        or 'url' for direct place URLs
             max_concurrent: Maximum concurrent requests
-        
+
         Returns:
             List of business data dicts
         """
@@ -739,16 +739,16 @@ class GMBScraper:
     async def _fetch_with_stealth(self, url: str) -> str:
         """
         Fetch URL using stealth browser with proxy rotation.
-        
+
         Uses Playwright-based autonomous_browser if available,
         falls back to httpx with proxy rotation.
-        
+
         Args:
             url: URL to fetch
-        
+
         Returns:
             HTML content
-        
+
         Raises:
             BlockedError: If request is blocked
             httpx.TimeoutException: On timeout (will retry)
@@ -850,13 +850,13 @@ async def scrape_google_business(
 ) -> dict[str, Any]:
     """
     Scrape Google Business data.
-    
+
     Drop-in replacement for Apify (deprecated FCO-003)().
-    
+
     Args:
         business_name: Name of the business to search
         location: Location to search in (default: Australia)
-    
+
     Returns:
         Business data dict matching Apify output format
     """
@@ -869,10 +869,10 @@ async def batch_scrape_google_business(
 ) -> list[dict[str, Any]]:
     """
     Batch scrape Google Business data.
-    
+
     Args:
         businesses: List of dicts with 'name' and 'location' keys
-    
+
     Returns:
         List of business data dicts
     """

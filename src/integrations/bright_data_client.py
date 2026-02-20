@@ -51,19 +51,19 @@ class CostTracker:
 class BrightDataClient:
     """
     Unified async client for Bright Data SERP API and Scrapers API.
-    
+
     Provides methods for:
     - Google/Maps searches via SERP API
     - LinkedIn scraping via Scrapers API
     - Cost tracking across both services
-    
+
     All methods are async and should be called with await.
     """
 
     def __init__(self, api_key: str, serp_zone: str = "serp_api1"):
         """
         Initialize the Bright Data client.
-        
+
         Args:
             api_key: Your Bright Data API key
             serp_zone: Zone for SERP API proxy (default: "serp_api1")
@@ -94,15 +94,15 @@ class BrightDataClient:
     ) -> list[dict]:
         """
         Search Google Maps via SERP API.
-        
+
         Args:
             query: Search query (e.g., "restaurants")
             location: Location to search in (e.g., "Melbourne")
             max_results: Maximum results to return (default 20)
-        
+
         Returns:
             List of business results with name, phone, website, address, rating, etc.
-        
+
         Cost: $0.0015 AUD per request
         """
         encoded_query = urllib.parse.quote(f"{query} {location}")
@@ -121,13 +121,13 @@ class BrightDataClient:
     async def search_google(self, query: str) -> dict:
         """
         Search Google via SERP API.
-        
+
         Args:
             query: Search query (e.g., 'site:linkedin.com/company "business name"')
-        
+
         Returns:
             Search results with organic results list
-        
+
         Cost: $0.0015 AUD per request
         """
         encoded_query = urllib.parse.quote(query)
@@ -193,13 +193,13 @@ class BrightDataClient:
     async def scrape_linkedin_company(self, linkedin_url: str) -> dict:
         """
         Scrape LinkedIn Company via Scrapers API.
-        
+
         Args:
             linkedin_url: LinkedIn company URL
-        
+
         Returns:
             Company profile with name, industry, employees[], updates[], etc.
-        
+
         Cost: $0.0015 AUD per record
         """
         results = await self._scraper_request(
@@ -211,13 +211,13 @@ class BrightDataClient:
     async def scrape_linkedin_profile(self, linkedin_url: str) -> dict:
         """
         Scrape LinkedIn People Profile via Scrapers API.
-        
+
         Args:
             linkedin_url: LinkedIn profile URL
-        
+
         Returns:
             Person profile with name, experience, education, skills, etc.
-        
+
         Cost: $0.0015 AUD per record
         """
         results = await self._scraper_request(
@@ -234,15 +234,15 @@ class BrightDataClient:
     ) -> list[dict]:
         """
         Discover LinkedIn Jobs via keyword search.
-        
+
         Args:
             keyword: Job keyword (e.g., "marketing")
             location: Location (e.g., "Melbourne")
             country: Country code (default: "AU")
-        
+
         Returns:
             List of job postings
-        
+
         Cost: $0.0015 AUD per record
         """
         return await self._scraper_request(

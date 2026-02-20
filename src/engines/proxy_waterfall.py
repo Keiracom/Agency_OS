@@ -139,14 +139,14 @@ class WaterfallResult:
 class ProxyWaterfallEngine(BaseEngine):
     """
     Intelligent proxy waterfall for cost-optimized scraping.
-    
+
     Escalation order: Datacenter ($0.001) → ISP ($0.008) → Residential ($0.015)
-    
+
     - Starts with cheapest proxy tier
     - Auto-escalates on 403/429/503 errors
     - Tracks costs per request
     - Graceful degradation, never fails the flow
-    
+
     Cost Impact:
     - Current (Residential only): $0.015/request
     - With Waterfall: ~$0.006/request (weighted average)
@@ -161,7 +161,7 @@ class ProxyWaterfallEngine(BaseEngine):
     ):
         """
         Initialize with proxy lists.
-        
+
         Args:
             datacenter_proxies: List of datacenter proxy URLs
             isp_proxies: List of ISP proxy URLs
@@ -194,7 +194,7 @@ class ProxyWaterfallEngine(BaseEngine):
     ) -> EngineResult[WaterfallResult]:
         """
         Fetch URL with automatic proxy escalation.
-        
+
         Args:
             url: URL to fetch
             method: HTTP method
@@ -202,7 +202,7 @@ class ProxyWaterfallEngine(BaseEngine):
             target_type: Target type for success rate estimation
             start_tier: Optional starting tier (default: datacenter)
             timeout: Request timeout in seconds
-        
+
         Returns:
             EngineResult with WaterfallResult
         """
@@ -375,7 +375,7 @@ class ProxyWaterfallEngine(BaseEngine):
     def get_cost_estimate(self, target_type: str = "default") -> dict:
         """
         Get cost estimate for a target type.
-        
+
         Returns expected cost based on success rates.
         """
         rates = SUCCESS_RATES.get(target_type, SUCCESS_RATES["default"])

@@ -74,6 +74,81 @@ LINKEDIN_DAILY_LIMIT_PER_ACCOUNT = settings.linkedin_max_daily
 PROFILE_VIEW_DELAY_MIN_MINUTES = 10
 PROFILE_VIEW_DELAY_MAX_MINUTES = 30
 
+# LinkedIn Optimal Send Windows (P0 fix)
+# Window 1: 9-11 AM in lead's local timezone
+# Window 2: 1-2 PM in lead's local timezone
+LINKEDIN_WINDOW_1_START = 9
+LINKEDIN_WINDOW_1_END = 11
+LINKEDIN_WINDOW_2_START = 13
+LINKEDIN_WINDOW_2_END = 14
+
+
+def _is_in_linkedin_optimal_window(timezone_str: str) -> bool:
+    """
+    Check if current time is within LinkedIn optimal send windows.
+
+    Per P0 fix: LinkedIn sends must occur during optimal windows only.
+    - Window 1: 9-11 AM in lead's local timezone
+    - Window 2: 1-2 PM in lead's local timezone
+    - Weekdays only
+
+    Args:
+        timezone_str: IANA timezone string (e.g., 'Australia/Sydney')
+
+    Returns:
+        True if within an optimal window on a weekday
+    """
+    import zoneinfo
+
+    try:
+        tz = zoneinfo.ZoneInfo(timezone_str)
+    except Exception:
+        tz = zoneinfo.ZoneInfo("Australia/Sydney")
+
+    now_local = datetime.now(tz)
+    current_hour = now_local.hour
+    weekday = now_local.weekday()
+
+    # Not on weekdays = not in window
+    if weekday >= 5:  # Saturday=5, Sunday=6
+        return False
+
+    # Check if in Window 1 (9-11 AM) or Window 2 (1-2 PM)
+    in_window_1 = LINKEDIN_WINDOW_1_START <= current_hour < LINKEDIN_WINDOW_1_END
+    in_window_2 = LINKEDIN_WINDOW_2_START <= current_hour < LINKEDIN_WINDOW_2_END
+
+    return in_window_1 or in_window_2
+
+
+def _get_lead_state(lead: Lead) -> str | None:
+    """
+    Extract Australian state from lead data for timezone determination.
+
+    Checks:
+    1. enriched_data.state or enriched_data.region
+    2. organization_country patterns (e.g., "Australia - NSW")
+
+    Args:
+        lead: Lead object with potential location data
+
+    Returns:
+        State abbreviation (e.g., 'NSW', 'VIC') or None
+    """
+    state = None
+
+    # Try enriched_data first
+    if hasattr(lead, "enriched_data") and lead.enriched_data:
+        enriched = lead.enriched_data or {}
+        state = enriched.get("state") or enriched.get("region") or enriched.get("abn_state")
+
+    # Try organization_country if it contains state info (e.g., "Australia - NSW")
+    if not state and lead.organization_country:
+        country = lead.organization_country
+        if " - " in country:
+            state = country.split(" - ")[-1].strip()
+
+    return state
+
 
 class LinkedInEngine(OutreachEngine):
     """
@@ -264,6 +339,9 @@ class LinkedInEngine(OutreachEngine):
         """
         Send a LinkedIn message or connection request via Unipile.
 
+        P0 FIX: Enforces optimal send windows (9-11 AM or 1-2 PM in lead's local timezone).
+        If called outside these windows, returns 'scheduled' status with next available slot.
+
         Args:
             db: Database session (passed by caller)
             lead_id: Target lead UUID
@@ -272,6 +350,7 @@ class LinkedInEngine(OutreachEngine):
             **kwargs: Additional options:
                 - account_id: Unipile account ID (required)
                 - action: 'connection' or 'message' (default: 'message')
+                - skip_window_check: Skip optimal window enforcement (default: False)
                 - template_id: UUID of template used (Phase 24B)
                 - ab_test_id: UUID of A/B test (Phase 24B)
                 - ab_variant: A/B variant 'A', 'B', or 'control' (Phase 24B)
@@ -280,7 +359,7 @@ class LinkedInEngine(OutreachEngine):
                 - personalization_fields_used: List of personalization fields (Phase 24B)
 
         Returns:
-            EngineResult with send result
+            EngineResult with send result, or 'scheduled' status if outside optimal window
         """
         # Validate required fields
         account_id = kwargs.get("account_id")
@@ -300,6 +379,37 @@ class LinkedInEngine(OutreachEngine):
         # Get lead
         lead = await self.get_lead_by_id(db, lead_id)
         await self.get_campaign_by_id(db, campaign_id)
+
+        # P0 FIX: Enforce optimal send windows (9-11 AM or 1-2 PM in lead's local timezone)
+        # LinkedIn sends must ONLY occur during optimal engagement windows
+        skip_window_check = kwargs.get("skip_window_check", False)
+        if not skip_window_check:
+            lead_state = _get_lead_state(lead)
+            # Map state to timezone using existing service mapping
+            tz_name = "Australia/Sydney"  # default
+            if lead_state:
+                tz_name = AUSTRALIAN_STATE_TIMEZONES.get(lead_state.lower().strip(), "Australia/Sydney")
+
+            if not _is_in_linkedin_optimal_window(tz_name):
+                # Not in optimal window - return scheduled time instead of sending
+                scheduled_time = get_optimal_linkedin_send_time(state=lead_state, country="Australia")
+                return EngineResult.ok(
+                    data={
+                        "status": "scheduled",
+                        "reason": "outside_optimal_window",
+                        "scheduled_at": scheduled_time.isoformat(),
+                        "lead_timezone": tz_name,
+                        "lead_state": lead_state,
+                        "action": action,
+                        "windows": "9-11 AM or 1-2 PM local time",
+                    },
+                    metadata={
+                        "engine": self.name,
+                        "channel": self.channel.value,
+                        "lead_id": str(lead_id),
+                        "campaign_id": str(campaign_id),
+                    },
+                )
 
         # Validate LinkedIn URL
         if not lead.linkedin_url:
@@ -1128,3 +1238,10 @@ def get_linkedin_engine() -> LinkedInEngine:
 # [x] SHARED QUOTA (Gap #18): get_account_status() returns manual/automated breakdown
 # [x] SHARED QUOTA (Gap #18): Fallback to Redis-only if Unipile API fails
 # [x] PROFILE VIEW DELAY (Gap #19): skip_delay parameter for manual override
+# [x] OPTIMAL SEND WINDOWS (P0 fix): LINKEDIN_WINDOW_1/2_START/END constants
+# [x] OPTIMAL SEND WINDOWS (P0 fix): _is_in_linkedin_optimal_window() helper
+# [x] OPTIMAL SEND WINDOWS (P0 fix): _get_lead_state() extracts state from lead
+# [x] OPTIMAL SEND WINDOWS (P0 fix): send() enforces 9-11 AM / 1-2 PM windows
+# [x] OPTIMAL SEND WINDOWS (P0 fix): Returns 'scheduled' status with next slot if outside window
+# [x] OPTIMAL SEND WINDOWS (P0 fix): skip_window_check parameter for manual override
+# [x] OPTIMAL SEND WINDOWS (P0 fix): Uses get_optimal_linkedin_send_time() from timezone_service

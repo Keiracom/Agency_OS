@@ -9,7 +9,6 @@ Consumed by: warmup_monitor_flow
 """
 
 import httpx
-
 from src.config.settings import get_settings
 
 

@@ -444,9 +444,8 @@ class BaseEngine(ABC):
             metadata: Additional metadata
         """
         try:
-            import json
-
             from sqlalchemy import text as sql_text
+            import json
 
             entry = self.log_operation(
                 operation=operation,
@@ -469,7 +468,7 @@ class BaseEngine(ABC):
                         created_at
                     ) VALUES (
                         :engine, :operation, :client_id, :lead_id, :campaign_id,
-                        :channel, :success, :cost_aud, :error_message,
+                        :channel, :success, :cost_aud, :error_message, 
                         CAST(:metadata AS jsonb), NOW()
                     )
                 """),
@@ -487,7 +486,7 @@ class BaseEngine(ABC):
                 },
             )
             # Note: Don't commit here - let the caller manage the transaction
-
+            
         except Exception as e:
             # Don't fail the operation if logging fails
             import logging

@@ -526,7 +526,7 @@ class TwitterClient:
                 "provider": "twitter",
             }
 
-        except Unauthorized:
+        except Unauthorized as e:
             raise APIError(
                 service="twitter",
                 status_code=401,

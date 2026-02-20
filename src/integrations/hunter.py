@@ -17,20 +17,19 @@ SIEGE CONTEXT:
     - Domain Search: $0.15 AUD per search
     - Email Finder: $0.15 AUD per lookup
     - Email Verification: $0.08 AUD per verification
-
+  
   Primary use case: Find and verify business emails for outreach
   Secondary: Domain-wide email discovery for account mapping
-
+  
   API Reference: https://hunter.io/api-documentation/v2
 """
 
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import logging
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -122,7 +121,7 @@ class Department(str, Enum):
 @dataclass
 class HunterEmail:
     """Single email result from Hunter."""
-
+    
     email: str
     email_type: EmailType | None = None
     confidence: int = 0
@@ -135,7 +134,7 @@ class HunterEmail:
     twitter: str | None = None
     phone_number: str | None = None
     sources: list[dict] = field(default_factory=list)
-
+    
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -157,7 +156,7 @@ class HunterEmail:
 @dataclass
 class DomainSearchResult:
     """Result from domain search."""
-
+    
     domain: str
     disposable: bool = False
     webmail: bool = False
@@ -168,7 +167,7 @@ class DomainSearchResult:
     total_emails: int = 0
     cost_aud: float = 0.0
     source: str = "hunter"
-
+    
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -188,7 +187,7 @@ class DomainSearchResult:
 @dataclass
 class EmailFinderResult:
     """Result from email finder."""
-
+    
     found: bool
     email: str | None = None
     score: int = 0
@@ -206,7 +205,7 @@ class EmailFinderResult:
     sources: list[dict] = field(default_factory=list)
     cost_aud: float = 0.0
     source: str = "hunter"
-
+    
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -228,7 +227,7 @@ class EmailFinderResult:
 @dataclass
 class EmailVerificationResult:
     """Result from email verification."""
-
+    
     email: str
     status: VerificationStatus
     result: str
@@ -245,17 +244,17 @@ class EmailVerificationResult:
     sources: list[dict] = field(default_factory=list)
     cost_aud: float = 0.0
     source: str = "hunter"
-
+    
     @property
     def is_valid(self) -> bool:
         """Check if email is valid for outreach."""
         return self.status == VerificationStatus.VALID and self.score >= 70
-
+    
     @property
     def is_risky(self) -> bool:
         """Check if email is risky."""
         return self.disposable or self.accept_all or self.score < 50
-
+    
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -282,7 +281,7 @@ class EmailVerificationResult:
 
 class HunterError(IntegrationError):
     """Hunter-specific integration error."""
-
+    
     def __init__(
         self,
         message: str,
@@ -293,7 +292,7 @@ class HunterError(IntegrationError):
 
 class HunterRateLimitError(HunterError):
     """Hunter rate limit exceeded (403)."""
-
+    
     def __init__(
         self,
         retry_after: int | None = None,
@@ -304,23 +303,22 @@ class HunterRateLimitError(HunterError):
             details["retry_after_seconds"] = retry_after
         super().__init__(message="Hunter rate limit exceeded", details=details)
         self.retry_after = retry_after
-
+        
         # Directive 048 Part F: Fire alert on rate limit
         asyncio.create_task(self._fire_rate_limit_alert(retry_after))
-
+    
     @staticmethod
     async def _fire_rate_limit_alert(retry_after: int | None) -> None:
         """Fire alert for Hunter rate limit hit."""
         try:
             from datetime import timedelta
-
             from src.integrations.supabase import get_db_session
             from src.services.alert_service import get_alert_service
-
+            
             reset_time = None
             if retry_after:
-                reset_time = datetime.now(UTC) + timedelta(seconds=retry_after)
-
+                reset_time = datetime.now(timezone.utc) + timedelta(seconds=retry_after)
+            
             async with get_db_session() as db:
                 alert_service = get_alert_service(db)
                 await alert_service.alert_hunter_rate_limit(
@@ -333,23 +331,23 @@ class HunterRateLimitError(HunterError):
 
 class HunterQuotaExceededError(HunterError):
     """Hunter usage quota exceeded (429)."""
-
+    
     def __init__(self, details: dict[str, Any] | None = None):
         super().__init__(
             message="Hunter usage quota exceeded - upgrade plan or wait for reset",
             details=details,
         )
-
+        
         # Directive 048 Part F: Fire alert on quota exceeded
         asyncio.create_task(self._fire_quota_alert())
-
+    
     @staticmethod
     async def _fire_quota_alert() -> None:
         """Fire alert for Hunter quota exceeded."""
         try:
             from src.integrations.supabase import get_db_session
             from src.services.alert_service import get_alert_service
-
+            
             async with get_db_session() as db:
                 alert_service = get_alert_service(db)
                 await alert_service.alert_hunter_rate_limit(
@@ -369,32 +367,32 @@ class HunterQuotaExceededError(HunterError):
 class HunterClient:
     """
     Hunter.io API client for email discovery and verification.
-
+    
     Tier 3 of Siege Waterfall - Email Discovery.
-
+    
     Costs (AUD):
         - Domain Search: $0.15/search
-        - Email Finder: $0.15/lookup
+        - Email Finder: $0.15/lookup  
         - Email Verification: $0.08/verification
-
+    
     Usage:
         client = HunterClient()
-
+        
         # Find emails for a domain
         result = await client.domain_search("acme.com")
-
+        
         # Find specific person's email
         result = await client.email_finder("acme.com", "John", "Doe")
-
+        
         # Verify an email
         result = await client.verify_email("john@acme.com")
-
+    
     Attributes:
         api_key: Hunter API key
         cost_tracking_enabled: Whether to track costs (default True)
         total_cost_aud: Running total of API costs this session
     """
-
+    
     def __init__(
         self,
         api_key: str | None = None,
@@ -402,28 +400,28 @@ class HunterClient:
     ):
         """
         Initialize Hunter client.
-
+        
         Args:
             api_key: Hunter API key (falls back to settings.hunter_api_key)
             cost_tracking_enabled: Track API costs in session
-
+            
         Raises:
             IntegrationError: If no API key provided or found in settings
         """
         self.api_key = api_key or getattr(settings, "hunter_api_key", "")
-
+        
         if not self.api_key:
             raise IntegrationError(
                 service="hunter",
                 message="Hunter API key is required. Set HUNTER_API_KEY in environment.",
             )
-
+        
         self.cost_tracking_enabled = cost_tracking_enabled
         self.total_cost_aud: float = 0.0
         self._client: httpx.AsyncClient | None = None
         self._request_count: int = 0
         self._last_request_time: datetime | None = None
-
+    
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client with authentication."""
         if self._client is None:
@@ -436,32 +434,32 @@ class HunterClient:
                 timeout=DEFAULT_TIMEOUT,
             )
         return self._client
-
+    
     async def close(self) -> None:
         """Close HTTP client and cleanup resources."""
         if self._client is not None:
             await self._client.aclose()
             self._client = None
-
-    async def __aenter__(self) -> HunterClient:
+    
+    async def __aenter__(self) -> "HunterClient":
         """Async context manager entry."""
         return self
-
+    
     async def __aexit__(self, *args) -> None:
         """Async context manager exit."""
         await self.close()
-
+    
     async def _rate_limit_delay(self) -> None:
         """Apply rate limiting delay between requests."""
         if self._last_request_time:
             elapsed = (
-                datetime.now(UTC) - self._last_request_time
+                datetime.now(timezone.utc) - self._last_request_time
             ).total_seconds()
             if elapsed < REQUEST_DELAY_SECONDS:
                 await asyncio.sleep(REQUEST_DELAY_SECONDS - elapsed)
-
-        self._last_request_time = datetime.now(UTC)
-
+        
+        self._last_request_time = datetime.now(timezone.utc)
+    
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -476,30 +474,30 @@ class HunterClient:
     ) -> dict:
         """
         Make authenticated API request with retry logic.
-
+        
         Args:
             method: HTTP method (GET, POST, etc.)
             endpoint: API endpoint path
             params: Query parameters
             data: Request body data
-
+            
         Returns:
             API response as dictionary
-
+            
         Raises:
             HunterRateLimitError: Rate limit exceeded (403)
             HunterQuotaExceededError: Usage quota exceeded (429)
             APIError: Other API errors
         """
         await self._rate_limit_delay()
-
+        
         client = await self._get_client()
         self._request_count += 1
-
+        
         # Always include api_key in params
         params = params or {}
         params["api_key"] = self.api_key
-
+        
         try:
             response = await client.request(
                 method=method,
@@ -507,23 +505,25 @@ class HunterClient:
                 params=params,
                 json=data if method != "GET" else None,
             )
-
+            
             # Handle specific status codes
             if response.status_code == 403:
                 raise HunterRateLimitError(retry_after=60)
-
+            
             if response.status_code == 429:
                 raise HunterQuotaExceededError()
-
+            
             response.raise_for_status()
             return response.json()
-
+            
         except httpx.HTTPStatusError as e:
             # Try to extract error details
             error_body = {}
-            with contextlib.suppress(Exception):
+            try:
                 error_body = e.response.json()
-
+            except Exception:
+                pass
+            
             sentry_sdk.set_context(
                 "hunter_request",
                 {
@@ -534,20 +534,20 @@ class HunterClient:
                 },
             )
             sentry_sdk.capture_exception(e)
-
+            
             # Extract error message from Hunter's error format
             error_msg = "Hunter API error"
             if "errors" in error_body and error_body["errors"]:
                 error_info = error_body["errors"][0]
                 error_msg = error_info.get("details", str(error_info))
-
+            
             raise APIError(
                 service="hunter",
                 status_code=e.response.status_code,
                 response=str(error_body),
                 message=f"{error_msg} ({e.response.status_code})",
             )
-
+        
         except httpx.RequestError as e:
             sentry_sdk.set_context(
                 "hunter_request",
@@ -557,22 +557,22 @@ class HunterClient:
                 },
             )
             sentry_sdk.capture_exception(e)
-
+            
             raise IntegrationError(
                 service="hunter",
                 message=f"Hunter request failed: {str(e)}",
             )
-
+    
     def _track_cost(self, cost: float) -> float:
         """Track API cost if enabled."""
         if self.cost_tracking_enabled:
             self.total_cost_aud += cost
         return cost
-
+    
     # ========================================
     # DOMAIN SEARCH
     # ========================================
-
+    
     async def domain_search(
         self,
         domain: str,
@@ -584,10 +584,10 @@ class HunterClient:
     ) -> DomainSearchResult:
         """
         Search all email addresses for a domain.
-
+        
         Finds all publicly available email addresses for a company domain.
         Costs $0.15 AUD per search.
-
+        
         Args:
             domain: Domain name (e.g., "stripe.com")
             limit: Max emails to return (default 10, max 100)
@@ -595,51 +595,51 @@ class HunterClient:
             email_type: Filter by personal or generic
             seniority: Filter by seniority levels
             department: Filter by departments
-
+            
         Returns:
             DomainSearchResult with list of emails found
-
+            
         Raises:
             ValidationError: If domain is invalid
             HunterError: If API call fails
         """
         if not domain:
             raise ValidationError(message="Domain is required for domain search")
-
+        
         # Normalize domain
         domain = domain.lower().strip()
         if domain.startswith(("http://", "https://")):
             domain = domain.split("//")[1].split("/")[0]
-
+        
         logger.info(f"[Hunter] Domain search for: {domain}")
-
+        
         params = {
             "domain": domain,
             "limit": min(limit, 100),
             "offset": offset,
         }
-
+        
         if email_type:
             params["type"] = email_type.value
-
+        
         if seniority:
             params["seniority"] = ",".join(s.value for s in seniority)
-
+        
         if department:
             params["department"] = ",".join(d.value for d in department)
-
+        
         try:
             response = await self._request("GET", "/domain-search", params=params)
             data = response.get("data", {})
             meta = response.get("meta", {})
-
+            
             # Parse emails
             emails = []
             for email_data in data.get("emails", []):
                 emails.append(self._parse_email(email_data))
-
+            
             cost = self._track_cost(COST_DOMAIN_SEARCH_AUD)
-
+            
             return DomainSearchResult(
                 domain=data.get("domain", domain),
                 disposable=data.get("disposable", False),
@@ -651,7 +651,7 @@ class HunterClient:
                 total_emails=meta.get("results", len(emails)),
                 cost_aud=cost,
             )
-
+            
         except (HunterRateLimitError, HunterQuotaExceededError):
             raise
         except APIError:
@@ -659,11 +659,11 @@ class HunterClient:
         except Exception as e:
             logger.warning(f"[Hunter] Domain search failed for {domain}: {e}")
             return DomainSearchResult(domain=domain, cost_aud=0.0)
-
+    
     # ========================================
     # EMAIL FINDER
     # ========================================
-
+    
     async def email_finder(
         self,
         domain: str,
@@ -673,19 +673,19 @@ class HunterClient:
     ) -> EmailFinderResult:
         """
         Find the most likely email for a person at a domain.
-
+        
         Uses first name, last name, and domain to find the most likely
         email address. Costs $0.15 AUD per lookup.
-
+        
         Args:
             domain: Company domain (e.g., "stripe.com")
             first_name: Person's first name
             last_name: Person's last name
             company: Company name (optional, helps with lookup)
-
+            
         Returns:
             EmailFinderResult with found email and confidence score
-
+            
         Raises:
             ValidationError: If required params missing
             HunterError: If API call fails
@@ -694,32 +694,32 @@ class HunterClient:
             raise ValidationError(message="Domain is required for email finder")
         if not first_name or not last_name:
             raise ValidationError(message="First and last name are required")
-
+        
         # Normalize
         domain = domain.lower().strip()
         if domain.startswith(("http://", "https://")):
             domain = domain.split("//")[1].split("/")[0]
-
+        
         logger.info(f"[Hunter] Email finder: {first_name} {last_name} @ {domain}")
-
+        
         params = {
             "domain": domain,
             "first_name": first_name.strip(),
             "last_name": last_name.strip(),
         }
-
+        
         if company:
             params["company"] = company.strip()
-
+        
         try:
             response = await self._request("GET", "/email-finder", params=params)
             data = response.get("data", {})
-
+            
             email = data.get("email")
             found = bool(email)
-
+            
             cost = self._track_cost(COST_EMAIL_FINDER_AUD) if found else 0.0
-
+            
             return EmailFinderResult(
                 found=found,
                 email=email,
@@ -738,7 +738,7 @@ class HunterClient:
                 sources=data.get("sources", []),
                 cost_aud=cost,
             )
-
+            
         except (HunterRateLimitError, HunterQuotaExceededError):
             raise
         except APIError:
@@ -751,35 +751,35 @@ class HunterClient:
                 first_name=first_name,
                 last_name=last_name,
             )
-
+    
     # ========================================
     # EMAIL VERIFICATION
     # ========================================
-
+    
     async def verify_email(self, email: str) -> EmailVerificationResult:
         """
         Verify email address deliverability.
-
+        
         Checks if an email address is valid, verifiable, and safe for outreach.
         Costs $0.08 AUD per verification.
-
+        
         Args:
             email: Email address to verify
-
+            
         Returns:
             EmailVerificationResult with verification details
-
+            
         Raises:
             ValidationError: If email is invalid format
             HunterError: If API call fails
         """
         if not email or "@" not in email:
             raise ValidationError(message="Valid email address is required")
-
+        
         email = email.lower().strip()
-
+        
         logger.info(f"[Hunter] Verifying email: {email}")
-
+        
         try:
             response = await self._request(
                 "GET",
@@ -787,16 +787,16 @@ class HunterClient:
                 params={"email": email},
             )
             data = response.get("data", {})
-
+            
             # Parse status
             status_str = data.get("status", "unknown").lower()
             try:
                 status = VerificationStatus(status_str)
             except ValueError:
                 status = VerificationStatus.UNKNOWN
-
+            
             cost = self._track_cost(COST_EMAIL_VERIFY_AUD)
-
+            
             return EmailVerificationResult(
                 email=data.get("email", email),
                 status=status,
@@ -814,7 +814,7 @@ class HunterClient:
                 sources=data.get("sources", []),
                 cost_aud=cost,
             )
-
+            
         except (HunterRateLimitError, HunterQuotaExceededError):
             raise
         except APIError:
@@ -828,11 +828,11 @@ class HunterClient:
                 score=0,
                 cost_aud=0.0,
             )
-
+    
     # ========================================
     # BATCH OPERATIONS
     # ========================================
-
+    
     async def batch_find_emails(
         self,
         prospects: list[dict[str, str]],
@@ -840,25 +840,25 @@ class HunterClient:
     ) -> list[EmailFinderResult]:
         """
         Find emails for multiple prospects.
-
+        
         Each prospect dict should have: domain, first_name, last_name.
         Costs $0.15 AUD per successful lookup.
-
+        
         Args:
             prospects: List of dicts with domain, first_name, last_name
             max_concurrent: Max concurrent requests (default 5)
-
+            
         Returns:
             List of EmailFinderResult for each prospect
         """
         if not prospects:
             return []
-
+        
         logger.info(f"[Hunter] Batch email finder for {len(prospects)} prospects")
-
+        
         results: list[EmailFinderResult] = []
         semaphore = asyncio.Semaphore(max_concurrent)
-
+        
         async def find_with_semaphore(prospect: dict) -> EmailFinderResult:
             async with semaphore:
                 try:
@@ -878,30 +878,30 @@ class HunterClient:
                         first_name=prospect.get("first_name"),
                         last_name=prospect.get("last_name"),
                     )
-
+        
         try:
             for i, prospect in enumerate(prospects):
                 result = await find_with_semaphore(prospect)
                 results.append(result)
-
+                
                 if (i + 1) % 10 == 0:
                     logger.info(
                         f"[Hunter] Batch progress: {i + 1}/{len(prospects)} "
                         f"(Total cost: ${self.total_cost_aud:.2f} AUD)"
                     )
-
+                    
         except HunterQuotaExceededError:
             logger.error("[Hunter] Quota exceeded during batch - stopping")
             raise
-
+        
         successful = sum(1 for r in results if r.found)
         logger.info(
             f"[Hunter] Batch complete: {successful}/{len(prospects)} emails found "
             f"(Total cost: ${self.total_cost_aud:.2f} AUD)"
         )
-
+        
         return results
-
+    
     async def batch_verify_emails(
         self,
         emails: list[str],
@@ -909,24 +909,24 @@ class HunterClient:
     ) -> list[EmailVerificationResult]:
         """
         Verify multiple email addresses.
-
+        
         Costs $0.08 AUD per verification.
-
+        
         Args:
             emails: List of email addresses
             max_concurrent: Max concurrent requests (default 5)
-
+            
         Returns:
             List of EmailVerificationResult for each email
         """
         if not emails:
             return []
-
+        
         logger.info(f"[Hunter] Batch verification for {len(emails)} emails")
-
+        
         results: list[EmailVerificationResult] = []
         semaphore = asyncio.Semaphore(max_concurrent)
-
+        
         async def verify_with_semaphore(email: str) -> EmailVerificationResult:
             async with semaphore:
                 try:
@@ -940,34 +940,34 @@ class HunterClient:
                         status=VerificationStatus.UNKNOWN,
                         result="error",
                     )
-
+        
         try:
             for i, email in enumerate(emails):
                 result = await verify_with_semaphore(email)
                 results.append(result)
-
+                
                 if (i + 1) % 20 == 0:
                     logger.info(
                         f"[Hunter] Verify progress: {i + 1}/{len(emails)} "
                         f"(Total cost: ${self.total_cost_aud:.2f} AUD)"
                     )
-
+                    
         except HunterQuotaExceededError:
             logger.error("[Hunter] Quota exceeded during batch verify - stopping")
             raise
-
+        
         valid_count = sum(1 for r in results if r.is_valid)
         logger.info(
             f"[Hunter] Batch verify complete: {valid_count}/{len(emails)} valid "
             f"(Total cost: ${self.total_cost_aud:.2f} AUD)"
         )
-
+        
         return results
-
+    
     # ========================================
     # HELPER METHODS
     # ========================================
-
+    
     def _parse_email(self, data: dict) -> HunterEmail:
         """Parse email data from API response."""
         email_type = None
@@ -976,7 +976,7 @@ class HunterClient:
             email_type = EmailType.PERSONAL
         elif type_str == "generic":
             email_type = EmailType.GENERIC
-
+        
         return HunterEmail(
             email=data.get("value", data.get("email", "")),
             email_type=email_type,
@@ -991,11 +991,11 @@ class HunterClient:
             phone_number=data.get("phone_number"),
             sources=data.get("sources", []),
         )
-
+    
     def get_session_cost(self) -> float:
         """Get total cost incurred this session in $AUD."""
         return self.total_cost_aud
-
+    
     def reset_cost_tracking(self) -> None:
         """Reset session cost tracking to zero."""
         self.total_cost_aud = 0.0
@@ -1011,10 +1011,10 @@ _hunter_client: HunterClient | None = None
 def get_hunter_client() -> HunterClient:
     """
     Get or create HunterClient singleton instance.
-
+    
     Returns:
         HunterClient instance
-
+        
     Raises:
         IntegrationError: If HUNTER_API_KEY not configured
     """

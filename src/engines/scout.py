@@ -53,18 +53,20 @@ logger = logging.getLogger(__name__)
 
 # DEPRECATED: FCO-002 (2026-02-05) - SDK enrichment removed, using Siege Waterfall data only
 # from src.agents.sdk_agents.enrichment_agent import run_sdk_enrichment
+from src.agents.sdk_agents.sdk_eligibility import should_use_sdk_enrichment  # Kept for objection routing
 from src.agents.skills.research_skills import DeepResearchSkill
 from src.engines.base import BaseEngine, EngineResult
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
-
 # REMOVED: from src.integrations.apify import ApifyClient, get_apify_client (FCO-003 deprecation)
-from src.integrations.camoufox_scraper import CamoufoxScraper
+from src.integrations.camoufox_scraper import CamoufoxScraper, CamoufoxScrapeResult
 from src.integrations.clay import ClayClient, get_clay_client
 from src.integrations.redis import enrichment_cache
-from src.integrations.siege_waterfall import EnrichmentTier, SiegeWaterfall, get_siege_waterfall
+from src.integrations.siege_waterfall import SiegeWaterfall, get_siege_waterfall, EnrichmentTier
 from src.models.base import LeadStatus
 from src.models.lead import Lead
 from src.models.lead_social_post import LeadSocialPost
+from src.services.sdk_usage_service import log_sdk_usage
+from src.services.who_refinement_service import get_who_refined_criteria
 
 # Sentry for error tracking
 try:
@@ -410,7 +412,7 @@ class ScoutEngine(BaseEngine):
         - Tier 5: Kaspr (ALS >= 85 only)
 
         For non-AU businesses, uses Apollo + Apify.
-
+        
         NOTE: AU leads do NOT fall back to Apollo - SIEGE is the SSOT for AU.
         This saves costs and ensures data sovereignty.
         """
@@ -452,7 +454,7 @@ class ScoutEngine(BaseEngine):
                     result["confidence"] = 0.75 + (siege_result.sources_used * 0.05)  # Higher confidence with more sources
                     result["source"] = f"siege_waterfall_{siege_result.sources_used}sources"
                     result["enrichment_cost_aud"] = siege_result.total_cost_aud
-
+                    
                     # Log successful SIEGE enrichment
                     await self._log_enrichment_audit(
                         operation="siege_waterfall",
@@ -470,7 +472,7 @@ class ScoutEngine(BaseEngine):
                             ],
                         },
                     )
-
+                    
                     logger.info(
                         f"[Scout] Siege Waterfall enriched AU lead with {siege_result.sources_used} sources, "
                         f"cost: ${siege_result.total_cost_aud:.3f} AUD (no Apollo fallback)"
@@ -491,10 +493,10 @@ class ScoutEngine(BaseEngine):
                         },
                     )
                     logger.info(
-                        "[Scout] Siege Waterfall found no data for AU lead, "
-                        "NOT falling back to Apollo (SIEGE is SSOT for AU)"
+                        f"[Scout] Siege Waterfall found no data for AU lead, "
+                        f"NOT falling back to Apollo (SIEGE is SSOT for AU)"
                     )
-
+                    
             except Exception as e:
                 # Log SIEGE failure for AU lead
                 await self._log_enrichment_audit(
@@ -508,7 +510,7 @@ class ScoutEngine(BaseEngine):
                 )
                 logger.warning(f"[Scout] Siege Waterfall failed for AU lead: {e}")
                 result = None
-
+            
             # Return here for AU leads - no Apollo fallback
             return result
 
@@ -587,10 +589,10 @@ class ScoutEngine(BaseEngine):
     ) -> None:
         """
         Log enrichment operation to audit_logs table.
-
+        
         Provides full traceability for all enrichment operations,
         supporting cost tracking and debugging.
-
+        
         Args:
             operation: Operation name (siege_waterfall, siege_enrich, camoufox_scrape, etc.)
             lead_id: Lead UUID if available
@@ -603,7 +605,8 @@ class ScoutEngine(BaseEngine):
         """
         try:
             # Lazy import to avoid circular dependencies
-
+            from sqlalchemy import text as sql_text
+            
             log_entry = {
                 "engine": self.name,
                 "operation_type": "enrichment",
@@ -617,14 +620,14 @@ class ScoutEngine(BaseEngine):
                 "metadata": metadata or {},
                 "created_at": datetime.utcnow().isoformat(),
             }
-
+            
             # Use raw SQL insert to avoid needing a session
             # This logs to audit_logs table
             from src.integrations.supabase import get_supabase_client
-
+            
             supabase = get_supabase_client()
             await supabase.table("audit_logs").insert(log_entry).execute()
-
+            
         except Exception as e:
             # Don't fail enrichment if logging fails - just log to stderr
             logger.warning(f"[Scout] Audit log failed: {e}")
@@ -654,7 +657,10 @@ class ScoutEngine(BaseEngine):
 
         # Check phone number
         phone = getattr(lead, "phone", None)
-        return bool(phone and (phone.startswith("+61") or phone.startswith("61")))
+        if phone and (phone.startswith("+61") or phone.startswith("61")):
+            return True
+
+        return False
 
     async def _enrich_tier2(
         self,
@@ -693,7 +699,7 @@ class ScoutEngine(BaseEngine):
         """
         DEPRECATED: FCO-002 (2026-02-05)
         SDK enrichment has been removed. Use Siege Waterfall data instead.
-
+        
         This method now returns None immediately. Kept for backwards compatibility
         with existing code that may call enrich_lead_with_sdk().
 
@@ -724,7 +730,7 @@ class ScoutEngine(BaseEngine):
         """
         DEPRECATED: FCO-002 (2026-02-05)
         SDK enrichment has been removed. This method now just calls standard enrichment.
-
+        
         Enrich a lead using Siege Waterfall data only.
         Kept for backwards compatibility with existing orchestration flows.
 
@@ -1096,10 +1102,10 @@ class ScoutEngine(BaseEngine):
         """
         # Apollo removed (CEO Directive #003)
         logger.warning(
-            "search_and_populate_pool called but Apollo removed. "
-            "Use pool_population_flow with Siege Waterfall instead."
+            f"search_and_populate_pool called but Apollo removed. "
+            f"Use pool_population_flow with Siege Waterfall instead."
         )
-
+        
         return EngineResult.ok(
             data={
                 "added": 0,
@@ -1467,7 +1473,7 @@ class ScoutEngine(BaseEngine):
         try:
             # Use Camoufox for anti-detection scraping
             scrape_result = await self.camoufox.scrape(linkedin_url)
-
+            
             if not scrape_result.success:
                 logger.warning(
                     f"[Scout] LinkedIn person scrape failed: {scrape_result.failure_reason}"
@@ -1478,7 +1484,7 @@ class ScoutEngine(BaseEngine):
             # NOTE: Full LinkedIn parsing would require a dedicated HTML parser
             # For now, return minimal data indicating scrape success
             raw_html = scrape_result.raw_html
-
+            
             # Basic title extraction from HTML
             headline = None
             if "<title>" in raw_html:
@@ -1524,7 +1530,7 @@ class ScoutEngine(BaseEngine):
         try:
             # Use Camoufox for anti-detection scraping
             scrape_result = await self.camoufox.scrape(linkedin_url)
-
+            
             if not scrape_result.success:
                 logger.warning(
                     f"[Scout] LinkedIn company scrape failed: {scrape_result.failure_reason}"
@@ -1533,7 +1539,7 @@ class ScoutEngine(BaseEngine):
 
             # Parse LinkedIn HTML (basic extraction)
             raw_html = scrape_result.raw_html
-
+            
             # Basic company name extraction from HTML
             company_name = None
             if "<title>" in raw_html:
@@ -1608,9 +1614,9 @@ def get_scout_engine() -> ScoutEngine:
 # [x] enrich_linkedin_for_assignment method (Phase 24A+)
 # [x] _scrape_person_linkedin helper (Phase 24A+ - uses CamoufoxScraper)
 # [x] _scrape_company_linkedin helper (Phase 24A+ - uses CamoufoxScraper)
-#
+# 
 # FCO-002/FCO-003 DEPRECATION APPLIED (2026-02-05):
 # [x] Apollo integration removed
-# [x] Apify integration removed
+# [x] Apify integration removed  
 # [x] Siege Waterfall is now SSOT for enrichment
 # [x] CamoufoxScraper used for LinkedIn scraping

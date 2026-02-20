@@ -28,18 +28,19 @@ import asyncio
 import logging
 import os
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 from uuid import UUID, uuid4
 
 import httpx
 from fuzzywuzzy import fuzz
-from sqlalchemy import insert
+from sqlalchemy import select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import BaseEngine, EngineResult
+from src.models.lead_pool import LeadPool, EmailStatus
 
 logger = logging.getLogger(__name__)
 
@@ -128,17 +129,17 @@ class ABNRecord:
     state: str
     postcode: str
     gst_registered: bool
-    acn: str | None = None
+    acn: Optional[str] = None
 
 
 @dataclass
 class ASICVerifyRecord:
     """
     Record from ASIC verification (T1.25).
-
+    
     CEO Directive #039: Uses ABR SearchByASIC to get ASIC-registered business name
     for improved T2 GMB fuzzy matching. Directors[] pending ASIC DSP approval.
-
+    
     Source: ABR SearchByASICv201408
     Cost: $0.00 AUD (FREE)
     """
@@ -148,7 +149,7 @@ class ASICVerifyRecord:
     entity_type: str
     state: str
     postcode: str
-    directors: list[str] | None = None  # Pending ASIC DSP approval
+    directors: Optional[list[str]] = None  # Pending ASIC DSP approval
 
 
 @dataclass
@@ -156,14 +157,14 @@ class GMBRecord:
     """Record from Google Maps scraping."""
     google_place_id: str
     business_name: str
-    phone: str | None
-    website: str | None
+    phone: Optional[str]
+    website: Optional[str]
     address: str
     postcode: str
     state: str
     lat: float
     lng: float
-    rating: float | None
+    rating: Optional[float]
     review_count: int
     categories: list[str]
 
@@ -183,15 +184,15 @@ class ZeroBounceResult:
     email: str
     status: str  # valid, invalid, catch_all, unknown, spamtrap
     sub_status: str
-    did_you_mean: str | None
-    activity_score: int | None
+    did_you_mean: Optional[str]
+    activity_score: Optional[int]
 
 
 @dataclass
 class DMCandidate:
     """
     Decision Maker candidate from T-DM0 LinkedIn discovery.
-
+    
     CEO Directive #040: DataForSEO SERP + Bright Data Profile scraping.
     """
     dm_name: str
@@ -205,7 +206,7 @@ class DMCandidate:
 class LinkedInPost:
     """
     LinkedIn post from T-DM2.
-
+    
     CEO Directive #041: Social intelligence for outreach personalisation.
     """
     post_text: str
@@ -213,14 +214,14 @@ class LinkedInPost:
     num_likes: int
     num_comments: int
     hashtags: list[str] = field(default_factory=list)
-    topic: str | None = None  # AI-inferred topic from content
+    topic: Optional[str] = None  # AI-inferred topic from content
 
 
 @dataclass
 class XPost:
     """
     X/Twitter post from T-DM3.
-
+    
     CEO Directive #041: Social intelligence for outreach personalisation.
     """
     content: str
@@ -240,53 +241,53 @@ class LineageStep:
     cost_aud: Decimal
     success: bool
     data_added: list[str] = field(default_factory=list)
-    error_message: str | None = None
-    latency_ms: int | None = None
-    raw_response: dict | None = None
+    error_message: Optional[str] = None
+    latency_ms: Optional[int] = None
+    raw_response: Optional[dict] = None
 
 
 @dataclass
 class WaterfallResult:
     """Complete result from waterfall verification."""
     lead_id: UUID
-    abn: str | None
-    acn: str | None = None  # T1.25: ASIC company number
-    asic_registered_name: str | None = None  # T1.25: Clean registered name for fuzzy match
-    email: str | None = None
-    phone: str | None = None
-    website: str | None = None
-
+    abn: Optional[str]
+    acn: Optional[str] = None  # T1.25: ASIC company number
+    asic_registered_name: Optional[str] = None  # T1.25: Clean registered name for fuzzy match
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    
     # Match quality
     abn_gmb_match_confidence: MatchConfidence = MatchConfidence.NO_MATCH
     abn_gmb_match_score: int = 0
-
+    
     # T-DM0: Decision Maker discovery (CEO Directive #040)
-    dm_name: str | None = None
-    dm_title: str | None = None
-    dm_linkedin_url: str | None = None
+    dm_name: Optional[str] = None
+    dm_title: Optional[str] = None
+    dm_linkedin_url: Optional[str] = None
     dm_candidates_found: int = 0
-
+    
     # T-DM2: LinkedIn Posts (CEO Directive #041)
     dm_linkedin_posts: list[LinkedInPost] = field(default_factory=list)
-
+    
     # T-DM3: X Posts (CEO Directive #041)
-    dm_x_handle: str | None = None
+    dm_x_handle: Optional[str] = None
     dm_x_posts: list[XPost] = field(default_factory=list)
-
+    
     # Verification
     verification_method: str  # single_source, dual_match, triple_check
     verification_sources: list[str]
     verification_consensus: bool
     email_confidence: int
-
+    
     # Costs
     total_cost_aud: Decimal
     lineage: list[LineageStep]
-
+    
     # ALS contribution
     source_count: int
     multi_source_bonus: int
-
+    
     # Status
     success: bool
     errors: list[str] = field(default_factory=list)
@@ -299,19 +300,19 @@ class WaterfallResult:
 class WaterfallVerificationWorker(BaseEngine):
     """
     Waterfall enrichment and verification worker.
-
+    
     Implements the "ABN + GMB Double-Wedge" strategy:
     - Tier 1: ABN Seed (Free public data)
     - Tier 2: GMB Scraper (Phone/Website enrichment)
     - Tier 3: Hunter.io (Email finding/verification)
     - Tier 4: ZeroBounce (Premium escalation for catch-all/low-confidence)
-
+    
     Cost Governance:
     - All costs tracked in AUD
     - Full lineage logged to lead_lineage_log table
     - +15 ALS bonus for 3+ source verification
     """
-
+    
     def __init__(
         self,
         abn_client=None,
@@ -321,7 +322,7 @@ class WaterfallVerificationWorker(BaseEngine):
     ):
         """
         Initialize worker with integration clients.
-
+        
         Args:
             abn_client: ABN Lookup API client
             gmb_scraper: GMB scraper client (Apify deprecated)
@@ -332,15 +333,15 @@ class WaterfallVerificationWorker(BaseEngine):
         self._gmb_scraper = gmb_scraper
         self._hunter_client = hunter_client
         self._zerobounce_client = zerobounce_client
-
+    
     @property
     def name(self) -> str:
         return "waterfall_verification"
-
+    
     # ============================================
     # MAIN VERIFICATION FLOW
     # ============================================
-
+    
     async def verify_lead(
         self,
         db: AsyncSession,
@@ -353,7 +354,7 @@ class WaterfallVerificationWorker(BaseEngine):
     ) -> EngineResult[WaterfallResult]:
         """
         Run waterfall verification on a lead.
-
+        
         Args:
             db: Database session
             lead_id: Lead UUID
@@ -362,7 +363,7 @@ class WaterfallVerificationWorker(BaseEngine):
             state: Australian state (NSW, VIC, etc.)
             current_als_score: Current ALS for escalation decisions
             force_full_waterfall: Force all tiers regardless of score
-
+        
         Returns:
             EngineResult containing WaterfallResult
         """
@@ -370,7 +371,7 @@ class WaterfallVerificationWorker(BaseEngine):
         errors: list[str] = []
         total_cost = Decimal("0.00")
         step_number = 0
-
+        
         # Initialize result
         result = WaterfallResult(
             lead_id=lead_id,
@@ -390,14 +391,14 @@ class WaterfallVerificationWorker(BaseEngine):
             multi_source_bonus=0,
             success=False,
         )
-
+        
         try:
             # ========== TIER 1: ABN SEED ==========
             step_number += 1
             start_time = datetime.utcnow()
-
+            
             abn_result = await self._tier1_abn_seed(company_name, postcode, state)
-
+            
             latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
             step = LineageStep(
                 step_number=step_number,
@@ -410,30 +411,30 @@ class WaterfallVerificationWorker(BaseEngine):
             )
             lineage.append(step)
             total_cost += step.cost_aud
-
+            
             if abn_result:
                 result.abn = abn_result.abn
                 result.verification_sources.append("abn")
             else:
                 errors.append("ABN seed: No match found for company name/postcode")
-
+            
             # ========== TIER 1.25: ASIC VERIFICATION (CEO Directive #039) ==========
             # Purpose: Get ASIC-registered business name for improved T2 fuzzy matching
-            asic_result: ASICVerifyRecord | None = None
+            asic_result: Optional[ASICVerifyRecord] = None
             gmb_search_name = company_name  # Default: use original company name
-
+            
             if abn_result and abn_result.acn:
                 step_number += 1
                 start_time = datetime.utcnow()
-
+                
                 asic_result = await self._tier1_25_asic_verify(
                     acn=abn_result.acn,
                     abn=abn_result.abn,
                 )
-
+                
                 latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
                 asic_success = asic_result is not None
-
+                
                 step = LineageStep(
                     step_number=step_number,
                     step_type="verification",
@@ -445,7 +446,7 @@ class WaterfallVerificationWorker(BaseEngine):
                 )
                 lineage.append(step)
                 total_cost += step.cost_aud
-
+                
                 if asic_result:
                     result.acn = asic_result.acn
                     result.asic_registered_name = asic_result.registered_name
@@ -457,28 +458,28 @@ class WaterfallVerificationWorker(BaseEngine):
                     )
                 else:
                     errors.append(f"T1.25: ASIC verify failed for ACN {abn_result.acn}")
-
+            
             # ========== TIER DM-0: LINKEDIN DECISION MAKER DISCOVERY (CEO Directive #040) ==========
             # Runs if we have a registered_name from T1.25 (or fallback to company_name)
             dm_search_name = gmb_search_name  # Use ASIC registered_name if available
-
+            
             step_number += 1
             start_time = datetime.utcnow()
-
+            
             dm_candidate = await self._tier_dm0_linkedin_discovery(
                 registered_name=dm_search_name,
                 state=state,
             )
-
+            
             latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
             dm0_success = dm_candidate is not None
-
+            
             # Calculate actual cost (SERP + profiles scraped)
             dm0_cost = DATAFORSEO_SERP_COST_AUD  # Always pay for SERP
             if dm0_success:
                 # Add Bright Data profile costs (estimated at 1 per successful result)
                 dm0_cost += BRIGHTDATA_PROFILE_COST_AUD
-
+            
             step = LineageStep(
                 step_number=step_number,
                 step_type="enrichment",
@@ -490,7 +491,7 @@ class WaterfallVerificationWorker(BaseEngine):
             )
             lineage.append(step)
             total_cost += dm0_cost
-
+            
             if dm_candidate:
                 result.dm_name = dm_candidate.dm_name
                 result.dm_title = dm_candidate.dm_title
@@ -503,23 +504,23 @@ class WaterfallVerificationWorker(BaseEngine):
                 )
             else:
                 errors.append(f"T-DM0: No decision maker found for '{dm_search_name}'")
-
+            
             # ========== TIER DM-2: LINKEDIN POSTS (CEO Directive #041) ==========
             # Only run for ALS ≥70 leads with a valid LinkedIn URL
             should_get_social = current_als_score >= 70 or force_full_waterfall
-
+            
             if should_get_social and result.dm_linkedin_url:
                 step_number += 1
                 start_time = datetime.utcnow()
-
+                
                 linkedin_posts = await self._tier_dm2_linkedin_posts(
                     dm_linkedin_url=result.dm_linkedin_url,
                     max_posts=5,
                 )
-
+                
                 latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
                 dm2_success = len(linkedin_posts) > 0
-
+                
                 step = LineageStep(
                     step_number=step_number,
                     step_type="enrichment",
@@ -531,7 +532,7 @@ class WaterfallVerificationWorker(BaseEngine):
                 )
                 lineage.append(step)
                 total_cost += step.cost_aud
-
+                
                 if linkedin_posts:
                     result.dm_linkedin_posts = linkedin_posts
                     result.verification_sources.append("dm2_linkedin_posts")
@@ -541,20 +542,20 @@ class WaterfallVerificationWorker(BaseEngine):
                     )
                 else:
                     errors.append(f"T-DM2: No LinkedIn posts found for '{result.dm_name}'")
-
+            
             # ========== TIER DM-3: X POSTS (CEO Directive #041) ==========
             # Only run for ALS ≥70 leads — discover X handle first
             if should_get_social:
                 step_number += 1
                 start_time = datetime.utcnow()
-
+                
                 # Discover X handle from website or SERP
                 x_handle = await self._discover_x_handle(
                     website=result.website,
                     dm_name=result.dm_name or "",
                     registered_name=gmb_search_name,
                 )
-
+                
                 x_posts = []
                 if x_handle:
                     result.dm_x_handle = x_handle
@@ -562,10 +563,10 @@ class WaterfallVerificationWorker(BaseEngine):
                         x_handle=x_handle,
                         max_posts=5,
                     )
-
+                
                 latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
                 dm3_success = len(x_posts) > 0
-
+                
                 step = LineageStep(
                     step_number=step_number,
                     step_type="enrichment",
@@ -577,7 +578,7 @@ class WaterfallVerificationWorker(BaseEngine):
                 )
                 lineage.append(step)
                 total_cost += step.cost_aud
-
+                
                 if x_posts:
                     result.dm_x_posts = x_posts
                     result.verification_sources.append("dm3_x_posts")
@@ -588,22 +589,22 @@ class WaterfallVerificationWorker(BaseEngine):
                     errors.append(f"T-DM3: X handle found ({x_handle}) but no posts retrieved")
                 else:
                     errors.append(f"T-DM3: No X handle found for '{result.dm_name}'")
-
+            
             # ========== TIER 2: GMB SCRAPER ==========
             step_number += 1
             start_time = datetime.utcnow()
-
+            
             # Use ASIC registered_name if available, otherwise original company_name
             gmb_result = await self._tier2_gmb_scraper(gmb_search_name, postcode, state)
-
+            
             latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
-
+            
             # Handle ABN ↔ GMB matching with error handling
             match_confidence = MatchConfidence.NO_MATCH
             match_score = 0
             gmb_success = False
             data_added = []
-
+            
             if gmb_result:
                 if abn_result:
                     # Both ABN and GMB found — attempt fuzzy match
@@ -611,7 +612,7 @@ class WaterfallVerificationWorker(BaseEngine):
                     match_confidence, match_score = self._match_abn_gmb(
                         abn_result, gmb_result, asic_result
                     )
-
+                    
                     if match_confidence != MatchConfidence.NO_MATCH:
                         # Match successful
                         gmb_success = True
@@ -646,7 +647,7 @@ class WaterfallVerificationWorker(BaseEngine):
                     errors.append("ABN not found — using GMB as primary source (unverified)")
             else:
                 errors.append("GMB scraper: No results for company/postcode")
-
+            
             step = LineageStep(
                 step_number=step_number,
                 step_type="enrichment",
@@ -659,50 +660,50 @@ class WaterfallVerificationWorker(BaseEngine):
             )
             lineage.append(step)
             total_cost += step.cost_aud
-
+            
             # ========== TIER 3: HUNTER.IO (Conditional) ==========
             # Only proceed if ALS >= 60 (Warm+) or forced
             should_verify_email = (
-                force_full_waterfall or
+                force_full_waterfall or 
                 current_als_score >= ALS_ESCALATION_THRESHOLD
             )
-
+            
             if should_verify_email and result.website:
                 step_number += 1
                 start_time = datetime.utcnow()
-
+                
                 domain = self._extract_domain(result.website)
                 hunter_result = await self._tier3_hunter_io(domain, company_name)
-
+                
                 latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
                 hunter_success = False
                 data_added = []
-
+                
                 if hunter_result:
                     result.email = hunter_result.email
                     result.email_confidence = hunter_result.confidence
                     result.verification_sources.append("hunter_io")
                     hunter_success = True
                     data_added = ["email"]
-
+                    
                     # ========== TIER 4: ZEROBOUNCE (Escalation) ==========
                     # Escalate if catch_all or low confidence
                     needs_escalation = (
                         hunter_result.status == "catch_all" or
                         hunter_result.confidence < HUNTER_CONFIDENCE_THRESHOLD
                     )
-
+                    
                     if needs_escalation:
                         step_number += 1
                         start_time = datetime.utcnow()
-
+                        
                         zb_result = await self._tier4_zerobounce(hunter_result.email)
-
+                        
                         latency_ms_zb = int(
                             (datetime.utcnow() - start_time).total_seconds() * 1000
                         )
                         zb_success = False
-
+                        
                         if zb_result:
                             if zb_result.status == "valid":
                                 result.email_confidence = 99
@@ -721,7 +722,7 @@ class WaterfallVerificationWorker(BaseEngine):
                                 )
                                 result.verification_sources.append("zerobounce")
                                 zb_success = True
-
+                        
                         step = LineageStep(
                             step_number=step_number,
                             step_type="verification",
@@ -736,7 +737,7 @@ class WaterfallVerificationWorker(BaseEngine):
                         total_cost += step.cost_aud
                 else:
                     errors.append(f"Hunter.io: No email found for domain {domain}")
-
+                
                 step = LineageStep(
                     step_number=step_number if not needs_escalation else step_number - 1,
                     step_type="verification",
@@ -753,13 +754,13 @@ class WaterfallVerificationWorker(BaseEngine):
                 else:
                     lineage.append(step)
                 total_cost += step.cost_aud
-
+            
             # ========== FINALIZE RESULT ==========
             result.source_count = len(result.verification_sources)
             result.total_cost_aud = total_cost
             result.lineage = lineage
             result.errors = errors
-
+            
             # Determine verification method
             if result.source_count >= 3:
                 result.verification_method = "triple_check"
@@ -773,13 +774,13 @@ class WaterfallVerificationWorker(BaseEngine):
             else:
                 result.verification_method = "single_source"
                 result.verification_consensus = False
-
+            
             # Overall success if we have at least email OR phone
             result.success = bool(result.email or result.phone)
-
+            
             # Log to database
             await self._log_lineage(db, result)
-
+            
             return EngineResult.ok(
                 data=result,
                 metadata={
@@ -788,7 +789,7 @@ class WaterfallVerificationWorker(BaseEngine):
                     "verification_method": result.verification_method,
                 },
             )
-
+            
         except Exception as e:
             logger.exception(f"Waterfall verification failed for lead {lead_id}")
             result.errors.append(f"Waterfall exception: {str(e)}")
@@ -798,30 +799,30 @@ class WaterfallVerificationWorker(BaseEngine):
                 error=str(e),
                 metadata={"partial_result": result},
             )
-
+    
     # ============================================
     # ALS CALCULATION
     # ============================================
-
+    
     def calculate_als_score(
         self,
         base_als_score: int,
         waterfall_result: WaterfallResult,
-        intent_signals: dict | None = None,
+        intent_signals: Optional[dict] = None,
     ) -> dict[str, Any]:
         """
         Calculate ALS with waterfall verification bonus.
-
+        
         The ALS combines:
         - Base ALS score (0-100)
         - Multi-source verification bonus (+15 for 3+ sources)
         - Intent signal multipliers
-
+        
         Args:
             base_als_score: Original ALS (0-100)
             waterfall_result: Result from verify_lead()
             intent_signals: Optional dict with ad_volume, is_hiring, etc.
-
+        
         Returns:
             Dict with score breakdown:
             {
@@ -840,15 +841,15 @@ class WaterfallVerificationWorker(BaseEngine):
             "sources_used": waterfall_result.verification_sources,
             "verification_method": waterfall_result.verification_method,
         }
-
+        
         # Multi-source verification bonus
         if waterfall_result.source_count >= 3:
             components["verification_bonus"] = MULTI_SOURCE_BONUS
-
+        
         # Intent signal bonus
         if intent_signals:
             intent_bonus = 0
-
+            
             # Ad volume signal: >50 ads running >60 days
             ad_volume = intent_signals.get("ad_volume", 0)
             ad_longevity = intent_signals.get("ad_longevity_days", 0)
@@ -856,17 +857,17 @@ class WaterfallVerificationWorker(BaseEngine):
                 intent_bonus += 10  # High-intent advertiser
             elif ad_volume >= 20:
                 intent_bonus += 5   # Active advertiser
-
+            
             # Hiring signal
             if intent_signals.get("is_hiring"):
                 intent_bonus += 3
-
+            
             # Funding signal
             if intent_signals.get("recent_funding"):
                 intent_bonus += 5
-
+            
             components["intent_bonus"] = min(intent_bonus, 15)  # Cap at 15
-
+        
         # Calculate final score (capped at 100)
         final_score = min(
             100,
@@ -874,30 +875,30 @@ class WaterfallVerificationWorker(BaseEngine):
             components["verification_bonus"] +
             components["intent_bonus"]
         )
-
+        
         components["final_score"] = final_score
-
+        
         return components
-
+    
     # ============================================
     # TIER IMPLEMENTATIONS
     # ============================================
-
+    
     async def _tier1_abn_seed(
         self,
         company_name: str,
         postcode: str,
         state: str,
-    ) -> ABNRecord | None:
+    ) -> Optional[ABNRecord]:
         """
         Tier 1: Look up company in ABN database.
-
+        
         Uses ABN Lookup API or local bulk extract cache.
         """
         if self._abn_client is None:
             logger.warning("ABN client not configured — skipping Tier 1")
             return None
-
+        
         try:
             # Search by name + postcode + state
             results = await self._abn_client.search_by_name(
@@ -906,60 +907,60 @@ class WaterfallVerificationWorker(BaseEngine):
                 state=state,
                 active_only=True,
             )
-
+            
             if results and len(results) > 0:
                 # Return best match (API should return sorted by relevance)
                 return results[0]
-
+            
             return None
-
+            
         except Exception as e:
             logger.error(f"ABN lookup failed: {e}")
             return None
-
+    
     async def _tier1_25_asic_verify(
         self,
-        acn: str | None,
-        abn: str | None,
-    ) -> ASICVerifyRecord | None:
+        acn: Optional[str],
+        abn: Optional[str],
+    ) -> Optional[ASICVerifyRecord]:
         """
         Tier 1.25: ASIC Business Registry verification via ABR SearchByASIC.
-
+        
         CEO Directive #039: Implemented to fix 55% fuzzy match failure.
         Uses ABR Web Services (SearchByASICv201408) to get ASIC-registered
         business name for improved T2 GMB matching.
-
+        
         Directors[] left null pending ASIC DSP application approval.
-
+        
         Args:
             acn: Australian Company Number from T1 (preferred)
             abn: Australian Business Number fallback
-
+            
         Returns:
             ASICVerifyRecord with registered_name, or None if lookup fails
         """
         if self._abn_client is None:
             logger.warning("ABN client not configured — skipping T1.25 ASIC verify")
             return None
-
+        
         # Need ACN for ASIC lookup
         if not acn:
             logger.info("T1.25: No ACN available — skipping ASIC verify")
             return None
-
+        
         try:
             # Use ABR SearchByASIC to get ASIC-registered data
             result = await self._abn_client.search_by_acn(acn)
-
+            
             if not result:
                 logger.info(f"T1.25: No ASIC record found for ACN {acn}")
                 return None
-
+            
             # Extract registered business name (clean, official)
             # Priority: business_names (ASIC-registered) > legal_name
             business_names = result.get("business_names", [])
             legal_name = result.get("legal_name", "") or result.get("entity_name", "")
-
+            
             # Use first ASIC-registered business name if available
             # These are cleaner for GMB matching (e.g., "Efficient Media" vs "EFFICIENT MEDIA PTY LTD")
             if business_names and len(business_names) > 0:
@@ -967,9 +968,9 @@ class WaterfallVerificationWorker(BaseEngine):
             else:
                 # Fallback to legal name, cleaned
                 registered_name = self._clean_company_name(legal_name)
-
+            
             logger.info(f"T1.25: ASIC registered_name = '{registered_name}' for ACN {acn}")
-
+            
             return ASICVerifyRecord(
                 acn=acn,
                 registered_name=registered_name,
@@ -979,58 +980,58 @@ class WaterfallVerificationWorker(BaseEngine):
                 postcode=result.get("postcode", ""),
                 directors=None,  # Pending ASIC DSP approval - CEO Directive #039
             )
-
+            
         except Exception as e:
             logger.error(f"T1.25 ASIC verify failed for ACN {acn}: {e}")
             return None
-
+    
     async def _tier_dm0_linkedin_discovery(
         self,
         registered_name: str,
         state: str = "AU",
-    ) -> DMCandidate | None:
+    ) -> Optional[DMCandidate]:
         """
         Tier DM-0: LinkedIn Decision Maker Discovery.
-
+        
         CEO Directive #040 Part C: Uses DataForSEO SERP to find LinkedIn profiles,
         then Bright Data to scrape profile details, with local title filtering.
-
+        
         Pipeline:
         1. DataForSEO SERP: site:linkedin.com/in "{registered_name}" founder OR director OR CEO OR owner OR MD
         2. Extract LinkedIn profile URLs (max 5)
         3. Bright Data LinkedIn Profile scrape per URL (gd_l1viktl72bvl7bjuj0)
         4. Local title filter → return top 1 as dm_candidate
-
+        
         Args:
             registered_name: Company name from T1.25 (ASIC registered_name preferred)
             state: Australian state for location filtering (default: "AU")
-
+        
         Returns:
             DMCandidate with dm_name, dm_title, dm_linkedin_url, or None if not found
-
+        
         Cost: ~$0.0165 AUD (DataForSEO SERP $0.009 + up to 5 × Bright Data $0.0015)
         """
         import base64
-
+        
         # DataForSEO credentials
         dataforseo_login = os.getenv("DATAFORSEO_LOGIN")
         dataforseo_password = os.getenv("DATAFORSEO_PASSWORD")
         brightdata_api_key = os.getenv("BRIGHTDATA_API_KEY")
-
+        
         if not dataforseo_login or not dataforseo_password:
             logger.warning("DataForSEO credentials not set — skipping T-DM0")
             return None
-
+        
         if not brightdata_api_key:
             logger.warning("BRIGHTDATA_API_KEY not set — skipping T-DM0 profile scraping")
             return None
-
+        
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
                 # ========== STEP 1: DataForSEO SERP Query ==========
                 # Query: site:linkedin.com/in "{registered_name}" founder OR director OR CEO OR owner OR MD
                 search_query = f'site:linkedin.com/in "{registered_name}" founder OR director OR CEO OR owner OR MD'
-
+                
                 # DataForSEO location codes: 2036 = Australia
                 serp_payload = [{
                     "keyword": search_query,
@@ -1038,11 +1039,11 @@ class WaterfallVerificationWorker(BaseEngine):
                     "language_code": "en",
                     "depth": 10,
                 }]
-
+                
                 # Basic auth for DataForSEO
                 auth_str = f"{dataforseo_login}:{dataforseo_password}"
                 auth_bytes = base64.b64encode(auth_str.encode()).decode()
-
+                
                 serp_resp = await client.post(
                     "https://api.dataforseo.com/v3/serp/google/organic/live/advanced",
                     headers={
@@ -1053,18 +1054,18 @@ class WaterfallVerificationWorker(BaseEngine):
                 )
                 serp_resp.raise_for_status()
                 serp_data = serp_resp.json()
-
+                
                 # Extract items from SERP response
                 items = []
-                if (serp_data.get("tasks") and
+                if (serp_data.get("tasks") and 
                     serp_data["tasks"][0].get("result") and
                     serp_data["tasks"][0]["result"][0].get("items")):
                     items = serp_data["tasks"][0]["result"][0]["items"]
-
+                
                 if not items:
                     logger.info(f"T-DM0: No LinkedIn profiles found for '{registered_name}'")
                     return None
-
+                
                 # ========== STEP 2: Extract LinkedIn Profile URLs (max 5) ==========
                 linkedin_urls = []
                 for item in items[:10]:  # Check top 10 SERP results
@@ -1073,17 +1074,17 @@ class WaterfallVerificationWorker(BaseEngine):
                         linkedin_urls.append(url)
                     if len(linkedin_urls) >= 5:
                         break
-
+                
                 if not linkedin_urls:
                     logger.info(f"T-DM0: No linkedin.com/in/ URLs in SERP results for '{registered_name}'")
                     return None
-
+                
                 logger.info(f"T-DM0: Found {len(linkedin_urls)} LinkedIn profile URLs for '{registered_name}'")
-
+                
                 # ========== STEP 3: Bright Data LinkedIn Profile Scrape ==========
                 # Dataset: gd_l1viktl72bvl7bjuj0 (LinkedIn People)
                 profiles = []
-
+                
                 for profile_url in linkedin_urls:
                     try:
                         # Trigger scrape
@@ -1101,11 +1102,11 @@ class WaterfallVerificationWorker(BaseEngine):
                         )
                         trigger_resp.raise_for_status()
                         snapshot_id = trigger_resp.json().get("snapshot_id")
-
+                        
                         if not snapshot_id:
                             logger.warning(f"T-DM0: No snapshot_id for {profile_url}")
                             continue
-
+                        
                         # Poll for completion (max 2 minutes per profile)
                         profile_data = None
                         for _ in range(24):  # 24 × 5s = 120s
@@ -1129,30 +1130,30 @@ class WaterfallVerificationWorker(BaseEngine):
                             elif status_data.get("status") == "failed":
                                 logger.warning(f"T-DM0: Bright Data scrape failed for {profile_url}")
                                 break
-
+                        
                         if profile_data and "error" not in profile_data:
                             profiles.append({
                                 "url": profile_url,
                                 "data": profile_data,
                             })
-
+                    
                     except Exception as e:
                         logger.warning(f"T-DM0: Error scraping {profile_url}: {e}")
                         continue
-
+                
                 if not profiles:
                     logger.info(f"T-DM0: No valid profiles scraped for '{registered_name}'")
                     return None
-
+                
                 # ========== STEP 4: Local Title Filter ==========
                 candidates = []
-
+                
                 for profile in profiles:
                     data = profile["data"]
                     name = data.get("name", "") or data.get("full_name", "")
                     title = data.get("headline", "") or data.get("occupation", "") or ""
                     current_company = data.get("current_company_name", "") or ""
-
+                    
                     # Check for experience entries with current company
                     experiences = data.get("experience", []) or []
                     for exp in experiences:
@@ -1160,20 +1161,20 @@ class WaterfallVerificationWorker(BaseEngine):
                             current_company = exp.get("company_name", "") or current_company
                             title = exp.get("title", "") or title
                             break
-
+                    
                     # Calculate company match score
                     company_match_score = fuzz.token_set_ratio(
-                        registered_name.lower(),
+                        registered_name.lower(), 
                         current_company.lower()
                     )
-
+                    
                     # Calculate title score based on DM_TITLE_SCORES
                     title_score = 0
                     title_lower = title.lower()
                     for dm_title, score in DM_TITLE_SCORES.items():
                         if dm_title in title_lower:
                             title_score = max(title_score, score)
-
+                    
                     # Only consider if company match is reasonable (>60%) and has DM title
                     if company_match_score >= 60 and title_score > 0:
                         candidates.append(DMCandidate(
@@ -1183,30 +1184,30 @@ class WaterfallVerificationWorker(BaseEngine):
                             company_match_score=company_match_score,
                             title_score=title_score,
                         ))
-
+                
                 if not candidates:
                     logger.info(f"T-DM0: No DM candidates passed title filter for '{registered_name}'")
                     return None
-
+                
                 # Sort by title_score (desc), then company_match_score (desc)
                 candidates.sort(key=lambda c: (c.title_score, c.company_match_score), reverse=True)
-
+                
                 best_candidate = candidates[0]
                 logger.info(
                     f"T-DM0: Found DM candidate '{best_candidate.dm_name}' ({best_candidate.dm_title}) "
                     f"for '{registered_name}' — company_match={best_candidate.company_match_score}%, "
                     f"title_score={best_candidate.title_score}"
                 )
-
+                
                 return best_candidate
-
+        
         except httpx.HTTPStatusError as e:
             logger.error(f"T-DM0 HTTP error: {e.response.status_code} - {e.response.text[:200]}")
             return None
         except Exception as e:
             logger.error(f"T-DM0 failed for '{registered_name}': {e}")
             return None
-
+    
     async def _tier_dm2_linkedin_posts(
         self,
         dm_linkedin_url: str,
@@ -1214,31 +1215,31 @@ class WaterfallVerificationWorker(BaseEngine):
     ) -> list[LinkedInPost]:
         """
         Tier DM-2: LinkedIn Posts scraping.
-
+        
         CEO Directive #041 Part A: Uses Bright Data LinkedIn Posts API to fetch
         recent posts from the decision maker's LinkedIn profile.
-
+        
         Dataset: gd_lyy3tktm25m4avu764 (LinkedIn Posts)
-
+        
         Args:
             dm_linkedin_url: LinkedIn profile URL from T-DM0
             max_posts: Maximum posts to retrieve (default 5)
-
+        
         Returns:
             List of LinkedInPost objects (up to max_posts)
-
+        
         Cost: ~$0.0015 AUD per request
         """
         brightdata_api_key = os.getenv("BRIGHTDATA_API_KEY")
-
+        
         if not brightdata_api_key:
             logger.warning("BRIGHTDATA_API_KEY not set — skipping T-DM2")
             return []
-
+        
         if not dm_linkedin_url:
             logger.info("T-DM2: No LinkedIn URL provided — skipping")
             return []
-
+        
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:
                 # ========== Step 1: Trigger LinkedIn Posts collection ==========
@@ -1260,13 +1261,13 @@ class WaterfallVerificationWorker(BaseEngine):
                 )
                 trigger_resp.raise_for_status()
                 snapshot_id = trigger_resp.json().get("snapshot_id")
-
+                
                 if not snapshot_id:
                     logger.warning(f"T-DM2: No snapshot_id returned for {dm_linkedin_url}")
                     return []
-
+                
                 logger.info(f"T-DM2: Triggered LinkedIn Posts scrape: {snapshot_id}")
-
+                
                 # ========== Step 2: Poll for completion (max 2 minutes) ==========
                 for _ in range(24):  # 24 × 5s = 120s
                     await asyncio.sleep(5)
@@ -1275,7 +1276,7 @@ class WaterfallVerificationWorker(BaseEngine):
                         headers={"Authorization": f"Bearer {brightdata_api_key}"},
                     )
                     status_data = status_resp.json()
-
+                    
                     if status_data.get("status") == "ready":
                         break
                     elif status_data.get("status") == "failed":
@@ -1284,7 +1285,7 @@ class WaterfallVerificationWorker(BaseEngine):
                 else:
                     logger.warning(f"T-DM2: Timeout waiting for {dm_linkedin_url}")
                     return []
-
+                
                 # ========== Step 3: Download results ==========
                 data_resp = await client.get(
                     f"https://api.brightdata.com/datasets/v3/snapshot/{snapshot_id}",
@@ -1292,20 +1293,20 @@ class WaterfallVerificationWorker(BaseEngine):
                     headers={"Authorization": f"Bearer {brightdata_api_key}"},
                 )
                 results = data_resp.json()
-
+                
                 if not results:
                     logger.info(f"T-DM2: No posts found for {dm_linkedin_url}")
                     return []
-
+                
                 # ========== Step 4: Parse posts with 90-day local filter ==========
                 # CEO Directive #043: Date filter not supported in API, filter locally
                 cutoff_date = datetime.utcnow() - timedelta(days=90)
-
+                
                 posts = []
                 for post_data in results:
                     if "error" in post_data:
                         continue
-
+                    
                     # Parse and filter by date (90-day window)
                     date_str = post_data.get("date_posted", "")
                     if date_str:
@@ -1316,11 +1317,11 @@ class WaterfallVerificationWorker(BaseEngine):
                                 continue  # Skip posts older than 90 days
                         except (ValueError, TypeError):
                             pass  # Keep posts with unparseable dates
-
+                    
                     # Extract topic from hashtags or infer from content
                     hashtags = post_data.get("hashtags", []) or []
                     topic = hashtags[0] if hashtags else None
-
+                    
                     posts.append(LinkedInPost(
                         post_text=post_data.get("post_text", "") or post_data.get("title", ""),
                         date_posted=date_str,
@@ -1329,59 +1330,59 @@ class WaterfallVerificationWorker(BaseEngine):
                         hashtags=hashtags,
                         topic=topic,
                     ))
-
+                    
                     if len(posts) >= max_posts:
                         break
-
+                
                 logger.info(
                     f"T-DM2: Retrieved {len(posts)} LinkedIn posts within 90 days "
                     f"(filtered from {len(results)} total) for {dm_linkedin_url}"
                 )
                 return posts
-
+        
         except httpx.HTTPStatusError as e:
             logger.error(f"T-DM2 HTTP error: {e.response.status_code} - {e.response.text[:200]}")
             return []
         except Exception as e:
             logger.error(f"T-DM2 failed for '{dm_linkedin_url}': {e}")
             return []
-
+    
     async def _discover_x_handle(
         self,
-        website: str | None,
+        website: Optional[str],
         dm_name: str,
         registered_name: str,
-    ) -> str | None:
+    ) -> Optional[str]:
         """
         Discover X/Twitter handle via website scraping or SERP fallback.
-
+        
         CEO Directive #041 Part B: X handle discovery in order of preference:
         1. Scrape company website for social links (open_website from T2)
         2. SERP fallback: site:x.com "{dm_name}" "{registered_name}"
-
+        
         Returns:
             X handle (e.g., "@username") or None if not found
         """
         import re
-
+        
         # ========== Method 1: Scrape website for X/Twitter links ==========
         if website:
             try:
                 async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
                     resp = await client.get(website)
                     html = resp.text
-
+                    
                     # Look for X/Twitter profile links
                     patterns = [
                         r'https?://(?:www\.)?(?:twitter|x)\.com/([a-zA-Z0-9_]+)',
                         r'href=["\']https?://(?:www\.)?(?:twitter|x)\.com/([a-zA-Z0-9_]+)["\']',
                     ]
-
+                    
                     for pattern in patterns:
                         matches = re.findall(pattern, html, re.IGNORECASE)
                         # Filter out common non-profile paths
                         valid_handles = [
-                            m for m in matches
+                            m for m in matches 
                             if m.lower() not in ('share', 'intent', 'home', 'search', 'explore', 'i', 'hashtag')
                         ]
                         if valid_handles:
@@ -1390,32 +1391,32 @@ class WaterfallVerificationWorker(BaseEngine):
                             return f"@{handle}"
             except Exception as e:
                 logger.debug(f"T-DM3: Website scrape failed for {website}: {e}")
-
+        
         # ========== Method 2: SERP fallback ==========
         import base64
-
+        
         dataforseo_login = os.getenv("DATAFORSEO_LOGIN")
         dataforseo_password = os.getenv("DATAFORSEO_PASSWORD")
-
+        
         if not dataforseo_login or not dataforseo_password:
             logger.warning("DataForSEO credentials not set — skipping X handle SERP discovery")
             return None
-
+        
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
                 # Query: site:x.com "{dm_name}" "{registered_name}"
                 search_query = f'site:x.com "{dm_name}" "{registered_name}"'
-
+                
                 serp_payload = [{
                     "keyword": search_query,
                     "location_code": 2036,  # Australia
                     "language_code": "en",
                     "depth": 5,
                 }]
-
+                
                 auth_str = f"{dataforseo_login}:{dataforseo_password}"
                 auth_bytes = base64.b64encode(auth_str.encode()).decode()
-
+                
                 serp_resp = await client.post(
                     "https://api.dataforseo.com/v3/serp/google/organic/live/advanced",
                     headers={
@@ -1426,14 +1427,14 @@ class WaterfallVerificationWorker(BaseEngine):
                 )
                 serp_resp.raise_for_status()
                 serp_data = serp_resp.json()
-
+                
                 # Extract X profile URLs
                 items = []
-                if (serp_data.get("tasks") and
+                if (serp_data.get("tasks") and 
                     serp_data["tasks"][0].get("result") and
                     serp_data["tasks"][0]["result"][0].get("items")):
                     items = serp_data["tasks"][0]["result"][0]["items"]
-
+                
                 for item in items[:5]:
                     url = item.get("url", "")
                     # Match x.com/username or twitter.com/username
@@ -1443,14 +1444,14 @@ class WaterfallVerificationWorker(BaseEngine):
                         if handle.lower() not in ('share', 'intent', 'home', 'search', 'explore', 'i', 'hashtag'):
                             logger.info(f"T-DM3: Found X handle @{handle} via SERP for {dm_name}")
                             return f"@{handle}"
-
+                
                 logger.info(f"T-DM3: No X handle found for {dm_name} at {registered_name}")
                 return None
-
+        
         except Exception as e:
             logger.error(f"T-DM3 X handle SERP discovery failed: {e}")
             return None
-
+    
     async def _tier_dm3_x_posts(
         self,
         x_handle: str,
@@ -1458,35 +1459,35 @@ class WaterfallVerificationWorker(BaseEngine):
     ) -> list[XPost]:
         """
         Tier DM-3: X/Twitter Posts scraping.
-
+        
         CEO Directive #041 Part B: Uses Bright Data X/Twitter Posts API to fetch
         recent posts from the discovered X handle.
-
+        
         Dataset: gd_lwxkxvnf1cynvib9co (X/Twitter Posts - discover by profile)
-
+        
         Args:
             x_handle: X handle (with or without @)
             max_posts: Maximum posts to retrieve (default 5)
-
+        
         Returns:
             List of XPost objects (up to max_posts)
-
+        
         Cost: ~$0.0015 AUD per request
         """
         brightdata_api_key = os.getenv("BRIGHTDATA_API_KEY")
-
+        
         if not brightdata_api_key:
             logger.warning("BRIGHTDATA_API_KEY not set — skipping T-DM3")
             return []
-
+        
         if not x_handle:
             logger.info("T-DM3: No X handle provided — skipping")
             return []
-
+        
         # Normalize handle (remove @ if present)
         handle = x_handle.lstrip("@")
         profile_url = f"https://x.com/{handle}"
-
+        
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:
                 # ========== Step 1: Trigger X Posts collection ==========
@@ -1508,13 +1509,13 @@ class WaterfallVerificationWorker(BaseEngine):
                 )
                 trigger_resp.raise_for_status()
                 snapshot_id = trigger_resp.json().get("snapshot_id")
-
+                
                 if not snapshot_id:
                     logger.warning(f"T-DM3: No snapshot_id returned for {profile_url}")
                     return []
-
+                
                 logger.info(f"T-DM3: Triggered X Posts scrape: {snapshot_id}")
-
+                
                 # ========== Step 2: Poll for completion (max 2 minutes) ==========
                 for _ in range(24):  # 24 × 5s = 120s
                     await asyncio.sleep(5)
@@ -1523,7 +1524,7 @@ class WaterfallVerificationWorker(BaseEngine):
                         headers={"Authorization": f"Bearer {brightdata_api_key}"},
                     )
                     status_data = status_resp.json()
-
+                    
                     if status_data.get("status") == "ready":
                         break
                     elif status_data.get("status") == "failed":
@@ -1532,7 +1533,7 @@ class WaterfallVerificationWorker(BaseEngine):
                 else:
                     logger.warning(f"T-DM3: Timeout waiting for {profile_url}")
                     return []
-
+                
                 # ========== Step 3: Download results ==========
                 data_resp = await client.get(
                     f"https://api.brightdata.com/datasets/v3/snapshot/{snapshot_id}",
@@ -1540,20 +1541,20 @@ class WaterfallVerificationWorker(BaseEngine):
                     headers={"Authorization": f"Bearer {brightdata_api_key}"},
                 )
                 results = data_resp.json()
-
+                
                 if not results:
                     logger.info(f"T-DM3: No posts found for {profile_url}")
                     return []
-
+                
                 # ========== Step 4: Parse posts with 90-day local filter ==========
                 # CEO Directive #043: Date filter not supported in API, filter locally
                 cutoff_date = datetime.utcnow() - timedelta(days=90)
-
+                
                 posts = []
                 for post_data in results:
                     if "error" in post_data:
                         continue
-
+                    
                     # Parse and filter by date (90-day window)
                     date_str = post_data.get("date_posted", "")
                     if date_str:
@@ -1563,12 +1564,12 @@ class WaterfallVerificationWorker(BaseEngine):
                                 continue  # Skip posts older than 90 days
                         except (ValueError, TypeError):
                             pass  # Keep posts with unparseable dates
-
+                    
                     # Extract hashtags from description
                     import re
                     description = post_data.get("description", "") or ""
                     hashtags = re.findall(r'#(\w+)', description)
-
+                    
                     posts.append(XPost(
                         content=description,
                         date_posted=date_str,
@@ -1577,53 +1578,53 @@ class WaterfallVerificationWorker(BaseEngine):
                         views=post_data.get("views", 0) or 0,
                         hashtags=hashtags,
                     ))
-
+                    
                     if len(posts) >= max_posts:
                         break
-
+                
                 logger.info(
                     f"T-DM3: Retrieved {len(posts)} X posts within 90 days "
                     f"(filtered from {len(results)} total) for {profile_url}"
                 )
                 return posts
-
+        
         except httpx.HTTPStatusError as e:
             logger.error(f"T-DM3 HTTP error: {e.response.status_code} - {e.response.text[:200]}")
             return []
         except Exception as e:
             logger.error(f"T-DM3 failed for '{x_handle}': {e}")
             return []
-
+    
     def _clean_company_name(self, name: str) -> str:
         """
         Clean company name for better fuzzy matching.
-
+        
         Removes common suffixes like PTY LTD, LIMITED, etc.
         Normalizes case to title case.
         """
         if not name:
             return ""
-
+        
         import re
-
+        
         # Remove common Australian company suffixes
         suffixes_pattern = r'\s+(PTY\.?\s*LTD\.?|LIMITED|LTD\.?|PROPRIETARY|INC\.?|INCORPORATED|HOLDINGS?|GROUP|AUSTRALIA|AUST\.?|AU)\s*$'
         cleaned = re.sub(suffixes_pattern, '', name.upper(), flags=re.IGNORECASE)
-
+        
         # Normalize to title case
         cleaned = cleaned.strip().title()
-
+        
         return cleaned
-
+    
     async def _tier2_gmb_scraper(
         self,
         company_name: str,
         postcode: str,
         state: str,
-    ) -> GMBRecord | None:
+    ) -> Optional[GMBRecord]:
         """
         Tier 2: Scrape Google Maps for business info via Bright Data.
-
+        
         CEO Directive #036: Replaced deprecated Apify with Bright Data Web Scraper API.
         Dataset: gd_m8ebnr0q2qlklc02fz (Google Maps Business Information)
         Method: discover_by=location
@@ -1632,7 +1633,7 @@ class WaterfallVerificationWorker(BaseEngine):
         if not api_key:
             logger.warning("BRIGHTDATA_API_KEY not set — skipping Tier 2")
             return None
-
+        
         # Map state code to city for better search results
         state_city_map = {
             "NSW": "Sydney", "VIC": "Melbourne", "QLD": "Brisbane",
@@ -1640,7 +1641,7 @@ class WaterfallVerificationWorker(BaseEngine):
             "ACT": "Canberra", "NT": "Darwin",
         }
         city = state_city_map.get(state, state)
-
+        
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:
                 # Step 1: Trigger collection
@@ -1664,9 +1665,9 @@ class WaterfallVerificationWorker(BaseEngine):
                 if not snapshot_id:
                     logger.error("Bright Data trigger returned no snapshot_id")
                     return None
-
+                
                 logger.info(f"Bright Data T2 triggered: {snapshot_id}")
-
+                
                 # Step 2: Poll for completion (max 3 minutes)
                 for _ in range(18):  # 18 x 10s = 180s
                     await asyncio.sleep(10)
@@ -1680,7 +1681,7 @@ class WaterfallVerificationWorker(BaseEngine):
                 else:
                     logger.warning(f"Bright Data T2 timeout for {company_name}")
                     return None
-
+                
                 # Step 3: Fetch results
                 data_resp = await client.get(
                     f"https://api.brightdata.com/datasets/v3/snapshot/{snapshot_id}",
@@ -1688,15 +1689,15 @@ class WaterfallVerificationWorker(BaseEngine):
                     headers={"Authorization": f"Bearer {api_key}"},
                 )
                 results = data_resp.json()
-
+                
                 if not results or len(results) == 0:
                     logger.info(f"Bright Data T2 returned no results for {company_name}")
                     return None
-
+                
                 # Step 4: Find best match by fuzzy name similarity
                 best_match = None
                 best_score = 0
-
+                
                 for r in results:
                     if "error" in r:
                         continue
@@ -1705,11 +1706,11 @@ class WaterfallVerificationWorker(BaseEngine):
                     if score > best_score:
                         best_score = score
                         best_match = r
-
+                
                 if best_score < FUZZY_MATCH_THRESHOLD:
                     logger.info(f"Bright Data T2: best match score {best_score} below threshold for {company_name}")
                     return None
-
+                
                 # Step 5: Parse into GMBRecord
                 return GMBRecord(
                     google_place_id=best_match.get("place_id", ""),
@@ -1725,88 +1726,88 @@ class WaterfallVerificationWorker(BaseEngine):
                     review_count=best_match.get("reviews_count", 0) or 0,
                     categories=best_match.get("all_categories", []),
                 )
-
+                
         except httpx.HTTPStatusError as e:
             logger.error(f"Bright Data T2 HTTP error: {e.response.status_code} - {e.response.text[:200]}")
             return None
         except Exception as e:
             logger.error(f"Bright Data T2 failed: {e}")
             return None
-
+    
     def _extract_postcode(self, address: str) -> str:
         """Extract Australian postcode (4 digits) from address string."""
         import re
         match = re.search(r'\b(\d{4})\b', address)
         return match.group(1) if match else ""
-
+    
     async def _tier3_hunter_io(
         self,
         domain: str,
         company_name: str,
-    ) -> HunterResult | None:
+    ) -> Optional[HunterResult]:
         """
         Tier 3: Find and verify email via Hunter.io.
         """
         if self._hunter_client is None:
             logger.warning("Hunter.io client not configured — skipping Tier 3")
             return None
-
+        
         try:
             # Domain search for contacts
             result = await self._hunter_client.domain_search(
                 domain=domain,
                 company=company_name,
             )
-
+            
             if result and result.email:
                 return result
-
+            
             return None
-
+            
         except Exception as e:
             logger.error(f"Hunter.io failed: {e}")
             return None
-
+    
     async def _tier4_zerobounce(
         self,
         email: str,
-    ) -> ZeroBounceResult | None:
+    ) -> Optional[ZeroBounceResult]:
         """
         Tier 4: Premium verification via ZeroBounce.
         """
         if self._zerobounce_client is None:
             logger.warning("ZeroBounce client not configured — skipping Tier 4")
             return None
-
+        
         try:
             result = await self._zerobounce_client.validate(email)
             return result
-
+            
         except Exception as e:
             logger.error(f"ZeroBounce failed: {e}")
             return None
-
+    
     # ============================================
     # HELPER METHODS
     # ============================================
-
+    
     def _match_abn_gmb(
         self,
         abn: ABNRecord,
         gmb: GMBRecord,
-        asic: ASICVerifyRecord | None = None,
+        asic: Optional[ASICVerifyRecord] = None,
     ) -> tuple[MatchConfidence, int]:
         """
         Match ABN record to GMB record using fuzzy matching.
-
+        
         CEO Directive #039: Prioritizes ASIC registered_name when available
         for improved match rates (fixes 55% failure).
-
+        
         Args:
             abn: ABN record from T1
             gmb: GMB record from T2
             asic: Optional ASIC verify record from T1.25
-
+        
         Returns:
             Tuple of (MatchConfidence, match_score_percentage)
         """
@@ -1818,29 +1819,29 @@ class WaterfallVerificationWorker(BaseEngine):
                     return MatchConfidence.NO_MATCH, 0
             except ValueError:
                 return MatchConfidence.NO_MATCH, 0
-
+        
         # Build list of names to check
         # CEO Directive #039: ASIC registered_name takes priority (cleaner, normalized)
         names_to_check = []
-
+        
         if asic and asic.registered_name:
             # Priority 1: ASIC registered name (clean, normalized)
             names_to_check.append(asic.registered_name)
             # Priority 2: All ASIC business names
             names_to_check.extend(asic.business_names or [])
-
+        
         # Priority 3: ABN legal name and business names (fallback)
         names_to_check.append(abn.legal_name)
         names_to_check.extend(abn.business_names)
-
+        
         # Also try cleaned version of legal name
         cleaned_legal = self._clean_company_name(abn.legal_name)
         if cleaned_legal and cleaned_legal not in names_to_check:
             names_to_check.append(cleaned_legal)
-
+        
         best_score = 0
         best_match_name = ""
-
+        
         for name in names_to_check:
             if not name:
                 continue
@@ -1851,13 +1852,13 @@ class WaterfallVerificationWorker(BaseEngine):
             if current_best > best_score:
                 best_score = current_best
                 best_match_name = name
-
+        
         # Log the match attempt for debugging
         logger.debug(
             f"ABN↔GMB match: best='{best_match_name}' vs GMB='{gmb.business_name}' "
             f"score={best_score}% (threshold={FUZZY_MATCH_THRESHOLD}%)"
         )
-
+        
         # Determine confidence level
         if best_score >= 95:
             return MatchConfidence.EXACT, best_score
@@ -1869,23 +1870,23 @@ class WaterfallVerificationWorker(BaseEngine):
             return MatchConfidence.LOW, best_score
         else:
             return MatchConfidence.NO_MATCH, best_score
-
+    
     def _extract_domain(self, url: str) -> str:
         """Extract domain from URL."""
         from urllib.parse import urlparse
-
+        
         if not url.startswith(("http://", "https://")):
             url = "https://" + url
-
+        
         parsed = urlparse(url)
         domain = parsed.netloc or parsed.path.split("/")[0]
-
+        
         # Remove www. prefix
         if domain.startswith("www."):
             domain = domain[4:]
-
+        
         return domain
-
+    
     async def _log_lineage(
         self,
         db: AsyncSession,
@@ -1910,12 +1911,12 @@ class WaterfallVerificationWorker(BaseEngine):
                     created_at=datetime.utcnow(),
                 )
                 await db.execute(stmt)
-
+            
             await db.commit()
             logger.info(
                 f"Logged {len(result.lineage)} lineage steps for lead {result.lead_id}"
             )
-
+            
         except Exception as e:
             logger.error(f"Failed to log lineage: {e}")
             await db.rollback()

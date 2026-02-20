@@ -27,6 +27,7 @@ Orchestrates the daily "Build in Public" content generation:
 See: docs/marketing/MARKETING_LAUNCH_PLAN.md for templates
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -34,11 +35,13 @@ import tempfile
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 from prefect import flow, get_run_logger, task
 from prefect.runtime import flow_run
 
 from src.config.database import get_db_session
+from src.config.settings import settings
 from src.exceptions import IntegrationError
 
 logger = logging.getLogger(__name__)
@@ -108,7 +111,7 @@ YOUTUBE_DESCRIPTION_TEMPLATE = """Day {day_number} of using Agency OS to sell Ag
 
 In this daily update:
 - {emails_sent} emails sent
-- {open_rate}% open rate
+- {open_rate}% open rate  
 - {replies} replies ({positive_replies} positive)
 - {meetings_booked} meetings booked
 - Pipeline: ${pipeline_value}
@@ -148,7 +151,7 @@ They came in through our own outbound.
 The product sells itself — literally.
 
 19 spots remaining.""",
-    "five_customers": """5 founding customers!
+    "five_customers": """5 founding customers! 
 
 All from automated outbound.
 $0 spent on ads.
@@ -220,26 +223,37 @@ async def get_marketing_metrics_task(metrics_date: date) -> dict[str, Any]:
     """
     log = get_run_logger()
 
-    async with get_db_session():
+    async with get_db_session() as db:
         # Query internal metrics - this would connect to your actual metrics tables
         # For now, returning structure that can be populated from actual data
-
+        
         # Calculate day number from launch date
         launch_date = date(2025, 1, 15)  # Configure actual launch date
         day_number = (metrics_date - launch_date).days + 1
 
         # Query email metrics for the date
         # In production, this queries the actual campaign_metrics and lead tables
-
+        metrics_query = """
+            SELECT 
+                COALESCE(SUM(emails_sent), 0) as emails_sent,
+                COALESCE(SUM(opens), 0) as opens,
+                COALESCE(SUM(replies), 0) as replies,
+                COALESCE(SUM(CASE WHEN reply_sentiment = 'positive' THEN 1 ELSE 0 END), 0) as positive_replies,
+                COALESCE(SUM(meetings_booked), 0) as meetings_booked
+            FROM campaign_daily_metrics
+            WHERE metric_date = :metric_date
+            AND client_id = :internal_client_id
+        """
+        
         # For now, return placeholder metrics
         # TODO: Replace with actual query execution when tables are ready
-
+        
         # Get customer count from customers table
         customers_count = 0  # Query actual customers table
-
+        
         # Calculate spots remaining
         spots_remaining = max(0, FOUNDING_SPOTS_TOTAL - customers_count)
-
+        
         metrics = {
             "emails_sent": 0,
             "opens": 0,
@@ -806,10 +820,10 @@ async def log_content_run_task(
     """
     log = get_run_logger()
 
-    async with get_db_session():
+    async with get_db_session() as db:
         # Log to a marketing_content_logs table if it exists
         # For now, just log to the logger
-
+        
         summary = {
             "flow_type": flow_type,
             "metric_date": metrics.get("metric_date"),
@@ -891,11 +905,11 @@ async def daily_content_flow(
     # 5. Generate video (unless skipped)
     video_result = None
     video_path = None
-
+    
     if not skip_video:
         video_id = await create_heygen_video_task(script, test_mode=test_mode)
         video_result = await wait_for_video_completion_task(video_id)
-
+        
         if video_result.get("video_url"):
             video_path = await download_video_task(video_id, video_result["video_url"])
     else:
@@ -903,14 +917,14 @@ async def daily_content_flow(
 
     # 6. Generate platform posts
     posts = await generate_platform_posts_task(
-        metrics,
+        metrics, 
         insight,
         video_url=video_result.get("video_url") if video_result else None,
     )
 
     # 7. Distribute content (unless skipped)
     distribution_results = {}
-
+    
     if not skip_distribution:
         # LinkedIn via Buffer
         distribution_results["linkedin"] = await schedule_linkedin_post_task(
@@ -1036,7 +1050,7 @@ async def milestone_content_flow(
 
     # Generate celebratory posts
     from src.integrations.anthropic import get_anthropic_client
-
+    
     client = get_anthropic_client()
 
     # Use AI to generate platform-specific milestone posts

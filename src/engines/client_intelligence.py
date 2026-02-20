@@ -17,7 +17,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.integrations.anthropic import get_anthropic_client
-
 # NOTE: Apify import removed per FCO-003 deprecation (cost savings)
 # All scraping methods now degrade gracefully
 from src.models.client import Client
@@ -181,7 +180,7 @@ class ClientIntelligenceEngine:
         result: ScrapeResult,
     ) -> None:
         """Scrape client website.
-
+        
         DEPRECATED: Apify integration removed per FCO-003.
         Returns empty result. Website data should be provided manually.
         """
@@ -198,7 +197,7 @@ class ClientIntelligenceEngine:
         result: ScrapeResult,
     ) -> None:
         """Scrape LinkedIn company page.
-
+        
         DEPRECATED: Apify integration removed per FCO-003.
         Returns empty result. LinkedIn data should be provided via Apollo enrichment.
         """
@@ -214,7 +213,7 @@ class ClientIntelligenceEngine:
         result: ScrapeResult,
     ) -> None:
         """Scrape Twitter/X profile.
-
+        
         DEPRECATED: Apify integration removed per FCO-003.
         """
         logger.info(f"Twitter scrape skipped for {twitter_handle} — Apify deprecated (FCO-003)")
@@ -229,10 +228,10 @@ class ClientIntelligenceEngine:
         result: ScrapeResult,
     ) -> None:
         """Scrape Facebook page.
-
+        
         DEPRECATED: Apify integration removed per FCO-003.
         """
-        logger.info("Facebook scrape skipped — Apify deprecated (FCO-003)")
+        logger.info(f"Facebook scrape skipped — Apify deprecated (FCO-003)")
         result.errors.append({
             "source": "facebook",
             "error": "Apify deprecated (FCO-003).",
@@ -244,7 +243,7 @@ class ClientIntelligenceEngine:
         result: ScrapeResult,
     ) -> None:
         """Scrape Instagram profile.
-
+        
         DEPRECATED: Apify integration removed per FCO-003.
         """
         logger.info(f"Instagram scrape skipped for {instagram_handle} — Apify deprecated (FCO-003)")
@@ -259,7 +258,7 @@ class ClientIntelligenceEngine:
         result: ScrapeResult,
     ) -> None:
         """Scrape Trustpilot reviews.
-
+        
         DEPRECATED: Apify integration removed per FCO-003.
         """
         logger.info(f"Trustpilot scrape skipped for {client.name} — Apify deprecated (FCO-003)")
@@ -274,10 +273,10 @@ class ClientIntelligenceEngine:
         result: ScrapeResult,
     ) -> None:
         """Scrape G2 reviews.
-
+        
         DEPRECATED: Apify integration removed per FCO-003.
         """
-        logger.info("G2 scrape skipped — Apify deprecated (FCO-003)")
+        logger.info(f"G2 scrape skipped — Apify deprecated (FCO-003)")
         result.errors.append({
             "source": "g2",
             "error": "Apify deprecated (FCO-003).",
@@ -289,10 +288,10 @@ class ClientIntelligenceEngine:
         result: ScrapeResult,
     ) -> None:
         """Scrape Capterra reviews.
-
+        
         DEPRECATED: Apify integration removed per FCO-003.
         """
-        logger.info("Capterra scrape skipped — Apify deprecated (FCO-003)")
+        logger.info(f"Capterra scrape skipped — Apify deprecated (FCO-003)")
         result.errors.append({
             "source": "capterra",
             "error": "Apify deprecated (FCO-003).",
@@ -304,7 +303,7 @@ class ClientIntelligenceEngine:
         result: ScrapeResult,
     ) -> None:
         """Scrape Google Business reviews.
-
+        
         DEPRECATED: Apify integration removed per FCO-003.
         """
         logger.info(f"Google Reviews scrape skipped for {client.name} — Apify deprecated (FCO-003)")
@@ -527,7 +526,7 @@ _engine: ClientIntelligenceEngine | None = None
 
 def get_client_intelligence_engine() -> ClientIntelligenceEngine:
     """Get or create client intelligence engine instance.
-
+    
     Note:
         Apify integration removed per FCO-003 deprecation.
         All scraping methods now return empty results with deprecation warnings.

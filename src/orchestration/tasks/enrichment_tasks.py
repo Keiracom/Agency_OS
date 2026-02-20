@@ -17,7 +17,6 @@ RULES APPLIED:
   - Rule 14: Soft deletes only
 """
 
-import contextlib
 import logging
 from typing import Any
 from uuid import UUID
@@ -476,8 +475,8 @@ async def _pause_campaign_for_reconnect(
         {"campaign_id": str(campaign_id), "reason": reason}
     )
 
-    # Log to audit table if it exists (table may not exist - that's fine)
-    with contextlib.suppress(Exception):
+    # Log to audit table if it exists
+    try:
         await db.execute(
             text("""
                 INSERT INTO audit_log (
@@ -492,6 +491,9 @@ async def _pause_campaign_for_reconnect(
                 "details": f'{{"reason": "{reason}"}}',
             }
         )
+    except Exception:
+        # Audit table may not exist - that's fine
+        pass
 
     await db.commit()
     logger.warning(f"Paused campaign {campaign_id} for reconnect: {reason}")

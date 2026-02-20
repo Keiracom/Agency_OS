@@ -23,11 +23,11 @@ REQUIREMENTS:
 3. Expose warmup status, daily send limit, health score per domain
 """
 
-import json
 import logging
 from datetime import datetime
 from typing import Any
 from uuid import UUID
+import json
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -86,7 +86,7 @@ class DeliverabilityService:
         try:
             # Get domain status from database
             query = text("""
-                SELECT
+                SELECT 
                     dws.client_id,
                     c.business_name,
                     dws.domain,
@@ -109,7 +109,7 @@ class DeliverabilityService:
                 WHERE (:client_id IS NULL OR dws.client_id = :client_id)
                 ORDER BY dws.health_score ASC NULLS LAST
             """)
-
+            
             result = await self.session.execute(
                 query,
                 {"client_id": str(client_id) if client_id else None},
@@ -125,10 +125,10 @@ class DeliverabilityService:
             for row in rows:
                 total_domains += 1
                 health = row.health_score or 0
-
+                
                 if health >= WARMUP_HEALTH_THRESHOLD:
                     healthy_domains += 1
-
+                
                 if row.warmup_stage == "ramping":
                     warming_domains += 1
                 elif row.warmup_stage == "paused":
@@ -189,25 +189,25 @@ class DeliverabilityService:
         """
         try:
             from src.integrations.warmforge import get_warmforge_client
-
+            
             warmforge = get_warmforge_client()
-
+            
             # Get all accounts from Warmforge
             accounts = await warmforge.list_accounts()
-
+            
             updated = 0
             errors = []
 
             for account in accounts:
                 try:
                     domain = account.get("domain") or account.get("email", "").split("@")[-1]
-
+                    
                     if not domain:
                         continue
 
                     # Get detailed status
                     status = await warmforge.get_account_status(account.get("id"))
-
+                    
                     # Map warmup stage
                     warmup_stage = "stable"
                     if status.get("is_warming"):
@@ -300,7 +300,7 @@ class DeliverabilityService:
             List of alerts created
         """
         from src.services.alert_service import get_alert_service
-
+        
         alerts_created = []
 
         try:
@@ -328,7 +328,7 @@ class DeliverabilityService:
                     health_score=float(row.health_score) if row.health_score else 0,
                     threshold=WARMUP_HEALTH_THRESHOLD,
                 )
-
+                
                 if alert_id:
                     alerts_created.append({
                         "client_id": str(row.client_id),
@@ -360,7 +360,7 @@ class DeliverabilityService:
             Structured data feed for dashboard
         """
         report = await self.get_warmup_status_report(client_id)
-
+        
         # Transform for dashboard consumption
         return {
             "client_id": str(client_id),

@@ -278,7 +278,7 @@ class EmailEngine(OutreachEngine):
         unsubscribe_url = None
         list_unsubscribe_headers = {}
         lead_pool_id = kwargs.get("lead_pool_id")
-
+        
         if lead_pool_id:
             try:
                 unsubscribe_service = get_unsubscribe_token_service()

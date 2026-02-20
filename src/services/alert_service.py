@@ -29,11 +29,11 @@ ALERT TYPES:
 8. Reply confidence <60% → human review queue (not alert)
 """
 
-import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
+import json
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -237,7 +237,7 @@ class AlertService:
 
             # Send via Resend
             from src.integrations.resend import send_alert_email
-
+            
             await send_alert_email(
                 to_email=row.email,
                 to_name=row.first_name or "Agency Owner",
@@ -305,7 +305,7 @@ class AlertService:
         recovery_msg = ""
         if reset_time:
             recovery_msg = f" Estimated recovery: {reset_time.strftime('%Y-%m-%d %H:%M UTC')}"
-
+        
         return await self.create_alert(
             alert_type=AlertType.HUNTER_RATE_LIMIT,
             title="⚠️ Hunter Rate Limit Hit",
@@ -533,7 +533,7 @@ class AlertService:
                         lead_id, review_type, priority, status,
                         data, created_at
                     ) VALUES (
-                        :lead_id, 'reply_classification',
+                        :lead_id, 'reply_classification', 
                         CASE WHEN :confidence < 0.4 THEN 'high' ELSE 'medium' END,
                         'pending',
                         :data, NOW()

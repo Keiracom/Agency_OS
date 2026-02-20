@@ -16,12 +16,13 @@ Handles:
 
 import logging
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.integrations.infraforge import WORKSPACE_IDS, get_infraforge_client
+from src.integrations.infraforge import get_infraforge_client, WORKSPACE_IDS
 from src.models.persona import Persona
-from src.models.resource_pool import ResourceStatus, ResourceType
+from src.models.resource_pool import ResourcePool, ResourceType, ResourceStatus
 from src.services.resource_assignment_service import add_resource_to_pool
 
 logger = logging.getLogger(__name__)

@@ -646,7 +646,7 @@ Be conservative - if you're unsure whether a claim is supported, mark it as unsu
     ) -> EngineResult[dict[str, Any]]:
         """
         DEPRECATED: SDK agents removed per FCO-002.
-
+        
         This method delegates to generate_email() for backwards compatibility.
         The sdk_enrichment parameter is ignored.
         """
@@ -676,7 +676,7 @@ Be conservative - if you're unsure whether a claim is supported, mark it as unsu
     ) -> EngineResult[dict[str, Any]]:
         """
         DEPRECATED: SDK agents removed per FCO-002.
-
+        
         This method delegates to generate_email_for_pool() for backwards compatibility.
         The sdk_enrichment and client_id parameters are ignored.
         """

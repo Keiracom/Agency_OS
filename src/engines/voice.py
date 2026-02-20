@@ -973,7 +973,7 @@ Always be respectful of their time."""
         - Open calls with specific, relevant hooks
         - Handle objections with company-specific responses
         - Navigate conversations intelligently
-
+        
         Note:
             sdk_enrichment parameter removed per FCO-002 deprecation.
 
@@ -1115,7 +1115,7 @@ Be specific and actionable. Return valid JSON only."""
         1. Generates voice KB for the lead using Smart Prompt system
         2. Enhances the script with KB data
         3. Creates the Vapi assistant
-
+        
         Note:
             sdk_enrichment parameter removed per FCO-002 deprecation.
 

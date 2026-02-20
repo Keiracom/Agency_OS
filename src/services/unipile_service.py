@@ -15,10 +15,11 @@ Key Features:
 """
 
 import logging
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import text
+from sqlalchemy import and_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config.settings import settings
@@ -77,13 +78,13 @@ class UnipileAccountService:
 
         # Create pending record or update existing
         existing = await self.get_user_account(db, user_id)
-
+        
         if existing:
             # Update existing to pending
             await db.execute(
                 text("""
-                    UPDATE unipile_accounts
-                    SET status = 'PENDING',
+                    UPDATE unipile_accounts 
+                    SET status = 'PENDING', 
                         error_message = NULL,
                         updated_at = NOW()
                     WHERE user_id = :user_id
@@ -115,7 +116,7 @@ class UnipileAccountService:
                 "message": "Redirect user to auth_url to connect LinkedIn",
             }
 
-        except Exception:
+        except Exception as e:
             logger.exception(f"Failed to generate Unipile auth URL for user {user_id}")
             raise
 
@@ -317,8 +318,8 @@ class UnipileAccountService:
         """
         result = await db.execute(
             text("""
-                SELECT
-                    id, unipile_account_id, status, display_name,
+                SELECT 
+                    id, unipile_account_id, status, display_name, 
                     email, profile_url, connected_at, last_used_at,
                     error_message
                 FROM unipile_accounts
@@ -363,7 +364,7 @@ class UnipileAccountService:
         """
         result = await db.execute(
             text("""
-                SELECT
+                SELECT 
                     ua.unipile_account_id,
                     ua.status,
                     ua.display_name,
@@ -482,7 +483,9 @@ class UnipileAccountService:
 
             # Map Unipile status to our status
             new_status = "OK"
-            if unipile_status == "CREDENTIALS" or unipile_status == "DISCONNECTED":
+            if unipile_status == "CREDENTIALS":
+                new_status = "EXPIRED"
+            elif unipile_status == "DISCONNECTED":
                 new_status = "EXPIRED"
             elif unipile_status == "ERROR":
                 new_status = "ERROR"

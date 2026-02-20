@@ -29,9 +29,7 @@
   },
   "homepage": "https://github.com/Keiracom/Agency_OS#readme",
   "dependencies": {
-    "@supabase/supabase-js": "^2.97.0",
     "dotenv": "^17.2.3",
-    "pg": "^8.18.0",
     "v0-sdk": "^0.15.3"
   }
 }

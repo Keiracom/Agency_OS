@@ -51,7 +51,7 @@ class LeadPoolService:
         self.session = session
 
     async def create_or_update(
-        self,
+        self, 
         lead_data: dict[str, Any],
         skip_icp_check: bool = False,
     ) -> dict[str, Any]:
@@ -87,7 +87,7 @@ class LeadPoolService:
         if not skip_icp_check:
             icp_service = get_icp_filter_service()
             is_qualified, details = icp_service.is_icp_qualified(lead_data)
-
+            
             if not is_qualified:
                 company = lead_data.get("company_name", "Unknown")
                 reason = details.get("reason", "Failed ICP check")

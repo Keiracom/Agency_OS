@@ -2039,7 +2039,7 @@ async def unsubscribe_get(
     Handle GET request for email unsubscribe link.
 
     Directive 057: One-click unsubscribe with cross-channel suppression.
-
+    
     When a user clicks the unsubscribe link in an email:
     1. Validates the token (JWT with 60-day validity)
     2. Marks the lead as unsubscribed in lead_pool
@@ -2053,7 +2053,6 @@ async def unsubscribe_get(
         HTML page confirming unsubscribe
     """
     from fastapi.responses import HTMLResponse
-
     from src.services.unsubscribe_token_service import get_unsubscribe_token_service
 
     try:
@@ -2074,10 +2073,10 @@ async def unsubscribe_get(
     <title>Unsubscribed</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-               display: flex; justify-content: center; align-items: center; height: 100vh;
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+               display: flex; justify-content: center; align-items: center; height: 100vh; 
                margin: 0; background: #f5f5f5; }
-        .container { text-align: center; padding: 40px; background: white;
+        .container { text-align: center; padding: 40px; background: white; 
                      border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 400px; }
         h1 { color: #333; margin-bottom: 10px; }
         p { color: #666; line-height: 1.6; }
@@ -2100,23 +2099,23 @@ async def unsubscribe_get(
         else:
             raise HTTPException(status_code=500, detail="Failed to process unsubscribe")
 
-    except ValueError:
+    except ValueError as e:
         # Invalid or expired token
-        html_content = """
+        html_content = f"""
 <!DOCTYPE html>
 <html>
 <head>
     <title>Unsubscribe Error</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-               display: flex; justify-content: center; align-items: center; height: 100vh;
-               margin: 0; background: #f5f5f5; }
-        .container { text-align: center; padding: 40px; background: white;
-                     border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 400px; }
-        h1 { color: #e74c3c; margin-bottom: 10px; }
-        p { color: #666; line-height: 1.6; }
-        .icon { font-size: 48px; margin-bottom: 20px; }
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+               display: flex; justify-content: center; align-items: center; height: 100vh; 
+               margin: 0; background: #f5f5f5; }}
+        .container {{ text-align: center; padding: 40px; background: white; 
+                     border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 400px; }}
+        h1 {{ color: #e74c3c; margin-bottom: 10px; }}
+        p {{ color: #666; line-height: 1.6; }}
+        .icon {{ font-size: 48px; margin-bottom: 20px; }}
     </style>
 </head>
 <body>
@@ -2141,7 +2140,7 @@ async def unsubscribe_post(
     Handle POST request for List-Unsubscribe-Post (RFC 8058 one-click).
 
     Directive 057: RFC 8058 compliant one-click unsubscribe.
-
+    
     Email clients that support List-Unsubscribe-Post header will
     send a POST request with body "List-Unsubscribe=One-Click".
 

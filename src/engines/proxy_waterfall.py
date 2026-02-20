@@ -21,12 +21,14 @@ GOVERNANCE EVENT: FIXED_COST_OPTIMIZATION_PHASE_1
 DESCRIPTION: Proxy waterfall saves ~$11 AUD/month at Ignition tier (1,250 leads)
 """
 
+import asyncio
 import logging
 import random
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
+from typing import Any, Optional
 
 import httpx
 
@@ -90,8 +92,8 @@ class ProxyPool:
     tier: ProxyTier
     proxies: list[str] = field(default_factory=list)
     failures: dict[str, int] = field(default_factory=dict)
-
-    def get_proxy(self) -> str | None:
+    
+    def get_proxy(self) -> Optional[str]:
         """Get a random proxy, avoiding recent failures."""
         available = [p for p in self.proxies if self.failures.get(p, 0) < 3]
         if not available:
@@ -99,11 +101,11 @@ class ProxyPool:
             self.failures.clear()
             available = self.proxies
         return random.choice(available) if available else None
-
+    
     def mark_failure(self, proxy: str) -> None:
         """Mark a proxy as failed."""
         self.failures[proxy] = self.failures.get(proxy, 0) + 1
-
+    
     def mark_success(self, proxy: str) -> None:
         """Reset failure count on success."""
         self.failures[proxy] = 0
@@ -113,23 +115,23 @@ class ProxyPool:
 class WaterfallResult:
     """Result from a waterfall request."""
     success: bool
-    status_code: int | None = None
-    content: bytes | None = None
-    text: str | None = None
-
+    status_code: Optional[int] = None
+    content: Optional[bytes] = None
+    text: Optional[str] = None
+    
     # Cost tracking
-    tier_used: ProxyTier | None = None
+    tier_used: Optional[ProxyTier] = None
     cost_aud: Decimal = Decimal("0.00")
-
+    
     # Escalation tracking
     tiers_attempted: list[str] = field(default_factory=list)
     total_attempts: int = 0
-
+    
     # Timing
-    latency_ms: int | None = None
-
+    latency_ms: Optional[int] = None
+    
     # Error
-    error: str | None = None
+    error: Optional[str] = None
 
 
 # ============================================
@@ -139,29 +141,29 @@ class WaterfallResult:
 class ProxyWaterfallEngine(BaseEngine):
     """
     Intelligent proxy waterfall for cost-optimized scraping.
-
+    
     Escalation order: Datacenter ($0.001) → ISP ($0.008) → Residential ($0.015)
-
+    
     - Starts with cheapest proxy tier
     - Auto-escalates on 403/429/503 errors
     - Tracks costs per request
     - Graceful degradation, never fails the flow
-
+    
     Cost Impact:
     - Current (Residential only): $0.015/request
     - With Waterfall: ~$0.006/request (weighted average)
     - Savings: ~60%
     """
-
+    
     def __init__(
         self,
-        datacenter_proxies: list[str] | None = None,
-        isp_proxies: list[str] | None = None,
-        residential_proxies: list[str] | None = None,
+        datacenter_proxies: Optional[list[str]] = None,
+        isp_proxies: Optional[list[str]] = None,
+        residential_proxies: Optional[list[str]] = None,
     ):
         """
         Initialize with proxy lists.
-
+        
         Args:
             datacenter_proxies: List of datacenter proxy URLs
             isp_proxies: List of ISP proxy URLs
@@ -172,29 +174,29 @@ class ProxyWaterfallEngine(BaseEngine):
             ProxyTier.ISP: ProxyPool(ProxyTier.ISP, isp_proxies or []),
             ProxyTier.RESIDENTIAL: ProxyPool(ProxyTier.RESIDENTIAL, residential_proxies or []),
         }
-
+        
         self._tier_order = [
             ProxyTier.DATACENTER,
             ProxyTier.ISP,
             ProxyTier.RESIDENTIAL,
         ]
-
+    
     @property
     def name(self) -> str:
         return "proxy_waterfall"
-
+    
     async def fetch(
         self,
         url: str,
         method: str = "GET",
-        headers: dict | None = None,
+        headers: Optional[dict] = None,
         target_type: str = "default",
-        start_tier: ProxyTier | None = None,
+        start_tier: Optional[ProxyTier] = None,
         timeout: float = REQUEST_TIMEOUT,
     ) -> EngineResult[WaterfallResult]:
         """
         Fetch URL with automatic proxy escalation.
-
+        
         Args:
             url: URL to fetch
             method: HTTP method
@@ -202,14 +204,14 @@ class ProxyWaterfallEngine(BaseEngine):
             target_type: Target type for success rate estimation
             start_tier: Optional starting tier (default: datacenter)
             timeout: Request timeout in seconds
-
+        
         Returns:
             EngineResult with WaterfallResult
         """
         result = WaterfallResult(success=False)
         total_cost = Decimal("0.00")
         start_time = datetime.utcnow()
-
+        
         # Determine starting tier
         start_idx = 0
         if start_tier:
@@ -217,26 +219,26 @@ class ProxyWaterfallEngine(BaseEngine):
                 start_idx = self._tier_order.index(start_tier)
             except ValueError:
                 start_idx = 0
-
+        
         # Waterfall through tiers
         for tier in self._tier_order[start_idx:]:
             pool = self._pools[tier]
-
+            
             if not pool.proxies:
                 logger.debug(f"No proxies configured for tier {tier.value}, skipping")
                 continue
-
+            
             result.tiers_attempted.append(tier.value)
-
+            
             # Retry within tier
             for attempt in range(MAX_RETRIES_PER_TIER):
                 result.total_attempts += 1
                 proxy = pool.get_proxy()
-
+                
                 if not proxy:
                     logger.warning(f"No available proxies in tier {tier.value}")
                     break
-
+                
                 try:
                     async with httpx.AsyncClient(
                         proxy=proxy,
@@ -248,14 +250,14 @@ class ProxyWaterfallEngine(BaseEngine):
                             url=url,
                             headers=headers or self._default_headers(),
                         )
-
+                    
                     # Track cost regardless of outcome
                     total_cost += PROXY_COSTS_AUD[tier]
-
+                    
                     if response.status_code == 200:
                         # Success!
                         pool.mark_success(proxy)
-
+                        
                         result.success = True
                         result.status_code = response.status_code
                         result.content = response.content
@@ -265,12 +267,12 @@ class ProxyWaterfallEngine(BaseEngine):
                         result.latency_ms = int(
                             (datetime.utcnow() - start_time).total_seconds() * 1000
                         )
-
+                        
                         logger.info(
                             f"Waterfall success: {url} via {tier.value} "
                             f"(cost: ${total_cost} AUD, attempts: {result.total_attempts})"
                         )
-
+                        
                         return EngineResult.ok(
                             data=result,
                             metadata={
@@ -279,7 +281,7 @@ class ProxyWaterfallEngine(BaseEngine):
                                 "attempts": result.total_attempts,
                             },
                         )
-
+                    
                     elif response.status_code in ESCALATION_CODES:
                         # Blocked, escalate to next tier
                         pool.mark_failure(proxy)
@@ -288,38 +290,38 @@ class ProxyWaterfallEngine(BaseEngine):
                             f"escalating..."
                         )
                         break  # Exit retry loop, try next tier
-
+                    
                     else:
                         # Other error, retry same tier
                         pool.mark_failure(proxy)
                         logger.warning(
                             f"Unexpected status {response.status_code} on {tier.value}"
                         )
-
+                        
                 except httpx.TimeoutException:
                     pool.mark_failure(proxy)
                     logger.warning(f"Timeout on {tier.value}, attempt {attempt + 1}")
-
+                    
                 except httpx.ProxyError as e:
                     pool.mark_failure(proxy)
                     logger.warning(f"Proxy error on {tier.value}: {e}")
-
+                    
                 except Exception as e:
                     pool.mark_failure(proxy)
                     logger.error(f"Unexpected error on {tier.value}: {e}")
-
+        
         # All tiers exhausted
         result.cost_aud = total_cost
         result.error = "All proxy tiers exhausted"
         result.latency_ms = int(
             (datetime.utcnow() - start_time).total_seconds() * 1000
         )
-
+        
         logger.error(
             f"Waterfall failed: {url} (cost: ${total_cost} AUD, "
             f"attempts: {result.total_attempts})"
         )
-
+        
         return EngineResult.error(
             error="All proxy tiers exhausted",
             metadata={
@@ -328,7 +330,7 @@ class ProxyWaterfallEngine(BaseEngine):
                 "attempts": result.total_attempts,
             },
         )
-
+    
     async def fetch_json(
         self,
         url: str,
@@ -336,10 +338,10 @@ class ProxyWaterfallEngine(BaseEngine):
     ) -> EngineResult[dict]:
         """Fetch and parse JSON response."""
         result = await self.fetch(url, **kwargs)
-
+        
         if not result.success:
             return EngineResult.error(error=result.error)
-
+        
         try:
             import json
             data = json.loads(result.data.text)
@@ -349,7 +351,7 @@ class ProxyWaterfallEngine(BaseEngine):
             )
         except json.JSONDecodeError as e:
             return EngineResult.error(error=f"JSON decode error: {e}")
-
+    
     def _default_headers(self) -> dict:
         """Default headers for requests."""
         return {
@@ -361,7 +363,7 @@ class ProxyWaterfallEngine(BaseEngine):
             "Connection": "keep-alive",
             "Upgrade-Insecure-Requests": "1",
         }
-
+    
     def _random_user_agent(self) -> str:
         """Return a random modern user agent."""
         agents = [
@@ -371,32 +373,32 @@ class ProxyWaterfallEngine(BaseEngine):
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
         ]
         return random.choice(agents)
-
+    
     def get_cost_estimate(self, target_type: str = "default") -> dict:
         """
         Get cost estimate for a target type.
-
+        
         Returns expected cost based on success rates.
         """
         rates = SUCCESS_RATES.get(target_type, SUCCESS_RATES["default"])
-
+        
         # Calculate weighted cost
         # P(datacenter success) * cost_dc + P(dc fail) * P(isp success) * cost_isp + ...
-
+        
         p_dc = rates[ProxyTier.DATACENTER]
         p_isp = rates[ProxyTier.ISP]
         p_res = rates[ProxyTier.RESIDENTIAL]
-
+        
         cost_dc = PROXY_COSTS_AUD[ProxyTier.DATACENTER]
         cost_isp = PROXY_COSTS_AUD[ProxyTier.ISP]
         cost_res = PROXY_COSTS_AUD[ProxyTier.RESIDENTIAL]
-
+        
         expected_cost = (
             p_dc * cost_dc +
             (1 - p_dc) * p_isp * (cost_dc + cost_isp) +
             (1 - p_dc) * (1 - p_isp) * p_res * (cost_dc + cost_isp + cost_res)
         )
-
+        
         return {
             "target_type": target_type,
             "expected_cost_aud": float(expected_cost),
@@ -410,9 +412,9 @@ class ProxyWaterfallEngine(BaseEngine):
 # ============================================
 
 def get_proxy_waterfall(
-    datacenter_proxies: list[str] | None = None,
-    isp_proxies: list[str] | None = None,
-    residential_proxies: list[str] | None = None,
+    datacenter_proxies: Optional[list[str]] = None,
+    isp_proxies: Optional[list[str]] = None,
+    residential_proxies: Optional[list[str]] = None,
 ) -> ProxyWaterfallEngine:
     """Get ProxyWaterfallEngine instance."""
     return ProxyWaterfallEngine(

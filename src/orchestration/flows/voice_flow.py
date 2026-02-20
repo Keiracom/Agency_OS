@@ -133,6 +133,9 @@ async def fetch_voice_queue_task(agency_id: str | None = None) -> list[dict[str,
                   lp.last_voice_attempt IS NULL
                   OR lp.last_voice_attempt < NOW() - INTERVAL '24 hours'
               )
+              -- TEST MODE: Only dial leads with test_record=true in enrichment_data
+              -- Remove this filter when moving to production
+              AND (lp.enrichment_data->>'test_record')::boolean = true
         """)
 
         params = {"campaign_status": CampaignStatus.ACTIVE.value}
@@ -193,18 +196,21 @@ async def validate_call_task(lead: dict[str, Any]) -> dict[str, Any] | None:
         # Import here to avoid circular imports
         from src.services.voice_compliance_validator import validate_call
 
+        # validate_call expects (lead_id, phone, agency_id)
+        # client_id is the agency_id in our data model
         result = await validate_call(
-            phone=lead["phone"],
             lead_id=lead["lead_id"],
-            campaign_id=lead["campaign_id"],
+            phone=lead["phone"],
+            agency_id=lead["client_id"],  # client_id = agency_id
         )
 
-        if result.get("status") == COMPLIANCE_OK:
+        # ValidationResult is a dataclass with .valid, .reason, .next_valid_window
+        if result.valid:
             lead["compliance_status"] = COMPLIANCE_OK
             return lead
-        elif result.get("status") == COMPLIANCE_OUTSIDE_HOURS:
+        elif result.reason == "OUTSIDE_HOURS":
             # Schedule for next valid window
-            next_window = result.get("next_valid_window")
+            next_window = result.next_valid_window
             run_logger.info(
                 f"Lead {lead['lead_id']} outside calling hours, next window: {next_window}"
             )
@@ -223,7 +229,7 @@ async def validate_call_task(lead: dict[str, Any]) -> dict[str, Any] | None:
 
             return None
         else:
-            run_logger.warning(f"Lead {lead['lead_id']} failed compliance: {result.get('reason')}")
+            run_logger.warning(f"Lead {lead['lead_id']} failed compliance: {result.reason}")
             return None
 
     except Exception as e:
@@ -256,19 +262,11 @@ async def build_context_task(lead: dict[str, Any]) -> dict[str, Any] | None:
     try:
         from src.services.voice_context_builder import build_call_context
 
+        # voice_context_builder.build_call_context expects (lead_id, agency_id)
+        # client_id is the agency_id in our data model
         context = await build_call_context(
             lead_id=lead["lead_id"],
-            campaign_id=lead["campaign_id"],
-            client_id=lead["client_id"],
-            lead_data={
-                "first_name": lead.get("first_name"),
-                "last_name": lead.get("last_name"),
-                "company": lead.get("company"),
-                "title": lead.get("title"),
-                "email": lead.get("email"),
-                "als_score": lead.get("als_score"),
-            },
-            sdk_spend_cap=SDK_SPEND_CAP_PER_LEAD,
+            agency_id=lead["client_id"],  # client_id = agency_id
         )
 
         if context:

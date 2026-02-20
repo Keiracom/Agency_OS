@@ -11,6 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 TEST_CASE = {
@@ -26,18 +27,18 @@ async def test():
         print("❌ BLOCKED: ABN_LOOKUP_GUID not set")
         return False
     print(f"✓ ABN_LOOKUP_GUID configured: {guid[:8]}...")
-    
+
     # Run test case
     from src.integrations.abn_client import get_abn_client
     client = get_abn_client()
-    
+
     print(f"\nTesting ABN lookup for: {TEST_CASE['abn']}")
     result = await client.search_by_abn(TEST_CASE["abn"])
-    
+
     if result.get("found"):
         name = result.get("business_name", "") or result.get("trading_name", "")
         if TEST_CASE["expected_name"].upper() in name.upper():
-            print(f"✅ PASS: ABN lookup working")
+            print("✅ PASS: ABN lookup working")
             print(f"   Company: {name}")
             print(f"   State: {result.get('state')}")
             print(f"   GST: {result.get('gst_registered')}")
@@ -46,7 +47,7 @@ async def test():
             print(f"⚠️ WARN: Got unexpected company: {name}")
             return True  # Still working, just different data
     else:
-        print(f"❌ FAIL: ABN lookup returned no data")
+        print("❌ FAIL: ABN lookup returned no data")
         print(f"   Error: {result.get('error', 'Unknown')}")
         return False
 

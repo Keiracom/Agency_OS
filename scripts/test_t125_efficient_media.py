@@ -10,8 +10,8 @@ Test case from #038 mini validation:
 - Expected after T1.25: >70% (PASS)
 """
 
-import asyncio
 import sys
+
 from fuzzywuzzy import fuzz
 
 # Test data from #038 failure
@@ -31,17 +31,17 @@ def clean_company_name(name: str) -> str:
 
 def test_match():
     """Test fuzzy matching with and without T1.25 cleaning."""
-    
+
     print("=" * 60)
     print("CEO Directive #039 — T1.25 Validation Test")
     print("=" * 60)
     print()
-    
+
     # Test 1: Original (no T1.25)
     score_original = fuzz.ratio(ABN_LEGAL_NAME.lower(), GMB_NAME.lower())
     token_original = fuzz.token_set_ratio(ABN_LEGAL_NAME.lower(), GMB_NAME.lower())
     best_original = max(score_original, token_original)
-    
+
     print(f"[T1 only] ABN legal_name: '{ABN_LEGAL_NAME}'")
     print(f"[T1 only] GMB name:       '{GMB_NAME}'")
     print(f"[T1 only] fuzz.ratio:      {score_original}%")
@@ -50,14 +50,14 @@ def test_match():
     print(f"[T1 only] Threshold:       {THRESHOLD}%")
     print(f"[T1 only] Result:          {'✓ PASS' if best_original >= THRESHOLD else '✗ FAIL'}")
     print()
-    
+
     # Test 2: With T1.25 cleaning (simulates ASIC registered_name)
     cleaned_name = clean_company_name(ABN_LEGAL_NAME)
-    
+
     score_cleaned = fuzz.ratio(cleaned_name.lower(), GMB_NAME.lower())
     token_cleaned = fuzz.token_set_ratio(cleaned_name.lower(), GMB_NAME.lower())
     best_cleaned = max(score_cleaned, token_cleaned)
-    
+
     print(f"[T1.25]   ASIC cleaned:    '{cleaned_name}'")
     print(f"[T1.25]   GMB name:        '{GMB_NAME}'")
     print(f"[T1.25]   fuzz.ratio:      {score_cleaned}%")
@@ -66,12 +66,12 @@ def test_match():
     print(f"[T1.25]   Threshold:       {THRESHOLD}%")
     print(f"[T1.25]   Result:          {'✓ PASS' if best_cleaned >= THRESHOLD else '✗ FAIL'}")
     print()
-    
+
     # Summary
     print("=" * 60)
     improvement = best_cleaned - best_original
     print(f"Improvement: +{improvement}% ({best_original}% → {best_cleaned}%)")
-    
+
     if best_cleaned >= THRESHOLD and best_original < THRESHOLD:
         print("✓ T1.25 FIXES the fuzzy match failure")
         return 0

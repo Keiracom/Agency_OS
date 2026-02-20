@@ -17,7 +17,6 @@ import asyncio
 import sys
 from datetime import datetime, timedelta
 from uuid import uuid4
-from typing import Optional
 
 from tests.live.config import get_config, require_valid_config
 
@@ -196,7 +195,7 @@ async def generate_campaign_content(client_id: str, campaign_id: str) -> dict:
 
         if response.status_code == 200:
             result = response.json()
-            print(f"✅ Campaign content generated")
+            print("✅ Campaign content generated")
             return result
         else:
             print(f"❌ Campaign generation failed: {response.status_code}")

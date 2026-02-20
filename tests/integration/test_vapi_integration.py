@@ -11,14 +11,13 @@ pytestmark = pytest.mark.skip(reason="Integration tests parked - Directive #030"
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
+from src.exceptions import IntegrationError
 from src.integrations.vapi import (
-    VapiClient,
     VapiAssistantConfig,
     VapiCallRequest,
     VapiCallResult,
+    VapiClient,
 )
-from src.exceptions import IntegrationError
-
 
 # ============================================
 # Fixtures

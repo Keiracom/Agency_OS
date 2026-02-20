@@ -6,7 +6,6 @@ Layer: Library
 
 from pathlib import Path
 
-
 COOKBOOK_DIR = Path(__file__).parent
 
 
@@ -29,7 +28,7 @@ def load_skill(skill_name: str) -> str | None:
     """Load and return the content of a skill file."""
     skill_path = get_skill_path(skill_name)
     if skill_path:
-        with open(skill_path, "r", encoding="utf-8") as f:
+        with open(skill_path, encoding="utf-8") as f:
             return f.read()
     return None
 

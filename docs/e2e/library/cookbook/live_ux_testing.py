@@ -16,7 +16,6 @@ Created: December 26, 2024
 Location: skills/testing/LIVE_UX_TEST_SKILL.md
 """
 
-from typing import Dict, List
 from dataclasses import dataclass
 
 
@@ -90,7 +89,7 @@ python -m tests.live.cleanup
 """
 
 
-def get_code_templates() -> Dict[str, str]:
+def get_code_templates() -> dict[str, str]:
     """Return code templates for live UX testing."""
     return {
         "config": CONFIG_TEMPLATE,
@@ -101,7 +100,7 @@ def get_code_templates() -> Dict[str, str]:
     }
 
 
-def get_required_files() -> List[Dict[str, str]]:
+def get_required_files() -> list[dict[str, str]]:
     """Return list of required files for live UX testing."""
     return [
         {"id": "LUX-001", "file": "tests/live/config.py", "purpose": "Load live test configuration"},
@@ -113,7 +112,7 @@ def get_required_files() -> List[Dict[str, str]]:
     ]
 
 
-def get_required_api_keys() -> List[Dict[str, str]]:
+def get_required_api_keys() -> list[dict[str, str]]:
     """Return list of required API keys."""
     return [
         {"integration": "Supabase", "env_vars": ["SUPABASE_URL", "SUPABASE_KEY"], "required": True},
@@ -126,7 +125,7 @@ def get_required_api_keys() -> List[Dict[str, str]]:
     ]
 
 
-def get_tester_config_fields() -> List[Dict[str, str]]:
+def get_tester_config_fields() -> list[dict[str, str]]:
     """Return tester configuration fields."""
     return [
         {"field": "TESTER_EMAIL", "example": "your-real-email@gmail.com", "required": True},
@@ -138,7 +137,7 @@ def get_tester_config_fields() -> List[Dict[str, str]]:
     ]
 
 
-def get_qa_checks() -> List[Dict[str, str]]:
+def get_qa_checks() -> list[dict[str, str]]:
     """Return QA checks specific to live UX testing."""
     return [
         {"check": "Real API keys configured", "severity": "CRITICAL"},

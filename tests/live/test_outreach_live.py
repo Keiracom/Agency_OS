@@ -14,15 +14,13 @@ Tests outreach functionality with real sends:
 Only run when you're ready to receive test messages.
 """
 
-import pytest
-import pytest_asyncio
-import asyncio
 from datetime import datetime
 from uuid import uuid4
 
 import httpx
+import pytest
 
-from tests.live.config import get_config, require_valid_config
+from tests.live.config import require_valid_config
 
 
 @pytest.fixture(scope="module")
@@ -96,7 +94,7 @@ class TestLiveEmailOutreach:
 
             if response.status_code == 200:
                 data = response.json()
-                print(f"✅ Email sent successfully!")
+                print("✅ Email sent successfully!")
                 print(f"   Message ID: {data.get('id')}")
                 print(f"   Check your inbox: {config.test_lead_email}")
                 assert True
@@ -171,7 +169,7 @@ class TestLiveSMSOutreach:
 
             if response.status_code in [200, 201]:
                 data = response.json()
-                print(f"✅ SMS sent successfully!")
+                print("✅ SMS sent successfully!")
                 print(f"   Message SID: {data.get('sid')}")
                 print(f"   Check your phone: {config.test_lead_phone}")
                 assert True

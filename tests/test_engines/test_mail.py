@@ -6,13 +6,13 @@ PHASE: 4 (Engines)
 TASK: ENG-009
 """
 
-import pytest
 from datetime import datetime
-from uuid import uuid4
 from unittest.mock import AsyncMock, patch
+from uuid import uuid4
+
+import pytest
 
 from src.engines.mail import MailEngine, get_mail_engine
-from src.engines.base import EngineResult
 from src.models.base import ChannelType, LeadStatus
 
 
@@ -130,7 +130,7 @@ class MockLead:
         self.company = kwargs.get("company", "Test Company")
         self.status = kwargs.get("status", LeadStatus.ENRICHED)
         self.als_score = kwargs.get("als_score", 90)  # Default high for mail
-        self.last_contacted_at = kwargs.get("last_contacted_at", None)
+        self.last_contacted_at = kwargs.get("last_contacted_at")
         self.deleted_at = None
 
     @property

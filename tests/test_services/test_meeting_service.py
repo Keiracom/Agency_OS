@@ -5,12 +5,13 @@ PHASE: 24E (Downstream Outcomes)
 TASK: OUTCOME-003, OUTCOME-007
 """
 
-import pytest
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-from src.services.meeting_service import MeetingService, MEETING_TYPES, MEETING_OUTCOMES
+import pytest
+
+from src.services.meeting_service import MEETING_OUTCOMES, MEETING_TYPES, MeetingService
 
 
 @pytest.fixture
@@ -406,7 +407,7 @@ class TestMeetingConstants:
             "onboarding",
             "other",
         ]
-        assert MEETING_TYPES == expected_types
+        assert expected_types == MEETING_TYPES
 
     def test_valid_meeting_outcomes(self):
         """Test all expected meeting outcomes are defined."""
@@ -418,7 +419,7 @@ class TestMeetingConstants:
             "cancelled",
             "pending",
         ]
-        assert MEETING_OUTCOMES == expected_outcomes
+        assert expected_outcomes == MEETING_OUTCOMES
 
 
 # ============================================

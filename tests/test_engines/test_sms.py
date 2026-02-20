@@ -5,13 +5,13 @@ PHASE: 4 (Engines)
 TASK: ENG-006
 """
 
-import pytest
-from datetime import datetime
 from uuid import uuid4
 
+import pytest
+
 from src.engines.sms import SMSEngine, get_sms_engine
-from src.models.base import ChannelType, LeadStatus
 from src.exceptions import DNCRError
+from src.models.base import ChannelType, LeadStatus
 
 
 @pytest.fixture

@@ -21,11 +21,11 @@ def load_history() -> list:
     """Load session history, return empty list if missing."""
     try:
         if HISTORY_FILE.exists():
-            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+            with open(HISTORY_FILE, encoding="utf-8") as f:
                 data = json.load(f)
                 return data if isinstance(data, list) else []
         return []
-    except (json.JSONDecodeError, IOError) as e:
+    except (OSError, json.JSONDecodeError) as e:
         print(f"Warning: Could not load history: {e}")
         return []
 

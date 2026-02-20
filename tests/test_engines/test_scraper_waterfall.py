@@ -9,25 +9,19 @@ DEPENDENCIES:
   - httpx (for mocking)
 """
 
-from dataclasses import asdict
-from unittest.mock import AsyncMock, MagicMock, patch
-from urllib.parse import urlparse
+# NOTE: Apify deprecated (FCO-003). Stubbing imports for test compatibility.
+# Tests using ApifyClient should be migrated to Camoufox or removed.
+from dataclasses import dataclass
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src.engines.url_validator import (
     URLValidator,
     get_url_validator,
-    validate_url,
-    PARKED_DOMAIN_HOSTS,
-    PARKED_CONTENT_INDICATORS,
 )
 from src.models.url_validation import URLValidationResult
 
-# NOTE: Apify deprecated (FCO-003). Stubbing imports for test compatibility.
-# Tests using ApifyClient should be migrated to Camoufox or removed.
-from dataclasses import dataclass
-from typing import Any
 
 @dataclass
 class ScrapeResult:
@@ -39,7 +33,7 @@ class ScrapeResult:
     tier_used: int = 1
     needs_fallback: bool = False
     failure_reason: str | None = None
-    
+
     def has_valid_content(self) -> bool:
         """Check if scrape has valid content."""
         return len(self.raw_html) >= 500 and not self.needs_fallback
@@ -588,13 +582,11 @@ class TestCamoufoxAvailability:
 
     def test_is_camoufox_configured(self):
         """Test configuration check."""
-        from src.integrations.camoufox_scraper import (
-            is_camoufox_configured,
-            get_camoufox_scraper,
-        )
-
         # Reset singleton for test
         import src.integrations.camoufox_scraper as camoufox_module
+        from src.integrations.camoufox_scraper import (
+            is_camoufox_configured,
+        )
         camoufox_module._camoufox_scraper = None
 
         with patch.object(

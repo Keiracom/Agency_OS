@@ -13,15 +13,12 @@ Tests campaign functionality with real data:
 IMPORTANT: This makes REAL API calls including AI content generation.
 """
 
-import pytest
-import pytest_asyncio
-import asyncio
-from datetime import datetime
 from uuid import uuid4
 
 import httpx
+import pytest
 
-from tests.live.config import get_config, require_valid_config
+from tests.live.config import require_valid_config
 
 
 @pytest.fixture(scope="module")

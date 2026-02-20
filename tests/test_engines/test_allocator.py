@@ -5,19 +5,17 @@ PHASE: 4 (Engines)
 TASK: ENG-004
 """
 
-from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
 
 from src.engines.allocator import (
-    AllocatorEngine,
     RATE_LIMITS,
+    AllocatorEngine,
     get_allocator_engine,
 )
 from src.models.base import ChannelType
-
 
 # ============================================
 # Fixtures

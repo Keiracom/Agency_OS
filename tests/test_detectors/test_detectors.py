@@ -5,22 +5,16 @@ PHASE: 16 (Conversion Intelligence)
 TASK: 16A-007, 16B-005, 16C-004, 16D-004
 """
 
-import pytest
-from datetime import datetime, timedelta
-from uuid import uuid4
 
-from src.detectors.who_detector import WhoDetector
+from src.detectors.how_detector import HowDetector
 from src.detectors.what_detector import WhatDetector
 from src.detectors.when_detector import WhenDetector
-from src.detectors.how_detector import HowDetector
+from src.detectors.who_detector import WhoDetector
 from src.engines.content_utils import (
-    extract_pain_points,
-    extract_cta,
     detect_personalization,
-    PAIN_POINT_KEYWORDS,
-    CTA_PATTERNS,
+    extract_cta,
+    extract_pain_points,
 )
-
 
 # ============================================
 # WHO Detector Tests

@@ -21,7 +21,6 @@ Dynamic Context Detection:
 4. Read the skill file - Get required files, patterns, standards
 """
 
-from typing import Dict, List
 
 
 def get_instructions() -> str:
@@ -63,7 +62,7 @@ BUILDER AGENT INSTRUCTIONS
 """
 
 
-def get_code_templates() -> Dict[str, str]:
+def get_code_templates() -> dict[str, str]:
     """Return code templates for the Builder agent."""
     return {
         "python_module": PYTHON_MODULE_TEMPLATE,
@@ -72,7 +71,7 @@ def get_code_templates() -> Dict[str, str]:
     }
 
 
-def get_import_hierarchy() -> Dict[str, Dict[str, List[str]]]:
+def get_import_hierarchy() -> dict[str, dict[str, list[str]]]:
     """Return the import hierarchy rules."""
     return {
         "layer_1_models": {
@@ -98,7 +97,7 @@ def get_import_hierarchy() -> Dict[str, Dict[str, List[str]]]:
     }
 
 
-def get_common_mistakes() -> List[Dict[str, str]]:
+def get_common_mistakes() -> list[dict[str, str]]:
     """Return common mistakes to avoid."""
     return [
         {

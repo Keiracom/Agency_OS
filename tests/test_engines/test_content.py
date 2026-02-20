@@ -11,9 +11,8 @@ from uuid import uuid4
 import pytest
 
 from src.engines.content import ContentEngine, get_content_engine
-from src.exceptions import AISpendLimitError, ValidationError
+from src.exceptions import AISpendLimitError
 from src.models.base import LeadStatus
-
 
 # Smart prompt module path for patching
 SMART_PROMPTS_MODULE = "src.engines.content"

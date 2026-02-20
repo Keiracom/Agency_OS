@@ -14,28 +14,23 @@ import pytest
 
 # Skip all tests in this module - parked pending coding overhaul (Directive #030)
 pytestmark = pytest.mark.skip(reason="E2E tests parked - Directive #030")
-import pytest_asyncio
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
-import uuid
+from unittest.mock import AsyncMock, MagicMock
 
 from tests.fixtures.database_fixtures import (
-    create_test_client,
+    create_dominance_client,
+    create_hot_lead,
+    create_ignition_client,
     create_inactive_client,
     create_past_due_client,
-    create_ignition_client,
-    create_dominance_client,
     create_test_campaign,
-    create_test_lead,
-    create_hot_lead,
-    create_lead_batch,
+    create_test_client,
 )
 from tests.fixtures.webhook_payloads import (
-    stripe_subscription_created,
     stripe_invoice_paid,
     stripe_subscription_cancelled,
+    stripe_subscription_created,
 )
-
 
 # ============================================================================
 # Subscription Status Tests
@@ -53,7 +48,7 @@ class TestSubscriptionValidation:
         # Arrange
         client = create_test_client(subscription_status="active")
         campaign = create_test_campaign(client["id"])
-        lead = create_hot_lead(client["id"], campaign["id"])
+        create_hot_lead(client["id"], campaign["id"])
 
         # Act - Simulate JIT validation
         def validate_subscription(client_data: dict) -> bool:
@@ -266,7 +261,6 @@ class TestTierBasedLimits:
         # Arrange
         client = create_ignition_client()
         # Official tier limits from docs/specs/PRICING_TIERS.md
-        from src.config.tiers import TIER_CONFIG
 
         tier_limits = {
             "ignition": {"monthly_leads": 1250, "daily_outreach": 50},
@@ -412,7 +406,7 @@ class TestStripeWebhooks:
 
         # Act - Simulate webhook processing
         event_type = webhook_payload["type"]
-        subscription_data = webhook_payload["data"]["object"]
+        webhook_payload["data"]["object"]
 
         if event_type == "customer.subscription.deleted":
             client["subscription_status"] = "cancelled"

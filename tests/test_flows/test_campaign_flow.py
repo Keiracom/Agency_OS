@@ -21,7 +21,6 @@ from src.orchestration.flows.campaign_flow import (
     validate_client_status_task,
 )
 
-
 # ============================================
 # Fixtures
 # ============================================

@@ -16,7 +16,6 @@ Key Responsibilities:
 - Verify fixes from previous cycles
 """
 
-from typing import Dict, List
 
 
 def get_instructions() -> str:
@@ -64,7 +63,7 @@ QA AGENT INSTRUCTIONS
 """
 
 
-def get_code_templates() -> Dict[str, str]:
+def get_code_templates() -> dict[str, str]:
     """Return code templates for the QA agent."""
     return {
         "report_template": REPORT_TEMPLATE,
@@ -75,7 +74,7 @@ def get_code_templates() -> Dict[str, str]:
     }
 
 
-def get_issue_categories() -> Dict[str, Dict[str, str]]:
+def get_issue_categories() -> dict[str, dict[str, str]]:
     """Return issue category configuration."""
     return {
         "MISSING": {
@@ -111,7 +110,7 @@ def get_issue_categories() -> Dict[str, Dict[str, str]]:
     }
 
 
-def get_check_commands() -> Dict[str, List[str]]:
+def get_check_commands() -> dict[str, list[str]]:
     """Return bash commands for each check category."""
     return {
         "critical_import_hierarchy": [
@@ -162,7 +161,7 @@ def get_check_commands() -> Dict[str, List[str]]:
     }
 
 
-def categorize_issue(issue_type: str, severity: str) -> Dict[str, str]:
+def categorize_issue(issue_type: str, severity: str) -> dict[str, str]:
     """
     Categorize an issue and determine routing.
 

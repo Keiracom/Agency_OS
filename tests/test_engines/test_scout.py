@@ -5,21 +5,19 @@ PHASE: 4 (Engines)
 TASK: ENG-002
 """
 
-from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
 
+from src.engines.base import EngineResult
 from src.engines.scout import (
     CONFIDENCE_THRESHOLD,
     REQUIRED_FIELDS,
     ScoutEngine,
     get_scout_engine,
 )
-from src.engines.base import EngineResult
 from src.models.base import LeadStatus
-
 
 # ============================================
 # Fixtures
@@ -210,8 +208,8 @@ class TestCacheBehavior:
     ):
         """Test that force_refresh=True skips cache."""
         from unittest.mock import MagicMock
-        from src.integrations.siege_waterfall import EnrichmentTier
-        
+
+
         with patch.object(scout_engine, "get_lead_by_id", return_value=mock_lead):
             with patch("src.engines.scout.enrichment_cache") as mock_cache:
                 mock_cache.get = AsyncMock(return_value=valid_enrichment_data)
@@ -224,7 +222,7 @@ class TestCacheBehavior:
                     tier_results=[],
                 )
                 with patch.object(scout_engine, "_log_enrichment_audit", new_callable=AsyncMock):
-                    result = await scout_engine.enrich_lead(
+                    await scout_engine.enrich_lead(
                         db=mock_db_session,
                         lead_id=mock_lead.id,
                         force_refresh=True,
@@ -250,7 +248,7 @@ class TestWaterfallTiers:
     ):
         """Test Tier 1 Siege Waterfall enrichment success."""
         from unittest.mock import MagicMock
-        
+
         with patch.object(scout_engine, "get_lead_by_id", return_value=mock_lead):
             with patch("src.engines.scout.enrichment_cache") as mock_cache:
                 mock_cache.get = AsyncMock(return_value=None)  # Cache miss
@@ -278,7 +276,7 @@ class TestWaterfallTiers:
     ):
         """Test Tier 2 Clay fallback when Tier 1 fails."""
         from unittest.mock import MagicMock
-        
+
         with patch.object(scout_engine, "get_lead_by_id", return_value=mock_lead):
             with patch("src.engines.scout.enrichment_cache") as mock_cache:
                 mock_cache.get = AsyncMock(return_value=None)
@@ -311,7 +309,7 @@ class TestWaterfallTiers:
     ):
         """Test failure when all tiers fail."""
         from unittest.mock import MagicMock
-        
+
         with patch.object(scout_engine, "get_lead_by_id", return_value=mock_lead):
             with patch("src.engines.scout.enrichment_cache") as mock_cache:
                 mock_cache.get = AsyncMock(return_value=None)

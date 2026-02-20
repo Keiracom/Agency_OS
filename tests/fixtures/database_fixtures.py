@@ -9,7 +9,6 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any
 
-
 # ============================================================================
 # Client Fixtures
 # ============================================================================
@@ -515,7 +514,7 @@ def create_lead_batch(
     lead_num = 0
 
     for tier, tier_count in tier_distribution.items():
-        for i in range(tier_count):
+        for _i in range(tier_count):
             lead_num += 1
             if tier == "hot":
                 lead = create_hot_lead(client_id, campaign_id)

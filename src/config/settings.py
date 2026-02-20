@@ -202,11 +202,23 @@ class Settings(BaseSettings):
     dataforseo_login: str = Field(default="", description="DataForSEO login email")
     dataforseo_password: str = Field(default="", description="DataForSEO API password")
 
-    # === Voice AI Stack (Vapi + ElevenLabs) ===
+    # === Voice AI Stack (Vapi + ElevenLabs + ElevenAgents) ===
     vapi_api_key: str = Field(default="", description="Vapi API key")
     vapi_phone_number_id: str = Field(default="", description="Twilio number linked in Vapi")
     # TTS: ElevenLabs Flash v2.5 (sole TTS engine)
     elevenlabs_api_key: str = Field(default="", description="ElevenLabs API key (TTS)")
+    # ElevenAgents (Conversational AI)
+    elevenagets_agent_id: str = Field(
+        default="", description="ElevenAgents agent ID (populated after create_agent)"
+    )
+    elevenlabs_voice_id: str = Field(default="", description="ElevenLabs voice ID for Alex agent")
+    # Twilio AU (Australian outbound number for ElevenAgents)
+    twilio_phone_number_au: str = Field(
+        default="", description="Australian Twilio phone number for voice calls"
+    )
+    elevenlabs_voice_id: str = Field(
+        default="DYkrAHD8iwork3YSUBbs", description="ElevenLabs voice ID for Alex (Australian male)"
+    )
 
     # === Video AI (HeyGen) ===
     heygen_api_key: str = Field(default="", description="HeyGen API key for AI avatar videos")

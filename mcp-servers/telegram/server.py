@@ -2,12 +2,13 @@
 
 import asyncio
 import os
-from typing import Any, Dict, Optional, Union
+from typing import Any
+
 import httpx
-from mcp.server import Server
-from mcp.server.models import InitializationOptions
 import mcp.server.stdio
 import mcp.types as types
+from mcp.server import Server
+from mcp.server.models import InitializationOptions
 
 # Initialize the MCP server
 app = Server("telegram-bot")
@@ -22,18 +23,18 @@ if not TELEGRAM_BOT_TOKEN:
 BASE_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 
 
-async def make_telegram_request(method: str, **kwargs) -> Dict[str, Any]:
+async def make_telegram_request(method: str, **kwargs) -> dict[str, Any]:
     """Make HTTP request to Telegram Bot API"""
     url = f"{BASE_URL}/{method}"
-    
+
     async with httpx.AsyncClient() as client:
         response = await client.post(url, json=kwargs)
         response.raise_for_status()
         result = response.json()
-        
+
         if not result.get("ok"):
             raise Exception(f"Telegram API error: {result.get('description', 'Unknown error')}")
-            
+
         return result
 
 
@@ -96,14 +97,14 @@ async def handle_call_tool(
     name: str, arguments: dict | None
 ) -> list[types.TextContent]:
     """Handle tool calls"""
-    
+
     if name == "send_message":
         text = arguments.get("text")
         chat_id = arguments.get("chat_id")
-        
+
         if not text or chat_id is None:
             raise ValueError("Both 'text' and 'chat_id' are required")
-        
+
         try:
             result = await make_telegram_request(
                 "sendMessage",
@@ -111,7 +112,7 @@ async def handle_call_tool(
                 text=text,
                 parse_mode="HTML"
             )
-            
+
             message_id = result["result"]["message_id"]
             return [
                 types.TextContent(
@@ -119,7 +120,7 @@ async def handle_call_tool(
                     text=f"Message sent successfully! Message ID: {message_id}"
                 )
             ]
-            
+
         except Exception as e:
             return [
                 types.TextContent(
@@ -127,14 +128,14 @@ async def handle_call_tool(
                     text=f"Error sending message: {str(e)}"
                 )
             ]
-    
+
     elif name == "get_messages":
         chat_id = arguments.get("chat_id")
         limit = arguments.get("limit", 10)
-        
+
         if chat_id is None:
             raise ValueError("'chat_id' is required")
-        
+
         try:
             # Get updates to find recent messages
             result = await make_telegram_request(
@@ -142,7 +143,7 @@ async def handle_call_tool(
                 limit=limit,
                 allowed_updates=["message"]
             )
-            
+
             messages = []
             for update in result["result"]:
                 if "message" in update:
@@ -154,11 +155,11 @@ async def handle_call_tool(
                             "text": msg.get("text", "[No text content]"),
                             "date": msg["date"]
                         })
-            
+
             # Sort by date (newest first) and limit
             messages.sort(key=lambda x: x["date"], reverse=True)
             messages = messages[:limit]
-            
+
             if not messages:
                 return [
                     types.TextContent(
@@ -166,18 +167,18 @@ async def handle_call_tool(
                         text=f"No recent messages found in chat {chat_id}"
                     )
                 ]
-            
+
             output = f"Recent messages from chat {chat_id}:\n\n"
             for msg in messages:
                 output += f"• [{msg['message_id']}] {msg['from']}: {msg['text']}\n"
-            
+
             return [
                 types.TextContent(
                     type="text",
                     text=output
                 )
             ]
-            
+
         except Exception as e:
             return [
                 types.TextContent(
@@ -185,7 +186,7 @@ async def handle_call_tool(
                     text=f"Error getting messages: {str(e)}"
                 )
             ]
-    
+
     elif name == "get_chat_id":
         return [
             types.TextContent(
@@ -193,7 +194,7 @@ async def handle_call_tool(
                 text=f"Default chat ID: {DEFAULT_CHAT_ID}"
             )
         ]
-    
+
     else:
         raise ValueError(f"Unknown tool: {name}")
 

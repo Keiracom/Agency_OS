@@ -5,10 +5,10 @@ PHASE: 24A (Lead Pool Architecture)
 TASK: POOL-015
 """
 
-import pytest
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
+
+import pytest
 
 from src.services.lead_pool_service import LeadPoolService
 
@@ -100,7 +100,7 @@ class TestLeadPoolServiceCreate:
     async def test_create_or_update_validates_email(self, pool_service, mock_session):
         """Test that create_or_update validates email."""
         from src.services.lead_pool_service import ValidationError
-        
+
         with pytest.raises(ValidationError, match="Email is required"):
             await pool_service.create_or_update({"first_name": "John"})
 
@@ -265,13 +265,13 @@ class TestLeadPoolServiceBulk:
         # Mock get_by_email to return None (no existing leads)
         mock_get_result = MagicMock()
         mock_get_result.fetchone.return_value = None
-        
+
         # Mock create to return a result
         mock_create_result = MagicMock()
         mock_row = MagicMock()
         mock_row._mapping = {"id": uuid4(), **sample_pool_lead}
         mock_create_result.fetchone.return_value = mock_row
-        
+
         # Alternate between get_by_email (None) and create calls
         mock_session.execute.side_effect = [
             mock_get_result, mock_create_result,  # lead 1

@@ -5,28 +5,23 @@ PHASE: 24F - Customer Import
 PURPOSE: Unit tests for CustomerImportService, SuppressionService, BuyerSignalService
 """
 
-import pytest
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
+import pytest
+
+from src.services.buyer_signal_service import (
+    BuyerSignalService,
+)
 from src.services.customer_import_service import (
-    CustomerImportService,
-    CustomerData,
-    ImportResult,
     ColumnMapping,
+    CustomerData,
+    CustomerImportService,
 )
 from src.services.suppression_service import (
     SuppressionService,
-    SuppressionResult,
-    SuppressionEntry,
 )
-from src.services.buyer_signal_service import (
-    BuyerSignalService,
-    BuyerSignal,
-    BuyerScoreBoost,
-)
-
 
 # ============================================================================
 # FIXTURES

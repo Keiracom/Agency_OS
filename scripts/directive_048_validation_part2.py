@@ -13,7 +13,6 @@ Usage:
 """
 
 import asyncio
-import json
 import logging
 from datetime import datetime
 from uuid import uuid4
@@ -52,35 +51,35 @@ async def validate_quality_gate_100_cold():
     logger.info("PART E VALIDATION: Campaign Quality Gate - 100% Cold Leads")
     logger.info("=" * 70)
     logger.info("")
-    
+
     # Calculate metrics from mock data
     total = len(MOCK_LEADS_100_COLD)
     hot_count = sum(1 for l in MOCK_LEADS_100_COLD if l["als_tier"] == "hot")
     warm_count = sum(1 for l in MOCK_LEADS_100_COLD if l["als_tier"] == "warm")
     verified_count = sum(1 for l in MOCK_LEADS_100_COLD if l["email_verified"])
     dm_count = sum(1 for l in MOCK_LEADS_100_COLD if l["is_dm"])
-    
+
     hot_warm_pct = ((hot_count + warm_count) / total) * 100
     verified_pct = (verified_count / total) * 100
     dm_pct = (dm_count / total) * 100
-    
+
     logger.info("Campaign Lead Distribution:")
     logger.info(f"  Total Leads: {total}")
     logger.info(f"  Hot: {hot_count}")
     logger.info(f"  Warm: {warm_count}")
     logger.info(f"  Cold/Dead: {total - hot_count - warm_count}")
     logger.info("")
-    
+
     logger.info("Quality Gate Checks:")
     logger.info("-" * 50)
-    
+
     failures = []
-    
+
     # Check 1: Hot+Warm combined below 5%
     check1_pass = hot_warm_pct >= 5
     status1 = "✅ PASS" if check1_pass else "❌ FAIL"
-    logger.info(f"Check 1: Hot+Warm >= 5%")
-    logger.info(f"  Threshold: 5%")
+    logger.info("Check 1: Hot+Warm >= 5%")
+    logger.info("  Threshold: 5%")
     logger.info(f"  Actual: {hot_warm_pct:.1f}%")
     logger.info(f"  Result: {status1}")
     if not check1_pass:
@@ -91,12 +90,12 @@ async def validate_quality_gate_100_cold():
             "message": f"Hot+Warm leads ({hot_warm_pct:.1f}%) below 5% threshold"
         })
     logger.info("")
-    
+
     # Check 2: Verified email below 80%
     check2_pass = verified_pct >= 80
     status2 = "✅ PASS" if check2_pass else "❌ FAIL"
-    logger.info(f"Check 2: Verified Email >= 80%")
-    logger.info(f"  Threshold: 80%")
+    logger.info("Check 2: Verified Email >= 80%")
+    logger.info("  Threshold: 80%")
     logger.info(f"  Actual: {verified_pct:.1f}%")
     logger.info(f"  Result: {status2}")
     if not check2_pass:
@@ -107,12 +106,12 @@ async def validate_quality_gate_100_cold():
             "message": f"Verified emails ({verified_pct:.1f}%) below 80% threshold"
         })
     logger.info("")
-    
+
     # Check 3: DM identified below 60%
     check3_pass = dm_pct >= 60
     status3 = "✅ PASS" if check3_pass else "❌ FAIL"
-    logger.info(f"Check 3: DM Identified >= 60%")
-    logger.info(f"  Threshold: 60%")
+    logger.info("Check 3: DM Identified >= 60%")
+    logger.info("  Threshold: 60%")
     logger.info(f"  Actual: {dm_pct:.1f}%")
     logger.info(f"  Result: {status3}")
     if not check3_pass:
@@ -123,7 +122,7 @@ async def validate_quality_gate_100_cold():
             "message": f"Decision Makers identified ({dm_pct:.1f}%) below 60% threshold"
         })
     logger.info("")
-    
+
     # Overall result
     passed = len(failures) == 0
     logger.info("=" * 50)
@@ -134,7 +133,7 @@ async def validate_quality_gate_100_cold():
         logger.info("")
         logger.info("Campaign Halt Notification Created:")
         logger.info("-" * 50)
-        
+
         notification = {
             "notification_type": "campaign_halt",
             "client_id": MOCK_CAMPAIGN["client_id"],
@@ -153,7 +152,7 @@ async def validate_quality_gate_100_cold():
                 }
             },
         }
-        
+
         logger.info(f"Type: {notification['notification_type']}")
         logger.info(f"Title: {notification['title']}")
         logger.info(f"Severity: {notification['severity']}")
@@ -162,7 +161,7 @@ async def validate_quality_gate_100_cold():
         logger.info("Failure Details:")
         for f in failures:
             logger.info(f"  - {f['check']}: {f['actual']} (threshold: {f['threshold']})")
-    
+
     return {"passed": passed, "failures": failures}
 
 
@@ -177,7 +176,7 @@ async def validate_alert_system():
     logger.info("PART F VALIDATION: Alert System - Test Alert")
     logger.info("=" * 70)
     logger.info("")
-    
+
     # Simulate Bright Data error alert
     test_alert = {
         "id": str(uuid4()),
@@ -194,7 +193,7 @@ async def validate_alert_system():
         },
         "created_at": datetime.utcnow().isoformat(),
     }
-    
+
     logger.info("Simulated Alert Created:")
     logger.info("-" * 50)
     logger.info(f"Alert ID: {test_alert['id']}")
@@ -204,7 +203,7 @@ async def validate_alert_system():
     logger.info(f"Status: {test_alert['status']}")
     logger.info(f"Message: {test_alert['message']}")
     logger.info("")
-    
+
     # Dashboard flag
     dashboard_flag = {
         "client_id": test_alert["client_id"],
@@ -212,7 +211,7 @@ async def validate_alert_system():
         "flag_value": True,
         "alert_id": test_alert["id"],
     }
-    
+
     logger.info("Dashboard Flag Set:")
     logger.info("-" * 50)
     logger.info(f"Client ID: {dashboard_flag['client_id']}")
@@ -220,11 +219,11 @@ async def validate_alert_system():
     logger.info(f"Flag Value: {dashboard_flag['flag_value']}")
     logger.info(f"Alert ID: {dashboard_flag['alert_id']}")
     logger.info("")
-    
+
     logger.info("✅ Supabase notification record created")
     logger.info("✅ Dashboard flag set")
     logger.info("")
-    
+
     return {
         "alert": test_alert,
         "dashboard_flag": dashboard_flag,
@@ -242,7 +241,7 @@ async def validate_warmup_status():
     logger.info("PART G VALIDATION: Warmup Status Report")
     logger.info("=" * 70)
     logger.info("")
-    
+
     # Mock warmup status data
     mock_domains = [
         {
@@ -279,7 +278,7 @@ async def validate_warmup_status():
             "is_healthy": False,
         },
     ]
-    
+
     logger.info("Current Warmup Status Report:")
     logger.info("-" * 70)
     logger.info(f"Report Generated: {datetime.utcnow().isoformat()}")
@@ -287,10 +286,10 @@ async def validate_warmup_status():
     logger.info(f"Healthy Domains: {sum(1 for d in mock_domains if d['is_healthy'])}")
     logger.info(f"Warming Domains: {sum(1 for d in mock_domains if d['warmup_stage'] == 'ramping')}")
     logger.info("")
-    
+
     logger.info("Domain Details:")
     logger.info("-" * 70)
-    
+
     for domain in mock_domains:
         health_indicator = "🟢" if domain["is_healthy"] else "🔴"
         logger.info(f"{health_indicator} {domain['domain']}")
@@ -302,11 +301,11 @@ async def validate_warmup_status():
         logger.info(f"   Sends Today: {domain['current_send_count']}")
         logger.info(f"   Health Score: {domain['health_score']}%")
         logger.info("")
-    
+
     logger.info("✅ Warmup status report generated")
     logger.info("✅ Data feed queryable for dashboard")
     logger.info("")
-    
+
     return {
         "domains": mock_domains,
         "total": len(mock_domains),
@@ -325,10 +324,10 @@ async def validate_onboarding_automation():
     logger.info("PART H VALIDATION: Onboarding Automation")
     logger.info("=" * 70)
     logger.info("")
-    
+
     client_id = str(uuid4())
     campaign_id = str(uuid4())
-    
+
     steps = [
         {
             "step": 1,
@@ -355,23 +354,23 @@ async def validate_onboarding_automation():
             "details": "Allocated 95 leads to campaign pool, campaign activated",
         },
     ]
-    
+
     logger.info(f"Client ID: {client_id}")
     logger.info("")
-    
+
     for step in steps:
         status_icon = "✅" if step["status"] == "completed" else "⏳"
         logger.info(f"Step {step['step']}: {step['name']} {status_icon}")
         logger.info(f"  Status: {step['status']}")
         logger.info(f"  Details: {step['details']}")
         logger.info("")
-    
+
     logger.info("=" * 50)
     logger.info("✅ Campaign created automatically (no manual trigger)")
     logger.info("✅ Pool allocated automatically (quota met)")
     logger.info("✅ Referral intent creates new lead record")
     logger.info("")
-    
+
     return {
         "client_id": client_id,
         "campaign_id": campaign_id,
@@ -387,19 +386,19 @@ async def main():
     print("\n" + "=" * 70)
     print("DIRECTIVE 048 VALIDATION SUITE - PARTS E, F, G, H")
     print("=" * 70 + "\n")
-    
+
     # Part E: Quality Gate
     await validate_quality_gate_100_cold()
-    
+
     # Part F: Alert System
     await validate_alert_system()
-    
+
     # Part G: Warmup Status
     await validate_warmup_status()
-    
+
     # Part H: Onboarding Automation
     await validate_onboarding_automation()
-    
+
     print("\n" + "=" * 70)
     print("VALIDATION COMPLETE - ALL PARTS E, F, G, H")
     print("=" * 70 + "\n")

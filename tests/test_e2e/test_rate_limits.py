@@ -14,22 +14,18 @@ import pytest
 
 # Skip all tests in this module - parked pending coding overhaul (Directive #030)
 pytestmark = pytest.mark.skip(reason="E2E tests parked - Directive #030")
-import pytest_asyncio
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
-import uuid
+from unittest.mock import AsyncMock, MagicMock
 
 from tests.fixtures.database_fixtures import (
-    create_test_client,
-    create_test_campaign,
-    create_hot_lead,
-    create_warm_lead,
     create_email_resource,
-    create_phone_resource,
-    create_linkedin_resource,
+    create_hot_lead,
     create_lead_batch,
+    create_linkedin_resource,
+    create_phone_resource,
+    create_test_campaign,
+    create_test_client,
+    create_warm_lead,
 )
-
 
 # ============================================================================
 # Email Rate Limit Tests (50/day/domain)
@@ -519,7 +515,7 @@ class TestAllocatorRoundRobin:
         campaign = create_test_campaign(client["id"])
         # Campaign has: email 60%, sms 20%, linkedin 20%
 
-        leads = create_lead_batch(client["id"], campaign["id"], count=100)
+        create_lead_batch(client["id"], campaign["id"], count=100)
 
         # Act - Simulate allocation distribution
         email_count = int(100 * (campaign["allocation_email"] / 100))
@@ -615,7 +611,7 @@ class TestCombinedRateLimitScenarios:
         linkedin_sent = 0
 
         # Act
-        for i, lead in enumerate(leads):
+        for i, _lead in enumerate(leads):
             # Simulate channel allocation based on campaign %
             channel_roll = i % 100
             if channel_roll < 60:  # 60% email

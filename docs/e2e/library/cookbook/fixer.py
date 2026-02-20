@@ -15,7 +15,6 @@ Key Responsibilities:
 - Escalate when architectural changes needed
 """
 
-from typing import Dict, List
 
 
 def get_instructions() -> str:
@@ -65,7 +64,7 @@ FIXER AGENT INSTRUCTIONS
 """
 
 
-def get_code_templates() -> Dict[str, str]:
+def get_code_templates() -> dict[str, str]:
     """Return code templates for the Fixer agent."""
     return {
         "fix_log_template": FIX_LOG_TEMPLATE,
@@ -79,7 +78,7 @@ def get_code_templates() -> Dict[str, str]:
     }
 
 
-def get_fix_patterns() -> List[Dict[str, str]]:
+def get_fix_patterns() -> list[dict[str, str]]:
     """Return all fix patterns with before/after examples."""
     return [
         {
@@ -134,7 +133,7 @@ def get_fix_patterns() -> List[Dict[str, str]]:
     ]
 
 
-def get_escalation_criteria() -> List[str]:
+def get_escalation_criteria() -> list[str]:
     """Return criteria for when to escalate instead of fix."""
     return [
         "Architectural change needed - Multiple files must change",

@@ -19,10 +19,9 @@ Run this script against a test environment to validate the flow.
 """
 
 import asyncio
-import json
 import logging
 from datetime import datetime
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -65,7 +64,7 @@ async def simulate_reply_received(reply_content: str) -> dict:
     logger.info(f"Lead: {MOCK_LEAD['full_name']} ({MOCK_LEAD['email']})")
     logger.info(f"Company: {MOCK_LEAD['company']}")
     logger.info(f"Reply content: '{reply_content}'")
-    
+
     return {
         "lead_id": MOCK_LEAD["id"],
         "message": reply_content,
@@ -80,18 +79,18 @@ async def simulate_intent_classification(reply_data: dict) -> dict:
     logger.info("=" * 60)
     logger.info("STEP 2: Intent Classification")
     logger.info("=" * 60)
-    
+
     # In real code, this calls self.anthropic.classify_intent()
     classification = {
         "intent": "meeting_request",
         "confidence": 0.95,
         "reasoning": "Lead explicitly requested to schedule a call/meeting",
     }
-    
+
     logger.info(f"Intent: {classification['intent']}")
     logger.info(f"Confidence: {classification['confidence'] * 100:.0f}%")
     logger.info(f"Reasoning: {classification['reasoning']}")
-    
+
     return classification
 
 
@@ -101,13 +100,13 @@ async def simulate_booking_link_generation() -> dict:
     logger.info("=" * 60)
     logger.info("STEP 3: Booking Link Generated")
     logger.info("=" * 60)
-    
+
     booking_link = f"https://calendly.com/agency-demo/30min?email={MOCK_LEAD['email']}&name={MOCK_LEAD['full_name']}"
-    
+
     logger.info(f"Generated Link: {booking_link}")
     logger.info(f"Pre-filled Email: {MOCK_LEAD['email']}")
     logger.info(f"Pre-filled Name: {MOCK_LEAD['full_name']}")
-    
+
     return {
         "booking_link": booking_link,
         "generated_at": datetime.utcnow().isoformat(),
@@ -120,7 +119,7 @@ async def simulate_automated_reply_sent(booking_link: str) -> dict:
     logger.info("=" * 60)
     logger.info("STEP 4: Automated Reply Sent")
     logger.info("=" * 60)
-    
+
     reply_content = f"""Hi {MOCK_LEAD['first_name']},
 
 Thanks for your interest! I'd love to chat.
@@ -130,13 +129,13 @@ Here's my calendar link to book a time that works for you:
 
 Looking forward to connecting!
 """
-    
-    logger.info(f"Channel: email")
+
+    logger.info("Channel: email")
     logger.info(f"To: {MOCK_LEAD['email']}")
-    logger.info(f"Reply Preview:")
+    logger.info("Reply Preview:")
     for line in reply_content.strip().split('\n'):
         logger.info(f"  | {line}")
-    
+
     return {
         "sent": True,
         "channel": "email",
@@ -151,7 +150,7 @@ async def simulate_calendly_webhook() -> dict:
     logger.info("=" * 60)
     logger.info("STEP 5: Calendly Webhook - Booking Confirmed")
     logger.info("=" * 60)
-    
+
     booking_event = {
         "provider": "calendly",
         "event_type": "created",
@@ -163,12 +162,12 @@ async def simulate_calendly_webhook() -> dict:
         "duration_minutes": 30,
         "meeting_url": "https://zoom.us/j/123456789",
     }
-    
+
     logger.info(f"Event: {booking_event['event_name']}")
     logger.info(f"Attendee: {booking_event['attendee_name']} ({booking_event['attendee_email']})")
     logger.info(f"Scheduled: {booking_event['scheduled_time']}")
     logger.info(f"Meeting URL: {booking_event['meeting_url']}")
-    
+
     return booking_event
 
 
@@ -178,7 +177,7 @@ async def simulate_lead_status_update() -> dict:
     logger.info("=" * 60)
     logger.info("STEP 6: Lead Status Updated to CONVERTED")
     logger.info("=" * 60)
-    
+
     update = {
         "lead_id": MOCK_LEAD["id"],
         "previous_status": "in_sequence",
@@ -189,11 +188,11 @@ async def simulate_lead_status_update() -> dict:
             "scheduled_time": "2026-02-21T14:00:00Z",
         },
     }
-    
+
     logger.info(f"Lead ID: {update['lead_id']}")
     logger.info(f"Status: {update['previous_status']} → {update['new_status']}")
     logger.info(f"Booking ID: {update['metadata']['booking_id']}")
-    
+
     return update
 
 
@@ -203,7 +202,7 @@ async def simulate_owner_notification() -> dict:
     logger.info("=" * 60)
     logger.info("STEP 7: Agency Owner Notification Created")
     logger.info("=" * 60)
-    
+
     notification = {
         "id": str(uuid4()),
         "notification_type": "booking_confirmed",
@@ -215,13 +214,13 @@ async def simulate_owner_notification() -> dict:
         "status": "pending",
         "created_at": datetime.utcnow().isoformat(),
     }
-    
+
     logger.info(f"Notification ID: {notification['id']}")
     logger.info(f"Type: {notification['notification_type']}")
     logger.info(f"Title: {notification['title']}")
     logger.info(f"Message: {notification['message']}")
     logger.info(f"Severity: {notification['severity']}")
-    
+
     return notification
 
 
@@ -232,28 +231,28 @@ async def run_full_simulation():
     logger.info("DIRECTIVE 048 VALIDATION: meeting_request End-to-End Flow")
     logger.info("=" * 70)
     logger.info("")
-    
+
     # Step 1: Receive reply
     reply = await simulate_reply_received(MOCK_MEETING_REQUEST_REPLIES[0])
-    
+
     # Step 2: Classify intent
     classification = await simulate_intent_classification(reply)
-    
+
     # Step 3: Generate booking link
     booking = await simulate_booking_link_generation()
-    
+
     # Step 4: Send automated reply
     sent = await simulate_automated_reply_sent(booking["booking_link"])
-    
+
     # Step 5: Calendly webhook fires
     webhook = await simulate_calendly_webhook()
-    
+
     # Step 6: Update lead status
     status = await simulate_lead_status_update()
-    
+
     # Step 7: Notify agency owner
     notification = await simulate_owner_notification()
-    
+
     # Summary
     logger.info("")
     logger.info("=" * 70)
@@ -270,7 +269,7 @@ async def run_full_simulation():
     logger.info("")
     logger.info("ALL VALIDATION STEPS PASSED ✓")
     logger.info("")
-    
+
     return {
         "reply": reply,
         "classification": classification,
@@ -293,7 +292,7 @@ async def validate_discarded_leads():
     logger.info("DIRECTIVE 048 VALIDATION: Discard Loop")
     logger.info("=" * 70)
     logger.info("")
-    
+
     test_leads = [
         {"id": "lead_1", "reason": "ICP fail", "gate": 1, "als_at_discard": 25},
         {"id": "lead_2", "reason": "no email AND no phone", "gate": 2, "als_at_discard": 42},
@@ -301,19 +300,19 @@ async def validate_discarded_leads():
         {"id": "lead_4", "reason": "duplicate", "gate": 1, "als_at_discard": None},
         {"id": "lead_5", "reason": "ALS <35 after T3", "gate": 2, "als_at_discard": 28},
     ]
-    
+
     logger.info("Simulating 5 test leads through quality gates:")
     logger.info("")
-    
+
     for lead in test_leads:
         logger.info(f"Lead {lead['id']}:")
         logger.info(f"  Gate: {lead['gate']}")
         logger.info(f"  Reason: {lead['reason']}")
         logger.info(f"  ALS at discard: {lead['als_at_discard']}")
-        logger.info(f"  Status: discarded_pending")
-        logger.info(f"  Held until: NOW + 48 hours")
+        logger.info("  Status: discarded_pending")
+        logger.info("  Held until: NOW + 48 hours")
         logger.info("")
-    
+
     logger.info("Expected discarded_leads table entries:")
     logger.info("")
     logger.info("| lead_id  | discard_gate | discard_reason          | als_at_discard | held_until      |")
@@ -321,7 +320,7 @@ async def validate_discarded_leads():
     for lead in test_leads:
         als = str(lead['als_at_discard'] or 'NULL').ljust(14)
         logger.info(f"| {lead['id'].ljust(8)} | {str(lead['gate']).ljust(12)} | {lead['reason'][:23].ljust(23)} | {als} | NOW + 48 hours  |")
-    
+
     logger.info("")
     logger.info("✅ Discard reasons logged before status change")
     logger.info("✅ Soft hold applied (48 hours)")
@@ -337,13 +336,13 @@ if __name__ == "__main__":
     print("\n" + "=" * 70)
     print("DIRECTIVE 048 VALIDATION SUITE")
     print("=" * 70 + "\n")
-    
+
     # Run meeting_request simulation
     asyncio.run(run_full_simulation())
-    
+
     # Run discarded_leads validation
     asyncio.run(validate_discarded_leads())
-    
+
     print("\n" + "=" * 70)
     print("VALIDATION COMPLETE")
     print("=" * 70 + "\n")

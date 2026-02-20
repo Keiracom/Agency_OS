@@ -5,10 +5,10 @@ PHASE: 24A (Lead Pool Architecture)
 TASK: POOL-015
 """
 
-import pytest
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
+
+import pytest
 
 from src.services.lead_allocator_service import LeadAllocatorService
 

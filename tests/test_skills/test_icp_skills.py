@@ -5,43 +5,40 @@ PHASE: 11 (ICP Discovery System)
 PURPOSE: Unit tests for ICP Discovery Skills
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock
 
-from src.agents.skills.website_parser import (
-    WebsiteParserSkill,
-    PageContent,
-)
-from src.agents.skills.service_extractor import (
-    ServiceExtractorSkill,
-    ServiceInfo,
-)
-from src.agents.skills.value_prop_extractor import ValuePropExtractorSkill
-from src.agents.skills.portfolio_extractor import (
-    PortfolioExtractorSkill,
-    PortfolioCompany,
-)
-from src.agents.skills.industry_classifier import (
-    IndustryClassifierSkill,
-    IndustryMatch,
-    STANDARD_INDUSTRIES,
+import pytest
+
+from src.agents.skills.als_weight_suggester import (
+    ALSWeights,
+    ALSWeightSuggesterSkill,
 )
 from src.agents.skills.company_size_estimator import (
     CompanySizeEstimatorSkill,
     LinkedInData,
 )
 from src.agents.skills.icp_deriver import (
-    ICPDeriverSkill,
-    EnrichedCompany,
     DerivedICP,
+    EnrichedCompany,
+    ICPDeriverSkill,
 )
-from src.agents.skills.als_weight_suggester import (
-    ALSWeightSuggesterSkill,
-    ALSWeights,
+from src.agents.skills.industry_classifier import (
+    STANDARD_INDUSTRIES,
+    IndustryClassifierSkill,
+    IndustryMatch,
 )
-from src.agents.skills.base_skill import SkillResult
-
+from src.agents.skills.portfolio_extractor import (
+    PortfolioCompany,
+    PortfolioExtractorSkill,
+)
+from src.agents.skills.service_extractor import (
+    ServiceExtractorSkill,
+)
+from src.agents.skills.value_prop_extractor import ValuePropExtractorSkill
+from src.agents.skills.website_parser import (
+    PageContent,
+    WebsiteParserSkill,
+)
 
 # ============================================
 # Test WebsiteParserSkill
@@ -440,10 +437,8 @@ class TestSkillRegistration:
 
     def test_all_skills_registered(self):
         """Test all ICP skills are registered."""
-        from src.agents.skills import SkillRegistry
-
         # Import skills module to trigger registration
-        import src.agents.skills
+        from src.agents.skills import SkillRegistry
 
         expected_skills = [
             "parse_website",

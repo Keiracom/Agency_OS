@@ -17,7 +17,6 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 # Fix Windows encoding issues
 if sys.platform == "win32":
@@ -40,10 +39,10 @@ def load_json(filepath: Path, default=None):
         default = {}
     try:
         if filepath.exists():
-            with open(filepath, "r", encoding="utf-8") as f:
+            with open(filepath, encoding="utf-8") as f:
                 return json.load(f)
         return default
-    except (json.JSONDecodeError, IOError) as e:
+    except (OSError, json.JSONDecodeError) as e:
         print(f"Warning: Could not load {filepath}: {e}")
         return default
 
@@ -55,7 +54,7 @@ def save_json(filepath: Path, data):
         json.dump(data, f, indent=2, default=str)
 
 
-def load_skill(skill_file: str) -> Optional[dict]:
+def load_skill(skill_file: str) -> dict | None:
     """Load skill module from cookbook and extract CHECKS, PASS_CRITERIA, KEY_FILES."""
     skill_path = COOKBOOK_DIR / skill_file
     if not skill_path.exists():
@@ -111,7 +110,7 @@ def get_all_tasks(process_data: dict) -> list[dict]:
     return tasks
 
 
-def find_next_task(process_data: dict) -> Optional[dict]:
+def find_next_task(process_data: dict) -> dict | None:
     """Find the next pending task."""
     completed = set(process_data.get("completed", []))
     tasks = get_all_tasks(process_data)
@@ -122,7 +121,7 @@ def find_next_task(process_data: dict) -> Optional[dict]:
     return None
 
 
-def find_task_by_id(process_data: dict, task_id: str) -> tuple[Optional[dict], Optional[str]]:
+def find_task_by_id(process_data: dict, task_id: str) -> tuple[dict | None, str | None]:
     """Find a task by its ID, return (task, phase_id)."""
     phases = process_data.get("phases", {})
     for phase_id, phase_data in phases.items():
@@ -199,7 +198,7 @@ def clear_pending_debrief(task_id: str):
         save_json(pending_file, pending)
 
 
-def get_current_task_id(process_data: dict) -> Optional[str]:
+def get_current_task_id(process_data: dict) -> str | None:
     """Get the current task ID from process data or find next."""
     current = process_data.get("current_group")
     if current:

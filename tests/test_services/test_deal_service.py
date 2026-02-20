@@ -5,13 +5,14 @@ PHASE: 24E (Downstream Outcomes)
 TASK: OUTCOME-002
 """
 
-import pytest
 from datetime import datetime
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-from src.services.deal_service import DealService, DEAL_STAGES, LOST_REASONS
+import pytest
+
+from src.services.deal_service import DEAL_STAGES, LOST_REASONS, DealService
 
 
 @pytest.fixture
@@ -383,7 +384,7 @@ class TestDealStages:
             "closed_won",
             "closed_lost",
         ]
-        assert DEAL_STAGES == expected_stages
+        assert expected_stages == DEAL_STAGES
 
     def test_valid_lost_reasons(self):
         """Test all expected lost reasons are defined."""
@@ -399,7 +400,7 @@ class TestDealStages:
             "bad_fit",
             "other",
         ]
-        assert LOST_REASONS == expected_reasons
+        assert expected_reasons == LOST_REASONS
 
 
 # ============================================

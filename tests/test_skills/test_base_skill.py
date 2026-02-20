@@ -5,17 +5,17 @@ PHASE: 11 (ICP Discovery System)
 PURPOSE: Unit tests for BaseSkill and SkillRegistry
 """
 
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from pydantic import BaseModel
 
 from src.agents.skills.base_skill import (
     BaseSkill,
+    SkillError,
     SkillRegistry,
     SkillResult,
-    SkillError,
 )
-
 
 # ============================================
 # Test SkillResult

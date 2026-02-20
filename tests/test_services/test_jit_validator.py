@@ -5,12 +5,13 @@ PHASE: 24A (Lead Pool Architecture)
 TASK: POOL-015
 """
 
-import pytest
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-from src.services.jit_validator import JITValidator, JITValidationResult
+import pytest
+
+from src.services.jit_validator import JITValidationResult, JITValidator
 
 
 @pytest.fixture
@@ -375,7 +376,7 @@ class TestJITValidatorByEmail:
 
         mock_session.execute.side_effect = [email_result, pool_result, assign_result, rate_result, warmup_result]
 
-        result = await jit_validator.validate_by_email(email, client_id, "email")
+        await jit_validator.validate_by_email(email, client_id, "email")
 
         # First call should be email lookup
         assert mock_session.execute.call_count >= 1
@@ -435,5 +436,5 @@ class TestJITValidatorBatch:
         results = await jit_validator.batch_validate(leads, client_id, "email")
 
         assert len(results) == 3
-        for lead_id, result in results.items():
+        for _lead_id, result in results.items():
             assert isinstance(result, JITValidationResult)

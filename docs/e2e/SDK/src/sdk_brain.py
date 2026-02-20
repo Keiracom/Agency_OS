@@ -17,13 +17,11 @@ COPY THIS FILE TO: src/integrations/sdk_brain.py
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, TypeVar
-from uuid import UUID
+from typing import Any, TypeVar
 
 from anthropic import Anthropic, AsyncAnthropic
 from pydantic import BaseModel

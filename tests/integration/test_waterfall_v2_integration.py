@@ -6,9 +6,10 @@ Run with: pytest -m integration (costs money!)
 
 Fixture data from Directive #020d testing (2026-02-16).
 """
-import pytest
 import os
 import sys
+
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../src'))
 
@@ -57,7 +58,7 @@ class TestBrightDataClientIntegration:
     
     Run with: pytest -m integration tests/integration/
     """
-    
+
     def test_scrape_linkedin_company_mustard_creative(self, bright_data_client):
         """
         Test LinkedIn Company scraper with Mustard Creative.
@@ -70,28 +71,28 @@ class TestBrightDataClientIntegration:
         result = bright_data_client.scrape_linkedin_company(
             MUSTARD_CREATIVE["linkedin_url"]
         )
-        
+
         # Core fields
         assert result["name"] == MUSTARD_CREATIVE["expected"]["name"]
         assert result["country_code"] == MUSTARD_CREATIVE["expected"]["country_code"]
         assert result["industries"] == MUSTARD_CREATIVE["expected"]["industries"]
         assert result["founded"] == MUSTARD_CREATIVE["expected"]["founded"]
         assert result["headquarters"] == MUSTARD_CREATIVE["expected"]["headquarters"]
-        
+
         # Verify rich data is present
         assert "employees" in result
         assert len(result["employees"]) > 0, "Should have employee data"
-        
+
         assert "updates" in result
         assert len(result["updates"]) > 0, "Should have recent posts"
-        
+
         assert "similar" in result
         assert len(result["similar"]) > 0, "Should have similar companies"
-        
+
         # Verify cost tracking
         assert bright_data_client.costs.scraper_records == 1
         assert bright_data_client.get_total_cost() == pytest.approx(0.0015, rel=0.01)
-    
+
     def test_search_google_linkedin_discovery(self, bright_data_client):
         """
         Test SERP Google search to find LinkedIn URL.
@@ -102,19 +103,19 @@ class TestBrightDataClientIntegration:
         """
         query = f'site:linkedin.com/company "{MUSTARD_CREATIVE["business_name"]}"'
         results = bright_data_client.search_google(query)
-        
+
         # Should find the LinkedIn URL in organic results
         found_url = False
         for result in results.get("organic", []):
             if "mustard-creative-media" in result.get("url", ""):
                 found_url = True
                 break
-        
+
         assert found_url, "Should find Mustard Creative LinkedIn URL via SERP"
-        
+
         # Verify cost tracking
         assert bright_data_client.costs.serp_requests == 1
-    
+
     def test_full_tier_1_5b_to_tier_2_flow(self, bright_data_client):
         """
         Test complete enrichment flow:
@@ -128,7 +129,7 @@ class TestBrightDataClientIntegration:
         # Tier 1.5b: Find LinkedIn URL
         query = f'site:linkedin.com/company "{MUSTARD_CREATIVE["business_name"]}"'
         serp_results = bright_data_client.search_google(query)
-        
+
         # Extract LinkedIn URL from results
         linkedin_url = None
         for result in serp_results.get("organic", []):
@@ -136,16 +137,16 @@ class TestBrightDataClientIntegration:
             if "linkedin.com/company" in url:
                 linkedin_url = url
                 break
-        
+
         assert linkedin_url is not None, "Should find LinkedIn URL"
-        
+
         # Tier 2: Scrape LinkedIn Company
         company_data = bright_data_client.scrape_linkedin_company(linkedin_url)
-        
+
         # Verify we got company data
         assert "name" in company_data
         assert "employees" in company_data
-        
+
         # Verify total cost
         assert bright_data_client.costs.serp_requests == 1
         assert bright_data_client.costs.scraper_records == 1
@@ -159,7 +160,7 @@ class TestWaterfallIntegration:
     
     These are expensive - use sparingly for validation.
     """
-    
+
     def test_employee_extraction_for_decision_makers(self, bright_data_client):
         """
         Test that LinkedIn Company scrape returns employee data
@@ -170,15 +171,15 @@ class TestWaterfallIntegration:
         result = bright_data_client.scrape_linkedin_company(
             MUSTARD_CREATIVE["linkedin_url"]
         )
-        
+
         employees = result.get("employees", [])
         assert len(employees) > 0
-        
+
         # Each employee should have required fields for Tier 2.5
         for emp in employees:
             assert "title" in emp, "Employee should have title"
             assert "link" in emp, "Employee should have LinkedIn URL"
-    
+
     def test_hiring_signal_detection(self, bright_data_client):
         """
         Test that LinkedIn Company scrape returns posts
@@ -189,17 +190,17 @@ class TestWaterfallIntegration:
         result = bright_data_client.scrape_linkedin_company(
             MUSTARD_CREATIVE["linkedin_url"]
         )
-        
+
         updates = result.get("updates", [])
         assert len(updates) > 0
-        
+
         # Check if any posts contain hiring signals
         hiring_signals = []
         for update in updates:
             text = update.get("text", "").lower()
             if "#hiring" in text or "we're hiring" in text or "join us" in text:
                 hiring_signals.append(update)
-        
+
         # Note: Mustard Creative may or may not have hiring posts
         # This test validates the data structure supports detection
 

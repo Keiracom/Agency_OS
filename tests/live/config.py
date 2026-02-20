@@ -13,7 +13,7 @@ Only run in controlled test environments.
 
 import os
 from dataclasses import dataclass, field
-from typing import Optional
+
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -243,7 +243,7 @@ class LiveTestConfig:
 
 
 # Singleton instance
-_config: Optional[LiveTestConfig] = None
+_config: LiveTestConfig | None = None
 
 
 def get_config() -> LiveTestConfig:
@@ -262,12 +262,12 @@ def require_valid_config() -> LiveTestConfig:
     without all env vars configured.
     """
     import pytest
-    
+
     config = get_config()
     errors = config.validate()
     if errors:
         pytest.skip(
-            f"Live test config incomplete (skipping):\n" +
+            "Live test config incomplete (skipping):\n" +
             "\n".join(f"  - {e}" for e in errors)
         )
     return config

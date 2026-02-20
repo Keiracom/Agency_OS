@@ -5,13 +5,11 @@ PHASE: 16 (Conversion Intelligence)
 TASK: 16A-004 (tests)
 """
 
-import pytest
-from datetime import datetime
-from uuid import uuid4
 from typing import Any
 
+import pytest
+
 from src.detectors.base import BaseDetector
-from src.models.conversion_patterns import ConversionPattern
 
 
 # Concrete test implementation of BaseDetector

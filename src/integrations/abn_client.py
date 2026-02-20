@@ -39,7 +39,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -179,23 +179,23 @@ def validate_abn(abn: str) -> str:
     """
     # Remove spaces and non-digits
     cleaned = re.sub(r"\D", "", abn)
-    
+
     if len(cleaned) != 11:
         raise ABNValidationError(abn, "ABN must be 11 digits")
-    
+
     # ABN checksum validation
     # Weights: 10, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19
     weights = [10, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19]
-    
+
     # Subtract 1 from first digit for checksum
     digits = [int(d) for d in cleaned]
     digits[0] -= 1
-    
-    checksum = sum(d * w for d, w in zip(digits, weights))
-    
+
+    checksum = sum(d * w for d, w in zip(digits, weights, strict=True))
+
     if checksum % 89 != 0:
         raise ABNValidationError(abn, "ABN checksum validation failed")
-    
+
     return cleaned
 
 
@@ -216,23 +216,23 @@ def validate_acn(acn: str) -> str:
     """
     # Remove spaces and non-digits
     cleaned = re.sub(r"\D", "", acn)
-    
+
     if len(cleaned) != 9:
         raise ABNValidationError(acn, "ACN must be 9 digits")
-    
+
     # ACN checksum validation
     # Weights: 8, 7, 6, 5, 4, 3, 2, 1 (for first 8 digits)
     weights = [8, 7, 6, 5, 4, 3, 2, 1]
-    
+
     digits = [int(d) for d in cleaned]
-    checksum = sum(d * w for d, w in zip(digits[:8], weights))
-    
+    checksum = sum(d * w for d, w in zip(digits[:8], weights, strict=True))
+
     remainder = checksum % 10
     check_digit = (10 - remainder) % 10
-    
+
     if check_digit != digits[8]:
         raise ABNValidationError(acn, "ACN checksum validation failed")
-    
+
     return cleaned
 
 
@@ -301,16 +301,16 @@ class ABNClient:
             guid: Authentication GUID (uses settings if not provided)
         """
         self.guid = guid or getattr(settings, "abn_lookup_guid", None) or ""
-        
+
         if not self.guid:
             logger.warning(
                 "[ABN] No GUID configured. API calls may fail. "
                 "Register for free at: https://abr.business.gov.au/Tools/WebServices"
             )
-        
+
         self._client: httpx.AsyncClient | None = None
         self._request_count = 0
-        
+
         # Check xmltodict is available
         if xmltodict is None:
             raise IntegrationError(
@@ -336,7 +336,7 @@ class ABNClient:
             await self._client.aclose()
             self._client = None
 
-    async def __aenter__(self) -> "ABNClient":
+    async def __aenter__(self) -> ABNClient:
         """Async context manager entry."""
         return self
 
@@ -369,41 +369,41 @@ class ABNClient:
             APIError: If HTTP request fails
         """
         client = await self._get_client()
-        
+
         # Add auth GUID to params
         params["authenticationGuid"] = self.guid
-        
+
         url = f"{ABN_LOOKUP_BASE_URL}/{method}"
-        
+
         try:
             self._request_count += 1
-            
+
             response = await client.get(url, params=params)
             response.raise_for_status()
-            
+
             # Parse XML response
             data = xmltodict.parse(response.text)
-            
+
             # Extract payload
             payload = data.get("ABRPayloadSearchResults", {})
             resp = payload.get("response", {})
-            
+
             # Check for exceptions
             if "exception" in resp:
                 exc = resp["exception"]
                 code = exc.get("exceptionCode", "UNKNOWN")
                 desc = exc.get("exceptionDescription", "Unknown error")
-                
+
                 # Log but don't capture expected errors in Sentry
                 if code == "SEARCH":
                     logger.debug(f"[ABN] Search returned no results: {desc}")
                 else:
                     logger.warning(f"[ABN] API error ({code}): {desc}")
-                
+
                 raise ABNLookupError(message=desc, code=code)
-            
+
             return payload
-            
+
         except httpx.HTTPStatusError as e:
             sentry_sdk.set_context(
                 "abn_request",
@@ -462,7 +462,7 @@ class ABNClient:
         """
         # Validate and clean ABN
         cleaned_abn = validate_abn(abn)
-        
+
         try:
             payload = await self._request(
                 "SearchByABNv202001",
@@ -471,15 +471,15 @@ class ABNClient:
                     "includeHistoricalDetails": "N",
                 },
             )
-            
+
             response = payload.get("response", {})
             record = response.get("businessEntity202001") or response.get("businessEntity201408") or response.get("businessEntity")
-            
+
             if not record:
                 raise ABNNotFoundError(cleaned_abn, "ABN")
-            
+
             return self._transform_business_entity(record)
-            
+
         except ABNLookupError as e:
             if "Search" in str(e.details.get("abr_error_code", "")):
                 raise ABNNotFoundError(cleaned_abn, "ABN")
@@ -528,10 +528,10 @@ class ABNClient:
                 message="Search name must be at least 3 characters",
                 field="name",
             )
-        
+
         # Build state filter params
-        state_params = {s: "N" for s in ["NSW", "SA", "ACT", "VIC", "WA", "NT", "QLD", "TAS"]}
-        
+        state_params = dict.fromkeys(["NSW", "SA", "ACT", "VIC", "WA", "NT", "QLD", "TAS"], "N")
+
         if state:
             # Normalize state code
             state_normalized = STATE_CODES.get(state.lower(), state.upper())
@@ -541,8 +541,8 @@ class ABNClient:
                 logger.warning(f"[ABN] Unknown state code: {state}")
         else:
             # If no state filter, search all states
-            state_params = {s: "Y" for s in state_params}
-        
+            state_params = dict.fromkeys(state_params, "Y")
+
         params = {
             "name": name,
             "postcode": postcode or "",
@@ -555,26 +555,26 @@ class ABNClient:
             "maxSearchResults": str(min(limit, 200)),
             **state_params,
         }
-        
+
         try:
             payload = await self._request(
                 "ABRSearchByNameAdvancedSimpleProtocol2017",
                 params,
             )
-            
+
             response = payload.get("response", {})
             search_results = response.get("searchResultsList", {})
-            
+
             if not search_results:
                 return []
-            
+
             # Handle single result vs list
             results = search_results.get("searchResultsRecord", [])
             if isinstance(results, dict):
                 results = [results]
-            
+
             return [self._transform_search_result(r) for r in results[:limit]]
-            
+
         except ABNLookupError as e:
             # No results is not an error
             if "Search" in str(e.details.get("abr_error_code", "")):
@@ -599,7 +599,7 @@ class ABNClient:
         """
         # Validate and clean ACN
         cleaned_acn = validate_acn(acn)
-        
+
         try:
             payload = await self._request(
                 "SearchByASICv201408",
@@ -608,15 +608,15 @@ class ABNClient:
                     "includeHistoricalDetails": "N",
                 },
             )
-            
+
             response = payload.get("response", {})
             record = response.get("businessEntity201408") or response.get("businessEntity")
-            
+
             if not record:
                 raise ABNNotFoundError(cleaned_acn, "ACN")
-            
+
             return self._transform_business_entity(record)
-            
+
         except ABNLookupError as e:
             if "Search" in str(e.details.get("abr_error_code", "")):
                 raise ABNNotFoundError(cleaned_acn, "ACN")
@@ -655,7 +655,7 @@ class ABNClient:
             })
         """
         results = []
-        
+
         # Postcode search
         if criteria.get("postcode"):
             postcode = str(criteria["postcode"])
@@ -664,21 +664,21 @@ class ABNClient:
                     message="Postcode must be 4 digits",
                     field="postcode",
                 )
-            
+
             try:
                 payload = await self._request(
                     "SearchByPostcode",
                     {"postcode": postcode},
                 )
-                
+
                 response = payload.get("response", {})
                 abn_list = response.get("abnList", {})
-                
+
                 if abn_list:
                     abns = abn_list.get("abn", [])
                     if isinstance(abns, str):
                         abns = [abns]
-                    
+
                     # Enrich first N ABNs with full details
                     enriched = []
                     for abn in abns[:limit]:
@@ -690,12 +690,12 @@ class ABNClient:
                         except (ABNNotFoundError, ABNLookupError) as e:
                             logger.debug(f"[ABN] Skipping {abn}: {e}")
                             continue
-                    
+
                     results.extend(enriched)
-                    
+
             except ABNLookupError:
                 pass  # No results for postcode
-        
+
         # Name search
         elif criteria.get("name"):
             name_results = await self.search_by_name(
@@ -705,12 +705,12 @@ class ABNClient:
                 limit=limit,
             )
             results.extend(name_results)
-        
+
         else:
             raise ValidationError(
                 message="Bulk search requires 'postcode' or 'name' in criteria",
             )
-        
+
         return results
 
     async def enrich_from_abn(self, abn: str) -> dict[str, Any]:
@@ -757,10 +757,10 @@ class ABNClient:
             # Multiple ABNs (historical) - get current
             current = next((a for a in abn_info if a.get("isCurrentIndicator") == "Y"), abn_info[0])
             abn_info = current
-        
+
         abn = abn_info.get("identifierValue", "")
         abn_status = abn_info.get("identifierStatus", "Unknown")
-        
+
         # Extract entity type
         entity_type_info = record.get("entityType", {})
         entity_type_code = entity_type_info.get("entityTypeCode", "")
@@ -768,27 +768,27 @@ class ABNClient:
             entity_type_code,
             entity_type_info.get("entityDescription", entity_type_code),
         )
-        
+
         # Extract GST status
         gst_info = record.get("goodsAndServicesTax", {})
         if isinstance(gst_info, list):
             gst_info = next((g for g in gst_info if g.get("effectiveTo") is None), gst_info[0] if gst_info else {})
-        
+
         gst_registered = gst_info.get("effectiveFrom") is not None
         gst_from = gst_info.get("effectiveFrom")
-        
+
         # Extract names
         business_name = ""
         trading_name = ""
         business_names = []
-        
+
         # Main name (for non-individuals)
         main_name = record.get("mainName", {})
         if isinstance(main_name, list):
             main_name = next((n for n in main_name if n.get("isCurrentIndicator") == "Y"), main_name[0] if main_name else {})
         if main_name:
             business_name = main_name.get("organisationName", "")
-        
+
         # Legal name (for individuals)
         legal_name = record.get("legalName", {})
         if isinstance(legal_name, list):
@@ -797,14 +797,14 @@ class ABNClient:
             given_name = legal_name.get("givenName", "")
             family_name = legal_name.get("familyName", "")
             business_name = f"{given_name} {family_name}".strip()
-        
+
         # Main trading name
         main_trading = record.get("mainTradingName", {})
         if isinstance(main_trading, list):
             main_trading = next((n for n in main_trading if n.get("isCurrentIndicator") == "Y"), main_trading[0] if main_trading else {})
         if main_trading:
             trading_name = main_trading.get("organisationName", "")
-        
+
         # Business names (ASIC registered since 2012)
         bn_list = record.get("businessName", [])
         if isinstance(bn_list, dict):
@@ -814,21 +814,21 @@ class ABNClient:
                 bn_name = bn.get("organisationName", "")
                 if bn_name:
                     business_names.append(bn_name)
-        
+
         # Extract address
         address_info = record.get("mainBusinessPhysicalAddress", {})
         if isinstance(address_info, list):
             address_info = next((a for a in address_info if a.get("isCurrentIndicator") == "Y"), address_info[0] if address_info else {})
-        
+
         state = address_info.get("stateCode", "")
         postcode = address_info.get("postcode", "")
-        
+
         # Extract ACN (for companies)
         acn = ""
         asic_number = record.get("ASICNumber", "")
         if asic_number:
             acn = asic_number
-        
+
         return {
             "found": True,
             "source": "abn_lookup",
@@ -855,19 +855,19 @@ class ABNClient:
             "gst_registered": gst_registered,
             "gst_from": gst_from,
             # Metadata
-            "retrieved_at": datetime.now(timezone.utc).isoformat(),
+            "retrieved_at": datetime.now(UTC).isoformat(),
         }
 
     def _transform_search_result(self, record: dict) -> dict[str, Any]:
         """Transform ABR search result to standard format."""
         abn = record.get("ABN", {}).get("identifierValue", "")
         abn_status = record.get("ABN", {}).get("identifierStatus", "")
-        
+
         # Get matched name
         name_info = record.get("mainName", {})
         name = name_info.get("organisationName", "")
         name_type = "main"
-        
+
         if not name:
             name_info = record.get("legalName", {})
             if name_info:
@@ -875,24 +875,24 @@ class ABNClient:
                 family = name_info.get("familyName", "")
                 name = f"{given} {family}".strip()
                 name_type = "legal"
-        
+
         if not name:
             name_info = record.get("businessName", {})
             name = name_info.get("organisationName", "")
             name_type = "business"
-        
+
         if not name:
             name_info = record.get("mainTradingName", {})
             name = name_info.get("organisationName", "")
             name_type = "trading"
-        
+
         # Address
         state = record.get("mainBusinessPhysicalAddress", {}).get("stateCode", "")
         postcode = record.get("mainBusinessPhysicalAddress", {}).get("postcode", "")
-        
+
         # Score
         score = int(record.get("score", 0))
-        
+
         return {
             "abn": format_abn(abn),
             "abn_raw": abn,

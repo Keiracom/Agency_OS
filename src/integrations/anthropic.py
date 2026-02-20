@@ -46,7 +46,7 @@ class AnthropicClient:
             "cached": 0.465,
         },
     }
-    
+
     # Fallback pricing (Haiku rates)
     COST_PER_M_INPUT_TOKENS = 1.24
     COST_PER_M_OUTPUT_TOKENS = 6.20
@@ -82,8 +82,8 @@ class AnthropicClient:
             )
 
     async def _record_spend(
-        self, 
-        input_tokens: int, 
+        self,
+        input_tokens: int,
         output_tokens: int,
         cached_tokens: int = 0,
         model: str = "claude-3-5-haiku-20241022",
@@ -105,10 +105,10 @@ class AnthropicClient:
             "output": self.COST_PER_M_OUTPUT_TOKENS,
             "cached": self.COST_PER_M_CACHED_TOKENS,
         })
-        
+
         # Regular input tokens (minus cached)
         regular_input = max(0, input_tokens - cached_tokens)
-        
+
         cost = (
             (regular_input / 1_000_000) * pricing["input"] +
             (cached_tokens / 1_000_000) * pricing["cached"] +

@@ -95,7 +95,7 @@ class UnsubscribeTokenService:
         # Enforce minimum validity per Spam Act
         if validity_days < 30:
             validity_days = 30
-            logger.warning(f"Validity days increased to 30 (Spam Act requirement)")
+            logger.warning("Validity days increased to 30 (Spam Act requirement)")
 
         now = datetime.utcnow()
         expiry = now + timedelta(days=validity_days)

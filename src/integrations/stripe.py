@@ -28,9 +28,10 @@ STRIPE CONTEXT:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Any
@@ -39,13 +40,12 @@ from uuid import UUID
 import sentry_sdk
 from tenacity import (
     retry,
-    retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
 )
 
 from src.config.settings import settings
-from src.exceptions import APIError, IntegrationError, ValidationError
+from src.exceptions import IntegrationError
 
 logger = logging.getLogger(__name__)
 
@@ -118,11 +118,11 @@ class StripeCustomer:
     name: str | None = None
     metadata: dict[str, str] = field(default_factory=dict)
     created_at: datetime | None = None
-    
+
     # Agency OS specific
     client_id: UUID | None = None
     subscription_status: SubscriptionStatus | None = None
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -148,10 +148,10 @@ class StripeSubscription:
     trial_end: datetime | None = None
     cancel_at_period_end: bool = False
     canceled_at: datetime | None = None
-    
+
     # Pricing
     amount_aud: Decimal = Decimal("0.00")
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -180,7 +180,7 @@ class StripeInvoice:
     created_at: datetime | None = None
     paid_at: datetime | None = None
     invoice_pdf: str | None = None
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -196,7 +196,7 @@ class StripeInvoice:
         }
 
 
-@dataclass 
+@dataclass
 class WebhookEvent:
     """Parsed Stripe webhook event."""
     id: str
@@ -204,7 +204,7 @@ class WebhookEvent:
     data: dict[str, Any]
     created_at: datetime
     api_version: str | None = None
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -270,7 +270,7 @@ class StripeClient:
             tier=PricingTier.IGNITION,
         )
     """
-    
+
     def __init__(self, api_key: str | None = None, webhook_secret: str | None = None):
         """
         Initialize Stripe client.
@@ -282,10 +282,10 @@ class StripeClient:
         self._api_key = api_key or getattr(settings, "stripe_secret_key", None)
         self._webhook_secret = webhook_secret or getattr(settings, "stripe_webhook_secret", None)
         self._stripe = None
-        
+
         if not self._api_key:
             logger.warning("[Stripe] No API key configured - client will operate in stub mode")
-    
+
     def _get_stripe(self):
         """Lazy-load stripe module and configure API key."""
         if self._stripe is None:
@@ -300,16 +300,16 @@ class StripeClient:
                     message="stripe-python package not installed",
                 )
         return self._stripe
-    
+
     @property
     def is_configured(self) -> bool:
         """Check if Stripe is properly configured."""
         return bool(self._api_key)
-    
+
     # ============================================
     # CUSTOMER OPERATIONS
     # ============================================
-    
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -344,14 +344,14 @@ class StripeClient:
                 name=name,
                 client_id=client_id,
             )
-        
+
         stripe = self._get_stripe()
-        
+
         try:
             customer_metadata = metadata or {}
             if client_id:
                 customer_metadata["agency_os_client_id"] = str(client_id)
-            
+
             # Run in executor to avoid blocking
             loop = asyncio.get_event_loop()
             customer = await loop.run_in_executor(
@@ -362,23 +362,23 @@ class StripeClient:
                     metadata=customer_metadata,
                 )
             )
-            
+
             logger.info(f"[Stripe] Created customer {customer.id} for {email}")
-            
+
             return StripeCustomer(
                 id=customer.id,
                 email=customer.email,
                 name=customer.name,
                 metadata=dict(customer.metadata),
-                created_at=datetime.fromtimestamp(customer.created, tz=timezone.utc),
+                created_at=datetime.fromtimestamp(customer.created, tz=UTC),
                 client_id=client_id,
             )
-            
+
         except Exception as e:
             logger.error(f"[Stripe] Failed to create customer: {e}")
             sentry_sdk.capture_exception(e)
             raise StripeError(f"Failed to create customer: {e}")
-    
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -395,41 +395,39 @@ class StripeClient:
         """
         if not self.is_configured:
             return None
-        
+
         stripe = self._get_stripe()
-        
+
         try:
             loop = asyncio.get_event_loop()
             customer = await loop.run_in_executor(
                 None,
                 lambda: stripe.Customer.retrieve(customer_id)
             )
-            
+
             if customer.deleted:
                 return None
-            
+
             client_id = None
             if customer.metadata.get("agency_os_client_id"):
-                try:
+                with contextlib.suppress(ValueError):
                     client_id = UUID(customer.metadata["agency_os_client_id"])
-                except ValueError:
-                    pass
-            
+
             return StripeCustomer(
                 id=customer.id,
                 email=customer.email,
                 name=customer.name,
                 metadata=dict(customer.metadata),
-                created_at=datetime.fromtimestamp(customer.created, tz=timezone.utc),
+                created_at=datetime.fromtimestamp(customer.created, tz=UTC),
                 client_id=client_id,
             )
-            
+
         except stripe.error.InvalidRequestError:
             return None
         except Exception as e:
             logger.error(f"[Stripe] Failed to get customer {customer_id}: {e}")
             raise StripeError(f"Failed to retrieve customer: {e}")
-    
+
     async def update_customer(
         self,
         customer_id: str,
@@ -451,9 +449,9 @@ class StripeClient:
         """
         if not self.is_configured:
             raise StripeError("Stripe not configured")
-        
+
         stripe = self._get_stripe()
-        
+
         try:
             update_params = {}
             if email:
@@ -462,29 +460,29 @@ class StripeClient:
                 update_params["name"] = name
             if metadata:
                 update_params["metadata"] = metadata
-            
+
             loop = asyncio.get_event_loop()
             customer = await loop.run_in_executor(
                 None,
                 lambda: stripe.Customer.modify(customer_id, **update_params)
             )
-            
+
             return StripeCustomer(
                 id=customer.id,
                 email=customer.email,
                 name=customer.name,
                 metadata=dict(customer.metadata),
-                created_at=datetime.fromtimestamp(customer.created, tz=timezone.utc),
+                created_at=datetime.fromtimestamp(customer.created, tz=UTC),
             )
-            
+
         except Exception as e:
             logger.error(f"[Stripe] Failed to update customer {customer_id}: {e}")
             raise StripeError(f"Failed to update customer: {e}")
-    
+
     # ============================================
     # SUBSCRIPTION OPERATIONS
     # ============================================
-    
+
     async def create_subscription(
         self,
         customer_id: str,
@@ -507,7 +505,7 @@ class StripeClient:
         """
         if not self.is_configured:
             logger.warning("[Stripe] Operating in stub mode - returning mock subscription")
-            now = datetime.now(tz=timezone.utc)
+            now = datetime.now(tz=UTC)
             return StripeSubscription(
                 id=f"sub_stub_{customer_id}",
                 customer_id=customer_id,
@@ -517,9 +515,9 @@ class StripeClient:
                 current_period_end=now,
                 amount_aud=PRICING_IGNITION_AUD if tier == PricingTier.IGNITION else PRICING_GROWTH_AUD,
             )
-        
+
         stripe = self._get_stripe()
-        
+
         # Get price ID for tier
         price_id = PRICE_IDS.get(f"{tier.value}_monthly")
         if not price_id:
@@ -527,7 +525,7 @@ class StripeClient:
                 f"No price ID configured for tier: {tier.value}",
                 stripe_code="missing_price_id",
             )
-        
+
         try:
             loop = asyncio.get_event_loop()
             subscription = await loop.run_in_executor(
@@ -539,28 +537,28 @@ class StripeClient:
                     metadata={"tier": tier.value},
                 )
             )
-            
+
             logger.info(f"[Stripe] Created subscription {subscription.id} for {customer_id}")
-            
+
             amount = PRICING_IGNITION_AUD if tier == PricingTier.IGNITION else PRICING_GROWTH_AUD
-            
+
             return StripeSubscription(
                 id=subscription.id,
                 customer_id=customer_id,
                 status=SubscriptionStatus(subscription.status),
                 tier=tier,
                 current_period_start=datetime.fromtimestamp(
-                    subscription.current_period_start, tz=timezone.utc
+                    subscription.current_period_start, tz=UTC
                 ),
                 current_period_end=datetime.fromtimestamp(
-                    subscription.current_period_end, tz=timezone.utc
+                    subscription.current_period_end, tz=UTC
                 ),
-                trial_end=datetime.fromtimestamp(subscription.trial_end, tz=timezone.utc)
+                trial_end=datetime.fromtimestamp(subscription.trial_end, tz=UTC)
                 if subscription.trial_end else None,
                 cancel_at_period_end=subscription.cancel_at_period_end,
                 amount_aud=amount,
             )
-            
+
         except stripe.error.CardError as e:
             logger.error(f"[Stripe] Card error creating subscription: {e}")
             raise PaymentFailedError(str(e), stripe_code=e.code)
@@ -568,7 +566,7 @@ class StripeClient:
             logger.error(f"[Stripe] Failed to create subscription: {e}")
             sentry_sdk.capture_exception(e)
             raise SubscriptionError(f"Failed to create subscription: {e}")
-    
+
     async def get_subscription(self, subscription_id: str) -> StripeSubscription | None:
         """
         Retrieve a subscription.
@@ -581,44 +579,44 @@ class StripeClient:
         """
         if not self.is_configured:
             return None
-        
+
         stripe = self._get_stripe()
-        
+
         try:
             loop = asyncio.get_event_loop()
             subscription = await loop.run_in_executor(
                 None,
                 lambda: stripe.Subscription.retrieve(subscription_id)
             )
-            
+
             tier = PricingTier(subscription.metadata.get("tier", "ignition"))
             amount = PRICING_IGNITION_AUD if tier == PricingTier.IGNITION else PRICING_GROWTH_AUD
-            
+
             return StripeSubscription(
                 id=subscription.id,
                 customer_id=subscription.customer,
                 status=SubscriptionStatus(subscription.status),
                 tier=tier,
                 current_period_start=datetime.fromtimestamp(
-                    subscription.current_period_start, tz=timezone.utc
+                    subscription.current_period_start, tz=UTC
                 ),
                 current_period_end=datetime.fromtimestamp(
-                    subscription.current_period_end, tz=timezone.utc
+                    subscription.current_period_end, tz=UTC
                 ),
-                trial_end=datetime.fromtimestamp(subscription.trial_end, tz=timezone.utc)
+                trial_end=datetime.fromtimestamp(subscription.trial_end, tz=UTC)
                 if subscription.trial_end else None,
                 cancel_at_period_end=subscription.cancel_at_period_end,
-                canceled_at=datetime.fromtimestamp(subscription.canceled_at, tz=timezone.utc)
+                canceled_at=datetime.fromtimestamp(subscription.canceled_at, tz=UTC)
                 if subscription.canceled_at else None,
                 amount_aud=amount,
             )
-            
+
         except stripe.error.InvalidRequestError:
             return None
         except Exception as e:
             logger.error(f"[Stripe] Failed to get subscription {subscription_id}: {e}")
             raise StripeError(f"Failed to retrieve subscription: {e}")
-    
+
     async def cancel_subscription(
         self,
         subscription_id: str,
@@ -636,12 +634,12 @@ class StripeClient:
         """
         if not self.is_configured:
             raise StripeError("Stripe not configured")
-        
+
         stripe = self._get_stripe()
-        
+
         try:
             loop = asyncio.get_event_loop()
-            
+
             if at_period_end:
                 subscription = await loop.run_in_executor(
                     None,
@@ -655,35 +653,35 @@ class StripeClient:
                     None,
                     lambda: stripe.Subscription.cancel(subscription_id)
                 )
-            
+
             logger.info(f"[Stripe] Canceled subscription {subscription_id}")
-            
+
             tier = PricingTier(subscription.metadata.get("tier", "ignition"))
-            
+
             return StripeSubscription(
                 id=subscription.id,
                 customer_id=subscription.customer,
                 status=SubscriptionStatus(subscription.status),
                 tier=tier,
                 current_period_start=datetime.fromtimestamp(
-                    subscription.current_period_start, tz=timezone.utc
+                    subscription.current_period_start, tz=UTC
                 ),
                 current_period_end=datetime.fromtimestamp(
-                    subscription.current_period_end, tz=timezone.utc
+                    subscription.current_period_end, tz=UTC
                 ),
                 cancel_at_period_end=subscription.cancel_at_period_end,
-                canceled_at=datetime.fromtimestamp(subscription.canceled_at, tz=timezone.utc)
+                canceled_at=datetime.fromtimestamp(subscription.canceled_at, tz=UTC)
                 if subscription.canceled_at else None,
             )
-            
+
         except Exception as e:
             logger.error(f"[Stripe] Failed to cancel subscription {subscription_id}: {e}")
             raise SubscriptionError(f"Failed to cancel subscription: {e}")
-    
+
     # ============================================
     # INVOICE OPERATIONS
     # ============================================
-    
+
     async def get_invoices(
         self,
         customer_id: str,
@@ -701,16 +699,16 @@ class StripeClient:
         """
         if not self.is_configured:
             return []
-        
+
         stripe = self._get_stripe()
-        
+
         try:
             loop = asyncio.get_event_loop()
             invoices = await loop.run_in_executor(
                 None,
                 lambda: stripe.Invoice.list(customer=customer_id, limit=limit)
             )
-            
+
             result = []
             for inv in invoices.data:
                 result.append(StripeInvoice(
@@ -720,22 +718,22 @@ class StripeClient:
                     status=inv.status,
                     amount_due_aud=Decimal(str(inv.amount_due / 100)),
                     amount_paid_aud=Decimal(str(inv.amount_paid / 100)),
-                    created_at=datetime.fromtimestamp(inv.created, tz=timezone.utc),
-                    paid_at=datetime.fromtimestamp(inv.status_transitions.paid_at, tz=timezone.utc)
+                    created_at=datetime.fromtimestamp(inv.created, tz=UTC),
+                    paid_at=datetime.fromtimestamp(inv.status_transitions.paid_at, tz=UTC)
                     if inv.status_transitions.paid_at else None,
                     invoice_pdf=inv.invoice_pdf,
                 ))
-            
+
             return result
-            
+
         except Exception as e:
             logger.error(f"[Stripe] Failed to get invoices for {customer_id}: {e}")
             raise StripeError(f"Failed to retrieve invoices: {e}")
-    
+
     # ============================================
     # WEBHOOK HANDLING
     # ============================================
-    
+
     def verify_webhook(
         self,
         payload: bytes,
@@ -756,31 +754,31 @@ class StripeClient:
         """
         if not self._webhook_secret:
             raise WebhookVerificationError("Webhook secret not configured")
-        
+
         stripe = self._get_stripe()
-        
+
         try:
             event = stripe.Webhook.construct_event(
                 payload,
                 signature,
                 self._webhook_secret,
             )
-            
+
             return WebhookEvent(
                 id=event.id,
                 type=event.type,
                 data=dict(event.data.object),
-                created_at=datetime.fromtimestamp(event.created, tz=timezone.utc),
+                created_at=datetime.fromtimestamp(event.created, tz=UTC),
                 api_version=event.api_version,
             )
-            
+
         except stripe.error.SignatureVerificationError as e:
             logger.error(f"[Stripe] Webhook verification failed: {e}")
             raise WebhookVerificationError(str(e))
         except Exception as e:
             logger.error(f"[Stripe] Failed to parse webhook: {e}")
             raise WebhookVerificationError(f"Failed to parse webhook: {e}")
-    
+
     async def handle_webhook_event(self, event: WebhookEvent) -> dict[str, Any]:
         """
         Handle a verified webhook event.
@@ -794,7 +792,7 @@ class StripeClient:
             Handler result
         """
         logger.info(f"[Stripe] Handling webhook event: {event.type}")
-        
+
         handlers = {
             "customer.subscription.created": self._handle_subscription_created,
             "customer.subscription.updated": self._handle_subscription_updated,
@@ -802,48 +800,48 @@ class StripeClient:
             "invoice.paid": self._handle_invoice_paid,
             "invoice.payment_failed": self._handle_payment_failed,
         }
-        
+
         handler = handlers.get(event.type)
         if handler:
             return await handler(event)
-        
+
         logger.debug(f"[Stripe] No handler for event type: {event.type}")
         return {"status": "ignored", "event_type": event.type}
-    
+
     async def _handle_subscription_created(self, event: WebhookEvent) -> dict[str, Any]:
         """Handle subscription.created event."""
         # TODO: Update client record in database
         logger.info(f"[Stripe] Subscription created: {event.data.get('id')}")
         return {"status": "processed", "action": "subscription_created"}
-    
+
     async def _handle_subscription_updated(self, event: WebhookEvent) -> dict[str, Any]:
         """Handle subscription.updated event."""
         # TODO: Update client subscription status
         logger.info(f"[Stripe] Subscription updated: {event.data.get('id')}")
         return {"status": "processed", "action": "subscription_updated"}
-    
+
     async def _handle_subscription_deleted(self, event: WebhookEvent) -> dict[str, Any]:
         """Handle subscription.deleted event."""
         # TODO: Mark client as churned
         logger.info(f"[Stripe] Subscription deleted: {event.data.get('id')}")
         return {"status": "processed", "action": "subscription_deleted"}
-    
+
     async def _handle_invoice_paid(self, event: WebhookEvent) -> dict[str, Any]:
         """Handle invoice.paid event."""
         # TODO: Update payment record
         logger.info(f"[Stripe] Invoice paid: {event.data.get('id')}")
         return {"status": "processed", "action": "invoice_paid"}
-    
+
     async def _handle_payment_failed(self, event: WebhookEvent) -> dict[str, Any]:
         """Handle invoice.payment_failed event."""
         # TODO: Alert and retry handling
         logger.warning(f"[Stripe] Payment failed: {event.data.get('id')}")
         return {"status": "processed", "action": "payment_failed"}
-    
+
     # ============================================
     # CHECKOUT SESSION (For hosted checkout)
     # ============================================
-    
+
     async def create_checkout_session(
         self,
         customer_id: str,
@@ -870,13 +868,13 @@ class StripeClient:
         """
         if not self.is_configured:
             return f"{success_url}?session=stub_session"
-        
+
         stripe = self._get_stripe()
-        
+
         price_id = PRICE_IDS.get(f"{tier.value}_monthly")
         if not price_id:
             raise StripeError(f"No price ID configured for tier: {tier.value}")
-        
+
         try:
             loop = asyncio.get_event_loop()
             session = await loop.run_in_executor(
@@ -893,10 +891,10 @@ class StripeClient:
                     },
                 )
             )
-            
+
             logger.info(f"[Stripe] Created checkout session for {customer_id}")
             return session.url
-            
+
         except Exception as e:
             logger.error(f"[Stripe] Failed to create checkout session: {e}")
             raise StripeError(f"Failed to create checkout session: {e}")

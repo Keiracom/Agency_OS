@@ -185,7 +185,7 @@ class CloserEngine(BaseEngine):
             intent_enum = INTENT_MAP.get(intent_str, IntentType.QUESTION)
             confidence = classification.get("confidence", 0.0)
             reasoning = classification.get("reasoning", "")
-            
+
             # Directive 048 Part F: Flag low confidence replies for human review
             if confidence < 0.6:
                 await self._flag_for_human_review(
@@ -232,6 +232,7 @@ class CloserEngine(BaseEngine):
                 lead=lead,
                 intent=intent_enum,
                 confidence=confidence,
+                channel=channel,
                 reply_analysis=reply_analysis,
             )
 
@@ -441,6 +442,7 @@ class CloserEngine(BaseEngine):
         lead: Lead,
         intent: IntentType,
         confidence: float,
+        channel: ChannelType,
         reply_analysis: dict[str, Any] | None = None,
     ) -> list[str]:
         """
@@ -451,6 +453,7 @@ class CloserEngine(BaseEngine):
             lead: Lead to update
             intent: Classified intent
             confidence: Classification confidence
+            channel: Channel the reply came from
             reply_analysis: Phase 24D reply analysis results
 
         Returns:
@@ -473,7 +476,7 @@ class CloserEngine(BaseEngine):
                     company_name=lead.company,
                     client_id=lead.client_id,
                 )
-                
+
                 # Send automated reply with booking link
                 await send_booking_reply(
                     db=db,
@@ -485,7 +488,7 @@ class CloserEngine(BaseEngine):
             except Exception as e:
                 logger.warning(f"Failed to send booking link for lead {lead.id}: {e}")
                 actions.append("booking_link_failed")
-            
+
             # Status will be updated to CONVERTED when Calendly webhook confirms
             # For now, mark as pending meeting
             lead.status = LeadStatus.IN_SEQUENCE  # Keep in sequence until booking confirmed
@@ -555,13 +558,13 @@ class CloserEngine(BaseEngine):
                 lead.status = LeadStatus.ENRICHED
                 actions.append("stopped_sequence")
             actions.append("referral_received")
-            
+
             # Store referral flag in lead metadata
             if not lead.metadata:
                 lead.metadata = {}
             lead.metadata["has_referral"] = True
             lead.metadata["referral_received_at"] = datetime.utcnow().isoformat()
-            
+
             # Auto-create new lead from referral
             try:
                 referral_lead = await self._create_referral_lead(
@@ -598,14 +601,14 @@ class CloserEngine(BaseEngine):
                 f"ADMIN ALERT: Angry/complaint reply from lead {lead.id} - requires manual review"
             )
             actions.append("admin_review_required")
-            
+
             # Store admin review flag in lead metadata
             if not lead.metadata:
                 lead.metadata = {}
             lead.metadata["admin_review_required"] = True
             lead.metadata["admin_review_reason"] = "angry_or_complaint"
             lead.metadata["admin_review_flagged_at"] = datetime.utcnow().isoformat()
-            
+
             # Directive 048: Fire admin notification via Supabase immediately
             try:
                 await self._fire_admin_notification(
@@ -728,7 +731,7 @@ class CloserEngine(BaseEngine):
         try:
             # Extract referral information using AI
             referral_info = await self._extract_referral_info(reply_analysis)
-            
+
             if not referral_info or not referral_info.get("name"):
                 logger.warning(f"Could not extract referral info from lead {source_lead.id}")
                 return None
@@ -810,11 +813,10 @@ class CloserEngine(BaseEngine):
 
         # Check if topics contain contact info
         topics = reply_analysis.get("topics_mentioned", [])
-        question = reply_analysis.get("question_extracted")
-        
+
         # Basic extraction from topics (name patterns, email patterns)
         referral_info = {}
-        
+
         for topic in topics:
             # Look for email pattern
             if "@" in topic and "." in topic:
@@ -857,7 +859,7 @@ class CloserEngine(BaseEngine):
         """
         try:
             from src.services.alert_service import get_alert_service
-            
+
             alert_service = get_alert_service(db)
             return await alert_service.flag_reply_for_review(
                 lead_id=lead_id,
@@ -897,7 +899,7 @@ class CloserEngine(BaseEngine):
         """
         try:
             import json
-            
+
             query = text("""
                 SELECT create_admin_notification(
                     :notification_type,
@@ -912,7 +914,7 @@ class CloserEngine(BaseEngine):
             """)
 
             title = f"[{severity.upper()}] {notification_type.replace('_', ' ').title()}"
-            
+
             metadata = json.dumps({
                 "lead_email": lead.email,
                 "lead_name": lead.full_name,

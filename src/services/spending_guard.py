@@ -12,7 +12,6 @@ SAFEGUARDS:
 
 import logging
 from datetime import date
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +78,7 @@ def check_can_purchase(domain_count: int) -> bool:
         SpendingLimitExceeded: If any limit would be exceeded
     """
     _reset_if_new_day()
-    
+
     # Check per-call limit
     if domain_count > MAX_DOMAINS_PER_CALL:
         msg = (
@@ -88,7 +87,7 @@ def check_can_purchase(domain_count: int) -> bool:
         )
         logger.error(msg)
         raise SpendingLimitExceeded(msg)
-    
+
     # Check daily domain limit
     projected_domains = _daily_stats["domains_purchased"] + domain_count
     if projected_domains > MAX_DOMAINS_PER_DAY:
@@ -98,7 +97,7 @@ def check_can_purchase(domain_count: int) -> bool:
         )
         logger.error(msg)
         raise SpendingLimitExceeded(msg)
-    
+
     # Check daily spend limit
     projected_spend = domain_count * DOMAIN_COST_AUD
     if _daily_stats["spend_aud"] + projected_spend > MAX_SPEND_PER_DAY_AUD:
@@ -108,7 +107,7 @@ def check_can_purchase(domain_count: int) -> bool:
         )
         logger.error(msg)
         raise SpendingLimitExceeded(msg)
-    
+
     logger.info(
         f"Spending check passed: {domain_count} domains, "
         f"${projected_spend} (daily total will be: "
@@ -117,7 +116,7 @@ def check_can_purchase(domain_count: int) -> bool:
     return True
 
 
-def record_purchase(domain_count: int, spend_aud: Optional[float] = None) -> None:
+def record_purchase(domain_count: int, spend_aud: float | None = None) -> None:
     """
     Record a successful purchase against daily limits.
     
@@ -126,12 +125,12 @@ def record_purchase(domain_count: int, spend_aud: Optional[float] = None) -> Non
         spend_aud: Actual spend (defaults to domain_count * DOMAIN_COST_AUD)
     """
     _reset_if_new_day()
-    
+
     actual_spend = spend_aud if spend_aud is not None else (domain_count * DOMAIN_COST_AUD)
-    
+
     _daily_stats["domains_purchased"] += domain_count
     _daily_stats["spend_aud"] += actual_spend
-    
+
     logger.info(
         f"Recorded purchase: {domain_count} domains, ${actual_spend:.2f} "
         f"(daily totals: {_daily_stats['domains_purchased']} domains, "
@@ -156,7 +155,7 @@ def requires_approval(domain_count: int) -> bool:
 def queue_for_approval(
     domain_count: int,
     domains: list[str],
-    persona_id: Optional[str] = None,
+    persona_id: str | None = None,
     reason: str = "buffer_replenishment",
 ) -> str:
     """
@@ -166,9 +165,9 @@ def queue_for_approval(
         Approval request ID
     """
     import uuid
-    
+
     request_id = str(uuid.uuid4())[:8]
-    
+
     _pending_approvals.append({
         "request_id": request_id,
         "domain_count": domain_count,
@@ -177,12 +176,12 @@ def queue_for_approval(
         "reason": reason,
         "created_at": date.today().isoformat(),
     })
-    
+
     logger.warning(
         f"Large purchase queued for approval: {domain_count} domains "
         f"(request_id: {request_id})"
     )
-    
+
     return request_id
 
 
@@ -191,7 +190,7 @@ def get_pending_approvals() -> list[dict]:
     return _pending_approvals.copy()
 
 
-def approve_request(request_id: str) -> Optional[dict]:
+def approve_request(request_id: str) -> dict | None:
     """Approve a pending request, return the request details."""
     for i, req in enumerate(_pending_approvals):
         if req["request_id"] == request_id:

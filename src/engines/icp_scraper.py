@@ -65,9 +65,9 @@ from src.integrations.camoufox_scraper import (
 )
 from src.integrations.clay import get_clay_client
 from src.integrations.siege_waterfall import (
+    EnrichmentTier,
     SiegeWaterfall,
     get_siege_waterfall,
-    EnrichmentTier,
 )
 
 # Portfolio page paths to fetch directly (ICP-FIX-008)
@@ -300,10 +300,7 @@ class ICPScraperEngine(BaseEngine):
         # Check for Australian state abbreviations in name
         au_states = ["nsw", "vic", "qld", "wa", "sa", "tas", "nt", "act"]
         name_words = name_lower.split()
-        if any(state in name_words for state in au_states):
-            return True
-
-        return False
+        return any(state in name_words for state in au_states)
 
     def _extract_social_links(self, raw_html: str) -> SocialLinks:
         """

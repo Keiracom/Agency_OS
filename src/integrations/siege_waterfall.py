@@ -34,12 +34,13 @@ import asyncio
 import logging
 import os
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
 import httpx
 import sentry_sdk
+from fuzzywuzzy import fuzz
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -47,9 +48,6 @@ from tenacity import (
     wait_exponential,
 )
 
-from fuzzywuzzy import fuzz
-
-from src.config.settings import settings
 from src.exceptions import APIError, IntegrationError, ValidationError
 
 logger = logging.getLogger(__name__)
@@ -63,7 +61,7 @@ MEDIUM_CONFIDENCE_THRESHOLD = 80
 # These holding company patterns have low GMB match probability
 GENERIC_NAME_PATTERNS = (
     "holdings",
-    "enterprises", 
+    "enterprises",
     "investments",
     "trust",
     "group",
@@ -160,7 +158,7 @@ class TierResult:
     success: bool
     data: dict[str, Any] = field(default_factory=dict)
     cost_aud: float = 0.0
-    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     error: str | None = None
     skipped: bool = False
     skip_reason: str | None = None
@@ -264,7 +262,7 @@ class GMBScraperAdapter:
     Method: discover_by=location
     Cost: ~$0.001/lead AUD
     """
-    
+
     DATASET_ID = "gd_m8ebnr0q2qlklc02fz"
     STATE_CITY_MAP = {
         "NSW": "Sydney", "VIC": "Melbourne", "QLD": "Brisbane",
@@ -274,7 +272,7 @@ class GMBScraperAdapter:
 
     def __init__(self):
         self._api_key = os.getenv("BRIGHTDATA_API_KEY")
-    
+
     def _is_available(self) -> bool:
         """Check if Bright Data API is configured."""
         return bool(self._api_key)
@@ -288,9 +286,9 @@ class GMBScraperAdapter:
         if not self._is_available():
             logger.warning("[GMB] BRIGHTDATA_API_KEY not set")
             return None
-        
+
         city = location or "Australia"
-        
+
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:
                 # Trigger collection
@@ -313,7 +311,7 @@ class GMBScraperAdapter:
                 snapshot_id = resp.json().get("snapshot_id")
                 if not snapshot_id:
                     return None
-                
+
                 # Poll for completion
                 for _ in range(18):
                     await asyncio.sleep(10)
@@ -325,7 +323,7 @@ class GMBScraperAdapter:
                         break
                 else:
                     return None
-                
+
                 # Fetch results
                 data = await client.get(
                     f"https://api.brightdata.com/datasets/v3/snapshot/{snapshot_id}",
@@ -333,7 +331,7 @@ class GMBScraperAdapter:
                     headers={"Authorization": f"Bearer {self._api_key}"},
                 )
                 results = data.json()
-                
+
                 if results and len(results) > 0:
                     # Find best match
                     best = max(
@@ -343,7 +341,7 @@ class GMBScraperAdapter:
                     )
                     if best and fuzz.ratio(business_name.lower(), best.get("name", "").lower()) >= FUZZY_MATCH_THRESHOLD:
                         return {"found": True, **best}
-                
+
                 return None
         except Exception as e:
             logger.warning(f"[GMB] scrape_business failed: {e}")
@@ -359,10 +357,10 @@ class GMBScraperAdapter:
         if not self._is_available():
             logger.warning("[GMB] BRIGHTDATA_API_KEY not set")
             return {"found": False, "source": "gmb_unavailable"}
-        
+
         try:
             result = await self.scrape_business(business_name, location)
-            
+
             if result and result.get("found"):
                 return {
                     "found": True,
@@ -380,7 +378,7 @@ class GMBScraperAdapter:
                     "lng": result.get("lon"),
                     "cost_aud": 0.001,
                 }
-            
+
             return {"found": False, "source": "brightdata_gmb"}
         except Exception as e:
             logger.warning(f"[GMB] enrich_from_gmb failed: {e}")
@@ -401,7 +399,7 @@ class HunterClientAdapter:
 
     def __init__(self):
         self._client = None
-    
+
     def _get_client(self):
         """Lazy-load the real Hunter client."""
         if self._client is None:
@@ -424,7 +422,7 @@ class HunterClientAdapter:
                 "score": 0,
                 "source": "hunter_unavailable",
             }
-        
+
         try:
             result = await client.verify_email(email)
             return {
@@ -457,7 +455,7 @@ class HunterClientAdapter:
         if not client:
             logger.warning("[Hunter] Client not available")
             return {"found": False, "source": "hunter_unavailable"}
-        
+
         try:
             result = await client.email_finder(domain, first_name, last_name)
             return {
@@ -482,7 +480,7 @@ class HunterClientAdapter:
         if not client:
             logger.warning("[Hunter] Client not available")
             return []
-        
+
         try:
             result = await client.domain_search(domain, limit=limit)
             return [email.to_dict() for email in result.emails]
@@ -509,7 +507,7 @@ class ProxycurlClientAdapter:
     def __init__(self):
         self._client = None
         self._deprecated = True
-    
+
     def _get_client(self):
         """Proxycurl is deprecated - always returns None."""
         # Proxycurl shutdown July 2025. Do not attempt to import.
@@ -527,7 +525,7 @@ class ProxycurlClientAdapter:
         if not client:
             logger.warning("[Proxycurl] Client not available")
             return None
-        
+
         try:
             result = await client.enrich_profile(linkedin_url)
             if result.found:
@@ -547,11 +545,11 @@ class ProxycurlClientAdapter:
         if not client:
             logger.warning("[Proxycurl] Client not available")
             return None
-        
+
         if not linkedin_url:
             logger.warning("[Proxycurl] linkedin_url required for company profile")
             return None
-        
+
         try:
             result = await client.enrich_company(linkedin_url)
             if result.found:
@@ -571,10 +569,10 @@ class ProxycurlClientAdapter:
         if not client:
             logger.warning("[Proxycurl] Client not available")
             return {"found": False, "source": "proxycurl_unavailable"}
-        
+
         if not linkedin_url:
             return {"found": False, "source": "proxycurl", "error": "linkedin_url required"}
-        
+
         try:
             result = await client.enrich_profile(linkedin_url)
             data = result.to_dict()
@@ -593,14 +591,14 @@ ProxycurlClientStub = ProxycurlClientAdapter
 # Import real Kaspr client (Tier 5 - implemented)
 try:
     from src.integrations.kaspr import KasprClient, get_kaspr_client
-    
+
     KASPR_AVAILABLE = True
 except ImportError:
     KASPR_AVAILABLE = False
-    
+
     class KasprClient:  # type: ignore
         """Fallback stub if kaspr.py not available."""
-        
+
         async def enrich_identity(
             self,
             linkedin_url: str | None = None,
@@ -668,7 +666,7 @@ class SiegeWaterfall:
         self.gmb_scraper = gmb_scraper or GMBScraperAdapter()
         self.hunter_client = hunter_client or HunterClientAdapter()
         self.proxycurl_client = proxycurl_client or ProxycurlClientAdapter()
-        
+
         # Use real Kaspr client if available (Tier 5 - optional)
         # Kaspr requires KASPR_API_KEY; if missing, Tier 5 is simply unavailable
         if kaspr_client:
@@ -711,9 +709,9 @@ class SiegeWaterfall:
         Raises:
             ValidationError: If no usable lead data provided
         """
-        started_at = datetime.now(timezone.utc).isoformat()
+        started_at = datetime.now(UTC).isoformat()
         skip_tiers = skip_tiers or []
-        
+
         # Validate we have something to work with
         if not any([
             lead.get("email"),
@@ -727,15 +725,15 @@ class SiegeWaterfall:
                 message="Lead must have at least one of: email, abn, linkedin_url, "
                         "company_name, domain, or first_name + last_name",
             )
-        
+
         # Track results
         tier_results: list[TierResult] = []
         enriched_data: dict[str, Any] = dict(lead)  # Start with original
         total_cost_aud = 0.0
-        
+
         # Current ALS score (may be passed in or calculated)
         current_als = lead.get("als_score", 0)
-        
+
         # ===== TIER 1: ABN Bulk =====
         if EnrichmentTier.ABN not in skip_tiers:
             result = await self.tier1_abn(enriched_data)
@@ -750,7 +748,7 @@ class SiegeWaterfall:
                 skipped=True,
                 skip_reason="Tier skipped by request",
             ))
-        
+
         # ===== TIER 2: GMB/Ads Signals =====
         if EnrichmentTier.GMB not in skip_tiers:
             result = await self.tier2_gmb(enriched_data)
@@ -765,7 +763,7 @@ class SiegeWaterfall:
                 skipped=True,
                 skip_reason="Tier skipped by request",
             ))
-        
+
         # ===== TIER 3: Hunter.io =====
         if EnrichmentTier.HUNTER not in skip_tiers:
             result = await self.tier3_hunter(enriched_data)
@@ -780,7 +778,7 @@ class SiegeWaterfall:
                 skipped=True,
                 skip_reason="Tier skipped by request",
             ))
-        
+
         # ===== TIER 4: Proxycurl =====
         if EnrichmentTier.PROXYCURL not in skip_tiers:
             result = await self.tier4_proxycurl(enriched_data)
@@ -795,12 +793,12 @@ class SiegeWaterfall:
                 skipped=True,
                 skip_reason="Tier skipped by request",
             ))
-        
+
         # ===== TIER 5: Identity Gold (ALS >= 85 only) =====
         if EnrichmentTier.IDENTITY not in skip_tiers:
             # Recalculate ALS with current enrichment
             current_als = self._calculate_als(enriched_data)
-            
+
             if current_als >= 85 or force_tier5:
                 result = await self.tier5_identity(enriched_data, current_als, force=force_tier5)
                 tier_results.append(result)
@@ -821,12 +819,12 @@ class SiegeWaterfall:
                 skipped=True,
                 skip_reason="Tier skipped by request",
             ))
-        
+
         # ===== Calculate ALS Bonus =====
         sources_used = sum(1 for r in tier_results if r.success)
         als_bonus_applied = sources_used >= MIN_SOURCES_FOR_BONUS
         als_bonus_amount = ALS_MULTI_SOURCE_BONUS if als_bonus_applied else 0
-        
+
         # Apply bonus to enriched data
         if als_bonus_applied:
             final_als = self._calculate_als(enriched_data) + als_bonus_amount
@@ -836,7 +834,7 @@ class SiegeWaterfall:
                 f"[Siege] +{als_bonus_amount} ALS bonus applied "
                 f"({sources_used} sources)"
             )
-        
+
         # ===== Build Lineage =====
         enrichment_lineage = [
             {
@@ -850,22 +848,22 @@ class SiegeWaterfall:
             }
             for r in tier_results
         ]
-        
+
         # ===== Finalize =====
-        completed_at = datetime.now(timezone.utc).isoformat()
+        completed_at = datetime.now(UTC).isoformat()
         enriched_data["enrichment_cost_aud"] = total_cost_aud
         enriched_data["enrichment_sources"] = sources_used
         enriched_data["enrichment_completed_at"] = completed_at
-        
+
         # ===== CEO Directive #057: Enrichment Provenance =====
         # Determine best source URL for Spam Act "conspicuous publication" defence
         # Priority: LinkedIn > GMB > Company Website > Hunter domain
         enrichment_source_url = self._determine_source_url(enriched_data, tier_results)
         enrichment_captured_at = started_at  # When we captured the data
-        
+
         enriched_data["enrichment_source_url"] = enrichment_source_url
         enriched_data["enrichment_captured_at"] = enrichment_captured_at
-        
+
         return EnrichmentResult(
             lead_id=lead.get("id") or lead.get("lead_id"),
             original_data=lead,
@@ -902,13 +900,13 @@ class SiegeWaterfall:
         """
         tier = EnrichmentTier.ABN
         cost = TIER_COSTS_AUD[tier]
-        
+
         try:
             # Check if we have usable data
             abn = lead.get("abn")
             company_name = lead.get("company_name")
             state = lead.get("state") or lead.get("company_state")
-            
+
             if not abn and not company_name:
                 return TierResult(
                     tier=tier,
@@ -916,7 +914,7 @@ class SiegeWaterfall:
                     skipped=True,
                     skip_reason="No ABN or company_name available",
                 )
-            
+
             # Try ABN lookup first
             if abn:
                 result = await self.abn_client.lookup_abn(abn)
@@ -927,24 +925,24 @@ class SiegeWaterfall:
                     state=state,
                 )
                 result = results[0] if results else None
-            
+
             if not result:
                 return TierResult(
                     tier=tier,
                     success=False,
                     error="No ABN match found",
                 )
-            
+
             # Enrich from ABN data
             enriched = await self.abn_client.enrich_from_abn(
                 result.get("abn") or abn
             )
-            
+
             if enriched.get("found"):
                 # CEO Directive #057: ABN register is valid public source
                 abn_value = result.get("abn") or abn
                 source_url = f"https://abr.business.gov.au/ABN/View?abn={abn_value}" if abn_value else None
-                
+
                 await self._log_enrichment_operation(
                     tier=tier,
                     operation="abn_lookup",
@@ -972,7 +970,7 @@ class SiegeWaterfall:
                     success=False,
                     error="ABN enrichment returned no data",
                 )
-                
+
         except Exception as e:
             logger.warning(f"[Siege] Tier 1 ABN failed: {e}")
             sentry_sdk.capture_exception(e)
@@ -1036,7 +1034,7 @@ class SiegeWaterfall:
         """
         try:
             from src.integrations.supabase import get_supabase_client
-            
+
             supabase = get_supabase_client()
             log_entry = {
                 "abn": lead.get("abn"),
@@ -1092,14 +1090,14 @@ class SiegeWaterfall:
         tier = EnrichmentTier.GMB
         cost = TIER_COSTS_AUD[tier]
         start_time = time.time()
-        
+
         try:
             business_names = lead.get("business_names", [])
             trading_name = lead.get("trading_name")
             legal_name = lead.get("business_name") or lead.get("company_name")
             # CEO Directive #016: Bright Data LinkedIn company name (high priority)
             linkedin_company_name = lead.get("linkedin_company_name")
-            
+
             # CEO Directive #014 + #016: Generic name filter
             # Skip Tier 2 if no ASIC business names, no linkedin_company_name,
             # AND legal name is generic
@@ -1124,7 +1122,7 @@ class SiegeWaterfall:
                     skipped=True,
                     skip_reason=skip_reason,
                 )
-            
+
             # Build location string
             location_parts = []
             if lead.get("postcode"):
@@ -1134,41 +1132,39 @@ class SiegeWaterfall:
             state = lead.get("state") or lead.get("company_state")
             if state:
                 location_parts.append(state)
-            
+
             base_location = ", ".join(location_parts) if location_parts else ""
             domain = lead.get("domain") or lead.get("company_domain")
-            
+
             # Build waterfall search list with step tracking
             # Format: (name, step, location)
             waterfall_searches: list[tuple[str, str, str]] = []
-            
+
             # Step a: ASIC business names (highest priority for GMB matching)
             for bn in business_names:
                 if bn:
                     waterfall_searches.append((bn, "a", base_location or "Australia"))
-            
+
             # Step b: ABN trading_name (pre-2012 legacy)
             if trading_name:
                 waterfall_searches.append((trading_name, "b", base_location or "Australia"))
-            
+
             # Step c: Legal name stripped of suffixes
             if legal_name:
                 stripped_name = self._strip_legal_suffixes(legal_name)
-                if stripped_name and stripped_name != legal_name:
+                if stripped_name and stripped_name != legal_name or stripped_name:
                     waterfall_searches.append((stripped_name, "c", base_location or "Australia"))
-                elif stripped_name:
-                    waterfall_searches.append((stripped_name, "c", base_location or "Australia"))
-            
+
             # Step c.5: LinkedIn company name from Bright Data (CEO Directive #016)
             # Fallback after official govt data exhausted
             if linkedin_company_name:
                 waterfall_searches.append((linkedin_company_name, "c5", base_location or "Australia"))
-            
+
             # Step d: Location-pinned search (name + full location + "Australia")
             if legal_name and base_location:
                 location_pinned = f"{base_location}, Australia"
                 waterfall_searches.append((legal_name, "d", location_pinned))
-            
+
             if not waterfall_searches:
                 return TierResult(
                     tier=tier,
@@ -1176,35 +1172,35 @@ class SiegeWaterfall:
                     skipped=True,
                     skip_reason="No company_name or ABN business names available",
                 )
-            
+
             # Try each waterfall step until match found
             enriched = None
             matched_name = None
             matched_step = None
             names_tried = 0
-            
+
             for name, step, location in waterfall_searches:
                 names_tried += 1
                 step_start = time.time()
                 logger.debug(f"[Siege] Tier 2 GMB: Step {step} - Trying '{name}' in {location}")
-                
+
                 result = await self.gmb_scraper.enrich_from_gmb(
                     business_name=name,
                     domain=domain,
                     location=location,
                 )
-                
+
                 step_ms = int((time.time() - step_start) * 1000)
-                
+
                 if result.get("found"):
                     gmb_name = result.get("business_name", "")
                     match_score = max(
                         fuzz.ratio(name.lower(), gmb_name.lower()),
                         fuzz.token_set_ratio(name.lower(), gmb_name.lower()),
                     )
-                    
+
                     passed = match_score >= FUZZY_MATCH_THRESHOLD
-                    
+
                     # Log this attempt
                     await self._log_tier2_gmb_match(
                         lead=lead,
@@ -1218,7 +1214,7 @@ class SiegeWaterfall:
                         names_tried=names_tried,
                         processing_ms=step_ms,
                     )
-                    
+
                     if passed:
                         enriched = result
                         matched_name = name
@@ -1248,13 +1244,13 @@ class SiegeWaterfall:
                         names_tried=names_tried,
                         processing_ms=step_ms,
                     )
-            
+
             total_ms = int((time.time() - start_time) * 1000)
-            
+
             if enriched:
                 # CEO Directive #057: GMB URL is valid public source
                 gmb_source_url = enriched.get("google_maps_url")
-                
+
                 await self._log_enrichment_operation(
                     tier=tier,
                     operation="gmb_scrape",
@@ -1295,7 +1291,7 @@ class SiegeWaterfall:
                     success=False,
                     error=f"No GMB listing found (tried {names_tried} waterfall steps)",
                 )
-                
+
         except Exception as e:
             logger.warning(f"[Siege] Tier 2 GMB failed: {e}")
             sentry_sdk.capture_exception(e)
@@ -1334,21 +1330,21 @@ class SiegeWaterfall:
         """
         tier = EnrichmentTier.HUNTER
         cost = TIER_COSTS_AUD[tier]
-        
+
         try:
             email = lead.get("email")
             first_name = lead.get("first_name")
             last_name = lead.get("last_name")
             domain = lead.get("domain") or lead.get("company_domain")
-            
+
             # Verify existing email
             if email:
                 result = await self.hunter_client.verify_email(email)
-                
+
                 # CEO Directive #057: Construct source URL from domain
                 email_domain = email.split("@")[1] if "@" in email else None
                 hunter_source_url = f"https://{email_domain}" if email_domain else None
-                
+
                 await self._log_enrichment_operation(
                     tier=tier,
                     operation="verify_email",
@@ -1356,7 +1352,7 @@ class SiegeWaterfall:
                     success=True,
                     cost_aud=cost,
                 )
-                
+
                 return TierResult(
                     tier=tier,
                     success=True,
@@ -1369,7 +1365,7 @@ class SiegeWaterfall:
                     cost_aud=cost,
                     source_url=hunter_source_url,
                 )
-            
+
             # Try to find email by name + domain
             elif first_name and last_name and domain:
                 result = await self.hunter_client.find_email(
@@ -1377,11 +1373,11 @@ class SiegeWaterfall:
                     last_name=last_name,
                     domain=domain,
                 )
-                
+
                 if result.get("found"):
                     # CEO Directive #057: Domain website is the source
                     hunter_source_url = f"https://{domain}"
-                    
+
                     await self._log_enrichment_operation(
                         tier=tier,
                         operation="find_email",
@@ -1416,7 +1412,7 @@ class SiegeWaterfall:
                         error="Could not find email",
                         cost_aud=cost,  # Still charged for attempt
                     )
-            
+
             # NEW: Domain search for decision-maker discovery when only company is known
             elif domain:
                 # Use domain_search to find decision-makers at the company
@@ -1424,7 +1420,7 @@ class SiegeWaterfall:
                     domain=domain,
                     limit=5,  # Get top 5 contacts
                 )
-                
+
                 # Handle both DomainSearchResult object and list formats
                 if hasattr(search_result, "emails"):
                     # Real Hunter client returns DomainSearchResult
@@ -1434,7 +1430,7 @@ class SiegeWaterfall:
                     contacts = search_result
                 else:
                     contacts = []
-                
+
                 if contacts and len(contacts) > 0:
                     # Find the best decision-maker (executive/senior seniority)
                     decision_makers = []
@@ -1446,28 +1442,28 @@ class SiegeWaterfall:
                             contact_dict = contact
                         else:
                             continue
-                            
+
                         seniority = (contact_dict.get("seniority") or "").lower()
                         department = (contact_dict.get("department") or "").lower()
-                        
+
                         # Prioritize executives and senior roles in relevant departments
                         priority = 0
                         if seniority in ("executive", "senior"):
                             priority += 10
                         if department in ("executive", "management", "marketing", "sales"):
                             priority += 5
-                        
+
                         decision_makers.append((priority, contact_dict))
-                    
+
                     # Sort by priority and take the best match
                     decision_makers.sort(key=lambda x: x[0], reverse=True)
-                    
+
                     if decision_makers:
                         best_contact = decision_makers[0][1]
                         # CEO Directive #057: LinkedIn or domain website as source
                         contact_linkedin = best_contact.get("linkedin_url")
                         domain_source_url = contact_linkedin if contact_linkedin else f"https://{domain}"
-                        
+
                         await self._log_enrichment_operation(
                             tier=tier,
                             operation="domain_search",
@@ -1495,7 +1491,7 @@ class SiegeWaterfall:
                             cost_aud=0.15,  # Domain search costs more
                             source_url=domain_source_url,
                         )
-                
+
                 await self._log_enrichment_operation(
                     tier=tier,
                     operation="domain_search",
@@ -1510,7 +1506,7 @@ class SiegeWaterfall:
                     error="No contacts found for domain",
                     cost_aud=0.15,  # Still charged for domain search attempt
                 )
-            
+
             else:
                 return TierResult(
                     tier=tier,
@@ -1518,7 +1514,7 @@ class SiegeWaterfall:
                     skipped=True,
                     skip_reason="No email, name+domain, or domain available",
                 )
-                
+
         except Exception as e:
             logger.warning(f"[Siege] Tier 3 Hunter failed: {e}")
             sentry_sdk.capture_exception(e)
@@ -1544,13 +1540,13 @@ class SiegeWaterfall:
             TierResult with skipped=True
         """
         tier = EnrichmentTier.PROXYCURL
-        
+
         # Log deprecation notice
         logger.info(
             f"[Siege] Tier 4 pending — Unipile not activated. "
             f"LinkedIn enrichment skipped for lead: {lead.get('email', 'unknown')}"
         )
-        
+
         return TierResult(
             tier=tier,
             success=False,
@@ -1591,7 +1587,7 @@ class SiegeWaterfall:
         """
         tier = EnrichmentTier.IDENTITY
         cost = TIER_COSTS_AUD[tier]
-        
+
         # Guard: Only for high-ALS leads (unless forced)
         if als_score < 85 and not force:
             return TierResult(
@@ -1600,7 +1596,7 @@ class SiegeWaterfall:
                 skipped=True,
                 skip_reason=f"ALS {als_score} below 85 threshold",
             )
-        
+
         # Guard: Kaspr client must be available
         if self.kaspr_client is None:
             return TierResult(
@@ -1609,14 +1605,14 @@ class SiegeWaterfall:
                 skipped=True,
                 skip_reason="Kaspr client not configured (KASPR_API_KEY missing)",
             )
-        
+
         try:
             linkedin_url = lead.get("linkedin_url")
             email = lead.get("email")
             first_name = lead.get("first_name")
             last_name = lead.get("last_name")
             company = lead.get("company_name") or lead.get("company")
-            
+
             if not linkedin_url and not email:
                 return TierResult(
                     tier=tier,
@@ -1624,7 +1620,7 @@ class SiegeWaterfall:
                     skipped=True,
                     skip_reason="No linkedin_url or email for identity lookup",
                 )
-            
+
             enriched = await self.kaspr_client.enrich_identity(
                 linkedin_url=linkedin_url,
                 email=email,
@@ -1632,14 +1628,14 @@ class SiegeWaterfall:
                 last_name=last_name,
                 company=company,
             )
-            
+
             if enriched.get("found"):
                 logger.info(
                     f"[Siege] Tier 5 Identity Gold success for ALS={als_score} lead"
                 )
                 # CEO Directive #057: LinkedIn is the primary source for Kaspr
                 identity_source_url = linkedin_url or enriched.get("linkedin_url")
-                
+
                 await self._log_enrichment_operation(
                     tier=tier,
                     operation="identity_gold",
@@ -1671,7 +1667,7 @@ class SiegeWaterfall:
                     error="No identity data found",
                     cost_aud=cost,  # Still charged for lookup
                 )
-                
+
         except Exception as e:
             logger.warning(f"[Siege] Tier 5 Identity failed: {e}")
             sentry_sdk.capture_exception(e)
@@ -1721,9 +1717,9 @@ class SiegeWaterfall:
         try:
             # Lazy import to avoid circular dependencies
             from src.integrations.supabase import get_supabase_client
-            
+
             supabase = get_supabase_client()
-            
+
             log_entry = {
                 "operation_type": "enrichment",
                 "tier": tier.value,
@@ -1736,11 +1732,11 @@ class SiegeWaterfall:
                 "lead_domain": lead_data.get("domain") or lead_data.get("company_domain"),
                 "lead_company": lead_data.get("company_name"),
                 "metadata": metadata or {},
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
             }
-            
+
             await supabase.table("audit_logs").insert(log_entry).execute()
-            
+
         except Exception as e:
             # Don't fail enrichment if logging fails
             logger.warning(f"[Siege] Audit log failed: {e}")
@@ -1776,24 +1772,24 @@ class SiegeWaterfall:
         linkedin_url = enriched_data.get("linkedin_url")
         if linkedin_url and "linkedin.com" in linkedin_url:
             return linkedin_url
-        
+
         # Check company LinkedIn URL
         company_linkedin_url = enriched_data.get("company_linkedin_url")
         if company_linkedin_url and "linkedin.com" in company_linkedin_url:
             return company_linkedin_url
-        
+
         # Check GMB/Google Maps URL from Tier 2
         for tier_result in tier_results:
             if tier_result.tier == EnrichmentTier.GMB and tier_result.success:
                 gmb_url = tier_result.data.get("google_maps_url")
                 if gmb_url:
                     return gmb_url
-        
+
         # Check company website URL (often has team/contact page)
         company_website = enriched_data.get("company_website")
         if company_website:
             return company_website
-        
+
         # Check domain (construct URL)
         company_domain = enriched_data.get("company_domain")
         if company_domain:
@@ -1801,7 +1797,7 @@ class SiegeWaterfall:
             if not company_domain.startswith(("http://", "https://")):
                 return f"https://{company_domain}"
             return company_domain
-        
+
         # Check ABN register URL from Tier 1
         for tier_result in tier_results:
             if tier_result.tier == EnrichmentTier.ABN and tier_result.success:
@@ -1809,12 +1805,12 @@ class SiegeWaterfall:
                 if abn:
                     # ABN lookup URL is a valid public record source
                     return f"https://abr.business.gov.au/ABN/View?abn={abn}"
-        
+
         # Check tier source URLs (fallback)
         for tier_result in tier_results:
             if tier_result.source_url:
                 return tier_result.source_url
-        
+
         return None
 
     def _merge_data(
@@ -1835,12 +1831,12 @@ class SiegeWaterfall:
             Merged dictionary
         """
         result = dict(base)
-        
+
         for key, value in new_data.items():
             # Skip meta keys
             if key in ("found", "source", "confidence"):
                 continue
-            
+
             # Only add if not already set
             if key not in result or result[key] is None:
                 result[key] = value
@@ -1850,7 +1846,7 @@ class SiegeWaterfall:
             # Merge dicts
             elif isinstance(value, dict) and isinstance(result[key], dict):
                 result[key] = {**result[key], **value}
-        
+
         return result
 
     def _calculate_als(self, lead: dict[str, Any]) -> int:
@@ -1867,7 +1863,7 @@ class SiegeWaterfall:
             ALS score (0-100)
         """
         score = 0
-        
+
         # Email (30 points max)
         if lead.get("email"):
             if lead.get("email_status") == "verified":
@@ -1876,29 +1872,29 @@ class SiegeWaterfall:
                 score += 25
             else:
                 score += 15
-        
+
         # Phone (20 points max)
         if lead.get("phone") or lead.get("mobile"):
             score += 20
-        
+
         # LinkedIn (15 points)
         if lead.get("linkedin_url"):
             score += 15
-        
+
         # Name (10 points)
         if lead.get("first_name") and lead.get("last_name"):
             score += 10
-        
+
         # Title/Role (10 points)
         if lead.get("title"):
             score += 10
-        
+
         # Company data (15 points max)
         if lead.get("company_name"):
             score += 10
         if lead.get("company_employee_count") or lead.get("company_industry"):
             score += 5
-        
+
         return min(score, 100)
 
 

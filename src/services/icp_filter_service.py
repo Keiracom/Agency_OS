@@ -241,14 +241,14 @@ class ICPFilterService:
     - Layer 2: Hard Exclude List check
     - Layer 3: Industry validation for ALS gating
     """
-    
+
     @staticmethod
     def normalize_text(text: str | None) -> str:
         """Normalize text for matching."""
         if not text:
             return ""
         return text.lower().strip()
-    
+
     @staticmethod
     def normalize_for_industry_match(text: str | None) -> str:
         """
@@ -262,7 +262,7 @@ class ICPFilterService:
         # Lowercase, strip, replace spaces with underscores
         normalized = text.lower().strip().replace(" ", "_").replace("&", "and")
         return normalized
-    
+
     @classmethod
     def check_category_whitelist(
         cls,
@@ -280,20 +280,20 @@ class ICPFilterService:
             Tuple of (passes_whitelist, matched_category)
         """
         all_cats = []
-        
+
         if gmb_category:
             all_cats.append(cls.normalize_text(gmb_category))
-        
+
         if categories:
             all_cats.extend([cls.normalize_text(c) for c in categories])
-        
+
         for cat in all_cats:
             for whitelist_term in ICP_CATEGORY_WHITELIST:
                 if whitelist_term in cat:
                     return True, cat
-        
+
         return False, None
-    
+
     @classmethod
     def check_category_blacklist(
         cls,
@@ -317,30 +317,30 @@ class ICPFilterService:
             Tuple of (is_blacklisted, matched_term)
         """
         all_text = []
-        
+
         if gmb_category:
             all_text.append(cls.normalize_text(gmb_category))
-        
+
         if categories:
             all_text.extend([cls.normalize_text(c) for c in categories])
-        
+
         # NOTE: company_name deliberately NOT included (Directive #046)
         # Property Marketing Agency should pass — their GMB category is "marketing agency"
-        
+
         if not all_text:
             # No categories to check = not blacklisted
             return False, None
-        
+
         combined = " ".join(all_text)
-        
+
         for blacklist_term in ICP_CATEGORY_BLACKLIST:
             # Use word boundary matching to avoid false positives
             pattern = r'\b' + re.escape(blacklist_term) + r'\b'
             if re.search(pattern, combined):
                 return True, blacklist_term
-        
+
         return False, None
-    
+
     @classmethod
     def check_industry_whitelist(
         cls,
@@ -362,25 +362,25 @@ class ICPFilterService:
             Tuple of (passes_whitelist, matched_industry)
         """
         industries = []
-        
+
         if industry:
             industries.append(cls.normalize_text(industry))
         if sub_industry:
             industries.append(cls.normalize_text(sub_industry))
-        
+
         # Build normalized whitelist for underscore matching
         normalized_whitelist = {cls.normalize_for_industry_match(t) for t in ICP_INDUSTRY_WHITELIST}
-        
+
         for ind in industries:
             # Direct match against whitelist
             if ind in ICP_INDUSTRY_WHITELIST:
                 return True, ind
-            
+
             # Normalized match (underscore format) — Directive #046
             normalized_ind = cls.normalize_for_industry_match(ind)
             if normalized_ind in normalized_whitelist:
                 return True, ind
-            
+
             # Partial match for flexibility
             for whitelist_term in ICP_INDUSTRY_WHITELIST:
                 if whitelist_term in ind or ind in whitelist_term:
@@ -389,9 +389,9 @@ class ICPFilterService:
                 norm_term = cls.normalize_for_industry_match(whitelist_term)
                 if norm_term in normalized_ind or normalized_ind in norm_term:
                     return True, ind
-        
+
         return False, None
-    
+
     @classmethod
     def check_industry_blacklist(
         cls,
@@ -409,18 +409,18 @@ class ICPFilterService:
             Tuple of (is_blacklisted, matched_industry)
         """
         industries = []
-        
+
         if industry:
             industries.append(cls.normalize_text(industry))
         if sub_industry:
             industries.append(cls.normalize_text(sub_industry))
-        
+
         for ind in industries:
             if ind in ICP_INDUSTRY_BLACKLIST:
                 return True, ind
-        
+
         return False, None
-    
+
     @classmethod
     def is_icp_qualified(
         cls,
@@ -446,30 +446,30 @@ class ICPFilterService:
             "layer_failed": None,
             "matched_term": None,
         }
-        
+
         # Extract fields
         company_name = lead_data.get("company_name")
         industry = lead_data.get("company_industry")
         sub_industry = lead_data.get("company_sub_industry")
-        
+
         # GMB categories from enrichment_data or direct field
         enrichment = lead_data.get("enrichment_data") or {}
         if isinstance(enrichment, str):
             import json
             try:
                 enrichment = json.loads(enrichment)
-            except:
+            except Exception:
                 enrichment = {}
-        
+
         categories = (
-            lead_data.get("categories") or 
+            lead_data.get("categories") or
             lead_data.get("all_categories") or
             enrichment.get("gmb_categories") or
             enrichment.get("categories") or
             []
         )
         gmb_category = lead_data.get("gmb_category") or enrichment.get("gmb_category")
-        
+
         # ========== Layer 2: Hard Exclude (check first) ==========
         # If blacklisted, reject immediately
         is_blacklisted, blacklist_term = cls.check_category_blacklist(
@@ -481,7 +481,7 @@ class ICPFilterService:
             details["matched_term"] = blacklist_term
             logger.info(f"ICP REJECT (Layer 2): {company_name} — {blacklist_term}")
             return False, details
-        
+
         is_industry_blacklisted, blacklist_industry = cls.check_industry_blacklist(
             industry, sub_industry
         )
@@ -491,7 +491,7 @@ class ICPFilterService:
             details["matched_term"] = blacklist_industry
             logger.info(f"ICP REJECT (Layer 2): {company_name} — industry: {blacklist_industry}")
             return False, details
-        
+
         # ========== Layer 1: Category Whitelist ==========
         passes_cat_whitelist, matched_cat = cls.check_category_whitelist(
             categories, gmb_category
@@ -502,7 +502,7 @@ class ICPFilterService:
             details["matched_term"] = matched_cat
             logger.info(f"ICP PASS (Layer 1): {company_name} — {matched_cat}")
             return True, details
-        
+
         # ========== Layer 3: Industry Whitelist ==========
         passes_ind_whitelist, matched_ind = cls.check_industry_whitelist(
             industry, sub_industry
@@ -513,13 +513,13 @@ class ICPFilterService:
             details["matched_term"] = matched_ind
             logger.info(f"ICP PASS (Layer 3): {company_name} — industry: {matched_ind}")
             return True, details
-        
+
         # ========== No match ==========
         details["reason"] = "No ICP match found"
         details["layer_failed"] = "no_whitelist_match"
         logger.info(f"ICP REJECT (no match): {company_name} — industry: {industry}")
         return False, details
-    
+
     @classmethod
     def calculate_industry_als_penalty(
         cls,
@@ -538,17 +538,17 @@ class ICPFilterService:
             Penalty points (0 = no penalty, 50+ = effectively disqualified)
         """
         industry = lead_data.get("company_industry")
-        
+
         # Blacklisted industry = max penalty
         is_blacklisted, _ = cls.check_industry_blacklist(industry)
         if is_blacklisted:
             return 60  # Ensures ALS < 50 even with perfect other scores
-        
+
         # Whitelisted industry = no penalty
         passes_whitelist, _ = cls.check_industry_whitelist(industry)
         if passes_whitelist:
             return 0
-        
+
         # Unknown industry = moderate penalty
         return 30
 

@@ -473,7 +473,11 @@ class ABNClient:
             )
 
             response = payload.get("response", {})
-            record = response.get("businessEntity202001") or response.get("businessEntity201408") or response.get("businessEntity")
+            record = (
+                response.get("businessEntity202001")
+                or response.get("businessEntity201408")
+                or response.get("businessEntity")
+            )
 
             if not record:
                 raise ABNNotFoundError(cleaned_abn, "ABN")
@@ -772,7 +776,10 @@ class ABNClient:
         # Extract GST status
         gst_info = record.get("goodsAndServicesTax", {})
         if isinstance(gst_info, list):
-            gst_info = next((g for g in gst_info if g.get("effectiveTo") is None), gst_info[0] if gst_info else {})
+            gst_info = next(
+                (g for g in gst_info if g.get("effectiveTo") is None),
+                gst_info[0] if gst_info else {},
+            )
 
         gst_registered = gst_info.get("effectiveFrom") is not None
         gst_from = gst_info.get("effectiveFrom")
@@ -785,14 +792,20 @@ class ABNClient:
         # Main name (for non-individuals)
         main_name = record.get("mainName", {})
         if isinstance(main_name, list):
-            main_name = next((n for n in main_name if n.get("isCurrentIndicator") == "Y"), main_name[0] if main_name else {})
+            main_name = next(
+                (n for n in main_name if n.get("isCurrentIndicator") == "Y"),
+                main_name[0] if main_name else {},
+            )
         if main_name:
             business_name = main_name.get("organisationName", "")
 
         # Legal name (for individuals)
         legal_name = record.get("legalName", {})
         if isinstance(legal_name, list):
-            legal_name = next((n for n in legal_name if n.get("isCurrentIndicator") == "Y"), legal_name[0] if legal_name else {})
+            legal_name = next(
+                (n for n in legal_name if n.get("isCurrentIndicator") == "Y"),
+                legal_name[0] if legal_name else {},
+            )
         if legal_name and not business_name:
             given_name = legal_name.get("givenName", "")
             family_name = legal_name.get("familyName", "")
@@ -801,7 +814,10 @@ class ABNClient:
         # Main trading name
         main_trading = record.get("mainTradingName", {})
         if isinstance(main_trading, list):
-            main_trading = next((n for n in main_trading if n.get("isCurrentIndicator") == "Y"), main_trading[0] if main_trading else {})
+            main_trading = next(
+                (n for n in main_trading if n.get("isCurrentIndicator") == "Y"),
+                main_trading[0] if main_trading else {},
+            )
         if main_trading:
             trading_name = main_trading.get("organisationName", "")
 
@@ -818,7 +834,10 @@ class ABNClient:
         # Extract address
         address_info = record.get("mainBusinessPhysicalAddress", {})
         if isinstance(address_info, list):
-            address_info = next((a for a in address_info if a.get("isCurrentIndicator") == "Y"), address_info[0] if address_info else {})
+            address_info = next(
+                (a for a in address_info if a.get("isCurrentIndicator") == "Y"),
+                address_info[0] if address_info else {},
+            )
 
         state = address_info.get("stateCode", "")
         postcode = address_info.get("postcode", "")

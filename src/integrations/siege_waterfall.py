@@ -222,6 +222,7 @@ class ABNClientStub:
         """Look up business by ABN."""
         try:
             from src.integrations.abn_client import get_abn_client
+
             client = get_abn_client()
             return await client.search_by_abn(abn)
         except Exception as e:
@@ -236,6 +237,7 @@ class ABNClientStub:
         """Search businesses by name."""
         try:
             from src.integrations.abn_client import get_abn_client
+
             client = get_abn_client()
             return await client.search_by_name(business_name, state=state)
         except Exception as e:
@@ -246,6 +248,7 @@ class ABNClientStub:
         """Enrich lead data from ABN lookup."""
         try:
             from src.integrations.abn_client import get_abn_client
+
             client = get_abn_client()
             return await client.enrich_from_abn(abn)
         except Exception as e:
@@ -265,9 +268,14 @@ class GMBScraperAdapter:
 
     DATASET_ID = "gd_m8ebnr0q2qlklc02fz"
     STATE_CITY_MAP = {
-        "NSW": "Sydney", "VIC": "Melbourne", "QLD": "Brisbane",
-        "WA": "Perth", "SA": "Adelaide", "TAS": "Hobart",
-        "ACT": "Canberra", "NT": "Darwin",
+        "NSW": "Sydney",
+        "VIC": "Melbourne",
+        "QLD": "Brisbane",
+        "WA": "Perth",
+        "SA": "Adelaide",
+        "TAS": "Hobart",
+        "ACT": "Canberra",
+        "NT": "Darwin",
     }
 
     def __init__(self):
@@ -305,7 +313,11 @@ class GMBScraperAdapter:
                         "Authorization": f"Bearer {self._api_key}",
                         "Content-Type": "application/json",
                     },
-                    json={"input": [{"country": "AU", "keyword": f"{business_name} {city}", "lat": ""}]},
+                    json={
+                        "input": [
+                            {"country": "AU", "keyword": f"{business_name} {city}", "lat": ""}
+                        ]
+                    },
                 )
                 resp.raise_for_status()
                 snapshot_id = resp.json().get("snapshot_id")
@@ -339,7 +351,11 @@ class GMBScraperAdapter:
                         key=lambda r: fuzz.ratio(business_name.lower(), r.get("name", "").lower()),
                         default=None,
                     )
-                    if best and fuzz.ratio(business_name.lower(), best.get("name", "").lower()) >= FUZZY_MATCH_THRESHOLD:
+                    if (
+                        best
+                        and fuzz.ratio(business_name.lower(), best.get("name", "").lower())
+                        >= FUZZY_MATCH_THRESHOLD
+                    ):
                         return {"found": True, **best}
 
                 return None
@@ -405,6 +421,7 @@ class HunterClientAdapter:
         if self._client is None:
             try:
                 from src.integrations.hunter import get_hunter_client
+
                 self._client = get_hunter_client()
             except Exception as e:
                 logger.warning(f"[Hunter] Could not initialize client: {e}")
@@ -713,17 +730,19 @@ class SiegeWaterfall:
         skip_tiers = skip_tiers or []
 
         # Validate we have something to work with
-        if not any([
-            lead.get("email"),
-            lead.get("abn"),
-            lead.get("linkedin_url"),
-            lead.get("company_name"),
-            lead.get("domain"),
-            (lead.get("first_name") and lead.get("last_name")),
-        ]):
+        if not any(
+            [
+                lead.get("email"),
+                lead.get("abn"),
+                lead.get("linkedin_url"),
+                lead.get("company_name"),
+                lead.get("domain"),
+                (lead.get("first_name") and lead.get("last_name")),
+            ]
+        ):
             raise ValidationError(
                 message="Lead must have at least one of: email, abn, linkedin_url, "
-                        "company_name, domain, or first_name + last_name",
+                "company_name, domain, or first_name + last_name",
             )
 
         # Track results
@@ -742,12 +761,14 @@ class SiegeWaterfall:
                 enriched_data = self._merge_data(enriched_data, result.data)
                 total_cost_aud += result.cost_aud
         else:
-            tier_results.append(TierResult(
-                tier=EnrichmentTier.ABN,
-                success=False,
-                skipped=True,
-                skip_reason="Tier skipped by request",
-            ))
+            tier_results.append(
+                TierResult(
+                    tier=EnrichmentTier.ABN,
+                    success=False,
+                    skipped=True,
+                    skip_reason="Tier skipped by request",
+                )
+            )
 
         # ===== TIER 2: GMB/Ads Signals =====
         if EnrichmentTier.GMB not in skip_tiers:
@@ -757,12 +778,14 @@ class SiegeWaterfall:
                 enriched_data = self._merge_data(enriched_data, result.data)
                 total_cost_aud += result.cost_aud
         else:
-            tier_results.append(TierResult(
-                tier=EnrichmentTier.GMB,
-                success=False,
-                skipped=True,
-                skip_reason="Tier skipped by request",
-            ))
+            tier_results.append(
+                TierResult(
+                    tier=EnrichmentTier.GMB,
+                    success=False,
+                    skipped=True,
+                    skip_reason="Tier skipped by request",
+                )
+            )
 
         # ===== TIER 3: Hunter.io =====
         if EnrichmentTier.HUNTER not in skip_tiers:
@@ -772,12 +795,14 @@ class SiegeWaterfall:
                 enriched_data = self._merge_data(enriched_data, result.data)
                 total_cost_aud += result.cost_aud
         else:
-            tier_results.append(TierResult(
-                tier=EnrichmentTier.HUNTER,
-                success=False,
-                skipped=True,
-                skip_reason="Tier skipped by request",
-            ))
+            tier_results.append(
+                TierResult(
+                    tier=EnrichmentTier.HUNTER,
+                    success=False,
+                    skipped=True,
+                    skip_reason="Tier skipped by request",
+                )
+            )
 
         # ===== TIER 4: Proxycurl =====
         if EnrichmentTier.PROXYCURL not in skip_tiers:
@@ -787,12 +812,14 @@ class SiegeWaterfall:
                 enriched_data = self._merge_data(enriched_data, result.data)
                 total_cost_aud += result.cost_aud
         else:
-            tier_results.append(TierResult(
-                tier=EnrichmentTier.PROXYCURL,
-                success=False,
-                skipped=True,
-                skip_reason="Tier skipped by request",
-            ))
+            tier_results.append(
+                TierResult(
+                    tier=EnrichmentTier.PROXYCURL,
+                    success=False,
+                    skipped=True,
+                    skip_reason="Tier skipped by request",
+                )
+            )
 
         # ===== TIER 5: Identity Gold (ALS >= 85 only) =====
         if EnrichmentTier.IDENTITY not in skip_tiers:
@@ -806,19 +833,23 @@ class SiegeWaterfall:
                     enriched_data = self._merge_data(enriched_data, result.data)
                     total_cost_aud += result.cost_aud
             else:
-                tier_results.append(TierResult(
+                tier_results.append(
+                    TierResult(
+                        tier=EnrichmentTier.IDENTITY,
+                        success=False,
+                        skipped=True,
+                        skip_reason=f"ALS {current_als} < 85 threshold",
+                    )
+                )
+        else:
+            tier_results.append(
+                TierResult(
                     tier=EnrichmentTier.IDENTITY,
                     success=False,
                     skipped=True,
-                    skip_reason=f"ALS {current_als} < 85 threshold",
-                ))
-        else:
-            tier_results.append(TierResult(
-                tier=EnrichmentTier.IDENTITY,
-                success=False,
-                skipped=True,
-                skip_reason="Tier skipped by request",
-            ))
+                    skip_reason="Tier skipped by request",
+                )
+            )
 
         # ===== Calculate ALS Bonus =====
         sources_used = sum(1 for r in tier_results if r.success)
@@ -830,10 +861,7 @@ class SiegeWaterfall:
             final_als = self._calculate_als(enriched_data) + als_bonus_amount
             enriched_data["als_score"] = min(final_als, 100)  # Cap at 100
             enriched_data["als_bonus_sources"] = sources_used
-            logger.info(
-                f"[Siege] +{als_bonus_amount} ALS bonus applied "
-                f"({sources_used} sources)"
-            )
+            logger.info(f"[Siege] +{als_bonus_amount} ALS bonus applied ({sources_used} sources)")
 
         # ===== Build Lineage =====
         enrichment_lineage = [
@@ -934,14 +962,14 @@ class SiegeWaterfall:
                 )
 
             # Enrich from ABN data
-            enriched = await self.abn_client.enrich_from_abn(
-                result.get("abn") or abn
-            )
+            enriched = await self.abn_client.enrich_from_abn(result.get("abn") or abn)
 
             if enriched.get("found"):
                 # CEO Directive #057: ABN register is valid public source
                 abn_value = result.get("abn") or abn
-                source_url = f"https://abr.business.gov.au/ABN/View?abn={abn_value}" if abn_value else None
+                source_url = (
+                    f"https://abr.business.gov.au/ABN/View?abn={abn_value}" if abn_value else None
+                )
 
                 await self._log_enrichment_operation(
                     tier=tier,
@@ -1000,19 +1028,20 @@ class SiegeWaterfall:
     def _strip_legal_suffixes(self, name: str) -> str:
         """Strip common legal entity suffixes for better GMB matching."""
         import re
+
         if not name:
             return name
         # Remove Pty Ltd, Ltd, Pty, PTY LTD, etc.
         patterns = [
-            r'\s+pty\.?\s*ltd\.?$',
-            r'\s+ltd\.?$',
-            r'\s+pty\.?$',
-            r'\s+proprietary\s+limited$',
-            r'\s+limited$',
+            r"\s+pty\.?\s*ltd\.?$",
+            r"\s+ltd\.?$",
+            r"\s+pty\.?$",
+            r"\s+proprietary\s+limited$",
+            r"\s+limited$",
         ]
         result = name
         for pattern in patterns:
-            result = re.sub(pattern, '', result, flags=re.IGNORECASE)
+            result = re.sub(pattern, "", result, flags=re.IGNORECASE)
         return result.strip()
 
     async def _log_tier2_gmb_match(
@@ -1087,6 +1116,7 @@ class SiegeWaterfall:
             TierResult with GMB data
         """
         import time
+
         tier = EnrichmentTier.GMB
         cost = TIER_COSTS_AUD[tier]
         start_time = time.time()
@@ -1101,7 +1131,12 @@ class SiegeWaterfall:
             # CEO Directive #014 + #016: Generic name filter
             # Skip Tier 2 if no ASIC business names, no linkedin_company_name,
             # AND legal name is generic
-            if not business_names and not linkedin_company_name and legal_name and self._is_generic_name(legal_name):
+            if (
+                not business_names
+                and not linkedin_company_name
+                and legal_name
+                and self._is_generic_name(legal_name)
+            ):
                 skip_reason = "tier2_skipped_generic_name"
                 logger.info(
                     f"[Siege] Tier 2 GMB: Skipping generic name '{legal_name}' "
@@ -1158,7 +1193,9 @@ class SiegeWaterfall:
             # Step c.5: LinkedIn company name from Bright Data (CEO Directive #016)
             # Fallback after official govt data exhausted
             if linkedin_company_name:
-                waterfall_searches.append((linkedin_company_name, "c5", base_location or "Australia"))
+                waterfall_searches.append(
+                    (linkedin_company_name, "c5", base_location or "Australia")
+                )
 
             # Step d: Location-pinned search (name + full location + "Australia")
             if legal_name and base_location:
@@ -1462,7 +1499,9 @@ class SiegeWaterfall:
                         best_contact = decision_makers[0][1]
                         # CEO Directive #057: LinkedIn or domain website as source
                         contact_linkedin = best_contact.get("linkedin_url")
-                        domain_source_url = contact_linkedin if contact_linkedin else f"https://{domain}"
+                        domain_source_url = (
+                            contact_linkedin if contact_linkedin else f"https://{domain}"
+                        )
 
                         await self._log_enrichment_operation(
                             tier=tier,
@@ -1630,9 +1669,7 @@ class SiegeWaterfall:
             )
 
             if enriched.get("found"):
-                logger.info(
-                    f"[Siege] Tier 5 Identity Gold success for ALS={als_score} lead"
-                )
+                logger.info(f"[Siege] Tier 5 Identity Gold success for ALS={als_score} lead")
                 # CEO Directive #057: LinkedIn is the primary source for Kaspr
                 identity_source_url = linkedin_url or enriched.get("linkedin_url")
 

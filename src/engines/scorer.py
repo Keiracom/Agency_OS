@@ -130,10 +130,22 @@ MAX_MULTI_SOURCE_BOOST = 15
 
 # Directive 048: Social post timing signals for Timing component (max 15 points)
 SOCIAL_POST_TIMING_SIGNALS = [
-    "hiring", "join our team", "we're growing", "new role",
-    "excited to announce", "just launched", "new client", "award",
-    "recently funded", "funding announcement", "series a", "series b",
-    "expanding", "growth", "milestone", "anniversary"
+    "hiring",
+    "join our team",
+    "we're growing",
+    "new role",
+    "excited to announce",
+    "just launched",
+    "new client",
+    "award",
+    "recently funded",
+    "funding announcement",
+    "series a",
+    "series b",
+    "expanding",
+    "growth",
+    "milestone",
+    "anniversary",
 ]
 MAX_SOCIAL_TIMING_BOOST = 15
 
@@ -545,8 +557,16 @@ class ScorerEngine(BaseEngine):
 
             if country_matched:
                 score += SCORE_COUNTRY_AUSTRALIA  # Full points for ICP country match
-            elif country in ["new zealand", "nz", "united states", "us", "usa",
-                           "united kingdom", "uk", "gb"]:
+            elif country in [
+                "new zealand",
+                "nz",
+                "united states",
+                "us",
+                "usa",
+                "united kingdom",
+                "uk",
+                "gb",
+            ]:
                 score += 4  # Partial credit for English-speaking countries
 
         return min(25, score)
@@ -742,9 +762,7 @@ class ScorerEngine(BaseEngine):
             Falls back to DEFAULT_ICP_CONFIG if no campaign or no config.
         """
         if not campaign_id:
-            logger.warning(
-                "No campaign_id provided for ICP config lookup, using default"
-            )
+            logger.warning("No campaign_id provided for ICP config lookup, using default")
             # Log to audit_logs for governance tracking
             await self.log_operation_to_db(
                 db=db,
@@ -775,9 +793,7 @@ class ScorerEngine(BaseEngine):
                 return row.icp_config
 
             # Campaign exists but no ICP config - use default
-            logger.warning(
-                f"Campaign {campaign_id} has no icp_config, using default"
-            )
+            logger.warning(f"Campaign {campaign_id} has no icp_config, using default")
             await self.log_operation_to_db(
                 db=db,
                 operation="icp_config_fallback",
@@ -1027,10 +1043,14 @@ class ScorerEngine(BaseEngine):
                     tier_rate = tier_rates.get(current_tier, 0)
                     if tier_rate >= 80:
                         boost_points += FUNNEL_HIGH_SHOW_RATE_BOOST
-                        signals.append(f"{current_tier.upper()} tier has {tier_rate:.0f}% show rate")
+                        signals.append(
+                            f"{current_tier.upper()} tier has {tier_rate:.0f}% show rate"
+                        )
                     elif tier_rate >= 60:
                         boost_points += 2  # Partial boost for decent show rate
-                        signals.append(f"{current_tier.upper()} tier has {tier_rate:.0f}% show rate")
+                        signals.append(
+                            f"{current_tier.upper()} tier has {tier_rate:.0f}% show rate"
+                        )
 
             # Check meeting-to-deal patterns
             deal_data = patterns.get("meeting_to_deal", {})
@@ -1116,6 +1136,7 @@ class ScorerEngine(BaseEngine):
 
             if isinstance(enrichment_data, str):
                 import json
+
                 try:
                     enrichment_data = json.loads(enrichment_data)
                 except (json.JSONDecodeError, TypeError):
@@ -1163,7 +1184,9 @@ class ScorerEngine(BaseEngine):
 
             if source_count >= 3:
                 boost_points = MAX_MULTI_SOURCE_BOOST  # 15 points
-                reason = f"Multi-source verified ({source_count} sources: {', '.join(sources_verified)})"
+                reason = (
+                    f"Multi-source verified ({source_count} sources: {', '.join(sources_verified)})"
+                )
                 logger.info(f"Multi-source boost for {lead_pool_id}: +{boost_points} ({reason})")
                 return {
                     "boost_points": boost_points,
@@ -1224,6 +1247,7 @@ class ScorerEngine(BaseEngine):
                     enrichment_data = row.enrichment_data
                     if isinstance(enrichment_data, str):
                         import json
+
                         try:
                             enrichment_data = json.loads(enrichment_data)
                         except (json.JSONDecodeError, TypeError):
@@ -1756,7 +1780,9 @@ class ScorerEngine(BaseEngine):
         # Calculate raw component scores using pool data
         raw_data_quality = self._score_pool_data_quality(assignment_data)
         raw_authority = self._score_pool_authority(assignment_data)
-        raw_company_fit = self._score_pool_company_fit(assignment_data, target_industries, icp_config)
+        raw_company_fit = self._score_pool_company_fit(
+            assignment_data, target_industries, icp_config
+        )
         raw_timing = self._score_pool_timing(assignment_data)
         raw_risk = self._score_pool_risk(assignment_data, competitor_domains)
 

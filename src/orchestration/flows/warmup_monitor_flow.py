@@ -52,7 +52,9 @@ async def get_warming_domains_task() -> list[dict]:
                 "id": str(r.id),
                 "domain": r.resource_value,
                 "provider_id": r.provider_id,
-                "warmup_started_at": r.warmup_started_at.isoformat() if r.warmup_started_at else None,
+                "warmup_started_at": r.warmup_started_at.isoformat()
+                if r.warmup_started_at
+                else None,
             }
             for r in resources
         ]
@@ -134,9 +136,7 @@ async def update_domain_status_task(
     async with get_db_session() as db:
         from uuid import UUID
 
-        result = await db.execute(
-            select(ResourcePool).where(ResourcePool.id == UUID(resource_id))
-        )
+        result = await db.execute(select(ResourcePool).where(ResourcePool.id == UUID(resource_id)))
         resource = result.scalar_one_or_none()
 
         if not resource:
@@ -260,11 +260,13 @@ async def warmup_monitor_flow() -> dict:
 
         except Exception as e:
             log.error(f"Error processing domain {domain_record['domain']}: {e}")
-            results.append({
-                "domain": domain_record["domain"],
-                "status": "error",
-                "error": str(e),
-            })
+            results.append(
+                {
+                    "domain": domain_record["domain"],
+                    "status": "error",
+                    "error": str(e),
+                }
+            )
             error_count += 1
 
     log.info(

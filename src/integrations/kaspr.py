@@ -230,9 +230,7 @@ class KasprClient:
     async def _rate_limit_delay(self) -> None:
         """Apply rate limiting delay between requests."""
         if self._last_request_time:
-            elapsed = (
-                datetime.now(UTC) - self._last_request_time
-            ).total_seconds()
+            elapsed = (datetime.now(UTC) - self._last_request_time).total_seconds()
             if elapsed < REQUEST_DELAY_SECONDS:
                 await asyncio.sleep(REQUEST_DELAY_SECONDS - elapsed)
 

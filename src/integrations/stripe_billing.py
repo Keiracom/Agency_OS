@@ -63,18 +63,13 @@ class CustomerPortalRequest(BaseModel):
 # Core Stripe Operations
 # =============================================================================
 
+
 async def create_customer(
-    email: str,
-    name: str | None = None,
-    metadata: dict[str, Any] | None = None
+    email: str, name: str | None = None, metadata: dict[str, Any] | None = None
 ) -> stripe.Customer:
     """Create a Stripe customer."""
     try:
-        customer = stripe.Customer.create(
-            email=email,
-            name=name,
-            metadata=metadata or {}
-        )
+        customer = stripe.Customer.create(email=email, name=name, metadata=metadata or {})
         logger.info(f"Created Stripe customer: {customer.id} for {email}")
         return customer
     except stripe.StripeError as e:
@@ -83,11 +78,7 @@ async def create_customer(
 
 
 async def create_checkout_session(
-    email: str,
-    plan_type: PlanType,
-    success_url: str,
-    cancel_url: str,
-    lead_id: str | None = None
+    email: str, plan_type: PlanType, success_url: str, cancel_url: str, lead_id: str | None = None
 ) -> SubscriptionResult:
     """
     Create a Stripe Checkout session for subscription.
@@ -101,8 +92,7 @@ async def create_checkout_session(
 
         if not price_id:
             return SubscriptionResult(
-                success=False,
-                error=f"Price ID not configured for {plan_type.value} plan"
+                success=False, error=f"Price ID not configured for {plan_type.value} plan"
             )
 
         # Check founding spots if requesting founding plan
@@ -110,8 +100,7 @@ async def create_checkout_session(
             spots = await get_remaining_founding_spots()
             if spots <= 0:
                 return SubscriptionResult(
-                    success=False,
-                    error="All founding member spots have been claimed"
+                    success=False, error="All founding member spots have been claimed"
                 )
 
         # Create checkout session
@@ -119,47 +108,32 @@ async def create_checkout_session(
             mode="subscription",
             payment_method_types=["card"],
             customer_email=email,
-            line_items=[{
-                "price": price_id,
-                "quantity": 1
-            }],
+            line_items=[{"price": price_id, "quantity": 1}],
             success_url=success_url + "?session_id={CHECKOUT_SESSION_ID}",
             cancel_url=cancel_url,
             metadata={
                 "lead_id": lead_id or "",
                 "plan_type": plan_type.value,
-                "is_founding": str(plan_type == PlanType.FOUNDING).lower()
+                "is_founding": str(plan_type == PlanType.FOUNDING).lower(),
             },
             subscription_data={
-                "metadata": {
-                    "lead_id": lead_id or "",
-                    "plan_type": plan_type.value
-                }
+                "metadata": {"lead_id": lead_id or "", "plan_type": plan_type.value}
             },
-            allow_promotion_codes=True  # Allow coupon codes
+            allow_promotion_codes=True,  # Allow coupon codes
         )
 
         logger.info(f"Created checkout session: {session.id} for {email}")
-        return SubscriptionResult(
-            success=True,
-            checkout_url=session.url
-        )
+        return SubscriptionResult(success=True, checkout_url=session.url)
 
     except stripe.StripeError as e:
         logger.error(f"Stripe checkout error: {e}")
         return SubscriptionResult(success=False, error=str(e))
 
 
-async def create_customer_portal_session(
-    customer_id: str,
-    return_url: str
-) -> str:
+async def create_customer_portal_session(customer_id: str, return_url: str) -> str:
     """Create a Stripe Customer Portal session for self-service billing."""
     try:
-        session = stripe.billing_portal.Session.create(
-            customer=customer_id,
-            return_url=return_url
-        )
+        session = stripe.billing_portal.Session.create(customer=customer_id, return_url=return_url)
         return session.url
     except stripe.StripeError as e:
         logger.error(f"Portal session error: {e}")
@@ -167,14 +141,12 @@ async def create_customer_portal_session(
 
 
 async def cancel_subscription(
-    subscription_id: str,
-    cancel_at_period_end: bool = True
+    subscription_id: str, cancel_at_period_end: bool = True
 ) -> stripe.Subscription:
     """Cancel a subscription (at period end by default)."""
     try:
         subscription = stripe.Subscription.modify(
-            subscription_id,
-            cancel_at_period_end=cancel_at_period_end
+            subscription_id, cancel_at_period_end=cancel_at_period_end
         )
         logger.info(f"Cancelled subscription: {subscription_id}")
         return subscription
@@ -186,6 +158,7 @@ async def cancel_subscription(
 # =============================================================================
 # Founding Member Helpers
 # =============================================================================
+
 
 async def get_remaining_founding_spots() -> int:
     """Get remaining founding member spots."""
@@ -199,9 +172,7 @@ async def get_remaining_founding_spots() -> int:
 
 
 async def reserve_founding_spot(
-    email: str,
-    company_name: str | None = None,
-    lead_id: str | None = None
+    email: str, company_name: str | None = None, lead_id: str | None = None
 ) -> int | None:
     """
     Reserve a founding member spot.
@@ -216,21 +187,22 @@ async def reserve_founding_spot(
 
         if not spot_number:
             # Add to waitlist instead
-            supabase.table("founding_waitlist").insert({
-                "email": email,
-                "company_name": company_name
-            }).execute()
+            supabase.table("founding_waitlist").insert(
+                {"email": email, "company_name": company_name}
+            ).execute()
             logger.info(f"Added {email} to founding waitlist")
             return None
 
         # Reserve the spot
-        supabase.table("founding_members").insert({
-            "email": email,
-            "company_name": company_name,
-            "lead_id": lead_id,
-            "spot_number": spot_number,
-            "status": "reserved"
-        }).execute()
+        supabase.table("founding_members").insert(
+            {
+                "email": email,
+                "company_name": company_name,
+                "lead_id": lead_id,
+                "spot_number": spot_number,
+                "status": "reserved",
+            }
+        ).execute()
 
         logger.info(f"Reserved founding spot #{spot_number} for {email}")
         return spot_number
@@ -241,20 +213,25 @@ async def reserve_founding_spot(
 
 
 async def activate_founding_member(
-    email: str,
-    stripe_customer_id: str,
-    stripe_subscription_id: str
+    email: str, stripe_customer_id: str, stripe_subscription_id: str
 ) -> bool:
     """Activate a reserved founding member after successful payment."""
     try:
         supabase = get_supabase_client()
 
-        result = supabase.table("founding_members").update({
-            "status": "active",
-            "stripe_customer_id": stripe_customer_id,
-            "stripe_subscription_id": stripe_subscription_id,
-            "activated_at": datetime.utcnow().isoformat()
-        }).eq("email", email).execute()
+        result = (
+            supabase.table("founding_members")
+            .update(
+                {
+                    "status": "active",
+                    "stripe_customer_id": stripe_customer_id,
+                    "stripe_subscription_id": stripe_subscription_id,
+                    "activated_at": datetime.utcnow().isoformat(),
+                }
+            )
+            .eq("email", email)
+            .execute()
+        )
 
         return len(result.data) > 0
 
@@ -266,6 +243,7 @@ async def activate_founding_member(
 # =============================================================================
 # Webhook Handlers
 # =============================================================================
+
 
 async def handle_checkout_completed(session: dict[str, Any]) -> None:
     """Handle successful checkout completion."""
@@ -283,9 +261,9 @@ async def handle_checkout_completed(session: dict[str, Any]) -> None:
     if lead_id:
         try:
             supabase = get_supabase_client()
-            supabase.table("sales_pipeline").update({
-                "stage": "closed_won"
-            }).eq("lead_id", lead_id).execute()
+            supabase.table("sales_pipeline").update({"stage": "closed_won"}).eq(
+                "lead_id", lead_id
+            ).execute()
         except Exception as e:
             logger.error(f"Failed to update pipeline: {e}")
 
@@ -294,7 +272,7 @@ async def handle_checkout_completed(session: dict[str, Any]) -> None:
         await activate_founding_member(
             email=customer_email,
             stripe_customer_id=customer_id,
-            stripe_subscription_id=subscription_id
+            stripe_subscription_id=subscription_id,
         )
 
 
@@ -309,9 +287,9 @@ async def handle_subscription_updated(subscription: dict[str, Any]) -> None:
     if status in ("canceled", "unpaid"):
         try:
             supabase = get_supabase_client()
-            supabase.table("founding_members").update({
-                "status": "churned"
-            }).eq("stripe_subscription_id", sub_id).execute()
+            supabase.table("founding_members").update({"status": "churned"}).eq(
+                "stripe_subscription_id", sub_id
+            ).execute()
         except Exception as e:
             logger.error(f"Failed to update founding member status: {e}")
 
@@ -339,6 +317,7 @@ async def handle_invoice_failed(invoice: dict[str, Any]) -> None:
 # API Routes
 # =============================================================================
 
+
 @router.post("/create-checkout")
 async def api_create_checkout(request: CreateCheckoutRequest):
     """Create a Stripe Checkout session."""
@@ -347,7 +326,7 @@ async def api_create_checkout(request: CreateCheckoutRequest):
         plan_type=request.plan_type,
         success_url=request.success_url,
         cancel_url=request.cancel_url,
-        lead_id=request.lead_id
+        lead_id=request.lead_id,
     )
 
     if not result.success:
@@ -361,8 +340,7 @@ async def api_customer_portal(request: CustomerPortalRequest):
     """Create a Customer Portal session for billing management."""
     try:
         url = await create_customer_portal_session(
-            customer_id=request.customer_id,
-            return_url=request.return_url
+            customer_id=request.customer_id, return_url=request.return_url
         )
         return {"portal_url": url}
     except stripe.StripeError as e:
@@ -383,14 +361,13 @@ async def api_founding_spots():
             "total_spots": 20,
             "spots_remaining": spots,
             "spots_taken": 20 - spots,
-            "is_full": spots <= 0
+            "is_full": spots <= 0,
         }
 
 
 @router.post("/webhook")
 async def stripe_webhook(
-    request: Request,
-    stripe_signature: str = Header(None, alias="Stripe-Signature")
+    request: Request, stripe_signature: str = Header(None, alias="Stripe-Signature")
 ):
     """
     Stripe webhook endpoint.
@@ -408,9 +385,7 @@ async def stripe_webhook(
     payload = await request.body()
 
     try:
-        event = stripe.Webhook.construct_event(
-            payload, stripe_signature, WEBHOOK_SECRET
-        )
+        event = stripe.Webhook.construct_event(payload, stripe_signature, WEBHOOK_SECRET)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid payload")
     except stripe.SignatureVerificationError:

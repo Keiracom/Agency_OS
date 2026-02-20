@@ -538,8 +538,7 @@ class CloserEngine(BaseEngine):
             pool_lead = await pool_service.get_by_email(lead.email)
             if pool_lead:
                 await pool_service.mark_unsubscribed(
-                    lead_pool_id=pool_lead["id"],
-                    reason=f"STOP reply via {channel.value}"
+                    lead_pool_id=pool_lead["id"], reason=f"STOP reply via {channel.value}"
                 )
                 actions.append("pool_status_unsubscribed")
 
@@ -618,7 +617,7 @@ class CloserEngine(BaseEngine):
                     lead=lead,
                     severity="high",
                     message=f"Angry/complaint reply from {lead.full_name} ({lead.company}). "
-                            f"Requires immediate attention.",
+                    f"Requires immediate attention.",
                 )
                 actions.append("admin_notification_sent")
             except Exception as e:
@@ -760,18 +759,23 @@ class CloserEngine(BaseEngine):
             last_name = name_parts[1] if len(name_parts) > 1 else ""
 
             import json
-            enrichment_data = json.dumps({
-                "referral_source_lead_id": str(source_lead.id),
-                "referral_source_email": source_lead.email,
-                "referral_source_company": source_lead.company,
-                "referral_context": referral_info.get("context"),
-                "referral_received_at": datetime.utcnow().isoformat(),
-            })
+
+            enrichment_data = json.dumps(
+                {
+                    "referral_source_lead_id": str(source_lead.id),
+                    "referral_source_email": source_lead.email,
+                    "referral_source_company": source_lead.company,
+                    "referral_context": referral_info.get("context"),
+                    "referral_received_at": datetime.utcnow().isoformat(),
+                }
+            )
 
             result = await db.execute(
                 query,
                 {
-                    "email": referral_info.get("email", f"referral_{datetime.utcnow().timestamp()}@pending.local"),
+                    "email": referral_info.get(
+                        "email", f"referral_{datetime.utcnow().timestamp()}@pending.local"
+                    ),
                     "first_name": first_name,
                     "last_name": last_name,
                     "title": referral_info.get("title"),
@@ -915,12 +919,14 @@ class CloserEngine(BaseEngine):
 
             title = f"[{severity.upper()}] {notification_type.replace('_', ' ').title()}"
 
-            metadata = json.dumps({
-                "lead_email": lead.email,
-                "lead_name": lead.full_name,
-                "lead_company": lead.company,
-                "lead_title": lead.title,
-            })
+            metadata = json.dumps(
+                {
+                    "lead_email": lead.email,
+                    "lead_name": lead.full_name,
+                    "lead_company": lead.company,
+                    "lead_title": lead.title,
+                }
+            )
 
             result = await db.execute(
                 query,
@@ -939,7 +945,9 @@ class CloserEngine(BaseEngine):
             await db.commit()
 
             if row and row.notification_id:
-                logger.info(f"Created admin notification {row.notification_id} for {notification_type}")
+                logger.info(
+                    f"Created admin notification {row.notification_id} for {notification_type}"
+                )
                 return row.notification_id
 
             return None

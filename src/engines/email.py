@@ -300,13 +300,19 @@ class EmailEngine(OutreachEngine):
                 if persona_id:
                     # Get signature from persona (with unsubscribe link - Directive 057)
                     signature = await get_signature_for_persona(
-                        db, persona_id, include_calendar=True, html=True,
+                        db,
+                        persona_id,
+                        include_calendar=True,
+                        html=True,
                         unsubscribe_url=unsubscribe_url,
                     )
                 elif campaign.client_id:
                     # Fallback to client-level signature (with unsubscribe link - Directive 057)
                     signature = await get_signature_for_client(
-                        db, campaign.client_id, sender_name=from_name, html=True,
+                        db,
+                        campaign.client_id,
+                        sender_name=from_name,
+                        html=True,
                         unsubscribe_url=unsubscribe_url,
                     )
                 else:

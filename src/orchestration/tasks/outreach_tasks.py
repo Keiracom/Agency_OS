@@ -389,7 +389,9 @@ async def send_linkedin_task(
 
     # Check business hours
     if not timing_engine.is_business_hours(timezone):
-        logger.warning(f"LinkedIn {message_type} blocked for lead {lead_id}: Outside business hours")
+        logger.warning(
+            f"LinkedIn {message_type} blocked for lead {lead_id}: Outside business hours"
+        )
         raise ValidationError(
             message="LinkedIn activity paused outside business hours",
             field="business_hours",

@@ -231,6 +231,7 @@ ICP_INDUSTRY_BLACKLIST = {
 # ICP FILTER SERVICE
 # ============================================
 
+
 class ICPFilterService:
     """
     Service for filtering leads against Agency OS ICP criteria.
@@ -335,7 +336,7 @@ class ICPFilterService:
 
         for blacklist_term in ICP_CATEGORY_BLACKLIST:
             # Use word boundary matching to avoid false positives
-            pattern = r'\b' + re.escape(blacklist_term) + r'\b'
+            pattern = r"\b" + re.escape(blacklist_term) + r"\b"
             if re.search(pattern, combined):
                 return True, blacklist_term
 
@@ -456,17 +457,18 @@ class ICPFilterService:
         enrichment = lead_data.get("enrichment_data") or {}
         if isinstance(enrichment, str):
             import json
+
             try:
                 enrichment = json.loads(enrichment)
             except Exception:
                 enrichment = {}
 
         categories = (
-            lead_data.get("categories") or
-            lead_data.get("all_categories") or
-            enrichment.get("gmb_categories") or
-            enrichment.get("categories") or
-            []
+            lead_data.get("categories")
+            or lead_data.get("all_categories")
+            or enrichment.get("gmb_categories")
+            or enrichment.get("categories")
+            or []
         )
         gmb_category = lead_data.get("gmb_category") or enrichment.get("gmb_category")
 
@@ -493,9 +495,7 @@ class ICPFilterService:
             return False, details
 
         # ========== Layer 1: Category Whitelist ==========
-        passes_cat_whitelist, matched_cat = cls.check_category_whitelist(
-            categories, gmb_category
-        )
+        passes_cat_whitelist, matched_cat = cls.check_category_whitelist(categories, gmb_category)
         if passes_cat_whitelist:
             details["qualified"] = True
             details["reason"] = f"Matched category: {matched_cat}"
@@ -504,9 +504,7 @@ class ICPFilterService:
             return True, details
 
         # ========== Layer 3: Industry Whitelist ==========
-        passes_ind_whitelist, matched_ind = cls.check_industry_whitelist(
-            industry, sub_industry
-        )
+        passes_ind_whitelist, matched_ind = cls.check_industry_whitelist(industry, sub_industry)
         if passes_ind_whitelist:
             details["qualified"] = True
             details["reason"] = f"Matched industry: {matched_ind}"

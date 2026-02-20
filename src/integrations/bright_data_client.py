@@ -21,31 +21,32 @@ logger = structlog.get_logger()
 DATASET_IDS = {
     "linkedin_company": "gd_l1vikfnt1wgvvqz95w",
     "linkedin_people": "gd_l1viktl72bvl7bjuj0",
-    "linkedin_jobs": "gd_lpfll7v5hcqtkxl6l"
+    "linkedin_jobs": "gd_lpfll7v5hcqtkxl6l",
 }
 
-COSTS_AUD = {
-    "serp_request": 0.0015,
-    "scraper_record": 0.0015
-}
+COSTS_AUD = {"serp_request": 0.0015, "scraper_record": 0.0015}
 
 
 class BrightDataError(Exception):
     """Bright Data API error"""
+
     pass
 
 
 @dataclass
 class CostTracker:
     """Tracks API usage costs for the session"""
+
     serp_requests: int = 0
     scraper_records: int = 0
 
     @property
     def total_aud(self) -> float:
         """Calculate total cost in AUD for this session"""
-        return (self.serp_requests * COSTS_AUD["serp_request"] +
-                self.scraper_records * COSTS_AUD["scraper_record"])
+        return (
+            self.serp_requests * COSTS_AUD["serp_request"]
+            + self.scraper_records * COSTS_AUD["scraper_record"]
+        )
 
 
 class BrightDataClient:
@@ -87,10 +88,7 @@ class BrightDataClient:
     # SERP API Methods
 
     async def search_google_maps(
-        self,
-        query: str,
-        location: str,
-        max_results: int = 20
+        self, query: str, location: str, max_results: int = 20
     ) -> list[dict]:
         """
         Search Google Maps via SERP API.
@@ -144,11 +142,7 @@ class BrightDataClient:
 
         for attempt in range(max_retries + 1):
             try:
-                response = await client.get(
-                    url,
-                    proxy=proxy_url,
-                    timeout=30.0
-                )
+                response = await client.get(url, proxy=proxy_url, timeout=30.0)
                 response.raise_for_status()
                 self.costs.serp_requests += 1
 
@@ -166,7 +160,7 @@ class BrightDataClient:
                 logger.warning("serp_request_error", attempt=attempt, error=last_error)
 
             if attempt < max_retries:
-                await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                await asyncio.sleep(2**attempt)  # Exponential backoff
 
         # All retries exhausted - fire alert
         await self._fire_bright_data_alert(last_error, max_retries + 1)
@@ -203,8 +197,7 @@ class BrightDataClient:
         Cost: $0.0015 AUD per record
         """
         results = await self._scraper_request(
-            DATASET_IDS["linkedin_company"],
-            [{"url": linkedin_url}]
+            DATASET_IDS["linkedin_company"], [{"url": linkedin_url}]
         )
         return results[0] if results else {}
 
@@ -221,16 +214,12 @@ class BrightDataClient:
         Cost: $0.0015 AUD per record
         """
         results = await self._scraper_request(
-            DATASET_IDS["linkedin_people"],
-            [{"url": linkedin_url}]
+            DATASET_IDS["linkedin_people"], [{"url": linkedin_url}]
         )
         return results[0] if results else {}
 
     async def scrape_linkedin_jobs(
-        self,
-        keyword: str,
-        location: str,
-        country: str = "AU"
+        self, keyword: str, location: str, country: str = "AU"
     ) -> list[dict]:
         """
         Discover LinkedIn Jobs via keyword search.
@@ -248,21 +237,15 @@ class BrightDataClient:
         return await self._scraper_request(
             DATASET_IDS["linkedin_jobs"],
             [{"keyword": keyword, "location": location, "country": country}],
-            discover_by="keyword"
+            discover_by="keyword",
         )
 
     async def _scraper_request(
-        self,
-        dataset_id: str,
-        inputs: list[dict],
-        discover_by: str = None
+        self, dataset_id: str, inputs: list[dict], discover_by: str = None
     ) -> list[dict]:
         """Execute Scraper API: trigger → poll → download."""
         base_url = "https://api.brightdata.com/datasets/v3"
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
         # Build trigger URL
         trigger_url = f"{base_url}/trigger?dataset_id={dataset_id}&include_errors=true"
@@ -273,12 +256,7 @@ class BrightDataClient:
 
         # Trigger
         try:
-            response = await client.post(
-                trigger_url,
-                headers=headers,
-                json=inputs,
-                timeout=30.0
-            )
+            response = await client.post(trigger_url, headers=headers, json=inputs, timeout=30.0)
             response.raise_for_status()
             snapshot_id = response.json()["snapshot_id"]
             logger.info("scraper_triggered", snapshot_id=snapshot_id, dataset_id=dataset_id)
@@ -291,9 +269,7 @@ class BrightDataClient:
         for _ in range(60):
             try:
                 progress = await client.get(
-                    f"{base_url}/progress/{snapshot_id}",
-                    headers=headers,
-                    timeout=10.0
+                    f"{base_url}/progress/{snapshot_id}", headers=headers, timeout=10.0
                 )
                 status_data = progress.json()
                 status = status_data.get("status")
@@ -316,9 +292,7 @@ class BrightDataClient:
         # Download results
         try:
             data = await client.get(
-                f"{base_url}/snapshot/{snapshot_id}?format=json",
-                headers=headers,
-                timeout=60.0
+                f"{base_url}/snapshot/{snapshot_id}?format=json", headers=headers, timeout=60.0
             )
             data.raise_for_status()
             return data.json()
@@ -340,5 +314,5 @@ class BrightDataClient:
             "serp_cost_aud": self.costs.serp_requests * COSTS_AUD["serp_request"],
             "scraper_records": self.costs.scraper_records,
             "scraper_cost_aud": self.costs.scraper_records * COSTS_AUD["scraper_record"],
-            "total_aud": self.costs.total_aud
+            "total_aud": self.costs.total_aud,
         }

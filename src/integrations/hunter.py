@@ -75,12 +75,14 @@ REQUEST_DELAY_SECONDS = 0.1
 
 class EmailType(StrEnum):
     """Email type classification."""
+
     PERSONAL = "personal"
     GENERIC = "generic"
 
 
 class VerificationStatus(StrEnum):
     """Email verification status."""
+
     VALID = "valid"
     INVALID = "invalid"
     ACCEPT_ALL = "accept_all"
@@ -91,6 +93,7 @@ class VerificationStatus(StrEnum):
 
 class Seniority(StrEnum):
     """Job seniority level."""
+
     JUNIOR = "junior"
     SENIOR = "senior"
     EXECUTIVE = "executive"
@@ -98,6 +101,7 @@ class Seniority(StrEnum):
 
 class Department(StrEnum):
     """Department classification."""
+
     EXECUTIVE = "executive"
     IT = "it"
     FINANCE = "finance"
@@ -454,9 +458,7 @@ class HunterClient:
     async def _rate_limit_delay(self) -> None:
         """Apply rate limiting delay between requests."""
         if self._last_request_time:
-            elapsed = (
-                datetime.now(UTC) - self._last_request_time
-            ).total_seconds()
+            elapsed = (datetime.now(UTC) - self._last_request_time).total_seconds()
             if elapsed < REQUEST_DELAY_SECONDS:
                 await asyncio.sleep(REQUEST_DELAY_SECONDS - elapsed)
 

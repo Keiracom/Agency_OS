@@ -78,12 +78,14 @@ try:
     )
     from tools.proxy_manager import get_manager as get_proxy_manager  # noqa: F401
     from tools.proxy_manager import get_proxy_list
+
     HAS_BROWSER = True
 except ImportError:
     HAS_BROWSER = False
 
 try:
     from playwright.async_api import async_playwright  # noqa: F401
+
     HAS_PLAYWRIGHT = True
 except ImportError:
     HAS_PLAYWRIGHT = False
@@ -135,9 +137,11 @@ USER_AGENTS = [
 # DATA CLASSES
 # ============================================
 
+
 @dataclass
 class GMBResult:
     """Result from a GMB scrape operation."""
+
     found: bool = False
     source: str = "gmb_scraper"
 
@@ -188,6 +192,7 @@ class GMBResult:
 @dataclass
 class BatchResult:
     """Result from batch scraping operation."""
+
     total: int = 0
     success: int = 0
     failed: int = 0
@@ -200,29 +205,35 @@ class BatchResult:
 # EXCEPTIONS
 # ============================================
 
+
 class GMBScraperError(Exception):
     """Base exception for GMB scraper."""
+
     pass
 
 
 class BlockedError(GMBScraperError):
     """Raised when request is blocked by Google."""
+
     pass
 
 
 class RateLimitError(GMBScraperError):
     """Raised when rate limited."""
+
     pass
 
 
 class ParseError(GMBScraperError):
     """Raised when parsing fails."""
+
     pass
 
 
 # ============================================
 # HTML PARSING UTILITIES
 # ============================================
+
 
 class GMBParser:
     """
@@ -235,12 +246,12 @@ class GMBParser:
     # Patterns for extracting data from Google Maps HTML
     PHONE_PATTERNS = [
         r'"(\+?[\d\s\-\(\)]{10,20})"',  # Phone in quotes
-        r'tel:(\+?[\d\-]+)',  # tel: links
+        r"tel:(\+?[\d\-]+)",  # tel: links
         r'data-phone-number="([^"]+)"',  # data attributes
     ]
 
-    RATING_PATTERN = r'(\d+\.?\d*)\s*(?:stars?|out of 5)'
-    REVIEW_COUNT_PATTERN = r'(\d+(?:,\d+)*)\s*(?:reviews?|Google reviews?)'
+    RATING_PATTERN = r"(\d+\.?\d*)\s*(?:stars?|out of 5)"
+    REVIEW_COUNT_PATTERN = r"(\d+(?:,\d+)*)\s*(?:reviews?|Google reviews?)"
 
     ADDRESS_PATTERNS = [
         r'data-address="([^"]+)"',
@@ -305,8 +316,8 @@ class GMBParser:
         """
         # Look for APP_INITIALIZATION_STATE
         patterns = [
-            r'window\.APP_INITIALIZATION_STATE\s*=\s*(\[\[.*?\]\]);',
-            r'window\.APP_OPTIONS\s*=\s*({.*?});',
+            r"window\.APP_INITIALIZATION_STATE\s*=\s*(\[\[.*?\]\]);",
+            r"window\.APP_OPTIONS\s*=\s*({.*?});",
             r'"localizedPrimaryCategory"\s*:\s*"([^"]+)"',
         ]
 
@@ -325,7 +336,10 @@ class GMBParser:
             try:
                 data = json.loads(match.group(1))
                 if isinstance(data, dict) and data.get("@type") in [
-                    "LocalBusiness", "Organization", "Restaurant", "Store"
+                    "LocalBusiness",
+                    "Organization",
+                    "Restaurant",
+                    "Store",
                 ]:
                     return data
             except json.JSONDecodeError:
@@ -379,11 +393,11 @@ class GMBParser:
         """Parse using regex patterns as fallback."""
 
         # Extract name from title
-        title_match = re.search(r'<title>([^<]+)</title>', html, re.IGNORECASE)
+        title_match = re.search(r"<title>([^<]+)</title>", html, re.IGNORECASE)
         if title_match:
             title = title_match.group(1)
             # Clean up title (remove " - Google Maps" suffix)
-            title = re.sub(r'\s*[-–]\s*Google Maps.*$', '', title)
+            title = re.sub(r"\s*[-–]\s*Google Maps.*$", "", title)
             result.name = title.strip()
 
         # Extract phone
@@ -392,7 +406,7 @@ class GMBParser:
             if match:
                 phone = match.group(1)
                 # Clean phone number
-                phone = re.sub(r'[^\d\+\-\(\)\s]', '', phone).strip()
+                phone = re.sub(r"[^\d\+\-\(\)\s]", "", phone).strip()
                 if len(phone) >= 10:
                     result.phone = phone
                     break
@@ -457,19 +471,21 @@ class GMBParser:
                 url = "https://www.google.com" + url
 
             # Extract place name from URL
-            name_match = re.search(r'/maps/place/([^/]+)/', url)
+            name_match = re.search(r"/maps/place/([^/]+)/", url)
             name = name_match.group(1).replace("+", " ") if name_match else None
 
             # Extract place ID
-            pid_match = re.search(r'!1s([^!]+)', url)
+            pid_match = re.search(r"!1s([^!]+)", url)
             place_id = pid_match.group(1) if pid_match else None
 
             if name or place_id:
-                results.append({
-                    "name": name,
-                    "place_id": place_id,
-                    "url": url,
-                })
+                results.append(
+                    {
+                        "name": name,
+                        "place_id": place_id,
+                        "url": url,
+                    }
+                )
 
         return results
 
@@ -477,6 +493,7 @@ class GMBParser:
 # ============================================
 # GMB SCRAPER CLASS
 # ============================================
+
 
 class GMBScraper:
     """
@@ -531,9 +548,7 @@ class GMBScraper:
         else:
             self._rotator = None
 
-        logger.info(
-            f"GMBScraper initialized with {len(self._proxy_list or [])} proxies"
-        )
+        logger.info(f"GMBScraper initialized with {len(self._proxy_list or [])} proxies")
 
     async def _rate_limit(self) -> None:
         """Apply rate limiting between requests."""
@@ -712,11 +727,13 @@ class GMBScraper:
         final_results = []
         for _i, r in enumerate(results):
             if isinstance(r, Exception):
-                final_results.append(GMBResult(
-                    error=str(r),
-                    cost_aud=COST_PER_REQUEST_AUD,
-                    requests_made=1,
-                ).to_dict())
+                final_results.append(
+                    GMBResult(
+                        error=str(r),
+                        cost_aud=COST_PER_REQUEST_AUD,
+                        requests_made=1,
+                    ).to_dict()
+                )
             else:
                 final_results.append(r)
 
@@ -725,8 +742,7 @@ class GMBScraper:
         total_cost = sum(Decimal(str(r.get("cost_aud", 0))) for r in final_results)
 
         logger.info(
-            f"Batch complete: {success_count}/{len(businesses)} found, "
-            f"cost: ${total_cost:.4f} AUD"
+            f"Batch complete: {success_count}/{len(businesses)} found, cost: ${total_cost:.4f} AUD"
         )
 
         return final_results
@@ -844,6 +860,7 @@ def get_gmb_scraper() -> GMBScraper:
 # CONVENIENCE FUNCTIONS (Match Apify API)
 # ============================================
 
+
 async def scrape_google_business(
     business_name: str,
     location: str = "Australia",
@@ -883,6 +900,7 @@ async def batch_scrape_google_business(
 # ============================================
 # CLI INTERFACE
 # ============================================
+
 
 async def _cli_main():
     """CLI entry point."""

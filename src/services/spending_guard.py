@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 # HARD LIMITS - Change with caution
 # ============================================
 
-MAX_DOMAINS_PER_CALL = 10      # Single API call limit
-MAX_DOMAINS_PER_DAY = 30       # Daily ceiling
-MAX_SPEND_PER_DAY_AUD = 500    # Dollar cap (~40 domains)
-DOMAIN_COST_AUD = 12           # Average domain cost
+MAX_DOMAINS_PER_CALL = 10  # Single API call limit
+MAX_DOMAINS_PER_DAY = 30  # Daily ceiling
+MAX_SPEND_PER_DAY_AUD = 500  # Dollar cap (~40 domains)
+DOMAIN_COST_AUD = 12  # Average domain cost
 
 # ============================================
 # DAILY TRACKING
@@ -39,6 +39,7 @@ _daily_stats = {
 
 class SpendingLimitExceeded(Exception):
     """Raised when any spending limit would be exceeded."""
+
     pass
 
 
@@ -168,18 +169,19 @@ def queue_for_approval(
 
     request_id = str(uuid.uuid4())[:8]
 
-    _pending_approvals.append({
-        "request_id": request_id,
-        "domain_count": domain_count,
-        "domains": domains[:10],  # First 10 for preview
-        "persona_id": persona_id,
-        "reason": reason,
-        "created_at": date.today().isoformat(),
-    })
+    _pending_approvals.append(
+        {
+            "request_id": request_id,
+            "domain_count": domain_count,
+            "domains": domains[:10],  # First 10 for preview
+            "persona_id": persona_id,
+            "reason": reason,
+            "created_at": date.today().isoformat(),
+        }
+    )
 
     logger.warning(
-        f"Large purchase queued for approval: {domain_count} domains "
-        f"(request_id: {request_id})"
+        f"Large purchase queued for approval: {domain_count} domains (request_id: {request_id})"
     )
 
     return request_id

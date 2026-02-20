@@ -491,6 +491,7 @@ class BaseEngine(ABC):
         except Exception as e:
             # Don't fail the operation if logging fails
             import logging
+
             logging.getLogger(__name__).warning(f"Audit log failed: {e}")
 
 

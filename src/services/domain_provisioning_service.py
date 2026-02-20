@@ -272,8 +272,7 @@ async def export_to_salesforge_and_warmup(
 
         exported_count = result.get("exported_count", 0)
         logger.info(
-            f"Exported {exported_count} mailboxes to Salesforge "
-            f"(tag: {tag_name}, warmup: enabled)"
+            f"Exported {exported_count} mailboxes to Salesforge (tag: {tag_name}, warmup: enabled)"
         )
 
         return result.get("success", False)
@@ -472,11 +471,13 @@ async def get_warmup_status_for_domains(domains: list[str]) -> list[dict[str, An
 
         except Exception as e:
             logger.warning(f"Failed to get warmup status for {domain}: {e}")
-            statuses.append({
-                "domain": domain,
-                "status": "error",
-                "error": str(e),
-            })
+            statuses.append(
+                {
+                    "domain": domain,
+                    "status": "error",
+                    "error": str(e),
+                }
+            )
 
     return statuses
 

@@ -35,14 +35,16 @@ logger = logging.getLogger(__name__)
 
 class DiscoveryMode(Enum):
     """Discovery modes for lead generation campaigns"""
-    ABN_FIRST = "mode_a"      # Universal B2B - ABN API first
-    MAPS_FIRST = "mode_b"     # Local businesses with GMB - Google Maps first
-    PARALLEL = "mode_c"       # Premium - both modes with deduplication
+
+    ABN_FIRST = "mode_a"  # Universal B2B - ABN API first
+    MAPS_FIRST = "mode_b"  # Local businesses with GMB - Google Maps first
+    PARALLEL = "mode_c"  # Premium - both modes with deduplication
 
 
 @dataclass
 class CampaignConfig:
     """Configuration for discovery campaign"""
+
     mode: DiscoveryMode
     industry: str
     location: str
@@ -63,6 +65,7 @@ class CampaignConfig:
 @dataclass
 class DiscoveryRecord:
     """Unified record structure from discovery"""
+
     # Core identifiers
     business_name: str
     abn: str = None
@@ -106,7 +109,9 @@ class ABNFirstDiscovery:
         3. Apply hard filters (discard trusts, cancelled, no GST)
         4. Return qualified ABN records for enrichment
         """
-        logger.info(f"Starting ABN-first discovery for industry='{config.industry}', location='{config.location}'")
+        logger.info(
+            f"Starting ABN-first discovery for industry='{config.industry}', location='{config.location}'"
+        )
 
         try:
             # Build search query for ABN API
@@ -121,7 +126,9 @@ class ABNFirstDiscovery:
             # Convert to unified format
             discovery_records = self._convert_abn_to_records(filtered_results)
 
-            logger.info(f"ABN-first discovery completed: {len(discovery_records)} qualified records")
+            logger.info(
+                f"ABN-first discovery completed: {len(discovery_records)} qualified records"
+            )
             return discovery_records
 
         except Exception as e:
@@ -153,8 +160,7 @@ class ABNFirstDiscovery:
         # Call ABN API SearchByNameAdvanced2017
         # This would integrate with existing abn_client.py
         results = await self.abn_client.search_by_name_advanced(
-            **query,
-            max_results=config.max_results
+            **query, max_results=config.max_results
         )
 
         return results or []
@@ -195,7 +201,7 @@ class ABNFirstDiscovery:
                 state=result.get("state", "").strip(),
                 discovery_source="abn_api",
                 confidence_score=0.85,  # ABN API is high-confidence
-                discovered_at=result.get("timestamp") or "now"
+                discovered_at=result.get("timestamp") or "now",
             )
 
             records.append(record)
@@ -212,7 +218,9 @@ class MapsFirstDiscovery:
         self.abn_client = abn_client
 
         if not bright_data_client:
-            logger.warning("MapsFirstDiscovery: No Bright Data client provided - will fail at runtime")
+            logger.warning(
+                "MapsFirstDiscovery: No Bright Data client provided - will fail at runtime"
+            )
 
     async def discover(self, config: CampaignConfig) -> list[DiscoveryRecord]:
         """
@@ -221,7 +229,9 @@ class MapsFirstDiscovery:
         2. For each GMB result, attempt ABN lookup by business name
         3. Return records with GMB data + ABN verification where possible
         """
-        logger.info(f"Starting Maps-first discovery for industry='{config.industry}', location='{config.location}'")
+        logger.info(
+            f"Starting Maps-first discovery for industry='{config.industry}', location='{config.location}'"
+        )
 
         try:
             # Search Google Maps
@@ -248,14 +258,14 @@ class MapsFirstDiscovery:
         # Use Bright Data Google Maps dataset
         # Dataset ID: gd_m8ebnr0q2qlklc02fz (from inventory)
         results = await self.bd.search_google_maps(
-            query=search_query,
-            location=config.location,
-            max_results=config.max_results
+            query=search_query, location=config.location, max_results=config.max_results
         )
 
         return results or []
 
-    async def _verify_with_abn(self, gmb_results: list[dict], config: CampaignConfig) -> list[DiscoveryRecord]:
+    async def _verify_with_abn(
+        self, gmb_results: list[dict], config: CampaignConfig
+    ) -> list[DiscoveryRecord]:
         """Verify GMB results with ABN API lookups"""
         verified_records = []
 
@@ -288,7 +298,7 @@ class MapsFirstDiscovery:
             search_params = {
                 "name": business_name,
                 "state": config.state,
-                "isCurrentIndicator": "Y"
+                "isCurrentIndicator": "Y",
             }
 
             results = await self.abn_client.search_by_name_advanced(**search_params)
@@ -297,8 +307,7 @@ class MapsFirstDiscovery:
             if results:
                 for result in results:
                     similarity = fuzz.ratio(
-                        business_name.lower(),
-                        result.get("businessName", "").lower()
+                        business_name.lower(), result.get("businessName", "").lower()
                     )
                     if similarity >= config.fuzzy_match_threshold:
                         return result
@@ -321,7 +330,7 @@ class MapsFirstDiscovery:
             reviews_count=gmb_result.get("reviews_count"),
             category=gmb_result.get("category", ""),
             discovery_source="google_maps",
-            discovered_at="now"
+            discovered_at="now",
         )
 
         # Add ABN data if verified
@@ -366,8 +375,7 @@ class ParallelDiscovery:
         """Initialize with both discovery modes"""
         self.abn_discovery = ABNFirstDiscovery(abn_client=abn_client)
         self.maps_discovery = MapsFirstDiscovery(
-            bright_data_client=bright_data_client,
-            abn_client=abn_client
+            bright_data_client=bright_data_client, abn_client=abn_client
         )
 
     async def discover(self, config: CampaignConfig) -> list[DiscoveryRecord]:
@@ -377,7 +385,9 @@ class ParallelDiscovery:
         2. Deduplicate results on ABN + fuzzy name matching
         3. Return merged records with highest confidence scores
         """
-        logger.info(f"Starting parallel discovery for industry='{config.industry}', location='{config.location}'")
+        logger.info(
+            f"Starting parallel discovery for industry='{config.industry}', location='{config.location}'"
+        )
 
         try:
             # Run both discovery modes in parallel
@@ -400,7 +410,7 @@ class ParallelDiscovery:
         self,
         abn_results: list[DiscoveryRecord],
         maps_results: list[DiscoveryRecord],
-        config: CampaignConfig
+        config: CampaignConfig,
     ) -> list[DiscoveryRecord]:
         """Deduplicate records on ABN + fuzzy name matching"""
         merged = {}
@@ -439,7 +449,9 @@ class ParallelDiscovery:
 
         return f"name_{clean_name}"
 
-    def _merge_records(self, abn_record: DiscoveryRecord, maps_record: DiscoveryRecord) -> DiscoveryRecord:
+    def _merge_records(
+        self, abn_record: DiscoveryRecord, maps_record: DiscoveryRecord
+    ) -> DiscoveryRecord:
         """Merge ABN and Maps records, preferring non-empty values"""
         # Start with ABN record as base
         merged = abn_record

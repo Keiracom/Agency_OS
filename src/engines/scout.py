@@ -449,7 +449,9 @@ class ScoutEngine(BaseEngine):
                 if siege_result.sources_used > 0:
                     result = siege_result.enriched_data
                     result["found"] = True
-                    result["confidence"] = 0.75 + (siege_result.sources_used * 0.05)  # Higher confidence with more sources
+                    result["confidence"] = 0.75 + (
+                        siege_result.sources_used * 0.05
+                    )  # Higher confidence with more sources
                     result["source"] = f"siege_waterfall_{siege_result.sources_used}sources"
                     result["enrichment_cost_aud"] = siege_result.total_cost_aud
 

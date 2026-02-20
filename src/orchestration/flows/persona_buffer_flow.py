@@ -121,10 +121,7 @@ async def provision_persona_set_task() -> dict:
 
             await db.commit()
 
-            log.info(
-                f"✅ Provisioned persona set: persona_id={persona.id}, "
-                f"result={result}"
-            )
+            log.info(f"✅ Provisioned persona set: persona_id={persona.id}, result={result}")
             return result
 
         except Exception as e:

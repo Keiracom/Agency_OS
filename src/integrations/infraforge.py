@@ -16,6 +16,7 @@ WORKSPACE_IDS = {
     "warmforge": None,
 }
 
+
 class InfraForgeClient:
     def __init__(self):
         settings = get_settings()
@@ -48,7 +49,9 @@ class InfraForgeClient:
         return resp.json()
 
     async def generate_alternative_domains(self, base_name: str, count: int = 10):
-        resp = await self._client.post("/domains/alternative-domains", json={"baseName": base_name, "count": count})
+        resp = await self._client.post(
+            "/domains/alternative-domains", json={"baseName": base_name, "count": count}
+        )
         resp.raise_for_status()
         return resp.json()
 
@@ -62,21 +65,34 @@ class InfraForgeClient:
         resp.raise_for_status()
         return resp.json()
 
-    async def export_to_salesforge(self, from_workspace_id: str, to_workspace_id: str, to_warmforge_workspace_id: str, tag_name: str, warmup_activated: bool = True):
-        resp = await self._client.post("/mailboxes/export-to-salesforge", json={
-            "fromWorkspaceId": from_workspace_id,
-            "toWorkspaceId": to_workspace_id,
-            "toWarmforgeWorkspaceId": to_warmforge_workspace_id,
-            "tagName": tag_name,
-            "warmupActivated": warmup_activated,
-        })
+    async def export_to_salesforge(
+        self,
+        from_workspace_id: str,
+        to_workspace_id: str,
+        to_warmforge_workspace_id: str,
+        tag_name: str,
+        warmup_activated: bool = True,
+    ):
+        resp = await self._client.post(
+            "/mailboxes/export-to-salesforge",
+            json={
+                "fromWorkspaceId": from_workspace_id,
+                "toWorkspaceId": to_workspace_id,
+                "toWarmforgeWorkspaceId": to_warmforge_workspace_id,
+                "tagName": tag_name,
+                "warmupActivated": warmup_activated,
+            },
+        )
         resp.raise_for_status()
         return resp.json()
 
     async def close(self):
         await self._client.aclose()
 
+
 _client = None
+
+
 def get_infraforge_client():
     global _client
     if _client is None:

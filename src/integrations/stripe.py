@@ -78,6 +78,7 @@ DEFAULT_TRIAL_DAYS = 14
 
 class SubscriptionStatus(StrEnum):
     """Stripe subscription status."""
+
     ACTIVE = "active"
     PAST_DUE = "past_due"
     UNPAID = "unpaid"
@@ -90,6 +91,7 @@ class SubscriptionStatus(StrEnum):
 
 class PaymentStatus(StrEnum):
     """Payment intent status."""
+
     REQUIRES_PAYMENT_METHOD = "requires_payment_method"
     REQUIRES_CONFIRMATION = "requires_confirmation"
     REQUIRES_ACTION = "requires_action"
@@ -100,6 +102,7 @@ class PaymentStatus(StrEnum):
 
 class PricingTier(StrEnum):
     """Agency OS pricing tiers."""
+
     IGNITION = "ignition"
     GROWTH = "growth"
     ENTERPRISE = "enterprise"
@@ -113,6 +116,7 @@ class PricingTier(StrEnum):
 @dataclass
 class StripeCustomer:
     """Stripe customer representation."""
+
     id: str
     email: str
     name: str | None = None
@@ -132,13 +136,16 @@ class StripeCustomer:
             "metadata": self.metadata,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "client_id": str(self.client_id) if self.client_id else None,
-            "subscription_status": self.subscription_status.value if self.subscription_status else None,
+            "subscription_status": self.subscription_status.value
+            if self.subscription_status
+            else None,
         }
 
 
 @dataclass
 class StripeSubscription:
     """Stripe subscription representation."""
+
     id: str
     customer_id: str
     status: SubscriptionStatus
@@ -171,6 +178,7 @@ class StripeSubscription:
 @dataclass
 class StripeInvoice:
     """Stripe invoice representation."""
+
     id: str
     customer_id: str
     subscription_id: str | None = None
@@ -199,6 +207,7 @@ class StripeInvoice:
 @dataclass
 class WebhookEvent:
     """Parsed Stripe webhook event."""
+
     id: str
     type: str
     data: dict[str, Any]
@@ -223,6 +232,7 @@ class WebhookEvent:
 
 class StripeError(IntegrationError):
     """Base Stripe error."""
+
     def __init__(self, message: str, stripe_code: str | None = None):
         super().__init__(service="stripe", message=message)
         self.stripe_code = stripe_code
@@ -230,16 +240,19 @@ class StripeError(IntegrationError):
 
 class PaymentFailedError(StripeError):
     """Payment processing failed."""
+
     pass
 
 
 class SubscriptionError(StripeError):
     """Subscription operation failed."""
+
     pass
 
 
 class WebhookVerificationError(StripeError):
     """Webhook signature verification failed."""
+
     pass
 
 
@@ -291,6 +304,7 @@ class StripeClient:
         if self._stripe is None:
             try:
                 import stripe
+
                 stripe.api_key = self._api_key
                 self._stripe = stripe
             except ImportError:
@@ -360,7 +374,7 @@ class StripeClient:
                     email=email,
                     name=name,
                     metadata=customer_metadata,
-                )
+                ),
             )
 
             logger.info(f"[Stripe] Created customer {customer.id} for {email}")
@@ -401,8 +415,7 @@ class StripeClient:
         try:
             loop = asyncio.get_event_loop()
             customer = await loop.run_in_executor(
-                None,
-                lambda: stripe.Customer.retrieve(customer_id)
+                None, lambda: stripe.Customer.retrieve(customer_id)
             )
 
             if customer.deleted:
@@ -463,8 +476,7 @@ class StripeClient:
 
             loop = asyncio.get_event_loop()
             customer = await loop.run_in_executor(
-                None,
-                lambda: stripe.Customer.modify(customer_id, **update_params)
+                None, lambda: stripe.Customer.modify(customer_id, **update_params)
             )
 
             return StripeCustomer(
@@ -513,7 +525,9 @@ class StripeClient:
                 tier=tier,
                 current_period_start=now,
                 current_period_end=now,
-                amount_aud=PRICING_IGNITION_AUD if tier == PricingTier.IGNITION else PRICING_GROWTH_AUD,
+                amount_aud=PRICING_IGNITION_AUD
+                if tier == PricingTier.IGNITION
+                else PRICING_GROWTH_AUD,
             )
 
         stripe = self._get_stripe()
@@ -535,7 +549,7 @@ class StripeClient:
                     items=[{"price": price_id}],
                     trial_period_days=trial_days,
                     metadata={"tier": tier.value},
-                )
+                ),
             )
 
             logger.info(f"[Stripe] Created subscription {subscription.id} for {customer_id}")
@@ -550,11 +564,10 @@ class StripeClient:
                 current_period_start=datetime.fromtimestamp(
                     subscription.current_period_start, tz=UTC
                 ),
-                current_period_end=datetime.fromtimestamp(
-                    subscription.current_period_end, tz=UTC
-                ),
+                current_period_end=datetime.fromtimestamp(subscription.current_period_end, tz=UTC),
                 trial_end=datetime.fromtimestamp(subscription.trial_end, tz=UTC)
-                if subscription.trial_end else None,
+                if subscription.trial_end
+                else None,
                 cancel_at_period_end=subscription.cancel_at_period_end,
                 amount_aud=amount,
             )
@@ -585,8 +598,7 @@ class StripeClient:
         try:
             loop = asyncio.get_event_loop()
             subscription = await loop.run_in_executor(
-                None,
-                lambda: stripe.Subscription.retrieve(subscription_id)
+                None, lambda: stripe.Subscription.retrieve(subscription_id)
             )
 
             tier = PricingTier(subscription.metadata.get("tier", "ignition"))
@@ -600,14 +612,14 @@ class StripeClient:
                 current_period_start=datetime.fromtimestamp(
                     subscription.current_period_start, tz=UTC
                 ),
-                current_period_end=datetime.fromtimestamp(
-                    subscription.current_period_end, tz=UTC
-                ),
+                current_period_end=datetime.fromtimestamp(subscription.current_period_end, tz=UTC),
                 trial_end=datetime.fromtimestamp(subscription.trial_end, tz=UTC)
-                if subscription.trial_end else None,
+                if subscription.trial_end
+                else None,
                 cancel_at_period_end=subscription.cancel_at_period_end,
                 canceled_at=datetime.fromtimestamp(subscription.canceled_at, tz=UTC)
-                if subscription.canceled_at else None,
+                if subscription.canceled_at
+                else None,
                 amount_aud=amount,
             )
 
@@ -646,12 +658,11 @@ class StripeClient:
                     lambda: stripe.Subscription.modify(
                         subscription_id,
                         cancel_at_period_end=True,
-                    )
+                    ),
                 )
             else:
                 subscription = await loop.run_in_executor(
-                    None,
-                    lambda: stripe.Subscription.cancel(subscription_id)
+                    None, lambda: stripe.Subscription.cancel(subscription_id)
                 )
 
             logger.info(f"[Stripe] Canceled subscription {subscription_id}")
@@ -666,12 +677,11 @@ class StripeClient:
                 current_period_start=datetime.fromtimestamp(
                     subscription.current_period_start, tz=UTC
                 ),
-                current_period_end=datetime.fromtimestamp(
-                    subscription.current_period_end, tz=UTC
-                ),
+                current_period_end=datetime.fromtimestamp(subscription.current_period_end, tz=UTC),
                 cancel_at_period_end=subscription.cancel_at_period_end,
                 canceled_at=datetime.fromtimestamp(subscription.canceled_at, tz=UTC)
-                if subscription.canceled_at else None,
+                if subscription.canceled_at
+                else None,
             )
 
         except Exception as e:
@@ -705,24 +715,26 @@ class StripeClient:
         try:
             loop = asyncio.get_event_loop()
             invoices = await loop.run_in_executor(
-                None,
-                lambda: stripe.Invoice.list(customer=customer_id, limit=limit)
+                None, lambda: stripe.Invoice.list(customer=customer_id, limit=limit)
             )
 
             result = []
             for inv in invoices.data:
-                result.append(StripeInvoice(
-                    id=inv.id,
-                    customer_id=inv.customer,
-                    subscription_id=inv.subscription,
-                    status=inv.status,
-                    amount_due_aud=Decimal(str(inv.amount_due / 100)),
-                    amount_paid_aud=Decimal(str(inv.amount_paid / 100)),
-                    created_at=datetime.fromtimestamp(inv.created, tz=UTC),
-                    paid_at=datetime.fromtimestamp(inv.status_transitions.paid_at, tz=UTC)
-                    if inv.status_transitions.paid_at else None,
-                    invoice_pdf=inv.invoice_pdf,
-                ))
+                result.append(
+                    StripeInvoice(
+                        id=inv.id,
+                        customer_id=inv.customer,
+                        subscription_id=inv.subscription,
+                        status=inv.status,
+                        amount_due_aud=Decimal(str(inv.amount_due / 100)),
+                        amount_paid_aud=Decimal(str(inv.amount_paid / 100)),
+                        created_at=datetime.fromtimestamp(inv.created, tz=UTC),
+                        paid_at=datetime.fromtimestamp(inv.status_transitions.paid_at, tz=UTC)
+                        if inv.status_transitions.paid_at
+                        else None,
+                        invoice_pdf=inv.invoice_pdf,
+                    )
+                )
 
             return result
 
@@ -889,7 +901,7 @@ class StripeClient:
                         "trial_period_days": trial_days,
                         "metadata": {"tier": tier.value},
                     },
-                )
+                ),
             )
 
             logger.info(f"[Stripe] Created checkout session for {customer_id}")

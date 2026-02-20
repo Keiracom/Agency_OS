@@ -37,10 +37,7 @@ class WarmForgeClient:
         Returns:
             Dict with 'data' list containing mailbox records
         """
-        resp = await self._client.get(
-            "/mailboxes",
-            params={"page": page, "page_size": page_size}
-        )
+        resp = await self._client.get("/mailboxes", params={"page": page, "page_size": page_size})
         resp.raise_for_status()
         return resp.json()
 

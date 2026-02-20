@@ -116,8 +116,7 @@ async def check_campaign_quality_gate_task(campaign_id: str) -> dict[str, Any]:
 
         if not row or row.total_leads == 0:
             await _create_campaign_halt_notification(
-                db, campaign_id, "no_leads",
-                "Campaign has no leads in sequence", {}
+                db, campaign_id, "no_leads", "Campaign has no leads in sequence", {}
             )
             return {
                 "campaign_id": campaign_id,
@@ -148,38 +147,46 @@ async def check_campaign_quality_gate_task(campaign_id: str) -> dict[str, Any]:
 
         # Check 1: Hot+Warm combined below 5%
         if hot_warm_pct < 5:
-            failures.append({
-                "check": "hot_warm_ratio",
-                "threshold": "5%",
-                "actual": f"{hot_warm_pct:.1f}%",
-                "message": f"Hot+Warm leads ({hot_warm_pct:.1f}%) below 5% threshold",
-            })
+            failures.append(
+                {
+                    "check": "hot_warm_ratio",
+                    "threshold": "5%",
+                    "actual": f"{hot_warm_pct:.1f}%",
+                    "message": f"Hot+Warm leads ({hot_warm_pct:.1f}%) below 5% threshold",
+                }
+            )
 
         # Check 2: Verified email below 80%
         if verified_email_pct < 80:
-            failures.append({
-                "check": "verified_email_ratio",
-                "threshold": "80%",
-                "actual": f"{verified_email_pct:.1f}%",
-                "message": f"Verified emails ({verified_email_pct:.1f}%) below 80% threshold",
-            })
+            failures.append(
+                {
+                    "check": "verified_email_ratio",
+                    "threshold": "80%",
+                    "actual": f"{verified_email_pct:.1f}%",
+                    "message": f"Verified emails ({verified_email_pct:.1f}%) below 80% threshold",
+                }
+            )
 
         # Check 3: DM identified below 60%
         if dm_pct < 60:
-            failures.append({
-                "check": "dm_identified_ratio",
-                "threshold": "60%",
-                "actual": f"{dm_pct:.1f}%",
-                "message": f"Decision Makers identified ({dm_pct:.1f}%) below 60% threshold",
-            })
+            failures.append(
+                {
+                    "check": "dm_identified_ratio",
+                    "threshold": "60%",
+                    "actual": f"{dm_pct:.1f}%",
+                    "message": f"Decision Makers identified ({dm_pct:.1f}%) below 60% threshold",
+                }
+            )
 
         if failures:
             # Create detailed halt notification
             failure_reasons = "; ".join([f["message"] for f in failures])
             await _create_campaign_halt_notification(
-                db, campaign_id, "quality_gate_failed",
+                db,
+                campaign_id,
+                "quality_gate_failed",
                 f"Campaign halted: {failure_reasons}",
-                {"failures": failures, "metrics": metrics}
+                {"failures": failures, "metrics": metrics},
             )
             return {
                 "campaign_id": campaign_id,
@@ -198,7 +205,9 @@ async def check_campaign_quality_gate_task(campaign_id: str) -> dict[str, Any]:
             "passed": True,
             "metrics": metrics,
             "needs_additional_discovery": needs_discovery,
-            "discovery_reason": f"Hot+Warm at {hot_warm_pct:.1f}% (below 25%)" if needs_discovery else None,
+            "discovery_reason": f"Hot+Warm at {hot_warm_pct:.1f}% (below 25%)"
+            if needs_discovery
+            else None,
         }
 
 
@@ -246,7 +255,9 @@ async def _create_campaign_halt_notification(
                 },
             )
             await db.commit()
-            logger.info(f"Created campaign halt notification {notification_id} for campaign {campaign_id}")
+            logger.info(
+                f"Created campaign halt notification {notification_id} for campaign {campaign_id}"
+            )
     except Exception as e:
         logger.error(f"Failed to create halt notification: {e}")
 
@@ -366,7 +377,7 @@ async def auto_assign_resources_task(lead_id: str, campaign_id: str) -> dict[str
                 await db.execute(
                     text(f"""
                         UPDATE leads
-                        SET {', '.join(update_parts)}
+                        SET {", ".join(update_parts)}
                         WHERE id = :lead_id
                     """),
                     params,
@@ -825,7 +836,9 @@ async def send_linkedin_outreach_task(
         today = datetime.now(tz).weekday()
 
         if today == 6:  # Sunday
-            logger.info(f"LinkedIn outreach skipped for lead {lead_id}: Sunday (no LinkedIn activity)")
+            logger.info(
+                f"LinkedIn outreach skipped for lead {lead_id}: Sunday (no LinkedIn activity)"
+            )
             return {
                 "lead_id": lead_id,
                 "channel": "linkedin",
@@ -1103,7 +1116,8 @@ async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
     # Filter out leads from skipped campaigns
     for channel in leads_data["leads_by_channel"]:
         leads_data["leads_by_channel"][channel] = [
-            lead for lead in leads_data["leads_by_channel"][channel]
+            lead
+            for lead in leads_data["leads_by_channel"][channel]
             if lead["campaign_id"] not in skipped_campaigns
         ]
 
@@ -1119,9 +1133,7 @@ async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
                     lead_data["resource"] = assignment["assigned"][channel]
 
     # Recalculate totals after filtering
-    total_after_filter = sum(
-        len(leads) for leads in leads_data["leads_by_channel"].values()
-    )
+    total_after_filter = sum(len(leads) for leads in leads_data["leads_by_channel"].values())
 
     if total_after_filter == 0:
         logger.info("No leads ready after quality gate filter")

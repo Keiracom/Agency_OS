@@ -750,9 +750,9 @@ Respond in JSON format only:
                 siege_result = await self.siege_waterfall.enrich_lead(
                     siege_data,
                     skip_tiers=[
-                        EnrichmentTier.HUNTER,      # Skip email (no person data)
-                        EnrichmentTier.PROXYCURL,   # Skip LinkedIn (no person data)
-                        EnrichmentTier.IDENTITY,    # Skip Kaspr (expensive)
+                        EnrichmentTier.HUNTER,  # Skip email (no person data)
+                        EnrichmentTier.PROXYCURL,  # Skip LinkedIn (no person data)
+                        EnrichmentTier.IDENTITY,  # Skip Kaspr (expensive)
                     ],
                 )
 
@@ -767,6 +767,7 @@ Respond in JSON format only:
                     if siege_enriched.get("website") and not enriched.domain:
                         # Extract domain from website
                         from urllib.parse import urlparse
+
                         website = siege_enriched.get("website", "")
                         parsed = urlparse(website)
                         if parsed.netloc:
@@ -822,6 +823,7 @@ Respond in JSON format only:
             try:
                 logger.info(f"Tier 2 (GMB): Google Business search for {company_name}")
                 from src.integrations.gmb_scraper import scrape_google_business
+
                 google_data = await scrape_google_business(company_name, primary_country)
 
                 if google_data.get("found"):

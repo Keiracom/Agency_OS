@@ -69,9 +69,7 @@ class UnipileAccountService:
         """
         # Determine redirect URLs based on environment
         frontend_url = (
-            settings.ALLOWED_ORIGINS[0]
-            if settings.ALLOWED_ORIGINS
-            else "http://localhost:3000"
+            settings.ALLOWED_ORIGINS[0] if settings.ALLOWED_ORIGINS else "http://localhost:3000"
         )
         api_url = settings.base_url
 
@@ -88,7 +86,7 @@ class UnipileAccountService:
                         updated_at = NOW()
                     WHERE user_id = :user_id
                 """),
-                {"user_id": str(user_id)}
+                {"user_id": str(user_id)},
             )
             await db.commit()
         # New record will be created by webhook
@@ -161,9 +159,7 @@ class UnipileAccountService:
             return {"status": "ignored", "reason": "invalid_user_id"}
 
         if event == "account_connected":
-            return await self._handle_connected(
-                db, user_id, client_id, account_id, parsed
-            )
+            return await self._handle_connected(db, user_id, client_id, account_id, parsed)
         elif event == "account_needs_reauth":
             return await self._handle_expired(db, account_id, parsed)
         elif event == "account_disconnected":
@@ -191,7 +187,7 @@ class UnipileAccountService:
         # Check if account already exists
         existing = await db.execute(
             text("SELECT id FROM unipile_accounts WHERE unipile_account_id = :aid"),
-            {"aid": account_id}
+            {"aid": account_id},
         )
         exists = existing.fetchone()
 
@@ -215,7 +211,7 @@ class UnipileAccountService:
                     "name": account_info.get("name"),
                     "email": account_info.get("email"),
                     "profile": account_info.get("identifier"),
-                }
+                },
             )
         else:
             # Insert new record
@@ -236,7 +232,7 @@ class UnipileAccountService:
                     "name": account_info.get("name"),
                     "email": account_info.get("email"),
                     "profile": account_info.get("identifier"),
-                }
+                },
             )
 
         await db.commit()
@@ -266,7 +262,7 @@ class UnipileAccountService:
             {
                 "aid": account_id,
                 "error": "LinkedIn connection expired. Please reconnect.",
-            }
+            },
         )
         await db.commit()
 
@@ -287,7 +283,7 @@ class UnipileAccountService:
                     updated_at = NOW()
                 WHERE unipile_account_id = :aid
             """),
-            {"aid": account_id}
+            {"aid": account_id},
         )
         await db.commit()
 
@@ -326,7 +322,7 @@ class UnipileAccountService:
                   AND provider = :provider
                 LIMIT 1
             """),
-            {"user_id": str(user_id), "provider": provider}
+            {"user_id": str(user_id), "provider": provider},
         )
         row = result.fetchone()
         if not row:
@@ -378,7 +374,7 @@ class UnipileAccountService:
                   AND c.deleted_at IS NULL
                 LIMIT 1
             """),
-            {"campaign_id": str(campaign_id)}
+            {"campaign_id": str(campaign_id)},
         )
         row = result.fetchone()
         if not row:
@@ -404,7 +400,7 @@ class UnipileAccountService:
                     updated_at = NOW()
                 WHERE unipile_account_id = :aid
             """),
-            {"aid": unipile_account_id}
+            {"aid": unipile_account_id},
         )
         await db.commit()
 
@@ -448,7 +444,7 @@ class UnipileAccountService:
                     updated_at = NOW()
                 WHERE user_id = :user_id
             """),
-            {"user_id": str(user_id)}
+            {"user_id": str(user_id)},
         )
         await db.commit()
 
@@ -475,9 +471,7 @@ class UnipileAccountService:
             return {"status": "not_connected"}
 
         try:
-            account_info = await self.unipile.get_account(
-                account["unipile_account_id"]
-            )
+            account_info = await self.unipile.get_account(account["unipile_account_id"])
             unipile_status = account_info.get("status", "").upper()
 
             # Map Unipile status to our status
@@ -502,7 +496,7 @@ class UnipileAccountService:
                     "status": new_status,
                     "name": account_info.get("name"),
                     "email": account_info.get("email"),
-                }
+                },
             )
             await db.commit()
 
@@ -555,11 +549,13 @@ unipile_account_service = UnipileAccountService()
 
 class UnipileAccountRequired(Exception):
     """Raised when no Unipile account is connected for operation."""
+
     pass
 
 
 class UnipileAccountExpired(Exception):
     """Raised when Unipile account has expired and needs reauth."""
+
     pass
 
 

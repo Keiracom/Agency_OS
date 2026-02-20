@@ -57,6 +57,7 @@ WORKSPACE_IDS = {
 # TASKS
 # ============================================
 
+
 @task(name="check_domain_availability", retries=2, retry_delay_seconds=5)
 async def check_domain_availability_task(
     base_name: str,
@@ -83,11 +84,13 @@ async def check_domain_availability_task(
             # Check availability
             availability = await client.check_domain_availability(domain["name"])
             if availability.get("available"):
-                available.append({
-                    "domain": domain["name"],
-                    "price_usd": availability.get("price", 14),
-                    "price_aud": availability.get("price", 14) * 1.55,
-                })
+                available.append(
+                    {
+                        "domain": domain["name"],
+                        "price_usd": availability.get("price", 14),
+                        "price_aud": availability.get("price", 14) * 1.55,
+                    }
+                )
 
             if len(available) >= count:
                 break
@@ -175,11 +178,13 @@ async def create_mailboxes_task(
                 prefixes = ["outreach", "hello", "contact", "team", "sales"]
                 prefix = prefixes[i % len(prefixes)]
 
-                mailboxes.append({
-                    "email": f"{prefix}{i+1}@{domain}",
-                    "firstName": "Agency",
-                    "lastName": "Outreach",
-                })
+                mailboxes.append(
+                    {
+                        "email": f"{prefix}{i + 1}@{domain}",
+                        "firstName": "Agency",
+                        "lastName": "Outreach",
+                    }
+                )
 
         result = await client.create_mailboxes(mailboxes)
 
@@ -294,6 +299,7 @@ async def log_provisioning_cost_task(
 # MAIN FLOW
 # ============================================
 
+
 @flow(
     name="infra_provisioning_flow",
     description="Provision email infrastructure via Mailforge (domains + mailboxes + warmup)",
@@ -340,10 +346,7 @@ async def infra_provisioning_flow(
     )
 
     if len(available_domains) < domain_count:
-        logger.warning(
-            f"Only {len(available_domains)} domains available, "
-            f"requested {domain_count}"
-        )
+        logger.warning(f"Only {len(available_domains)} domains available, requested {domain_count}")
 
     # Step 2: Purchase domains
     purchase_result = await purchase_domains_task(
@@ -383,10 +386,7 @@ async def infra_provisioning_flow(
     )
 
     # Calculate totals
-    total_cost_month = (
-        purchase_result["cost_aud_month"] +
-        mailbox_result["cost_aud_month"]
-    )
+    total_cost_month = purchase_result["cost_aud_month"] + mailbox_result["cost_aud_month"]
 
     duration = (datetime.utcnow() - start_time).total_seconds()
 

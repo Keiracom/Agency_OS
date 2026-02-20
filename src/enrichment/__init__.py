@@ -28,7 +28,6 @@ __all__ = [
     "ABNFirstDiscovery",
     "MapsFirstDiscovery",
     "ParallelDiscovery",
-
     # Waterfall pipeline
     "LeadRecord",
     "WaterfallV2",

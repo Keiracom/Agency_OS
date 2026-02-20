@@ -45,8 +45,10 @@ logger = logging.getLogger(__name__)
 # ALERT TYPES & SEVERITY MAPPING
 # =============================================================================
 
+
 class AlertType:
     """Alert type constants."""
+
     ANGRY_COMPLAINT = "angry_complaint"
     BRIGHT_DATA_ERROR = "bright_data_error"
     HUNTER_RATE_LIMIT = "hunter_rate_limit"
@@ -87,6 +89,7 @@ EMAIL_ALERT_TYPES = {
 # =============================================================================
 # ALERT SERVICE
 # =============================================================================
+
 
 class AlertService:
     """
@@ -278,7 +281,7 @@ class AlertService:
             alert_type=AlertType.BRIGHT_DATA_ERROR,
             title="🔴 Bright Data API Error",
             message=f"Bright Data API failed after {retry_count} retries. "
-                   f"Error: {error_message}. Enrichment pipeline may be blocked.",
+            f"Error: {error_message}. Enrichment pipeline may be blocked.",
             client_id=client_id,
             metadata={**(metadata or {}), "retry_count": retry_count, "error": error_message},
         )
@@ -343,7 +346,7 @@ class AlertService:
             alert_type=AlertType.LINKEDIN_RATE_LIMIT,
             title="⚠️ LinkedIn Daily Limit Reached",
             message=f"LinkedIn seat {seat_id} has reached daily limit. "
-                   f"Actions: {actions_today}/{daily_limit}. Will resume tomorrow.",
+            f"Actions: {actions_today}/{daily_limit}. Will resume tomorrow.",
             client_id=client_id,
             metadata={
                 **(metadata or {}),
@@ -378,7 +381,7 @@ class AlertService:
             alert_type=AlertType.WARMUP_HEALTH_LOW,
             title="🔴 Email Warmup Health Critical",
             message=f"Domain {domain} health score dropped to {health_score:.1f}% "
-                   f"(threshold: {threshold:.1f}%). Outreach may be paused to protect reputation.",
+            f"(threshold: {threshold:.1f}%). Outreach may be paused to protect reputation.",
             client_id=client_id,
             metadata={
                 **(metadata or {}),
@@ -414,7 +417,7 @@ class AlertService:
             alert_type=AlertType.HOT_WARM_RATIO_LOW,
             title="⚠️ Lead Quality Declining",
             message=f"Campaign Hot+Warm ratio dropped to {hot_warm_ratio:.1f}% "
-                   f"(below {threshold:.1f}% threshold). Consider pausing for discovery.",
+            f"(below {threshold:.1f}% threshold). Consider pausing for discovery.",
             client_id=client_id,
             campaign_id=campaign_id,
             metadata={
@@ -450,7 +453,7 @@ class AlertService:
             alert_type=AlertType.QUOTA_SHORTFALL,
             title="🔴 Lead Quota Shortfall",
             message=f"Campaign is {shortfall} leads short after {loops_run} discovery attempts. "
-                   f"Manual intervention required to meet quota.",
+            f"Manual intervention required to meet quota.",
             client_id=client_id,
             campaign_id=campaign_id,
             metadata={
@@ -490,7 +493,7 @@ class AlertService:
             alert_type=AlertType.ANGRY_COMPLAINT,
             title="🔴 Angry/Complaint Reply",
             message=f"Angry or complaint reply received from {lead_name} ({lead_company}). "
-                   f"Preview: {message_preview[:100]}... Requires immediate attention.",
+            f"Preview: {message_preview[:100]}... Requires immediate attention.",
             client_id=client_id,
             campaign_id=campaign_id,
             lead_id=lead_id,
@@ -543,18 +546,22 @@ class AlertService:
                 {
                     "lead_id": str(lead_id),
                     "confidence": confidence,
-                    "data": json.dumps({
-                        "confidence": confidence,
-                        "intent": intent,
-                        "message_preview": message_preview,
-                        **(metadata or {}),
-                    }),
+                    "data": json.dumps(
+                        {
+                            "confidence": confidence,
+                            "intent": intent,
+                            "message_preview": message_preview,
+                            **(metadata or {}),
+                        }
+                    ),
                 },
             )
             row = result.fetchone()
             await self.session.commit()
 
-            logger.info(f"Flagged reply for human review: lead {lead_id}, confidence {confidence:.1%}")
+            logger.info(
+                f"Flagged reply for human review: lead {lead_id}, confidence {confidence:.1%}"
+            )
             return row.id if row else None
 
         except Exception as e:

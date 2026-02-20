@@ -143,7 +143,9 @@ class Settings(BaseSettings):
     hunter_api_key: str = Field(default="", description="Hunter.io API key for email discovery")
 
     # === Prospeo (Email Finding/Verification) ===
-    prospeo_api_key: str = Field(default="", description="Prospeo API key for email finding and verification")
+    prospeo_api_key: str = Field(
+        default="", description="Prospeo API key for email finding and verification"
+    )
 
     resend_api_key: str = Field(default="", description="Resend API key")
     postmark_server_token: str = Field(default="", description="Postmark server token")

@@ -100,19 +100,22 @@ class AnthropicClient:
         Returns:
             Cost in AUD
         """
-        pricing = self.MODEL_PRICING.get(model, {
-            "input": self.COST_PER_M_INPUT_TOKENS,
-            "output": self.COST_PER_M_OUTPUT_TOKENS,
-            "cached": self.COST_PER_M_CACHED_TOKENS,
-        })
+        pricing = self.MODEL_PRICING.get(
+            model,
+            {
+                "input": self.COST_PER_M_INPUT_TOKENS,
+                "output": self.COST_PER_M_OUTPUT_TOKENS,
+                "cached": self.COST_PER_M_CACHED_TOKENS,
+            },
+        )
 
         # Regular input tokens (minus cached)
         regular_input = max(0, input_tokens - cached_tokens)
 
         cost = (
-            (regular_input / 1_000_000) * pricing["input"] +
-            (cached_tokens / 1_000_000) * pricing["cached"] +
-            (output_tokens / 1_000_000) * pricing["output"]
+            (regular_input / 1_000_000) * pricing["input"]
+            + (cached_tokens / 1_000_000) * pricing["cached"]
+            + (output_tokens / 1_000_000) * pricing["output"]
         )
         await ai_spend_tracker.add_spend(cost)
         return cost
@@ -173,11 +176,7 @@ class AnthropicClient:
                 if enable_caching:
                     # Use array format with cache_control for caching
                     system_param = [
-                        {
-                            "type": "text",
-                            "text": system,
-                            "cache_control": {"type": "ephemeral"}
-                        }
+                        {"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}
                     ]
                 else:
                     system_param = system

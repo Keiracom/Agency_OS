@@ -74,9 +74,9 @@ AU_LANDLINE_PATTERN = r"^(?:\+61|0)[2378]\d{8}$"  # Landline: 02/03/07/08
 
 # Cost per operation in AUD (2026 pricing)
 IDENTITY_COSTS_AUD = {
-    "lusha_mobile": Decimal("0.25"),      # ~$0.15-0.30, using mid-range
-    "kaspr_mobile": Decimal("0.20"),      # Slightly cheaper
-    "asic_extract": Decimal("0.50"),      # Company extract via broker
+    "lusha_mobile": Decimal("0.25"),  # ~$0.15-0.30, using mid-range
+    "kaspr_mobile": Decimal("0.20"),  # Slightly cheaper
+    "asic_extract": Decimal("0.50"),  # Company extract via broker
     "team_page_scrape": Decimal("0.01"),  # Our own scraper
     # NOTE: proxycurl_linkedin removed (FCO-003 deprecation, Proxycurl shutdown July 2025)
 }
@@ -84,10 +84,23 @@ IDENTITY_COSTS_AUD = {
 # Thresholds
 ALS_MOBILE_THRESHOLD = 85  # Only enrich mobile for HOT leads (WF-002 mandate)
 DECISION_MAKER_TITLES = [
-    "director", "founder", "ceo", "chief", "owner", "principal",
-    "managing director", "md", "general manager", "gm",
-    "head of", "vp", "vice president", "president",
-    "marketing manager", "sales manager", "operations manager",
+    "director",
+    "founder",
+    "ceo",
+    "chief",
+    "owner",
+    "principal",
+    "managing director",
+    "md",
+    "general manager",
+    "gm",
+    "head of",
+    "vp",
+    "vice president",
+    "president",
+    "marketing manager",
+    "sales manager",
+    "operations manager",
 ]
 
 
@@ -95,8 +108,10 @@ DECISION_MAKER_TITLES = [
 # DATA CLASSES
 # ============================================
 
+
 class PhoneType(StrEnum):
     """Phone number types."""
+
     MOBILE = "mobile"
     LANDLINE = "landline"
     UNKNOWN = "unknown"
@@ -104,6 +119,7 @@ class PhoneType(StrEnum):
 
 class IdentityTier(StrEnum):
     """Identity enrichment tiers."""
+
     TEAM_PAGE_SCRAPE = "team_page_scrape"
     LINKEDIN_EMPLOYEE = "linkedin_employee"
     ASIC_DIRECTOR = "asic_director"
@@ -115,6 +131,7 @@ class IdentityTier(StrEnum):
 @dataclass
 class DecisionMaker:
     """A decision maker found via escalation."""
+
     full_name: str
     first_name: str
     last_name: str
@@ -130,6 +147,7 @@ class DecisionMaker:
 @dataclass
 class IdentityResult:
     """Result from identity escalation."""
+
     lead_id: UUID
     company_name: str
 
@@ -161,6 +179,7 @@ class IdentityResult:
 @dataclass
 class IdentityLineageStep:
     """Lineage step for identity escalation."""
+
     step_number: int
     tier: IdentityTier
     source_name: str
@@ -174,6 +193,7 @@ class IdentityLineageStep:
 # ============================================
 # IDENTITY ESCALATION ENGINE
 # ============================================
+
 
 class IdentityEscalationEngine(BaseEngine):
     """
@@ -392,9 +412,7 @@ class IdentityEscalationEngine(BaseEngine):
             # Skipping this tier entirely - relying on Tier 1 (team page) and Tier 3 (ASIC)
             # LinkedIn enrichment will be replaced by Apollo in future iteration
             if company_linkedin_url and len(decision_makers) < 3:
-                logger.info(
-                    f"Tier 2 skipped for {company_name}: Proxycurl deprecated (FCO-003)"
-                )
+                logger.info(f"Tier 2 skipped for {company_name}: Proxycurl deprecated (FCO-003)")
 
             # ========== TIER 3: ASIC DIRECTOR HUNT ==========
             if acn and len(decision_makers) < 3:
@@ -417,7 +435,9 @@ class IdentityEscalationEngine(BaseEngine):
 
                 # ASIC directors are high priority
                 for ad in asic_directors:
-                    if not any(dm.full_name.lower() == ad.full_name.lower() for dm in decision_makers):
+                    if not any(
+                        dm.full_name.lower() == ad.full_name.lower() for dm in decision_makers
+                    ):
                         decision_makers.insert(0, ad)  # Priority insert
 
             # ========== FILTER TO TOP 3 DECISION MAKERS ==========
@@ -439,9 +459,7 @@ class IdentityEscalationEngine(BaseEngine):
                 step_number += 1
 
                 # Try Lusha first, then Kaspr
-                mobile_result = await self._enrich_mobile_number(
-                    decision_makers[0], company_domain
-                )
+                mobile_result = await self._enrich_mobile_number(decision_makers[0], company_domain)
 
                 if mobile_result:
                     result.mobile_number_verified = mobile_result.mobile_number
@@ -449,7 +467,9 @@ class IdentityEscalationEngine(BaseEngine):
                     result.primary_contact.phone_type = PhoneType.MOBILE
 
                     # Also capture work email if found
-                    if mobile_result.work_email and not self.is_generic_email(mobile_result.work_email):
+                    if mobile_result.work_email and not self.is_generic_email(
+                        mobile_result.work_email
+                    ):
                         result.work_email_verified = mobile_result.work_email
                         result.primary_contact.work_email = mobile_result.work_email
 
@@ -458,8 +478,7 @@ class IdentityEscalationEngine(BaseEngine):
                         tier=IdentityTier.IDENTITY_GOLD,
                         source_name=mobile_result.source,
                         cost_aud=IDENTITY_COSTS_AUD.get(
-                            f"{mobile_result.source}_mobile",
-                            Decimal("0.25")
+                            f"{mobile_result.source}_mobile", Decimal("0.25")
                         ),
                         success=True,
                         contacts_found=1,
@@ -487,9 +506,9 @@ class IdentityEscalationEngine(BaseEngine):
             # ========== FINALIZE ==========
             result.total_cost_aud = total_cost
             result.success = bool(
-                result.work_email_verified or
-                result.mobile_number_verified or
-                result.linkedin_profile_url
+                result.work_email_verified
+                or result.mobile_number_verified
+                or result.linkedin_profile_url
             )
 
             # Log lineage
@@ -541,16 +560,18 @@ class IdentityEscalationEngine(BaseEngine):
                     if page_contacts:
                         for pc in page_contacts:
                             if self._is_decision_maker_title(pc.get("title", "")):
-                                contacts.append(DecisionMaker(
-                                    full_name=pc.get("name", ""),
-                                    first_name=pc.get("first_name", ""),
-                                    last_name=pc.get("last_name", ""),
-                                    title=pc.get("title", ""),
-                                    linkedin_url=pc.get("linkedin_url"),
-                                    work_email=pc.get("email"),
-                                    source="team_page",
-                                    confidence=70,
-                                ))
+                                contacts.append(
+                                    DecisionMaker(
+                                        full_name=pc.get("name", ""),
+                                        first_name=pc.get("first_name", ""),
+                                        last_name=pc.get("last_name", ""),
+                                        title=pc.get("title", ""),
+                                        linkedin_url=pc.get("linkedin_url"),
+                                        work_email=pc.get("email"),
+                                        source="team_page",
+                                        confidence=70,
+                                    )
+                                )
                         if contacts:
                             break  # Found contacts, stop searching
                 except Exception:
@@ -597,14 +618,16 @@ class IdentityEscalationEngine(BaseEngine):
                 full_name = director.get("name", "")
                 name_parts = full_name.split()
 
-                directors.append(DecisionMaker(
-                    full_name=full_name,
-                    first_name=name_parts[0] if name_parts else "",
-                    last_name=name_parts[-1] if len(name_parts) > 1 else "",
-                    title="Director",
-                    source="asic_extract",
-                    confidence=95,  # ASIC data is authoritative
-                ))
+                directors.append(
+                    DecisionMaker(
+                        full_name=full_name,
+                        first_name=name_parts[0] if name_parts else "",
+                        last_name=name_parts[-1] if len(name_parts) > 1 else "",
+                        title="Director",
+                        source="asic_extract",
+                        confidence=95,  # ASIC data is authoritative
+                    )
+                )
 
             return directors
 
@@ -679,9 +702,7 @@ class IdentityEscalationEngine(BaseEngine):
         title_lower = title.lower()
         return any(dm_title in title_lower for dm_title in DECISION_MAKER_TITLES)
 
-    def _rank_decision_makers(
-        self, contacts: list[DecisionMaker]
-    ) -> list[DecisionMaker]:
+    def _rank_decision_makers(self, contacts: list[DecisionMaker]) -> list[DecisionMaker]:
         """
         Rank decision makers by authority and data completeness.
 
@@ -692,6 +713,7 @@ class IdentityEscalationEngine(BaseEngine):
         4. Managers with LinkedIn
         5. Others
         """
+
         def score(dm: DecisionMaker) -> int:
             s = dm.confidence
             title_lower = dm.title.lower() if dm.title else ""
@@ -778,6 +800,7 @@ class IdentityEscalationEngine(BaseEngine):
 # ============================================
 # FACTORY FUNCTION
 # ============================================
+
 
 def get_identity_escalation_engine(
     lusha_client=None,

@@ -50,8 +50,10 @@ logger = logging.getLogger(__name__)
 # CONSTANTS & CONFIGURATION
 # ============================================
 
+
 class CallState(StrEnum):
     """Call state machine."""
+
     IDLE = "idle"
     RINGING = "ringing"
     CONNECTED = "connected"
@@ -88,21 +90,21 @@ DEFAULT_VOICE = "lee"
 
 # Cost per minute in AUD
 COSTS_AUD = {
-    "telnyx_inbound": Decimal("0.015"),   # ~$0.01 USD
+    "telnyx_inbound": Decimal("0.015"),  # ~$0.01 USD
     "telnyx_outbound": Decimal("0.045"),  # ~$0.03 USD (AU mobile)
-    "elevenlabs_flash": Decimal("0.035"), # ~$0.023 USD per minute
-    "groq_llama": Decimal("0.002"),       # Near-free inference
+    "elevenlabs_flash": Decimal("0.035"),  # ~$0.023 USD per minute
+    "groq_llama": Decimal("0.002"),  # Near-free inference
     "total_per_minute": Decimal("0.09"),  # Total ~$0.09 AUD/min
-    "vapi_comparison": Decimal("2.00"),   # Vapi charges ~$2.00/min
+    "vapi_comparison": Decimal("2.00"),  # Vapi charges ~$2.00/min
 }
 
 # Latency targets (milliseconds)
 LATENCY_TARGETS = {
-    "stt": 100,          # Speech-to-text
-    "llm": 150,          # LLM inference (Groq)
-    "tts": 75,           # Text-to-speech (ElevenLabs Flash v2.5)
-    "network": 50,       # Sydney PoP round-trip
-    "total_target": 200, # Target <200ms total
+    "stt": 100,  # Speech-to-text
+    "llm": 150,  # LLM inference (Groq)
+    "tts": 75,  # Text-to-speech (ElevenLabs Flash v2.5)
+    "network": 50,  # Sydney PoP round-trip
+    "total_target": 200,  # Target <200ms total
 }
 
 # Telnyx Sydney PoP
@@ -114,9 +116,11 @@ WEBHOOK_BASE_URL = os.getenv("VOICE_WEBHOOK_URL", "https://api.agencyos.com.au")
 # DATA CLASSES
 # ============================================
 
+
 @dataclass
 class CallMetrics:
     """Metrics for a single call."""
+
     call_id: str
     start_time: datetime
     end_time: datetime | None = None
@@ -139,6 +143,7 @@ class CallMetrics:
 @dataclass
 class ConversationContext:
     """Conversation state and context."""
+
     call_id: str
     lead_id: UUID | None = None
 
@@ -163,6 +168,7 @@ class ConversationContext:
 @dataclass
 class BargeInEvent:
     """Represents a user interruption (barge-in)."""
+
     timestamp: datetime
     interrupted_text: str
     user_utterance: str
@@ -223,6 +229,7 @@ CALL CONTEXT:
 # ============================================
 # VOICE AGENT ENGINE
 # ============================================
+
 
 class VoiceAgentTelnyxEngine(BaseEngine):
     """
@@ -548,7 +555,9 @@ class VoiceAgentTelnyxEngine(BaseEngine):
             user_utterance=user_utterance,
         )
 
-        logger.debug(f"[{context.call_id}] Barge-in: interrupted at '{barge_in.interrupted_text[:30]}...'")
+        logger.debug(
+            f"[{context.call_id}] Barge-in: interrupted at '{barge_in.interrupted_text[:30]}...'"
+        )
 
     # ============================================
     # CORE FUNCTIONS
@@ -577,9 +586,12 @@ class VoiceAgentTelnyxEngine(BaseEngine):
                 },
             )
             result = response.json()
-            return result.get("results", {}).get("channels", [{}])[0].get(
-                "alternatives", [{}]
-            )[0].get("transcript", "")
+            return (
+                result.get("results", {})
+                .get("channels", [{}])[0]
+                .get("alternatives", [{}])[0]
+                .get("transcript", "")
+            )
 
     async def _generate_response(self, context: ConversationContext) -> str:
         """
@@ -629,10 +641,9 @@ class VoiceAgentTelnyxEngine(BaseEngine):
     async def _generate_greeting(self, context: ConversationContext) -> str:
         """Generate opening greeting."""
         # Let LLM generate natural greeting based on context
-        context.messages.append({
-            "role": "user",
-            "content": "[SYSTEM: Call connected. Generate your opening greeting.]"
-        })
+        context.messages.append(
+            {"role": "user", "content": "[SYSTEM: Call connected. Generate your opening greeting.]"}
+        )
 
         greeting = await self._generate_response(context)
 
@@ -657,8 +668,9 @@ class VoiceAgentTelnyxEngine(BaseEngine):
                 (COSTS_AUD["vapi_comparison"] - COSTS_AUD["total_per_minute"]) * 1000
             ),
             "savings_percent": round(
-                (1 - float(COSTS_AUD["total_per_minute"]) / float(COSTS_AUD["vapi_comparison"])) * 100,
-                1
+                (1 - float(COSTS_AUD["total_per_minute"]) / float(COSTS_AUD["vapi_comparison"]))
+                * 100,
+                1,
             ),
         }
 
@@ -666,6 +678,7 @@ class VoiceAgentTelnyxEngine(BaseEngine):
 # ============================================
 # FACTORY FUNCTION
 # ============================================
+
 
 def get_voice_agent() -> VoiceAgentTelnyxEngine:
     """Get VoiceAgentTelnyxEngine instance."""

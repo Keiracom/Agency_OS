@@ -353,18 +353,12 @@ async def unipile_linkedin_enrichment_task(
 
     async with get_db_session() as db:
         # Resolve multi-tenant Unipile account for this campaign
-        account = await unipile_account_service.get_account_for_campaign(
-            db, campaign_id
-        )
+        account = await unipile_account_service.get_account_for_campaign(db, campaign_id)
 
         if not account:
             # No connected account - pause campaign
-            await _pause_campaign_for_reconnect(
-                db, campaign_id, "No Unipile account connected"
-            )
-            raise UnipileAccountRequired(
-                "User must connect LinkedIn account via Unipile"
-            )
+            await _pause_campaign_for_reconnect(db, campaign_id, "No Unipile account connected")
+            raise UnipileAccountRequired("User must connect LinkedIn account via Unipile")
 
         if account["status"] != "OK":
             # Account expired - pause campaign
@@ -382,7 +376,7 @@ async def unipile_linkedin_enrichment_task(
         if not linkedin_url:
             result = await db.execute(
                 text("SELECT linkedin_url FROM leads WHERE id = :lead_id"),
-                {"lead_id": str(lead_id)}
+                {"lead_id": str(lead_id)},
             )
             row = result.fetchone()
             linkedin_url = row.linkedin_url if row else None
@@ -403,9 +397,7 @@ async def unipile_linkedin_enrichment_task(
             )
 
             # Update last_used timestamp
-            await unipile_account_service.update_last_used(
-                db, account["unipile_account_id"]
-            )
+            await unipile_account_service.update_last_used(db, account["unipile_account_id"])
 
             # Update lead with LinkedIn data
             await db.execute(
@@ -423,13 +415,11 @@ async def unipile_linkedin_enrichment_task(
                     "headline": profile.get("headline"),
                     "connections": profile.get("connections"),
                     "company": profile.get("company"),
-                }
+                },
             )
             await db.commit()
 
-            logger.info(
-                f"Enriched lead {lead_id} via Unipile account {account['display_name']}"
-            )
+            logger.info(f"Enriched lead {lead_id} via Unipile account {account['display_name']}")
 
             return {
                 "success": True,
@@ -437,7 +427,8 @@ async def unipile_linkedin_enrichment_task(
                 "enrichment_source": "unipile",
                 "account_used": account["display_name"],
                 "fields_enriched": [
-                    k for k, v in profile.items()
+                    k
+                    for k, v in profile.items()
                     if v and k in ("headline", "company", "connections", "location")
                 ],
             }
@@ -473,7 +464,7 @@ async def _pause_campaign_for_reconnect(
             WHERE id = :campaign_id
               AND status = 'active'
         """),
-        {"campaign_id": str(campaign_id), "reason": reason}
+        {"campaign_id": str(campaign_id), "reason": reason},
     )
 
     # Log to audit table if it exists (audit table may not exist - that's fine)
@@ -490,7 +481,7 @@ async def _pause_campaign_for_reconnect(
             {
                 "campaign_id": str(campaign_id),
                 "details": f'{{"reason": "{reason}"}}',
-            }
+            },
         )
 
     await db.commit()

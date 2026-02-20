@@ -110,6 +110,7 @@ class UnsubscribeTokenService:
         # Add email hash for additional verification (optional)
         if email:
             import hashlib
+
             payload["email_hash"] = hashlib.sha256(email.lower().encode()).hexdigest()[:16]
 
         token = jwt.encode(payload, self._secret, algorithm=JWT_ALGORITHM)
@@ -196,8 +197,7 @@ class UnsubscribeTokenService:
 
         if success:
             logger.info(
-                f"Lead {lead_pool_id} unsubscribed via {source}. "
-                f"Cross-channel suppression active."
+                f"Lead {lead_pool_id} unsubscribed via {source}. Cross-channel suppression active."
             )
         else:
             logger.warning(f"Failed to unsubscribe lead {lead_pool_id}")

@@ -650,7 +650,9 @@ Be conservative - if you're unsure whether a claim is supported, mark it as unsu
         This method delegates to generate_email() for backwards compatibility.
         The sdk_enrichment parameter is ignored.
         """
-        logger.info("generate_email_with_sdk called — SDK deprecated (FCO-002), using standard flow")
+        logger.info(
+            "generate_email_with_sdk called — SDK deprecated (FCO-002), using standard flow"
+        )
         return await self.generate_email(
             db=db,
             lead_id=lead_id,
@@ -680,7 +682,9 @@ Be conservative - if you're unsure whether a claim is supported, mark it as unsu
         This method delegates to generate_email_for_pool() for backwards compatibility.
         The sdk_enrichment and client_id parameters are ignored.
         """
-        logger.info("generate_sdk_email_for_pool called — SDK deprecated (FCO-002), using standard flow")
+        logger.info(
+            "generate_sdk_email_for_pool called — SDK deprecated (FCO-002), using standard flow"
+        )
         return await self.generate_email_for_pool(
             db=db,
             lead_pool_id=lead_pool_id,

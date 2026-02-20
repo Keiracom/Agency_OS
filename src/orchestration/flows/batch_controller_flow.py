@@ -584,7 +584,7 @@ async def fire_quota_shortfall_alert_task(
                     "client_id": client_id,
                     "title": f"⚠️ Lead Quota Shortfall: {campaign_name}",
                     "message": f"Campaign '{campaign_name}' is {shortfall} leads short after "
-                              f"{loops_run} discovery attempts. Manual intervention required.",
+                    f"{loops_run} discovery attempts. Manual intervention required.",
                     "campaign_id": campaign_id,
                     "metadata": {
                         "shortfall": shortfall,
@@ -850,11 +850,13 @@ async def apply_quality_gates_flow(
             results["gate_1_passed"] += 1
         else:
             results["gate_1_failed"] += 1
-            results["discards"].append({
-                "lead_pool_id": lead_pool_id,
-                "gate": 1,
-                "reason": g1_result.get("reason"),
-            })
+            results["discards"].append(
+                {
+                    "lead_pool_id": lead_pool_id,
+                    "gate": 1,
+                    "reason": g1_result.get("reason"),
+                }
+            )
             continue  # Don't apply further gates
 
         # Gate 2
@@ -868,11 +870,13 @@ async def apply_quality_gates_flow(
             results["gate_2_passed"] += 1
         else:
             results["gate_2_failed"] += 1
-            results["discards"].append({
-                "lead_pool_id": lead_pool_id,
-                "gate": 2,
-                "reason": g2_result.get("reason"),
-            })
+            results["discards"].append(
+                {
+                    "lead_pool_id": lead_pool_id,
+                    "gate": 2,
+                    "reason": g2_result.get("reason"),
+                }
+            )
             continue
 
         # Gate 3 (never discards)

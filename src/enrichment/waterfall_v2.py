@@ -126,8 +126,8 @@ class WaterfallV2:
     - HOT_THRESHOLD: Minimum score for Tier 5 Kaspr enrichment (premium leads only)
     """
 
-    PRE_ALS_GATE = 30      # Minimum score to continue past Tier 2
-    HOT_THRESHOLD = 85     # Minimum for Tier 5 (Kaspr)
+    PRE_ALS_GATE = 30  # Minimum score to continue past Tier 2
+    HOT_THRESHOLD = 85  # Minimum for Tier 5 (Kaspr)
 
     # Cost constants (AUD)
     COSTS = {
@@ -136,15 +136,11 @@ class WaterfallV2:
         "linkedin_company": 0.0015,
         "linkedin_people": 0.0015,
         "hunter_email": 0.012,
-        "kaspr_contact": 0.45
+        "kaspr_contact": 0.45,
     }
 
     def __init__(
-        self,
-        bright_data_client=None,
-        abn_client=None,
-        hunter_client=None,
-        kaspr_client=None
+        self, bright_data_client=None, abn_client=None, hunter_client=None, kaspr_client=None
     ):
         """Initialize waterfall with all integration clients"""
         self.bd = bright_data_client
@@ -155,12 +151,10 @@ class WaterfallV2:
         # Initialize discovery engines
         self.abn_discovery = ABNFirstDiscovery(abn_client=abn_client)
         self.maps_discovery = MapsFirstDiscovery(
-            bright_data_client=bright_data_client,
-            abn_client=abn_client
+            bright_data_client=bright_data_client, abn_client=abn_client
         )
         self.parallel_discovery = ParallelDiscovery(
-            abn_client=abn_client,
-            bright_data_client=bright_data_client
+            abn_client=abn_client, bright_data_client=bright_data_client
         )
 
     # PHASE 1: DISCOVERY
@@ -211,7 +205,7 @@ class WaterfallV2:
             category=record.category,
             gmb_place_id=record.gmb_place_id,
             confidence_score=record.confidence_score,
-            discovery_source=record.discovery_source
+            discovery_source=record.discovery_source,
         )
 
         # Set initial tiers as completed based on discovery source
@@ -240,9 +234,7 @@ class WaterfallV2:
             # Search ABN by business name if no ABN
             if not lead.abn and lead.business_name:
                 abn_results = await self.abn_client.search_by_name_advanced(
-                    name=lead.business_name,
-                    state=lead.state,
-                    isCurrentIndicator="Y"
+                    name=lead.business_name, state=lead.state, isCurrentIndicator="Y"
                 )
 
                 if abn_results:
@@ -282,8 +274,7 @@ class WaterfallV2:
             # Search Google Maps for business
             search_query = f"{lead.business_name} {lead.address or lead.state or ''}"
             gmb_results = await self.bd.search_google_maps(
-                query=search_query.strip(),
-                max_results=5
+                query=search_query.strip(), max_results=5
             )
 
             if gmb_results:
@@ -311,7 +302,11 @@ class WaterfallV2:
             logger.debug(f"Tier 1.5a completed for {lead.id}")
 
         except Exception as e:
-            error = {"tier": "tier_1_5a", "error": str(e), "timestamp": datetime.now(UTC).isoformat()}
+            error = {
+                "tier": "tier_1_5a",
+                "error": str(e),
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
             lead.enrichment_errors.append(error)
             logger.warning(f"Tier 1.5a failed for {lead.id}: {str(e)}")
 
@@ -331,10 +326,7 @@ class WaterfallV2:
             # Search LinkedIn company URL via SERP
             search_query = f'site:linkedin.com/company "{lead.business_name}" {lead.address or lead.state or ""}'
 
-            serp_results = await self.bd.search_google(
-                query=search_query.strip(),
-                max_results=10
-            )
+            serp_results = await self.bd.search_google(query=search_query.strip(), max_results=10)
 
             if serp_results:
                 # Find LinkedIn company URL in results
@@ -349,7 +341,11 @@ class WaterfallV2:
             logger.debug(f"Tier 1.5b completed for {lead.id}")
 
         except Exception as e:
-            error = {"tier": "tier_1_5b", "error": str(e), "timestamp": datetime.now(UTC).isoformat()}
+            error = {
+                "tier": "tier_1_5b",
+                "error": str(e),
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
             lead.enrichment_errors.append(error)
             logger.warning(f"Tier 1.5b failed for {lead.id}: {str(e)}")
 
@@ -406,8 +402,19 @@ class WaterfallV2:
         """Extract decision makers from employee list"""
         decision_makers = []
         decision_keywords = [
-            "ceo", "cto", "cfo", "cmo", "coo", "chief", "president", "founder",
-            "vp", "vice president", "director", "head of", "manager"
+            "ceo",
+            "cto",
+            "cfo",
+            "cmo",
+            "coo",
+            "chief",
+            "president",
+            "founder",
+            "vp",
+            "vice president",
+            "director",
+            "head of",
+            "manager",
         ]
 
         for employee in employees:
@@ -422,11 +429,11 @@ class WaterfallV2:
     def calculate_als(self, lead: LeadRecord) -> int:
         """Calculate Agency Lead Score (0-100)"""
         score_breakdown = {
-            "company_fit": 0,      # 25 pts max
-            "authority": 0,        # 25 pts max
-            "timing": 0,          # 15 pts max
-            "data_quality": 0,    # 20 pts max
-            "engagement": 0       # 15 pts max
+            "company_fit": 0,  # 25 pts max
+            "authority": 0,  # 25 pts max
+            "timing": 0,  # 15 pts max
+            "data_quality": 0,  # 20 pts max
+            "engagement": 0,  # 15 pts max
         }
 
         # Company Fit (25 points)
@@ -441,10 +448,14 @@ class WaterfallV2:
         if lead.decision_makers:
             score_breakdown["authority"] += min(len(lead.decision_makers) * 5, 15)
             # Bonus for C-level contacts
-            c_level = sum(1 for dm in lead.decision_makers if any(
-                keyword in dm.get("title", "").lower()
-                for keyword in ["ceo", "cto", "cfo", "cmo", "chief", "founder"]
-            ))
+            c_level = sum(
+                1
+                for dm in lead.decision_makers
+                if any(
+                    keyword in dm.get("title", "").lower()
+                    for keyword in ["ceo", "cto", "cfo", "cmo", "chief", "founder"]
+                )
+            )
             score_breakdown["authority"] += min(c_level * 5, 10)
 
         # Timing (15 points) - Based on recent activity signals
@@ -455,7 +466,11 @@ class WaterfallV2:
             # Hiring signal detection - bonus 5 points for active growth
             for update in lead.linkedin_data["updates"]:
                 update_text = (update.get("text") or "").lower()
-                if "#hiring" in update_text or "we're hiring" in update_text or "we are hiring" in update_text:
+                if (
+                    "#hiring" in update_text
+                    or "we're hiring" in update_text
+                    or "we are hiring" in update_text
+                ):
                     score_breakdown["timing"] += 5  # Active hiring = growth signal
                     logger.debug("hiring_signal_detected", lead_id=lead.id)
                     break  # Only count once
@@ -493,7 +508,9 @@ class WaterfallV2:
             return lead
 
         if lead.als_score < self.PRE_ALS_GATE:
-            logger.debug(f"Tier 2.5 skipped for {lead.id} - ALS score {lead.als_score} below gate {self.PRE_ALS_GATE}")
+            logger.debug(
+                f"Tier 2.5 skipped for {lead.id} - ALS score {lead.als_score} below gate {self.PRE_ALS_GATE}"
+            )
             return lead
 
         if not lead.decision_makers:
@@ -526,7 +543,11 @@ class WaterfallV2:
             logger.debug(f"Tier 2.5 completed for {lead.id}")
 
         except Exception as e:
-            error = {"tier": "tier_2_5", "error": str(e), "timestamp": datetime.now(UTC).isoformat()}
+            error = {
+                "tier": "tier_2_5",
+                "error": str(e),
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
             lead.enrichment_errors.append(error)
             logger.warning(f"Tier 2.5 failed for {lead.id}: {str(e)}")
 
@@ -538,7 +559,9 @@ class WaterfallV2:
             return lead
 
         if lead.als_score < self.PRE_ALS_GATE:
-            logger.debug(f"Tier 3 skipped for {lead.id} - ALS score {lead.als_score} below gate {self.PRE_ALS_GATE}")
+            logger.debug(
+                f"Tier 3 skipped for {lead.id} - ALS score {lead.als_score} below gate {self.PRE_ALS_GATE}"
+            )
             return lead
 
         if not lead.website:
@@ -560,7 +583,9 @@ class WaterfallV2:
 
                 if email_results and email_results.get("emails"):
                     # Find best email (decision maker or generic contact)
-                    best_email = self._select_best_email(email_results["emails"], lead.decision_makers)
+                    best_email = self._select_best_email(
+                        email_results["emails"], lead.decision_makers
+                    )
                     if best_email:
                         lead.email = best_email.get("value")
                         lead.email_confidence = best_email.get("confidence", 0) / 100.0
@@ -628,7 +653,9 @@ class WaterfallV2:
             return lead
 
         if lead.als_score < self.HOT_THRESHOLD:
-            logger.debug(f"Tier 5 skipped for {lead.id} - ALS score {lead.als_score} below hot threshold {self.HOT_THRESHOLD}")
+            logger.debug(
+                f"Tier 5 skipped for {lead.id} - ALS score {lead.als_score} below hot threshold {self.HOT_THRESHOLD}"
+            )
             return lead
 
         if not lead.decision_makers:
@@ -664,7 +691,7 @@ class WaterfallV2:
                 lead.verified_contacts = verified_contacts
                 lead.kaspr_data = {
                     "contacts_enriched": len(verified_contacts),
-                    "enrichment_timestamp": datetime.now(UTC).isoformat()
+                    "enrichment_timestamp": datetime.now(UTC).isoformat(),
                 }
 
             lead.enrichment_tiers_completed.append("tier_5")
@@ -682,7 +709,9 @@ class WaterfallV2:
 
     async def run_full_pipeline(self, config: CampaignConfig) -> list[LeadRecord]:
         """Execute complete Phase 1 → 2 → 3 pipeline"""
-        logger.info(f"Starting full Waterfall v2 pipeline for {config.industry} in {config.location}")
+        logger.info(
+            f"Starting full Waterfall v2 pipeline for {config.industry} in {config.location}"
+        )
 
         try:
             # Phase 1: Discovery
@@ -709,7 +738,9 @@ class WaterfallV2:
 
                 # Quality Gate Check - Continue enrichment only if score >= PRE_ALS_GATE
                 if lead.als_score >= self.PRE_ALS_GATE:
-                    logger.debug(f"Lead {lead.id} passed ALS gate ({lead.als_score} >= {self.PRE_ALS_GATE})")
+                    logger.debug(
+                        f"Lead {lead.id} passed ALS gate ({lead.als_score} >= {self.PRE_ALS_GATE})"
+                    )
 
                     # Phase 2 continued: Premium Enrichment
                     lead = await self.enrich_tier_2_5(lead)
@@ -720,7 +751,9 @@ class WaterfallV2:
                     lead.als_score = self.calculate_als(lead)
                     logger.debug(f"Final ALS score for {lead.id}: {lead.als_score}")
                 else:
-                    logger.debug(f"Lead {lead.id} did not pass ALS gate ({lead.als_score} < {self.PRE_ALS_GATE})")
+                    logger.debug(
+                        f"Lead {lead.id} did not pass ALS gate ({lead.als_score} < {self.PRE_ALS_GATE})"
+                    )
 
                 # Update final metadata
                 lead.updated_at = datetime.now(UTC).isoformat()
@@ -728,7 +761,9 @@ class WaterfallV2:
 
             # Pipeline summary
             total_cost = sum(lead.cost_aud for lead in enriched)
-            high_quality_leads = len([lead for lead in enriched if lead.als_score >= self.HOT_THRESHOLD])
+            high_quality_leads = len(
+                [lead for lead in enriched if lead.als_score >= self.HOT_THRESHOLD]
+            )
 
             logger.info(
                 f"Waterfall v2 pipeline completed: {len(enriched)} leads processed, "
@@ -756,11 +791,11 @@ class WaterfallV2:
             "als_distribution": {
                 "hot_leads": len([l for l in leads if l.als_score >= self.HOT_THRESHOLD]),
                 "qualified_leads": len([l for l in leads if l.als_score >= self.PRE_ALS_GATE]),
-                "low_quality_leads": len([l for l in leads if l.als_score < self.PRE_ALS_GATE])
+                "low_quality_leads": len([l for l in leads if l.als_score < self.PRE_ALS_GATE]),
             },
             "enrichment_completion": {},
             "discovery_sources": {},
-            "error_summary": {}
+            "error_summary": {},
         }
 
         # Enrichment tier completion rates
@@ -769,7 +804,7 @@ class WaterfallV2:
             completed = len([l for l in leads if tier in l.enrichment_tiers_completed])
             stats["enrichment_completion"][tier] = {
                 "completed": completed,
-                "rate": completed / len(leads) if leads else 0
+                "rate": completed / len(leads) if leads else 0,
             }
 
         # Discovery source breakdown

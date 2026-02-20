@@ -29,24 +29,102 @@ logger = logging.getLogger(__name__)
 
 # Realistic professional first names
 FIRST_NAMES = [
-    "James", "Sarah", "Michael", "Emma", "David", "Rachel", "Daniel", "Jessica",
-    "Christopher", "Emily", "Matthew", "Lauren", "Andrew", "Nicole", "William",
-    "Megan", "Joshua", "Samantha", "Ryan", "Ashley", "Brandon", "Taylor",
-    "Nathan", "Victoria", "Justin", "Amanda", "Benjamin", "Brittany", "Zachary",
-    "Stephanie", "Kevin", "Rebecca", "Thomas", "Chelsea", "Timothy", "Melissa",
-    "Scott", "Jennifer", "Brian", "Heather", "Aaron", "Katherine", "Patrick",
-    "Alexandra", "Jonathan", "Christina", "Eric", "Michelle", "Adam", "Allison",
+    "James",
+    "Sarah",
+    "Michael",
+    "Emma",
+    "David",
+    "Rachel",
+    "Daniel",
+    "Jessica",
+    "Christopher",
+    "Emily",
+    "Matthew",
+    "Lauren",
+    "Andrew",
+    "Nicole",
+    "William",
+    "Megan",
+    "Joshua",
+    "Samantha",
+    "Ryan",
+    "Ashley",
+    "Brandon",
+    "Taylor",
+    "Nathan",
+    "Victoria",
+    "Justin",
+    "Amanda",
+    "Benjamin",
+    "Brittany",
+    "Zachary",
+    "Stephanie",
+    "Kevin",
+    "Rebecca",
+    "Thomas",
+    "Chelsea",
+    "Timothy",
+    "Melissa",
+    "Scott",
+    "Jennifer",
+    "Brian",
+    "Heather",
+    "Aaron",
+    "Katherine",
+    "Patrick",
+    "Alexandra",
+    "Jonathan",
+    "Christina",
+    "Eric",
+    "Michelle",
+    "Adam",
+    "Allison",
 ]
 
 # Professional last names
 LAST_NAMES = [
-    "Anderson", "Bennett", "Campbell", "Davidson", "Edwards", "Foster",
-    "Graham", "Harrison", "Ingram", "Jensen", "Kennedy", "Lawrence",
-    "Mitchell", "Newman", "O'Brien", "Parker", "Quinn", "Reynolds",
-    "Sullivan", "Thompson", "Underwood", "Vaughn", "Watson", "Xu",
-    "Young", "Zimmerman", "Hayes", "Morrison", "Crawford", "Henderson",
-    "Brooks", "Griffin", "Cooper", "Richardson", "Walsh", "Hunter",
-    "Palmer", "Spencer", "Mason", "Porter", "Russell", "Gibson",
+    "Anderson",
+    "Bennett",
+    "Campbell",
+    "Davidson",
+    "Edwards",
+    "Foster",
+    "Graham",
+    "Harrison",
+    "Ingram",
+    "Jensen",
+    "Kennedy",
+    "Lawrence",
+    "Mitchell",
+    "Newman",
+    "O'Brien",
+    "Parker",
+    "Quinn",
+    "Reynolds",
+    "Sullivan",
+    "Thompson",
+    "Underwood",
+    "Vaughn",
+    "Watson",
+    "Xu",
+    "Young",
+    "Zimmerman",
+    "Hayes",
+    "Morrison",
+    "Crawford",
+    "Henderson",
+    "Brooks",
+    "Griffin",
+    "Cooper",
+    "Richardson",
+    "Walsh",
+    "Hunter",
+    "Palmer",
+    "Spencer",
+    "Mason",
+    "Porter",
+    "Russell",
+    "Gibson",
 ]
 
 # Professional titles
@@ -88,16 +166,12 @@ COMPANY_NAMES = [
 BIO_TEMPLATES = [
     "Passionate about helping businesses scale through strategic partnerships. "
     "{years}+ years of experience driving growth across diverse industries.",
-
     "Dedicated to building lasting business relationships that deliver measurable results. "
     "Specializing in {specialty} with a track record of exceeding targets.",
-
     "Results-driven professional focused on identifying and capturing growth opportunities. "
     "Known for a consultative approach that puts client success first.",
-
     "Strategic thinker with expertise in {specialty}. "
     "Committed to understanding unique business challenges and delivering tailored solutions.",
-
     "Experienced in driving revenue growth through relationship-based strategies. "
     "{years}+ years helping organizations achieve their full potential.",
 ]
@@ -154,9 +228,7 @@ async def generate_persona(db: AsyncSession) -> Persona:
     await db.commit()
     await db.refresh(persona)
 
-    logger.info(
-        f"Generated new persona: {persona.full_name} - {title} at {company_name}"
-    )
+    logger.info(f"Generated new persona: {persona.full_name} - {title} at {company_name}")
 
     return persona
 
@@ -221,7 +293,9 @@ async def allocate_personas_to_client(
     tier_lower = tier.lower()
 
     if tier_lower not in PERSONA_TIER_ALLOCATIONS:
-        raise ValueError(f"Invalid tier: {tier}. Must be one of: {list(PERSONA_TIER_ALLOCATIONS.keys())}")
+        raise ValueError(
+            f"Invalid tier: {tier}. Must be one of: {list(PERSONA_TIER_ALLOCATIONS.keys())}"
+        )
 
     count_needed = PERSONA_TIER_ALLOCATIONS[tier_lower]
 
@@ -255,8 +329,7 @@ async def allocate_personas_to_client(
     await db.commit()
 
     logger.info(
-        f"Persona allocation complete for client {client_id}: "
-        f"{len(allocated)} personas allocated"
+        f"Persona allocation complete for client {client_id}: {len(allocated)} personas allocated"
     )
 
     return allocated
@@ -326,9 +399,7 @@ async def get_available_persona_count(db: AsyncSession) -> int:
         Count of available personas
     """
     stmt = (
-        select(func.count())
-        .select_from(Persona)
-        .where(Persona.status == PersonaStatus.AVAILABLE)
+        select(func.count()).select_from(Persona).where(Persona.status == PersonaStatus.AVAILABLE)
     )
     result = await db.execute(stmt)
     count = result.scalar() or 0
@@ -372,25 +443,19 @@ async def get_pool_stats(db: AsyncSession) -> dict:
 
     # Available
     available_stmt = (
-        select(func.count())
-        .select_from(Persona)
-        .where(Persona.status == PersonaStatus.AVAILABLE)
+        select(func.count()).select_from(Persona).where(Persona.status == PersonaStatus.AVAILABLE)
     )
     available = (await db.execute(available_stmt)).scalar() or 0
 
     # Allocated
     allocated_stmt = (
-        select(func.count())
-        .select_from(Persona)
-        .where(Persona.status == PersonaStatus.ALLOCATED)
+        select(func.count()).select_from(Persona).where(Persona.status == PersonaStatus.ALLOCATED)
     )
     allocated = (await db.execute(allocated_stmt)).scalar() or 0
 
     # Retired
     retired_stmt = (
-        select(func.count())
-        .select_from(Persona)
-        .where(Persona.status == PersonaStatus.RETIRED)
+        select(func.count()).select_from(Persona).where(Persona.status == PersonaStatus.RETIRED)
     )
     retired = (await db.execute(retired_stmt)).scalar() or 0
 
@@ -427,7 +492,9 @@ async def retire_persona(
 
     await db.commit()
 
-    logger.info(f"Retired persona {persona.full_name} ({persona_id}): {reason or 'No reason provided'}")
+    logger.info(
+        f"Retired persona {persona.full_name} ({persona_id}): {reason or 'No reason provided'}"
+    )
 
     return True
 

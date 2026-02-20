@@ -48,6 +48,7 @@ CALENDLY_EVENT_TYPE = os.getenv("CALENDLY_EVENT_TYPE", "demo")
 # Booking Link Generation (Directive 048)
 # =============================================================================
 
+
 async def generate_booking_link(
     lead_email: str,
     lead_name: str,
@@ -188,6 +189,7 @@ async def send_booking_reply(
         if last_channel == "email":
             # Send via email engine
             from src.engines.email import get_email_engine
+
             email_engine = get_email_engine()
 
             result = await email_engine.send_email(
@@ -202,6 +204,7 @@ async def send_booking_reply(
         elif last_channel == "linkedin":
             # Send via LinkedIn engine
             from src.engines.linkedin import get_linkedin_engine
+
             linkedin_engine = get_linkedin_engine()
 
             result = await linkedin_engine.send_message(
@@ -215,6 +218,7 @@ async def send_booking_reply(
         elif last_channel == "sms":
             # Send via SMS engine (shorter message)
             from src.engines.sms import get_sms_engine
+
             sms_engine = get_sms_engine()
 
             short_message = f"Hi {first_name}! Here's my calendar: {booking_link}"
@@ -257,6 +261,7 @@ async def _get_lead_last_channel(db: AsyncSession, lead_id: UUID) -> str | None:
 # =============================================================================
 # Calendly Webhook Handler (Directive 048)
 # =============================================================================
+
 
 async def handle_calendly_booking_confirmed(
     db: AsyncSession,
@@ -331,7 +336,7 @@ async def handle_calendly_booking_confirmed(
                 "client_id": str(client_id),
                 "title": "New Demo Booked! 🎉",
                 "message": f"{row.full_name} from {row.company} has booked a demo "
-                          f"for {event.scheduled_time.strftime('%B %d at %I:%M %p')}.",
+                f"for {event.scheduled_time.strftime('%B %d at %I:%M %p')}.",
                 "lead_id": str(lead_id),
                 "metadata": {
                     "booking_id": event.booking_id,
@@ -357,6 +362,7 @@ class BookingProvider(StrEnum):
 @dataclass
 class BookingEvent:
     """Unified booking event from either provider."""
+
     provider: BookingProvider
     event_type: Literal["created", "cancelled", "rescheduled"]
     booking_id: str
@@ -375,17 +381,14 @@ class BookingEvent:
 # Webhook Signature Verification
 # =============================================================================
 
+
 def verify_cal_signature(payload: bytes, signature: str) -> bool:
     """Verify Cal.com webhook signature."""
     if not CAL_WEBHOOK_SECRET:
         logger.warning("CAL_WEBHOOK_SECRET not set, skipping verification")
         return True
 
-    expected = hmac.new(
-        CAL_WEBHOOK_SECRET.encode(),
-        payload,
-        hashlib.sha256
-    ).hexdigest()
+    expected = hmac.new(CAL_WEBHOOK_SECRET.encode(), payload, hashlib.sha256).hexdigest()
 
     return hmac.compare_digest(expected, signature)
 
@@ -403,9 +406,7 @@ def verify_calendly_signature(payload: bytes, signature: str) -> bool:
 
     signed_payload = f"{timestamp}.{payload.decode()}"
     expected = hmac.new(
-        CALENDLY_WEBHOOK_SECRET.encode(),
-        signed_payload.encode(),
-        hashlib.sha256
+        CALENDLY_WEBHOOK_SECRET.encode(), signed_payload.encode(), hashlib.sha256
     ).hexdigest()
 
     return hmac.compare_digest(expected, sig)
@@ -414,6 +415,7 @@ def verify_calendly_signature(payload: bytes, signature: str) -> bool:
 # =============================================================================
 # Payload Parsers
 # =============================================================================
+
 
 def parse_cal_webhook(payload: dict[str, Any]) -> BookingEvent:
     """Parse Cal.com webhook payload into unified BookingEvent."""
@@ -442,7 +444,7 @@ def parse_cal_webhook(payload: dict[str, Any]) -> BookingEvent:
         meeting_url=data.get("metadata", {}).get("videoCallUrl"),
         location=data.get("location"),
         notes=attendee.get("notes"),
-        raw_payload=payload
+        raw_payload=payload,
     )
 
 
@@ -477,18 +479,21 @@ def parse_calendly_webhook(payload: dict[str, Any]) -> BookingEvent:
         event_name=scheduled.get("name", "Demo Call"),
         attendee_email=invitee.get("email", ""),
         attendee_name=invitee.get("name"),
-        scheduled_time=datetime.fromisoformat(start_time.replace("Z", "+00:00")) if start_time else datetime.utcnow(),
+        scheduled_time=datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+        if start_time
+        else datetime.utcnow(),
         duration_minutes=duration,
         meeting_url=scheduled.get("location", {}).get("join_url"),
         location=scheduled.get("location", {}).get("location"),
         notes=invitee.get("text_reminder_number"),
-        raw_payload=payload
+        raw_payload=payload,
     )
 
 
 # =============================================================================
 # Business Logic
 # =============================================================================
+
 
 async def handle_booking_created(event: BookingEvent) -> None:
     """Handle new demo booking - update pipeline stage and convert lead."""
@@ -498,81 +503,103 @@ async def handle_booking_created(event: BookingEvent) -> None:
         supabase = get_supabase_client()
 
         # Find lead by email
-        lead_result = supabase.table("leads").select("id, client_id").eq(
-            "email", event.attendee_email
-        ).single().execute()
+        lead_result = (
+            supabase.table("leads")
+            .select("id, client_id")
+            .eq("email", event.attendee_email)
+            .single()
+            .execute()
+        )
 
         if lead_result.data:
             lead_id = lead_result.data["id"]
             client_id = lead_result.data.get("client_id")
 
             # Directive 048: Update lead status to CONVERTED
-            supabase.table("leads").update({
-                "status": "converted",
-                "metadata": {
-                    "booking_confirmed_at": datetime.utcnow().isoformat(),
-                    "booking_id": event.booking_id,
-                    "scheduled_time": event.scheduled_time.isoformat(),
-                    "meeting_url": event.meeting_url,
+            supabase.table("leads").update(
+                {
+                    "status": "converted",
+                    "metadata": {
+                        "booking_confirmed_at": datetime.utcnow().isoformat(),
+                        "booking_id": event.booking_id,
+                        "scheduled_time": event.scheduled_time.isoformat(),
+                        "meeting_url": event.meeting_url,
+                    },
                 }
-            }).eq("id", lead_id).execute()
+            ).eq("id", lead_id).execute()
 
             # Update pipeline to demo_booked
-            supabase.table("sales_pipeline").update({
-                "stage": "demo_booked",
-                "next_action": f"Demo call: {event.event_name}",
-                "next_action_date": event.scheduled_time.isoformat(),
-                "notes": f"Meeting URL: {event.meeting_url or 'TBD'}"
-            }).eq("lead_id", lead_id).execute()
+            supabase.table("sales_pipeline").update(
+                {
+                    "stage": "demo_booked",
+                    "next_action": f"Demo call: {event.event_name}",
+                    "next_action_date": event.scheduled_time.isoformat(),
+                    "notes": f"Meeting URL: {event.meeting_url or 'TBD'}",
+                }
+            ).eq("lead_id", lead_id).execute()
 
             # Directive 048: Trigger agency owner notification
             if client_id:
-                supabase.rpc("create_admin_notification", {
-                    "p_notification_type": "booking_confirmed",
-                    "p_client_id": str(client_id),
-                    "p_title": "New Demo Booked! 🎉",
-                    "p_message": f"{event.attendee_name} has booked a demo for {event.scheduled_time.strftime('%B %d at %I:%M %p')}.",
-                    "p_severity": "medium",
-                    "p_lead_id": str(lead_id),
-                    "p_metadata": {
-                        "booking_id": event.booking_id,
-                        "scheduled_time": event.scheduled_time.isoformat(),
-                    }
-                }).execute()
+                supabase.rpc(
+                    "create_admin_notification",
+                    {
+                        "p_notification_type": "booking_confirmed",
+                        "p_client_id": str(client_id),
+                        "p_title": "New Demo Booked! 🎉",
+                        "p_message": f"{event.attendee_name} has booked a demo for {event.scheduled_time.strftime('%B %d at %I:%M %p')}.",
+                        "p_severity": "medium",
+                        "p_lead_id": str(lead_id),
+                        "p_metadata": {
+                            "booking_id": event.booking_id,
+                            "scheduled_time": event.scheduled_time.isoformat(),
+                        },
+                    },
+                ).execute()
 
             logger.info(f"Lead {lead_id} converted and pipeline updated")
         else:
             # Create lead if doesn't exist
-            new_lead = supabase.table("leads").insert({
-                "email": event.attendee_email,
-                "full_name": event.attendee_name,
-                "source": f"demo_booking_{event.provider.value}",
-                "status": "converted"  # Direct to converted since they booked
-            }).execute()
+            new_lead = (
+                supabase.table("leads")
+                .insert(
+                    {
+                        "email": event.attendee_email,
+                        "full_name": event.attendee_name,
+                        "source": f"demo_booking_{event.provider.value}",
+                        "status": "converted",  # Direct to converted since they booked
+                    }
+                )
+                .execute()
+            )
 
             if new_lead.data:
                 # Create pipeline entry
-                supabase.table("sales_pipeline").insert({
-                    "lead_id": new_lead.data[0]["id"],
-                    "stage": "demo_booked",
-                    "next_action": f"Demo call: {event.event_name}",
-                    "next_action_date": event.scheduled_time.isoformat()
-                }).execute()
+                supabase.table("sales_pipeline").insert(
+                    {
+                        "lead_id": new_lead.data[0]["id"],
+                        "stage": "demo_booked",
+                        "next_action": f"Demo call: {event.event_name}",
+                        "next_action_date": event.scheduled_time.isoformat(),
+                    }
+                ).execute()
 
                 logger.info(f"Created new lead and pipeline for {event.attendee_email}")
 
         # Store booking record
-        supabase.table("demo_bookings").upsert({
-            "booking_id": event.booking_id,
-            "provider": event.provider.value,
-            "attendee_email": event.attendee_email,
-            "attendee_name": event.attendee_name,
-            "scheduled_time": event.scheduled_time.isoformat(),
-            "duration_minutes": event.duration_minutes,
-            "meeting_url": event.meeting_url,
-            "status": "scheduled",
-            "raw_payload": event.raw_payload
-        }, on_conflict="booking_id").execute()
+        supabase.table("demo_bookings").upsert(
+            {
+                "booking_id": event.booking_id,
+                "provider": event.provider.value,
+                "attendee_email": event.attendee_email,
+                "attendee_name": event.attendee_name,
+                "scheduled_time": event.scheduled_time.isoformat(),
+                "duration_minutes": event.duration_minutes,
+                "meeting_url": event.meeting_url,
+                "status": "scheduled",
+                "raw_payload": event.raw_payload,
+            },
+            on_conflict="booking_id",
+        ).execute()
 
     except Exception as e:
         logger.error(f"Error handling booking created: {e}")
@@ -587,21 +614,27 @@ async def handle_booking_cancelled(event: BookingEvent) -> None:
         supabase = get_supabase_client()
 
         # Update booking status
-        supabase.table("demo_bookings").update({
-            "status": "cancelled"
-        }).eq("booking_id", event.booking_id).execute()
+        supabase.table("demo_bookings").update({"status": "cancelled"}).eq(
+            "booking_id", event.booking_id
+        ).execute()
 
         # Find lead and revert pipeline
-        lead_result = supabase.table("leads").select("id").eq(
-            "email", event.attendee_email
-        ).single().execute()
+        lead_result = (
+            supabase.table("leads")
+            .select("id")
+            .eq("email", event.attendee_email)
+            .single()
+            .execute()
+        )
 
         if lead_result.data:
-            supabase.table("sales_pipeline").update({
-                "stage": "contacted",  # Revert to contacted
-                "next_action": "Follow up on cancelled demo",
-                "notes": f"Demo cancelled at {datetime.utcnow().isoformat()}"
-            }).eq("lead_id", lead_result.data["id"]).execute()
+            supabase.table("sales_pipeline").update(
+                {
+                    "stage": "contacted",  # Revert to contacted
+                    "next_action": "Follow up on cancelled demo",
+                    "notes": f"Demo cancelled at {datetime.utcnow().isoformat()}",
+                }
+            ).eq("lead_id", lead_result.data["id"]).execute()
 
     except Exception as e:
         logger.error(f"Error handling booking cancelled: {e}")
@@ -615,21 +648,26 @@ async def handle_booking_rescheduled(event: BookingEvent) -> None:
         supabase = get_supabase_client()
 
         # Update booking
-        supabase.table("demo_bookings").update({
-            "scheduled_time": event.scheduled_time.isoformat(),
-            "status": "rescheduled"
-        }).eq("booking_id", event.booking_id).execute()
+        supabase.table("demo_bookings").update(
+            {"scheduled_time": event.scheduled_time.isoformat(), "status": "rescheduled"}
+        ).eq("booking_id", event.booking_id).execute()
 
         # Update pipeline next_action_date
-        lead_result = supabase.table("leads").select("id").eq(
-            "email", event.attendee_email
-        ).single().execute()
+        lead_result = (
+            supabase.table("leads")
+            .select("id")
+            .eq("email", event.attendee_email)
+            .single()
+            .execute()
+        )
 
         if lead_result.data:
-            supabase.table("sales_pipeline").update({
-                "next_action_date": event.scheduled_time.isoformat(),
-                "notes": f"Rescheduled to {event.scheduled_time}"
-            }).eq("lead_id", lead_result.data["id"]).execute()
+            supabase.table("sales_pipeline").update(
+                {
+                    "next_action_date": event.scheduled_time.isoformat(),
+                    "notes": f"Rescheduled to {event.scheduled_time}",
+                }
+            ).eq("lead_id", lead_result.data["id"]).execute()
 
     except Exception as e:
         logger.error(f"Error handling booking rescheduled: {e}")
@@ -639,10 +677,10 @@ async def handle_booking_rescheduled(event: BookingEvent) -> None:
 # API Routes
 # =============================================================================
 
+
 @router.post("/webhook/cal")
 async def cal_webhook(
-    request: Request,
-    x_cal_signature: str = Header(None, alias="X-Cal-Signature-256")
+    request: Request, x_cal_signature: str = Header(None, alias="X-Cal-Signature-256")
 ):
     """Cal.com webhook endpoint."""
     payload = await request.body()
@@ -669,12 +707,14 @@ async def cal_webhook(
 @router.post("/webhook/calendly")
 async def calendly_webhook(
     request: Request,
-    calendly_webhook_signature: str = Header(None, alias="Calendly-Webhook-Signature")
+    calendly_webhook_signature: str = Header(None, alias="Calendly-Webhook-Signature"),
 ):
     """Calendly webhook endpoint."""
     payload = await request.body()
 
-    if calendly_webhook_signature and not verify_calendly_signature(payload, calendly_webhook_signature):
+    if calendly_webhook_signature and not verify_calendly_signature(
+        payload, calendly_webhook_signature
+    ):
         raise HTTPException(status_code=401, detail="Invalid signature")
 
     data = await request.json()

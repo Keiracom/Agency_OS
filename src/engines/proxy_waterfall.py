@@ -39,8 +39,10 @@ logger = logging.getLogger(__name__)
 # CONSTANTS & CONFIGURATION
 # ============================================
 
+
 class ProxyTier(StrEnum):
     """Proxy tier levels."""
+
     DATACENTER = "datacenter"
     ISP = "isp"
     RESIDENTIAL = "residential"
@@ -84,9 +86,11 @@ REQUEST_TIMEOUT = 30.0
 # DATA CLASSES
 # ============================================
 
+
 @dataclass
 class ProxyPool:
     """Pool of proxies for a specific tier."""
+
     tier: ProxyTier
     proxies: list[str] = field(default_factory=list)
     failures: dict[str, int] = field(default_factory=dict)
@@ -112,6 +116,7 @@ class ProxyPool:
 @dataclass
 class WaterfallResult:
     """Result from a waterfall request."""
+
     success: bool
     status_code: int | None = None
     content: bytes | None = None
@@ -135,6 +140,7 @@ class WaterfallResult:
 # ============================================
 # PROXY WATERFALL ENGINE
 # ============================================
+
 
 class ProxyWaterfallEngine(BaseEngine):
     """
@@ -284,17 +290,14 @@ class ProxyWaterfallEngine(BaseEngine):
                         # Blocked, escalate to next tier
                         pool.mark_failure(proxy)
                         logger.info(
-                            f"Blocked ({response.status_code}) on {tier.value}, "
-                            f"escalating..."
+                            f"Blocked ({response.status_code}) on {tier.value}, escalating..."
                         )
                         break  # Exit retry loop, try next tier
 
                     else:
                         # Other error, retry same tier
                         pool.mark_failure(proxy)
-                        logger.warning(
-                            f"Unexpected status {response.status_code} on {tier.value}"
-                        )
+                        logger.warning(f"Unexpected status {response.status_code} on {tier.value}")
 
                 except httpx.TimeoutException:
                     pool.mark_failure(proxy)
@@ -311,13 +314,10 @@ class ProxyWaterfallEngine(BaseEngine):
         # All tiers exhausted
         result.cost_aud = total_cost
         result.error = "All proxy tiers exhausted"
-        result.latency_ms = int(
-            (datetime.utcnow() - start_time).total_seconds() * 1000
-        )
+        result.latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
 
         logger.error(
-            f"Waterfall failed: {url} (cost: ${total_cost} AUD, "
-            f"attempts: {result.total_attempts})"
+            f"Waterfall failed: {url} (cost: ${total_cost} AUD, attempts: {result.total_attempts})"
         )
 
         return EngineResult.error(
@@ -342,6 +342,7 @@ class ProxyWaterfallEngine(BaseEngine):
 
         try:
             import json
+
             data = json.loads(result.data.text)
             return EngineResult.ok(
                 data=data,
@@ -392,9 +393,9 @@ class ProxyWaterfallEngine(BaseEngine):
         cost_res = PROXY_COSTS_AUD[ProxyTier.RESIDENTIAL]
 
         expected_cost = (
-            p_dc * cost_dc +
-            (1 - p_dc) * p_isp * (cost_dc + cost_isp) +
-            (1 - p_dc) * (1 - p_isp) * p_res * (cost_dc + cost_isp + cost_res)
+            p_dc * cost_dc
+            + (1 - p_dc) * p_isp * (cost_dc + cost_isp)
+            + (1 - p_dc) * (1 - p_isp) * p_res * (cost_dc + cost_isp + cost_res)
         )
 
         return {
@@ -408,6 +409,7 @@ class ProxyWaterfallEngine(BaseEngine):
 # ============================================
 # FACTORY FUNCTION
 # ============================================
+
 
 def get_proxy_waterfall(
     datacenter_proxies: list[str] | None = None,

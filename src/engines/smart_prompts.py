@@ -545,9 +545,7 @@ async def build_full_pool_lead_context(
         AND la.status = 'active'
         LIMIT 1
     """)
-    await db.execute(
-        assignment_query, {"lead_pool_id": str(lead_pool_id)}
-    )
+    await db.execute(assignment_query, {"lead_pool_id": str(lead_pool_id)})
 
     # For pool leads, social posts are stored on the assignment or linked lead
     # Check lead_social_posts by querying via any linked leads
@@ -562,9 +560,7 @@ async def build_full_pool_lead_context(
         LIMIT 5
     """)
     try:
-        social_result = await db.execute(
-            social_posts_query, {"lead_pool_id": str(lead_pool_id)}
-        )
+        social_result = await db.execute(social_posts_query, {"lead_pool_id": str(lead_pool_id)})
         social_rows = social_result.fetchall()
         context["social_posts"] = _build_social_posts_context(social_rows)
     except Exception:
@@ -948,7 +944,7 @@ def format_social_posts_for_prompt(social_posts: dict[str, Any]) -> str:
 
     # Best hook first
     if social_posts.get("best_hook"):
-        lines.append(f"**Best Hook:** \"{social_posts['best_hook']}\"")
+        lines.append(f'**Best Hook:** "{social_posts["best_hook"]}"')
         lines.append("")
 
     # LinkedIn posts
@@ -958,7 +954,7 @@ def format_social_posts_for_prompt(social_posts: dict[str, Any]) -> str:
         for post in dm_linkedin[:3]:
             if post.get("hook"):
                 date_str = f" ({post['date']})" if post.get("date") else ""
-                lines.append(f"  - \"{post['hook']}\"{date_str}")
+                lines.append(f'  - "{post["hook"]}"{date_str}')
         lines.append("")
 
     # X/Twitter posts
@@ -968,7 +964,7 @@ def format_social_posts_for_prompt(social_posts: dict[str, Any]) -> str:
         for post in dm_x[:3]:
             if post.get("hook"):
                 date_str = f" ({post['date']})" if post.get("date") else ""
-                lines.append(f"  - \"{post['hook']}\"{date_str}")
+                lines.append(f'  - "{post["hook"]}"{date_str}')
         lines.append("")
 
     # Recent activity flag
@@ -1177,21 +1173,21 @@ def format_lead_context_for_prompt(context: dict[str, Any]) -> str:
     # Social posts - HIGH priority (Directive 052 Part A)
     social_posts = context.get("social_posts", {})
     if social_posts.get("best_hook"):
-        high_lines.append(f"★ **Best Social Hook:** \"{social_posts['best_hook']}\"")
+        high_lines.append(f'★ **Best Social Hook:** "{social_posts["best_hook"]}"')
 
     # Add recent LinkedIn posts
     dm_linkedin = social_posts.get("dm_linkedin_posts", [])
     for post in dm_linkedin[:2]:  # Max 2 posts
         if post.get("hook"):
             date_str = f" (posted {post['date']})" if post.get("date") else ""
-            high_lines.append(f"★ **Recent LinkedIn Post:** \"{post['hook']}\"{date_str}")
+            high_lines.append(f'★ **Recent LinkedIn Post:** "{post["hook"]}"{date_str}')
 
     # Add recent X/Twitter posts
     dm_x = social_posts.get("dm_x_posts", [])
     for post in dm_x[:2]:  # Max 2 posts
         if post.get("hook"):
             date_str = f" (posted {post['date']})" if post.get("date") else ""
-            high_lines.append(f"★ **Recent X Post:** \"{post['hook']}\"{date_str}")
+            high_lines.append(f'★ **Recent X Post:** "{post["hook"]}"{date_str}')
 
     # --- MEDIUM PRIORITY FIELDS ---
 

@@ -47,6 +47,7 @@ WARMUP_STAGES = ["initializing", "ramping", "stable", "paused", "completed"]
 # DELIVERABILITY SERVICE
 # =============================================================================
 
+
 class DeliverabilityService:
     """
     Service for monitoring email deliverability and warmup status.
@@ -134,25 +135,35 @@ class DeliverabilityService:
                 elif row.warmup_stage == "paused":
                     paused_domains += 1
 
-                domains.append({
-                    "client_id": str(row.client_id),
-                    "business_name": row.business_name,
-                    "domain": row.domain,
-                    "provider": row.provider,
-                    "warmup_started_at": row.warmup_started_at.isoformat() if row.warmup_started_at else None,
-                    "warmup_completed_at": row.warmup_completed_at.isoformat() if row.warmup_completed_at else None,
-                    "warmup_stage": row.warmup_stage,
-                    "daily_send_limit": row.daily_send_limit,
-                    "current_send_count": row.current_send_count,
-                    "health_score": float(row.health_score) if row.health_score else None,
-                    "reputation_score": float(row.reputation_score) if row.reputation_score else None,
-                    "bounce_rate": float(row.bounce_rate) if row.bounce_rate else None,
-                    "spam_rate": float(row.spam_rate) if row.spam_rate else None,
-                    "open_rate": float(row.open_rate) if row.open_rate else None,
-                    "is_healthy": health >= WARMUP_HEALTH_THRESHOLD,
-                    "last_checked_at": row.last_checked_at.isoformat() if row.last_checked_at else None,
-                    "last_send_at": row.last_send_at.isoformat() if row.last_send_at else None,
-                })
+                domains.append(
+                    {
+                        "client_id": str(row.client_id),
+                        "business_name": row.business_name,
+                        "domain": row.domain,
+                        "provider": row.provider,
+                        "warmup_started_at": row.warmup_started_at.isoformat()
+                        if row.warmup_started_at
+                        else None,
+                        "warmup_completed_at": row.warmup_completed_at.isoformat()
+                        if row.warmup_completed_at
+                        else None,
+                        "warmup_stage": row.warmup_stage,
+                        "daily_send_limit": row.daily_send_limit,
+                        "current_send_count": row.current_send_count,
+                        "health_score": float(row.health_score) if row.health_score else None,
+                        "reputation_score": float(row.reputation_score)
+                        if row.reputation_score
+                        else None,
+                        "bounce_rate": float(row.bounce_rate) if row.bounce_rate else None,
+                        "spam_rate": float(row.spam_rate) if row.spam_rate else None,
+                        "open_rate": float(row.open_rate) if row.open_rate else None,
+                        "is_healthy": health >= WARMUP_HEALTH_THRESHOLD,
+                        "last_checked_at": row.last_checked_at.isoformat()
+                        if row.last_checked_at
+                        else None,
+                        "last_send_at": row.last_send_at.isoformat() if row.last_send_at else None,
+                    }
+                )
 
             return {
                 "report_generated_at": datetime.utcnow().isoformat(),
@@ -330,12 +341,14 @@ class DeliverabilityService:
                 )
 
                 if alert_id:
-                    alerts_created.append({
-                        "client_id": str(row.client_id),
-                        "domain": row.domain,
-                        "health_score": float(row.health_score) if row.health_score else 0,
-                        "alert_id": str(alert_id),
-                    })
+                    alerts_created.append(
+                        {
+                            "client_id": str(row.client_id),
+                            "domain": row.domain,
+                            "health_score": float(row.health_score) if row.health_score else 0,
+                            "alert_id": str(alert_id),
+                        }
+                    )
 
             return alerts_created
 
@@ -372,7 +385,8 @@ class DeliverabilityService:
                 "paused_domains": report.get("paused_domains", 0),
                 "overall_health": (
                     (report.get("healthy_domains", 0) / report.get("total_domains", 1)) * 100
-                    if report.get("total_domains", 0) > 0 else 0
+                    if report.get("total_domains", 0) > 0
+                    else 0
                 ),
             },
             "domains": [
@@ -385,7 +399,8 @@ class DeliverabilityService:
                     "sends_today": d["current_send_count"],
                     "utilization": (
                         (d["current_send_count"] / d["daily_send_limit"]) * 100
-                        if d["daily_send_limit"] > 0 else 0
+                        if d["daily_send_limit"] > 0
+                        else 0
                     ),
                     "metrics": {
                         "bounce_rate": d["bounce_rate"],
@@ -402,6 +417,7 @@ class DeliverabilityService:
 # =============================================================================
 # SINGLETON & HELPERS
 # =============================================================================
+
 
 def get_deliverability_service(session: AsyncSession) -> DeliverabilityService:
     """Get deliverability service instance for the given session."""

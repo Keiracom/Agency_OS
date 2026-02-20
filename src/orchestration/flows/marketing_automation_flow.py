@@ -267,9 +267,7 @@ async def get_marketing_metrics_task(metrics_date: date) -> dict[str, Any]:
 
         # Calculate open rate
         if metrics["emails_sent"] > 0:
-            metrics["open_rate"] = round(
-                (metrics["opens"] / metrics["emails_sent"]) * 100, 1
-            )
+            metrics["open_rate"] = round((metrics["opens"] / metrics["emails_sent"]) * 100, 1)
 
         log.info(
             f"Pulled metrics for {metrics_date}: "
@@ -335,12 +333,12 @@ async def generate_insight_task(
 
     prompt = f"""Based on these outreach metrics from yesterday:
 
-Emails sent: {metrics['emails_sent']}
-Opens: {metrics['opens']} ({metrics['open_rate']}% open rate)
-Replies: {metrics['replies']} ({metrics['positive_replies']} positive)
-Meetings booked: {metrics['meetings_booked']}
-Pipeline value: ${metrics['pipeline_value']}
-Day number: {metrics['day_number']}
+Emails sent: {metrics["emails_sent"]}
+Opens: {metrics["opens"]} ({metrics["open_rate"]}% open rate)
+Replies: {metrics["replies"]} ({metrics["positive_replies"]} positive)
+Meetings booked: {metrics["meetings_booked"]}
+Pipeline value: ${metrics["pipeline_value"]}
+Day number: {metrics["day_number"]}
 {trend_context}
 
 Generate ONE interesting insight for today's video update.
@@ -887,7 +885,9 @@ async def daily_content_flow(
 
     # 1. Pull metrics
     metrics = await get_marketing_metrics_task(content_date)
-    log.info(f"Day {metrics['day_number']}: {metrics['emails_sent']} emails, {metrics['meetings_booked']} meetings")
+    log.info(
+        f"Day {metrics['day_number']}: {metrics['emails_sent']} emails, {metrics['meetings_booked']} meetings"
+    )
 
     # 2. Get weekly trend for context
     weekly_trend = await get_weekly_trend_task(content_date)
@@ -1056,7 +1056,7 @@ async def milestone_content_flow(
 
 Context: {script}
 
-Keep it professional but excited. Include relevant metrics. End with a CTA about founding spots remaining ({combined_data.get('spots_remaining', '?')} left).
+Keep it professional but excited. Include relevant metrics. End with a CTA about founding spots remaining ({combined_data.get("spots_remaining", "?")} left).
 Max 3000 characters. Use emojis sparingly.""",
         system="You are a growth marketer writing celebratory LinkedIn posts for a B2B SaaS startup.",
         max_tokens=500,

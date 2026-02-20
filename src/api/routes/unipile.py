@@ -61,9 +61,7 @@ class UnipileConnectResponse(BaseModel):
         description="Unipile hosted auth URL - redirect user here",
     )
     status: str = Field(default="pending")
-    message: str = Field(
-        default="Redirect user to auth_url to connect LinkedIn"
-    )
+    message: str = Field(default="Redirect user to auth_url to connect LinkedIn")
 
 
 class UnipileStatusResponse(BaseModel):
@@ -116,7 +114,7 @@ async def get_client_id_from_user(
               AND c.deleted_at IS NULL
             LIMIT 1
         """),
-        {"user_id": str(user.id)}
+        {"user_id": str(user.id)},
     )
     row = result.fetchone()
     return row.id if row else None
@@ -140,11 +138,7 @@ async def verify_unipile_webhook_signature(
 
     try:
         body = await request.body()
-        expected_sig = hmac.new(
-            settings.unipile_api_key.encode(),
-            body,
-            hashlib.sha256
-        ).hexdigest()
+        expected_sig = hmac.new(settings.unipile_api_key.encode(), body, hashlib.sha256).hexdigest()
 
         return hmac.compare_digest(expected_sig, x_unipile_signature)
     except Exception as e:

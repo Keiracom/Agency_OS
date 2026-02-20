@@ -454,9 +454,9 @@ class HeyGenClient:
             # Create parent directories if needed
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
-            async with httpx.AsyncClient(
+            async with httpx.AsyncClient(  # noqa: SIM117
                 timeout=300.0
-            ) as client:  # 5 min timeout for large videos  # noqa: SIM117
+            ) as client:  # 5 min timeout for large videos
                 async with client.stream("GET", status.video_url) as response:
                     if response.status_code != 200:
                         raise IntegrationError(

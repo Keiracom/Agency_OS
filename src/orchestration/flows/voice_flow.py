@@ -81,17 +81,17 @@ CALL_STATUS_FAILED = "FAILED"
 async def fetch_voice_queue_task(agency_id: str | None = None) -> list[dict[str, Any]]:
     """
     Query lead_pool for leads due for voice touch.
-    
+
     Criteria:
     - ALS (Adjusted Lead Score) >= 85
     - Campaign active
     - Voice channel enabled
     - Not suppressed
     - Not currently in an active call
-    
+
     Args:
         agency_id: Optional filter by specific agency
-        
+
     Returns:
         List of lead dicts with lead_id and related info
     """
@@ -99,7 +99,7 @@ async def fetch_voice_queue_task(agency_id: str | None = None) -> list[dict[str,
 
     async with get_db_session() as db:
         query = text("""
-            SELECT 
+            SELECT
                 lp.id as lead_pool_id,
                 lp.lead_id,
                 lp.campaign_id,
@@ -130,7 +130,7 @@ async def fetch_voice_queue_task(agency_id: str | None = None) -> list[dict[str,
                   AND vc.status IN ('INITIATED', 'RINGING', 'IN_PROGRESS')
               )
               AND (
-                  lp.last_voice_attempt IS NULL 
+                  lp.last_voice_attempt IS NULL
                   OR lp.last_voice_attempt < NOW() - INTERVAL '24 hours'
               )
         """)
@@ -148,21 +148,23 @@ async def fetch_voice_queue_task(agency_id: str | None = None) -> list[dict[str,
 
         leads = []
         for row in rows:
-            leads.append({
-                "lead_pool_id": str(row.lead_pool_id),
-                "lead_id": str(row.lead_id),
-                "campaign_id": str(row.campaign_id),
-                "agency_id": str(row.agency_id),
-                "als_score": row.als_score,
-                "first_name": row.first_name,
-                "last_name": row.last_name,
-                "phone": row.phone,
-                "email": row.email,
-                "company": row.company,
-                "title": row.title,
-                "campaign_name": row.campaign_name,
-                "client_id": str(row.client_id),
-            })
+            leads.append(
+                {
+                    "lead_pool_id": str(row.lead_pool_id),
+                    "lead_id": str(row.lead_id),
+                    "campaign_id": str(row.campaign_id),
+                    "agency_id": str(row.agency_id),
+                    "als_score": row.als_score,
+                    "first_name": row.first_name,
+                    "last_name": row.last_name,
+                    "phone": row.phone,
+                    "email": row.email,
+                    "company": row.company,
+                    "title": row.title,
+                    "campaign_name": row.campaign_name,
+                    "client_id": str(row.client_id),
+                }
+            )
 
         run_logger.info(f"Fetched {len(leads)} leads for voice queue")
         return leads
@@ -172,16 +174,16 @@ async def fetch_voice_queue_task(agency_id: str | None = None) -> list[dict[str,
 async def validate_call_task(lead: dict[str, Any]) -> dict[str, Any] | None:
     """
     Run voice compliance validation for a lead.
-    
+
     Checks:
     - Phone number validity
     - Calling hours compliance (AEST timezone)
     - DNC (Do Not Call) registry
     - Consent status
-    
+
     Args:
         lead: Lead dict from fetch_voice_queue
-        
+
     Returns:
         Lead dict with compliance info if valid, None if not compliant
     """
@@ -204,27 +206,24 @@ async def validate_call_task(lead: dict[str, Any]) -> dict[str, Any] | None:
             # Schedule for next valid window
             next_window = result.get("next_valid_window")
             run_logger.info(
-                f"Lead {lead['lead_id']} outside calling hours, "
-                f"next window: {next_window}"
+                f"Lead {lead['lead_id']} outside calling hours, next window: {next_window}"
             )
 
             # Update lead_pool with next scheduled time
             async with get_db_session() as db:
                 await db.execute(
                     text("""
-                        UPDATE lead_pool 
+                        UPDATE lead_pool
                         SET next_voice_attempt = :next_window
                         WHERE lead_id = :lead_id
                     """),
-                    {"next_window": next_window, "lead_id": lead["lead_id"]}
+                    {"next_window": next_window, "lead_id": lead["lead_id"]},
                 )
                 await db.commit()
 
             return None
         else:
-            run_logger.warning(
-                f"Lead {lead['lead_id']} failed compliance: {result.get('reason')}"
-            )
+            run_logger.warning(f"Lead {lead['lead_id']} failed compliance: {result.get('reason')}")
             return None
 
     except Exception as e:
@@ -236,19 +235,19 @@ async def validate_call_task(lead: dict[str, Any]) -> dict[str, Any] | None:
 async def build_context_task(lead: dict[str, Any]) -> dict[str, Any] | None:
     """
     Build call context for the lead using voice_context_builder.
-    
+
     Compiles:
     - Lead information
     - Campaign context
     - Talking points
     - Objection handling
     - Personalization data
-    
+
     SDK spend capped at $0.05/lead.
-    
+
     Args:
         lead: Validated lead dict
-        
+
     Returns:
         Context dict for the call, or None on failure
     """
@@ -292,10 +291,10 @@ async def build_context_task(lead: dict[str, Any]) -> dict[str, Any] | None:
 async def log_context_task(context: dict[str, Any]) -> str | None:
     """
     Write context to voice_call_context table and create voice_calls record.
-    
+
     Args:
         context: Compiled context dict
-        
+
     Returns:
         voice_call_id (UUID string) or None on failure
     """
@@ -328,7 +327,7 @@ async def log_context_task(context: dict[str, Any]) -> str | None:
                     "initiated_at": now,
                     "created_at": now,
                     "updated_at": now,
-                }
+                },
             )
 
             # Create voice_call_context record
@@ -345,7 +344,7 @@ async def log_context_task(context: dict[str, Any]) -> str | None:
                     "voice_call_id": voice_call_id,
                     "context_data": str(context),  # Will be JSON serialized
                     "created_at": now,
-                }
+                },
             )
 
             await db.commit()
@@ -370,13 +369,13 @@ async def initiate_call_task(
 ) -> str | None:
     """
     Initiate voice call via ElevenLabs Conversational AI.
-    
+
     Uses agency-level concurrency limit (max 3 simultaneous calls).
-    
+
     Args:
         context: Call context dict
         voice_call_id: ID of the voice_calls record
-        
+
     Returns:
         call_sid from ElevenLabs or None on failure
     """
@@ -406,7 +405,7 @@ async def initiate_call_task(
                 async with get_db_session() as db:
                     await db.execute(
                         text("""
-                            UPDATE voice_calls 
+                            UPDATE voice_calls
                             SET call_sid = :call_sid, updated_at = :updated_at
                             WHERE id = :voice_call_id
                         """),
@@ -414,16 +413,16 @@ async def initiate_call_task(
                             "call_sid": call_sid,
                             "voice_call_id": voice_call_id,
                             "updated_at": datetime.utcnow(),
-                        }
+                        },
                     )
                     await db.commit()
 
-                run_logger.info(
-                    f"Initiated call {call_sid} for lead {context['lead_id']}"
-                )
+                run_logger.info(f"Initiated call {call_sid} for lead {context['lead_id']}")
                 return call_sid
             else:
-                await _handle_dial_failure(voice_call_id, context["lead_id"], "No call_sid returned")
+                await _handle_dial_failure(
+                    voice_call_id, context["lead_id"], "No call_sid returned"
+                )
                 return None
 
     except Exception as e:
@@ -439,14 +438,14 @@ async def monitor_outcomes_task(
 ) -> dict[str, Any]:
     """
     Poll voice_calls for completion.
-    
+
     Note: Actual status updates are handled by webhooks.
     This task monitors for timeout scenarios.
-    
+
     Args:
         call_sids: List of call SIDs to monitor
         timeout_seconds: Max time to wait (default 10 minutes)
-        
+
     Returns:
         Summary of call outcomes
     """
@@ -472,11 +471,11 @@ async def monitor_outcomes_task(
         async with get_db_session() as db:
             result = await db.execute(
                 text("""
-                    SELECT call_sid, status 
-                    FROM voice_calls 
+                    SELECT call_sid, status
+                    FROM voice_calls
                     WHERE call_sid = ANY(:call_sids)
                 """),
-                {"call_sids": call_sids}
+                {"call_sids": call_sids},
             )
             rows = result.fetchall()
 
@@ -528,7 +527,7 @@ async def _handle_dial_failure(
             text("""
                 SELECT retry_count FROM voice_calls WHERE id = :voice_call_id
             """),
-            {"voice_call_id": voice_call_id}
+            {"voice_call_id": voice_call_id},
         )
         row = result.fetchone()
         retry_count = (row.retry_count or 0) if row else 0
@@ -538,7 +537,7 @@ async def _handle_dial_failure(
             next_retry = datetime.utcnow() + timedelta(minutes=RETRY_DELAY_MINUTES)
             await db.execute(
                 text("""
-                    UPDATE voice_calls 
+                    UPDATE voice_calls
                     SET status = :status,
                         retry_count = retry_count + 1,
                         next_retry_at = :next_retry,
@@ -552,14 +551,14 @@ async def _handle_dial_failure(
                     "reason": reason,
                     "updated_at": datetime.utcnow(),
                     "voice_call_id": voice_call_id,
-                }
+                },
             )
             logger.info(f"Scheduled retry for voice_call {voice_call_id} at {next_retry}")
         else:
             # Max retries reached, log to audit
             await db.execute(
                 text("""
-                    UPDATE voice_calls 
+                    UPDATE voice_calls
                     SET status = :status,
                         failure_reason = :reason,
                         updated_at = :updated_at
@@ -570,7 +569,7 @@ async def _handle_dial_failure(
                     "reason": f"Max retries exceeded: {reason}",
                     "updated_at": datetime.utcnow(),
                     "voice_call_id": voice_call_id,
-                }
+                },
             )
 
             # Log to audit_logs
@@ -579,7 +578,7 @@ async def _handle_dial_failure(
                     INSERT INTO audit_logs (
                         id, entity_type, entity_id, action, details, created_at
                     ) VALUES (
-                        :id, 'voice_call', :entity_id, 'DIAL_FAILED_MAX_RETRIES', 
+                        :id, 'voice_call', :entity_id, 'DIAL_FAILED_MAX_RETRIES',
                         :details::jsonb, :created_at
                     )
                 """),
@@ -588,7 +587,7 @@ async def _handle_dial_failure(
                     "entity_id": voice_call_id,
                     "details": f'{{"lead_id": "{lead_id}", "reason": "{reason}"}}',
                     "created_at": datetime.utcnow(),
-                }
+                },
             )
             logger.warning(f"Max retries exceeded for voice_call {voice_call_id}")
 
@@ -598,7 +597,7 @@ async def _handle_dial_failure(
 def _is_within_calling_hours() -> bool:
     """
     Check if current time is within permitted calling hours (AEST).
-    
+
     Schedule:
     - Monday-Friday: 09:00-20:00 AEST
     - Saturday: 09:00-17:00 AEST
@@ -638,13 +637,13 @@ def _is_within_calling_hours() -> bool:
 async def voice_outreach_flow(agency_id: str | None = None) -> dict[str, Any]:
     """
     Voice outreach flow with compliance validation and ElevenLabs integration.
-    
+
     Runs every 30 minutes during permitted calling hours.
     Max 3 simultaneous calls per agency.
-    
+
     Args:
         agency_id: Optional filter by specific agency
-        
+
     Returns:
         Flow execution summary
     """
@@ -761,4 +760,5 @@ async def voice_outreach_flow(agency_id: str | None = None) -> dict[str, Any]:
 if __name__ == "__main__":
     # For local testing
     import asyncio
+
     asyncio.run(voice_outreach_flow())

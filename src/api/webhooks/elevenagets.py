@@ -292,11 +292,7 @@ async def _update_voice_call_record(
 
     # Try to find by voice_call_record_id first
     if voice_call_record_id:
-        stmt = (
-            update(VoiceCall)
-            .where(VoiceCall.id == voice_call_record_id)
-            .values(**update_data)
-        )
+        stmt = update(VoiceCall).where(VoiceCall.id == voice_call_record_id).values(**update_data)
         result = await db.execute(stmt)
         if result.rowcount > 0:
             await db.commit()
@@ -342,8 +338,7 @@ async def _trigger_post_call_processor(
         transcript: Full transcript.
     """
     logger.info(
-        f"Post-call processor triggered: lead_id={lead_id}, "
-        f"call_id={call_id}, outcome={outcome}"
+        f"Post-call processor triggered: lead_id={lead_id}, call_id={call_id}, outcome={outcome}"
     )
 
     # TODO: Implement post-call processor flow

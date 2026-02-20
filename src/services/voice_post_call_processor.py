@@ -413,7 +413,9 @@ Return JSON classification only."""
                             result["callback_time"].replace("Z", "+00:00")
                         )
                     except (ValueError, AttributeError):
-                        logger.warning(f"Could not parse callback time: {result.get('callback_time')}")
+                        logger.warning(
+                            f"Could not parse callback time: {result.get('callback_time')}"
+                        )
 
                 return ClassificationResult(
                     outcome=result.get("outcome", CallOutcome.NOT_INTERESTED),
@@ -448,8 +450,15 @@ Return JSON classification only."""
 
         # Check for booking indicators
         booking_phrases = [
-            "book", "schedule", "calendar", "appointment", "demo",
-            "let's set up", "sounds good", "i'm free", "let's do it"
+            "book",
+            "schedule",
+            "calendar",
+            "appointment",
+            "demo",
+            "let's set up",
+            "sounds good",
+            "i'm free",
+            "let's do it",
         ]
         if any(phrase in transcript_lower for phrase in booking_phrases):
             return ClassificationResult(
@@ -460,8 +469,13 @@ Return JSON classification only."""
 
         # Check for callback indicators
         callback_phrases = [
-            "call me back", "call later", "try again", "busy right now",
-            "call tomorrow", "next week", "another time"
+            "call me back",
+            "call later",
+            "try again",
+            "busy right now",
+            "call tomorrow",
+            "next week",
+            "another time",
         ]
         if any(phrase in transcript_lower for phrase in callback_phrases):
             return ClassificationResult(
@@ -472,8 +486,12 @@ Return JSON classification only."""
 
         # Check for unsubscribe
         unsubscribe_phrases = [
-            "stop calling", "remove me", "unsubscribe", "do not call",
-            "take me off", "never call again"
+            "stop calling",
+            "remove me",
+            "unsubscribe",
+            "do not call",
+            "take me off",
+            "never call again",
         ]
         if any(phrase in transcript_lower for phrase in unsubscribe_phrases):
             return ClassificationResult(
@@ -484,8 +502,14 @@ Return JSON classification only."""
 
         # Check for anger
         anger_phrases = [
-            "fuck", "asshole", "scam", "harassing", "sue you",
-            "reported", "police", "lawyer"
+            "fuck",
+            "asshole",
+            "scam",
+            "harassing",
+            "sue you",
+            "reported",
+            "police",
+            "lawyer",
         ]
         if any(phrase in transcript_lower for phrase in anger_phrases):
             return ClassificationResult(
@@ -496,8 +520,12 @@ Return JSON classification only."""
 
         # Check for escalation
         escalation_phrases = [
-            "speak to manager", "supervisor", "boss", "complaint",
-            "your manager", "escalate"
+            "speak to manager",
+            "supervisor",
+            "boss",
+            "complaint",
+            "your manager",
+            "escalate",
         ]
         if any(phrase in transcript_lower for phrase in escalation_phrases):
             return ClassificationResult(
@@ -508,8 +536,12 @@ Return JSON classification only."""
 
         # Check for interest
         interest_phrases = [
-            "sounds interesting", "tell me more", "how does it work",
-            "curious", "maybe", "possibly"
+            "sounds interesting",
+            "tell me more",
+            "how does it work",
+            "curious",
+            "maybe",
+            "possibly",
         ]
         if any(phrase in transcript_lower for phrase in interest_phrases):
             return ClassificationResult(
@@ -520,8 +552,12 @@ Return JSON classification only."""
 
         # Check for not interested
         not_interested_phrases = [
-            "not interested", "no thanks", "no thank you", "pass",
-            "not for us", "don't need"
+            "not interested",
+            "no thanks",
+            "no thank you",
+            "pass",
+            "not for us",
+            "don't need",
         ]
         if any(phrase in transcript_lower for phrase in not_interested_phrases):
             return ClassificationResult(
@@ -1118,12 +1154,14 @@ Return JSON classification only."""
                 """),
                 {
                     "client_id": str(client_id) if client_id else None,
-                    "event_data": json.dumps({
-                        "call_sid": call_sid,
-                        "outcome": outcome,
-                        "hook_used": hook_used,
-                        "als_score_at_call": als_score_at_call,
-                    }),
+                    "event_data": json.dumps(
+                        {
+                            "call_sid": call_sid,
+                            "outcome": outcome,
+                            "hook_used": hook_used,
+                            "als_score_at_call": als_score_at_call,
+                        }
+                    ),
                 },
             )
             logger.debug(f"CIS feed updated for call {call_sid}")

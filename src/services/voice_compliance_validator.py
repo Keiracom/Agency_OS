@@ -69,7 +69,9 @@ class ValidationResult:
         return {
             "valid": self.valid,
             "reason": self.reason,
-            "next_valid_window": self.next_valid_window.isoformat() if self.next_valid_window else None,
+            "next_valid_window": self.next_valid_window.isoformat()
+            if self.next_valid_window
+            else None,
             "dncr_checked_at": self.dncr_checked_at.isoformat() if self.dncr_checked_at else None,
             "hours_valid": self.hours_valid,
         }
@@ -78,7 +80,7 @@ class ValidationResult:
 def _get_australian_holidays(year: int) -> set[datetime]:
     """
     Get Australian public holidays for a given year.
-    
+
     Uses the `holidays` library if installed, otherwise returns empty set.
     National holidays only (state-specific would require state parameter).
     """
@@ -101,11 +103,11 @@ def _get_australian_holidays(year: int) -> set[datetime]:
 def _is_public_holiday(dt: datetime, state: str | None = None) -> bool:
     """
     Check if a date is an Australian public holiday.
-    
+
     Args:
         dt: Datetime to check (in local timezone)
         state: Australian state abbreviation (optional, for state-specific holidays)
-        
+
     Returns:
         True if the date is a public holiday
     """
@@ -128,11 +130,11 @@ def _is_public_holiday(dt: datetime, state: str | None = None) -> bool:
 def _calculate_next_valid_window(local_time: datetime, state: str | None = None) -> datetime:
     """
     Calculate the next valid calling window.
-    
+
     Args:
         local_time: Current local time for the prospect
         state: Australian state for holiday checking
-        
+
     Returns:
         Next valid datetime when a call can be made
     """
@@ -192,7 +194,7 @@ async def _check_dncr(
 ) -> tuple[bool, datetime | None]:
     """
     Check DNCR status for a phone number.
-    
+
     Returns:
         Tuple of (is_blocked, checked_at)
         is_blocked = True means DO NOT CALL
@@ -272,7 +274,7 @@ async def _check_calling_hours(
 ) -> tuple[bool, datetime | None, str | None]:
     """
     Check if current time is within permitted calling hours for the prospect.
-    
+
     Returns:
         Tuple of (hours_valid, next_valid_window, state)
     """
@@ -354,7 +356,7 @@ async def _check_exclusion_list(
 ) -> bool:
     """
     Check if lead is on agency exclusion list or has unsubscribed.
-    
+
     Returns:
         True if EXCLUDED (should NOT call)
     """
@@ -383,7 +385,7 @@ async def _check_exclusion_list(
 async def _check_unsubscribed(db: AsyncSession, lead_id: str) -> bool:
     """
     Check if lead has unsubscribed from all channels.
-    
+
     Returns:
         True if UNSUBSCRIBED (should NOT call)
     """
@@ -412,18 +414,18 @@ async def validate_call(
 ) -> ValidationResult:
     """
     Validate all compliance requirements before making a voice call.
-    
+
     Three checks, ALL must pass before dial fires:
     1. DNCR (Do Not Call Register) - permanent block if registered
     2. Calling hours (TCP Code compliant) - temporary block with next window
     3. Exclusion list + unsubscribe status - permanent block
-    
+
     Args:
         lead_id: Lead pool ID
         phone: Phone number to call
         agency_id: Agency/client ID
         db: Optional database session (creates one if not provided)
-        
+
     Returns:
         ValidationResult with pass/fail status and reason
     """

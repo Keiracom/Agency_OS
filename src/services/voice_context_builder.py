@@ -122,7 +122,7 @@ class LeadExcludedError(Exception):
 async def _fetch_lead_data(db: AsyncSession, lead_id: str) -> dict[str, Any] | None:
     """Fetch lead data from lead_pool table."""
     query = text("""
-        SELECT 
+        SELECT
             id, first_name, last_name, title, company_name, phone,
             als_score, state, country, timezone,
             enrichment_data
@@ -142,12 +142,12 @@ async def _fetch_lead_data(db: AsyncSession, lead_id: str) -> dict[str, Any] | N
 async def _fetch_enrichment_data(db: AsyncSession, lead_id: str) -> dict[str, Any]:
     """
     Fetch enrichment data for a lead.
-    
+
     Tries leads_enrichment table first, then falls back to lead_pool.enrichment_data.
     """
     # Try dedicated enrichment table first
     query = text("""
-        SELECT 
+        SELECT
             linkedin_dm_posts, linkedin_company_posts,
             x_dm_posts, x_company_posts,
             gmb_reviews_summary, hiring_signals, trigger
@@ -200,8 +200,8 @@ async def _fetch_enrichment_data(db: AsyncSession, lead_id: str) -> dict[str, An
 async def _fetch_outreach_history(db: AsyncSession, lead_id: str) -> list[dict[str, Any]]:
     """Fetch all prior touchpoints for this lead."""
     query = text("""
-        SELECT 
-            id, channel, step_number, sent_at, 
+        SELECT
+            id, channel, step_number, sent_at,
             opened_at, clicked_at, replied_at,
             subject, message_preview
         FROM outreach_sequences
@@ -223,7 +223,7 @@ async def _fetch_outreach_history(db: AsyncSession, lead_id: str) -> list[dict[s
 async def _fetch_agency_profile(db: AsyncSession, agency_id: str) -> dict[str, Any]:
     """Fetch agency service profile."""
     query = text("""
-        SELECT 
+        SELECT
             agency_name, agency_type, services, top_case_study,
             icp_description, geography, founder_name
         FROM agency_service_profile
@@ -242,7 +242,7 @@ async def _fetch_agency_profile(db: AsyncSession, agency_id: str) -> dict[str, A
 
     # Fall back to clients table
     query = text("""
-        SELECT 
+        SELECT
             name as agency_name,
             company_description as icp_description,
             services_offered as services,
@@ -303,7 +303,7 @@ async def _fetch_communication_profile(db: AsyncSession, agency_id: str) -> dict
 async def _check_exclusion_list(db: AsyncSession, lead_id: str, agency_id: str) -> bool:
     """
     Check if lead is on exclusion list for this agency.
-    
+
     Returns True if EXCLUDED (should NOT call).
     """
     query = text("""
@@ -332,7 +332,7 @@ async def _select_personalisation_hook(
 ) -> dict[str, Any]:
     """
     Use Claude Sonnet to select the strongest personalisation hook.
-    
+
     Cost cap: $0.05 max.
     """
     anthropic = get_anthropic_client()
@@ -356,7 +356,9 @@ async def _select_personalisation_hook(
         context_parts.append(f"GMB Reviews Summary:\n{enrichment_data['gmb_reviews_summary']}")
 
     if enrichment_data.get("hiring_signals"):
-        context_parts.append(f"Hiring signals:\n{json.dumps(enrichment_data['hiring_signals'], indent=2)}")
+        context_parts.append(
+            f"Hiring signals:\n{json.dumps(enrichment_data['hiring_signals'], indent=2)}"
+        )
 
     if enrichment_data.get("trigger"):
         context_parts.append(f"Trigger event: {enrichment_data['trigger']}")
@@ -442,18 +444,18 @@ async def build_call_context(
 ) -> dict[str, Any]:
     """
     Build complete call context for voice agent.
-    
+
     Runs BEFORE every call. Pulls all available intelligence and returns
     a compiled context dict ready to inject into Alex's system prompt.
-    
+
     Args:
         lead_id: Lead pool ID
         agency_id: Agency/client ID
         db: Optional database session (creates one if not provided)
-        
+
     Returns:
         Complete CallContext as dictionary with all placeholders resolved
-        
+
     Raises:
         LeadExcludedError: If lead is on the exclusion list
         ValueError: If lead or agency not found
@@ -476,9 +478,7 @@ async def _build_call_context_impl(
     # CHECK 1: Exclusion list (HARD STOP if found)
     is_excluded = await _check_exclusion_list(db, lead_id, agency_id)
     if is_excluded:
-        raise LeadExcludedError(
-            f"Lead {lead_id} is on exclusion list for agency {agency_id}"
-        )
+        raise LeadExcludedError(f"Lead {lead_id} is on exclusion list for agency {agency_id}")
 
     # Fetch lead data
     lead_data = await _fetch_lead_data(db, lead_id)
@@ -517,7 +517,9 @@ async def _build_call_context_impl(
         lead_company=lead_company,
         lead_phone=lead_data.get("phone") or "",
         als_score=lead_data.get("als_score"),
-        enrichment_tier=lead_data.get("enrichment_data", {}).get("tier") if isinstance(lead_data.get("enrichment_data"), dict) else None,
+        enrichment_tier=lead_data.get("enrichment_data", {}).get("tier")
+        if isinstance(lead_data.get("enrichment_data"), dict)
+        else None,
         agency_id=agency_id,
         agency_name=agency_profile.get("agency_name") or "our agency",
         agency_type=agency_profile.get("agency_type"),

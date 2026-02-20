@@ -211,16 +211,13 @@ class Settings(BaseSettings):
     elevenagets_agent_id: str = Field(
         default="", description="ElevenAgents agent ID (populated after create_agent)"
     )
-    elevenlabs_voice_id: str = Field(
-        default="", description="ElevenLabs voice ID for Alex agent"
-    )
+    elevenlabs_voice_id: str = Field(default="", description="ElevenLabs voice ID for Alex agent")
     # Twilio AU (Australian outbound number for ElevenAgents)
     twilio_phone_number_au: str = Field(
         default="", description="Australian Twilio phone number for voice calls"
     )
     elevenlabs_voice_id: str = Field(
-        default="DYkrAHD8iwork3YSUBbs",
-        description="ElevenLabs voice ID for Alex (Australian male)"
+        default="DYkrAHD8iwork3YSUBbs", description="ElevenLabs voice ID for Alex (Australian male)"
     )
 
     # === Video AI (HeyGen) ===

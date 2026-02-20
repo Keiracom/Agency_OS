@@ -65,9 +65,9 @@ if settings.sentry_dsn:
         # Attach request data for debugging
         attach_stacktrace=True,
         # Filter out health checks from performance monitoring
-        traces_sampler=lambda ctx: 0
-        if ctx.get("transaction_context", {}).get("name", "").endswith("/health")
-        else 0.1,
+        traces_sampler=lambda ctx: (
+            0 if ctx.get("transaction_context", {}).get("name", "").endswith("/health") else 0.1
+        ),
     )
 
 # Configure logging

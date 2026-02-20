@@ -444,8 +444,9 @@ class BaseEngine(ABC):
             metadata: Additional metadata
         """
         try:
-            from sqlalchemy import text as sql_text
             import json
+
+            from sqlalchemy import text as sql_text
 
             entry = self.log_operation(
                 operation=operation,
@@ -486,7 +487,7 @@ class BaseEngine(ABC):
                 },
             )
             # Note: Don't commit here - let the caller manage the transaction
-            
+
         except Exception as e:
             # Don't fail the operation if logging fails
             import logging

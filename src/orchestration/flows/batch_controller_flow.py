@@ -214,7 +214,7 @@ async def apply_gate_1_filter_task(
         if enrichment_data.get("country", "").lower() == "australia":
             abn = enrichment_data.get("abn")
             abn_verified = enrichment_data.get("abn_verified", False)
-            
+
             if not abn and not abn_verified:
                 await _soft_discard_lead(
                     db,
@@ -243,7 +243,7 @@ async def apply_gate_1_filter_task(
             {"lead_pool_id": lead_pool_id},
         )
         dup_row = dup_result.fetchone()
-        
+
         if dup_row and dup_row.dup_count > 0:
             await _soft_discard_lead(
                 db,
@@ -362,7 +362,7 @@ async def apply_gate_2_filter_task(
         # Check Hunter confidence
         enrichment_data = row.enrichment_data or {}
         hunter_confidence = enrichment_data.get("hunter_confidence", 100)
-        
+
         if hunter_confidence < 70:
             await _soft_discard_lead(
                 db,
@@ -494,11 +494,11 @@ async def trigger_replacement_discovery_task(
                 }
 
             icp_config = row.icp_config or {}
-            
+
             # Trigger GMB discovery via the discovery service
             # This would call the actual GMB scraper/discovery flow
             from src.integrations.gmb_scraper import trigger_gmb_discovery
-            
+
             discovery_result = await trigger_gmb_discovery(
                 search_queries=icp_config.get("search_queries", []),
                 locations=icp_config.get("countries", ["Australia"]),
@@ -877,7 +877,7 @@ async def apply_quality_gates_flow(
 
         # Gate 3 (never discards)
         g3_result = await apply_gate_3_filter_task(lead_pool_id=lead_pool_id)
-        
+
         if g3_result.get("action") == "demoted":
             results["gate_3_demoted"] += 1
 

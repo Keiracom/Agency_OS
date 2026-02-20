@@ -17,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.integrations.anthropic import get_anthropic_client
+
 # NOTE: Apify import removed per FCO-003 deprecation (cost savings)
 # All scraping methods now degrade gracefully
 from src.models.client import Client
@@ -231,7 +232,7 @@ class ClientIntelligenceEngine:
         
         DEPRECATED: Apify integration removed per FCO-003.
         """
-        logger.info(f"Facebook scrape skipped — Apify deprecated (FCO-003)")
+        logger.info("Facebook scrape skipped — Apify deprecated (FCO-003)")
         result.errors.append({
             "source": "facebook",
             "error": "Apify deprecated (FCO-003).",
@@ -276,7 +277,7 @@ class ClientIntelligenceEngine:
         
         DEPRECATED: Apify integration removed per FCO-003.
         """
-        logger.info(f"G2 scrape skipped — Apify deprecated (FCO-003)")
+        logger.info("G2 scrape skipped — Apify deprecated (FCO-003)")
         result.errors.append({
             "source": "g2",
             "error": "Apify deprecated (FCO-003).",
@@ -291,7 +292,7 @@ class ClientIntelligenceEngine:
         
         DEPRECATED: Apify integration removed per FCO-003.
         """
-        logger.info(f"Capterra scrape skipped — Apify deprecated (FCO-003)")
+        logger.info("Capterra scrape skipped — Apify deprecated (FCO-003)")
         result.errors.append({
             "source": "capterra",
             "error": "Apify deprecated (FCO-003).",

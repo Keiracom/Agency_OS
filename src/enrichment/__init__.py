@@ -8,14 +8,13 @@ Created: 2026-02-16 (CEO Directive #023)
 """
 
 from .discovery_modes import (
-    DiscoveryMode,
-    CampaignConfig,
-    DiscoveryRecord,
     ABNFirstDiscovery,
+    CampaignConfig,
+    DiscoveryMode,
+    DiscoveryRecord,
     MapsFirstDiscovery,
     ParallelDiscovery,
 )
-
 from .waterfall_v2 import (
     LeadRecord,
     WaterfallV2,
@@ -24,12 +23,12 @@ from .waterfall_v2 import (
 __all__ = [
     # Discovery modes
     "DiscoveryMode",
-    "CampaignConfig", 
+    "CampaignConfig",
     "DiscoveryRecord",
     "ABNFirstDiscovery",
     "MapsFirstDiscovery",
     "ParallelDiscovery",
-    
+
     # Waterfall pipeline
     "LeadRecord",
     "WaterfallV2",

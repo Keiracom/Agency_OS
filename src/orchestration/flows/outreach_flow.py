@@ -38,7 +38,7 @@ from uuid import UUID
 
 from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
-from sqlalchemy import and_, select
+from sqlalchemy import and_, select, text
 
 from src.agents.sdk_agents import should_use_sdk_email
 from src.engines.allocator import get_allocator_engine
@@ -58,14 +58,11 @@ from src.models.base import (
 from src.models.campaign import Campaign
 from src.models.client import Client
 from src.models.lead import Lead
-from src.config.tiers import get_available_channels
 from src.services.content_qa_service import (
     validate_email_content,
     validate_linkedin_content,
     validate_sms_content,
 )
-
-from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +116,7 @@ async def check_campaign_quality_gate_task(campaign_id: str) -> dict[str, Any]:
 
         if not row or row.total_leads == 0:
             await _create_campaign_halt_notification(
-                db, campaign_id, "no_leads", 
+                db, campaign_id, "no_leads",
                 "Campaign has no leads in sequence", {}
             )
             return {
@@ -221,11 +218,11 @@ async def _create_campaign_halt_notification(
             {"campaign_id": campaign_id},
         )
         row = result.fetchone()
-        
+
         if row:
             import json
             from uuid import uuid4
-            
+
             notification_id = str(uuid4())
             await db.execute(
                 text("""
@@ -270,7 +267,7 @@ async def auto_assign_resources_task(lead_id: str, campaign_id: str) -> dict[str
         Dict with assigned resources
     """
     from src.config.tiers import CHANNEL_ACCESS_BY_ALS, get_als_tier
-    
+
     async with get_db_session() as db:
         # Get lead tier and client resources
         result = await db.execute(
@@ -309,7 +306,7 @@ async def auto_assign_resources_task(lead_id: str, campaign_id: str) -> dict[str
             """),
             {"client_id": str(client_id)},
         )
-        
+
         # Build resource map with best available resource per channel
         available_resources = {}
         for row in resources_result.fetchall():
@@ -353,7 +350,7 @@ async def auto_assign_resources_task(lead_id: str, campaign_id: str) -> dict[str
         if assigned:
             update_parts = []
             params = {"lead_id": lead_id}
-            
+
             if "email" in assigned:
                 update_parts.append("assigned_email_resource = :email_resource")
                 params["email_resource"] = assigned["email"]
@@ -399,7 +396,7 @@ async def trigger_additional_discovery_task(campaign_id: str) -> dict[str, Any]:
         Dict with discovery result
     """
     from src.orchestration.flows.batch_controller_flow import trigger_replacement_discovery_task
-    
+
     async with get_db_session() as db:
         # Get campaign client_id
         result = await db.execute(
@@ -407,17 +404,17 @@ async def trigger_additional_discovery_task(campaign_id: str) -> dict[str, Any]:
             {"campaign_id": campaign_id},
         )
         row = result.fetchone()
-        
+
         if not row:
             return {"campaign_id": campaign_id, "success": False, "error": "Campaign not found"}
-        
+
         # Trigger discovery for 50 additional leads
         discovery_result = await trigger_replacement_discovery_task(
             campaign_id=campaign_id,
             client_id=str(row.client_id),
             count_needed=50,
         )
-        
+
         return {
             "campaign_id": campaign_id,
             "success": discovery_result.get("success", False),
@@ -1095,7 +1092,7 @@ async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
     for campaign_id in all_campaign_ids:
         quality_result = await check_campaign_quality_gate_task(campaign_id)
         campaigns_checked[campaign_id] = quality_result
-        
+
         if not quality_result.get("passed"):
             logger.warning(
                 f"Campaign {campaign_id} failed quality gate: {quality_result.get('reason')} "
@@ -1125,7 +1122,7 @@ async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
     total_after_filter = sum(
         len(leads) for leads in leads_data["leads_by_channel"].values()
     )
-    
+
     if total_after_filter == 0:
         logger.info("No leads ready after quality gate filter")
         return {

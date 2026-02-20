@@ -45,6 +45,7 @@ from src.orchestration.flows.stale_lead_refresh_flow import (
     daily_outreach_prep_flow,
     refresh_stale_leads_flow,
 )
+from src.orchestration.flows.voice_flow import voice_outreach_flow
 from src.orchestration.flows.warmup_monitor_flow import warmup_monitor_flow
 
 __all__ = [
@@ -73,4 +74,6 @@ __all__ = [
     # Resource Pool: Persona Buffer
     "persona_buffer_flow",
     "get_buffer_status",
+    # Voice Outreach
+    "voice_outreach_flow",
 ]

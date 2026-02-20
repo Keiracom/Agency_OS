@@ -19,6 +19,7 @@ LinkedIn enrichment now via Siege Waterfall → Kaspr pipeline.
 from src.integrations.abn_client import ABNClient, get_abn_client
 from src.integrations.calendar_booking import router as calendar_booking_router
 from src.integrations.clicksend import ClickSendClient, get_clicksend_client
+from src.integrations.elevenagets_client import ElevenAgentsClient, get_elevenagets_client
 from src.integrations.elevenlabs import ElevenLabsClient, get_elevenlabs_client
 from src.integrations.hunter import HunterClient, get_hunter_client
 from src.integrations.kaspr import KasprClient, get_kaspr_client
@@ -36,6 +37,8 @@ __all__ = [
     "get_serper_client",
     "VapiClient",
     "get_vapi_client",
+    "ElevenAgentsClient",
+    "get_elevenagets_client",
     "ElevenLabsClient",
     "get_elevenlabs_client",
     "ClickSendClient",

@@ -492,10 +492,10 @@ class CloserEngine(BaseEngine):
             # Status will be updated to CONVERTED when Calendly webhook confirms
             # For now, mark as pending meeting
             lead.status = LeadStatus.IN_SEQUENCE  # Keep in sequence until booking confirmed
-            if not lead.metadata:
-                lead.metadata = {}
-            lead.metadata["meeting_requested_at"] = datetime.utcnow().isoformat()
-            lead.metadata["awaiting_booking_confirmation"] = True
+            if not lead.lead_metadata:
+                lead.lead_metadata = {}
+            lead.lead_metadata["meeting_requested_at"] = datetime.utcnow().isoformat()
+            lead.lead_metadata["awaiting_booking_confirmation"] = True
             actions.append("awaiting_booking_confirmation")
 
         elif intent == IntentType.INTERESTED:
@@ -559,10 +559,10 @@ class CloserEngine(BaseEngine):
             actions.append("referral_received")
 
             # Store referral flag in lead metadata
-            if not lead.metadata:
-                lead.metadata = {}
-            lead.metadata["has_referral"] = True
-            lead.metadata["referral_received_at"] = datetime.utcnow().isoformat()
+            if not lead.lead_metadata:
+                lead.lead_metadata = {}
+            lead.lead_metadata["has_referral"] = True
+            lead.lead_metadata["referral_received_at"] = datetime.utcnow().isoformat()
 
             # Auto-create new lead from referral
             try:
@@ -573,7 +573,7 @@ class CloserEngine(BaseEngine):
                 )
                 if referral_lead:
                     actions.append(f"referral_lead_created:{referral_lead}")
-                    lead.metadata["referral_lead_id"] = str(referral_lead)
+                    lead.lead_metadata["referral_lead_id"] = str(referral_lead)
                 else:
                     actions.append("referral_extraction_pending")
             except Exception as e:
@@ -586,10 +586,10 @@ class CloserEngine(BaseEngine):
             actions.append("stopped_sequence")
             actions.append("marked_lead_invalid")
             # Store reason in lead metadata
-            if not lead.metadata:
-                lead.metadata = {}
-            lead.metadata["invalid_reason"] = "wrong_person"
-            lead.metadata["invalid_at"] = datetime.utcnow().isoformat()
+            if not lead.lead_metadata:
+                lead.lead_metadata = {}
+            lead.lead_metadata["invalid_reason"] = "wrong_person"
+            lead.lead_metadata["invalid_at"] = datetime.utcnow().isoformat()
 
         elif intent == IntentType.ANGRY_COMPLAINT:
             # Stop sequence, set admin_review_required, log alert
@@ -602,11 +602,11 @@ class CloserEngine(BaseEngine):
             actions.append("admin_review_required")
 
             # Store admin review flag in lead metadata
-            if not lead.metadata:
-                lead.metadata = {}
-            lead.metadata["admin_review_required"] = True
-            lead.metadata["admin_review_reason"] = "angry_or_complaint"
-            lead.metadata["admin_review_flagged_at"] = datetime.utcnow().isoformat()
+            if not lead.lead_metadata:
+                lead.lead_metadata = {}
+            lead.lead_metadata["admin_review_required"] = True
+            lead.lead_metadata["admin_review_reason"] = "angry_or_complaint"
+            lead.lead_metadata["admin_review_flagged_at"] = datetime.utcnow().isoformat()
 
             # Directive 048: Fire admin notification via Supabase immediately
             try:

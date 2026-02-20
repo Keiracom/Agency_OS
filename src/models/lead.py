@@ -193,7 +193,10 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     )  # UTC offset in minutes
 
     # === Generic Metadata Storage (for intent handlers) ===
-    metadata: Mapped[dict | None] = mapped_column(JSONB, default=dict, nullable=True)
+    # Note: Python attribute renamed to avoid SQLAlchemy reserved word conflict
+    lead_metadata: Mapped[dict | None] = mapped_column(
+        "metadata", JSONB, default=dict, nullable=True
+    )
 
     # === Assigned Resources ===
     assigned_email_resource: Mapped[str | None] = mapped_column(Text, nullable=True)

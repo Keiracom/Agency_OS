@@ -80,37 +80,37 @@ async def test_icp_extraction():
 
         if profile.social_profiles:
             sp = profile.social_profiles
-            print(f"\nSocial Profiles:")
+            print("\nSocial Profiles:")
             print(f"  Total Followers: {sp.total_social_followers:,}")
             print(f"  Platforms Found: {sp.platforms_found}")
 
             if sp.linkedin:
-                print(f"\n  LinkedIn:")
+                print("\n  LinkedIn:")
                 print(f"    Name: {sp.linkedin.name}")
                 print(f"    Followers: {sp.linkedin.followers:,}" if sp.linkedin.followers else "    Followers: N/A")
                 print(f"    Employees: {sp.linkedin.employee_range}")
                 print(f"    Industry: {sp.linkedin.industry}")
 
             if sp.instagram:
-                print(f"\n  Instagram:")
+                print("\n  Instagram:")
                 print(f"    Username: {sp.instagram.username}")
                 print(f"    Followers: {sp.instagram.followers:,}" if sp.instagram.followers else "    Followers: N/A")
                 print(f"    Posts: {sp.instagram.posts_count}")
 
             if sp.facebook:
-                print(f"\n  Facebook:")
+                print("\n  Facebook:")
                 print(f"    Name: {sp.facebook.name}")
                 print(f"    Followers: {sp.facebook.followers:,}" if sp.facebook.followers else "    Followers: N/A")
                 print(f"    Rating: {sp.facebook.rating}")
 
             if sp.google_business:
-                print(f"\n  Google Business:")
+                print("\n  Google Business:")
                 print(f"    Name: {sp.google_business.name}")
                 print(f"    Rating: {sp.google_business.rating}")
                 print(f"    Reviews: {sp.google_business.review_count}")
                 print(f"    Address: {sp.google_business.address}")
 
-        print(f"\nPattern Description:")
+        print("\nPattern Description:")
         print(f"  {profile.pattern_description}")
 
         # Save full profile to JSON

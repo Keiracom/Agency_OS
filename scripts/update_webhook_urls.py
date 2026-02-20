@@ -15,8 +15,9 @@ RULES APPLIED:
 
 import os
 import sys
-import httpx
 from pathlib import Path
+
+import httpx
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -174,7 +175,7 @@ def main():
     base_url = sys.argv[1]
     dry_run = "--dry-run" in sys.argv
 
-    print(f"=== Agency OS Webhook Updater ===")
+    print("=== Agency OS Webhook Updater ===")
     print(f"Base URL: {base_url}")
 
     updater = WebhookUpdater(base_url)

@@ -238,7 +238,7 @@ def get_instructions() -> str:
             if lt.get("check"):
                 lines.append(f"  Check: {lt['check']}")
             if lt.get("query"):
-                lines.append(f"  Query: (database query)")
+                lines.append("  Query: (database query)")
         lines.append("")
     lines.append("### Pass Criteria")
     for criterion in PASS_CRITERIA:

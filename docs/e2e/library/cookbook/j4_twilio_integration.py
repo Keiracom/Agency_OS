@@ -200,7 +200,7 @@ def get_instructions() -> str:
     lines.append("  Required Environment Variables:")
     for key, value in TWILIO_CONFIG["env_vars"].items():
         lines.append(f"    - {value}")
-    lines.append(f"  Webhook Paths:")
+    lines.append("  Webhook Paths:")
     for key, value in TWILIO_CONFIG["webhook_paths"].items():
         lines.append(f"    - {key}: {value}")
     lines.append("")

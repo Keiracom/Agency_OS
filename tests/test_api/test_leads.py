@@ -18,8 +18,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi import status
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
+from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.base import CampaignStatus, LeadStatus
@@ -28,7 +27,6 @@ from src.models.client import Client
 from src.models.lead import Lead
 from src.models.membership import Membership
 from src.models.user import User
-
 
 # ============================================
 # Fixtures

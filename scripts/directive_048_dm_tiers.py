@@ -11,19 +11,17 @@ Datasets (from ceo_memory):
 Law III: Real API calls only.
 """
 import asyncio
-import json
-import os
-import sys
-import time
 import base64
+import os
 import re
-from datetime import datetime, timezone, timedelta
+import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from urllib.parse import urlparse
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from dotenv import load_dotenv
+
 load_dotenv()
 load_dotenv(os.path.expanduser("~/.config/agency-os/.env"))
 
@@ -49,7 +47,7 @@ LEADS = [
         "website": "http://www.truesyd.com.au/",
     },
     {
-        "company_name": "AdVisible", 
+        "company_name": "AdVisible",
         "dm_linkedin": "https://www.linkedin.com/in/ivan-teh",
         "dm_name": "Ivan Teh",
         "dm_title": "Co-Founder",
@@ -133,7 +131,7 @@ async def trigger_and_poll(client, headers, dataset_id, inputs, timeout_min=10, 
     if discover_by:
         params["type"] = "discover_new"
         params["discover_by"] = discover_by
-    
+
     resp = await client.post(
         "https://api.brightdata.com/datasets/v3/trigger",
         params=params,
@@ -142,7 +140,7 @@ async def trigger_and_poll(client, headers, dataset_id, inputs, timeout_min=10, 
     )
     resp.raise_for_status()
     snapshot_id = resp.json().get("snapshot_id")
-    
+
     # Poll
     max_polls = timeout_min * 12
     for _ in range(max_polls):
@@ -168,13 +166,13 @@ async def trigger_and_poll(client, headers, dataset_id, inputs, timeout_min=10, 
 async def find_x_handle(client, website, company_name, dfs_auth):
     """Find X/Twitter handle from website or SERP."""
     handle = None
-    
+
     # Method 1: Check website HTML for Twitter/X links
     if website:
         try:
             resp = await client.get(website, timeout=10.0, follow_redirects=True)
             html = resp.text.lower()
-            
+
             # Look for twitter.com or x.com links
             patterns = [
                 r'(?:twitter\.com|x\.com)/([a-zA-Z0-9_]+)',
@@ -187,7 +185,7 @@ async def find_x_handle(client, website, company_name, dfs_auth):
                         return handle
         except:
             pass
-    
+
     # Method 2: DataForSEO SERP fallback
     if not handle:
         try:
@@ -205,7 +203,7 @@ async def find_x_handle(client, website, company_name, dfs_auth):
             )
             data = resp.json()
             items = data.get("tasks", [{}])[0].get("result", [{}])[0].get("items", [])
-            
+
             for item in items:
                 url = item.get("url", "")
                 match = re.search(r'(?:twitter\.com|x\.com)/([a-zA-Z0-9_]+)', url)
@@ -215,7 +213,7 @@ async def find_x_handle(client, website, company_name, dfs_auth):
                         return handle
         except:
             pass
-    
+
     return None
 
 
@@ -224,12 +222,12 @@ async def main():
     dfs_login = os.getenv("DATAFORSEO_LOGIN")
     dfs_pass = os.getenv("DATAFORSEO_PASSWORD")
     dfs_auth = base64.b64encode(f"{dfs_login}:{dfs_pass}".encode()).decode()
-    
+
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
-    
+
     print("="*70, flush=True)
     print("DIRECTIVE #048 Follow-up — T-DM1, T-DM2, T-DM3", flush=True)
     print("="*70, flush=True)
@@ -237,18 +235,18 @@ async def main():
     print(f"T-DM2 Dataset: {LINKEDIN_POSTS_DATASET}", flush=True)
     print(f"T-DM3 Dataset: {X_POSTS_DATASET}", flush=True)
     print("="*70, flush=True)
-    
+
     results = []
     total_cost = 0.0
-    cutoff_date = datetime.now(timezone.utc) - timedelta(days=90)
-    
+    cutoff_date = datetime.now(UTC) - timedelta(days=90)
+
     async with httpx.AsyncClient(timeout=120.0) as client:
         for i, lead in enumerate(LEADS, 1):
             print(f"\n{'='*70}", flush=True)
             print(f"LEAD {i}: {lead['company_name']}", flush=True)
             print(f"DM LinkedIn: {lead.get('dm_linkedin', 'None')}", flush=True)
             print("="*70, flush=True)
-            
+
             lead_result = {
                 "company": lead["company_name"],
                 "dm_name": lead.get("dm_name"),
@@ -262,10 +260,10 @@ async def main():
                 "x_posts_90d": 0,
                 "cost": 0.0,
             }
-            
+
             # T-DM1: LinkedIn Profile
             if lead.get("dm_linkedin"):
-                print(f"\n👤 T-DM1: LinkedIn Profile Scrape...", flush=True)
+                print("\n👤 T-DM1: LinkedIn Profile Scrape...", flush=True)
                 try:
                     profile_data = await trigger_and_poll(
                         client, headers,
@@ -273,7 +271,7 @@ async def main():
                         [{"url": lead["dm_linkedin"]}],
                         timeout_min=5,
                     )
-                    
+
                     if profile_data and len(profile_data) > 0:
                         p = profile_data[0] if isinstance(profile_data, list) else profile_data
                         lead_result["profile"] = {
@@ -283,7 +281,7 @@ async def main():
                             "location": p.get("location"),
                             "experience": [],
                         }
-                        
+
                         # Extract experience
                         exp = p.get("experience") or p.get("positions") or []
                         for e in exp[:3]:
@@ -292,18 +290,18 @@ async def main():
                                     "title": e.get("title"),
                                     "company": e.get("company") or e.get("company_name"),
                                 })
-                        
+
                         lead_result["cost"] += COSTS["t_dm1_profile"]
                         print(f"   ✅ {lead_result['profile']['name']}", flush=True)
                         print(f"   {lead_result['profile']['headline'][:60] if lead_result['profile']['headline'] else 'No headline'}...", flush=True)
                     else:
-                        print(f"   ⚠️ No profile data returned", flush=True)
+                        print("   ⚠️ No profile data returned", flush=True)
                 except Exception as e:
                     print(f"   ❌ Error: {e}", flush=True)
-            
+
             # T-DM2: LinkedIn Posts 90d
             if lead.get("dm_linkedin"):
-                print(f"\n📝 T-DM2: LinkedIn Posts (90d)...", flush=True)
+                print("\n📝 T-DM2: LinkedIn Posts (90d)...", flush=True)
                 try:
                     posts_data = await trigger_and_poll(
                         client, headers,
@@ -312,22 +310,22 @@ async def main():
                         timeout_min=5,
                         discover_by="profile_url",
                     )
-                    
+
                     if posts_data:
                         posts_list = posts_data if isinstance(posts_data, list) else [posts_data]
-                        
+
                         for post in posts_list:
                             if isinstance(post, dict) and not post.get("error"):
                                 # Get posts from the response
                                 post_items = post.get("posts") or post.get("activities") or []
                                 if not post_items and post.get("text"):
                                     post_items = [post]
-                                
+
                                 for p in post_items:
                                     if isinstance(p, dict):
                                         post_date_str = p.get("date") or p.get("posted_at") or p.get("timestamp")
                                         post_text = p.get("text") or p.get("content") or ""
-                                        
+
                                         # Filter to 90 days (if date available)
                                         include = True
                                         if post_date_str:
@@ -337,7 +335,7 @@ async def main():
                                                     for fmt in ["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%d %b %Y"]:
                                                         try:
                                                             post_date = datetime.strptime(post_date_str[:10], "%Y-%m-%d")
-                                                            post_date = post_date.replace(tzinfo=timezone.utc)
+                                                            post_date = post_date.replace(tzinfo=UTC)
                                                             if post_date < cutoff_date:
                                                                 include = False
                                                             break
@@ -345,35 +343,35 @@ async def main():
                                                             continue
                                             except:
                                                 pass
-                                        
+
                                         if include and post_text:
                                             lead_result["linkedin_posts"].append({
                                                 "text": post_text[:200],
                                                 "date": post_date_str,
                                             })
-                        
+
                         lead_result["linkedin_posts_90d"] = len(lead_result["linkedin_posts"])
                         lead_result["cost"] += COSTS["t_dm2_posts"]
-                        
+
                         if lead_result["linkedin_posts"]:
                             print(f"   ✅ {lead_result['linkedin_posts_90d']} posts found", flush=True)
                             for j, p in enumerate(lead_result["linkedin_posts"][:2]):
                                 print(f"   [{j+1}] \"{p['text'][:80]}...\"", flush=True)
                         else:
-                            print(f"   ⚠️ No posts in last 90d", flush=True)
+                            print("   ⚠️ No posts in last 90d", flush=True)
                     else:
-                        print(f"   ⚠️ No posts data returned", flush=True)
+                        print("   ⚠️ No posts data returned", flush=True)
                         lead_result["cost"] += COSTS["t_dm2_posts"]
                 except Exception as e:
                     print(f"   ❌ Error: {e}", flush=True)
-            
+
             # T-DM3: X Posts 90d
-            print(f"\n🐦 T-DM3: X/Twitter Posts (90d)...", flush=True)
-            
+            print("\n🐦 T-DM3: X/Twitter Posts (90d)...", flush=True)
+
             # First find X handle
             x_handle = await find_x_handle(client, lead.get("website"), lead["company_name"], dfs_auth)
             lead_result["x_handle"] = x_handle
-            
+
             if x_handle:
                 print(f"   Found handle: @{x_handle}", flush=True)
                 try:
@@ -384,139 +382,139 @@ async def main():
                         timeout_min=5,
                         discover_by="profile_url",
                     )
-                    
+
                     if x_data:
                         x_list = x_data if isinstance(x_data, list) else [x_data]
-                        
+
                         for item in x_list:
                             if isinstance(item, dict) and not item.get("error"):
                                 tweets = item.get("tweets") or item.get("posts") or []
                                 if not tweets and item.get("text"):
                                     tweets = [item]
-                                
+
                                 for t in tweets:
                                     if isinstance(t, dict):
                                         tweet_text = t.get("text") or t.get("full_text") or ""
                                         tweet_date = t.get("date") or t.get("created_at")
-                                        
+
                                         if tweet_text:
                                             lead_result["x_posts"].append({
                                                 "text": tweet_text[:200],
                                                 "date": tweet_date,
                                             })
-                        
+
                         lead_result["x_posts_90d"] = len(lead_result["x_posts"])
                         lead_result["cost"] += COSTS["t_dm3_x"]
-                        
+
                         if lead_result["x_posts"]:
                             print(f"   ✅ {lead_result['x_posts_90d']} tweets found", flush=True)
                             for j, t in enumerate(lead_result["x_posts"][:2]):
                                 print(f"   [{j+1}] \"{t['text'][:80]}...\"", flush=True)
                         else:
-                            print(f"   ⚠️ No tweets in last 90d", flush=True)
+                            print("   ⚠️ No tweets in last 90d", flush=True)
                     else:
-                        print(f"   ⚠️ No X data returned", flush=True)
+                        print("   ⚠️ No X data returned", flush=True)
                 except Exception as e:
                     print(f"   ❌ Error: {e}", flush=True)
             else:
-                print(f"   ⚠️ No X handle found (skipped gracefully)", flush=True)
-            
+                print("   ⚠️ No X handle found (skipped gracefully)", flush=True)
+
             total_cost += lead_result["cost"]
             results.append(lead_result)
-            
+
             print(f"\n📊 Lead T-DM Cost: ${lead_result['cost']:.4f} AUD", flush=True)
-            
+
             await asyncio.sleep(1)
-    
+
     # Final Report
     print("\n" + "="*70, flush=True)
     print("DIRECTIVE #048 — T-DM TIERS REPORT", flush=True)
     print("="*70, flush=True)
-    
+
     # Summary table
     print("\n📊 T-DM Tier Results:", flush=True)
     print("-"*90, flush=True)
     print(f"{'#':<3} {'Company':<25} {'Profile':<8} {'LI Posts':<10} {'X Handle':<12} {'X Posts':<8}", flush=True)
     print("-"*90, flush=True)
-    
+
     profile_found = 0
     li_posts_found = 0
     x_handle_found = 0
     x_posts_found = 0
-    
+
     for i, r in enumerate(results, 1):
         has_profile = "✓" if r["profile"] else "✗"
         li_posts = str(r["linkedin_posts_90d"]) if r["linkedin_posts_90d"] > 0 else "0"
         x_handle = f"@{r['x_handle'][:10]}" if r["x_handle"] else "✗"
         x_posts = str(r["x_posts_90d"]) if r["x_posts_90d"] > 0 else "0"
-        
+
         if r["profile"]: profile_found += 1
         if r["linkedin_posts_90d"] > 0: li_posts_found += 1
         if r["x_handle"]: x_handle_found += 1
         if r["x_posts_90d"] > 0: x_posts_found += 1
-        
+
         print(f"{i:<3} {r['company'][:24]:<25} {has_profile:<8} {li_posts:<10} {x_handle:<12} {x_posts:<8}", flush=True)
-    
+
     print("-"*90, flush=True)
-    
+
     # Metrics
     total = len(results)
-    print(f"\n📈 T-DM Completion Rates:", flush=True)
+    print("\n📈 T-DM Completion Rates:", flush=True)
     print(f"   T-DM1 Profile Retrieved: {profile_found}/{total} ({100*profile_found/total:.0f}%) — Target: ≥70%", flush=True)
     print(f"   T-DM2 LinkedIn Posts Found: {li_posts_found}/{total} ({100*li_posts_found/total:.0f}%) — Target: ≥60%", flush=True)
     print(f"   T-DM3 X Handle Found: {x_handle_found}/{total} ({100*x_handle_found/total:.0f}%)", flush=True)
     print(f"   T-DM3 X Posts Found: {x_posts_found}/{total} ({100*x_posts_found/total:.0f}%)", flush=True)
-    
+
     # Cost
-    print(f"\n💰 T-DM Cost Analysis:", flush=True)
+    print("\n💰 T-DM Cost Analysis:", flush=True)
     print(f"   Total T-DM Cost: ${total_cost:.4f} AUD", flush=True)
     print(f"   T-DM Cost per Lead: ${total_cost/total:.4f} AUD", flush=True)
-    
+
     # Per-lead detail
-    print(f"\n📋 Per-Lead Detail:", flush=True)
+    print("\n📋 Per-Lead Detail:", flush=True)
     print("="*70, flush=True)
-    
+
     for i, r in enumerate(results, 1):
         print(f"\n🏢 Lead {i}: {r['company']}", flush=True)
-        
+
         if r["profile"]:
             print(f"   DM: {r['profile']['name']}", flush=True)
             print(f"   Title: {r['profile']['headline'] or 'Unknown'}", flush=True)
             if r["profile"]["about"]:
                 print(f"   About: \"{r['profile']['about'][:150]}...\"", flush=True)
             if r["profile"]["experience"]:
-                print(f"   Experience:", flush=True)
+                print("   Experience:", flush=True)
                 for exp in r["profile"]["experience"][:2]:
                     print(f"      - {exp.get('title')} at {exp.get('company')}", flush=True)
         else:
             print(f"   DM: {r.get('dm_name', 'Unknown')}", flush=True)
-        
+
         print(f"\n   LinkedIn Posts (90d): {r['linkedin_posts_90d']}", flush=True)
         if r["linkedin_posts"]:
             for j, p in enumerate(r["linkedin_posts"][:3]):
                 print(f"      [{j+1}] \"{p['text'][:100]}...\"", flush=True)
         else:
-            print(f"      (No posts found)", flush=True)
-        
+            print("      (No posts found)", flush=True)
+
         print(f"\n   X/Twitter: {'@' + r['x_handle'] if r['x_handle'] else 'Not found'}", flush=True)
         if r["x_posts"]:
             print(f"   X Posts (90d): {r['x_posts_90d']}", flush=True)
             for j, t in enumerate(r["x_posts"][:3]):
                 print(f"      [{j+1}] \"{t['text'][:100]}...\"", flush=True)
         elif r["x_handle"]:
-            print(f"   X Posts (90d): 0", flush=True)
-        
+            print("   X Posts (90d): 0", flush=True)
+
         # Personalisation assessment
         has_li_posts = r["linkedin_posts_90d"] > 0
         has_x_posts = r["x_posts_90d"] > 0
         has_about = r["profile"] and r["profile"].get("about")
-        
+
         if has_li_posts or has_x_posts:
-            print(f"\n   ✅ PERSONALISATION SIGNAL: Posts available", flush=True)
+            print("\n   ✅ PERSONALISATION SIGNAL: Posts available", flush=True)
         elif has_about:
-            print(f"\n   ⚠️ PARTIAL SIGNAL: About section only", flush=True)
+            print("\n   ⚠️ PARTIAL SIGNAL: About section only", flush=True)
         else:
-            print(f"\n   ❌ NO PERSONALISATION SIGNAL", flush=True)
+            print("\n   ❌ NO PERSONALISATION SIGNAL", flush=True)
 
 
 if __name__ == "__main__":

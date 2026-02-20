@@ -21,7 +21,6 @@ CRITICAL RULES:
 3. One Group Per Session - Execute only the current group
 """
 
-from typing import Dict, List
 
 
 def get_instructions() -> str:
@@ -87,7 +86,7 @@ BEST PRACTICES:
 """
 
 
-def get_code_templates() -> Dict[str, str]:
+def get_code_templates() -> dict[str, str]:
     """Return code templates for E2E testing."""
     return {
         "state_update": STATE_UPDATE_TEMPLATE,
@@ -99,7 +98,7 @@ def get_code_templates() -> Dict[str, str]:
     }
 
 
-def get_commands() -> Dict[str, Dict[str, str]]:
+def get_commands() -> dict[str, dict[str, str]]:
     """Return E2E command definitions."""
     return {
         "status": {
@@ -130,7 +129,7 @@ def get_commands() -> Dict[str, Dict[str, str]]:
     }
 
 
-def get_state_schema() -> Dict[str, str]:
+def get_state_schema() -> dict[str, str]:
     """Return the e2e_state.json schema."""
     return {
         "current": "Current group ID (e.g., J1.4)",
@@ -146,7 +145,7 @@ def get_state_schema() -> Dict[str, str]:
     }
 
 
-def get_config_schema() -> Dict[str, str]:
+def get_config_schema() -> dict[str, str]:
     """Return the e2e_config.json schema."""
     return {
         "test_agency": "Test agency details",
@@ -159,7 +158,7 @@ def get_config_schema() -> Dict[str, str]:
     }
 
 
-def get_journey_list() -> List[Dict[str, str]]:
+def get_journey_list() -> list[dict[str, str]]:
     """Return the list of E2E journeys."""
     return [
         {"id": "J0", "name": "Infrastructure & Wiring Audit", "groups": 9},
@@ -177,7 +176,7 @@ def get_journey_list() -> List[Dict[str, str]]:
     ]
 
 
-def get_approval_gates() -> List[Dict[str, any]]:
+def get_approval_gates() -> list[dict[str, any]]:
     """Return the approval gate definitions."""
     return [
         {"id": "GATE-1", "trigger": "Start J0", "cost_aud": 0, "journey": "J0"},

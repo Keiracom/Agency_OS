@@ -12,8 +12,7 @@ from uuid import uuid4
 import pytest
 
 from src.engines.reporter import ReporterEngine, get_reporter_engine
-from src.models.base import ChannelType, LeadStatus
-
+from src.models.base import LeadStatus
 
 # ============================================
 # Fixtures

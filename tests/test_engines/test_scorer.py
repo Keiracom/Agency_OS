@@ -14,6 +14,7 @@ import pytest
 from src.engines.scorer import (
     DEDUCTION_BAD_TITLE,
     DEDUCTION_BOUNCED,
+    SCORE_COUNTRY_AUSTRALIA,
     SCORE_EMAIL_VERIFIED,
     SCORE_EMPLOYEE_COUNT_IDEAL,
     SCORE_HIRING,
@@ -21,16 +22,11 @@ from src.engines.scorer import (
     SCORE_LINKEDIN,
     SCORE_NEW_ROLE,
     SCORE_PHONE,
-    SCORE_COUNTRY_AUSTRALIA,
+    TIER_HOT,
     ScorerEngine,
     get_scorer_engine,
-    TIER_HOT,
-    TIER_WARM,
-    TIER_COOL,
-    TIER_COLD,
 )
 from src.models.base import ChannelType, LeadStatus
-
 
 # ============================================
 # Fixtures

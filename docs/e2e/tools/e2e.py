@@ -57,10 +57,10 @@ def load_json(filepath: Path, default=None):
         default = {}
     try:
         if filepath.exists():
-            with open(filepath, "r", encoding="utf-8") as f:
+            with open(filepath, encoding="utf-8") as f:
                 return json.load(f)
         return default
-    except (json.JSONDecodeError, IOError) as e:
+    except (OSError, json.JSONDecodeError) as e:
         print(f"Warning: Could not load {filepath}: {e}")
         return default
 
@@ -95,7 +95,7 @@ def parse_group_from_journey(journey_path: Path, group_id: str) -> dict | None:
     if not journey_path.exists():
         return None
 
-    with open(journey_path, "r", encoding="utf-8") as f:
+    with open(journey_path, encoding="utf-8") as f:
         content = f.read()
 
     # Pattern to match group header: ### J1.4 — Title
@@ -232,7 +232,7 @@ def cmd_status(args):
     print(f"  Blockers:      {len(blockers)}")
 
     if blockers:
-        print(f"\n  Active Blockers:")
+        print("\n  Active Blockers:")
         for b in blockers:
             print(f"    - {b}")
 
@@ -249,16 +249,16 @@ def cmd_status(args):
 
     if status == "awaiting_approval":
         print(f"  CEO approval required to continue to {current}")
-        print(f"  Run: python tools/e2e.py next  (after approval)")
+        print("  Run: python tools/e2e.py next  (after approval)")
     elif blockers:
-        print(f"  Resolve blockers before continuing")
+        print("  Resolve blockers before continuing")
     else:
         next_group = get_next_group(state)
         if next_group:
-            print(f"  Run: python tools/e2e.py next")
+            print("  Run: python tools/e2e.py next")
             print(f"  This will show tasks for {next_group}")
         else:
-            print(f"  All E2E testing complete!")
+            print("  All E2E testing complete!")
 
     print(f"\n{'='*60}\n")
     return 0
@@ -337,7 +337,7 @@ def cmd_next(args):
             print(f"\n{'!'*60}")
             print(f"BLOCKED: {gate_id} - {gate.get('trigger')}")
             print(f"Cost: ${gate.get('cost_aud', 0)} AUD")
-            print(f"CEO approval required before proceeding")
+            print("CEO approval required before proceeding")
             print(f"{'!'*60}")
 
     # Show the group content
@@ -350,12 +350,12 @@ def cmd_next(args):
     print(f"\n{'-'*60}")
     print("ON COMPLETION:")
     print(f"{'-'*60}")
-    print(f"  1. Execute all Part A (wiring) and Part B (live) checks")
-    print(f"  2. Log any issues to docs/e2e/ISSUES_FOUND.md")
-    print(f"  3. Log any fixes to docs/e2e/FIXES_APPLIED.md")
+    print("  1. Execute all Part A (wiring) and Part B (live) checks")
+    print("  2. Log any issues to docs/e2e/ISSUES_FOUND.md")
+    print("  3. Log any fixes to docs/e2e/FIXES_APPLIED.md")
     print(f"  4. Run: python tools/e2e.py complete {group_id} --summary \"what was done\"")
     if group_data['next_group']:
-        print(f"  5. Wait for CEO approval, then: python tools/e2e.py next")
+        print("  5. Wait for CEO approval, then: python tools/e2e.py next")
 
     print(f"\n{'='*60}\n")
     return 0
@@ -435,8 +435,8 @@ def cmd_complete(args):
     print(f"{'-'*60}")
     if next_group:
         print(f"Next group: {next_group}")
-        print(f"CEO approval required to continue")
-        print(f"\nAfter approval, run: python tools/e2e.py next")
+        print("CEO approval required to continue")
+        print("\nAfter approval, run: python tools/e2e.py next")
     else:
         print("All E2E testing complete!")
 
@@ -458,7 +458,7 @@ def cmd_config(args):
 
     # Test Agency
     agency = config.get("test_agency", {})
-    print(f"\nTEST AGENCY:")
+    print("\nTEST AGENCY:")
     print(f"  Name:     {agency.get('name', 'N/A')}")
     print(f"  Website:  {agency.get('website', 'N/A')}")
     print(f"  Industry: {agency.get('industry', 'N/A')}")
@@ -466,7 +466,7 @@ def cmd_config(args):
 
     # Test User
     user = config.get("test_user", {})
-    print(f"\nTEST USER:")
+    print("\nTEST USER:")
     print(f"  Email:     {user.get('email', 'N/A')}")
     print(f"  Name:      {user.get('full_name', 'N/A')}")
     print(f"  User ID:   {user.get('user_id', 'N/A')[:8]}..." if user.get('user_id') else "  User ID:   N/A")
@@ -474,14 +474,14 @@ def cmd_config(args):
 
     # Test Recipients
     recipients = config.get("test_recipients", {})
-    print(f"\nTEST RECIPIENTS (all outreach goes here):")
+    print("\nTEST RECIPIENTS (all outreach goes here):")
     print(f"  Email:    {recipients.get('email', 'N/A')}")
     print(f"  SMS:      {recipients.get('sms', 'N/A')}")
     print(f"  Voice:    {recipients.get('voice', 'N/A')}")
 
     # API Endpoints
     endpoints = config.get("api_endpoints", {})
-    print(f"\nAPI ENDPOINTS:")
+    print("\nAPI ENDPOINTS:")
     print(f"  Backend:  {endpoints.get('backend_api', 'N/A')}")
     print(f"  Frontend: {endpoints.get('frontend', 'N/A')}")
     print(f"  Supabase: {endpoints.get('supabase_url', 'N/A')}")
@@ -489,7 +489,7 @@ def cmd_config(args):
 
     # Budget
     budget = config.get("budget", {})
-    print(f"\nBUDGET:")
+    print("\nBUDGET:")
     print(f"  Total: ${budget.get('total_aud', 0)} AUD")
     breakdown = budget.get("breakdown", {})
     for item, details in breakdown.items():
@@ -498,14 +498,14 @@ def cmd_config(args):
 
     # Approval Gates
     gates = config.get("approval_gates", {})
-    print(f"\nAPPROVAL GATES:")
+    print("\nAPPROVAL GATES:")
     for gate_id, gate in gates.items():
         status = "[x]" if gate.get("approved") else "[ ]"
         print(f"  {status} {gate_id}: {gate.get('trigger', 'N/A')} (${gate.get('cost_aud', 0)})")
 
     # Limits
     limits = config.get("limits", {})
-    print(f"\nTEST LIMITS:")
+    print("\nTEST LIMITS:")
     print(f"  Leads to source: {limits.get('leads_to_source', 'N/A')}")
     print(f"  Leads to enrich: {limits.get('leads_to_enrich', 'N/A')}")
     print(f"  Emails/day:      {limits.get('emails_per_day', 'N/A')}")

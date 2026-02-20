@@ -5,9 +5,10 @@ PHASE: 4 (Engines)
 TASK: ENG-007
 """
 
-import pytest
 from datetime import datetime
 from uuid import uuid4
+
+import pytest
 
 from src.engines.linkedin import LinkedInEngine, get_linkedin_engine
 from src.models.base import ChannelType, LeadStatus

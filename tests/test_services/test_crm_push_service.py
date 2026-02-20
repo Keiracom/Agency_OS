@@ -13,15 +13,10 @@ import pytest
 
 from src.services.crm_push_service import (
     CRMConfig,
-    CRMPipeline,
-    CRMPushResult,
     CRMPushService,
-    CRMStage,
-    CRMUser,
     LeadData,
     MeetingData,
 )
-
 
 # ============================================================================
 # Fixtures

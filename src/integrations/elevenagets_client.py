@@ -29,7 +29,7 @@ import logging
 import re
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -407,7 +407,7 @@ class ElevenAgentsClient:
             "lead_id": lead_id,
             "agency_id": agency_id,
             "voice_call_record_id": voice_call_record_id,
-            "initiated_at": datetime.now(timezone.utc).isoformat(),
+            "initiated_at": datetime.now(UTC).isoformat(),
         }
         if campaign_id:
             metadata["campaign_id"] = campaign_id

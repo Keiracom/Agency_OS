@@ -5,13 +5,12 @@ PHASE: 4 (Engines)
 TASK: ENG-005
 """
 
-import pytest
-from datetime import datetime
 from uuid import uuid4
+
+import pytest
 
 from src.engines.email import EmailEngine, get_email_engine
 from src.models.base import ChannelType, LeadStatus
-from src.exceptions import ResourceRateLimitError
 
 
 @pytest.fixture

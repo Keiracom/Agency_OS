@@ -16,7 +16,6 @@ from fastapi.testclient import TestClient
 from src.api.main import app
 from src.engines.base import EngineResult
 
-
 # ============================================
 # Fixtures
 # ============================================

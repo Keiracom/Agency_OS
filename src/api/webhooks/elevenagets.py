@@ -16,11 +16,11 @@ RULES APPLIED:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
-from sqlalchemy import select, update
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import get_db
@@ -274,7 +274,7 @@ async def _update_voice_call_record(
     # Build update dict
     update_data: dict[str, Any] = {
         "elevenagets_call_id": elevenagets_call_id,
-        "updated_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(UTC),
     }
 
     if status:

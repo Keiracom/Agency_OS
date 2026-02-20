@@ -19,7 +19,6 @@ Communication Flow:
     - Each agent reads/writes specific locations
 """
 
-from typing import Dict, List
 
 
 def get_instructions() -> str:
@@ -64,7 +63,7 @@ AGENT PIPELINE COORDINATION
 """
 
 
-def get_code_templates() -> Dict[str, str]:
+def get_code_templates() -> dict[str, str]:
     """Return code templates for coordination."""
     return {
         "monitoring_commands": MONITORING_COMMANDS,
@@ -72,7 +71,7 @@ def get_code_templates() -> Dict[str, str]:
     }
 
 
-def get_agent_config() -> Dict[str, Dict]:
+def get_agent_config() -> dict[str, dict]:
     """Return configuration for each agent."""
     return {
         "builder": {
@@ -96,7 +95,7 @@ def get_agent_config() -> Dict[str, Dict]:
     }
 
 
-def get_issue_routing() -> Dict[str, Dict[str, str]]:
+def get_issue_routing() -> dict[str, dict[str, str]]:
     """Return issue routing configuration."""
     return {
         "MISSING": {"handler": "Builder", "written_to": "builder_tasks/pending.md"},
@@ -108,7 +107,7 @@ def get_issue_routing() -> Dict[str, Dict[str, str]]:
     }
 
 
-def get_communication_protocol() -> List[Dict[str, str]]:
+def get_communication_protocol() -> list[dict[str, str]]:
     """Return the communication protocol between agents."""
     return [
         {"from": "Builder", "to": "QA", "via": "src/, frontend/", "content": "Code to scan"},
@@ -119,7 +118,7 @@ def get_communication_protocol() -> List[Dict[str, str]]:
     ]
 
 
-def get_conflict_resolution() -> Dict[str, str]:
+def get_conflict_resolution() -> dict[str, str]:
     """Return conflict resolution strategies."""
     return {
         "same_file_edit": "Fixer makes surgical fixes with markers; Builder works around them",
@@ -135,7 +134,7 @@ def check_pipeline_status(
     critical_count: int,
     high_count: int,
     fixes_verified_pct: float
-) -> Dict[str, any]:
+) -> dict[str, any]:
     """
     Check if the pipeline is complete.
 
@@ -170,7 +169,7 @@ def check_pipeline_status(
     }
 
 
-def _get_blockers(missing: int, incomplete: int, critical: int, high: int, verified: float) -> List[str]:
+def _get_blockers(missing: int, incomplete: int, critical: int, high: int, verified: float) -> list[str]:
     """Get list of blockers preventing pipeline completion."""
     blockers = []
     if missing > 0:

@@ -4,8 +4,8 @@ Hunter.io Email Discovery & Verification Skill
 Usage: python run.py --domain "example.com" [--first "John" --last "Smith"]
        python run.py --verify "email@example.com"
 """
-import asyncio
 import argparse
+import asyncio
 import json
 import os
 import sys
@@ -14,6 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 import httpx
@@ -23,7 +24,7 @@ BASE_URL = "https://api.hunter.io/v2"
 
 async def domain_search(domain: str, first: str = None, last: str = None, limit: int = 5):
     api_key = os.environ.get("HUNTER_API_KEY")
-    
+
     async with httpx.AsyncClient(timeout=30.0) as client:
         if first and last:
             # Email finder
@@ -42,13 +43,13 @@ async def domain_search(domain: str, first: str = None, last: str = None, limit:
                 "limit": limit,
             }
             response = await client.get(f"{BASE_URL}/domain-search", params=params)
-        
+
         if response.status_code != 200:
             print(f"Error: {response.status_code} - {response.text}")
             sys.exit(1)
-        
+
         data = response.json().get("data", {})
-        
+
         output = {
             "domain": domain,
             "organization": data.get("organization"),
@@ -66,24 +67,24 @@ async def domain_search(domain: str, first: str = None, last: str = None, limit:
             "total_found": len(data.get("emails", [])),
             "cost_aud": 0.15,
         }
-        
+
         print(json.dumps(output, indent=2))
         return output
 
 
 async def verify_email(email: str):
     api_key = os.environ.get("HUNTER_API_KEY")
-    
+
     async with httpx.AsyncClient(timeout=30.0) as client:
         params = {"api_key": api_key, "email": email}
         response = await client.get(f"{BASE_URL}/email-verifier", params=params)
-        
+
         if response.status_code != 200:
             print(f"Error: {response.status_code} - {response.text}")
             sys.exit(1)
-        
+
         data = response.json().get("data", {})
-        
+
         output = {
             "email": email,
             "status": data.get("status"),
@@ -91,7 +92,7 @@ async def verify_email(email: str):
             "deliverable": data.get("status") == "valid",
             "cost_aud": 0.08,
         }
-        
+
         print(json.dumps(output, indent=2))
         return output
 
@@ -101,7 +102,7 @@ async def main(domain: str = None, verify: str = None, first: str = None, last: 
     if not api_key:
         print("Error: HUNTER_API_KEY not set")
         sys.exit(1)
-    
+
     if verify:
         return await verify_email(verify)
     elif domain:
@@ -119,8 +120,8 @@ if __name__ == "__main__":
     parser.add_argument("--last", help="Last name (with domain)")
     parser.add_argument("--limit", type=int, default=5, help="Max results")
     args = parser.parse_args()
-    
+
     if not args.domain and not args.verify:
         parser.error("Must provide either --domain or --verify")
-    
+
     asyncio.run(main(args.domain, args.verify, args.first, args.last, args.limit))

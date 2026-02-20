@@ -9,7 +9,6 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any
 
-
 # ============================================================================
 # Client Fixtures
 # ============================================================================

@@ -14,13 +14,13 @@ RULES APPLIED:
   - Test healthy and degraded states
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from fastapi import status
 from httpx import ASGITransport, AsyncClient
 
 from src.api.main import app
-
 
 # ============================================
 # Fixtures

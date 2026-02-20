@@ -28,18 +28,16 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
-from prefect import flow, task, get_run_logger
+from prefect import flow, get_run_logger, task
 from prefect.concurrency.asyncio import concurrency as prefect_concurrency
 from prefect.task_runners import ConcurrentTaskRunner
-from sqlalchemy import and_, select, update, text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 
 from src.integrations.supabase import get_db_session
 from src.models.base import (
     CampaignStatus,
-    LeadStatus,
 )
 
 logger = logging.getLogger(__name__)
@@ -98,7 +96,7 @@ async def fetch_voice_queue_task(agency_id: str | None = None) -> list[dict[str,
         List of lead dicts with lead_id and related info
     """
     run_logger = get_run_logger()
-    
+
     async with get_db_session() as db:
         query = text("""
             SELECT 
@@ -136,18 +134,18 @@ async def fetch_voice_queue_task(agency_id: str | None = None) -> list[dict[str,
                   OR lp.last_voice_attempt < NOW() - INTERVAL '24 hours'
               )
         """)
-        
+
         params = {"campaign_status": CampaignStatus.ACTIVE.value}
-        
+
         if agency_id:
             query = text(str(query) + " AND lp.agency_id = :agency_id")
             params["agency_id"] = agency_id
-        
+
         query = text(str(query) + " ORDER BY lp.als_score DESC LIMIT 50")
-        
+
         result = await db.execute(query, params)
         rows = result.fetchall()
-        
+
         leads = []
         for row in rows:
             leads.append({
@@ -165,7 +163,7 @@ async def fetch_voice_queue_task(agency_id: str | None = None) -> list[dict[str,
                 "campaign_name": row.campaign_name,
                 "client_id": str(row.client_id),
             })
-        
+
         run_logger.info(f"Fetched {len(leads)} leads for voice queue")
         return leads
 
@@ -188,17 +186,17 @@ async def validate_call_task(lead: dict[str, Any]) -> dict[str, Any] | None:
         Lead dict with compliance info if valid, None if not compliant
     """
     run_logger = get_run_logger()
-    
+
     try:
         # Import here to avoid circular imports
         from src.services.voice_compliance_validator import validate_call
-        
+
         result = await validate_call(
             phone=lead["phone"],
             lead_id=lead["lead_id"],
             campaign_id=lead["campaign_id"],
         )
-        
+
         if result.get("status") == COMPLIANCE_OK:
             lead["compliance_status"] = COMPLIANCE_OK
             return lead
@@ -209,7 +207,7 @@ async def validate_call_task(lead: dict[str, Any]) -> dict[str, Any] | None:
                 f"Lead {lead['lead_id']} outside calling hours, "
                 f"next window: {next_window}"
             )
-            
+
             # Update lead_pool with next scheduled time
             async with get_db_session() as db:
                 await db.execute(
@@ -221,14 +219,14 @@ async def validate_call_task(lead: dict[str, Any]) -> dict[str, Any] | None:
                     {"next_window": next_window, "lead_id": lead["lead_id"]}
                 )
                 await db.commit()
-            
+
             return None
         else:
             run_logger.warning(
                 f"Lead {lead['lead_id']} failed compliance: {result.get('reason')}"
             )
             return None
-            
+
     except Exception as e:
         run_logger.error(f"Compliance validation error for lead {lead['lead_id']}: {e}")
         return None
@@ -255,10 +253,10 @@ async def build_context_task(lead: dict[str, Any]) -> dict[str, Any] | None:
         Context dict for the call, or None on failure
     """
     run_logger = get_run_logger()
-    
+
     try:
         from src.services.voice_context_builder import build_call_context
-        
+
         context = await build_call_context(
             lead_id=lead["lead_id"],
             campaign_id=lead["campaign_id"],
@@ -273,7 +271,7 @@ async def build_context_task(lead: dict[str, Any]) -> dict[str, Any] | None:
             },
             sdk_spend_cap=SDK_SPEND_CAP_PER_LEAD,
         )
-        
+
         if context:
             context["lead_id"] = lead["lead_id"]
             context["campaign_id"] = lead["campaign_id"]
@@ -284,7 +282,7 @@ async def build_context_task(lead: dict[str, Any]) -> dict[str, Any] | None:
         else:
             run_logger.warning(f"Failed to build context for lead {lead['lead_id']}")
             return None
-            
+
     except Exception as e:
         run_logger.error(f"Context build error for lead {lead['lead_id']}: {e}")
         return None
@@ -302,13 +300,13 @@ async def log_context_task(context: dict[str, Any]) -> str | None:
         voice_call_id (UUID string) or None on failure
     """
     run_logger = get_run_logger()
-    
+
     try:
         async with get_db_session() as db:
             voice_call_id = str(uuid4())
             context_id = str(uuid4())
             now = datetime.utcnow()
-            
+
             # Create voice_calls record as INITIATED
             await db.execute(
                 text("""
@@ -332,7 +330,7 @@ async def log_context_task(context: dict[str, Any]) -> str | None:
                     "updated_at": now,
                 }
             )
-            
+
             # Create voice_call_context record
             await db.execute(
                 text("""
@@ -349,17 +347,17 @@ async def log_context_task(context: dict[str, Any]) -> str | None:
                     "created_at": now,
                 }
             )
-            
+
             await db.commit()
-            
+
             run_logger.info(
                 f"Logged context for voice_call {voice_call_id}, lead {context['lead_id']}"
             )
-            
+
             # Add voice_call_id to context for later use
             context["voice_call_id"] = voice_call_id
             return voice_call_id
-            
+
     except Exception as e:
         run_logger.error(f"Failed to log context for lead {context['lead_id']}: {e}")
         return None
@@ -384,7 +382,7 @@ async def initiate_call_task(
     """
     run_logger = get_run_logger()
     agency_id = context.get("agency_id", "default")
-    
+
     try:
         # Use Prefect concurrency to limit calls per agency
         async with prefect_concurrency(
@@ -392,17 +390,17 @@ async def initiate_call_task(
             occupy=1,
         ):
             from src.integrations.elevenagets_client import get_elevenagets_client
-            
+
             client = await get_elevenagets_client()
-            
+
             result = await client.initiate_call(
                 phone=context["phone"],
                 voice_call_id=voice_call_id,
                 context=context,
             )
-            
+
             call_sid = result.get("call_sid")
-            
+
             if call_sid:
                 # Update voice_calls with call_sid
                 async with get_db_session() as db:
@@ -419,7 +417,7 @@ async def initiate_call_task(
                         }
                     )
                     await db.commit()
-                
+
                 run_logger.info(
                     f"Initiated call {call_sid} for lead {context['lead_id']}"
                 )
@@ -427,7 +425,7 @@ async def initiate_call_task(
             else:
                 await _handle_dial_failure(voice_call_id, context["lead_id"], "No call_sid returned")
                 return None
-                
+
     except Exception as e:
         run_logger.error(f"Failed to initiate call for lead {context['lead_id']}: {e}")
         await _handle_dial_failure(voice_call_id, context["lead_id"], str(e))
@@ -453,24 +451,24 @@ async def monitor_outcomes_task(
         Summary of call outcomes
     """
     run_logger = get_run_logger()
-    
+
     if not call_sids:
         return {"monitored": 0, "completed": 0, "failed": 0}
-    
+
     start_time = datetime.utcnow()
     completed_calls = set()
     failed_calls = set()
-    
+
     while True:
         elapsed = (datetime.utcnow() - start_time).total_seconds()
-        
+
         if elapsed >= timeout_seconds:
             run_logger.warning(
                 f"Monitoring timeout reached. {len(call_sids) - len(completed_calls) - len(failed_calls)} "
                 f"calls still pending"
             )
             break
-        
+
         async with get_db_session() as db:
             result = await db.execute(
                 text("""
@@ -481,7 +479,7 @@ async def monitor_outcomes_task(
                 {"call_sids": call_sids}
             )
             rows = result.fetchall()
-            
+
             for row in rows:
                 if row.status in (
                     CALL_STATUS_COMPLETED,
@@ -491,22 +489,22 @@ async def monitor_outcomes_task(
                     completed_calls.add(row.call_sid)
                 elif row.status in (CALL_STATUS_DIAL_FAILED, CALL_STATUS_FAILED):
                     failed_calls.add(row.call_sid)
-        
+
         # Check if all calls are resolved
         if len(completed_calls) + len(failed_calls) >= len(call_sids):
             run_logger.info("All calls resolved")
             break
-        
+
         # Wait before next poll
         await asyncio.sleep(10)
-    
+
     summary = {
         "monitored": len(call_sids),
         "completed": len(completed_calls),
         "failed": len(failed_calls),
         "pending": len(call_sids) - len(completed_calls) - len(failed_calls),
     }
-    
+
     run_logger.info(f"Monitoring complete: {summary}")
     return summary
 
@@ -523,7 +521,7 @@ async def _handle_dial_failure(
 ) -> None:
     """Handle a failed dial attempt with retry logic."""
     logger.error(f"Dial failed for voice_call {voice_call_id}: {reason}")
-    
+
     async with get_db_session() as db:
         # Get current retry count
         result = await db.execute(
@@ -534,7 +532,7 @@ async def _handle_dial_failure(
         )
         row = result.fetchone()
         retry_count = (row.retry_count or 0) if row else 0
-        
+
         if retry_count < MAX_RETRY_ATTEMPTS - 1:
             # Schedule retry
             next_retry = datetime.utcnow() + timedelta(minutes=RETRY_DELAY_MINUTES)
@@ -574,7 +572,7 @@ async def _handle_dial_failure(
                     "voice_call_id": voice_call_id,
                 }
             )
-            
+
             # Log to audit_logs
             await db.execute(
                 text("""
@@ -593,7 +591,7 @@ async def _handle_dial_failure(
                 }
             )
             logger.warning(f"Max retries exceeded for voice_call {voice_call_id}")
-        
+
         await db.commit()
 
 
@@ -607,20 +605,20 @@ def _is_within_calling_hours() -> bool:
     - Sunday/Public Holidays: DISABLED
     """
     from zoneinfo import ZoneInfo
-    
+
     aest = ZoneInfo("Australia/Sydney")
     now = datetime.now(aest)
-    
+
     # Sunday is disabled
     if now.weekday() == 6:
         return False
-    
+
     hour = now.hour
-    
+
     # Saturday: 09:00-17:00
     if now.weekday() == 5:
         return 9 <= hour < 17
-    
+
     # Monday-Friday: 09:00-20:00
     return 9 <= hour < 20
 
@@ -652,7 +650,7 @@ async def voice_outreach_flow(agency_id: str | None = None) -> dict[str, Any]:
     """
     run_logger = get_run_logger()
     flow_start = datetime.utcnow()
-    
+
     # Pre-check: Verify we're within calling hours
     if not _is_within_calling_hours():
         run_logger.info("Outside permitted calling hours. Skipping flow execution.")
@@ -661,9 +659,9 @@ async def voice_outreach_flow(agency_id: str | None = None) -> dict[str, Any]:
             "reason": "outside_calling_hours",
             "timestamp": flow_start.isoformat(),
         }
-    
+
     run_logger.info(f"Starting voice outreach flow (agency_id={agency_id})")
-    
+
     results = {
         "status": "completed",
         "flow_start": flow_start.isoformat(),
@@ -674,50 +672,50 @@ async def voice_outreach_flow(agency_id: str | None = None) -> dict[str, Any]:
         "call_outcomes": {},
         "errors": [],
     }
-    
+
     try:
         # Step 1: Fetch voice queue
         leads = await fetch_voice_queue_task(agency_id=agency_id)
         results["leads_fetched"] = len(leads)
-        
+
         if not leads:
             run_logger.info("No leads in voice queue")
             return results
-        
+
         # Step 2: Validate calls (parallel)
         validated_leads = []
         validation_tasks = [validate_call_task(lead) for lead in leads]
         validation_results = await asyncio.gather(*validation_tasks, return_exceptions=True)
-        
+
         for result in validation_results:
             if isinstance(result, Exception):
                 results["errors"].append(str(result))
             elif result is not None:
                 validated_leads.append(result)
-        
+
         results["leads_validated"] = len(validated_leads)
-        
+
         if not validated_leads:
             run_logger.info("No leads passed validation")
             return results
-        
+
         # Step 3: Build contexts (parallel)
         contexts = []
         context_tasks = [build_context_task(lead) for lead in validated_leads]
         context_results = await asyncio.gather(*context_tasks, return_exceptions=True)
-        
+
         for result in context_results:
             if isinstance(result, Exception):
                 results["errors"].append(str(result))
             elif result is not None:
                 contexts.append(result)
-        
+
         results["contexts_built"] = len(contexts)
-        
+
         if not contexts:
             run_logger.info("No contexts built successfully")
             return results
-        
+
         # Step 4: Log contexts and create voice_calls records
         voice_call_ids = []
         for context in contexts:
@@ -725,7 +723,7 @@ async def voice_outreach_flow(agency_id: str | None = None) -> dict[str, Any]:
             if voice_call_id:
                 context["voice_call_id"] = voice_call_id
                 voice_call_ids.append(voice_call_id)
-        
+
         # Step 5: Initiate calls (with concurrency limit)
         call_sids = []
         for context in contexts:
@@ -736,19 +734,19 @@ async def voice_outreach_flow(agency_id: str | None = None) -> dict[str, Any]:
                 )
                 if call_sid:
                     call_sids.append(call_sid)
-        
+
         results["calls_initiated"] = len(call_sids)
-        
+
         # Step 6: Monitor outcomes
         if call_sids:
             outcomes = await monitor_outcomes_task(call_sids)
             results["call_outcomes"] = outcomes
-        
+
         results["flow_end"] = datetime.utcnow().isoformat()
         run_logger.info(f"Voice outreach flow completed: {results}")
-        
+
         return results
-        
+
     except Exception as e:
         run_logger.error(f"Voice outreach flow error: {e}")
         results["status"] = "error"

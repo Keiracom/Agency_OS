@@ -38,10 +38,10 @@ def load_json(filepath: Path, default=None):
         default = {}
     try:
         if filepath.exists():
-            with open(filepath, "r", encoding="utf-8") as f:
+            with open(filepath, encoding="utf-8") as f:
                 return json.load(f)
         return default
-    except (json.JSONDecodeError, IOError):
+    except (OSError, json.JSONDecodeError):
         return default
 
 

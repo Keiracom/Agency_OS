@@ -6,13 +6,13 @@ PHASE: 4 (Engines)
 TASK: ENG-010
 """
 
-import pytest
-from datetime import datetime, timedelta
+from datetime import datetime
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
-from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.engines.closer import CloserEngine, get_closer_engine, INTENT_MAP
-from src.engines.base import EngineResult
+import pytest
+
+from src.engines.closer import INTENT_MAP, CloserEngine, get_closer_engine
 from src.models.base import ChannelType, IntentType, LeadStatus
 
 
@@ -88,9 +88,9 @@ class MockLead:
         self.company = kwargs.get("company", "Test Company")
         self.status = kwargs.get("status", LeadStatus.IN_SEQUENCE)
         self.als_score = kwargs.get("als_score", 75)
-        self.last_replied_at = kwargs.get("last_replied_at", None)
+        self.last_replied_at = kwargs.get("last_replied_at")
         self.reply_count = kwargs.get("reply_count", 0)
-        self.next_outreach_at = kwargs.get("next_outreach_at", None)
+        self.next_outreach_at = kwargs.get("next_outreach_at")
         self.deleted_at = None
 
     @property

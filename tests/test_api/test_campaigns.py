@@ -15,17 +15,16 @@ RULES APPLIED:
   - Mock database for unit tests
 """
 
-import pytest
 from datetime import date, datetime, time
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
+import pytest
 from fastapi import status
 from httpx import ASGITransport, AsyncClient
 
 from src.api.main import app
 from src.models.base import CampaignStatus, ChannelType, MembershipRole, PermissionMode
-
 
 # ============================================
 # Fixtures

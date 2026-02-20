@@ -158,10 +158,10 @@ def load_json(filepath: Path, default=None):
         default = {}
     try:
         if filepath.exists():
-            with open(filepath, "r", encoding="utf-8") as f:
+            with open(filepath, encoding="utf-8") as f:
                 return json.load(f)
         return default
-    except (json.JSONDecodeError, IOError):
+    except (OSError, json.JSONDecodeError):
         return default
 
 
@@ -273,7 +273,7 @@ def cmd_start():
         # Journey key files
         journey_files = JOURNEY_KEY_FILES.get(next_task['phase_id'], [])
         if journey_files:
-            print(f"\n  Journey Key Files:")
+            print("\n  Journey Key Files:")
             for f in journey_files:
                 print(f"    - {f}")
 
@@ -284,7 +284,7 @@ def cmd_start():
                 # Task-specific key files
                 task_files = skill.get("key_files", [])
                 if task_files:
-                    print(f"\n  Task Key Files (READ THESE):")
+                    print("\n  Task Key Files (READ THESE):")
                     for f in task_files:
                         print(f"    -> {f}")
 

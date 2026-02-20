@@ -14,22 +14,18 @@ import pytest
 
 # Skip all tests in this module - parked pending coding overhaul (Directive #030)
 pytestmark = pytest.mark.skip(reason="E2E tests parked - Directive #030")
-import pytest_asyncio
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
-import uuid
+from unittest.mock import AsyncMock, MagicMock
 
 from tests.fixtures.database_fixtures import (
-    create_test_client,
-    create_test_campaign,
-    create_hot_lead,
-    create_warm_lead,
     create_email_resource,
-    create_phone_resource,
-    create_linkedin_resource,
+    create_hot_lead,
     create_lead_batch,
+    create_linkedin_resource,
+    create_phone_resource,
+    create_test_campaign,
+    create_test_client,
+    create_warm_lead,
 )
-
 
 # ============================================================================
 # Email Rate Limit Tests (50/day/domain)

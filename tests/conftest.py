@@ -8,14 +8,14 @@ TASK: TST-001
 import asyncio
 import os
 import uuid
+from collections.abc import AsyncGenerator, Generator
 from datetime import datetime, timedelta
-from typing import AsyncGenerator, Generator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # Set test environment before importing app modules
 os.environ["ENVIRONMENT"] = "development"  # Use development for tests (Settings model requires development/staging/production)

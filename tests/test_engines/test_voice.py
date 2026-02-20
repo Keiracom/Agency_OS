@@ -6,13 +6,13 @@ PHASE: 4 (Engines)
 TASK: ENG-008
 """
 
-import pytest
 from datetime import datetime
-from uuid import uuid4
 from unittest.mock import AsyncMock, patch
+from uuid import uuid4
+
+import pytest
 
 from src.engines.voice import VoiceEngine, get_voice_engine
-from src.engines.base import EngineResult
 from src.models.base import ChannelType, LeadStatus
 
 
@@ -91,12 +91,12 @@ class MockLead:
         self.company = kwargs.get("company", "Test Company")
         self.status = kwargs.get("status", LeadStatus.ENRICHED)
         self.als_score = kwargs.get("als_score", 75)
-        self.last_contacted_at = kwargs.get("last_contacted_at", None)
-        self.last_replied_at = kwargs.get("last_replied_at", None)
+        self.last_contacted_at = kwargs.get("last_contacted_at")
+        self.last_replied_at = kwargs.get("last_replied_at")
         self.reply_count = kwargs.get("reply_count", 0)
         self.deleted_at = None
         self.dncr_checked = kwargs.get("dncr_checked", False)
-        self.dncr_result = kwargs.get("dncr_result", None)
+        self.dncr_result = kwargs.get("dncr_result")
         self.timezone = kwargs.get("timezone", "Australia/Sydney")
 
     @property

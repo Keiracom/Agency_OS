@@ -35,7 +35,6 @@ from src.integrations.dncr import get_dncr_client
 from src.integrations.supabase import get_db_session
 from src.services.timezone_service import (
     AUSTRALIAN_STATE_TIMEZONES,
-    TimezoneService,
     get_timezone_service,
 )
 

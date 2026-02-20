@@ -5,14 +5,12 @@ PHASE: 16 (Conversion Intelligence)
 TASK: 16A-005 (tests)
 """
 
-import pytest
-from uuid import uuid4
 
 from src.detectors.weight_optimizer import (
-    WeightOptimizer,
+    COMPONENTS,
     DEFAULT_WEIGHTS,
     WEIGHT_BOUNDS,
-    COMPONENTS,
+    WeightOptimizer,
 )
 
 
@@ -63,7 +61,7 @@ class TestComponents:
     def test_component_names(self):
         """Component names match ALS formula."""
         expected = ["data_quality", "authority", "company_fit", "timing", "risk"]
-        assert COMPONENTS == expected
+        assert expected == COMPONENTS
 
 
 class TestWeightOptimizerInit:

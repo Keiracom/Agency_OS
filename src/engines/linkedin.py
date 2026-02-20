@@ -64,6 +64,10 @@ from src.models.activity import Activity
 from src.models.base import ChannelType
 from src.models.lead import Lead
 from src.models.linkedin_connection import LinkedInConnection
+from src.services.timezone_service import (
+    AUSTRALIAN_STATE_TIMEZONES,
+    get_optimal_linkedin_send_time,
+)
 
 # Rate limit (Rule 17) - Now configurable via settings
 # Unipile allows higher limits (80-100/day) but we default to conservative

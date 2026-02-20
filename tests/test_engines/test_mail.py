@@ -16,8 +16,8 @@ from src.engines.base import EngineResult
 from src.models.base import ChannelType, LeadStatus
 
 
-class MockLobClient:
-    """Mock Lob client for testing."""
+class MockClickSendClient:
+    """Mock ClickSend client for testing."""
 
     def __init__(self, should_fail: bool = False, invalid_address: bool = False):
         self.should_fail = should_fail
@@ -59,16 +59,16 @@ class MockLobClient:
         }
 
         if self.should_fail:
-            raise Exception("Lob API error")
+            raise Exception("ClickSend API error")
 
         return {
             "success": True,
             "letter_id": "ltr_123",
-            "url": "https://lob.com/letters/ltr_123",
+            "url": "https://clicksend.com/letters/ltr_123",
             "expected_delivery_date": "2025-12-25",
             "tracking_number": "TRACK123",
-            "carrier": "USPS",
-            "provider": "lob",
+            "carrier": "Australia Post",
+            "provider": "clicksend",
         }
 
     async def send_postcard(self, to_address, from_address, front_template_id, back_template_id, merge_variables, size="4x6"):
@@ -82,14 +82,14 @@ class MockLobClient:
         }
 
         if self.should_fail:
-            raise Exception("Lob API error")
+            raise Exception("ClickSend API error")
 
         return {
             "success": True,
             "postcard_id": "psc_123",
-            "url": "https://lob.com/postcards/psc_123",
+            "url": "https://clicksend.com/postcards/psc_123",
             "expected_delivery_date": "2025-12-25",
-            "provider": "lob",
+            "provider": "clicksend",
         }
 
     async def get_letter(self, letter_id):
@@ -97,7 +97,7 @@ class MockLobClient:
             "id": letter_id,
             "to": {"name": "Test Lead"},
             "from_": {"name": "Test Client"},
-            "url": "https://lob.com/letters/ltr_123",
+            "url": "https://clicksend.com/letters/ltr_123",
             "expected_delivery_date": "2025-12-25",
             "tracking_number": "TRACK123",
             "tracking_events": [],
@@ -193,7 +193,7 @@ class MockResult:
 @pytest.fixture
 def mail_engine():
     """Create mail engine with mock client."""
-    return MailEngine(lob_client=MockLobClient())
+    return MailEngine(clicksend_client=MockClickSendClient())
 
 
 @pytest.fixture
@@ -252,7 +252,7 @@ def test_singleton():
 @pytest.mark.asyncio
 async def test_verify_address_success():
     """Test successful address verification."""
-    engine = MailEngine(lob_client=MockLobClient())
+    engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
     lead = MockLead()
 
@@ -279,7 +279,7 @@ async def test_verify_address_success():
 @pytest.mark.asyncio
 async def test_verify_address_invalid():
     """Test address verification with invalid address."""
-    engine = MailEngine(lob_client=MockLobClient(invalid_address=True))
+    engine = MailEngine(clicksend_client=MockClickSendClient(invalid_address=True))
     mock_db = MockDB()
     lead = MockLead()
 
@@ -308,7 +308,7 @@ async def test_verify_address_invalid():
 @pytest.mark.asyncio
 async def test_send_letter_success(valid_to_address, valid_from_address):
     """Test successful letter sending."""
-    engine = MailEngine(lob_client=MockLobClient())
+    engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
     lead = MockLead(als_score=90)
     campaign = MockCampaign()
@@ -342,7 +342,7 @@ async def test_send_letter_success(valid_to_address, valid_from_address):
 @pytest.mark.asyncio
 async def test_send_letter_missing_template(valid_to_address, valid_from_address):
     """Test letter fails without template_id."""
-    engine = MailEngine(lob_client=MockLobClient())
+    engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
     lead = MockLead(als_score=90)
     campaign = MockCampaign()
@@ -375,7 +375,7 @@ async def test_send_letter_missing_template(valid_to_address, valid_from_address
 @pytest.mark.asyncio
 async def test_send_postcard_success(valid_to_address, valid_from_address):
     """Test successful postcard sending."""
-    engine = MailEngine(lob_client=MockLobClient())
+    engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
     lead = MockLead(als_score=90)
     campaign = MockCampaign()
@@ -407,7 +407,7 @@ async def test_send_postcard_success(valid_to_address, valid_from_address):
 @pytest.mark.asyncio
 async def test_send_postcard_missing_templates(valid_to_address, valid_from_address):
     """Test postcard fails without both template IDs."""
-    engine = MailEngine(lob_client=MockLobClient())
+    engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
     lead = MockLead(als_score=90)
     campaign = MockCampaign()
@@ -440,7 +440,7 @@ async def test_send_postcard_missing_templates(valid_to_address, valid_from_addr
 @pytest.mark.asyncio
 async def test_send_mail_low_als(valid_to_address, valid_from_address):
     """Test mail fails when ALS score is below 85."""
-    engine = MailEngine(lob_client=MockLobClient())
+    engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
     lead = MockLead(als_score=80)  # Below 85 threshold
 
@@ -466,7 +466,7 @@ async def test_send_mail_low_als(valid_to_address, valid_from_address):
 @pytest.mark.asyncio
 async def test_send_mail_als_exactly_85(valid_to_address, valid_from_address):
     """Test mail succeeds when ALS score is exactly 85."""
-    engine = MailEngine(lob_client=MockLobClient())
+    engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
     lead = MockLead(als_score=85)
     campaign = MockCampaign()
@@ -494,7 +494,7 @@ async def test_send_mail_als_exactly_85(valid_to_address, valid_from_address):
 @pytest.mark.asyncio
 async def test_send_mail_als_none(valid_to_address, valid_from_address):
     """Test mail fails when ALS score is None."""
-    engine = MailEngine(lob_client=MockLobClient())
+    engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
     lead = MockLead(als_score=None)
 
@@ -523,7 +523,7 @@ async def test_send_mail_als_none(valid_to_address, valid_from_address):
 @pytest.mark.asyncio
 async def test_send_mail_missing_to_address(valid_from_address):
     """Test mail fails without to_address."""
-    engine = MailEngine(lob_client=MockLobClient())
+    engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
     lead = MockLead(als_score=90)
     campaign = MockCampaign()
@@ -552,7 +552,7 @@ async def test_send_mail_missing_to_address(valid_from_address):
 @pytest.mark.asyncio
 async def test_send_mail_missing_from_address(valid_to_address):
     """Test mail fails without from_address."""
-    engine = MailEngine(lob_client=MockLobClient())
+    engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
     lead = MockLead(als_score=90)
     campaign = MockCampaign()
@@ -585,7 +585,7 @@ async def test_send_mail_missing_from_address(valid_to_address):
 @pytest.mark.asyncio
 async def test_get_mail_status(mock_db):
     """Test getting mail status."""
-    engine = MailEngine(lob_client=MockLobClient())
+    engine = MailEngine(clicksend_client=MockClickSendClient())
 
     result = await engine.get_mail_status(
         db=mock_db,
@@ -605,7 +605,7 @@ async def test_get_mail_status(mock_db):
 @pytest.mark.asyncio
 async def test_process_tracking_webhook_delivered():
     """Test processing tracking webhook for delivered mail."""
-    engine = MailEngine(lob_client=MockLobClient())
+    engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
     lead = MockLead()
     activity = MockActivity(lead_id=lead.id, provider_message_id="ltr_123")
@@ -636,7 +636,7 @@ async def test_process_tracking_webhook_delivered():
 @pytest.mark.asyncio
 async def test_process_tracking_webhook_in_transit():
     """Test processing tracking webhook for in-transit mail."""
-    engine = MailEngine(lob_client=MockLobClient())
+    engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
     lead = MockLead()
     activity = MockActivity(lead_id=lead.id, provider_message_id="ltr_123")
@@ -662,7 +662,7 @@ async def test_process_tracking_webhook_in_transit():
 @pytest.mark.asyncio
 async def test_process_tracking_webhook_missing_resource_id(mock_db):
     """Test webhook processing with missing resource_id."""
-    engine = MailEngine(lob_client=MockLobClient())
+    engine = MailEngine(clicksend_client=MockClickSendClient())
 
     result = await engine.process_tracking_webhook(
         db=mock_db,
@@ -681,7 +681,7 @@ async def test_process_tracking_webhook_missing_resource_id(mock_db):
 @pytest.mark.asyncio
 async def test_process_tracking_webhook_activity_not_found(mock_db):
     """Test webhook processing when activity not found."""
-    engine = MailEngine(lob_client=MockLobClient())
+    engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db._activity = None  # No activity found
 
     result = await engine.process_tracking_webhook(
@@ -704,7 +704,7 @@ async def test_process_tracking_webhook_activity_not_found(mock_db):
 @pytest.mark.asyncio
 async def test_activity_logging(valid_to_address, valid_from_address):
     """Test that mail activities are logged correctly."""
-    engine = MailEngine(lob_client=MockLobClient())
+    engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
     lead = MockLead(als_score=90)
     campaign = MockCampaign()
@@ -741,7 +741,7 @@ async def test_activity_logging(valid_to_address, valid_from_address):
 @pytest.mark.asyncio
 async def test_lead_update_on_success(valid_to_address, valid_from_address):
     """Test that lead is updated after successful mail send."""
-    engine = MailEngine(lob_client=MockLobClient())
+    engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
     lead = MockLead(als_score=90, last_contacted_at=None)
     campaign = MockCampaign()
@@ -774,7 +774,7 @@ async def test_lead_update_on_success(valid_to_address, valid_from_address):
 @pytest.mark.asyncio
 async def test_send_invalid_mail_type(valid_to_address, valid_from_address):
     """Test mail fails with invalid mail_type."""
-    engine = MailEngine(lob_client=MockLobClient())
+    engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
     lead = MockLead(als_score=90)
     campaign = MockCampaign()
@@ -806,7 +806,7 @@ async def test_send_invalid_mail_type(valid_to_address, valid_from_address):
 @pytest.mark.asyncio
 async def test_send_mail_api_error(valid_to_address, valid_from_address):
     """Test mail handling when Lob API fails."""
-    engine = MailEngine(lob_client=MockLobClient(should_fail=True))
+    engine = MailEngine(clicksend_client=MockClickSendClient(should_fail=True))
     mock_db = MockDB()
     lead = MockLead(als_score=90)
     campaign = MockCampaign()

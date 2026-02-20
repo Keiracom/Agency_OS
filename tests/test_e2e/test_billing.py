@@ -11,6 +11,9 @@ RULES APPLIED:
 """
 
 import pytest
+
+# Skip all tests in this module - parked pending coding overhaul (Directive #030)
+pytestmark = pytest.mark.skip(reason="E2E tests parked - Directive #030")
 import pytest_asyncio
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch

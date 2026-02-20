@@ -36,9 +36,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import BaseEngine, EngineResult
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
+from src.integrations.calendar_booking import generate_booking_link, send_booking_reply
 from src.models.activity import Activity
 from src.models.base import ChannelType, IntentType, LeadStatus
 from src.models.lead import Lead
+from src.services.lead_pool_service import LeadPoolService
 from src.services.reply_analyzer import ReplyAnalyzer
 from src.services.thread_service import ThreadService
 
@@ -184,6 +186,16 @@ class CloserEngine(BaseEngine):
             confidence = classification.get("confidence", 0.0)
             reasoning = classification.get("reasoning", "")
 
+            # Directive 048 Part F: Flag low confidence replies for human review
+            if confidence < 0.6:
+                await self._flag_for_human_review(
+                    db=db,
+                    lead_id=lead_id,
+                    confidence=confidence,
+                    intent=intent_str,
+                    message_preview=message[:200],
+                )
+
             # Log reply activity
             activity = await self._log_reply_activity(
                 db=db,
@@ -220,6 +232,7 @@ class CloserEngine(BaseEngine):
                 lead=lead,
                 intent=intent_enum,
                 confidence=confidence,
+                channel=channel,
                 reply_analysis=reply_analysis,
             )
 
@@ -429,6 +442,7 @@ class CloserEngine(BaseEngine):
         lead: Lead,
         intent: IntentType,
         confidence: float,
+        channel: ChannelType,
         reply_analysis: dict[str, Any] | None = None,
     ) -> list[str]:
         """
@@ -439,6 +453,7 @@ class CloserEngine(BaseEngine):
             lead: Lead to update
             intent: Classified intent
             confidence: Classification confidence
+            channel: Channel the reply came from
             reply_analysis: Phase 24D reply analysis results
 
         Returns:
@@ -452,9 +467,36 @@ class CloserEngine(BaseEngine):
 
         # Handle intent-specific logic
         if intent == IntentType.MEETING_REQUEST:
-            lead.status = LeadStatus.CONVERTED
-            actions.append("marked_as_converted")
-            actions.append("created_meeting_task")
+            # Directive 048: Generate personalized booking link and send automated reply
+            try:
+                # Generate personalized Calendly booking link
+                booking_link = await generate_booking_link(
+                    lead_email=lead.email,
+                    lead_name=lead.full_name,
+                    company_name=lead.company,
+                    client_id=lead.client_id,
+                )
+
+                # Send automated reply with booking link
+                await send_booking_reply(
+                    db=db,
+                    lead=lead,
+                    booking_link=booking_link,
+                )
+                actions.append("booking_link_generated")
+                actions.append("automated_reply_sent")
+            except Exception as e:
+                logger.warning(f"Failed to send booking link for lead {lead.id}: {e}")
+                actions.append("booking_link_failed")
+
+            # Status will be updated to CONVERTED when Calendly webhook confirms
+            # For now, mark as pending meeting
+            lead.status = LeadStatus.IN_SEQUENCE  # Keep in sequence until booking confirmed
+            if not lead.metadata:
+                lead.metadata = {}
+            lead.metadata["meeting_requested_at"] = datetime.utcnow().isoformat()
+            lead.metadata["awaiting_booking_confirmation"] = True
+            actions.append("awaiting_booking_confirmation")
 
         elif intent == IntentType.INTERESTED:
             if lead.status == LeadStatus.IN_SEQUENCE:
@@ -490,6 +532,17 @@ class CloserEngine(BaseEngine):
             await self._record_rejection(db, lead, "do_not_contact")
             actions.append("recorded_rejection_do_not_contact")
 
+            # Directive 055: Propagate STOP to lead_pool for cross-channel opt-out
+            # This ensures JIT validator blocks ALL channels (email, sms, linkedin, voice)
+            pool_service = LeadPoolService(db)
+            pool_lead = await pool_service.get_by_email(lead.email)
+            if pool_lead:
+                await pool_service.mark_unsubscribed(
+                    lead_pool_id=pool_lead["id"],
+                    reason=f"STOP reply via {channel.value}"
+                )
+                actions.append("pool_status_unsubscribed")
+
         elif intent == IntentType.OUT_OF_OFFICE:
             # Schedule follow-up for later (e.g., 2 weeks)
             lead.next_outreach_at = datetime.utcnow() + timedelta(days=14)
@@ -500,17 +553,33 @@ class CloserEngine(BaseEngine):
             actions.append("ignored_auto_reply")
 
         elif intent == IntentType.REFERRAL:
-            # Stop sequence, extract referral info, flag for new lead creation
+            # Directive 048: Auto-create new lead from referral reply content
             if lead.status == LeadStatus.IN_SEQUENCE:
                 lead.status = LeadStatus.ENRICHED
                 actions.append("stopped_sequence")
             actions.append("referral_received")
-            actions.append("created_referral_task")
-            # Store referral flag in lead metadata for downstream processing
+
+            # Store referral flag in lead metadata
             if not lead.metadata:
                 lead.metadata = {}
             lead.metadata["has_referral"] = True
             lead.metadata["referral_received_at"] = datetime.utcnow().isoformat()
+
+            # Auto-create new lead from referral
+            try:
+                referral_lead = await self._create_referral_lead(
+                    db=db,
+                    source_lead=lead,
+                    reply_analysis=reply_analysis,
+                )
+                if referral_lead:
+                    actions.append(f"referral_lead_created:{referral_lead}")
+                    lead.metadata["referral_lead_id"] = str(referral_lead)
+                else:
+                    actions.append("referral_extraction_pending")
+            except Exception as e:
+                logger.warning(f"Failed to create referral lead for {lead.id}: {e}")
+                actions.append("referral_lead_creation_failed")
 
         elif intent == IntentType.WRONG_PERSON:
             # Stop sequence, mark lead as invalid
@@ -532,12 +601,29 @@ class CloserEngine(BaseEngine):
                 f"ADMIN ALERT: Angry/complaint reply from lead {lead.id} - requires manual review"
             )
             actions.append("admin_review_required")
+
             # Store admin review flag in lead metadata
             if not lead.metadata:
                 lead.metadata = {}
             lead.metadata["admin_review_required"] = True
             lead.metadata["admin_review_reason"] = "angry_or_complaint"
             lead.metadata["admin_review_flagged_at"] = datetime.utcnow().isoformat()
+
+            # Directive 048: Fire admin notification via Supabase immediately
+            try:
+                await self._fire_admin_notification(
+                    db=db,
+                    notification_type="angry_complaint",
+                    client_id=lead.client_id,
+                    lead=lead,
+                    severity="high",
+                    message=f"Angry/complaint reply from {lead.full_name} ({lead.company}). "
+                            f"Requires immediate attention.",
+                )
+                actions.append("admin_notification_sent")
+            except Exception as e:
+                logger.error(f"Failed to send admin notification for {lead.id}: {e}")
+                actions.append("admin_notification_failed")
 
         # Phase 24D: Track objection in lead history
         if reply_analysis and reply_analysis.get("objection_type"):
@@ -621,6 +707,246 @@ class CloserEngine(BaseEngine):
                 "lead_id": lead.id,
             },
         )
+
+    async def _create_referral_lead(
+        self,
+        db: AsyncSession,
+        source_lead: Lead,
+        reply_analysis: dict[str, Any] | None,
+    ) -> UUID | None:
+        """
+        Create new lead from referral reply content (Directive 048).
+
+        Extracts referral info from reply and creates a new lead record,
+        adding it to the discovery queue for enrichment.
+
+        Args:
+            db: Database session
+            source_lead: The lead who made the referral
+            reply_analysis: Analyzed reply data
+
+        Returns:
+            UUID of created referral lead or None if extraction failed
+        """
+        try:
+            # Extract referral information using AI
+            referral_info = await self._extract_referral_info(reply_analysis)
+
+            if not referral_info or not referral_info.get("name"):
+                logger.warning(f"Could not extract referral info from lead {source_lead.id}")
+                return None
+
+            # Create lead in lead_pool (discovery queue)
+            query = text("""
+                INSERT INTO lead_pool (
+                    email, first_name, last_name, title,
+                    company_name, company_domain,
+                    enrichment_source, pool_status,
+                    enrichment_data
+                ) VALUES (
+                    :email, :first_name, :last_name, :title,
+                    :company_name, :company_domain,
+                    'referral', 'discovery_queue',
+                    :enrichment_data
+                )
+                ON CONFLICT (email) DO UPDATE
+                SET updated_at = NOW()
+                RETURNING id
+            """)
+
+            # Parse name into first/last
+            name_parts = referral_info.get("name", "").split(" ", 1)
+            first_name = name_parts[0] if name_parts else ""
+            last_name = name_parts[1] if len(name_parts) > 1 else ""
+
+            import json
+            enrichment_data = json.dumps({
+                "referral_source_lead_id": str(source_lead.id),
+                "referral_source_email": source_lead.email,
+                "referral_source_company": source_lead.company,
+                "referral_context": referral_info.get("context"),
+                "referral_received_at": datetime.utcnow().isoformat(),
+            })
+
+            result = await db.execute(
+                query,
+                {
+                    "email": referral_info.get("email", f"referral_{datetime.utcnow().timestamp()}@pending.local"),
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "title": referral_info.get("title"),
+                    "company_name": referral_info.get("company") or source_lead.company,
+                    "company_domain": referral_info.get("domain"),
+                    "enrichment_data": enrichment_data,
+                },
+            )
+            row = result.fetchone()
+            await db.commit()
+
+            if row:
+                logger.info(f"Created referral lead {row.id} from source {source_lead.id}")
+                return row.id
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Error creating referral lead: {e}")
+            return None
+
+    async def _extract_referral_info(
+        self,
+        reply_analysis: dict[str, Any] | None,
+    ) -> dict[str, Any] | None:
+        """
+        Extract referral contact info from reply analysis.
+
+        Uses AI to extract name, email, title, company from the referral mention.
+
+        Args:
+            reply_analysis: Analyzed reply data
+
+        Returns:
+            Dict with extracted referral info or None
+        """
+        if not reply_analysis:
+            return None
+
+        # Check if topics contain contact info
+        topics = reply_analysis.get("topics_mentioned", [])
+
+        # Basic extraction from topics (name patterns, email patterns)
+        referral_info = {}
+
+        for topic in topics:
+            # Look for email pattern
+            if "@" in topic and "." in topic:
+                referral_info["email"] = topic
+            # Look for common name indicators
+            elif topic.lower() in ["contact", "speak", "talk", "reach"]:
+                continue  # Skip action words
+            elif len(topic.split()) <= 3:  # Could be a name
+                referral_info["name"] = topic.title()
+
+        # If we found some info, return it
+        if referral_info.get("name") or referral_info.get("email"):
+            return referral_info
+
+        return None
+
+    async def _flag_for_human_review(
+        self,
+        db: AsyncSession,
+        lead_id: UUID,
+        confidence: float,
+        intent: str,
+        message_preview: str,
+    ) -> UUID | None:
+        """
+        Flag reply for human review (confidence <60%).
+
+        Directive 048 Part F: Low confidence replies go to human review queue,
+        not alerts.
+
+        Args:
+            db: Database session
+            lead_id: Lead UUID
+            confidence: Classification confidence
+            intent: Detected intent
+            message_preview: First 200 chars of message
+
+        Returns:
+            Review queue entry UUID or None
+        """
+        try:
+            from src.services.alert_service import get_alert_service
+
+            alert_service = get_alert_service(db)
+            return await alert_service.flag_reply_for_review(
+                lead_id=lead_id,
+                confidence=confidence,
+                intent=intent,
+                message_preview=message_preview,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to flag reply for human review: {e}")
+            return None
+
+    async def _fire_admin_notification(
+        self,
+        db: AsyncSession,
+        notification_type: str,
+        client_id: UUID,
+        lead: Lead,
+        severity: str = "medium",
+        message: str = "",
+    ) -> UUID | None:
+        """
+        Fire admin notification via Supabase (Directive 048).
+
+        Creates an immediate notification in admin_notifications table
+        for urgent attention.
+
+        Args:
+            db: Database session
+            notification_type: Type of notification (angry_complaint, quota_shortfall, etc.)
+            client_id: Client UUID
+            lead: Related lead
+            severity: Notification severity (low, medium, high, critical)
+            message: Notification message
+
+        Returns:
+            UUID of created notification or None
+        """
+        try:
+            import json
+
+            query = text("""
+                SELECT create_admin_notification(
+                    :notification_type,
+                    :client_id,
+                    :title,
+                    :message,
+                    :severity,
+                    :lead_id,
+                    :campaign_id,
+                    :metadata
+                ) as notification_id
+            """)
+
+            title = f"[{severity.upper()}] {notification_type.replace('_', ' ').title()}"
+
+            metadata = json.dumps({
+                "lead_email": lead.email,
+                "lead_name": lead.full_name,
+                "lead_company": lead.company,
+                "lead_title": lead.title,
+            })
+
+            result = await db.execute(
+                query,
+                {
+                    "notification_type": notification_type,
+                    "client_id": str(client_id),
+                    "title": title,
+                    "message": message,
+                    "severity": severity,
+                    "lead_id": str(lead.id),
+                    "campaign_id": str(lead.campaign_id) if lead.campaign_id else None,
+                    "metadata": metadata,
+                },
+            )
+            row = result.fetchone()
+            await db.commit()
+
+            if row and row.notification_id:
+                logger.info(f"Created admin notification {row.notification_id} for {notification_type}")
+                return row.notification_id
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Error creating admin notification: {e}")
+            return None
 
     async def _update_thread_outcome(
         self,

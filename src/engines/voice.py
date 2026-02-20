@@ -1,12 +1,12 @@
 """
 Contract: src/engines/voice.py
-Purpose: Voice engine using Vapi and Cartesia for AI voice calls
+Purpose: Voice engine using Vapi and ElevenLabs for AI voice calls
 Layer: 3 - engines
 Imports: models, integrations, services
 Consumers: orchestration only
 
 FILE: src/engines/voice.py
-PURPOSE: Voice engine using Vapi + Twilio + Cartesia for AI voice calls
+PURPOSE: Voice engine using Vapi + Twilio + ElevenLabs for AI voice calls
 PHASE: 4 (Engines), modified Phase 16 for Conversion Intelligence, Phase 17 for Vapi
 TASK: ENG-008, 16E-003, CRED-007
 DEPENDENCIES:
@@ -26,11 +26,11 @@ PHASE 16 CHANGES:
   - Added content_snapshot capture for WHAT Detector learning
   - Tracks touch_number, sequence context, outcome, and duration
 PHASE 17 CHANGES:
-  - Replaced Synthflow with Vapi + Cartesia stack
-  - Vapi orchestrates: STT (built-in) -> LLM (Claude) -> TTS (Cartesia)
-TTS MIGRATION (2026-01):
-  - Primary TTS: Cartesia (sonic-2 model, 90ms latency)
-  - Fallback TTS: ElevenLabs (kept for compatibility)
+  - Replaced Synthflow with Vapi + ElevenLabs stack
+  - Vapi orchestrates: STT (built-in) -> LLM (Claude) -> TTS (ElevenLabs)
+TTS (2026-02):
+  - Sole TTS: ElevenLabs Flash v2.5
+  - Cartesia removed from stack
 HYBRID LLM ARCHITECTURE (2026-01):
   - Primary LLM (90%): Groq Llama 4 Maverick (200ms) - fast responses, booking flow
   - Complex LLM (10%): Claude 3.5 Haiku (400ms) - objection handling, competitor comparisons
@@ -212,16 +212,16 @@ class VoiceEngine(OutreachEngine):
     Flow:
     1. Create/get assistant for campaign
     2. Initiate outbound call via Twilio (through Vapi)
-    3. Vapi orchestrates: STT (built-in) -> LLM (Claude) -> TTS (Cartesia)
+    3. Vapi orchestrates: STT (built-in) -> LLM (Claude) -> TTS (ElevenLabs)
     4. Webhook receives call result
     5. Log activity + transcript
     """
 
-    # Default voice - Cartesia "professional-female" (sonic-2 model)
-    # Fallback: ElevenLabs "Adam" voice ID: pNInz6obpgDQGcFmaJgB
-    DEFAULT_VOICE_ID = "a0e99841-438c-4a64-b679-ae501e7d6091"  # Cartesia professional voice
-    DEFAULT_VOICE_PROVIDER = "cartesia"
-    DEFAULT_VOICE_MODEL = "sonic-2"  # 90ms latency, or use "sonic-turbo" for 40ms
+    # Default voice - ElevenLabs "Adam" (professional male)
+    # See: https://elevenlabs.io/voice-library
+    DEFAULT_VOICE_ID = "pNInz6obpgDQGcFmaJgB"  # ElevenLabs "Adam" voice
+    DEFAULT_VOICE_PROVIDER = "11labs"
+    DEFAULT_VOICE_MODEL = "eleven_flash_v2_5"  # Flash v2.5 for low latency
 
     # Hybrid LLM configuration
     # Primary (90%): Groq for fast responses
@@ -344,9 +344,9 @@ class VoiceEngine(OutreachEngine):
             campaign_id: Campaign UUID
             script: System prompt/script for the assistant
             first_message: Opening message for calls
-            voice_id: Voice ID (optional, uses Cartesia default)
-            voice_provider: TTS provider ("cartesia" or "11labs" for fallback)
-            voice_model: Voice model (e.g., "sonic-2", "sonic-turbo")
+            voice_id: Voice ID (optional, uses ElevenLabs default)
+            voice_provider: TTS provider ("11labs")
+            voice_model: Voice model (e.g., "eleven_flash_v2_5")
 
         Returns:
             assistant_id to store in campaign record
@@ -393,8 +393,8 @@ class VoiceEngine(OutreachEngine):
             campaign_id: Campaign UUID
             script: Base script for the assistant
             first_message: Opening message for calls
-            voice_id: Voice ID (optional, uses Cartesia default)
-            voice_provider: TTS provider ("cartesia" or "11labs")
+            voice_id: Voice ID (optional, uses ElevenLabs default)
+            voice_provider: TTS provider ("11labs")
             voice_model: Voice model (e.g., "sonic-2", "sonic-turbo")
 
         Returns:
@@ -973,7 +973,7 @@ Always be respectful of their time."""
         - Open calls with specific, relevant hooks
         - Handle objections with company-specific responses
         - Navigate conversations intelligently
-        
+
         Note:
             sdk_enrichment parameter removed per FCO-002 deprecation.
 
@@ -1115,7 +1115,7 @@ Be specific and actionable. Return valid JSON only."""
         1. Generates voice KB for the lead using Smart Prompt system
         2. Enhances the script with KB data
         3. Creates the Vapi assistant
-        
+
         Note:
             sdk_enrichment parameter removed per FCO-002 deprecation.
 
@@ -1125,9 +1125,9 @@ Be specific and actionable. Return valid JSON only."""
             lead_id: Lead UUID for KB generation
             script: Base system prompt/script
             first_message: Opening message
-            voice_id: Voice ID (optional, uses Cartesia default)
-            voice_provider: TTS provider ("cartesia" or "11labs" for fallback)
-            voice_model: Voice model (e.g., "sonic-2", "sonic-turbo")
+            voice_id: Voice ID (optional, uses ElevenLabs default)
+            voice_provider: TTS provider ("11labs")
+            voice_model: Voice model (e.g., "eleven_flash_v2_5")
 
         Returns:
             EngineResult with assistant_id and KB data
@@ -1295,7 +1295,7 @@ def get_voice_engine() -> VoiceEngine:
 # [x] Phase 16: content_snapshot captured for WHAT Detector
 # [x] Phase 16: outcome, duration, touch_number tracked
 # [x] Phase 16: led_to_booking flag for converting touches
-# [x] Phase 17: Vapi + Cartesia stack (STT handled by Vapi, ElevenLabs fallback available)
+# [x] Phase 17: Vapi + ElevenLabs stack (STT handled by Vapi)
 # [x] Voice retry: busy=2hr, no_answer=next business day (TODO.md #3)
 # [x] Voice retry: MAX_RETRIES=3 enforced
 # [x] Voice retry: VoiceRetryService integration in process_call_webhook

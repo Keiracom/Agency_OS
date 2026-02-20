@@ -154,6 +154,18 @@ class LeadPool(Base, UUIDMixin, TimestampMixin):
     last_enriched_at: Mapped[datetime | None] = mapped_column(nullable=True)
     enrichment_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
+    # ===== ENRICHMENT PROVENANCE (CEO Directive #057) =====
+    # Supports Spam Act "conspicuous publication" defence
+    enrichment_source_url: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="URL where email was publicly listed (LinkedIn, company site, GMB, etc.)",
+    )
+    enrichment_captured_at: Mapped[datetime | None] = mapped_column(
+        nullable=True,
+        comment="Timestamp when enrichment data was captured - proves public listing",
+    )
+
     # ===== ENRICHMENT LINEAGE (Phase WF-001: Waterfall Reliability Shift) =====
     enrichment_lineage: Mapped[list[dict] | None] = mapped_column(
         JSONB,

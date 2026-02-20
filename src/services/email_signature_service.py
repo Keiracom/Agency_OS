@@ -39,6 +39,16 @@ TEXT_SIGNATURE_TEMPLATE = """---
 {company}{tagline_line}
 {contact_line}{address_line}"""
 
+# Plain text signature template with unsubscribe (Directive 057)
+TEXT_SIGNATURE_WITH_UNSUBSCRIBE_TEMPLATE = """---
+{name}
+{title}
+
+{company}{tagline_line}
+{contact_line}{address_line}
+---
+Unsubscribe: {unsubscribe_url}"""
+
 # HTML signature template (with emojis from EMAIL.md spec)
 HTML_SIGNATURE_TEMPLATE = """<div class="email-signature" style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
     <p style="margin: 0;">---</p>
@@ -46,6 +56,18 @@ HTML_SIGNATURE_TEMPLATE = """<div class="email-signature" style="font-family: Ar
     <p style="margin: 2px 0 0 0; color: #666;">{title}</p>
     <p style="margin: 12px 0 4px 0;"><strong>{company}</strong>{tagline_span}</p>
     {contact_line}{address_line}{calendar_line}
+</div>"""
+
+# HTML signature template with unsubscribe (Directive 057)
+HTML_SIGNATURE_WITH_UNSUBSCRIBE_TEMPLATE = """<div class="email-signature" style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+    <p style="margin: 0;">---</p>
+    <p style="margin: 8px 0 0 0; font-weight: bold;">{name}</p>
+    <p style="margin: 2px 0 0 0; color: #666;">{title}</p>
+    <p style="margin: 12px 0 4px 0;"><strong>{company}</strong>{tagline_span}</p>
+    {contact_line}{address_line}{calendar_line}
+    <p style="margin: 16px 0 0 0; font-size: 11px; color: #999;">
+        <a href="{unsubscribe_url}" style="color: #999; text-decoration: underline;">Unsubscribe</a>
+    </p>
 </div>"""
 
 
@@ -63,6 +85,7 @@ def generate_signature_text(
     website: str | None = None,
     address: str | None = None,
     calendar_url: str | None = None,
+    unsubscribe_url: str | None = None,
 ) -> str:
     """
     Generate plain text email signature.
@@ -76,6 +99,8 @@ def generate_signature_text(
     phone {phone} | web {domain}
     location {address}
 
+    Directive 057: Includes unsubscribe link when provided.
+
     Args:
         name: Full name of sender
         title: Job title
@@ -85,6 +110,7 @@ def generate_signature_text(
         website: Website URL (domain extracted automatically)
         address: Physical address/location
         calendar_url: Calendly or meeting booking URL
+        unsubscribe_url: Unsubscribe link (Directive 057)
 
     Returns:
         Plain text signature string
@@ -112,15 +138,26 @@ def generate_signature_text(
     if address:
         address_line = f"L: {address}\n"
 
-    # Build final signature
-    signature = TEXT_SIGNATURE_TEMPLATE.format(
-        name=name,
-        title=title or "",
-        company=company_name or "",
-        tagline_line=tagline_line,
-        contact_line=contact_line,
-        address_line=address_line,
-    )
+    # Build final signature (with or without unsubscribe link)
+    if unsubscribe_url:
+        signature = TEXT_SIGNATURE_WITH_UNSUBSCRIBE_TEMPLATE.format(
+            name=name,
+            title=title or "",
+            company=company_name or "",
+            tagline_line=tagline_line,
+            contact_line=contact_line,
+            address_line=address_line,
+            unsubscribe_url=unsubscribe_url,
+        )
+    else:
+        signature = TEXT_SIGNATURE_TEMPLATE.format(
+            name=name,
+            title=title or "",
+            company=company_name or "",
+            tagline_line=tagline_line,
+            contact_line=contact_line,
+            address_line=address_line,
+        )
 
     # Clean up empty lines
     lines = [line for line in signature.split("\n") if line.strip() or line == "---"]
@@ -136,11 +173,14 @@ def generate_signature_html(
     website: str | None = None,
     address: str | None = None,
     calendar_url: str | None = None,
+    unsubscribe_url: str | None = None,
 ) -> str:
     """
     Generate HTML email signature with styling.
 
     Follows EMAIL.md spec format with emojis and professional styling.
+
+    Directive 057: Includes unsubscribe link when provided.
 
     Args:
         name: Full name of sender
@@ -151,6 +191,7 @@ def generate_signature_html(
         website: Website URL
         address: Physical address/location
         calendar_url: Calendly or meeting booking URL
+        unsubscribe_url: Unsubscribe link (Directive 057)
 
     Returns:
         HTML signature string
@@ -187,15 +228,28 @@ def generate_signature_html(
     if calendar_url:
         calendar_line = f'<p style="margin: 8px 0 0 0;"><a href="{calendar_url}" style="color: #0066cc; text-decoration: none;">Book a meeting</a></p>'
 
-    return HTML_SIGNATURE_TEMPLATE.format(
-        name=name,
-        title=title or "",
-        company=company_name or "",
-        tagline_span=tagline_span,
-        contact_line=contact_line,
-        address_line=address_line,
-        calendar_line=calendar_line,
-    )
+    # Use template with unsubscribe link if provided (Directive 057)
+    if unsubscribe_url:
+        return HTML_SIGNATURE_WITH_UNSUBSCRIBE_TEMPLATE.format(
+            name=name,
+            title=title or "",
+            company=company_name or "",
+            tagline_span=tagline_span,
+            contact_line=contact_line,
+            address_line=address_line,
+            calendar_line=calendar_line,
+            unsubscribe_url=unsubscribe_url,
+        )
+    else:
+        return HTML_SIGNATURE_TEMPLATE.format(
+            name=name,
+            title=title or "",
+            company=company_name or "",
+            tagline_span=tagline_span,
+            contact_line=contact_line,
+            address_line=address_line,
+            calendar_line=calendar_line,
+        )
 
 
 def get_display_name(
@@ -371,15 +425,19 @@ async def get_signature_for_persona(
     persona_id: UUID,
     include_calendar: bool = True,
     html: bool = True,
+    unsubscribe_url: str | None = None,
 ) -> str:
     """
     Get signature for a specific persona, using client branding.
+
+    Directive 057: Includes unsubscribe link when provided.
 
     Args:
         db: Database session
         persona_id: ClientPersona UUID
         include_calendar: Include calendly link in signature
         html: Return HTML (True) or plain text (False)
+        unsubscribe_url: Unsubscribe link (Directive 057)
 
     Returns:
         Formatted signature string
@@ -430,6 +488,7 @@ async def get_signature_for_persona(
             website=website,
             address=address,
             calendar_url=calendar_url,
+            unsubscribe_url=unsubscribe_url,
         )
     else:
         return generate_signature_text(
@@ -441,6 +500,7 @@ async def get_signature_for_persona(
             website=website,
             address=address,
             calendar_url=calendar_url,
+            unsubscribe_url=unsubscribe_url,
         )
 
 
@@ -450,9 +510,12 @@ async def get_signature_for_client(
     sender_name: str | None = None,
     sender_title: str | None = None,
     html: bool = True,
+    unsubscribe_url: str | None = None,
 ) -> str:
     """
     Get signature for a client (using default persona or explicit sender info).
+
+    Directive 057: Includes unsubscribe link when provided.
 
     Args:
         db: Database session
@@ -460,6 +523,7 @@ async def get_signature_for_client(
         sender_name: Optional explicit sender name (overrides default persona)
         sender_title: Optional explicit sender title
         html: Return HTML (True) or plain text (False)
+        unsubscribe_url: Unsubscribe link (Directive 057)
 
     Returns:
         Formatted signature string
@@ -518,6 +582,7 @@ async def get_signature_for_client(
             website=website,
             address=address,
             calendar_url=calendar_url,
+            unsubscribe_url=unsubscribe_url,
         )
     else:
         return generate_signature_text(
@@ -529,6 +594,7 @@ async def get_signature_for_client(
             website=website,
             address=address,
             calendar_url=calendar_url,
+            unsubscribe_url=unsubscribe_url,
         )
 
 
@@ -623,3 +689,6 @@ def append_signature_to_body(
 # [x] Uses persona data when available
 # [x] All functions have type hints
 # [x] All functions have docstrings
+# [x] Directive 057: unsubscribe_url parameter in all signature functions
+# [x] Directive 057: TEXT_SIGNATURE_WITH_UNSUBSCRIBE_TEMPLATE added
+# [x] Directive 057: HTML_SIGNATURE_WITH_UNSUBSCRIBE_TEMPLATE added

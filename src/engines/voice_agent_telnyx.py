@@ -26,7 +26,6 @@ LATENCY TARGET: <200ms RTT (Sydney PoP co-location)
 ACCENT: Australian (Lee, Aussie Adventure Guide)
 """
 
-import asyncio
 import base64
 import json
 import logging
@@ -35,7 +34,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Callable, Optional
 from uuid import UUID, uuid4
 
 import httpx
@@ -121,19 +119,19 @@ class CallMetrics:
     """Metrics for a single call."""
     call_id: str
     start_time: datetime
-    end_time: Optional[datetime] = None
+    end_time: datetime | None = None
     duration_seconds: int = 0
-    
+
     # Latency tracking
     avg_stt_latency_ms: int = 0
     avg_llm_latency_ms: int = 0
     avg_tts_latency_ms: int = 0
     avg_total_latency_ms: int = 0
-    
+
     # Interaction counts
     turns: int = 0
     interruptions: int = 0
-    
+
     # Cost
     cost_aud: Decimal = Decimal("0.00")
 
@@ -142,22 +140,22 @@ class CallMetrics:
 class ConversationContext:
     """Conversation state and context."""
     call_id: str
-    lead_id: Optional[UUID] = None
-    
+    lead_id: UUID | None = None
+
     # Conversation history
     messages: list[dict] = field(default_factory=list)
-    
+
     # Current state
     state: CallState = CallState.IDLE
     current_utterance: str = ""
-    
+
     # Voice settings
     voice_id: str = AUSTRALIAN_VOICES[DEFAULT_VOICE]["voice_id"]
     voice_name: str = AUSTRALIAN_VOICES[DEFAULT_VOICE]["name"]
-    
+
     # Personality
     system_prompt: str = ""
-    
+
     # Metrics
     metrics: CallMetrics = field(default_factory=lambda: CallMetrics(call_id=""))
 
@@ -229,47 +227,47 @@ CALL CONTEXT:
 class VoiceAgentTelnyxEngine(BaseEngine):
     """
     Raw Telnyx + ElevenLabs Flash v2.5 Voice AI Engine.
-    
+
     Replaces Vapi managed service for:
     - 95% cost reduction ($2.00 → $0.09 per minute)
     - <200ms latency (vs 800ms-1.5s with Vapi)
     - Australian accent authenticity
     - Sydney data residency (onshore)
-    
+
     Architecture:
     - Telnyx: SIP telephony (Sydney PoP)
     - ElevenLabs Flash v2.5: TTS (<75ms)
     - Groq: LLM inference (<150ms)
     - Deepgram: STT (<100ms)
     """
-    
+
     def __init__(
         self,
-        telnyx_api_key: Optional[str] = None,
-        elevenlabs_api_key: Optional[str] = None,
-        groq_api_key: Optional[str] = None,
+        telnyx_api_key: str | None = None,
+        elevenlabs_api_key: str | None = None,
+        groq_api_key: str | None = None,
     ):
         """Initialize with API keys."""
         self._telnyx_key = telnyx_api_key or os.getenv("TELNYX_API_KEY")
         self._elevenlabs_key = elevenlabs_api_key or os.getenv("ELEVENLABS_API_KEY")
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY")
-        
+
         # Initialize clients
         telnyx.api_key = self._telnyx_key
         self._elevenlabs = ElevenLabs(api_key=self._elevenlabs_key)
         self._groq = Groq(api_key=self._groq_key)
-        
+
         # Active calls
         self._active_calls: dict[str, ConversationContext] = {}
-    
+
     @property
     def name(self) -> str:
         return "voice_agent_telnyx"
-    
+
     # ============================================
     # CALL INITIATION
     # ============================================
-    
+
     async def initiate_call(
         self,
         to_number: str,
@@ -284,7 +282,7 @@ class VoiceAgentTelnyxEngine(BaseEngine):
     ) -> EngineResult[dict]:
         """
         Initiate an outbound Voice AI call.
-        
+
         Args:
             to_number: Destination phone number (E.164 format)
             from_number: Caller ID (must be Telnyx number)
@@ -295,14 +293,14 @@ class VoiceAgentTelnyxEngine(BaseEngine):
             call_reason: Why we're calling
             company_name: Our company name
             voice: Voice selection key (lee, aussie_adventure, charlotte)
-        
+
         Returns:
             EngineResult with call details
         """
         try:
             # Generate call ID
             call_id = str(uuid4())
-            
+
             # Build personality prompt
             system_prompt = AUSSIE_PERSONALITY_PROMPT.format(
                 company_name=company_name,
@@ -311,10 +309,10 @@ class VoiceAgentTelnyxEngine(BaseEngine):
                 lead_industry=lead_industry,
                 call_reason=call_reason,
             )
-            
+
             # Get voice config
             voice_config = AUSTRALIAN_VOICES.get(voice, AUSTRALIAN_VOICES[DEFAULT_VOICE])
-            
+
             # Create conversation context
             context = ConversationContext(
                 call_id=call_id,
@@ -325,10 +323,10 @@ class VoiceAgentTelnyxEngine(BaseEngine):
                 messages=[{"role": "system", "content": system_prompt}],
                 metrics=CallMetrics(call_id=call_id, start_time=datetime.utcnow()),
             )
-            
+
             # Store context
             self._active_calls[call_id] = context
-            
+
             # Initiate Telnyx call with streaming
             call = telnyx.Call.create(
                 connection_id=os.getenv("TELNYX_CONNECTION_ID"),
@@ -342,14 +340,14 @@ class VoiceAgentTelnyxEngine(BaseEngine):
                     json.dumps({"call_id": call_id, "lead_id": str(lead_id)}).encode()
                 ).decode(),
             )
-            
+
             context.state = CallState.RINGING
-            
+
             logger.info(
                 f"Initiated call {call_id} to {to_number} "
                 f"(voice: {voice_config['name']}, lead: {lead_id})"
             )
-            
+
             return EngineResult.ok(
                 data={
                     "call_id": call_id,
@@ -364,15 +362,15 @@ class VoiceAgentTelnyxEngine(BaseEngine):
                     "latency_target_ms": LATENCY_TARGETS["total_target"],
                 },
             )
-            
+
         except Exception as e:
             logger.exception(f"Failed to initiate call: {e}")
             return EngineResult.error(error=str(e))
-    
+
     # ============================================
     # WEBHOOK HANDLERS
     # ============================================
-    
+
     async def handle_webhook(
         self,
         call_id: str,
@@ -381,7 +379,7 @@ class VoiceAgentTelnyxEngine(BaseEngine):
     ) -> dict:
         """
         Handle Telnyx webhook events.
-        
+
         Events:
         - call.initiated
         - call.answered
@@ -394,13 +392,13 @@ class VoiceAgentTelnyxEngine(BaseEngine):
         if not context:
             logger.warning(f"Received webhook for unknown call: {call_id}")
             return {"status": "ignored"}
-        
+
         if event_type == "call.answered":
             context.state = CallState.CONNECTED
             # Start with greeting
             greeting = await self._generate_greeting(context)
             await self._speak(context, greeting)
-            
+
         elif event_type == "call.hangup":
             context.state = CallState.ENDED
             context.metrics.end_time = datetime.utcnow()
@@ -410,79 +408,79 @@ class VoiceAgentTelnyxEngine(BaseEngine):
             # Calculate cost
             minutes = context.metrics.duration_seconds / 60
             context.metrics.cost_aud = COSTS_AUD["total_per_minute"] * Decimal(str(minutes))
-            
+
             logger.info(
                 f"Call {call_id} ended. Duration: {context.metrics.duration_seconds}s, "
                 f"Cost: ${context.metrics.cost_aud} AUD"
             )
-            
+
             # Cleanup
             del self._active_calls[call_id]
-        
+
         return {"status": "processed", "event": event_type}
-    
+
     async def handle_media_stream(
         self,
         call_id: str,
         audio_data: bytes,
         track: str,
-    ) -> Optional[bytes]:
+    ) -> bytes | None:
         """
         Handle real-time audio stream from Telnyx.
-        
+
         This is the core conversation loop:
         1. Receive user audio
         2. STT → text
         3. LLM → response
         4. TTS → audio
         5. Return audio to stream
-        
+
         Args:
             call_id: Call identifier
             audio_data: Raw audio bytes (μ-law)
             track: "inbound" (user) or "outbound" (us)
-        
+
         Returns:
             Audio bytes to play back (if any)
         """
         context = self._active_calls.get(call_id)
         if not context or track != "inbound":
             return None
-        
+
         # Track latency
         start_time = datetime.utcnow()
-        
+
         # 1. STT: Convert speech to text
         stt_start = datetime.utcnow()
         transcript = await self._speech_to_text(audio_data)
         stt_latency = (datetime.utcnow() - stt_start).total_seconds() * 1000
-        
+
         if not transcript or len(transcript.strip()) < 2:
             return None  # Silence or noise
-        
+
         logger.debug(f"[{call_id}] User: {transcript}")
-        
+
         # Check for barge-in (user interrupting)
         if context.state == CallState.SPEAKING:
             await self._handle_barge_in(context, transcript)
             return None
-        
+
         context.state = CallState.PROCESSING
         context.current_utterance = transcript
         context.messages.append({"role": "user", "content": transcript})
-        
+
         # 2. LLM: Generate response
         llm_start = datetime.utcnow()
         response = await self._generate_response(context)
         llm_latency = (datetime.utcnow() - llm_start).total_seconds() * 1000
-        
+
         context.messages.append({"role": "assistant", "content": response})
-        
+
         # 3. TTS: Convert response to speech
         tts_start = datetime.utcnow()
         audio = await self._text_to_speech(response, context.voice_id)
         tts_latency = (datetime.utcnow() - tts_start).total_seconds() * 1000
-        
+
         # Track metrics
         total_latency = (datetime.utcnow() - start_time).total_seconds() * 1000
         context.metrics.turns += 1
@@ -502,20 +500,20 @@ class VoiceAgentTelnyxEngine(BaseEngine):
             (context.metrics.avg_total_latency_ms * (context.metrics.turns - 1) + total_latency)
             / context.metrics.turns
         )
-        
+
         logger.info(
             f"[{call_id}] Turn {context.metrics.turns}: "
             f"STT={stt_latency:.0f}ms, LLM={llm_latency:.0f}ms, "
             f"TTS={tts_latency:.0f}ms, Total={total_latency:.0f}ms"
         )
-        
+
         context.state = CallState.SPEAKING
         return audio
-    
+
     # ============================================
     # BARGE-IN HANDLING
     # ============================================
-    
+
     async def _handle_barge_in(
         self,
         context: ConversationContext,
@@ -523,43 +521,43 @@ class VoiceAgentTelnyxEngine(BaseEngine):
     ) -> None:
         """
         Handle user interruption (barge-in).
-        
+
         When user speaks while we're speaking:
         1. Immediately stop TTS playback
         2. Send media.stream.stop to Telnyx
         3. Process user's interruption
         """
         logger.info(f"[{context.call_id}] Barge-in detected: '{user_utterance[:50]}...'")
-        
+
         context.metrics.interruptions += 1
-        
+
         # Stop current audio playback via Telnyx
         try:
             # Send stop command to Telnyx media stream
             telnyx.Call.retrieve(context.call_id).stop_audio_playback()
         except Exception as e:
             logger.warning(f"Failed to stop audio playback: {e}")
-        
+
         # Transition to listening state
         context.state = CallState.LISTENING
-        
+
         # Log barge-in event
         barge_in = BargeInEvent(
             timestamp=datetime.utcnow(),
             interrupted_text=context.messages[-1].get("content", "") if context.messages else "",
             user_utterance=user_utterance,
         )
-        
+
         logger.debug(f"[{context.call_id}] Barge-in: interrupted at '{barge_in.interrupted_text[:30]}...'")
-    
+
     # ============================================
     # CORE FUNCTIONS
     # ============================================
-    
+
     async def _speech_to_text(self, audio_data: bytes) -> str:
         """
         Convert speech to text using Deepgram.
-        
+
         Target: <100ms latency
         """
         # TODO: Implement Deepgram STT
@@ -582,11 +580,11 @@ class VoiceAgentTelnyxEngine(BaseEngine):
             return result.get("results", {}).get("channels", [{}])[0].get(
                 "alternatives", [{}]
             )[0].get("transcript", "")
-    
+
     async def _generate_response(self, context: ConversationContext) -> str:
         """
         Generate response using Groq (Llama).
-        
+
         Target: <150ms latency
         """
         try:
@@ -600,11 +598,11 @@ class VoiceAgentTelnyxEngine(BaseEngine):
         except Exception as e:
             logger.error(f"Groq error: {e}")
             return "Sorry, I didn't catch that. Could you say that again?"
-    
+
     async def _text_to_speech(self, text: str, voice_id: str) -> bytes:
         """
         Convert text to speech using ElevenLabs Flash v2.5.
-        
+
         Target: <75ms latency
         """
         try:
@@ -618,16 +616,16 @@ class VoiceAgentTelnyxEngine(BaseEngine):
         except Exception as e:
             logger.error(f"ElevenLabs error: {e}")
             return b""
-    
+
     async def _speak(self, context: ConversationContext, text: str) -> None:
         """Speak text on the call."""
         context.state = CallState.SPEAKING
-        audio = await self._text_to_speech(text, context.voice_id)
-        
+        _audio = await self._text_to_speech(text, context.voice_id)
+
         # Send audio to Telnyx
         # This would go through the WebSocket stream
         logger.info(f"[{context.call_id}] Speaking: {text[:50]}...")
-    
+
     async def _generate_greeting(self, context: ConversationContext) -> str:
         """Generate opening greeting."""
         # Let LLM generate natural greeting based on context
@@ -635,18 +633,18 @@ class VoiceAgentTelnyxEngine(BaseEngine):
             "role": "user",
             "content": "[SYSTEM: Call connected. Generate your opening greeting.]"
         })
-        
+
         greeting = await self._generate_response(context)
-        
+
         # Remove the system message
         context.messages.pop()
-        
+
         return greeting
-    
+
     # ============================================
     # COST TRACKING
     # ============================================
-    
+
     def get_cost_comparison(self) -> dict:
         """Get cost comparison vs Vapi."""
         return {

@@ -192,6 +192,9 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         Integer, nullable=True
     )  # UTC offset in minutes
 
+    # === Generic Metadata Storage (for intent handlers) ===
+    metadata: Mapped[dict | None] = mapped_column(JSONB, default=dict, nullable=True)
+
     # === Assigned Resources ===
     assigned_email_resource: Mapped[str | None] = mapped_column(Text, nullable=True)
     assigned_linkedin_seat: Mapped[str | None] = mapped_column(Text, nullable=True)

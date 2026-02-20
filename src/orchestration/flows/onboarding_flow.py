@@ -685,6 +685,315 @@ async def resource_assignment_flow(
 
 
 # ============================================
+# DIRECTIVE 048 PART H: END-TO-END AUTOMATION
+# ============================================
+
+
+@task(name="auto_create_campaign", retries=2, retry_delay_seconds=5)
+async def auto_create_campaign_task(
+    client_id: str | UUID,
+    campaign_name: str | None = None,
+) -> dict[str, Any]:
+    """
+    Auto-create campaign on onboarding completion.
+
+    Directive 048 Part H: Campaign auto-creates and enters warm-up queue
+    without manual trigger.
+
+    Args:
+        client_id: Client UUID
+        campaign_name: Optional campaign name (defaults to "Primary Campaign")
+
+    Returns:
+        Dict with created campaign info
+    """
+    from uuid import uuid4
+
+    if isinstance(client_id, str):
+        client_id = UUID(client_id)
+
+    campaign_id = uuid4()
+    name = campaign_name or "Primary Campaign"
+
+    async with get_db_session() as db:
+        try:
+            # Get client info for campaign setup
+            result = await db.execute(
+                text("""
+                    SELECT business_name, icp_config, tier
+                    FROM clients
+                    WHERE id = :client_id AND deleted_at IS NULL
+                """),
+                {"client_id": str(client_id)},
+            )
+            client = result.fetchone()
+
+            if not client:
+                return {"success": False, "error": "Client not found"}
+
+            # Create campaign with warmup status
+            await db.execute(
+                text("""
+                    INSERT INTO campaigns (
+                        id, client_id, name, status, permission_mode,
+                        icp_config, warmup_status, created_at
+                    ) VALUES (
+                        :campaign_id, :client_id, :name, 'warmup',
+                        'co_pilot', :icp_config, 'pending', NOW()
+                    )
+                """),
+                {
+                    "campaign_id": str(campaign_id),
+                    "client_id": str(client_id),
+                    "name": name,
+                    "icp_config": json.dumps(client.icp_config) if client.icp_config else "{}",
+                },
+            )
+
+            # Create campaign quota status
+            await db.execute(
+                text("""
+                    INSERT INTO campaign_quota_status (
+                        campaign_id, client_id, target_lead_count, min_als_score
+                    ) VALUES (
+                        :campaign_id, :client_id, 100, 35
+                    )
+                """),
+                {"campaign_id": str(campaign_id), "client_id": str(client_id)},
+            )
+
+            await db.commit()
+
+            logger.info(f"Auto-created campaign {campaign_id} for client {client_id}")
+
+            return {
+                "success": True,
+                "campaign_id": str(campaign_id),
+                "campaign_name": name,
+                "status": "warmup",
+                "client_id": str(client_id),
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to auto-create campaign: {e}")
+            return {"success": False, "error": str(e)}
+
+
+@task(name="auto_allocate_pool", retries=2, retry_delay_seconds=10)
+async def auto_allocate_pool_task(
+    campaign_id: str | UUID,
+    client_id: str | UUID,
+) -> dict[str, Any]:
+    """
+    Auto-allocate leads to campaign pool when quota is met.
+
+    Directive 048 Part H: When batch controller confirms quota met,
+    automatically allocate leads to campaign pool.
+
+    Args:
+        campaign_id: Campaign UUID
+        client_id: Client UUID
+
+    Returns:
+        Dict with allocation result
+    """
+    if isinstance(campaign_id, str):
+        campaign_id = UUID(campaign_id)
+    if isinstance(client_id, str):
+        client_id = UUID(client_id)
+
+    async with get_db_session() as db:
+        try:
+            # Check quota status
+            quota_result = await db.execute(
+                text("""
+                    SELECT target_lead_count, current_qualified_count
+                    FROM campaign_quota_status
+                    WHERE campaign_id = :campaign_id
+                """),
+                {"campaign_id": str(campaign_id)},
+            )
+            quota = quota_result.fetchone()
+
+            if not quota:
+                return {"success": False, "error": "No quota status found"}
+
+            if quota.current_qualified_count < quota.target_lead_count:
+                return {
+                    "success": False,
+                    "error": "Quota not yet met",
+                    "current": quota.current_qualified_count,
+                    "target": quota.target_lead_count,
+                }
+
+            # Get qualified leads from pool not yet assigned to this campaign
+            leads_result = await db.execute(
+                text("""
+                    SELECT lp.id
+                    FROM lead_pool lp
+                    LEFT JOIN lead_assignments la ON lp.id = la.lead_pool_id
+                        AND la.campaign_id = :campaign_id
+                    WHERE lp.pool_status = 'available'
+                    AND lp.als_score >= 35
+                    AND la.id IS NULL
+                    ORDER BY lp.als_score DESC
+                    LIMIT :limit
+                """),
+                {
+                    "campaign_id": str(campaign_id),
+                    "limit": quota.target_lead_count,
+                },
+            )
+            leads = leads_result.fetchall()
+
+            allocated = 0
+            for lead in leads:
+                await db.execute(
+                    text("""
+                        INSERT INTO lead_assignments (
+                            id, lead_pool_id, client_id, campaign_id, status, created_at
+                        ) VALUES (
+                            gen_random_uuid(), :lead_pool_id, :client_id, :campaign_id,
+                            'assigned', NOW()
+                        )
+                        ON CONFLICT DO NOTHING
+                    """),
+                    {
+                        "lead_pool_id": str(lead.id),
+                        "client_id": str(client_id),
+                        "campaign_id": str(campaign_id),
+                    },
+                )
+                allocated += 1
+
+            # Update pool status for allocated leads
+            await db.execute(
+                text("""
+                    UPDATE lead_pool
+                    SET pool_status = 'assigned',
+                        updated_at = NOW()
+                    WHERE id IN (
+                        SELECT lead_pool_id FROM lead_assignments
+                        WHERE campaign_id = :campaign_id
+                    )
+                """),
+                {"campaign_id": str(campaign_id)},
+            )
+
+            # Update campaign status to active if enough leads allocated
+            if allocated >= quota.target_lead_count * 0.8:  # 80% threshold
+                await db.execute(
+                    text("""
+                        UPDATE campaigns
+                        SET status = 'active',
+                            warmup_status = 'completed',
+                            updated_at = NOW()
+                        WHERE id = :campaign_id
+                    """),
+                    {"campaign_id": str(campaign_id)},
+                )
+
+            await db.commit()
+
+            logger.info(f"Auto-allocated {allocated} leads to campaign {campaign_id}")
+
+            return {
+                "success": True,
+                "campaign_id": str(campaign_id),
+                "leads_allocated": allocated,
+                "target": quota.target_lead_count,
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to auto-allocate pool: {e}")
+            return {"success": False, "error": str(e)}
+
+
+@flow(
+    name="complete_onboarding_flow",
+    description="Complete onboarding with campaign auto-creation and pool allocation",
+)
+async def complete_onboarding_flow(
+    client_id: str | UUID,
+    tier: str,
+    website_url: str | None = None,
+) -> dict[str, Any]:
+    """
+    Complete onboarding flow with full automation.
+
+    Directive 048 Part H: On onboarding completion:
+    1. Campaign auto-creates and enters warm-up queue
+    2. Pool allocation happens automatically when quota met
+
+    Args:
+        client_id: Client UUID
+        tier: Pricing tier
+        website_url: Optional website URL for ICP extraction
+
+    Returns:
+        Dict with complete onboarding result
+    """
+    if isinstance(client_id, str):
+        client_id = UUID(client_id)
+
+    results = {
+        "client_id": str(client_id),
+        "tier": tier,
+        "steps_completed": [],
+    }
+
+    try:
+        # Step 1: Assign resources
+        resource_result = await assign_client_resources_task(
+            client_id=client_id,
+            tier=tier,
+        )
+        results["resource_assignment"] = resource_result
+        results["steps_completed"].append("resource_assignment")
+
+        # Step 2: Auto-create campaign
+        campaign_result = await auto_create_campaign_task(
+            client_id=client_id,
+        )
+        results["campaign_creation"] = campaign_result
+        results["steps_completed"].append("campaign_creation")
+
+        if not campaign_result.get("success"):
+            results["success"] = False
+            results["error"] = campaign_result.get("error")
+            return results
+
+        campaign_id = UUID(campaign_result["campaign_id"])
+
+        # Step 3: Trigger batch controller for lead discovery
+        from src.orchestration.flows.batch_controller_flow import batch_controller_flow
+
+        batch_result = await batch_controller_flow(str(campaign_id))
+        results["batch_controller"] = batch_result
+        results["steps_completed"].append("batch_controller")
+
+        # Step 4: If quota met, auto-allocate pool
+        if batch_result.get("final_quota_met"):
+            allocation_result = await auto_allocate_pool_task(
+                campaign_id=campaign_id,
+                client_id=client_id,
+            )
+            results["pool_allocation"] = allocation_result
+            results["steps_completed"].append("pool_allocation")
+
+        results["success"] = True
+        logger.info(f"Completed onboarding for client {client_id}: {results['steps_completed']}")
+
+        return results
+
+    except Exception as e:
+        logger.error(f"Onboarding flow failed: {e}")
+        results["success"] = False
+        results["error"] = str(e)
+        return results
+
+
+# ============================================
 # DEPLOYMENT
 # ============================================
 
@@ -724,7 +1033,16 @@ def deploy_onboarding_flows():
     )
     resource_deployment.apply()
 
-    logger.info("Deployed ICP onboarding and resource assignment flows")
+    # Directive 048: Complete onboarding flow with automation
+    complete_deployment = Deployment.build_from_flow(
+        flow=complete_onboarding_flow,
+        name="complete-onboarding",
+        work_queue_name="default",
+        tags=["onboarding", "automation"],
+    )
+    complete_deployment.apply()
+
+    logger.info("Deployed ICP onboarding, resource assignment, and complete onboarding flows")
 
 
 """

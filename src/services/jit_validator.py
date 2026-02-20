@@ -168,6 +168,12 @@ class JITValidator:
             if not warmup_result.is_valid:
                 return warmup_result
 
+        # 9. Check physical address (email only - CAN-SPAM/GDPR compliance, Directive 057)
+        if channel == "email":
+            address_result = await self._check_physical_address(client_id)
+            if not address_result.is_valid:
+                return address_result
+
         # All checks passed
         return JITValidationResult.ok(assignment_id=assignment["id"], lead_pool_id=lead_pool_id)
 
@@ -474,6 +480,44 @@ class JITValidator:
 
         return JITValidationResult(is_valid=True)
 
+    async def _check_physical_address(self, client_id: UUID) -> JITValidationResult:
+        """
+        Check if client has a physical address configured (Directive 057).
+
+        CAN-SPAM and GDPR require a physical address in all commercial emails.
+        This blocks email sends if the client's branding.address is missing.
+
+        Args:
+            client_id: Client UUID to check
+
+        Returns:
+            JITValidationResult - fails if no physical address configured
+        """
+        query = text("""
+            SELECT branding FROM clients
+            WHERE id = :client_id AND deleted_at IS NULL
+        """)
+
+        result = await self.session.execute(query, {"client_id": str(client_id)})
+        row = result.fetchone()
+
+        if not row:
+            return JITValidationResult.fail(
+                "Client not found",
+                "client_not_found",
+            )
+
+        branding = row.branding or {}
+        address = branding.get("address")
+
+        if not address or not str(address).strip():
+            return JITValidationResult.fail(
+                "Physical address required for email sends. Update client branding with address.",
+                "no_physical_address",
+            )
+
+        return JITValidationResult(is_valid=True)
+
 
 # ============================================
 # VERIFICATION CHECKLIST
@@ -489,6 +533,7 @@ class JITValidator:
 # [x] Timing checks (cooling, touch gap)
 # [x] Rate limit checks
 # [x] Warmup checks (email only)
+# [x] Physical address check (email only, Directive 057)
 # [x] Clear error codes for each failure
 # [x] No hardcoded credentials
 # [x] All methods async

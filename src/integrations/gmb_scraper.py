@@ -1,3 +1,10 @@
+# ============================================================================
+# DEPRECATED — Replaced by Bright Data Google Maps SERP (CEO Directive #031, Feb 2026)
+# See skills/enrichment/brightdata-gmb/
+# Cost reduction: $0.006/lead (DIY) → $0.0015/request (Bright Data) = 75% savings
+# Do NOT delete - marked for future cleanup by Dave
+# ============================================================================
+
 """
 Contract: src/integrations/gmb_scraper.py
 Purpose: DIY Google Maps Business scraper using Autonomous Stealth Browser
@@ -40,6 +47,7 @@ DESCRIPTION: DIY GMB scraper replaces Apify dependency for Google Maps data
 # =============================================================================
 
 import asyncio
+import contextlib
 import json
 import logging
 import random
@@ -48,8 +56,8 @@ import sys
 from dataclasses import dataclass, field
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Optional
-from urllib.parse import quote_plus, urljoin
+from typing import Any
+from urllib.parse import quote_plus
 
 import httpx
 from tenacity import (
@@ -64,17 +72,18 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 try:
     from tools.autonomous_browser import (
+        IdentityRotator,  # noqa: F401
         autonomous_fetch,
-        IdentityRotator,
-        create_stealth_context,
+        create_stealth_context,  # noqa: F401
     )
-    from tools.proxy_manager import get_proxy_list, get_manager as get_proxy_manager
+    from tools.proxy_manager import get_manager as get_proxy_manager  # noqa: F401
+    from tools.proxy_manager import get_proxy_list
     HAS_BROWSER = True
 except ImportError:
     HAS_BROWSER = False
 
 try:
-    from playwright.async_api import async_playwright
+    from playwright.async_api import async_playwright  # noqa: F401
     HAS_PLAYWRIGHT = True
 except ImportError:
     HAS_PLAYWRIGHT = False
@@ -131,30 +140,30 @@ class GMBResult:
     """Result from a GMB scrape operation."""
     found: bool = False
     source: str = "gmb_scraper"
-    
+
     # Core business data
-    name: Optional[str] = None
-    phone: Optional[str] = None
-    address: Optional[str] = None
-    website: Optional[str] = None
-    
+    name: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    website: str | None = None
+
     # Rating & reviews
-    rating: Optional[float] = None
-    review_count: Optional[int] = None
-    
+    rating: float | None = None
+    review_count: int | None = None
+
     # Additional data
-    category: Optional[str] = None
-    place_id: Optional[str] = None
-    google_maps_url: Optional[str] = None
-    opening_hours: Optional[list] = None
-    
+    category: str | None = None
+    place_id: str | None = None
+    google_maps_url: str | None = None
+    opening_hours: list | None = None
+
     # Cost tracking
     cost_aud: Decimal = Decimal("0.00")
     requests_made: int = 0
-    
+
     # Error info
-    error: Optional[str] = None
-    
+    error: str | None = None
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary matching Apify output format."""
         return {
@@ -218,58 +227,58 @@ class ParseError(GMBScraperError):
 class GMBParser:
     """
     Parser for Google Maps HTML/JSON data.
-    
+
     Google Maps embeds business data in JavaScript arrays within the HTML.
     This parser extracts that data using regex and JSON parsing.
     """
-    
+
     # Patterns for extracting data from Google Maps HTML
     PHONE_PATTERNS = [
         r'"(\+?[\d\s\-\(\)]{10,20})"',  # Phone in quotes
         r'tel:(\+?[\d\-]+)',  # tel: links
         r'data-phone-number="([^"]+)"',  # data attributes
     ]
-    
+
     RATING_PATTERN = r'(\d+\.?\d*)\s*(?:stars?|out of 5)'
     REVIEW_COUNT_PATTERN = r'(\d+(?:,\d+)*)\s*(?:reviews?|Google reviews?)'
-    
+
     ADDRESS_PATTERNS = [
         r'data-address="([^"]+)"',
         r'"formatted_address"\s*:\s*"([^"]+)"',
     ]
-    
+
     WEBSITE_PATTERNS = [
         r'"website"\s*:\s*"([^"]+)"',
         r'href="(https?://(?!www\.google)[^"]+)"[^>]*>.*?(?:Website|Visit)',
     ]
-    
+
     PLACE_ID_PATTERN = r'data-pid="([^"]+)"|/maps/place/[^/]+/data=[^"]*!1s([^!]+)'
-    
+
     @classmethod
     def parse_business_data(cls, html: str, url: str = "") -> GMBResult:
         """
         Parse business data from Google Maps HTML.
-        
+
         Args:
             html: Raw HTML content from Google Maps
             url: Original URL for reference
-        
+
         Returns:
             GMBResult with extracted data
         """
         result = GMBResult(google_maps_url=url)
-        
+
         if not html or len(html) < 1000:
             result.error = "Empty or insufficient HTML content"
             return result
-        
+
         # Check for blocks
         html_lower = html.lower()
         for indicator in BLOCK_INDICATORS:
             if indicator in html_lower:
                 result.error = f"Blocked: {indicator} detected"
                 return result
-        
+
         # Try to extract structured data from script tags
         structured_data = cls._extract_structured_data(html)
         if structured_data:
@@ -277,20 +286,20 @@ class GMBParser:
             if result.name:
                 result.found = True
                 return result
-        
+
         # Fall back to regex parsing
         result = cls._parse_with_regex(html, result)
-        
+
         if result.name or result.phone or result.address:
             result.found = True
-        
+
         return result
-    
+
     @classmethod
-    def _extract_structured_data(cls, html: str) -> Optional[dict]:
+    def _extract_structured_data(cls, html: str) -> dict | None:
         """
         Extract structured JSON data from Google Maps script tags.
-        
+
         Google embeds business data in JavaScript arrays like:
         window.APP_INITIALIZATION_STATE=[[...business data...]]
         """
@@ -300,7 +309,7 @@ class GMBParser:
             r'window\.APP_OPTIONS\s*=\s*({.*?});',
             r'"localizedPrimaryCategory"\s*:\s*"([^"]+)"',
         ]
-        
+
         for pattern in patterns:
             match = re.search(pattern, html, re.DOTALL)
             if match:
@@ -309,7 +318,7 @@ class GMBParser:
                     return data
                 except json.JSONDecodeError:
                     continue
-        
+
         # Try to find LD+JSON structured data
         ld_json_pattern = r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>'
         for match in re.finditer(ld_json_pattern, html, re.DOTALL | re.IGNORECASE):
@@ -321,9 +330,9 @@ class GMBParser:
                     return data
             except json.JSONDecodeError:
                 continue
-        
+
         return None
-    
+
     @classmethod
     def _parse_structured_data(cls, data: dict, result: GMBResult) -> GMBResult:
         """Parse structured LD+JSON or similar data."""
@@ -331,7 +340,7 @@ class GMBParser:
             result.name = data.get("name")
             result.phone = data.get("telephone")
             result.website = data.get("url") or data.get("website")
-            
+
             # Address
             address_data = data.get("address", {})
             if isinstance(address_data, dict):
@@ -345,7 +354,7 @@ class GMBParser:
                 result.address = ", ".join(filter(None, parts))
             elif isinstance(address_data, str):
                 result.address = address_data
-            
+
             # Rating
             rating_data = data.get("aggregateRating", {})
             if isinstance(rating_data, dict):
@@ -354,21 +363,21 @@ class GMBParser:
                     result.review_count = int(rating_data.get("reviewCount", 0))
                 except (ValueError, TypeError):
                     pass
-            
+
             # Category
             result.category = data.get("@type") or data.get("category")
-            
+
             # Opening hours
             hours = data.get("openingHoursSpecification", [])
             if hours:
                 result.opening_hours = hours
-        
+
         return result
-    
+
     @classmethod
     def _parse_with_regex(cls, html: str, result: GMBResult) -> GMBResult:
         """Parse using regex patterns as fallback."""
-        
+
         # Extract name from title
         title_match = re.search(r'<title>([^<]+)</title>', html, re.IGNORECASE)
         if title_match:
@@ -376,7 +385,7 @@ class GMBParser:
             # Clean up title (remove " - Google Maps" suffix)
             title = re.sub(r'\s*[-–]\s*Google Maps.*$', '', title)
             result.name = title.strip()
-        
+
         # Extract phone
         for pattern in cls.PHONE_PATTERNS:
             match = re.search(pattern, html)
@@ -387,30 +396,26 @@ class GMBParser:
                 if len(phone) >= 10:
                     result.phone = phone
                     break
-        
+
         # Extract rating
         rating_match = re.search(cls.RATING_PATTERN, html, re.IGNORECASE)
         if rating_match:
-            try:
+            with contextlib.suppress(ValueError):
                 result.rating = float(rating_match.group(1))
-            except ValueError:
-                pass
-        
+
         # Extract review count
         review_match = re.search(cls.REVIEW_COUNT_PATTERN, html, re.IGNORECASE)
         if review_match:
-            try:
+            with contextlib.suppress(ValueError):
                 result.review_count = int(review_match.group(1).replace(",", ""))
-            except ValueError:
-                pass
-        
+
         # Extract address
         for pattern in cls.ADDRESS_PATTERNS:
             match = re.search(pattern, html)
             if match:
                 result.address = match.group(1)
                 break
-        
+
         # Extract website
         for pattern in cls.WEBSITE_PATTERNS:
             match = re.search(pattern, html, re.IGNORECASE)
@@ -420,52 +425,52 @@ class GMBParser:
                     website = "https://" + website
                 result.website = website
                 break
-        
+
         # Extract place ID
         place_match = re.search(cls.PLACE_ID_PATTERN, html)
         if place_match:
             result.place_id = place_match.group(1) or place_match.group(2)
-        
+
         # Extract category (look for aria-label patterns)
         category_match = re.search(r'aria-label="([^"]+)\s+category"', html, re.IGNORECASE)
         if category_match:
             result.category = category_match.group(1)
-        
+
         return result
-    
+
     @classmethod
     def extract_search_results(cls, html: str) -> list[dict]:
         """
         Extract business listings from Google Maps search results.
-        
+
         Returns list of basic business info from search page.
         """
         results = []
-        
+
         # Look for search result items
         # Google Maps search results contain data in specific patterns
         item_pattern = r'<a[^>]*href="([^"]*maps/place/[^"]+)"[^>]*>.*?</a>'
-        
+
         for match in re.finditer(item_pattern, html, re.DOTALL):
             url = match.group(1)
             if not url.startswith("http"):
                 url = "https://www.google.com" + url
-            
+
             # Extract place name from URL
             name_match = re.search(r'/maps/place/([^/]+)/', url)
             name = name_match.group(1).replace("+", " ") if name_match else None
-            
+
             # Extract place ID
             pid_match = re.search(r'!1s([^!]+)', url)
             place_id = pid_match.group(1) if pid_match else None
-            
+
             if name or place_id:
                 results.append({
                     "name": name,
                     "place_id": place_id,
                     "url": url,
                 })
-        
+
         return results
 
 
@@ -476,31 +481,31 @@ class GMBParser:
 class GMBScraper:
     """
     Google Maps Business scraper using Autonomous Stealth Browser.
-    
+
     Tier 2 of Siege Waterfall - $0.006/lead (proxy cost only).
     Replaces Apify google-maps-scraper (~$0.02/lead).
-    
+
     Features:
     - Stealth browser with proxy rotation
     - Automatic retry with identity rotation
     - Rate limiting to avoid blocks
     - Cost tracking in AUD
     - Fallback parsing strategies
-    
+
     Usage:
         scraper = GMBScraper()
         result = await scraper.search_business("Acme Corp", "Sydney, Australia")
         print(result)
     """
-    
+
     def __init__(
         self,
-        proxy_list: Optional[list[str]] = None,
+        proxy_list: list[str] | None = None,
         rate_limit_ms: int = MIN_REQUEST_DELAY_MS,
     ):
         """
         Initialize GMB scraper.
-        
+
         Args:
             proxy_list: Optional list of proxy URLs. If not provided,
                        loads from proxy_manager.
@@ -511,7 +516,7 @@ class GMBScraper:
         self._last_request_time = 0
         self._request_count = 0
         self._total_cost = Decimal("0.00")
-        
+
         # Load proxies if not provided
         if not self._proxy_list and HAS_BROWSER:
             try:
@@ -519,42 +524,42 @@ class GMBScraper:
             except Exception as e:
                 logger.warning(f"Failed to load proxies: {e}")
                 self._proxy_list = []
-        
+
         # Identity rotator for stealth
         if HAS_BROWSER:
             self._rotator = IdentityRotator()
         else:
             self._rotator = None
-        
+
         logger.info(
             f"GMBScraper initialized with {len(self._proxy_list or [])} proxies"
         )
-    
+
     async def _rate_limit(self) -> None:
         """Apply rate limiting between requests."""
         import time
-        
+
         elapsed = (time.time() * 1000) - self._last_request_time
         delay_ms = random.randint(self._rate_limit_ms, MAX_REQUEST_DELAY_MS)
-        
+
         if elapsed < delay_ms:
             await asyncio.sleep((delay_ms - elapsed) / 1000)
-        
+
         self._last_request_time = time.time() * 1000
-    
+
     def _track_cost(self, requests: int = 1) -> Decimal:
         """Track cost for requests made."""
         cost = COST_PER_REQUEST_AUD * requests
         self._total_cost += cost
         self._request_count += requests
         return cost
-    
-    def _get_random_proxy(self) -> Optional[str]:
+
+    def _get_random_proxy(self) -> str | None:
         """Get a random proxy from the pool."""
         if not self._proxy_list:
             return None
         return random.choice(self._proxy_list)
-    
+
     async def search_business(
         self,
         name: str,
@@ -562,14 +567,14 @@ class GMBScraper:
     ) -> dict[str, Any]:
         """
         Search Google Maps for a business by name + location.
-        
+
         This searches Google Maps and returns the first matching result's
         full details.
-        
+
         Args:
             name: Business name to search for
             location: Location (city, state, country)
-        
+
         Returns:
             dict with business data matching Apify output format:
             - found: bool
@@ -579,13 +584,13 @@ class GMBScraper:
             - category, place_id, google_maps_url, opening_hours
         """
         logger.info(f"Searching for business: {name} in {location}")
-        
+
         # Build search query
         query = f"{name} {location}"
         search_url = GOOGLE_MAPS_SEARCH_URL.format(query=quote_plus(query))
-        
+
         await self._rate_limit()
-        
+
         # Fetch search results
         try:
             html = await self._fetch_with_stealth(search_url)
@@ -603,12 +608,12 @@ class GMBScraper:
                 cost_aud=COST_PER_REQUEST_AUD,
                 requests_made=1,
             ).to_dict()
-        
+
         # Parse the page - Google Maps search often shows details directly
         result = GMBParser.parse_business_data(html, search_url)
         result.cost_aud = cost
         result.requests_made = 1
-        
+
         # If we got a match, try to get more details
         if result.found and result.place_id:
             await self._rate_limit()
@@ -623,26 +628,26 @@ class GMBScraper:
                     result.requests_made += details.get("requests_made", 0)
             except Exception as e:
                 logger.warning(f"Failed to get additional details: {e}")
-        
+
         return result.to_dict()
-    
+
     async def scrape_details(
         self,
         place_url: str,
     ) -> dict[str, Any]:
         """
         Scrape full business details from a Google Maps URL.
-        
+
         Args:
             place_url: Full Google Maps URL for the place
-        
+
         Returns:
             dict with business data matching Apify output format
         """
         logger.info(f"Scraping details from: {place_url[:60]}...")
-        
+
         await self._rate_limit()
-        
+
         try:
             html = await self._fetch_with_stealth(place_url)
             cost = self._track_cost(1)
@@ -661,13 +666,13 @@ class GMBScraper:
                 cost_aud=COST_PER_REQUEST_AUD,
                 requests_made=1,
             ).to_dict()
-        
+
         result = GMBParser.parse_business_data(html, place_url)
         result.cost_aud = cost
         result.requests_made = 1
-        
+
         return result.to_dict()
-    
+
     async def batch_scrape(
         self,
         businesses: list[dict],
@@ -675,20 +680,20 @@ class GMBScraper:
     ) -> list[dict[str, Any]]:
         """
         Bulk scrape multiple businesses.
-        
+
         Args:
             businesses: List of dicts with 'name' and 'location' keys,
                        or 'url' for direct place URLs
             max_concurrent: Maximum concurrent requests
-        
+
         Returns:
             List of business data dicts
         """
         logger.info(f"Batch scraping {len(businesses)} businesses")
-        
+
         results = []
         semaphore = asyncio.Semaphore(max_concurrent)
-        
+
         async def scrape_one(biz: dict) -> dict:
             async with semaphore:
                 if "url" in biz:
@@ -698,14 +703,14 @@ class GMBScraper:
                         biz.get("name", ""),
                         biz.get("location", "Australia"),
                     )
-        
+
         # Process in batches
         tasks = [scrape_one(biz) for biz in businesses]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         # Convert exceptions to error results
         final_results = []
-        for i, r in enumerate(results):
+        for _i, r in enumerate(results):
             if isinstance(r, Exception):
                 final_results.append(GMBResult(
                     error=str(r),
@@ -714,18 +719,18 @@ class GMBScraper:
                 ).to_dict())
             else:
                 final_results.append(r)
-        
+
         # Log summary
         success_count = sum(1 for r in final_results if r.get("found"))
         total_cost = sum(Decimal(str(r.get("cost_aud", 0))) for r in final_results)
-        
+
         logger.info(
             f"Batch complete: {success_count}/{len(businesses)} found, "
             f"cost: ${total_cost:.4f} AUD"
         )
-        
+
         return final_results
-    
+
     @retry(
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.ProxyError)),
         stop=stop_after_attempt(MAX_RETRIES),
@@ -734,16 +739,16 @@ class GMBScraper:
     async def _fetch_with_stealth(self, url: str) -> str:
         """
         Fetch URL using stealth browser with proxy rotation.
-        
+
         Uses Playwright-based autonomous_browser if available,
         falls back to httpx with proxy rotation.
-        
+
         Args:
             url: URL to fetch
-        
+
         Returns:
             HTML content
-        
+
         Raises:
             BlockedError: If request is blocked
             httpx.TimeoutException: On timeout (will retry)
@@ -757,20 +762,20 @@ class GMBScraper:
                     use_cache=False,  # Don't cache GMB results
                     scroll=True,  # Load lazy content
                 )
-                
+
                 if result.get("success"):
                     return result.get("content", "")
-                
+
                 error = result.get("error", "Unknown error")
                 if any(ind in error.lower() for ind in BLOCK_INDICATORS):
                     raise BlockedError(error)
-                
+
                 logger.warning(f"Browser fetch failed: {error}")
             except BlockedError:
                 raise
             except Exception as e:
                 logger.warning(f"Browser fetch error: {e}")
-        
+
         # Fallback to httpx with proxy
         proxy = self._get_random_proxy()
         headers = {
@@ -782,30 +787,30 @@ class GMBScraper:
             "Connection": "keep-alive",
             "Upgrade-Insecure-Requests": "1",
         }
-        
+
         async with httpx.AsyncClient(
             proxy=proxy,
             timeout=30.0,
             follow_redirects=True,
         ) as client:
             response = await client.get(url, headers=headers)
-            
+
             # Check for blocks
             if response.status_code in (403, 429, 503):
                 raise BlockedError(f"HTTP {response.status_code}")
-            
+
             response.raise_for_status()
-            
+
             html = response.text
-            
+
             # Check content for block indicators
             html_lower = html.lower()
             for indicator in BLOCK_INDICATORS:
                 if indicator in html_lower:
                     raise BlockedError(f"Block indicator detected: {indicator}")
-            
+
             return html
-    
+
     def get_stats(self) -> dict[str, Any]:
         """Get scraper statistics."""
         return {
@@ -824,7 +829,7 @@ class GMBScraper:
 # SINGLETON FACTORY
 # ============================================
 
-_gmb_scraper: Optional[GMBScraper] = None
+_gmb_scraper: GMBScraper | None = None
 
 
 def get_gmb_scraper() -> GMBScraper:
@@ -845,13 +850,13 @@ async def scrape_google_business(
 ) -> dict[str, Any]:
     """
     Scrape Google Business data.
-    
+
     Drop-in replacement for Apify (deprecated FCO-003)().
-    
+
     Args:
         business_name: Name of the business to search
         location: Location to search in (default: Australia)
-    
+
     Returns:
         Business data dict matching Apify output format
     """
@@ -864,10 +869,10 @@ async def batch_scrape_google_business(
 ) -> list[dict[str, Any]]:
     """
     Batch scrape Google Business data.
-    
+
     Args:
         businesses: List of dicts with 'name' and 'location' keys
-    
+
     Returns:
         List of business data dicts
     """
@@ -882,33 +887,33 @@ async def batch_scrape_google_business(
 async def _cli_main():
     """CLI entry point."""
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="GMB Scraper CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
-    
+
     # Search command
     search_parser = subparsers.add_parser("search", help="Search for a business")
     search_parser.add_argument("name", help="Business name")
     search_parser.add_argument("--location", "-l", default="Australia", help="Location")
-    
+
     # Scrape command
     scrape_parser = subparsers.add_parser("scrape", help="Scrape a Maps URL")
     scrape_parser.add_argument("url", help="Google Maps URL")
-    
+
     # Stats command
-    stats_parser = subparsers.add_parser("stats", help="Show scraper stats")
-    
+    _stats_parser = subparsers.add_parser("stats", help="Show scraper stats")
+
     args = parser.parse_args()
-    
+
     if args.command == "search":
         result = await scrape_google_business(args.name, args.location)
         print(json.dumps(result, indent=2, default=str))
-    
+
     elif args.command == "scrape":
         scraper = get_gmb_scraper()
         result = await scraper.scrape_details(args.url)
         print(json.dumps(result, indent=2, default=str))
-    
+
     elif args.command == "stats":
         scraper = get_gmb_scraper()
         stats = scraper.get_stats()

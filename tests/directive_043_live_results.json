@@ -1,0 +1,145 @@
+{
+  "directive": "043",
+  "timestamp": "2026-02-18T01:55:00Z",
+  "status": "VALIDATED",
+  
+  "summary": {
+    "t_dm2_linkedin_posts": {
+      "validated": true,
+      "api_mode": "discover_by=profile_url",
+      "date_filter_supported": false,
+      "requires_local_filtering": true,
+      "cost_per_request_aud": 0.0015
+    },
+    "t_dm3_x_posts": {
+      "validated": true,
+      "api_mode": "discover_by=profile_url", 
+      "date_filter_supported": false,
+      "requires_local_filtering": true,
+      "cost_per_request_aud": 0.0015
+    }
+  },
+
+  "linkedin_posts_results": {
+    "lead_1_wayne_gant": {
+      "linkedin_url": "https://www.linkedin.com/in/wayne-gant-32b665209",
+      "snapshot_id": "sd_mlrdkih1211yq05iem",
+      "total_records": 15,
+      "valid_posts": 14,
+      "errors": 1,
+      "date_range": {
+        "oldest": "2025-08-24",
+        "newest": "2026-02-02"
+      },
+      "posts_within_90_days": 12,
+      "collection_duration_ms": 62241
+    },
+    "lead_2_darren_costa": {
+      "linkedin_url": "https://www.linkedin.com/in/darrendacosta",
+      "snapshot_id": "sd_mlrdmrv41wf23mrz4o",
+      "total_records": 23,
+      "valid_posts": 20,
+      "errors": 3,
+      "date_range": {
+        "oldest": "2016-08-10",
+        "newest": "2026-02-04"
+      },
+      "posts_within_90_days": 5,
+      "collection_duration_ms": 44687
+    },
+    "lead_3_ben_lestrange": {
+      "linkedin_url": "https://www.linkedin.com/in/ben-l-estrange-006a2222",
+      "snapshot_id": "sd_mlrdmsg221nmevwrh9",
+      "total_records": 15,
+      "valid_posts": 15,
+      "errors": 0,
+      "date_range": {
+        "oldest": "2024-10-15",
+        "newest": "2025-09-03"
+      },
+      "posts_within_90_days": 0,
+      "collection_duration_ms": 43208
+    },
+    "statistics": {
+      "total_leads_tested": 3,
+      "min_posts_per_lead": 14,
+      "max_posts_per_lead": 20,
+      "avg_posts_per_lead": 16.3,
+      "avg_posts_within_90_days": 5.7
+    }
+  },
+
+  "x_posts_results": {
+    "test_account": {
+      "handle": "@elikiiii",
+      "snapshot_id": "sd_mlrdmt221bnhyflw7h",
+      "total_posts": 10,
+      "errors": 0,
+      "collection_duration_ms": 19113
+    },
+    "lead_handles_tested": {
+      "wayne_gant": "not_found_on_website",
+      "darren_costa": "not_found_on_website",
+      "ben_lestrange": {
+        "handle": "@rtl_plumbers",
+        "source": "website_scrape",
+        "result": "dead_page",
+        "note": "Account does not exist"
+      }
+    }
+  },
+
+  "sample_post_content": {
+    "linkedin": [
+      {
+        "lead": "Wayne Gant",
+        "company": "Gant & Sons",
+        "date": "2026-02-02",
+        "text": "Just some .. not so small 1200WB members to get the year started. Working along side the Built team Gant and Sons completed the Drafting, Fabrication, Surface treatment, Delivery and Erection of approx 30t of steel for the first tower crane grillage assembly for the new Festival Tower 2 project. Looking forward to see this new Tower in the Adelaide sky line.",
+        "likes": 142,
+        "personalisation_value": "HIGH - mentions current project, partners, capabilities"
+      },
+      {
+        "lead": "Wayne Gant",
+        "company": "Gant & Sons",
+        "date": "2025-12-19",
+        "text": "From all of us here at Gant and Sons, We want to wish everyone a very merry Christmas and safe new years. We thank you for the support in 2025 and look forward to an even busy 2026",
+        "likes": 25,
+        "personalisation_value": "MEDIUM - shows company culture, forward-looking"
+      },
+      {
+        "lead": "Ben L'estrange",
+        "company": "RTL Trades",
+        "date": "2024-12-05",
+        "text": "Introducing RTL Trades 🚰🛠️ RTL Trades' Brisbane based Plumbers, Electricians, Handymen, Roofers, Carpenters and Builders have been servicing Brisbane & the Gold Coast for over 75 years.",
+        "likes": null,
+        "personalisation_value": "HIGH - describes services, location, history"
+      }
+    ]
+  },
+
+  "cost_analysis": {
+    "per_lead_social_cost_aud": {
+      "linkedin_posts": 0.0015,
+      "x_handle_discovery": 0.0015,
+      "x_posts": 0.0015,
+      "total_if_both_found": 0.0045,
+      "total_if_linkedin_only": 0.0030
+    },
+    "notes": "Pricing is FLAT per API request, not per post returned"
+  },
+
+  "implementation_changes_required": {
+    "waterfall_verification_worker.py": [
+      "Add type=discover_new&discover_by=profile_url query params to T-DM2 trigger",
+      "Add type=discover_new&discover_by=profile_url query params to T-DM3 trigger",
+      "Implement local 90-day date filtering after fetching posts",
+      "Remove start_date/end_date params from request body (not supported)"
+    ]
+  },
+
+  "ceo_assessment": {
+    "personalisation_value": "CONFIRMED - posts contain project details, partner mentions, company news that enable personalized outreach",
+    "recommendation": "PROCEED with implementation. Social posts provide valuable context for DM outreach personalization."
+  }
+}

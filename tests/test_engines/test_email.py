@@ -15,23 +15,23 @@ from src.exceptions import ResourceRateLimitError
 
 
 @pytest.fixture
-def mock_resend_client():
-    """Mock Resend client."""
-    class MockResendClient:
+def mock_salesforge_client():
+    """Mock Salesforge client."""
+    class MockSalesforgeClient:
         async def send_email(self, **kwargs):
             return {
                 "success": True,
                 "message_id": f"msg_{uuid4().hex[:16]}",
-                "provider": "resend",
+                "provider": "salesforge",
             }
 
-    return MockResendClient()
+    return MockSalesforgeClient()
 
 
 @pytest.fixture
-def email_engine(mock_resend_client):
+def email_engine(mock_salesforge_client):
     """Create email engine with mock client."""
-    return EmailEngine(resend_client=mock_resend_client)
+    return EmailEngine(salesforge_client=mock_salesforge_client)
 
 
 @pytest.fixture

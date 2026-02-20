@@ -16,31 +16,31 @@ from src.engines.base import EngineResult
 from src.models.base import ChannelType, LeadStatus
 
 
-class MockSynthflowClient:
-    """Mock Synthflow client for testing."""
+class MockVapiClient:
+    """Mock Vapi client for testing."""
 
     def __init__(self, should_fail: bool = False):
         self.should_fail = should_fail
         self.last_call_params = None
 
-    async def initiate_call(self, phone_number, agent_id, lead_data, callback_url=None):
+    async def create_call(self, phone_number, assistant_id, lead_data, callback_url=None):
         self.last_call_params = {
             "phone_number": phone_number,
-            "agent_id": agent_id,
+            "assistant_id": assistant_id,
             "lead_data": lead_data,
             "callback_url": callback_url,
         }
 
         if self.should_fail:
-            raise Exception("Synthflow API error")
+            raise Exception("Vapi API error")
 
         return {
             "call_id": "call_123",
             "status": "initiated",
-            "provider": "synthflow",
+            "provider": "vapi",
         }
 
-    async def get_call_status(self, call_id):
+    async def get_call(self, call_id):
         return {
             "call_id": call_id,
             "status": "completed",
@@ -61,7 +61,7 @@ class MockSynthflowClient:
             "action_items": ["Follow up next week"],
         }
 
-    def parse_call_webhook(self, payload):
+    def parse_webhook(self, payload):
         return {
             "call_id": payload.get("call_id"),
             "event": payload.get("event"),
@@ -95,6 +95,9 @@ class MockLead:
         self.last_replied_at = kwargs.get("last_replied_at", None)
         self.reply_count = kwargs.get("reply_count", 0)
         self.deleted_at = None
+        self.dncr_checked = kwargs.get("dncr_checked", False)
+        self.dncr_result = kwargs.get("dncr_result", None)
+        self.timezone = kwargs.get("timezone", "Australia/Sydney")
 
     @property
     def full_name(self):
@@ -156,7 +159,7 @@ class MockResult:
 @pytest.fixture
 def voice_engine():
     """Create voice engine with mock client."""
-    return VoiceEngine(synthflow_client=MockSynthflowClient())
+    return VoiceEngine(vapi_client=MockVapiClient())
 
 
 @pytest.fixture
@@ -189,7 +192,7 @@ def test_singleton():
 @pytest.mark.asyncio
 async def test_send_call_success():
     """Test successful call initiation."""
-    engine = VoiceEngine(synthflow_client=MockSynthflowClient())
+    engine = VoiceEngine(vapi_client=MockVapiClient())
     mock_db = MockDB()
     lead = MockLead(als_score=75, phone="+61412345678")
     campaign = MockCampaign()
@@ -220,7 +223,7 @@ async def test_send_call_success():
 @pytest.mark.asyncio
 async def test_send_call_no_phone():
     """Test call fails when lead has no phone number."""
-    engine = VoiceEngine(synthflow_client=MockSynthflowClient())
+    engine = VoiceEngine(vapi_client=MockVapiClient())
     mock_db = MockDB()
     lead = MockLead(als_score=75, phone=None)
 
@@ -242,7 +245,7 @@ async def test_send_call_no_phone():
 @pytest.mark.asyncio
 async def test_send_call_low_als():
     """Test call fails when ALS score is below 70."""
-    engine = VoiceEngine(synthflow_client=MockSynthflowClient())
+    engine = VoiceEngine(vapi_client=MockVapiClient())
     mock_db = MockDB()
     lead = MockLead(als_score=65, phone="+61412345678")
 
@@ -265,7 +268,7 @@ async def test_send_call_low_als():
 @pytest.mark.asyncio
 async def test_send_call_no_agent_id():
     """Test call fails when agent_id is not provided."""
-    engine = VoiceEngine(synthflow_client=MockSynthflowClient())
+    engine = VoiceEngine(vapi_client=MockVapiClient())
     mock_db = MockDB()
     lead = MockLead(als_score=80, phone="+61412345678")
     campaign = MockCampaign()
@@ -291,7 +294,7 @@ async def test_send_call_no_agent_id():
 @pytest.mark.asyncio
 async def test_send_call_api_error():
     """Test call handling when Synthflow API fails."""
-    engine = VoiceEngine(synthflow_client=MockSynthflowClient(should_fail=True))
+    engine = VoiceEngine(vapi_client=MockVapiClient(should_fail=True))
     mock_db = MockDB()
     lead = MockLead(als_score=80, phone="+61412345678")
     campaign = MockCampaign()
@@ -321,7 +324,7 @@ async def test_send_call_api_error():
 @pytest.mark.asyncio
 async def test_get_call_status(mock_db):
     """Test getting call status."""
-    engine = VoiceEngine(synthflow_client=MockSynthflowClient())
+    engine = VoiceEngine(vapi_client=MockVapiClient())
 
     result = await engine.get_call_status(
         db=mock_db,
@@ -342,7 +345,7 @@ async def test_get_call_status(mock_db):
 @pytest.mark.asyncio
 async def test_get_transcript(mock_db):
     """Test getting call transcript."""
-    engine = VoiceEngine(synthflow_client=MockSynthflowClient())
+    engine = VoiceEngine(vapi_client=MockVapiClient())
 
     result = await engine.get_call_transcript(
         db=mock_db,
@@ -364,7 +367,7 @@ async def test_get_transcript(mock_db):
 @pytest.mark.asyncio
 async def test_process_webhook_call_ended():
     """Test processing webhook for ended call."""
-    engine = VoiceEngine(synthflow_client=MockSynthflowClient())
+    engine = VoiceEngine(vapi_client=MockVapiClient())
     mock_db = MockDB()
     lead = MockLead()
     activity = MockActivity(lead_id=lead.id, provider_message_id="call_123")
@@ -396,7 +399,7 @@ async def test_process_webhook_call_ended():
 @pytest.mark.asyncio
 async def test_process_webhook_meeting_booked():
     """Test processing webhook when meeting is booked."""
-    engine = VoiceEngine(synthflow_client=MockSynthflowClient())
+    engine = VoiceEngine(vapi_client=MockVapiClient())
     mock_db = MockDB()
     lead = MockLead(status=LeadStatus.ENRICHED)
     activity = MockActivity(lead_id=lead.id, provider_message_id="call_123")
@@ -423,7 +426,7 @@ async def test_process_webhook_meeting_booked():
 @pytest.mark.asyncio
 async def test_process_webhook_missing_call_id(mock_db):
     """Test webhook processing with missing call_id."""
-    engine = VoiceEngine(synthflow_client=MockSynthflowClient())
+    engine = VoiceEngine(vapi_client=MockVapiClient())
 
     result = await engine.process_call_webhook(
         db=mock_db,
@@ -440,7 +443,7 @@ async def test_process_webhook_missing_call_id(mock_db):
 @pytest.mark.asyncio
 async def test_process_webhook_activity_not_found(mock_db):
     """Test webhook processing when activity not found."""
-    engine = VoiceEngine(synthflow_client=MockSynthflowClient())
+    engine = VoiceEngine(vapi_client=MockVapiClient())
     mock_db._activity = None  # No activity found
 
     result = await engine.process_call_webhook(
@@ -462,7 +465,7 @@ async def test_process_webhook_activity_not_found(mock_db):
 @pytest.mark.asyncio
 async def test_activity_logging():
     """Test that call activities are logged correctly."""
-    engine = VoiceEngine(synthflow_client=MockSynthflowClient())
+    engine = VoiceEngine(vapi_client=MockVapiClient())
     mock_db = MockDB()
     lead = MockLead(als_score=80, phone="+61412345678")
     campaign = MockCampaign()
@@ -497,7 +500,7 @@ async def test_activity_logging():
 @pytest.mark.asyncio
 async def test_lead_update_on_success():
     """Test that lead is updated after successful call."""
-    engine = VoiceEngine(synthflow_client=MockSynthflowClient())
+    engine = VoiceEngine(vapi_client=MockVapiClient())
     mock_db = MockDB()
     lead = MockLead(als_score=80, phone="+61412345678", last_contacted_at=None)
     campaign = MockCampaign()
@@ -527,7 +530,7 @@ async def test_lead_update_on_success():
 @pytest.mark.asyncio
 async def test_send_call_als_exactly_70():
     """Test call succeeds when ALS score is exactly 70."""
-    engine = VoiceEngine(synthflow_client=MockSynthflowClient())
+    engine = VoiceEngine(vapi_client=MockVapiClient())
     mock_db = MockDB()
     lead = MockLead(als_score=70, phone="+61412345678")
     campaign = MockCampaign()
@@ -552,7 +555,7 @@ async def test_send_call_als_exactly_70():
 @pytest.mark.asyncio
 async def test_send_call_als_none():
     """Test call fails when ALS score is None."""
-    engine = VoiceEngine(synthflow_client=MockSynthflowClient())
+    engine = VoiceEngine(vapi_client=MockVapiClient())
     mock_db = MockDB()
     lead = MockLead(als_score=None, phone="+61412345678")
 

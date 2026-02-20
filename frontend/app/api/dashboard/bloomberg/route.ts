@@ -13,13 +13,15 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization - called inside handlers to avoid build-time execution
+function getSupabaseClient(): SupabaseClient {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 // ========================================
 // TYPE DEFINITIONS
@@ -123,7 +125,7 @@ interface DiscoveryData {
 // DATA FETCHING FUNCTIONS
 // ========================================
 
-async function fetchCampaignHealth(clientId: string): Promise<CampaignHealthData | null> {
+async function fetchCampaignHealth(supabase: SupabaseClient, clientId: string): Promise<CampaignHealthData | null> {
   try {
     // Get ALS distribution
     const { data: alsData, error: alsError } = await supabase
@@ -193,7 +195,7 @@ async function fetchCampaignHealth(clientId: string): Promise<CampaignHealthData
   }
 }
 
-async function fetchPersonalisation(clientId: string): Promise<PersonalisationData | null> {
+async function fetchPersonalisation(supabase: SupabaseClient, clientId: string): Promise<PersonalisationData | null> {
   try {
     // Get leads with enrichment data
     const { data: leads, error } = await supabase
@@ -248,7 +250,7 @@ async function fetchPersonalisation(clientId: string): Promise<PersonalisationDa
   }
 }
 
-async function fetchOutreach(clientId: string): Promise<OutreachData | null> {
+async function fetchOutreach(supabase: SupabaseClient, clientId: string): Promise<OutreachData | null> {
   try {
     // Get active sequences (leads currently in sequence)
     const { data: activeLeads } = await supabase
@@ -327,7 +329,7 @@ async function fetchOutreach(clientId: string): Promise<OutreachData | null> {
   }
 }
 
-async function fetchAlerts(clientId: string): Promise<AlertsData | null> {
+async function fetchAlerts(supabase: SupabaseClient, clientId: string): Promise<AlertsData | null> {
   try {
     // Get active alerts from Part F
     const { data: alerts } = await supabase
@@ -402,7 +404,7 @@ async function fetchAlerts(clientId: string): Promise<AlertsData | null> {
   }
 }
 
-async function fetchDeliverability(clientId: string): Promise<DeliverabilityData | null> {
+async function fetchDeliverability(supabase: SupabaseClient, clientId: string): Promise<DeliverabilityData | null> {
   try {
     // Get domain warmup status from Part G
     const { data: domains, error } = await supabase
@@ -428,7 +430,7 @@ async function fetchDeliverability(clientId: string): Promise<DeliverabilityData
   }
 }
 
-async function fetchDiscovery(clientId: string): Promise<DiscoveryData | null> {
+async function fetchDiscovery(supabase: SupabaseClient, clientId: string): Promise<DiscoveryData | null> {
   try {
     // Get discarded leads by gate
     const { data: discards } = await supabase
@@ -503,6 +505,9 @@ export async function GET(request: Request) {
       }, { status: 400 });
     }
     
+    // Initialize Supabase client at request time (not build time)
+    const supabase = getSupabaseClient();
+    
     // Fetch all panel data in parallel
     const [
       campaignHealth,
@@ -512,12 +517,12 @@ export async function GET(request: Request) {
       deliverability,
       discovery
     ] = await Promise.all([
-      fetchCampaignHealth(clientId),
-      fetchPersonalisation(clientId),
-      fetchOutreach(clientId),
-      fetchAlerts(clientId),
-      fetchDeliverability(clientId),
-      fetchDiscovery(clientId)
+      fetchCampaignHealth(supabase, clientId),
+      fetchPersonalisation(supabase, clientId),
+      fetchOutreach(supabase, clientId),
+      fetchAlerts(supabase, clientId),
+      fetchDeliverability(supabase, clientId),
+      fetchDiscovery(supabase, clientId)
     ]);
     
     const dashboardData: BloombergDashboardData = {

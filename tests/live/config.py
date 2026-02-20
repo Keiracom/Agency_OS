@@ -255,12 +255,19 @@ def get_config() -> LiveTestConfig:
 
 
 def require_valid_config() -> LiveTestConfig:
-    """Get config and raise if invalid."""
+    """Get config and skip test if invalid.
+    
+    This function is called from pytest fixtures. When config is invalid,
+    it skips the test gracefully rather than erroring, so CI can run
+    without all env vars configured.
+    """
+    import pytest
+    
     config = get_config()
     errors = config.validate()
     if errors:
-        raise ValueError(
-            f"Invalid live test configuration:\n" +
+        pytest.skip(
+            f"Live test config incomplete (skipping):\n" +
             "\n".join(f"  - {e}" for e in errors)
         )
     return config

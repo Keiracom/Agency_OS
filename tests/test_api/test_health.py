@@ -17,7 +17,7 @@ RULES APPLIED:
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import status
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from src.api.main import app
 
@@ -98,7 +98,9 @@ def mock_prefect_unhealthy():
 @pytest.mark.asyncio
 async def test_health_check_returns_200():
     """Test that basic health check returns 200 OK."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/health")
 
     assert response.status_code == status.HTTP_200_OK
@@ -112,7 +114,9 @@ async def test_health_check_returns_200():
 async def test_health_check_no_dependencies():
     """Test that basic health check doesn't check dependencies."""
     # Even if dependencies are down, health check should return healthy
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/health")
 
     assert response.status_code == status.HTTP_200_OK
@@ -128,7 +132,9 @@ async def test_health_check_no_dependencies():
 @pytest.mark.asyncio
 async def test_liveness_check_returns_alive():
     """Test that liveness check returns alive status."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/health/live")
 
     assert response.status_code == status.HTTP_200_OK
@@ -142,7 +148,9 @@ async def test_liveness_check_returns_alive():
 async def test_liveness_check_no_dependencies():
     """Test that liveness check doesn't check dependencies."""
     # Liveness should always return alive if the service is running
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/health/live")
 
     assert response.status_code == status.HTTP_200_OK
@@ -166,7 +174,10 @@ async def test_readiness_check_all_healthy(
          patch("src.api.routes.health.get_redis", return_value=mock_redis_healthy), \
          patch("src.api.routes.health.httpx.AsyncClient", return_value=mock_prefect_healthy):
 
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/health/ready")
 
     assert response.status_code == status.HTTP_200_OK
@@ -203,7 +214,10 @@ async def test_readiness_check_redis_unhealthy(
          patch("src.api.routes.health.get_redis", return_value=mock_redis_unhealthy), \
          patch("src.api.routes.health.httpx.AsyncClient", return_value=mock_prefect_healthy):
 
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/health/ready")
 
     assert response.status_code == status.HTTP_200_OK
@@ -232,7 +246,10 @@ async def test_readiness_check_prefect_unhealthy(
          patch("src.api.routes.health.get_redis", return_value=mock_redis_healthy), \
          patch("src.api.routes.health.httpx.AsyncClient", return_value=mock_prefect_unhealthy):
 
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/health/ready")
 
     assert response.status_code == status.HTTP_200_OK
@@ -263,7 +280,10 @@ async def test_readiness_check_database_unhealthy(
          patch("src.api.routes.health.get_redis", return_value=mock_redis_healthy), \
          patch("src.api.routes.health.httpx.AsyncClient", return_value=mock_prefect_healthy):
 
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/health/ready")
 
     assert response.status_code == status.HTTP_200_OK
@@ -292,7 +312,10 @@ async def test_readiness_check_all_unhealthy(
          patch("src.api.routes.health.get_redis", return_value=mock_redis_unhealthy), \
          patch("src.api.routes.health.httpx.AsyncClient", return_value=mock_prefect_unhealthy):
 
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/health/ready")
 
     assert response.status_code == status.HTTP_200_OK
@@ -315,7 +338,9 @@ async def test_readiness_check_all_unhealthy(
 @pytest.mark.asyncio
 async def test_health_response_structure():
     """Test that health response has correct structure."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/health")
 
     data = response.json()
@@ -332,7 +357,9 @@ async def test_health_response_structure():
 @pytest.mark.asyncio
 async def test_liveness_response_structure():
     """Test that liveness response has correct structure."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/health/live")
 
     data = response.json()
@@ -357,7 +384,10 @@ async def test_readiness_response_structure(
          patch("src.api.routes.health.get_redis", return_value=mock_redis_healthy), \
          patch("src.api.routes.health.httpx.AsyncClient", return_value=mock_prefect_healthy):
 
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        transport = ASGITransport(app=app)
+
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/health/ready")
 
     data = response.json()

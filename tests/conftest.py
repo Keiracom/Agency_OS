@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 # Set test environment before importing app modules
@@ -118,11 +118,12 @@ def mock_redis() -> MagicMock:
 async def api_client() -> AsyncGenerator[AsyncClient, None]:
     """
     HTTP client for API testing.
-    Uses httpx AsyncClient with the FastAPI test client.
+    Uses httpx AsyncClient with ASGITransport for FastAPI.
     """
     from src.api.main import app
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
 
 

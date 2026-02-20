@@ -91,7 +91,7 @@ async def create_checkout_session(
 ) -> SubscriptionResult:
     """
     Create a Stripe Checkout session for subscription.
-    
+
     For founding members, applies the 40% discount automatically
     via the founding member price ID.
     """
@@ -394,7 +394,7 @@ async def stripe_webhook(
 ):
     """
     Stripe webhook endpoint.
-    
+
     Handles:
     - checkout.session.completed
     - customer.subscription.updated

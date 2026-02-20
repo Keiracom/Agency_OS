@@ -16,12 +16,12 @@ STRIPE CONTEXT:
   - Subscription lifecycle (create, update, cancel)
   - Invoice handling and payment processing
   - Webhook event processing
-  
+
   Pricing Tiers (in AUD):
     - Ignition: $2,500/month
     - Growth: $5,000/month (future)
     - Enterprise: Custom
-  
+
   API Reference: https://stripe.com/docs/api
 """
 
@@ -251,13 +251,13 @@ class WebhookVerificationError(StripeError):
 class StripeClient:
     """
     Stripe API client for Agency OS payments.
-    
+
     Handles:
     - Customer management
     - Subscription lifecycle
     - Invoice and payment processing
     - Webhook event verification
-    
+
     Usage:
         client = StripeClient()
         customer = await client.create_customer(
@@ -274,7 +274,7 @@ class StripeClient:
     def __init__(self, api_key: str | None = None, webhook_secret: str | None = None):
         """
         Initialize Stripe client.
-        
+
         Args:
             api_key: Stripe secret key (uses settings if not provided)
             webhook_secret: Webhook endpoint secret for signature verification
@@ -323,16 +323,16 @@ class StripeClient:
     ) -> StripeCustomer:
         """
         Create a Stripe customer.
-        
+
         Args:
             email: Customer email address
             name: Customer/company name
             client_id: Agency OS client UUID (stored in metadata)
             metadata: Additional metadata
-            
+
         Returns:
             StripeCustomer instance
-            
+
         Raises:
             StripeError: If customer creation fails
         """
@@ -386,10 +386,10 @@ class StripeClient:
     async def get_customer(self, customer_id: str) -> StripeCustomer | None:
         """
         Retrieve a Stripe customer.
-        
+
         Args:
             customer_id: Stripe customer ID
-            
+
         Returns:
             StripeCustomer or None if not found
         """
@@ -437,13 +437,13 @@ class StripeClient:
     ) -> StripeCustomer:
         """
         Update a Stripe customer.
-        
+
         Args:
             customer_id: Stripe customer ID
             email: New email address
             name: New name
             metadata: Metadata to merge
-            
+
         Returns:
             Updated StripeCustomer
         """
@@ -491,15 +491,15 @@ class StripeClient:
     ) -> StripeSubscription:
         """
         Create a subscription for a customer.
-        
+
         Args:
             customer_id: Stripe customer ID
             tier: Pricing tier (IGNITION, GROWTH, ENTERPRISE)
             trial_days: Trial period in days (default 14)
-            
+
         Returns:
             StripeSubscription instance
-            
+
         Raises:
             SubscriptionError: If subscription creation fails
         """
@@ -570,10 +570,10 @@ class StripeClient:
     async def get_subscription(self, subscription_id: str) -> StripeSubscription | None:
         """
         Retrieve a subscription.
-        
+
         Args:
             subscription_id: Stripe subscription ID
-            
+
         Returns:
             StripeSubscription or None if not found
         """
@@ -624,11 +624,11 @@ class StripeClient:
     ) -> StripeSubscription:
         """
         Cancel a subscription.
-        
+
         Args:
             subscription_id: Stripe subscription ID
             at_period_end: If True, cancel at end of billing period (default)
-            
+
         Returns:
             Updated StripeSubscription
         """
@@ -689,11 +689,11 @@ class StripeClient:
     ) -> list[StripeInvoice]:
         """
         Get invoices for a customer.
-        
+
         Args:
             customer_id: Stripe customer ID
             limit: Maximum invoices to return
-            
+
         Returns:
             List of StripeInvoice instances
         """
@@ -741,14 +741,14 @@ class StripeClient:
     ) -> WebhookEvent:
         """
         Verify and parse a Stripe webhook event.
-        
+
         Args:
             payload: Raw request body
             signature: Stripe-Signature header value
-            
+
         Returns:
             Parsed WebhookEvent
-            
+
         Raises:
             WebhookVerificationError: If signature verification fails
         """
@@ -782,12 +782,12 @@ class StripeClient:
     async def handle_webhook_event(self, event: WebhookEvent) -> dict[str, Any]:
         """
         Handle a verified webhook event.
-        
+
         Dispatches to appropriate handlers based on event type.
-        
+
         Args:
             event: Verified WebhookEvent
-            
+
         Returns:
             Handler result
         """
@@ -852,17 +852,17 @@ class StripeClient:
     ) -> str:
         """
         Create a Stripe Checkout session for subscription signup.
-        
+
         Args:
             customer_id: Stripe customer ID
             tier: Pricing tier
             success_url: URL to redirect on success
             cancel_url: URL to redirect on cancel
             trial_days: Trial period in days
-            
+
         Returns:
             Checkout session URL
-            
+
         Raises:
             StripeError: If session creation fails
         """

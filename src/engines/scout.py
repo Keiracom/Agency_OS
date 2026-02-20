@@ -410,7 +410,7 @@ class ScoutEngine(BaseEngine):
         - Tier 5: Kaspr (ALS >= 85 only)
 
         For non-AU businesses, uses Apollo + Apify.
-        
+
         NOTE: AU leads do NOT fall back to Apollo - SIEGE is the SSOT for AU.
         This saves costs and ensures data sovereignty.
         """
@@ -587,10 +587,10 @@ class ScoutEngine(BaseEngine):
     ) -> None:
         """
         Log enrichment operation to audit_logs table.
-        
+
         Provides full traceability for all enrichment operations,
         supporting cost tracking and debugging.
-        
+
         Args:
             operation: Operation name (siege_waterfall, siege_enrich, camoufox_scrape, etc.)
             lead_id: Lead UUID if available
@@ -693,7 +693,7 @@ class ScoutEngine(BaseEngine):
         """
         DEPRECATED: FCO-002 (2026-02-05)
         SDK enrichment has been removed. Use Siege Waterfall data instead.
-        
+
         This method now returns None immediately. Kept for backwards compatibility
         with existing code that may call enrich_lead_with_sdk().
 
@@ -724,7 +724,7 @@ class ScoutEngine(BaseEngine):
         """
         DEPRECATED: FCO-002 (2026-02-05)
         SDK enrichment has been removed. This method now just calls standard enrichment.
-        
+
         Enrich a lead using Siege Waterfall data only.
         Kept for backwards compatibility with existing orchestration flows.
 

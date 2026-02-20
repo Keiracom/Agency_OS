@@ -178,19 +178,19 @@ class IdentityLineageStep:
 class IdentityEscalationEngine(BaseEngine):
     """
     Identity Escalation Protocol for 5-Channel Distribution.
-    
+
     When generic inbox detected (info@, admin@, etc.):
     1. Scrape "About Us" / "Team" page for names
     2. Match against LinkedIn Company Employee list
     3. Take top 3 Decision Makers
     4. Run through Lusha/Kaspr for mobile numbers (if ALS > 75)
-    
+
     Channel Mapping:
     - SMS/Voice AI → mobile_number_verified
     - Email → work_email_verified
     - Direct Mail → registered_office_address
     - LinkedIn → linkedin_profile_url
-    
+
     COGS Governance:
     - Mobile enrichment is expensive (~$0.15-0.30 AUD)
     - Only enrich for leads with ALS > 75
@@ -205,13 +205,13 @@ class IdentityEscalationEngine(BaseEngine):
     ):
         """
         Initialize with integration clients.
-        
+
         Args:
             lusha_client: Lusha API client for mobiles
             kaspr_client: Kaspr API client for mobiles
             asic_client: ASIC broker API (InfoTrack/CreditorWatch)
             web_scraper: Autonomous browser for team page scraping
-        
+
         Note:
             proxycurl_client removed per FCO-003 deprecation (Proxycurl shutdown July 2025).
             LinkedIn employee search now degrades gracefully.
@@ -232,10 +232,10 @@ class IdentityEscalationEngine(BaseEngine):
     def is_generic_email(self, email: str) -> bool:
         """
         Check if an email is a generic inbox.
-        
+
         Args:
             email: Email address to check
-        
+
         Returns:
             True if generic (info@, admin@, etc.)
         """
@@ -263,10 +263,10 @@ class IdentityEscalationEngine(BaseEngine):
     def classify_phone(self, phone: str) -> PhoneType:
         """
         Classify an Australian phone number.
-        
+
         Args:
             phone: Phone number (with or without country code)
-        
+
         Returns:
             PhoneType.MOBILE, PhoneType.LANDLINE, or PhoneType.UNKNOWN
         """
@@ -286,10 +286,10 @@ class IdentityEscalationEngine(BaseEngine):
     def prioritize_mobile(self, phones: list[str]) -> str | None:
         """
         From a list of phones, return the mobile number (priority for Voice AI).
-        
+
         Args:
             phones: List of phone numbers
-        
+
         Returns:
             First mobile number found, or None
         """
@@ -318,7 +318,7 @@ class IdentityEscalationEngine(BaseEngine):
     ) -> EngineResult[IdentityResult]:
         """
         Run identity escalation to find direct decision maker contacts.
-        
+
         Args:
             db: Database session
             lead_id: Lead UUID
@@ -330,7 +330,7 @@ class IdentityEscalationEngine(BaseEngine):
             registered_address: Registered office address
             als_score: Current ALS (determines mobile enrichment)
             acn: Australian Company Number (for ASIC lookup)
-        
+
         Returns:
             EngineResult with IdentityResult
         """
@@ -567,7 +567,7 @@ class IdentityEscalationEngine(BaseEngine):
     ) -> list[DecisionMaker]:
         """
         Tier 2: Search LinkedIn for company employees.
-        
+
         DEPRECATED: Proxycurl integration removed per FCO-003 (shutdown July 2025).
         This method now degrades gracefully by returning an empty list.
         LinkedIn employee search will be replaced by Apollo enrichment.
@@ -617,7 +617,7 @@ class IdentityEscalationEngine(BaseEngine):
     ) -> DecisionMaker | None:
         """
         Tier 4/5: Enrich contact with verified mobile number via Lusha/Kaspr.
-        
+
         Prioritizes mobile over landline for Voice AI channel.
         """
         # Try Lusha first (better Australian coverage based on research)
@@ -684,7 +684,7 @@ class IdentityEscalationEngine(BaseEngine):
     ) -> list[DecisionMaker]:
         """
         Rank decision makers by authority and data completeness.
-        
+
         Priority:
         1. Directors (ASIC verified)
         2. C-level (CEO, CFO, CTO)
@@ -786,7 +786,7 @@ def get_identity_escalation_engine(
     web_scraper=None,
 ) -> IdentityEscalationEngine:
     """Get singleton IdentityEscalationEngine instance.
-    
+
     Note:
         proxycurl_client removed per FCO-003 deprecation (Proxycurl shutdown July 2025).
     """

@@ -234,7 +234,7 @@ ICP_INDUSTRY_BLACKLIST = {
 class ICPFilterService:
     """
     Service for filtering leads against Agency OS ICP criteria.
-    
+
     Agency OS targets Australian marketing/digital agencies EXCLUSIVELY.
     This service provides:
     - Layer 1: GMB Category Whitelist check
@@ -253,7 +253,7 @@ class ICPFilterService:
     def normalize_for_industry_match(text: str | None) -> str:
         """
         Normalize text for industry matching (Directive #046).
-        
+
         Converts both underscore and space formats to underscore format
         so 'digital_marketing' matches 'digital marketing' and vice versa.
         """
@@ -271,11 +271,11 @@ class ICPFilterService:
     ) -> tuple[bool, str | None]:
         """
         Layer 1: Check if ANY category matches ICP whitelist.
-        
+
         Args:
             categories: List of GMB all_categories or similar
             gmb_category: Primary GMB category
-            
+
         Returns:
             Tuple of (passes_whitelist, matched_category)
         """
@@ -303,16 +303,16 @@ class ICPFilterService:
     ) -> tuple[bool, str | None]:
         """
         Layer 2: Check if ANY category matches HARD EXCLUDE list.
-        
+
         DIRECTIVE #046 FIX: Only checks GMB category and all_categories fields.
         Company name is NOT checked — "Property Marketing Agency" is valid ICP
         because the GMB category will be marketing agency, not real estate.
-        
+
         Args:
             categories: List of GMB all_categories or similar
             gmb_category: Primary GMB category
             company_name: IGNORED (kept for signature compatibility)
-            
+
         Returns:
             Tuple of (is_blacklisted, matched_term)
         """
@@ -349,15 +349,15 @@ class ICPFilterService:
     ) -> tuple[bool, str | None]:
         """
         Check if industry matches ICP whitelist.
-        
+
         Uses dual normalization (Directive #046):
         - Standard lowercase/strip for exact matches
         - Underscore normalization for format-agnostic matching
-        
+
         Args:
             industry: Apollo/LinkedIn industry field
             sub_industry: Sub-industry if available
-            
+
         Returns:
             Tuple of (passes_whitelist, matched_industry)
         """
@@ -400,11 +400,11 @@ class ICPFilterService:
     ) -> tuple[bool, str | None]:
         """
         Check if industry is on HARD EXCLUDE list.
-        
+
         Args:
             industry: Apollo/LinkedIn industry field
             sub_industry: Sub-industry if available
-            
+
         Returns:
             Tuple of (is_blacklisted, matched_industry)
         """
@@ -428,15 +428,15 @@ class ICPFilterService:
     ) -> tuple[bool, dict[str, Any]]:
         """
         Full ICP qualification check.
-        
+
         Applies all three layers:
         - Layer 1: GMB Category Whitelist
         - Layer 2: Hard Exclude List
         - Layer 3: Industry validation
-        
+
         Args:
             lead_data: Lead data dict with company_industry, categories, etc.
-            
+
         Returns:
             Tuple of (is_qualified, details_dict)
         """
@@ -527,13 +527,13 @@ class ICPFilterService:
     ) -> int:
         """
         Layer 3: Calculate ALS penalty for non-agency industries.
-        
+
         Returns penalty to subtract from ALS score.
         Non-agency industry should result in ALS < 50.
-        
+
         Args:
             lead_data: Lead data dict
-            
+
         Returns:
             Penalty points (0 = no penalty, 50+ = effectively disqualified)
         """

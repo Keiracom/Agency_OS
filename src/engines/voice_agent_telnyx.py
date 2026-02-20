@@ -227,13 +227,13 @@ CALL CONTEXT:
 class VoiceAgentTelnyxEngine(BaseEngine):
     """
     Raw Telnyx + ElevenLabs Flash v2.5 Voice AI Engine.
-    
+
     Replaces Vapi managed service for:
     - 95% cost reduction ($2.00 → $0.09 per minute)
     - <200ms latency (vs 800ms-1.5s with Vapi)
     - Australian accent authenticity
     - Sydney data residency (onshore)
-    
+
     Architecture:
     - Telnyx: SIP telephony (Sydney PoP)
     - ElevenLabs Flash v2.5: TTS (<75ms)
@@ -282,7 +282,7 @@ class VoiceAgentTelnyxEngine(BaseEngine):
     ) -> EngineResult[dict]:
         """
         Initiate an outbound Voice AI call.
-        
+
         Args:
             to_number: Destination phone number (E.164 format)
             from_number: Caller ID (must be Telnyx number)
@@ -293,7 +293,7 @@ class VoiceAgentTelnyxEngine(BaseEngine):
             call_reason: Why we're calling
             company_name: Our company name
             voice: Voice selection key (lee, aussie_adventure, charlotte)
-        
+
         Returns:
             EngineResult with call details
         """
@@ -379,7 +379,7 @@ class VoiceAgentTelnyxEngine(BaseEngine):
     ) -> dict:
         """
         Handle Telnyx webhook events.
-        
+
         Events:
         - call.initiated
         - call.answered
@@ -427,19 +427,19 @@ class VoiceAgentTelnyxEngine(BaseEngine):
     ) -> bytes | None:
         """
         Handle real-time audio stream from Telnyx.
-        
+
         This is the core conversation loop:
         1. Receive user audio
         2. STT → text
         3. LLM → response
         4. TTS → audio
         5. Return audio to stream
-        
+
         Args:
             call_id: Call identifier
             audio_data: Raw audio bytes (μ-law)
             track: "inbound" (user) or "outbound" (us)
-        
+
         Returns:
             Audio bytes to play back (if any)
         """
@@ -521,7 +521,7 @@ class VoiceAgentTelnyxEngine(BaseEngine):
     ) -> None:
         """
         Handle user interruption (barge-in).
-        
+
         When user speaks while we're speaking:
         1. Immediately stop TTS playback
         2. Send media.stream.stop to Telnyx
@@ -557,7 +557,7 @@ class VoiceAgentTelnyxEngine(BaseEngine):
     async def _speech_to_text(self, audio_data: bytes) -> str:
         """
         Convert speech to text using Deepgram.
-        
+
         Target: <100ms latency
         """
         # TODO: Implement Deepgram STT
@@ -584,7 +584,7 @@ class VoiceAgentTelnyxEngine(BaseEngine):
     async def _generate_response(self, context: ConversationContext) -> str:
         """
         Generate response using Groq (Llama).
-        
+
         Target: <150ms latency
         """
         try:
@@ -602,7 +602,7 @@ class VoiceAgentTelnyxEngine(BaseEngine):
     async def _text_to_speech(self, text: str, voice_id: str) -> bytes:
         """
         Convert text to speech using ElevenLabs Flash v2.5.
-        
+
         Target: <75ms latency
         """
         try:

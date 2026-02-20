@@ -211,10 +211,10 @@ class EnrichmentResult:
 class ABNClientStub:
     """
     Stub for ABN Bulk client - REPLACED BY REAL IMPLEMENTATION.
-    
+
     NOTE: Real implementation now available in src/integrations/abn_client.py
     This stub remains for backwards compatibility only.
-    
+
     Use get_abn_client() from abn_client.py instead.
     """
 
@@ -256,7 +256,7 @@ class ABNClientStub:
 class GMBScraperAdapter:
     """
     Adapter for Google Maps Business scraper via Bright Data.
-    
+
     CEO Directive #036: Replaced deprecated Apify with Bright Data Web Scraper API.
     Dataset: gd_m8ebnr0q2qlklc02fz (Google Maps Business Information)
     Method: discover_by=location
@@ -392,7 +392,7 @@ GMBScraperStub = GMBScraperAdapter
 class HunterClientAdapter:
     """
     Adapter for Hunter.io email verification.
-    
+
     Wraps the real HunterClient to match the Siege Waterfall interface.
     Implements: Tier 3 of Siege Waterfall - Email Discovery.
     """
@@ -496,11 +496,11 @@ HunterClientStub = HunterClientAdapter
 class ProxycurlClientAdapter:
     """
     Adapter for Proxycurl LinkedIn API.
-    
+
     NOTE: Proxycurl shutdown July 2025 (LinkedIn lawsuit).
     This adapter is now a graceful skip - Tier 4 returns empty results.
     LinkedIn enrichment will migrate to Unipile (CEO Directive #002).
-    
+
     Implements: Tier 4 of Siege Waterfall - LinkedIn Intelligence (DEPRECATED).
     """
 
@@ -620,10 +620,10 @@ except ImportError:
 class SiegeWaterfall:
     """
     Unified interface for 5-tier Australian B2B enrichment.
-    
+
     Replaces Apollo as single source of truth for lead enrichment.
     Orchestrates a cost-efficient waterfall with graceful degradation.
-    
+
     Usage:
         waterfall = SiegeWaterfall()
         result = await waterfall.enrich_lead({
@@ -632,10 +632,10 @@ class SiegeWaterfall:
             "last_name": "Smith",
             "company_name": "Acme Pty Ltd",
         })
-        
+
         print(f"Cost: ${result.total_cost_aud:.3f} AUD")
         print(f"Sources: {result.sources_used}")
-    
+
     Attributes:
         abn_client: ABN Bulk client (Tier 1)
         gmb_scraper: GMB scraper (Tier 2)
@@ -654,7 +654,7 @@ class SiegeWaterfall:
     ):
         """
         Initialize Siege Waterfall with optional client overrides.
-        
+
         Args:
             abn_client: ABN Bulk client (uses default if None)
             gmb_scraper: GMB scraper adapter (uses default if None)
@@ -688,10 +688,10 @@ class SiegeWaterfall:
     ) -> EnrichmentResult:
         """
         Full 5-tier enrichment cascade.
-        
+
         Runs each tier in sequence, accumulating data and costs.
         Each tier is optional and gracefully degrades on failure.
-        
+
         Args:
             lead: Lead data dict with any of:
                 - email: Email address
@@ -702,10 +702,10 @@ class SiegeWaterfall:
                 - domain: Company domain
             skip_tiers: List of tiers to skip
             force_tier5: Force Tier 5 regardless of ALS
-            
+
         Returns:
             EnrichmentResult with enriched data, costs, and lineage
-            
+
         Raises:
             ValidationError: If no usable lead data provided
         """
@@ -888,13 +888,13 @@ class SiegeWaterfall:
     async def tier1_abn(self, lead: dict[str, Any]) -> TierResult:
         """
         Tier 1: ABN Bulk (data.gov.au) - FREE
-        
+
         Enriches lead with Australian Business Register data.
         Primary source for AU business verification.
-        
+
         Args:
             lead: Lead data (needs abn or company_name + state)
-            
+
         Returns:
             TierResult with ABN data (business name, status, GST, etc.)
         """
@@ -1064,25 +1064,25 @@ class SiegeWaterfall:
     async def tier2_gmb(self, lead: dict[str, Any]) -> TierResult:
         """
         Tier 2: GMB/Ads Signals - $0.006/lead AUD
-        
+
         CEO Directive #014: Enhanced waterfall name resolution
-        
+
         Scrapes Google Maps for business signals:
         - Phone numbers, Website, Hours, Reviews/rating, Categories
-        
+
         Waterfall order (CEO Directive #014 + #016):
         a) ASIC business names from business_names[] (try each)
         b) ABN trading_name (pre-2012 legacy)
         c) Legal name stripped of "Pty Ltd" / "Ltd" / "Pty"
         c.5) LinkedIn company name from Bright Data (fallback after govt data)
         d) Location-pinned search (name + postcode + state + "Australia")
-        
+
         Generic filter: Skip if no ASIC business names, no linkedin_company_name,
         AND legal name matches generic patterns (Holdings, Trust, Enterprises, etc.)
-        
+
         Args:
             lead: Lead data (needs company_name, may have ABN data from Tier 1)
-            
+
         Returns:
             TierResult with GMB data
         """
@@ -1316,15 +1316,15 @@ class SiegeWaterfall:
     async def tier3_hunter(self, lead: dict[str, Any]) -> TierResult:
         """
         Tier 3: Hunter.io email verification - $0.012/lead AUD
-        
+
         Verifies email deliverability and finds emails when missing.
         Also performs domain_search for decision-maker discovery when
         only company/domain is known.
         Critical for bounce prevention.
-        
+
         Args:
             lead: Lead data (email or first_name + last_name + domain, or just domain/company)
-            
+
         Returns:
             TierResult with email verification data or discovered decision-makers
         """
@@ -1527,15 +1527,15 @@ class SiegeWaterfall:
     async def tier4_proxycurl(self, lead: dict[str, Any]) -> TierResult:
         """
         Tier 4: LinkedIn Intelligence (DEPRECATED)
-        
+
         NOTE: Proxycurl shutdown July 2025 (LinkedIn lawsuit).
         Migration path: Unipile (CEO Directive #002).
-        
+
         This tier now returns a graceful skip until Unipile is activated.
-        
+
         Args:
             lead: Lead data (unused - tier is deprecated)
-            
+
         Returns:
             TierResult with skipped=True
         """
@@ -1569,19 +1569,19 @@ class SiegeWaterfall:
     ) -> TierResult:
         """
         Tier 5: Identity Gold (Kaspr) - $0.45/lead AUD
-        
+
         Premium enrichment for high-value leads only.
         Only runs when ALS >= 85.
-        
+
         Provides:
         - Direct mobile numbers
         - Personal email addresses
         - Verified identity data
-        
+
         Args:
             lead: Lead data (linkedin_url preferred)
             als_score: Current ALS score (must be >= 85)
-            
+
         Returns:
             TierResult with identity data
         """
@@ -1701,10 +1701,10 @@ class SiegeWaterfall:
     ) -> None:
         """
         Log enrichment operation to audit_logs table.
-        
+
         Provides full traceability for all enrichment operations,
         supporting cost tracking and debugging.
-        
+
         Args:
             tier: Which enrichment tier performed the operation
             operation: Specific operation (verify_email, find_email, domain_search, etc.)
@@ -1752,7 +1752,7 @@ class SiegeWaterfall:
     ) -> str | None:
         """
         CEO Directive #057: Determine best source URL for Spam Act compliance.
-        
+
         Priority order (best evidence of "conspicuous publication"):
         1. LinkedIn profile URL (most defensible - person's own profile)
         2. Company LinkedIn page URL
@@ -1760,11 +1760,11 @@ class SiegeWaterfall:
         4. Company website URL
         5. ABN register URL
         6. Hunter domain search URL
-        
+
         Args:
             enriched_data: The enriched lead data
             tier_results: Results from each enrichment tier
-            
+
         Returns:
             Best source URL for compliance, or None if no URL found
         """
@@ -1820,13 +1820,13 @@ class SiegeWaterfall:
     ) -> dict[str, Any]:
         """
         Merge new enrichment data into base, preserving existing values.
-        
+
         New data only fills gaps - doesn't overwrite existing data.
-        
+
         Args:
             base: Base lead data
             new_data: New data to merge in
-            
+
         Returns:
             Merged dictionary
         """
@@ -1852,13 +1852,13 @@ class SiegeWaterfall:
     def _calculate_als(self, lead: dict[str, Any]) -> int:
         """
         Calculate basic ALS (Agency Lead Score) from available data.
-        
+
         This is a simplified calculation. Full CIS scoring is
         done by the scoring engine.
-        
+
         Args:
             lead: Lead data
-            
+
         Returns:
             ALS score (0-100)
         """

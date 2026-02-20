@@ -135,10 +135,10 @@ class ABNRecord:
 class ASICVerifyRecord:
     """
     Record from ASIC verification (T1.25).
-    
+
     CEO Directive #039: Uses ABR SearchByASIC to get ASIC-registered business name
     for improved T2 GMB fuzzy matching. Directors[] pending ASIC DSP approval.
-    
+
     Source: ABR SearchByASICv201408
     Cost: $0.00 AUD (FREE)
     """
@@ -191,7 +191,7 @@ class ZeroBounceResult:
 class DMCandidate:
     """
     Decision Maker candidate from T-DM0 LinkedIn discovery.
-    
+
     CEO Directive #040: DataForSEO SERP + Bright Data Profile scraping.
     """
     dm_name: str
@@ -205,7 +205,7 @@ class DMCandidate:
 class LinkedInPost:
     """
     LinkedIn post from T-DM2.
-    
+
     CEO Directive #041: Social intelligence for outreach personalisation.
     """
     post_text: str
@@ -220,7 +220,7 @@ class LinkedInPost:
 class XPost:
     """
     X/Twitter post from T-DM3.
-    
+
     CEO Directive #041: Social intelligence for outreach personalisation.
     """
     content: str
@@ -299,13 +299,13 @@ class WaterfallResult:
 class WaterfallVerificationWorker(BaseEngine):
     """
     Waterfall enrichment and verification worker.
-    
+
     Implements the "ABN + GMB Double-Wedge" strategy:
     - Tier 1: ABN Seed (Free public data)
     - Tier 2: GMB Scraper (Phone/Website enrichment)
     - Tier 3: Hunter.io (Email finding/verification)
     - Tier 4: ZeroBounce (Premium escalation for catch-all/low-confidence)
-    
+
     Cost Governance:
     - All costs tracked in AUD
     - Full lineage logged to lead_lineage_log table
@@ -321,7 +321,7 @@ class WaterfallVerificationWorker(BaseEngine):
     ):
         """
         Initialize worker with integration clients.
-        
+
         Args:
             abn_client: ABN Lookup API client
             gmb_scraper: GMB scraper client (Apify deprecated)
@@ -353,7 +353,7 @@ class WaterfallVerificationWorker(BaseEngine):
     ) -> EngineResult[WaterfallResult]:
         """
         Run waterfall verification on a lead.
-        
+
         Args:
             db: Database session
             lead_id: Lead UUID
@@ -362,7 +362,7 @@ class WaterfallVerificationWorker(BaseEngine):
             state: Australian state (NSW, VIC, etc.)
             current_als_score: Current ALS for escalation decisions
             force_full_waterfall: Force all tiers regardless of score
-        
+
         Returns:
             EngineResult containing WaterfallResult
         """
@@ -811,17 +811,17 @@ class WaterfallVerificationWorker(BaseEngine):
     ) -> dict[str, Any]:
         """
         Calculate ALS with waterfall verification bonus.
-        
+
         The ALS combines:
         - Base ALS score (0-100)
         - Multi-source verification bonus (+15 for 3+ sources)
         - Intent signal multipliers
-        
+
         Args:
             base_als_score: Original ALS (0-100)
             waterfall_result: Result from verify_lead()
             intent_signals: Optional dict with ad_volume, is_hiring, etc.
-        
+
         Returns:
             Dict with score breakdown:
             {
@@ -891,7 +891,7 @@ class WaterfallVerificationWorker(BaseEngine):
     ) -> ABNRecord | None:
         """
         Tier 1: Look up company in ABN database.
-        
+
         Uses ABN Lookup API or local bulk extract cache.
         """
         if self._abn_client is None:
@@ -924,17 +924,17 @@ class WaterfallVerificationWorker(BaseEngine):
     ) -> ASICVerifyRecord | None:
         """
         Tier 1.25: ASIC Business Registry verification via ABR SearchByASIC.
-        
+
         CEO Directive #039: Implemented to fix 55% fuzzy match failure.
         Uses ABR Web Services (SearchByASICv201408) to get ASIC-registered
         business name for improved T2 GMB matching.
-        
+
         Directors[] left null pending ASIC DSP application approval.
-        
+
         Args:
             acn: Australian Company Number from T1 (preferred)
             abn: Australian Business Number fallback
-            
+
         Returns:
             ASICVerifyRecord with registered_name, or None if lookup fails
         """
@@ -991,23 +991,23 @@ class WaterfallVerificationWorker(BaseEngine):
     ) -> DMCandidate | None:
         """
         Tier DM-0: LinkedIn Decision Maker Discovery.
-        
+
         CEO Directive #040 Part C: Uses DataForSEO SERP to find LinkedIn profiles,
         then Bright Data to scrape profile details, with local title filtering.
-        
+
         Pipeline:
         1. DataForSEO SERP: site:linkedin.com/in "{registered_name}" founder OR director OR CEO OR owner OR MD
         2. Extract LinkedIn profile URLs (max 5)
         3. Bright Data LinkedIn Profile scrape per URL (gd_l1viktl72bvl7bjuj0)
         4. Local title filter → return top 1 as dm_candidate
-        
+
         Args:
             registered_name: Company name from T1.25 (ASIC registered_name preferred)
             state: Australian state for location filtering (default: "AU")
-        
+
         Returns:
             DMCandidate with dm_name, dm_title, dm_linkedin_url, or None if not found
-        
+
         Cost: ~$0.0165 AUD (DataForSEO SERP $0.009 + up to 5 × Bright Data $0.0015)
         """
         import base64
@@ -1214,19 +1214,19 @@ class WaterfallVerificationWorker(BaseEngine):
     ) -> list[LinkedInPost]:
         """
         Tier DM-2: LinkedIn Posts scraping.
-        
+
         CEO Directive #041 Part A: Uses Bright Data LinkedIn Posts API to fetch
         recent posts from the decision maker's LinkedIn profile.
-        
+
         Dataset: gd_lyy3tktm25m4avu764 (LinkedIn Posts)
-        
+
         Args:
             dm_linkedin_url: LinkedIn profile URL from T-DM0
             max_posts: Maximum posts to retrieve (default 5)
-        
+
         Returns:
             List of LinkedInPost objects (up to max_posts)
-        
+
         Cost: ~$0.0015 AUD per request
         """
         brightdata_api_key = os.getenv("BRIGHTDATA_API_KEY")
@@ -1354,11 +1354,11 @@ class WaterfallVerificationWorker(BaseEngine):
     ) -> str | None:
         """
         Discover X/Twitter handle via website scraping or SERP fallback.
-        
+
         CEO Directive #041 Part B: X handle discovery in order of preference:
         1. Scrape company website for social links (open_website from T2)
         2. SERP fallback: site:x.com "{dm_name}" "{registered_name}"
-        
+
         Returns:
             X handle (e.g., "@username") or None if not found
         """
@@ -1458,19 +1458,19 @@ class WaterfallVerificationWorker(BaseEngine):
     ) -> list[XPost]:
         """
         Tier DM-3: X/Twitter Posts scraping.
-        
+
         CEO Directive #041 Part B: Uses Bright Data X/Twitter Posts API to fetch
         recent posts from the discovered X handle.
-        
+
         Dataset: gd_lwxkxvnf1cynvib9co (X/Twitter Posts - discover by profile)
-        
+
         Args:
             x_handle: X handle (with or without @)
             max_posts: Maximum posts to retrieve (default 5)
-        
+
         Returns:
             List of XPost objects (up to max_posts)
-        
+
         Cost: ~$0.0015 AUD per request
         """
         brightdata_api_key = os.getenv("BRIGHTDATA_API_KEY")
@@ -1597,7 +1597,7 @@ class WaterfallVerificationWorker(BaseEngine):
     def _clean_company_name(self, name: str) -> str:
         """
         Clean company name for better fuzzy matching.
-        
+
         Removes common suffixes like PTY LTD, LIMITED, etc.
         Normalizes case to title case.
         """
@@ -1623,7 +1623,7 @@ class WaterfallVerificationWorker(BaseEngine):
     ) -> GMBRecord | None:
         """
         Tier 2: Scrape Google Maps for business info via Bright Data.
-        
+
         CEO Directive #036: Replaced deprecated Apify with Bright Data Web Scraper API.
         Dataset: gd_m8ebnr0q2qlklc02fz (Google Maps Business Information)
         Method: discover_by=location
@@ -1798,15 +1798,15 @@ class WaterfallVerificationWorker(BaseEngine):
     ) -> tuple[MatchConfidence, int]:
         """
         Match ABN record to GMB record using fuzzy matching.
-        
+
         CEO Directive #039: Prioritizes ASIC registered_name when available
         for improved match rates (fixes 55% failure).
-        
+
         Args:
             abn: ABN record from T1
             gmb: GMB record from T2
             asic: Optional ASIC verify record from T1.25
-        
+
         Returns:
             Tuple of (MatchConfidence, match_score_percentage)
         """

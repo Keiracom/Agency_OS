@@ -15,10 +15,10 @@ SIEGE CONTEXT:
   Tier 5 of the Siege Waterfall - "Identity Gold"
   Cost: $0.45 AUD per successful enrichment
   Only triggered for leads with ALS >= 85 (HOT leads)
-  
+
   Primary use case: Verified mobile numbers for Voice AI/SMS
   Secondary: Personal email addresses for fallback outreach
-  
+
   API Reference: https://developers.kaspr.io/
 """
 
@@ -151,20 +151,20 @@ class KasprCreditExhaustedError(KasprError):
 class KasprClient:
     """
     Kaspr API client for mobile number enrichment.
-    
+
     Tier 5 of Siege Waterfall - $0.45 AUD/phone.
     Only used for ALS >= 85 (HOT leads).
-    
+
     Primary use: Get verified mobile numbers for Voice AI and SMS campaigns.
-    
+
     Usage:
         client = KasprClient()
         result = await client.enrich_mobile("https://linkedin.com/in/johndoe")
-        
+
         if result.found and result.mobile_number_verified:
             print(f"Mobile: {result.mobile_number_verified}")
             print(f"Confidence: {result.mobile_confidence}%")
-    
+
     Attributes:
         api_key: Kaspr API key
         cost_tracking_enabled: Whether to track costs (default True)
@@ -178,11 +178,11 @@ class KasprClient:
     ):
         """
         Initialize Kaspr client.
-        
+
         Args:
             api_key: Kaspr API key (falls back to settings.kaspr_api_key)
             cost_tracking_enabled: Track API costs in session
-            
+
         Raises:
             IntegrationError: If no API key provided or found in settings
         """
@@ -251,15 +251,15 @@ class KasprClient:
     ) -> dict:
         """
         Make authenticated API request with retry logic.
-        
+
         Args:
             method: HTTP method (GET, POST, etc.)
             endpoint: API endpoint path
             data: Request body data
-            
+
         Returns:
             API response as dictionary
-            
+
         Raises:
             KasprRateLimitError: Rate limit exceeded
             KasprCreditExhaustedError: Credits exhausted
@@ -325,10 +325,10 @@ class KasprClient:
     def _extract_linkedin_public_id(self, linkedin_url: str) -> str | None:
         """
         Extract public LinkedIn ID from URL.
-        
+
         Args:
             linkedin_url: Full LinkedIn profile URL
-            
+
         Returns:
             Public ID (e.g., "john-doe-12345") or None
         """
@@ -356,16 +356,16 @@ class KasprClient:
     ) -> KasprEnrichmentResult:
         """
         Get verified mobile number from LinkedIn profile.
-        
+
         This is the primary enrichment method for Tier 5.
         Costs $0.45 AUD per successful enrichment.
-        
+
         Args:
             linkedin_url: LinkedIn profile URL
-            
+
         Returns:
             KasprEnrichmentResult with mobile number and metadata
-            
+
         Raises:
             ValidationError: If linkedin_url is invalid
             KasprError: If API call fails
@@ -418,17 +418,17 @@ class KasprClient:
     ) -> dict[str, Any]:
         """
         Enrich with mobile + identity data.
-        
+
         This method matches the interface expected by SiegeWaterfall.
         Primary lookup is by LinkedIn URL.
-        
+
         Args:
             linkedin_url: LinkedIn profile URL (preferred)
             email: Email address (fallback lookup)
             first_name: First name (for name+company lookup)
             last_name: Last name (for name+company lookup)
             company: Company name (for name+company lookup)
-            
+
         Returns:
             Dictionary with enriched identity data
         """
@@ -472,14 +472,14 @@ class KasprClient:
     ) -> list[KasprEnrichmentResult]:
         """
         Bulk mobile enrichment for multiple profiles.
-        
+
         Processes profiles with rate limiting and cost tracking.
         Use with caution - each successful enrichment costs $0.45 AUD.
-        
+
         Args:
             profiles: List of LinkedIn profile URLs
             max_concurrent: Maximum concurrent requests (default 5)
-            
+
         Returns:
             List of KasprEnrichmentResult for each profile
         """
@@ -539,7 +539,7 @@ class KasprClient:
     ) -> KasprEnrichmentResult:
         """
         Transform Kaspr API response to standardized result.
-        
+
         Kaspr API response structure:
         {
             "firstName": "John",
@@ -554,11 +554,11 @@ class KasprClient:
                 {"type": "work", "email": "john@acme.com", "confidence": 90}
             ]
         }
-        
+
         Args:
             response: Raw Kaspr API response
             linkedin_url: Original LinkedIn URL requested
-            
+
         Returns:
             KasprEnrichmentResult with normalized data
         """
@@ -636,7 +636,7 @@ class KasprClient:
     def get_session_cost(self) -> float:
         """
         Get total cost incurred this session in $AUD.
-        
+
         Returns:
             Total cost in AUD
         """
@@ -657,10 +657,10 @@ _kaspr_client: KasprClient | None = None
 def get_kaspr_client() -> KasprClient:
     """
     Get or create KasprClient singleton instance.
-    
+
     Returns:
         KasprClient instance
-        
+
     Raises:
         IntegrationError: If KASPR_API_KEY not configured
     """

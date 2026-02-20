@@ -84,7 +84,7 @@ async def check_campaign_quota_task(campaign_id: str) -> dict[str, Any]:
         # Get campaign quota config
         result = await db.execute(
             text("""
-                SELECT 
+                SELECT
                     c.id,
                     c.client_id,
                     c.name,
@@ -169,7 +169,7 @@ async def apply_gate_1_filter_task(
         # Get lead data
         result = await db.execute(
             text("""
-                SELECT 
+                SELECT
                     id, email, company_name, company_industry,
                     enrichment_data, als_score, pool_status
                 FROM lead_pool
@@ -311,7 +311,7 @@ async def apply_gate_2_filter_task(
         # Get lead data
         result = await db.execute(
             text("""
-                SELECT 
+                SELECT
                     id, email, phone, als_score,
                     enrichment_data, enrichment_confidence
                 FROM lead_pool

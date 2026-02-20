@@ -67,13 +67,13 @@ def get_daily_stats() -> dict:
 def check_can_purchase(domain_count: int) -> bool:
     """
     Check if purchase is allowed within limits.
-    
+
     Args:
         domain_count: Number of domains to purchase
-        
+
     Returns:
         True if purchase is allowed
-        
+
     Raises:
         SpendingLimitExceeded: If any limit would be exceeded
     """
@@ -119,7 +119,7 @@ def check_can_purchase(domain_count: int) -> bool:
 def record_purchase(domain_count: int, spend_aud: float | None = None) -> None:
     """
     Record a successful purchase against daily limits.
-    
+
     Args:
         domain_count: Number of domains purchased
         spend_aud: Actual spend (defaults to domain_count * DOMAIN_COST_AUD)
@@ -160,7 +160,7 @@ def queue_for_approval(
 ) -> str:
     """
     Queue a large purchase for approval.
-    
+
     Returns:
         Approval request ID
     """

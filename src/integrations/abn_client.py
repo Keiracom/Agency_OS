@@ -16,11 +16,11 @@ RULES APPLIED:
 SIEGE CONTEXT:
   Tier 1 of the Siege Waterfall enrichment system.
   ABN Lookup provides FREE access to Australian Business Register data.
-  
+
   Source: https://abr.business.gov.au/abrxmlsearch/AbrXmlSearch.asmx
   Cost: $0.00 AUD (FREE with GUID registration)
   Rate Limits: Reasonable use policy, no hard limits published
-  
+
   Data Available:
     - ABN (Australian Business Number)
     - ACN (Australian Company Number) for companies
@@ -165,15 +165,15 @@ class ABNValidationError(ValidationError):
 def validate_abn(abn: str) -> str:
     """
     Validate and normalize an ABN.
-    
+
     ABN is 11 digits with a specific checksum algorithm.
-    
+
     Args:
         abn: ABN string (may contain spaces)
-        
+
     Returns:
         Normalized ABN (digits only)
-        
+
     Raises:
         ABNValidationError: If ABN format is invalid
     """
@@ -202,15 +202,15 @@ def validate_abn(abn: str) -> str:
 def validate_acn(acn: str) -> str:
     """
     Validate and normalize an ACN.
-    
+
     ACN is 9 digits with a specific checksum algorithm.
-    
+
     Args:
         acn: ACN string (may contain spaces)
-        
+
     Returns:
         Normalized ACN (digits only)
-        
+
     Raises:
         ABNValidationError: If ACN format is invalid
     """
@@ -260,43 +260,43 @@ def format_acn(acn: str) -> str:
 class ABNClient:
     """
     ABN Lookup API client for Australian business data.
-    
+
     Tier 1 of Siege Waterfall - FREE ($0.00 AUD per lookup).
-    
+
     Provides access to the Australian Business Register via
     the ABN Lookup XML web services.
-    
+
     Usage:
         client = ABNClient()
-        
+
         # Search by ABN
         result = await client.search_by_abn("51 835 430 479")
-        
+
         # Search by name
         results = await client.search_by_name("Woolworths", state="NSW")
-        
+
         # Search by ACN
         result = await client.search_by_acn("080 036 693")
-        
+
         # Bulk search by postcode
         results = await client.bulk_search({"postcode": "2000"})
-    
+
     Attributes:
         guid: Authentication GUID for API access
         _client: Async HTTP client
         _request_count: Number of requests made (for stats)
-    
+
     Note:
         A GUID is required for API access. Register for free at:
         https://abr.business.gov.au/Tools/WebServices
-        
+
         Set ABN_LOOKUP_GUID environment variable or pass to constructor.
     """
 
     def __init__(self, guid: str | None = None):
         """
         Initialize ABN Lookup client.
-        
+
         Args:
             guid: Authentication GUID (uses settings if not provided)
         """
@@ -356,14 +356,14 @@ class ABNClient:
     ) -> dict[str, Any]:
         """
         Make API request and parse XML response.
-        
+
         Args:
             method: API method name (e.g., "SearchByABNv202001")
             params: Request parameters
-            
+
         Returns:
             Parsed response as dict
-            
+
         Raises:
             ABNLookupError: If API returns an error
             APIError: If HTTP request fails
@@ -434,10 +434,10 @@ class ABNClient:
     async def search_by_abn(self, abn: str) -> dict[str, Any]:
         """
         Lookup business by ABN number.
-        
+
         Args:
             abn: Australian Business Number (11 digits, spaces allowed)
-            
+
         Returns:
             Business data dict with keys:
                 - found: bool
@@ -455,7 +455,7 @@ class ABNClient:
                 - gst_from: GST registration date (if registered)
                 - source: "abn_lookup"
                 - cost_aud: 0.00
-                
+
         Raises:
             ABNValidationError: If ABN format is invalid
             ABNLookupError: If ABN not found
@@ -497,9 +497,9 @@ class ABNClient:
     ) -> list[dict[str, Any]]:
         """
         Search businesses by name, optionally filter by state.
-        
+
         Uses ABRSearchByNameAdvancedSimpleProtocol2017 for maximum flexibility.
-        
+
         Args:
             name: Business name to search for
             state: State/Territory code or name (optional)
@@ -508,7 +508,7 @@ class ABNClient:
             trading_name: Include trading names in search
             business_name: Include ASIC business names in search
             limit: Maximum results to return (default 20, max 200)
-            
+
         Returns:
             List of matching business summaries with keys:
                 - abn: ABN
@@ -519,7 +519,7 @@ class ABNClient:
                 - status: ABN status
                 - score: Search relevance score
                 - source: "abn_lookup"
-                
+
         Raises:
             ValidationError: If name is too short
         """
@@ -584,15 +584,15 @@ class ABNClient:
     async def search_by_acn(self, acn: str) -> dict[str, Any]:
         """
         Lookup business by ACN (Australian Company Number).
-        
+
         ACN is the 9-digit company number issued by ASIC.
-        
+
         Args:
             acn: Australian Company Number (9 digits, spaces allowed)
-            
+
         Returns:
             Business data dict (same format as search_by_abn)
-            
+
         Raises:
             ABNValidationError: If ACN format is invalid
             ABNLookupError: If ACN not found
@@ -629,25 +629,25 @@ class ABNClient:
     ) -> list[dict[str, Any]]:
         """
         Bulk search for seeding lead pool.
-        
+
         Supports various search criteria for finding businesses:
         - postcode: Search by postcode (returns ABN list)
         - name + state: Search by name with state filter
-        
+
         Args:
             criteria: Search criteria dict:
                 - postcode: Australian postcode
                 - name: Business name
                 - state: State filter
             limit: Maximum results per query
-            
+
         Returns:
             List of business records (enriched where possible)
-            
+
         Example:
             # Find all active businesses in Sydney CBD
             results = await client.bulk_search({"postcode": "2000"}, limit=50)
-            
+
             # Search for marketing agencies in Victoria
             results = await client.bulk_search({
                 "name": "marketing agency",
@@ -716,13 +716,13 @@ class ABNClient:
     async def enrich_from_abn(self, abn: str) -> dict[str, Any]:
         """
         Enrich lead data from ABN lookup.
-        
+
         This method is designed for Siege Waterfall Tier 1 integration.
         Returns data in a format compatible with the waterfall enrichment.
-        
+
         Args:
             abn: Australian Business Number
-            
+
         Returns:
             Enrichment data dict with:
                 - found: bool
@@ -748,7 +748,7 @@ class ABNClient:
     def _transform_business_entity(self, record: dict) -> dict[str, Any]:
         """
         Transform ABR business entity to standard format.
-        
+
         Handles the complex nested structure of ABR XML responses.
         """
         # Extract ABN

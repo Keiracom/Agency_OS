@@ -81,7 +81,7 @@ async def check_campaign_quality_gate_task(campaign_id: str) -> dict[str, Any]:
     - Hot+Warm combined below 5% of total leads
     - Verified email below 80% of leads
     - DM (Decision Maker) identified below 60% of leads
-    
+
     Triggers additional discovery if Hot+Warm below 25%.
 
     Args:
@@ -94,7 +94,7 @@ async def check_campaign_quality_gate_task(campaign_id: str) -> dict[str, Any]:
         # Get comprehensive stats for campaign leads
         result = await db.execute(
             text("""
-                SELECT 
+                SELECT
                     COUNT(*) as total_leads,
                     COUNT(CASE WHEN als_tier = 'hot' THEN 1 END) as hot_count,
                     COUNT(CASE WHEN als_tier = 'warm' THEN 1 END) as warm_count,
@@ -102,7 +102,7 @@ async def check_campaign_quality_gate_task(campaign_id: str) -> dict[str, Any]:
                     COUNT(CASE WHEN als_tier = 'cold' THEN 1 END) as cold_count,
                     COUNT(CASE WHEN als_tier = 'dead' THEN 1 END) as dead_count,
                     COUNT(CASE WHEN email_verified = TRUE THEN 1 END) as verified_email_count,
-                    COUNT(CASE WHEN seniority_level IN ('owner', 'founder', 'c_suite', 'vp', 'director') 
+                    COUNT(CASE WHEN seniority_level IN ('owner', 'founder', 'c_suite', 'vp', 'director')
                           OR title ILIKE '%owner%' OR title ILIKE '%ceo%' OR title ILIKE '%founder%'
                           OR title ILIKE '%director%' OR title ILIKE '%managing%' THEN 1 END) as dm_count
                 FROM leads
@@ -272,7 +272,7 @@ async def auto_assign_resources_task(lead_id: str, campaign_id: str) -> dict[str
         # Get lead tier and client resources
         result = await db.execute(
             text("""
-                SELECT 
+                SELECT
                     l.id, l.als_tier, l.als_score, l.client_id,
                     l.assigned_email_resource, l.assigned_linkedin_seat, l.assigned_phone_resource
                 FROM leads l
@@ -296,7 +296,7 @@ async def auto_assign_resources_task(lead_id: str, campaign_id: str) -> dict[str
         # Get available resources from resource_pool with round-robin selection
         resources_result = await db.execute(
             text("""
-                SELECT 
+                SELECT
                     channel_type, resource_id, daily_remaining,
                     ROW_NUMBER() OVER (PARTITION BY channel_type ORDER BY daily_remaining DESC) as rn
                 FROM resource_pool

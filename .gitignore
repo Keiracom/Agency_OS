@@ -124,3 +124,6 @@ supabase/.temp/
 *accpay*
 *bills_*.json
 Agency_OS/
+projects/elliot-mobile/
+projects/elliot-status/
+screenshot-to-code/

@@ -11,7 +11,7 @@ RULES APPLIED:
   - Rule 12: Can import from models, cannot import from engines/orchestration
 
 NOTE: proxycurl removed - service shutdown July 2025 (LinkedIn lawsuit).
-LinkedIn enrichment now via Siege Waterfall → Kaspr pipeline.
+NOTE: Hunter (T3) and Kaspr (T5) deprecated - replaced by Leadmagic.
 """
 
 # Agency OS - Integrations Package
@@ -21,8 +21,7 @@ from src.integrations.calendar_booking import router as calendar_booking_router
 from src.integrations.clicksend import ClickSendClient, get_clicksend_client
 from src.integrations.elevenagets_client import ElevenAgentsClient, get_elevenagets_client
 from src.integrations.elevenlabs import ElevenLabsClient, get_elevenlabs_client
-from src.integrations.hunter import HunterClient, get_hunter_client
-from src.integrations.kaspr import KasprClient, get_kaspr_client
+from src.integrations.leadmagic import LeadmagicClient, get_leadmagic_client
 from src.integrations.serper import SerperClient, get_serper_client
 from src.integrations.siege_waterfall import SiegeWaterfall, get_siege_waterfall
 
@@ -43,10 +42,8 @@ __all__ = [
     "get_elevenlabs_client",
     "ClickSendClient",
     "get_clicksend_client",
-    "HunterClient",
-    "get_hunter_client",
-    "KasprClient",
-    "get_kaspr_client",
+    "LeadmagicClient",
+    "get_leadmagic_client",
     "SiegeWaterfall",
     "get_siege_waterfall",
     # Routers for FastAPI

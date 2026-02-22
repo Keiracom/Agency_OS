@@ -11,7 +11,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Globe, Linkedin, ArrowRight, Sparkles } from "lucide-react";
-// MayaChatBubble - Sprint 4 work, not yet implemented
+import { MayaOverlay } from "@/components/maya";
 
 type OnboardingStep = 'website' | 'integrations' | 'complete';
 
@@ -23,6 +23,8 @@ export default function OnboardingPage() {
   const [linkedinConnected, setLinkedinConnected] = useState(false);
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('website');
   const [isLoading, setIsLoading] = useState(false);
+  const [isMayaMinimised, setIsMayaMinimised] = useState(false);
+  const [mayaProgress, setMayaProgress] = useState(0);
 
   // Validate website URL
   useEffect(() => {
@@ -37,6 +39,16 @@ export default function OnboardingPage() {
       setWebsiteValid(false);
     }
   }, [websiteUrl]);
+
+  // Update Maya progress based on step
+  useEffect(() => {
+    const progressMap: Record<OnboardingStep, number> = {
+      'website': 33,
+      'integrations': 66,
+      'complete': 100,
+    };
+    setMayaProgress(progressMap[currentStep] || 0);
+  }, [currentStep]);
 
   // Progressive disclosure - advance to integrations when URL is valid
   const handleWebsiteSubmit = () => {
@@ -357,7 +369,17 @@ export default function OnboardingPage() {
         )}
       </div>
 
-      {/* Maya Chat Bubble - Sprint 4 work, not yet implemented */}
+      {/* Maya Overlay - Sprint 4 */}
+      <MayaOverlay
+        currentStep={currentStep}
+        stepProgress={mayaProgress}
+        isTyping={isLoading}
+        isPulsing={true}
+        isMinimised={isMayaMinimised}
+        onMinimise={() => setIsMayaMinimised(true)}
+        onMaximise={() => setIsMayaMinimised(false)}
+        position="bottom-right"
+      />
     </div>
   );
 }

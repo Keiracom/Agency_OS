@@ -86,7 +86,6 @@ class LeadPool(Base, UUIDMixin, TimestampMixin):
     )
 
     # ===== UNIQUE IDENTIFIERS =====
-    apollo_id: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True)
     email: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
     linkedin_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 

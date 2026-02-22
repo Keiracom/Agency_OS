@@ -121,8 +121,6 @@ class Settings(BaseSettings):
         default=200.0, description="Daily SDK budget for Dominance tier (AUD)"
     )
 
-    apollo_api_key: str = Field(default="", description="Apollo.io API key")
-    apify_api_key: str = Field(default="", description="Apify API key")
     clay_api_key: str = Field(default="", description="Clay API key")
 
     # === ABN Lookup (Tier 1 Siege Waterfall - FREE) ===
@@ -134,13 +132,20 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("ABN_LOOKUP_GUID", "ABN_GUID"),
     )
 
-    # === Kaspr (Tier 5 Identity Enrichment) ===
-    # Mobile number enrichment for HOT leads (ALS >= 85)
-    kaspr_api_key: str = Field(default="", description="Kaspr API key for mobile enrichment")
+    # === Leadmagic (Tier 3 Email + Tier 5 Mobile) ===
+    # Replaces Hunter (T3) and Kaspr (T5) - CEO Directive
+    # Email finder: $0.015 AUD/lookup, Mobile finder: $0.077 AUD/lookup
+    # WARNING: Plan unpurchased - do not call until credits available
+    leadmagic_api_key: str = Field(
+        default="",
+        description="Leadmagic API key for email and mobile enrichment",
+        validation_alias=AliasChoices("LEADMAGIC_API_KEY"),
+    )
 
-    # === Hunter.io (Tier 3 Email Discovery) ===
-    # Email finder and verification for outreach
-    hunter_api_key: str = Field(default="", description="Hunter.io API key for email discovery")
+    # === DEPRECATED: Hunter.io and Kaspr ===
+    # Kept for backwards compatibility during migration
+    # hunter_api_key: REMOVED - use leadmagic_api_key
+    # kaspr_api_key: REMOVED - use leadmagic_api_key
 
     # === Prospeo (Email Finding/Verification) ===
     prospeo_api_key: str = Field(

@@ -264,5 +264,25 @@ Default communication mode is TERSE:
 
 ---
 
+## §17 — Raw Output Mandate (LAW XIV)
+
+Verification reports must include raw terminal output — not summaries of output.
+
+**Unacceptable:**
+- "grep returned zero results"
+- "Import test passed"
+- "No errors found"
+
+**Required:**
+- Actual terminal output pasted verbatim
+- Full command shown with output
+- If output is empty, show the empty output
+
+If a verification agent summarises instead of pasting raw output, the verification is rejected and must be rerun. No PR is approved without raw output evidence.
+
+*Ratified: 2026-02-22, CEO Directive*
+
+---
+
 *Signed and Ratified: 2026-02-12, CEO Directive*
-*Governance Version: 2.0*
+*Governance Version: 2.1*

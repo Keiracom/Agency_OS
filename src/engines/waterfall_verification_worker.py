@@ -55,7 +55,7 @@ class VerificationTier(StrEnum):
     ABN_SEED = "abn_seed"
     ASIC_VERIFY = "asic_verify"  # T1.25: ABR SearchByASIC for registered_name
     GMB_SCRAPER = "gmb_scraper"
-    HUNTER_IO = "hunter_io"
+    HUNTER_IO = "hunter_io"  # NOTE: Now uses Leadmagic (Hunter deprecated)
     ZEROBOUNCE = "zerobounce"
     DM0_LINKEDIN_DISCOVERY = (
         "dm0_linkedin_discovery"  # T-DM0: DataForSEO SERP + Bright Data Profile
@@ -77,11 +77,12 @@ class MatchConfidence(StrEnum):
 
 
 # Cost per operation in AUD (2026 pricing)
+# NOTE: HUNTER_IO now uses Leadmagic (Hunter deprecated - CEO Directive)
 COSTS_AUD = {
     VerificationTier.ABN_SEED: Decimal("0.00"),  # Free (data.gov.au)
     VerificationTier.ASIC_VERIFY: Decimal("0.00"),  # Free (ABR SearchByASIC) - CEO Directive #039
-    VerificationTier.GMB_SCRAPER: Decimal("0.0062"),  # GMB scraper (Apify deprecated)
-    VerificationTier.HUNTER_IO: Decimal("0.0064"),  # Hunter.io Growth tier
+    VerificationTier.GMB_SCRAPER: Decimal("0.0062"),  # GMB scraper (Bright Data)
+    VerificationTier.HUNTER_IO: Decimal("0.015"),  # Leadmagic email finder (was Hunter $0.019)
     VerificationTier.ZEROBOUNCE: Decimal("0.010"),  # ZeroBounce average
     VerificationTier.DM0_LINKEDIN_DISCOVERY: Decimal(
         "0.0165"

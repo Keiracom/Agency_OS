@@ -12,6 +12,8 @@ import {
   Settings,
   Check,
 } from "lucide-react";
+import { DemoBanner } from "@/components/demo/DemoBanner";
+import { useDemoMode } from "@/lib/demo-context";
 
 interface AppShellProps {
   children: ReactNode;
@@ -29,9 +31,13 @@ const navItems = [
 
 export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
   const pathname = usePathname();
+  const isDemo = useDemoMode();
 
   return (
     <div className="min-h-screen relative overflow-hidden">
+      {/* Demo Mode Banner */}
+      <DemoBanner />
+      
       {/* Base dark background */}
       <div className="fixed inset-0 bg-bg-void -z-10" />
       
@@ -64,7 +70,7 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
       </div>
 
       {/* Fixed Left Sidebar - 72px */}
-      <aside className="fixed left-0 top-0 h-full w-[72px] bg-bg-surface border-r border-border-subtle flex flex-col items-center py-4 z-50">
+      <aside className={`fixed left-0 h-full w-[72px] bg-bg-surface border-r border-border-subtle flex flex-col items-center py-4 z-50 ${isDemo ? 'top-10' : 'top-0'}`}>
         {/* Logo */}
         <div className="mb-8">
           <div className="w-[42px] h-[42px] bg-gradient-to-br from-accent-primary to-accent-blue rounded-xl flex items-center justify-center shadow-glow-sm">
@@ -104,9 +110,9 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
       </aside>
 
       {/* Main Content Area */}
-      <div className="ml-[72px] min-h-screen flex flex-col">
+      <div className={`ml-[72px] min-h-screen flex flex-col ${isDemo ? 'pt-10' : ''}`}>
         {/* Top Header Bar */}
-        <header className="h-16 bg-bg-surface border-b border-border-subtle flex items-center justify-between px-6 sticky top-0 z-40">
+        <header className={`h-16 bg-bg-surface border-b border-border-subtle flex items-center justify-between px-6 sticky z-40 ${isDemo ? 'top-10' : 'top-0'}`}>
           <div className="flex items-center gap-4">
             <h1 className="text-lg font-semibold text-text-primary">
               {pageTitle}

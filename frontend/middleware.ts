@@ -1,19 +1,63 @@
 /**
  * FILE: frontend/middleware.ts
- * PURPOSE: Next.js middleware for route protection
+ * PURPOSE: Next.js middleware for route protection + demo mode
  * MIGRATION: Updated to use @supabase/ssr (replaces auth-helpers-nextjs)
  * 
- * NOTE: Auth logic DISABLED for visual review (PR #25)
+ * CEO Directive #028 — Public Demo Dashboard
+ * - Detect ?demo=true query parameter
+ * - Bypass auth for demo mode
+ * - Persist demo flag via cookies
+ * 
+ * NOTE: Full auth logic DISABLED for visual review (PR #25)
  * TODO: Re-enable auth before production deploy
  */
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+const DEMO_COOKIE_NAME = "agency_os_demo";
+
 export async function middleware(req: NextRequest) {
+  const { pathname, searchParams } = req.nextUrl;
+  const response = NextResponse.next();
+
+  // Check for demo mode via query parameter
+  const demoParam = searchParams.get("demo");
+  
+  // Check existing demo cookie
+  const demoCookie = req.cookies.get(DEMO_COOKIE_NAME)?.value;
+  
+  // Determine if we're in demo mode
+  let isDemo = false;
+  
+  if (demoParam === "true") {
+    // Enable demo mode
+    isDemo = true;
+    response.cookies.set(DEMO_COOKIE_NAME, "true", {
+      httpOnly: false, // Allow client-side access
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24, // 24 hours
+      path: "/",
+    });
+  } else if (demoParam === "false") {
+    // Explicitly disable demo mode
+    isDemo = false;
+    response.cookies.delete(DEMO_COOKIE_NAME);
+  } else if (demoCookie === "true") {
+    // Continue demo mode from cookie
+    isDemo = true;
+  }
+
+  // If in demo mode, bypass all auth checks
+  if (isDemo) {
+    // Set demo header for server components to detect
+    response.headers.set("x-demo-mode", "true");
+    return response;
+  }
+
   // TEMPORARILY DISABLED: All auth checks bypassed for visual review
   // Re-enable the full auth logic before merging to main
-  return NextResponse.next();
+  return response;
 }
 
 /*

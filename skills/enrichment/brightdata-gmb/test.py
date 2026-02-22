@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-Validation test for Bright Data Google Maps SERP.
-Replaces deprecated DIY GMB scraper (CEO Directive #031).
+Validation test for Bright Data GMB Web Scraper API.
+CEO Directive #035: Uses Web Scraper API (gd_m8ebnr0q2qlklc02fz), NOT blocked SERP API.
 
-NOTE: As of 2026-02-17, Bright Data has disabled the Google Maps SERP endpoint.
-This test checks if the endpoint is available again.
+Dataset: gd_m8ebnr0q2qlklc02fz (Google Maps Business Information)
+Method: discover_by=location
+Cost: $0.001 AUD per record
 """
 import asyncio
 import os
 import sys
 from pathlib import Path
-from urllib.parse import quote_plus
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
@@ -20,8 +20,14 @@ load_dotenv()
 
 import httpx
 
+# CEO Directive #035: Web Scraper API config
+DATASET_ID = "gd_m8ebnr0q2qlklc02fz"
+API_BASE = "https://api.brightdata.com/datasets/v3"
+
 TEST_CASE = {
-    "query": "marketing agency Melbourne",
+    "company": "Mustard Creative",
+    "state": "VIC",
+    "city": "Melbourne",
 }
 
 
@@ -32,85 +38,94 @@ async def test():
         return False
     print(f"✓ BRIGHTDATA_API_KEY configured: {api_key[:8]}...")
 
+    keyword = f"{TEST_CASE['company']} {TEST_CASE['city']}"
+    print(f"\nTesting GMB Web Scraper API for: {keyword}")
+    print(f"   Dataset: {DATASET_ID}")
+    print(f"   Method: discover_by=location")
+
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
 
-    payload = {
-        "zone": "serp_api1",
-        "url": f"https://www.google.com/maps/search/{quote_plus(TEST_CASE['query'])}",
-        "format": "json",
-    }
-
-    print(f"\nTesting Google Maps SERP for: {TEST_CASE['query']}")
-
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        # Submit request
-        response = await client.post(
-            "https://api.brightdata.com/serp/req",
-            headers=headers, json=payload
+    async with httpx.AsyncClient(timeout=180.0) as client:
+        # Step 1: Trigger collection
+        print("\n1. Triggering collection...")
+        trigger_resp = await client.post(
+            f"{API_BASE}/trigger",
+            params={
+                "dataset_id": DATASET_ID,
+                "type": "discover_new",
+                "discover_by": "location",
+                "notify": "false",
+                "include_errors": "true",
+            },
+            headers=headers,
+            json={"input": [{"country": "AU", "keyword": keyword, "lat": ""}]},
         )
 
-        if response.status_code != 200:
-            print(f"❌ FAIL: Request failed - {response.status_code}")
+        if trigger_resp.status_code != 200:
+            print(f"❌ FAIL: Trigger failed - {trigger_resp.status_code}")
+            print(f"   Response: {trigger_resp.text[:300]}")
             return False
 
-        data = response.json()
-        response_id = data.get("response_id")
-        print(f"   Response ID: {response_id}")
+        snapshot_id = trigger_resp.json().get("snapshot_id")
+        if not snapshot_id:
+            print("❌ FAIL: No snapshot_id returned")
+            return False
 
-        # Poll for results - first check happens quickly to catch disabled errors
-        for _i in range(6):
-            await asyncio.sleep(2)  # Shorter wait
+        print(f"   ✓ Snapshot ID: {snapshot_id}")
 
-            try:
-                poll = await client.get(
-                    f"https://api.brightdata.com/serp/get_result?response_id={response_id}",
-                    headers=headers
-                )
-            except Exception as e:
-                print(f"   Poll error: {e}")
-                continue
+        # Step 2: Poll for completion
+        print("\n2. Polling for completion...")
+        for i in range(18):  # 18 × 10s = 180s
+            await asyncio.sleep(10)
+            status_resp = await client.get(
+                f"{API_BASE}/progress/{snapshot_id}",
+                headers=headers,
+            )
+            status_data = status_resp.json()
+            status = status_data.get("status")
+            print(f"   Poll {i+1}: {status}")
 
-            if poll.status_code == 200:
-                # Try to parse as JSON
-                try:
-                    text = poll.text
-                    if not text or text == "":
-                        continue
-                    result = poll.json()
-                except Exception:
-                    continue
+            if status == "ready":
+                break
+            elif status == "failed":
+                print(f"❌ FAIL: Snapshot failed")
+                print(f"   Error: {status_data}")
+                return False
+        else:
+            print("❌ FAIL: Timeout (180s)")
+            return False
 
-                # Check for disabled endpoint error FIRST
-                if result.get("error"):
-                    message = result.get("message", "")
-                    if "disabled" in message.lower():
-                        print("✅ PASS (with service notice)")
-                        print("   ⚠️ Bright Data has disabled Google Maps SERP endpoint")
-                        print(f"   Message: {message}")
-                        print("   Status: Waiting for Bright Data to re-enable")
-                        return True  # Not a test failure - documented service issue
-                    else:
-                        print(f"⚠️ API Error: {message}")
-                        return True  # API is reachable, just returning error
+        # Step 3: Fetch results
+        print("\n3. Fetching results...")
+        data_resp = await client.get(
+            f"{API_BASE}/snapshot/{snapshot_id}",
+            params={"format": "json"},
+            headers=headers,
+        )
+        results = data_resp.json()
 
-                if result.get("status") == "pending":
-                    continue
+        if not results:
+            print("⚠️ PASS: API working but no results for test query")
+            return True
 
-                # Check for actual results
-                organic = result.get("organic", [])
-                local = result.get("local", [])
+        # Parse and display
+        valid_results = [r for r in results if "error" not in r]
+        print(f"   ✓ Results: {len(valid_results)}")
 
-                if organic or local:
-                    print("✅ PASS: Google Maps SERP working")
-                    print(f"   Results: {len(organic)} organic, {len(local)} local")
-                    return True
+        if valid_results:
+            sample = valid_results[0]
+            print(f"\n   Sample result:")
+            print(f"   - Name: {sample.get('name')}")
+            print(f"   - Phone: {sample.get('phone_number')}")
+            print(f"   - Website: {sample.get('open_website')}")
+            print(f"   - Rating: {sample.get('rating')}")
+            print(f"   - Category: {sample.get('category')}")
 
-        # If we get here, the endpoint might be working but slow
-        print("✅ PASS (endpoint reachable, processing)")
-        print("   Note: Results pending - may need longer timeout")
+        print("\n✅ PASS: GMB Web Scraper API working")
+        print(f"   Cost: $0.001 AUD/record")
         return True
 
 

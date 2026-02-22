@@ -1,41 +1,24 @@
-# SKILL: Bright Data Google Maps SERP (GMB Replacement)
+# SKILL: Bright Data Google Maps (GMB Enrichment)
 
-**Tier:** 2  
-**Cost:** $0.0015 AUD per request  
-**Source:** Bright Data SERP API (Google Maps)  
-**Zone:** `serp_api1`  
+**Tier:** 1.5a  
+**Cost:** ~$0.0015 AUD per record  
+**Source:** Bright Data Web Scraper API (Google Maps Full Information)  
+**Dataset ID:** `gd_m8ebnr0q2qlklc02fz`  
 **Credentials Required:** `BRIGHTDATA_API_KEY`  
-**Status:** ⚠️ BLOCKED — Bright Data disabled Google Maps SERP endpoint (2026-02-17)
+**Status:** ✅ Working (Web Scraper API)
 
 ---
 
-## ⚠️ SERVICE BLOCKER
+## ⚠️ IMPORTANT — CEO Directive #035
 
-As of 2026-02-17, Bright Data has **disabled** the Google Maps SERP endpoint with message:
-> "This endpoint has been disabled due to low success rate, we are working on re-adding support"
+**GMB enrichment uses Bright Data Web Scraper API, NOT SERP API.**
 
-**Workaround options:**
-1. Use Google Maps Full Information dataset (`gd_m8ebnr0q2qlklc02fz`) with place_id
-2. Wait for Bright Data to re-enable the endpoint
-3. Fall back to Hunter.io domain search for business discovery
+Per CEO Directive #035, the correct method is:
+- **Dataset:** `gd_m8ebnr0q2qlklc02fz` (Google Maps full information)
+- **Endpoint:** `/datasets/v3/trigger`
+- **Input:** place_id or business URL
 
-This skill will work once Bright Data re-enables the endpoint. Test with `test.py` to check current status.
-
----
-
-## ⚠️ IMPORTANT
-
-**This replaces the deprecated DIY GMB scraper.**
-
-The original `src/integrations/gmb_scraper.py` has been deprecated as of CEO Directive #031. See Directive #020a for validation testing.
-
-**Cost comparison:**
-- DIY scraper: $0.006/lead (proxy + browser automation)
-- Bright Data SERP: $0.0015/request = **75% cost reduction**
-
-**Quality improvement:**
-- Bright Data returns: email, phone, website, social media, reviews
-- DIY scraper: phone, website, hours only
+The SERP API endpoint was deprecated due to low success rate.
 
 ---
 
@@ -50,47 +33,60 @@ python skills/enrichment/brightdata-gmb/test.py
 ## Prerequisites
 
 - [x] Credential: `BRIGHTDATA_API_KEY` is set
-- [x] SERP zone: `serp_api1` configured
+- [x] Dataset: `gd_m8ebnr0q2qlklc02fz` (Google Maps full information)
 
 ## How to Run
 
 ```bash
-# Search Google Maps for businesses
-python skills/enrichment/brightdata-gmb/run.py --query "marketing agency Melbourne"
+# Enrich by Google Maps URL or place_id
+python skills/enrichment/brightdata-gmb/run.py --url "https://maps.google.com/place/..."
 
-# With location specificity
-python skills/enrichment/brightdata-gmb/run.py --query "plumber" --location "Sydney NSW"
+# Or by place_id directly
+python skills/enrichment/brightdata-gmb/run.py --place_id "ChIJ..."
 ```
 
 ## Input Format
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `--query` | Yes | Business type/name to search |
-| `--location` | No | Location (city, state, or postcode) |
-| `--limit` | No | Max results (default: 5) |
+| `--url` | One of | Google Maps business URL |
+| `--place_id` | One of | Google Place ID |
+
+## API Call Pattern
+
+```python
+import httpx
+
+headers = {"Authorization": f"Bearer {BRIGHTDATA_API_KEY}"}
+payload = [{"url": "https://maps.google.com/place/..."}]
+
+response = await client.post(
+    "https://api.brightdata.com/datasets/v3/trigger",
+    params={
+        "dataset_id": "gd_m8ebnr0q2qlklc02fz",
+        "include_errors": "true"
+    },
+    headers=headers,
+    json=payload
+)
+snapshot_id = response.json()["snapshot_id"]
+# Poll for results...
+```
 
 ## Output Format
 
 ```json
 {
-  "results": [
-    {
-      "title": "Agency Name",
-      "address": "123 Street, Melbourne VIC",
-      "phone": "+61 3 1234 5678",
-      "website": "https://example.com",
-      "rating": 4.8,
-      "reviews_count": 127,
-      "category": "Marketing agency",
-      "email": "info@example.com",
-      "social_media": {
-        "facebook": "...",
-        "instagram": "..."
-      }
-    }
-  ],
-  "total_results": 20,
+  "name": "Agency Name",
+  "address": "123 Street, Melbourne VIC 3000",
+  "phone": "+61 3 1234 5678",
+  "website": "https://example.com",
+  "rating": 4.8,
+  "reviews_count": 127,
+  "category": "Marketing agency",
+  "place_id": "ChIJ...",
+  "hours": {...},
+  "photos": [...],
   "cost_aud": 0.0015
 }
 ```
@@ -100,12 +96,12 @@ python skills/enrichment/brightdata-gmb/run.py --query "plumber" --location "Syd
 | Error | Meaning | Action |
 |-------|---------|--------|
 | `401 Unauthorized` | Invalid API key | Check BRIGHTDATA_API_KEY |
-| `No results` | Query too specific | Broaden search terms |
-| `Rate limited` | Too many requests | Wait and retry |
+| `Empty result` | Place not found | Verify URL/place_id |
+| `Snapshot timeout` | Processing slow | Retry after 30s |
 
 ## Governance
 
-- **LAW II:** All costs in $AUD ($0.0015/request)
+- **LAW II:** All costs in $AUD (~$0.0015/record)
 - **Rate limits:** Per account quota
-- **Directive chain:** #020 → #020a → #031
+- **CEO Directive #035:** Use Web Scraper API dataset, NOT SERP
 - **Source:** docs/integrations/bright-data-inventory.md

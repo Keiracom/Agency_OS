@@ -121,8 +121,6 @@ class Settings(BaseSettings):
         default=200.0, description="Daily SDK budget for Dominance tier (AUD)"
     )
 
-    apollo_api_key: str = Field(default="", description="Apollo.io API key")
-    apify_api_key: str = Field(default="", description="Apify API key")
     clay_api_key: str = Field(default="", description="Clay API key")
 
     # === ABN Lookup (Tier 1 Siege Waterfall - FREE) ===

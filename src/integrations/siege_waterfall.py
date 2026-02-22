@@ -493,19 +493,9 @@ class LeadmagicEmailAdapter:
         return []
 
 
-# Alias for backwards compatibility
+# Backwards compatibility aliases (deprecated services)
 HunterClientAdapter = LeadmagicEmailAdapter
-
-        try:
-            result = await client.domain_search(domain, limit=limit)
-            return [email.to_dict() for email in result.emails]
-        except Exception as e:
-            logger.warning(f"[Hunter] domain_search failed: {e}")
-            return []
-
-
-# Alias for backwards compatibility
-HunterClientStub = HunterClientAdapter
+HunterClientStub = LeadmagicEmailAdapter
 
 
 class ProxycurlClientAdapter:

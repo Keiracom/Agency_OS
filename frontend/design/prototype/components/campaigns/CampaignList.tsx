@@ -8,7 +8,7 @@ import { CampaignAllocationManager, CampaignWithPriority } from "./CampaignAlloc
 /**
  * Status filter type
  */
-type StatusFilter = "all" | "active" | "paused" | "draft";
+type StatusFilter = "all" | "active" | "paused" | "draft" | "pending_approval" | "approved";
 
 /**
  * Demo campaign data for prototype
@@ -87,6 +87,8 @@ export function CampaignList() {
   const filterButtons: { value: StatusFilter; label: string }[] = [
     { value: "all", label: "All" },
     { value: "active", label: "Active" },
+    { value: "approved", label: "Approved" },
+    { value: "pending_approval", label: "Pending" },
     { value: "paused", label: "Paused" },
     { value: "draft", label: "Draft" },
   ];

@@ -155,9 +155,15 @@ class PermissionMode(StrEnum):
 
 
 class CampaignStatus(StrEnum):
-    """Campaign lifecycle status."""
+    """Campaign lifecycle status.
+
+    Flow: DRAFT → PENDING_APPROVAL → APPROVED → ACTIVE → PAUSED/COMPLETED
+    LAW: campaign_approval_flow - Every campaign requires explicit agency sign-off.
+    """
 
     DRAFT = "draft"
+    PENDING_APPROVAL = "pending_approval"
+    APPROVED = "approved"
     ACTIVE = "active"
     PAUSED = "paused"
     COMPLETED = "completed"

@@ -10,7 +10,7 @@ import { PrioritySlider } from "./PrioritySlider";
 export interface CampaignWithPriority {
   id: string;
   name: string;
-  status: "active" | "paused" | "draft";
+  status: "active" | "paused" | "draft" | "pending_approval" | "approved";
   priority_pct: number;
   is_ai_suggested: boolean;
   meetings_this_month: number;
@@ -151,22 +151,26 @@ export function CampaignAllocationManager({
   };
 
   // Status badge component
-  const StatusBadge = ({ status }: { status: "active" | "paused" | "draft" }) => {
-    const styles = {
+  const StatusBadge = ({ status }: { status: "active" | "paused" | "draft" | "pending_approval" | "approved" }) => {
+    const styles: Record<string, string> = {
       active: "bg-[#DCFCE7] text-[#166534]",
       paused: "bg-[#FEF3C7] text-[#92400E]",
       draft: "bg-[#F1F5F9] text-[#64748B]",
+      pending_approval: "bg-[#FEF9C3] text-[#854D0E]",  // Yellow for pending
+      approved: "bg-[#FEF3C7] text-[#B45309]",          // Amber for approved
     };
 
-    const labels = {
+    const labels: Record<string, string> = {
       active: "Active",
       paused: "Paused",
       draft: "Draft",
+      pending_approval: "Pending Approval",
+      approved: "Approved",
     };
 
     return (
-      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${styles[status]}`}>
-        {labels[status]}
+      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${styles[status] || styles.draft}`}>
+        {labels[status] || status}
       </span>
     );
   };

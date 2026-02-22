@@ -762,8 +762,11 @@ async def update_campaign_status(
     current_status = campaign.status
 
     # Validate transitions
+    # LAW: campaign_approval_flow - Approval gate required before activation
     valid_transitions = {
-        CampaignStatus.DRAFT: [CampaignStatus.ACTIVE],
+        CampaignStatus.DRAFT: [CampaignStatus.PENDING_APPROVAL],
+        CampaignStatus.PENDING_APPROVAL: [CampaignStatus.APPROVED, CampaignStatus.DRAFT],
+        CampaignStatus.APPROVED: [CampaignStatus.ACTIVE],
         CampaignStatus.ACTIVE: [CampaignStatus.PAUSED, CampaignStatus.COMPLETED],
         CampaignStatus.PAUSED: [CampaignStatus.ACTIVE, CampaignStatus.COMPLETED],
         CampaignStatus.COMPLETED: [],  # Terminal state
@@ -799,6 +802,9 @@ async def activate_campaign(
     """
     Activate a campaign (shortcut for status update).
 
+    LAW: campaign_approval_flow - Campaign must be APPROVED before activation.
+    Campaigns in PAUSED status can also be reactivated.
+
     Args:
         client_id: Client UUID
         campaign_id: Campaign UUID
@@ -810,9 +816,11 @@ async def activate_campaign(
     """
     campaign = await get_campaign_or_404(campaign_id, client_id, db)
 
-    if campaign.status not in [CampaignStatus.DRAFT, CampaignStatus.PAUSED]:
+    # LAW: campaign_approval_flow - Only APPROVED or PAUSED campaigns can be activated
+    if campaign.status not in [CampaignStatus.APPROVED, CampaignStatus.PAUSED]:
         raise AgencyValidationError(
-            f"Cannot activate campaign with status {campaign.status.value}",
+            f"Cannot activate campaign with status {campaign.status.value}. "
+            f"Campaign must be APPROVED or PAUSED to activate.",
             field="status",
         )
 
@@ -824,6 +832,188 @@ async def activate_campaign(
     response.reply_rate = campaign.reply_rate
     response.conversion_rate = campaign.conversion_rate
     return response
+
+
+# ============================================
+# Campaign Approval Gate (LAW: campaign_approval_flow)
+# ============================================
+
+
+class RejectionRequest(BaseModel):
+    """Request body for campaign rejection."""
+
+    rejection_reason: str = Field(..., min_length=1, max_length=1000, description="Reason for rejection")
+
+
+@router.post(
+    "/clients/{client_id}/campaigns/{campaign_id}/submit-for-approval",
+    response_model=CampaignResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def submit_campaign_for_approval(
+    client_id: UUID,
+    campaign_id: UUID,
+    ctx: Annotated[ClientContext, Depends(require_member)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> CampaignResponse:
+    """
+    Submit a campaign for approval (DRAFT → PENDING_APPROVAL).
+
+    LAW: campaign_approval_flow - Every campaign requires explicit agency sign-off.
+
+    Requirements:
+    - Campaign must be in DRAFT status
+    - Campaign must have at least 1 lead assigned
+
+    Args:
+        client_id: Client UUID
+        campaign_id: Campaign UUID
+        ctx: Client context (requires member role)
+        db: Database session
+
+    Returns:
+        Updated campaign with PENDING_APPROVAL status
+    """
+    campaign = await get_campaign_or_404(campaign_id, client_id, db)
+
+    # Validate current status
+    if campaign.status != CampaignStatus.DRAFT:
+        raise AgencyValidationError(
+            f"Cannot submit campaign for approval: current status is {campaign.status.value}. "
+            f"Only DRAFT campaigns can be submitted for approval.",
+            field="status",
+        )
+
+    # Check that campaign has at least 1 lead
+    lead_count_query = text("""
+        SELECT COUNT(*) as lead_count
+        FROM leads
+        WHERE campaign_id = :campaign_id
+        AND deleted_at IS NULL
+    """)
+    result = await db.execute(lead_count_query, {"campaign_id": campaign_id})
+    row = result.fetchone()
+    lead_count = row.lead_count if row else 0
+
+    if lead_count == 0:
+        raise AgencyValidationError(
+            "Cannot submit campaign for approval: campaign must have at least 1 lead assigned.",
+            field="leads",
+        )
+
+    # Update status
+    campaign.status = CampaignStatus.PENDING_APPROVAL
+    await db.flush()
+    await db.refresh(campaign)
+
+    logger.info(
+        f"Campaign {campaign_id} submitted for approval by user {ctx.user_id} "
+        f"(client: {client_id}, leads: {lead_count})"
+    )
+
+    return await enrich_campaign_response(campaign, db)
+
+
+@router.post(
+    "/clients/{client_id}/campaigns/{campaign_id}/approve",
+    response_model=CampaignResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def approve_campaign(
+    client_id: UUID,
+    campaign_id: UUID,
+    ctx: Annotated[ClientContext, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> CampaignResponse:
+    """
+    Approve a campaign (PENDING_APPROVAL → APPROVED).
+
+    LAW: campaign_approval_flow - Only works if status is PENDING_APPROVAL.
+
+    Args:
+        client_id: Client UUID
+        campaign_id: Campaign UUID
+        ctx: Client context (requires admin role for approval)
+        db: Database session
+
+    Returns:
+        Updated campaign with APPROVED status
+    """
+    campaign = await get_campaign_or_404(campaign_id, client_id, db)
+
+    # Validate current status
+    if campaign.status != CampaignStatus.PENDING_APPROVAL:
+        raise AgencyValidationError(
+            f"Cannot approve campaign: current status is {campaign.status.value}. "
+            f"Only PENDING_APPROVAL campaigns can be approved.",
+            field="status",
+        )
+
+    # Update status
+    campaign.status = CampaignStatus.APPROVED
+    await db.flush()
+    await db.refresh(campaign)
+
+    logger.info(
+        f"Campaign {campaign_id} APPROVED by admin {ctx.user_id} (client: {client_id})"
+    )
+
+    return await enrich_campaign_response(campaign, db)
+
+
+@router.post(
+    "/clients/{client_id}/campaigns/{campaign_id}/reject",
+    response_model=CampaignResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def reject_campaign(
+    client_id: UUID,
+    campaign_id: UUID,
+    request: RejectionRequest,
+    ctx: Annotated[ClientContext, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> CampaignResponse:
+    """
+    Reject a campaign (PENDING_APPROVAL → DRAFT).
+
+    LAW: campaign_approval_flow - Only works if status is PENDING_APPROVAL.
+    Campaign returns to DRAFT for revisions.
+
+    Args:
+        client_id: Client UUID
+        campaign_id: Campaign UUID
+        request: Rejection reason
+        ctx: Client context (requires admin role for rejection)
+        db: Database session
+
+    Returns:
+        Updated campaign with DRAFT status
+    """
+    campaign = await get_campaign_or_404(campaign_id, client_id, db)
+
+    # Validate current status
+    if campaign.status != CampaignStatus.PENDING_APPROVAL:
+        raise AgencyValidationError(
+            f"Cannot reject campaign: current status is {campaign.status.value}. "
+            f"Only PENDING_APPROVAL campaigns can be rejected.",
+            field="status",
+        )
+
+    # Update status back to DRAFT
+    campaign.status = CampaignStatus.DRAFT
+    # Store rejection reason (if campaign model has this field, otherwise log it)
+    if hasattr(campaign, "rejection_reason"):
+        campaign.rejection_reason = request.rejection_reason
+
+    await db.flush()
+    await db.refresh(campaign)
+
+    logger.info(
+        f"Campaign {campaign_id} REJECTED by admin {ctx.user_id} "
+        f"(client: {client_id}, reason: {request.rejection_reason})"
+    )
+
+    return await enrich_campaign_response(campaign, db)
 
 
 @router.post(

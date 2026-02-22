@@ -630,8 +630,15 @@ async def jit_validate_outreach_task(
         if not campaign:
             raise ValueError(f"Campaign {campaign_id} not found or deleted")
 
+        # Campaign approval guard (LAW: campaign_approval_flow)
+        # No outreach may execute unless campaign has gone through approval and is ACTIVE.
+        # Status flow: DRAFT → PENDING_APPROVAL → APPROVED → ACTIVE
         if campaign.status != CampaignStatus.ACTIVE:
-            raise ValueError(f"Campaign status is {campaign.status.value}")
+            logger.info(
+                f"Campaign {campaign_id} not approved for outreach (status={campaign.status.value}). "
+                f"Skipping outreach per campaign_approval_flow LAW."
+            )
+            raise ValueError(f"Campaign status is {campaign.status.value}, must be ACTIVE")
 
         # Phase H, Item 43: Campaign pause check
         if campaign.paused_at is not None:

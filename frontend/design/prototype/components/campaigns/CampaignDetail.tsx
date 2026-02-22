@@ -153,10 +153,16 @@ export function CampaignDetail() {
                     ? "bg-[#DCFCE7] text-[#166534]"
                     : campaign.status === "paused"
                     ? "bg-[#FEF3C7] text-[#92400E]"
+                    : campaign.status === "pending_approval"
+                    ? "bg-[#FEF9C3] text-[#854D0E]"
+                    : campaign.status === "approved"
+                    ? "bg-[#FEF3C7] text-[#B45309]"
                     : "bg-[#F1F5F9] text-[#64748B]"
                 }`}
               >
-                {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
+                {campaign.status === "pending_approval" 
+                  ? "Pending Approval" 
+                  : campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
               </span>
             </div>
             <h1 className="text-2xl font-bold text-[#1E293B]">{campaign.name}</h1>
@@ -169,6 +175,24 @@ export function CampaignDetail() {
               <button className="flex items-center gap-2 px-4 py-2 bg-[#FEF3C7] hover:bg-[#FDE68A] text-[#92400E] text-sm font-medium rounded-lg transition-colors">
                 <Pause className="h-4 w-4" />
                 Pause Campaign
+              </button>
+            ) : campaign.status === "draft" ? (
+              <button className="flex items-center gap-2 px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-text-primary text-sm font-medium rounded-lg transition-colors shadow-lg shadow-amber/25">
+                Submit for Approval
+              </button>
+            ) : campaign.status === "pending_approval" ? (
+              <>
+                <button className="flex items-center gap-2 px-4 py-2 bg-[#DCFCE7] hover:bg-[#BBF7D0] text-[#166534] text-sm font-medium rounded-lg transition-colors">
+                  Approve
+                </button>
+                <button className="flex items-center gap-2 px-4 py-2 bg-[#FEE2E2] hover:bg-[#FECACA] text-[#DC2626] text-sm font-medium rounded-lg transition-colors">
+                  Reject
+                </button>
+              </>
+            ) : campaign.status === "approved" ? (
+              <button className="flex items-center gap-2 px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-text-primary text-sm font-medium rounded-lg transition-colors shadow-lg shadow-amber/25">
+                <Play className="h-4 w-4" />
+                Activate Campaign
               </button>
             ) : (
               <button className="flex items-center gap-2 px-4 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-text-primary text-sm font-medium rounded-lg transition-colors shadow-lg shadow-amber/25">

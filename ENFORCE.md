@@ -91,17 +91,23 @@ VALUES ('<session>', 'LAW_V_VIOLATION', '<task>', <lines>, '<why>', NOW());
 
 ## §7 — LAW VI: MCP-First Operations (HARD BLOCK)
 
-MCP Bridge is your PRIMARY interface to external services.
+When calling external services, follow this hierarchy:
 
+1. **Skill exists in `skills/`** → Use the Skill
+2. **No Skill, but MCP server available** → Use MCP Bridge
+3. **No Skill, no MCP** → Use `exec` as last resort, then write a Skill afterward
+
+**Never call external services ad-hoc.** All external service calls must go through this decision tree.
+
+MCP Bridge command:
 ```
 cd /home/elliotbot/clawd/skills/mcp-bridge && node scripts/mcp-bridge.js <command>
 ```
 
-- ALWAYS check `mcp-bridge.js servers` for available MCPs
-- ALWAYS use `mcp-bridge.js call` instead of `exec + curl/python`
-- If MCP doesn't exist for a service → use exec (and flag for future MCP)
+- Check `mcp-bridge.js servers` for available MCPs
+- Use `mcp-bridge.js call` instead of `exec + curl/python` when MCP exists
 
-**Violation:** Using exec + curl when an MCP exists → log governance debt with type `LAW_VI_VIOLATION`.
+**Violation:** Bypassing this hierarchy → log governance debt with type `LAW_VI_VIOLATION`.
 
 ---
 
@@ -199,7 +205,28 @@ This law applies to all directives and supersedes any prior pattern of direct ex
 
 ---
 
-## §13 — Terse Mode (Default)
+## §13 — LAW XII: Skills-First Integration (HARD BLOCK)
+
+Before calling ANY external service:
+
+1. Check `skills/` directory for an existing skill
+2. If no skill exists but Python integration exists in `src/integrations/`:
+   - Write the skill FIRST
+   - Then use it
+3. Skills are the canonical interface to ALL integrations
+
+**Direct calls to `src/integrations/*.py` outside of skill execution are forbidden.**
+
+If you need functionality from an integration file:
+- Create `skills/<service>/SKILL.md` documenting the integration
+- Import and call via the skill pattern
+- Never `import src.integrations.X` directly in ad-hoc code
+
+**Violation:** Direct integration calls without skill → log governance debt with type `LAW_XII_VIOLATION`.
+
+---
+
+## §14 — Terse Mode (Default)
 
 Default communication mode is TERSE:
 - No transitional phrases ("Now I will...", "Let me...")
@@ -210,7 +237,7 @@ Default communication mode is TERSE:
 
 ---
 
-## §14 — Dead References (Do Not Use)
+## §15 — Dead References (Do Not Use)
 
 | Dead Reference | Replacement |
 |---------------|-------------|

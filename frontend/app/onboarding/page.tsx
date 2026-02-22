@@ -6,25 +6,55 @@
  * SPRINT: Dashboard Sprint 1 - Onboarding Port
  * SSOT: frontend/design/html-prototypes/onboarding-v3.html
  * THEME: Bloomberg Terminal dark mode (charcoal #0C0A08, amber #D4956A)
+ * 
+ * STEP 3/8: Wired to real backend APIs (no more setTimeout placeholders)
+ * - HubSpot OAuth: GET /api/v1/crm/auth/hubspot
+ * - LinkedIn OAuth: GET /api/v1/linkedin/connect
+ * - ICP Extraction: POST /api/v1/onboarding/analyze
  */
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Check, Globe, Linkedin, ArrowRight, Sparkles } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Check, Globe, Linkedin, ArrowRight, Sparkles, AlertCircle, RefreshCw } from "lucide-react";
 import { MayaOverlay } from "@/components/maya";
 
 type OnboardingStep = 'website' | 'integrations' | 'complete';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+
 export default function OnboardingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [websiteValid, setWebsiteValid] = useState(false);
   const [hubspotConnected, setHubspotConnected] = useState(false);
   const [linkedinConnected, setLinkedinConnected] = useState(false);
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('website');
   const [isLoading, setIsLoading] = useState(false);
+  const [isHubspotLoading, setIsHubspotLoading] = useState(false);
+  const [isLinkedinLoading, setIsLinkedinLoading] = useState(false);
   const [isMayaMinimised, setIsMayaMinimised] = useState(false);
   const [mayaProgress, setMayaProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  // Handle OAuth callbacks from query params
+  useEffect(() => {
+    const hubspotSuccess = searchParams.get('hubspot') === 'connected';
+    const linkedinSuccess = searchParams.get('linkedin') === 'connected';
+    const oauthError = searchParams.get('oauth_error');
+
+    if (hubspotSuccess) {
+      setHubspotConnected(true);
+      setCurrentStep('integrations');
+    }
+    if (linkedinSuccess) {
+      setLinkedinConnected(true);
+      setCurrentStep('integrations');
+    }
+    if (oauthError) {
+      setError(`OAuth failed: ${oauthError}`);
+    }
+  }, [searchParams]);
 
   // Validate website URL
   useEffect(() => {
@@ -57,34 +87,146 @@ export default function OnboardingPage() {
     }
   };
 
-  // Handle OAuth placeholder clicks
-  const handleHubspotConnect = () => {
-    // OAuth placeholder - would trigger HubSpot OAuth flow
-    setIsLoading(true);
-    setTimeout(() => {
-      setHubspotConnected(true);
-      setIsLoading(false);
-    }, 1000);
-  };
+  // HubSpot OAuth - calls GET /api/v1/crm/auth/hubspot
+  const handleHubspotConnect = useCallback(async () => {
+    setError(null);
+    setIsHubspotLoading(true);
+    
+    try {
+      const response = await fetch(`${API_BASE}/api/v1/crm/auth/hubspot`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
 
-  const handleLinkedinConnect = () => {
-    // OAuth placeholder - would trigger LinkedIn OAuth flow
-    setIsLoading(true);
-    setTimeout(() => {
-      setLinkedinConnected(true);
-      setIsLoading(false);
-    }, 1000);
-  };
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HubSpot auth failed (${response.status})`);
+      }
 
-  const handleLaunch = () => {
+      const data = await response.json();
+      
+      if (data.redirect_url || data.auth_url || data.url) {
+        // Open OAuth in new window or redirect
+        const authUrl = data.redirect_url || data.auth_url || data.url;
+        window.location.href = authUrl;
+      } else {
+        // Direct connection successful (no OAuth redirect needed)
+        setHubspotConnected(true);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to connect HubSpot';
+      setError(message);
+      console.error('HubSpot connect error:', err);
+    } finally {
+      setIsHubspotLoading(false);
+    }
+  }, []);
+
+  // LinkedIn OAuth - calls GET /api/v1/linkedin/connect
+  const handleLinkedinConnect = useCallback(async () => {
+    setError(null);
+    setIsLinkedinLoading(true);
+    
+    try {
+      const response = await fetch(`${API_BASE}/api/v1/linkedin/connect`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `LinkedIn auth failed (${response.status})`);
+      }
+
+      const data = await response.json();
+      
+      if (data.redirect_url || data.auth_url || data.url || data.hosted_auth_url) {
+        // Unipile returns hosted_auth_url for LinkedIn OAuth
+        const authUrl = data.hosted_auth_url || data.redirect_url || data.auth_url || data.url;
+        window.location.href = authUrl;
+      } else {
+        // Direct connection successful
+        setLinkedinConnected(true);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to connect LinkedIn';
+      setError(message);
+      console.error('LinkedIn connect error:', err);
+    } finally {
+      setIsLinkedinLoading(false);
+    }
+  }, []);
+
+  // Launch - calls POST /api/v1/onboarding/analyze for ICP extraction
+  const handleLaunch = useCallback(async () => {
+    setError(null);
     setIsLoading(true);
-    // In production: POST to /api/v1/onboarding/analyze
-    setTimeout(() => {
+    setCurrentStep('complete');
+    
+    try {
+      // Normalize website URL
+      const normalizedUrl = websiteUrl.startsWith('http') 
+        ? websiteUrl 
+        : `https://${websiteUrl}`;
+
+      const response = await fetch(`${API_BASE}/api/v1/onboarding/analyze`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          website_url: normalizedUrl,
+          crm_connected: hubspotConnected,
+          linkedin_connected: linkedinConnected,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Analysis failed (${response.status})`);
+      }
+
+      const data = await response.json();
+
+      // The response contains agency_service_profile and agency_communication_profile
+      // These are written to the backend's database by the analyze endpoint
+      // We can optionally store a reference in localStorage for the dashboard
+      if (data.agency_service_profile || data.agency_communication_profile) {
+        try {
+          localStorage.setItem('onboarding_profile', JSON.stringify({
+            service_profile: data.agency_service_profile,
+            communication_profile: data.agency_communication_profile,
+            completed_at: new Date().toISOString(),
+          }));
+        } catch {
+          // localStorage not available, continue anyway
+        }
+      }
+
+      // Success - redirect to dashboard
       router.push("/dashboard?onboarding=true");
-    }, 500);
-  };
+      
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to analyze website';
+      setError(message);
+      setCurrentStep('integrations'); // Go back to allow retry
+      console.error('Launch/analyze error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [websiteUrl, hubspotConnected, linkedinConnected, router]);
 
   const canLaunch = websiteValid;
+
+  // Dismiss error
+  const dismissError = () => setError(null);
 
   return (
     <div 
@@ -104,6 +246,28 @@ export default function OnboardingPage() {
             Your digital employee is ready to work
           </p>
         </div>
+
+        {/* Error Banner */}
+        {error && (
+          <div 
+            className="mb-6 rounded-xl p-4 flex items-start gap-3"
+            style={{
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+            }}
+          >
+            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm text-red-400">{error}</p>
+              <button 
+                onClick={dismissError}
+                className="text-xs text-red-300 hover:text-red-200 mt-1 underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Main Card - Glassmorphism */}
         <div className="glass-surface rounded-2xl overflow-hidden">
@@ -227,7 +391,7 @@ export default function OnboardingPage() {
                 {/* HubSpot CRM */}
                 <button
                   onClick={handleHubspotConnect}
-                  disabled={hubspotConnected || isLoading}
+                  disabled={hubspotConnected || isHubspotLoading}
                   className={`
                     relative flex flex-col items-center justify-center p-5 rounded-xl
                     transition-all duration-200 glass-surface-hover
@@ -257,7 +421,7 @@ export default function OnboardingPage() {
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-3"
                     style={{ backgroundColor: 'rgba(255, 122, 89, 0.15)' }}
                   >
-                    {isLoading && !hubspotConnected ? (
+                    {isHubspotLoading ? (
                       <div className="w-5 h-5 border-2 border-[#FF7A59] border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <span className="text-[#FF7A59] font-bold text-sm">H</span>
@@ -265,14 +429,14 @@ export default function OnboardingPage() {
                   </div>
                   <span className="text-sm font-medium text-text-primary">HubSpot CRM</span>
                   <span className="text-[11px] text-text-muted mt-1">
-                    {hubspotConnected ? 'Connected ✓' : 'Click to connect'}
+                    {hubspotConnected ? 'Connected ✓' : isHubspotLoading ? 'Connecting...' : 'Click to connect'}
                   </span>
                 </button>
 
                 {/* LinkedIn */}
                 <button
                   onClick={handleLinkedinConnect}
-                  disabled={linkedinConnected || isLoading}
+                  disabled={linkedinConnected || isLinkedinLoading}
                   className={`
                     relative flex flex-col items-center justify-center p-5 rounded-xl
                     transition-all duration-200 glass-surface-hover
@@ -302,7 +466,7 @@ export default function OnboardingPage() {
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-3"
                     style={{ backgroundColor: 'rgba(10, 102, 194, 0.15)' }}
                   >
-                    {isLoading && !linkedinConnected ? (
+                    {isLinkedinLoading ? (
                       <div className="w-5 h-5 border-2 border-[#0A66C2] border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <Linkedin className="w-5 h-5 text-[#0A66C2]" />
@@ -310,7 +474,7 @@ export default function OnboardingPage() {
                   </div>
                   <span className="text-sm font-medium text-text-primary">LinkedIn</span>
                   <span className="text-[11px] text-text-muted mt-1">
-                    {linkedinConnected ? 'Connected ✓' : 'Click to connect'}
+                    {linkedinConnected ? 'Connected ✓' : isLinkedinLoading ? 'Connecting...' : 'Click to connect'}
                   </span>
                 </button>
               </div>
@@ -332,7 +496,15 @@ export default function OnboardingPage() {
               }}
             >
               {isLoading ? (
-                <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                <>
+                  <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  <span>Analyzing your agency...</span>
+                </>
+              ) : error && currentStep === 'integrations' ? (
+                <>
+                  <RefreshCw className="w-5 h-5" />
+                  Retry Launch
+                </>
               ) : (
                 <>
                   Launch Dashboard
@@ -359,7 +531,9 @@ export default function OnboardingPage() {
         {/* Skeleton loader preview - shows what will load */}
         {currentStep === 'complete' && (
           <div className="mt-6 glass-surface rounded-xl p-4">
-            <p className="text-xs text-text-muted mb-3">Preparing your dashboard...</p>
+            <p className="text-xs text-text-muted mb-3">
+              {isLoading ? 'Extracting ICP from your website...' : 'Preparing your dashboard...'}
+            </p>
             <div className="space-y-3">
               <div className="skeleton h-4 w-3/4" />
               <div className="skeleton h-4 w-1/2" />
@@ -373,7 +547,7 @@ export default function OnboardingPage() {
       <MayaOverlay
         currentStep={currentStep}
         stepProgress={mayaProgress}
-        isTyping={isLoading}
+        isTyping={isLoading || isHubspotLoading || isLinkedinLoading}
         isPulsing={true}
         isMinimised={isMayaMinimised}
         onMinimise={() => setIsMayaMinimised(true)}

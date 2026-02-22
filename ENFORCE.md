@@ -226,7 +226,21 @@ If you need functionality from an integration file:
 
 ---
 
-## §14 — Terse Mode (Default)
+## §14 — LAW XIII: Skill Currency Enforcement (HARD BLOCK)
+
+Whenever a fix, pivot, or ratified decision changes how an external service is called, the corresponding skill file in `skills/` must be updated in the same PR as the fix.
+
+**No fix is complete until the skill reflects the current ratified implementation.**
+
+Sub-agents must read skill files before calling any external service — if the skill contradicts known working behaviour, flag it before proceeding.
+
+**Violation:** Merging a PR that modifies external service calls without updating the corresponding skill → log governance debt with type `LAW_XIII_VIOLATION`.
+
+*Ratified: 2025-02-21, CEO Directive*
+
+---
+
+## §15 — Terse Mode (Default)
 
 Default communication mode is TERSE:
 - No transitional phrases ("Now I will...", "Let me...")
@@ -237,7 +251,7 @@ Default communication mode is TERSE:
 
 ---
 
-## §15 — Dead References (Do Not Use)
+## §16 — Dead References (Do Not Use)
 
 | Dead Reference | Replacement |
 |---------------|-------------|

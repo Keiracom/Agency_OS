@@ -40,11 +40,12 @@ def update_ceo_memory():
                 "abn-lookup",
                 "brightdata-linkedin", 
                 "brightdata-gmb",
-                "hunter-verify"
+                "leadmagic"
             ],
             "location": "skills/enrichment/",
             "created_directive": "#031",
-            "date": "2026-02-17"
+            "date": "2026-02-17",
+            "note": "leadmagic replaces hunter-verify (T3) and kaspr (T5)"
         }
     }
     

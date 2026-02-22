@@ -22,11 +22,12 @@ This directory contains automated skills organized by category.
 **Test Case:** "marketing agency Melbourne"  
 **Note:** Replaces the deprecated DIY GMB scraper. See Directive #020a for validation.
 
-### Hunter Email Verification
-**Location:** `skills/enrichment/hunter-verify/`  
-**Purpose:** Domain email verification using Hunter.io API  
-**Plan:** Free plan, 50 searches/cycle, resets 2026-03-07  
-**Test Case:** mustardcreative.com.au  
+### Leadmagic (Email + Mobile)
+**Location:** `skills/leadmagic/`  
+**Purpose:** Email finder and mobile enrichment via Leadmagic API  
+**Replaces:** Hunter.io (T3) + Kaspr (T5) — CEO Directive: Leadmagic is canonical source  
+**Cost:** Email $0.015 AUD/record, Mobile $0.077 AUD/record  
+**Note:** API key present but plan unpurchased — do not call until credits available  
 
 ## Skill Structure
 

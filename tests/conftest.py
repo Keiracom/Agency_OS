@@ -25,7 +25,6 @@ os.environ["SUPABASE_URL"] = "https://test.supabase.co"
 os.environ["SUPABASE_KEY"] = "test-key"
 os.environ["SUPABASE_SERVICE_KEY"] = "test-service-key"
 os.environ["ANTHROPIC_API_KEY"] = "test-anthropic-key"
-os.environ["APOLLO_API_KEY"] = "test-apollo-key"
 os.environ["RESEND_API_KEY"] = "test-resend-key"
 os.environ["TWILIO_ACCOUNT_SID"] = "test-twilio-sid"
 os.environ["TWILIO_AUTH_TOKEN"] = "test-twilio-token"
@@ -312,37 +311,6 @@ def mock_activity(mock_lead: dict) -> dict:
 # ============================================================================
 # Integration Mock Fixtures
 # ============================================================================
-
-@pytest.fixture
-def mock_apollo_client() -> MagicMock:
-    """Mock Apollo API client."""
-    client = MagicMock()
-    client.enrich_person = AsyncMock(return_value={
-        "person": {
-            "first_name": "Jane",
-            "last_name": "Smith",
-            "title": "CTO",
-            "email": "jane@techcompany.io",
-            "linkedin_url": "https://linkedin.com/in/janesmith",
-        },
-        "organization": {
-            "name": "TechCompany",
-            "website_url": "https://techcompany.io",
-            "industry": "Technology",
-            "estimated_num_employees": 75,
-        },
-    })
-    client.enrich_company = AsyncMock(return_value={
-        "organization": {
-            "name": "TechCompany",
-            "website_url": "https://techcompany.io",
-            "industry": "Technology",
-            "estimated_num_employees": 75,
-            "founded_year": 2019,
-        },
-    })
-    return client
-
 
 @pytest.fixture
 def mock_resend_client() -> MagicMock:

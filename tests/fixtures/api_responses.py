@@ -10,94 +10,6 @@ from datetime import datetime, timedelta
 from typing import Any
 
 # ============================================================================
-# Apollo API Responses
-# ============================================================================
-
-def apollo_person_enrichment_success() -> dict[str, Any]:
-    """Successful Apollo person enrichment response."""
-    return {
-        "person": {
-            "id": f"apollo_{uuid.uuid4().hex[:12]}",
-            "first_name": "Jane",
-            "last_name": "Smith",
-            "name": "Jane Smith",
-            "title": "Chief Technology Officer",
-            "seniority": "c_suite",
-            "email": "jane.smith@techcompany.io",
-            "email_status": "verified",
-            "linkedin_url": "https://linkedin.com/in/janesmith",
-            "twitter_url": None,
-            "phone_numbers": [
-                {"raw_number": "+61412345678", "sanitized_number": "+61412345678", "type": "mobile"}
-            ],
-            "organization": {
-                "id": f"org_{uuid.uuid4().hex[:12]}",
-                "name": "TechCompany",
-                "website_url": "https://techcompany.io",
-                "linkedin_url": "https://linkedin.com/company/techcompany",
-                "industry": "Technology",
-                "estimated_num_employees": 75,
-                "annual_revenue": 5000000,
-                "founded_year": 2019,
-                "primary_domain": "techcompany.io",
-            },
-            "city": "Sydney",
-            "state": "NSW",
-            "country": "Australia",
-        },
-        "organization": {
-            "id": f"org_{uuid.uuid4().hex[:12]}",
-            "name": "TechCompany",
-            "website_url": "https://techcompany.io",
-            "linkedin_url": "https://linkedin.com/company/techcompany",
-            "industry": "Technology",
-            "estimated_num_employees": 75,
-            "annual_revenue": 5000000,
-            "founded_year": 2019,
-            "primary_domain": "techcompany.io",
-            "technologies": ["AWS", "Python", "React"],
-            "keywords": ["SaaS", "B2B", "AI"],
-        },
-    }
-
-
-def apollo_person_enrichment_partial() -> dict[str, Any]:
-    """Partial Apollo enrichment (missing some fields)."""
-    return {
-        "person": {
-            "id": f"apollo_{uuid.uuid4().hex[:12]}",
-            "first_name": "John",
-            "last_name": "Doe",
-            "email": "john@unknowncompany.com",
-            "email_status": "unverified",
-            "title": None,
-            "linkedin_url": None,
-            "phone_numbers": [],
-        },
-        "organization": None,
-    }
-
-
-def apollo_person_not_found() -> dict[str, Any]:
-    """Apollo person not found response."""
-    return {
-        "person": None,
-        "organization": None,
-        "error": "Person not found",
-    }
-
-
-def apollo_rate_limited() -> dict[str, Any]:
-    """Apollo rate limit exceeded response."""
-    return {
-        "error": {
-            "code": "rate_limit_exceeded",
-            "message": "API rate limit exceeded. Please retry after 60 seconds.",
-        }
-    }
-
-
-# ============================================================================
 # Clay API Responses
 # ============================================================================
 
@@ -495,7 +407,6 @@ def anthropic_budget_exceeded() -> dict[str, Any]:
 # Verification Checklist
 # ============================================================================
 # [x] Contract comment at top
-# [x] Apollo responses (success, partial, not_found, rate_limited)
 # [x] Clay responses (success, pending)
 # [x] Resend responses (success, bounced, rate_limited)
 # [x] Twilio responses (success, delivered, failed, DNCR checks)

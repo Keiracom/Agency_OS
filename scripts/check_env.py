@@ -56,8 +56,6 @@ ENV_VARS = [
     EnvVar("ANTHROPIC_API_KEY", "Claude AI for ICP/messaging", "critical", "AI", "https://console.anthropic.com"),
 
     # LEAD ENRICHMENT
-    EnvVar("APOLLO_API_KEY", "Lead sourcing + enrichment", "required", "Enrichment", "https://developer.apollo.io"),
-    EnvVar("APIFY_API_KEY", "Website scraping for ICP", "required", "Enrichment", "https://console.apify.com/account/integrations"),
     EnvVar("CLAY_API_KEY", "Fallback enrichment", "optional", "Enrichment", "https://app.clay.com/settings/api"),
 
     # EMAIL CHANNEL

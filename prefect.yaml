@@ -83,6 +83,22 @@ deployments:
         timezone: Australia/Sydney
         active: false
 
+  # Voice outreach flow (TCP Code compliant calling hours)
+  - name: voice-outreach-flow
+    version: 1.0.0
+    paused: true  # PAUSED - enable only when Twilio active
+    tags: [voice, outreach, compliance, tcp-code]
+    description: "Voice outreach with TCP Code compliance (Mon-Fri 9am-8pm, Sat 9am-5pm AEST)"
+    entrypoint: src/orchestration/flows/voice_flow.py:voice_outreach_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    concurrency_limit: 1  # Prevent overlapping runs
+    schedules:
+      - cron: "*/30 9-20 * * 1-6"
+        timezone: Australia/Sydney
+        active: false  # Inactive until Twilio configured
+
   # Reply recovery flow (6-hourly safety net)
   - name: reply-recovery-flow
     version: 1.0.0

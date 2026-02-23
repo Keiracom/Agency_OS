@@ -160,6 +160,16 @@ class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         String(255),
         nullable=True,
     )
+    # Step 8/8: Founding member billing fields
+    deposit_paid: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
+    subscription_activated_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+    )
 
     # Company info (from onboarding)
     website_url: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -45,6 +45,9 @@ from src.models.base import CampaignStatus, ChannelType, PermissionMode
 from src.models.campaign import Campaign, CampaignResource, CampaignSequence
 from src.models.client import Client
 
+# Step 8/8: Import subscription activation helper
+from src.api.routes.billing import activate_subscription_on_approval
+
 router = APIRouter(tags=["campaigns"])
 
 
@@ -957,6 +960,16 @@ async def approve_campaign(
     await db.refresh(campaign)
 
     logger.info(f"Campaign {campaign_id} APPROVED by admin {ctx.user_id} (client: {client_id})")
+
+    # Step 8/8: Activate subscription on first campaign approval
+    # This creates the Stripe subscription and credits the $500 deposit
+    try:
+        subscription_activated = await activate_subscription_on_approval(client_id, db)
+        if subscription_activated:
+            logger.info(f"Subscription activated for client {client_id} on first campaign approval")
+    except Exception as e:
+        # Log but don't fail the approval - subscription can be manually activated
+        logger.error(f"Failed to activate subscription for client {client_id}: {e}")
 
     return await enrich_campaign_response(campaign, db)
 

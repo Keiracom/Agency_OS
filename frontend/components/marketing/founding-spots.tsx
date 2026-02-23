@@ -1,12 +1,12 @@
 /**
  * FILE: components/marketing/founding-spots.tsx
- * PURPOSE: Display live founding spots remaining counter with realtime updates
+ * PURPOSE: Display live founding spots remaining counter with API backend
+ * UPDATED: Step 8/8 - Now uses /api/v1/billing/founding-spots endpoint
  */
 
 "use client";
 
 import { useEffect, useState } from "react";
-import { createAnonClient } from "@/lib/supabase";
 
 interface FoundingSpotsProps {
   className?: string;
@@ -24,21 +24,16 @@ export function FoundingSpots({
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = createAnonClient() as any;
-
     async function fetchSpots() {
       try {
-        const { data, error } = await supabase
-          .from("founding_spots")
-          .select("total_spots, spots_taken")
-          .eq("id", 1)
-          .single();
-
-        if (data && !error) {
-          setRemaining(data.total_spots - data.spots_taken);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+        const response = await fetch(`${apiUrl}/billing/founding-spots`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          setRemaining(data.spots_remaining);
         } else {
-          // If table doesn't exist yet (migration not run), use default
+          // Fallback if API not available
           setRemaining(17);
         }
       } catch {
@@ -51,26 +46,9 @@ export function FoundingSpots({
 
     fetchSpots();
 
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel("founding_spots_changes")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "founding_spots" },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (payload: any) => {
-          const { total_spots, spots_taken } = payload.new as {
-            total_spots: number;
-            spots_taken: number;
-          };
-          setRemaining(total_spots - spots_taken);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Refresh every 30 seconds for live updates
+    const interval = setInterval(fetchSpots, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   if (loading) {
@@ -134,6 +112,7 @@ export function FoundingSpots({
 
 /**
  * Hook to get founding spots data
+ * Updated: Step 8/8 - Now uses /api/v1/billing/founding-spots endpoint
  */
 export function useFoundingSpots() {
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -141,19 +120,14 @@ export function useFoundingSpots() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = createAnonClient() as any;
-
     async function fetchSpots() {
       try {
-        const { data, error } = await supabase
-          .from("founding_spots")
-          .select("total_spots, spots_taken")
-          .eq("id", 1)
-          .single();
-
-        if (data && !error) {
-          setRemaining(data.total_spots - data.spots_taken);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+        const response = await fetch(`${apiUrl}/billing/founding-spots`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          setRemaining(data.spots_remaining);
           setTotalSpots(data.total_spots);
         } else {
           setRemaining(17);
@@ -166,26 +140,9 @@ export function useFoundingSpots() {
 
     fetchSpots();
 
-    const channel = supabase
-      .channel("founding_spots_hook")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "founding_spots" },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (payload: any) => {
-          const { total_spots, spots_taken } = payload.new as {
-            total_spots: number;
-            spots_taken: number;
-          };
-          setRemaining(total_spots - spots_taken);
-          setTotalSpots(total_spots);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Refresh every 30 seconds for live updates
+    const interval = setInterval(fetchSpots, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   return {

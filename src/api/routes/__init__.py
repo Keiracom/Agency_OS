@@ -23,6 +23,7 @@ This package contains all API routes for Agency OS:
 """
 
 from src.api.routes.admin import router as admin_router
+from src.api.routes.billing import router as billing_router
 from src.api.routes.campaigns import router as campaigns_router
 from src.api.routes.crm import router as crm_router
 from src.api.routes.customers import router as customers_router
@@ -60,4 +61,6 @@ __all__ = [
     "pool_router",
     # Unipile BYOA Multi-Tenancy
     "unipile_router",
+    # Step 8/8: Stripe Billing
+    "billing_router",
 ]

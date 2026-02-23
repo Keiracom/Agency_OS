@@ -2,15 +2,18 @@
 
 /**
  * FILE: frontend/app/dashboard/leads/page.tsx
- * PURPOSE: Prospects list - lead management view
- * SPRINT: Dashboard Sprint 2 - Prospects List
- * SSOT: frontend/design/html-prototypes/leads-v2.html
+ * PURPOSE: Animated Lead Scoreboard - live leaderboard sorted by ALS score
+ * SPRINT: Dashboard Sprint 2 - Step 6/8 Animated Lead Scoreboard
+ * SSOT: lead_scoreboard_vision (ffd41389-645a-47c8-91d6-017b6cebe7ae)
  * THEME: Bloomberg Terminal dark mode (charcoal #0C0A08, amber #D4956A)
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
+import { SplitFlapCounterBar } from "@/components/leads/SplitFlapCounter";
+import { LeadScoreboardRow, getALSTier } from "@/components/leads/LeadScoreboardRow";
 import {
   Search,
   Filter,
@@ -20,34 +23,25 @@ import {
   Flame,
   Zap,
   Moon,
-  Mail,
-  Linkedin,
-  Phone,
-  MessageSquare,
-  Send,
-  ChevronLeft,
-  ChevronRight,
+  Snowflake,
+  ArrowUpDown,
 } from "lucide-react";
 
-// Tier type
-type Tier = "hot" | "warm" | "cool" | "cold";
-type Status = "sourced" | "enriching" | "enriched" | "active";
+// Tier filter type
+type TierFilter = "all" | "hot" | "warm" | "cool" | "cold";
 
 // Australian mock data - Melbourne digital agency prospects (tradies + dentists)
-const MOCK_PROSPECTS = [
+const MOCK_LEADS = [
   {
     id: "1",
     name: "Sarah Chen",
     title: "Marketing Director",
     company: "Bloom Digital",
     email: "sarah@bloomdigital.com.au",
-    score: 94,
-    tier: "hot" as Tier,
-    whyHot: ["5 opens today", "Buyer signal"],
-    channels: { email: true, linkedin: true, sms: false, voice: true, mail: false },
-    status: "active" as Status,
-    lastActivity: "2 minutes ago",
-    recent: true,
+    alsScore: 94,
+    enrichmentDepth: 95,
+    isNew: false,
+    meetingBooked: true,
   },
   {
     id: "2",
@@ -55,13 +49,10 @@ const MOCK_PROSPECTS = [
     title: "Owner",
     company: "TradeFlow Plumbing",
     email: "marcus@tradeflow.com.au",
-    score: 91,
-    tier: "hot" as Tier,
-    whyHot: ["Business Owner", "Hiring"],
-    channels: { email: true, linkedin: true, sms: true, voice: false, mail: false },
-    status: "active" as Status,
-    lastActivity: "15 minutes ago",
-    recent: true,
+    alsScore: 91,
+    enrichmentDepth: 88,
+    isNew: true,
+    meetingBooked: false,
   },
   {
     id: "3",
@@ -69,13 +60,10 @@ const MOCK_PROSPECTS = [
     title: "Founder & CEO",
     company: "Momentum Media",
     email: "david@momentummedia.co",
-    score: 88,
-    tier: "hot" as Tier,
-    whyHot: ["Founder", "New Role", "LinkedIn Active"],
-    channels: { email: true, linkedin: true, sms: false, voice: true, mail: false },
-    status: "active" as Status,
-    lastActivity: "1 hour ago",
-    recent: true,
+    alsScore: 88,
+    enrichmentDepth: 92,
+    isNew: false,
+    meetingBooked: true,
   },
   {
     id: "4",
@@ -83,13 +71,10 @@ const MOCK_PROSPECTS = [
     title: "Practice Manager",
     company: "Smile Dental Fitzroy",
     email: "lisa@smiledentalfitzroy.com.au",
-    score: 82,
-    tier: "warm" as Tier,
-    whyHot: ["Decision Maker"],
-    channels: { email: true, linkedin: false, sms: true, voice: false, mail: false },
-    status: "enriched" as Status,
-    lastActivity: "3 hours ago",
-    recent: false,
+    alsScore: 82,
+    enrichmentDepth: 78,
+    isNew: false,
+    meetingBooked: false,
   },
   {
     id: "5",
@@ -97,13 +82,10 @@ const MOCK_PROSPECTS = [
     title: "Managing Director",
     company: "Cooper Electrical",
     email: "james@cooperelectrical.com.au",
-    score: 76,
-    tier: "warm" as Tier,
-    whyHot: ["Executive", "Agency Buyer"],
-    channels: { email: true, linkedin: false, sms: true, voice: false, mail: false },
-    status: "active" as Status,
-    lastActivity: "1 day ago",
-    recent: false,
+    alsScore: 76,
+    enrichmentDepth: 65,
+    isNew: false,
+    meetingBooked: false,
   },
   {
     id: "6",
@@ -111,13 +93,10 @@ const MOCK_PROSPECTS = [
     title: "Head of Marketing",
     company: "Coastal Electrical",
     email: "emma@coastalelectrical.com.au",
-    score: 71,
-    tier: "warm" as Tier,
-    whyHot: ["Recently active"],
-    channels: { email: true, linkedin: true, sms: true, voice: false, mail: false },
-    status: "enriched" as Status,
-    lastActivity: "2 days ago",
-    recent: false,
+    alsScore: 71,
+    enrichmentDepth: 72,
+    isNew: true,
+    meetingBooked: false,
   },
   {
     id: "7",
@@ -125,13 +104,10 @@ const MOCK_PROSPECTS = [
     title: "Practice Owner",
     company: "Growth Dental Kew",
     email: "rachel@growthdentalkew.com.au",
-    score: 68,
-    tier: "warm" as Tier,
-    whyHot: ["Owner"],
-    channels: { email: true, linkedin: true, sms: false, voice: false, mail: false },
-    status: "enriching" as Status,
-    lastActivity: "2 days ago",
-    recent: false,
+    alsScore: 68,
+    enrichmentDepth: 45,
+    isNew: false,
+    meetingBooked: false,
   },
   {
     id: "8",
@@ -139,13 +115,10 @@ const MOCK_PROSPECTS = [
     title: "Director",
     company: "Scale Trades",
     email: "tom@scaletrades.com.au",
-    score: 58,
-    tier: "cool" as Tier,
-    whyHot: ["Good fit"],
-    channels: { email: true, linkedin: false, sms: false, voice: false, mail: false },
-    status: "enriched" as Status,
-    lastActivity: "5 days ago",
-    recent: false,
+    alsScore: 58,
+    enrichmentDepth: 82,
+    isNew: false,
+    meetingBooked: false,
   },
   {
     id: "9",
@@ -153,13 +126,10 @@ const MOCK_PROSPECTS = [
     title: "Marketing Manager",
     company: "Digital Edge Agency",
     email: "sophie@digitaledge.com.au",
-    score: 45,
-    tier: "cool" as Tier,
-    whyHot: ["Mid-level"],
-    channels: { email: true, linkedin: true, sms: false, voice: false, mail: false },
-    status: "sourced" as Status,
-    lastActivity: "1 week ago",
-    recent: false,
+    alsScore: 45,
+    enrichmentDepth: 35,
+    isNew: false,
+    meetingBooked: false,
   },
   {
     id: "10",
@@ -167,13 +137,10 @@ const MOCK_PROSPECTS = [
     title: "Operations Manager",
     company: "Elite Plumbing Services",
     email: "michael@eliteplumbing.com.au",
-    score: 52,
-    tier: "cool" as Tier,
-    whyHot: ["ICP match"],
-    channels: { email: true, linkedin: false, sms: false, voice: false, mail: false },
-    status: "enriching" as Status,
-    lastActivity: "4 days ago",
-    recent: false,
+    alsScore: 52,
+    enrichmentDepth: 28,
+    isNew: false,
+    meetingBooked: false,
   },
   {
     id: "11",
@@ -181,13 +148,10 @@ const MOCK_PROSPECTS = [
     title: "Dental Hygienist",
     company: "Bright Smile Clinic",
     email: "amanda@brightsmileclinic.com.au",
-    score: 32,
-    tier: "cool" as Tier,
-    whyHot: ["Engaged"],
-    channels: { email: true, linkedin: false, sms: false, voice: false, mail: false },
-    status: "sourced" as Status,
-    lastActivity: "2 weeks ago",
-    recent: false,
+    alsScore: 32,
+    enrichmentDepth: 42,
+    isNew: false,
+    meetingBooked: false,
   },
   {
     id: "12",
@@ -195,92 +159,76 @@ const MOCK_PROSPECTS = [
     title: "Junior Marketing",
     company: "Spark Creative",
     email: "daniel@sparkcreative.com.au",
-    score: 28,
-    tier: "cold" as Tier,
-    whyHot: [],
-    channels: { email: true, linkedin: false, sms: false, voice: false, mail: false },
-    status: "sourced" as Status,
-    lastActivity: "3 weeks ago",
-    recent: false,
+    alsScore: 28,
+    enrichmentDepth: 15,
+    isNew: false,
+    meetingBooked: false,
   },
 ];
 
-// Stats computed from prospects
-const MOCK_STATS = {
-  total: MOCK_PROSPECTS.length,
-  enriched: MOCK_PROSPECTS.filter(p => p.status === "enriched" || p.status === "active").length,
-  avgALS: Math.round(MOCK_PROSPECTS.reduce((acc, p) => acc + p.score, 0) / MOCK_PROSPECTS.length),
-  channelsUnlocked: MOCK_PROSPECTS.filter(p => 
-    Object.values(p.channels).filter(Boolean).length >= 2
-  ).length,
-  hot: MOCK_PROSPECTS.filter(p => p.tier === "hot").length,
-  warm: MOCK_PROSPECTS.filter(p => p.tier === "warm").length,
-  cool: MOCK_PROSPECTS.filter(p => p.tier === "cool").length,
-};
-
-// Tier colors
-function getTierColors(tier: Tier) {
-  switch (tier) {
-    case "hot":
-      return { bg: "rgba(239, 68, 68, 0.1)", border: "rgba(239, 68, 68, 0.3)", text: "#EF4444", gradient: "linear-gradient(135deg, #EF4444, #F97316)" };
-    case "warm":
-      return { bg: "rgba(245, 158, 11, 0.1)", border: "rgba(245, 158, 11, 0.3)", text: "#F59E0B", gradient: "linear-gradient(135deg, #F59E0B, #FBBF24)" };
-    case "cool":
-      return { bg: "rgba(59, 130, 246, 0.1)", border: "rgba(59, 130, 246, 0.3)", text: "#3B82F6", gradient: "linear-gradient(135deg, #3B82F6, #60A5FA)" };
-    default:
-      return { bg: "rgba(107, 114, 128, 0.1)", border: "rgba(107, 114, 128, 0.3)", text: "#6B7280", gradient: "linear-gradient(135deg, #6B7280, #9CA3AF)" };
-  }
+// Calculate stats from leads
+function calculateStats(leads: typeof MOCK_LEADS) {
+  return {
+    total: leads.length,
+    enriched: leads.filter(l => l.enrichmentDepth >= 50).length,
+    avgALS: Math.round(leads.reduce((acc, l) => acc + l.alsScore, 0) / leads.length),
+    meetingsBooked: leads.filter(l => l.meetingBooked).length,
+    hot: leads.filter(l => getALSTier(l.alsScore) === "hot").length,
+    warm: leads.filter(l => getALSTier(l.alsScore) === "warm").length,
+    cool: leads.filter(l => getALSTier(l.alsScore) === "cool").length,
+    cold: leads.filter(l => getALSTier(l.alsScore) === "cold").length,
+  };
 }
 
-// Status badge colors
-function getStatusColors(status: Status) {
-  switch (status) {
-    case "active":
-      return { bg: "rgba(16, 185, 129, 0.1)", text: "#10B981" };
-    case "enriched":
-      return { bg: "rgba(124, 58, 237, 0.1)", text: "#7C3AED" };
-    case "enriching":
-      return { bg: "rgba(245, 158, 11, 0.1)", text: "#F59E0B" };
-    default:
-      return { bg: "rgba(107, 114, 128, 0.1)", text: "#6B7280" };
-  }
-}
-
-// Get initials
-function getInitials(name: string): string {
-  return name.split(" ").map(n => n[0]).join("").toUpperCase();
-}
-
-export default function ProspectsPage() {
+export default function LeadsScoreboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTier, setSelectedTier] = useState<"all" | Tier>("all");
+  const [selectedTier, setSelectedTier] = useState<TierFilter>("all");
+  const [sortAscending, setSortAscending] = useState(false);
 
-  // Filter prospects
-  const filteredProspects = MOCK_PROSPECTS.filter(p => {
-    const matchesSearch = 
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesTier = selectedTier === "all" || p.tier === selectedTier;
-    return matchesSearch && matchesTier;
-  });
+  // Calculate stats
+  const stats = useMemo(() => calculateStats(MOCK_LEADS), []);
+
+  // Filter and sort leads
+  const sortedLeads = useMemo(() => {
+    let filtered = MOCK_LEADS.filter(lead => {
+      const matchesSearch =
+        lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        lead.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        lead.email.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const tier = getALSTier(lead.alsScore);
+      const matchesTier = selectedTier === "all" || tier === selectedTier;
+      
+      return matchesSearch && matchesTier;
+    });
+
+    // Sort by ALS score (descending by default = leaderboard style)
+    filtered.sort((a, b) => 
+      sortAscending ? a.alsScore - b.alsScore : b.alsScore - a.alsScore
+    );
+
+    return filtered;
+  }, [searchQuery, selectedTier, sortAscending]);
 
   return (
-    <AppShell pageTitle="Prospects">
+    <AppShell pageTitle="Lead Scoreboard">
       <div className="space-y-6">
         {/* Header Bar */}
         <div className="flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-serif text-text-primary">Prospects</h1>
-              <span className="px-3 py-1 rounded-md font-mono text-sm font-semibold"
+            <h1 className="text-2xl font-serif text-text-primary flex items-center gap-3">
+              Lead Scoreboard
+              <motion.span
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="px-3 py-1 rounded-md font-mono text-sm font-semibold"
                 style={{ backgroundColor: "rgba(212, 149, 106, 0.15)", color: "#D4956A" }}
               >
-                {MOCK_STATS.total}
-              </span>
-            </div>
+                LIVE
+              </motion.span>
+            </h1>
             <p className="text-sm text-text-muted mt-1">
-              Track and engage your leads across all channels
+              Real-time lead rankings by Adaptive Lead Score
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -294,10 +242,18 @@ export default function ProspectsPage() {
             </button>
             <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium gradient-premium text-text-primary hover:opacity-90 transition-opacity">
               <Plus className="w-4 h-4" />
-              Add Prospect
+              Add Lead
             </button>
           </div>
         </div>
+
+        {/* Split-Flap Counter Bar */}
+        <SplitFlapCounterBar
+          totalLeads={stats.total}
+          enrichedCount={stats.enriched}
+          averageALS={stats.avgALS}
+          meetingsBooked={stats.meetingsBooked}
+        />
 
         {/* Filters */}
         <div className="flex items-center gap-4">
@@ -315,237 +271,115 @@ export default function ProspectsPage() {
               }}
             />
           </div>
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium glass-surface hover:bg-bg-surface-hover transition-colors">
-            <Filter className="w-4 h-4" />
-            Filters
+          
+          {/* Sort Toggle */}
+          <button
+            onClick={() => setSortAscending(!sortAscending)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium glass-surface hover:bg-bg-surface-hover transition-colors"
+          >
+            <ArrowUpDown className="w-4 h-4" />
+            {sortAscending ? "Low → High" : "High → Low"}
           </button>
-          <div className="flex rounded-lg overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
-            {(["all", "hot", "warm", "cool"] as const).map((tier) => (
+
+          {/* Tier Filter Tabs */}
+          <div 
+            className="flex rounded-lg overflow-hidden" 
+            style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            {([
+              { key: "all" as const, label: "All", icon: null, count: stats.total, color: undefined },
+              { key: "hot" as const, label: "Hot", icon: <Flame className="w-4 h-4" />, count: stats.hot, color: "#D4956A" },
+              { key: "warm" as const, label: "Warm", icon: <Zap className="w-4 h-4" />, count: stats.warm, color: "#EAB308" },
+              { key: "cool" as const, label: "Cool", icon: <Moon className="w-4 h-4" />, count: stats.cool, color: "#6B7280" },
+              { key: "cold" as const, label: "Cold", icon: <Snowflake className="w-4 h-4" />, count: stats.cold, color: "#374151" },
+            ]).map(({ key, label, icon, count, color }) => (
               <button
-                key={tier}
-                onClick={() => setSelectedTier(tier)}
+                key={key}
+                onClick={() => setSelectedTier(key)}
                 className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${
-                  selectedTier === tier
+                  selectedTier === key
                     ? "bg-bg-surface text-text-primary"
                     : "text-text-muted hover:text-text-secondary"
                 }`}
-                style={selectedTier === tier && tier !== "all" ? { color: getTierColors(tier as Tier).text } : {}}
+                style={selectedTier === key && color ? { color } : {}}
               >
-                {tier === "hot" && <Flame className="w-4 h-4" />}
-                {tier === "warm" && <Zap className="w-4 h-4" />}
-                {tier === "cool" && <Moon className="w-4 h-4" />}
-                {tier === "all" ? "All" : tier.charAt(0).toUpperCase() + tier.slice(1)}
-                <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: "rgba(255,255,255,0.06)" }}>
-                  {tier === "all" ? MOCK_STATS.total : MOCK_STATS[tier]}
+                {icon}
+                {label}
+                <span 
+                  className="text-xs font-mono px-1.5 py-0.5 rounded" 
+                  style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
+                >
+                  {count}
                 </span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Stats Bar */}
-        <div className="grid grid-cols-4 gap-4">
-          <div className="glass-surface rounded-xl p-4 flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: "rgba(239, 68, 68, 0.1)" }}>
-              <Flame className="w-5 h-5 text-tier-hot" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold font-mono text-text-primary">{MOCK_STATS.hot}</p>
-              <p className="text-xs text-text-muted">Hot Leads (85-100)</p>
-            </div>
+        {/* Animated Leaderboard */}
+        <motion.div
+          className="glass-surface rounded-2xl p-5"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          {/* Leaderboard Header */}
+          <div 
+            className="flex items-center gap-4 px-5 py-3 mb-4 rounded-xl"
+            style={{ backgroundColor: "rgba(255,255,255,0.02)" }}
+          >
+            <span className="w-8 text-xs font-semibold text-text-muted uppercase tracking-wider">#</span>
+            <span className="w-16 text-xs font-semibold text-text-muted uppercase tracking-wider">Score</span>
+            <span className="flex-1 text-xs font-semibold text-text-muted uppercase tracking-wider">Lead</span>
+            <span className="w-24 text-xs font-semibold text-text-muted uppercase tracking-wider">Enrichment</span>
+            <span className="w-12"></span>
           </div>
-          <div className="glass-surface rounded-xl p-4 flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: "rgba(245, 158, 11, 0.1)" }}>
-              <Zap className="w-5 h-5 text-tier-warm" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold font-mono text-text-primary">{MOCK_STATS.warm}</p>
-              <p className="text-xs text-text-muted">Warm Leads (60-84)</p>
-            </div>
-          </div>
-          <div className="glass-surface rounded-xl p-4 flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: "rgba(59, 130, 246, 0.1)" }}>
-              <Moon className="w-5 h-5 text-tier-cool" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold font-mono text-text-primary">{MOCK_STATS.cool}</p>
-              <p className="text-xs text-text-muted">Cool Leads (20-59)</p>
-            </div>
-          </div>
-          <div className="glass-surface rounded-xl p-4 flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: "rgba(212, 149, 106, 0.15)" }}>
-              <span className="text-accent-primary font-bold">Ø</span>
-            </div>
-            <div>
-              <p className="text-2xl font-bold font-mono text-text-primary">{MOCK_STATS.avgALS}</p>
-              <p className="text-xs text-text-muted">Avg. ALS Score</p>
-            </div>
-          </div>
-        </div>
 
-        {/* Prospects Table */}
-        <div className="glass-surface rounded-xl overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr style={{ backgroundColor: "rgba(255,255,255,0.03)" }}>
-                <th className="w-10 p-4">
-                  <input type="checkbox" className="w-4 h-4 rounded" />
-                </th>
-                <th className="text-left p-4 text-xs font-semibold text-text-muted uppercase tracking-wider">Prospect</th>
-                <th className="text-left p-4 text-xs font-semibold text-text-muted uppercase tracking-wider">Company</th>
-                <th className="text-left p-4 text-xs font-semibold text-text-muted uppercase tracking-wider">Score</th>
-                <th className="text-left p-4 text-xs font-semibold text-text-muted uppercase tracking-wider">Why Hot?</th>
-                <th className="text-left p-4 text-xs font-semibold text-text-muted uppercase tracking-wider">Channels</th>
-                <th className="text-left p-4 text-xs font-semibold text-text-muted uppercase tracking-wider">Last Activity</th>
-                <th className="w-24 p-4"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-subtle">
-              {filteredProspects.map((prospect) => {
-                const tierColors = getTierColors(prospect.tier);
-                const statusColors = getStatusColors(prospect.status);
-                return (
-                  <tr
-                    key={prospect.id}
-                    className="hover:bg-bg-surface-hover transition-colors cursor-pointer group"
-                    onClick={() => window.location.href = `/dashboard/leads/${prospect.id}`}
-                    style={{
-                      boxShadow: `inset 4px 0 0 transparent`,
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.boxShadow = `inset 4px 0 0 ${tierColors.text}`;
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.boxShadow = `inset 4px 0 0 transparent`;
-                    }}
-                  >
-                    <td className="p-4" onClick={(e) => e.stopPropagation()}>
-                      <input type="checkbox" className="w-4 h-4 rounded" />
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-11 h-11 rounded-xl flex items-center justify-center text-text-primary font-semibold text-sm"
-                          style={{ background: tierColors.gradient }}
-                        >
-                          {getInitials(prospect.name)}
-                        </div>
-                        <div>
-                          <p className="font-medium text-text-primary text-sm">{prospect.name}</p>
-                          <p className="text-xs text-text-secondary">{prospect.title}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <p className="font-medium text-text-primary text-sm">{prospect.company}</p>
-                      <p className="text-xs text-text-muted">{prospect.email}</p>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl font-bold font-mono" style={{ color: tierColors.text }}>
-                          {prospect.score}
-                        </span>
-                        <span
-                          className="text-[10px] font-semibold uppercase px-2 py-1 rounded"
-                          style={{
-                            backgroundColor: tierColors.bg,
-                            color: tierColors.text,
-                            border: `1px solid ${tierColors.border}`,
-                          }}
-                        >
-                          {prospect.tier}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex flex-wrap gap-1.5">
-                        {prospect.whyHot.length > 0 ? (
-                          prospect.whyHot.slice(0, 2).map((reason, idx) => (
-                            <span
-                              key={idx}
-                              className="text-[11px] font-medium px-2 py-1 rounded"
-                              style={{ backgroundColor: "rgba(255,255,255,0.06)", color: "#A09890" }}
-                            >
-                              {reason}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-xs text-text-muted">—</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex gap-1.5">
-                        <ChannelIcon active={prospect.channels.email} icon={<Mail className="w-3.5 h-3.5" />} color="#7C3AED" />
-                        <ChannelIcon active={prospect.channels.linkedin} icon={<Linkedin className="w-3.5 h-3.5" />} color="#0077B5" />
-                        <ChannelIcon active={prospect.channels.sms} icon={<MessageSquare className="w-3.5 h-3.5" />} color="#14B8A6" />
-                        <ChannelIcon active={prospect.channels.voice} icon={<Phone className="w-3.5 h-3.5" />} color="#F59E0B" />
-                        <ChannelIcon active={prospect.channels.mail} icon={<Send className="w-3.5 h-3.5" />} color="#EC4899" />
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <span className={`text-sm ${prospect.recent ? "text-status-success" : "text-text-muted"}`}>
-                        {prospect.lastActivity}
-                      </span>
-                    </td>
-                    <td className="p-4" onClick={(e) => e.stopPropagation()}>
-                      <Link
-                        href={`/dashboard/leads/${prospect.id}`}
-                        className="text-sm font-medium px-3 py-1.5 rounded-md transition-colors"
-                        style={{ backgroundColor: "rgba(212, 149, 106, 0.1)", color: "#D4956A" }}
-                      >
-                        Details →
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+          {/* Leaderboard Rows */}
+          <LayoutGroup>
+            <AnimatePresence mode="popLayout">
+              {sortedLeads.length > 0 ? (
+                <div className="space-y-2">
+                  {sortedLeads.map((lead, index) => (
+                    <LeadScoreboardRow
+                      key={lead.id}
+                      id={lead.id}
+                      rank={index + 1}
+                      alsScore={lead.alsScore}
+                      companyName={lead.company}
+                      decisionMaker={lead.name}
+                      title={lead.title}
+                      enrichmentDepth={lead.enrichmentDepth}
+                      isNew={lead.isNew}
+                      index={index}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center py-12"
+                >
+                  <p className="text-text-muted">No leads match your filters</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </LayoutGroup>
+        </motion.div>
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-text-muted">
-            Showing <span className="font-mono font-medium text-text-secondary">1-{filteredProspects.length}</span> of{" "}
-            <span className="font-mono font-medium text-text-secondary">{MOCK_STATS.total}</span> prospects
+        {/* Footer Stats */}
+        <div className="flex items-center justify-between text-sm text-text-muted">
+          <p>
+            Showing <span className="font-mono font-medium text-text-secondary">{sortedLeads.length}</span> of{" "}
+            <span className="font-mono font-medium text-text-secondary">{stats.total}</span> leads
           </p>
-          <div className="flex items-center gap-2">
-            <button className="px-3 py-2 rounded-lg text-sm glass-surface hover:bg-bg-surface-hover transition-colors flex items-center gap-1">
-              <ChevronLeft className="w-4 h-4" /> Previous
-            </button>
-            <button className="px-3 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: "#D4956A", color: "#0C0A08" }}>
-              1
-            </button>
-            <button className="px-3 py-2 rounded-lg text-sm glass-surface hover:bg-bg-surface-hover transition-colors">2</button>
-            <button className="px-3 py-2 rounded-lg text-sm glass-surface hover:bg-bg-surface-hover transition-colors">3</button>
-            <button className="px-3 py-2 rounded-lg text-sm glass-surface hover:bg-bg-surface-hover transition-colors flex items-center gap-1">
-              Next <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+          <p className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-status-success animate-pulse" />
+            Live updates enabled
+          </p>
         </div>
       </div>
     </AppShell>
-  );
-}
-
-// Channel icon component
-function ChannelIcon({ active, icon, color }: { active: boolean; icon: React.ReactNode; color: string }) {
-  return (
-    <div
-      className="w-7 h-7 rounded-md flex items-center justify-center relative"
-      style={{
-        backgroundColor: active ? `${color}20` : "rgba(255,255,255,0.03)",
-        color: active ? color : "rgba(255,255,255,0.2)",
-      }}
-    >
-      {icon}
-      {active && (
-        <span
-          className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full"
-          style={{ backgroundColor: "#10B981", border: "2px solid #0C0A08" }}
-        />
-      )}
-    </div>
   );
 }

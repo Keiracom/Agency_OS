@@ -1,36 +1,21 @@
 /**
  * FILE: frontend/components/leads/index.ts
- * PURPOSE: Export all lead-related components
+ * PURPOSE: Export all lead components
+ * SPRINT: Dashboard Sprint 2 - Step 6/8 Animated Lead Scoreboard
  */
 
-export { ALSScorecard } from "./ALSScorecard";
-export { LeadEnrichmentCard } from "./LeadEnrichmentCard";
-export { LeadActivityTimeline } from "./LeadActivityTimeline";
-export { LeadStatusProgress, LeadStatusBadge } from "./LeadStatusProgress";
-export {
-  LeadQuickActions,
-  type QuickActionType,
-  type LeadQuickActionsProps,
-} from "./LeadQuickActions";
-export {
-  LeadBulkActions,
-  type BulkActionType,
-  type BulkActionOptions,
-  type BulkActionResult,
-  type CampaignOption,
-  type LeadStatusOption,
-  type LeadBulkActionsProps,
-} from "./LeadBulkActions";
-
-// Sprint 2: Leads List Components
-export { LeadTierBadge, type TierType } from "./LeadTierBadge";
-export { WhyHotBadge, type WhyHotReason } from "./WhyHotBadge";
-export { LeadsFilters } from "./LeadsFilters";
-export { LeadsTable } from "./LeadsTable";
-
-// Sprint 2: Lead Detail Components
-export { LeadHeader } from "./LeadHeader";
-export { LeadRadarChart } from "./LeadRadarChart";
-export { LeadTimeline } from "./LeadTimeline";
-export { LeadContactInfo } from "./LeadContactInfo";
-export { SiegeWaterfallProgress } from "./SiegeWaterfallProgress";
+export { SplitFlapCounterBar, type SplitFlapCounterBarProps } from "./SplitFlapCounter";
+export { 
+  LeadScoreboardRow, 
+  getALSTier, 
+  getALSColour, 
+  type LeadScoreboardRowProps, 
+  type ALSTier 
+} from "./LeadScoreboardRow";
+export { 
+  CommunicationTimeline, 
+  TimelineEmptyState,
+  type CommunicationTimelineProps,
+  type TimelineEvent,
+  type TimelineEventType
+} from "./CommunicationTimeline";

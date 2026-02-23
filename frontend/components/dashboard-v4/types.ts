@@ -51,12 +51,35 @@ export interface InsightData {
   highlightText?: string;
 }
 
+export interface CelebrationData {
+  show: boolean;
+  title: string;
+  subtitle: string;
+}
+
+export interface MeetingsGoal {
+  current: number;
+  target: number;
+  percentComplete: number;
+  targetHit: boolean;
+  daysEarly?: number;
+}
+
+export interface MomentumData {
+  percentChange: number;
+  direction: "up" | "down" | "flat";
+  label: string;
+}
+
 export interface DashboardV4Data {
-  hotProspects: HotProspect[];
-  upcomingMeetings: UpcomingMeeting[];
-  warmReplies: WarmReply[];
+  greeting: string;
+  subtext: string;
+  celebration: CelebrationData | null;
+  meetingsGoal: MeetingsGoal;
+  momentum: MomentumData;
   quickStats: QuickStat[];
+  hotProspects: HotProspect[];
+  weekAhead: UpcomingMeeting[];
   insight: InsightData;
-  meetingsThisMonth: number;
-  meetingsTarget: number;
+  warmReplies: WarmReply[];
 }

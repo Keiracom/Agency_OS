@@ -48,7 +48,6 @@ from src.engines.linkedin import get_linkedin_engine
 from src.engines.sms import get_sms_engine
 from src.engines.timing import get_timing_engine
 from src.integrations.supabase import get_db_session
-from src.services.cis_service import get_cis_service
 from src.models.base import (
     CampaignStatus,
     ChannelType,
@@ -59,6 +58,7 @@ from src.models.base import (
 from src.models.campaign import Campaign
 from src.models.client import Client
 from src.models.lead import Lead
+from src.services.cis_service import get_cis_service
 from src.services.content_qa_service import (
     validate_email_content,
     validate_linkedin_content,
@@ -809,7 +809,7 @@ async def send_email_outreach_task(
                 if activity_id:
                     # Determine personalization level based on SDK usage
                     personalization_level = "sdk_enhanced" if sdk_used else "basic"
-                    
+
                     await cis_service.record_outreach_outcome(
                         activity_id=activity_id,
                         lead_id=lead_uuid,
@@ -966,11 +966,9 @@ async def send_linkedin_outreach_task(
                 activity_id = send_result.data.get("activity_id")
                 if activity_id:
                     # Fetch lead for ALS data
-                    lead_result = await db.execute(
-                        select(Lead).where(Lead.id == lead_uuid)
-                    )
+                    lead_result = await db.execute(select(Lead).where(Lead.id == lead_uuid))
                     lead = lead_result.scalar_one_or_none()
-                    
+
                     await cis_service.record_outreach_outcome(
                         activity_id=activity_id,
                         lead_id=lead_uuid,
@@ -1334,34 +1332,38 @@ async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
     try:
         async with get_db_session() as db:
             cis_service = get_cis_service(db)
-            
+
             # Group sends by campaign and channel
             campaign_channel_counts: dict[str, dict[str, int]] = {}
             campaign_clients: dict[str, str] = {}
-            
+
             for channel_name, channel_results in results.items():
                 for result in channel_results:
                     if result.get("success"):
                         campaign_id = None
                         client_id = None
-                        
+
                         # Find campaign_id from leads_data
                         for lead_data in leads_data["leads_by_channel"].get(channel_name, []):
                             if lead_data["lead_id"] == result.get("lead_id"):
                                 campaign_id = lead_data.get("campaign_id")
                                 client_id = lead_data.get("client_id")
                                 break
-                        
+
                         if campaign_id:
                             key = f"{campaign_id}_{channel_name}"
                             if key not in campaign_channel_counts:
-                                campaign_channel_counts[key] = {"count": 0, "campaign_id": campaign_id, "channel": channel_name}
+                                campaign_channel_counts[key] = {
+                                    "count": 0,
+                                    "campaign_id": campaign_id,
+                                    "channel": channel_name,
+                                }
                             campaign_channel_counts[key]["count"] += 1
                             if client_id:
                                 campaign_clients[campaign_id] = client_id
-            
+
             # Update CIS channel performance for each campaign/channel combo
-            for key, data in campaign_channel_counts.items():
+            for _key, data in campaign_channel_counts.items():
                 campaign_id = data["campaign_id"]
                 client_id = campaign_clients.get(campaign_id)
                 if client_id:

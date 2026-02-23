@@ -842,7 +842,9 @@ async def activate_campaign(
 class RejectionRequest(BaseModel):
     """Request body for campaign rejection."""
 
-    rejection_reason: str = Field(..., min_length=1, max_length=1000, description="Reason for rejection")
+    rejection_reason: str = Field(
+        ..., min_length=1, max_length=1000, description="Reason for rejection"
+    )
 
 
 @router.post(
@@ -954,9 +956,7 @@ async def approve_campaign(
     await db.flush()
     await db.refresh(campaign)
 
-    logger.info(
-        f"Campaign {campaign_id} APPROVED by admin {ctx.user_id} (client: {client_id})"
-    )
+    logger.info(f"Campaign {campaign_id} APPROVED by admin {ctx.user_id} (client: {client_id})")
 
     return await enrich_campaign_response(campaign, db)
 

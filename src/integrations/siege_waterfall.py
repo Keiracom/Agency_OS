@@ -693,7 +693,9 @@ class SiegeWaterfall:
             try:
                 self.leadmagic_mobile_client = get_leadmagic_mobile_client()
             except Exception as e:
-                logger.warning(f"[Siege] Leadmagic mobile client unavailable (Tier 5 disabled): {e}")
+                logger.warning(
+                    f"[Siege] Leadmagic mobile client unavailable (Tier 5 disabled): {e}"
+                )
                 self.leadmagic_mobile_client = None  # Tier 5 will be skipped gracefully
         else:
             self.leadmagic_mobile_client = None  # Module not available, Tier 5 disabled

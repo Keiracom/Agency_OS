@@ -616,14 +616,14 @@ Return ONLY valid JSON, no other text."""
         if row and row.lead_id:
             try:
                 from src.services.cis_service import get_cis_service
-                
+
                 # Get lead and client info
                 lead_query = text("""
                     SELECT id, client_id FROM leads WHERE id = :lead_id
                 """)
                 lead_result = await self.session.execute(lead_query, {"lead_id": row.lead_id})
                 lead_row = lead_result.fetchone()
-                
+
                 if lead_row:
                     # Map our intent to CIS intent enum
                     cis_intent_map = {
@@ -635,8 +635,10 @@ Return ONLY valid JSON, no other text."""
                         "out_of_office": "out_of_office",
                         "unclear": "confused",
                     }
-                    primary_intent = cis_intent_map.get(analysis.get("intent", "unclear"), "confused")
-                    
+                    primary_intent = cis_intent_map.get(
+                        analysis.get("intent", "unclear"), "confused"
+                    )
+
                     # Map objection type to CIS enum
                     cis_objection_map = {
                         "timing": "timing",
@@ -652,7 +654,7 @@ Return ONLY valid JSON, no other text."""
                         objection_category = cis_objection_map.get(
                             analysis["objection_type"], "other"
                         )
-                    
+
                     cis_service = get_cis_service(self.session)
                     await cis_service.record_reply_classification(
                         reply_id=reply_id,
@@ -663,17 +665,24 @@ Return ONLY valid JSON, no other text."""
                         objection_category=objection_category,
                         sentiment=analysis.get("sentiment", "neutral"),
                         sentiment_score=analysis.get("sentiment_score", 0.0),
-                        questions_asked=[analysis["question_extracted"]] if analysis.get("question_extracted") else None,
+                        questions_asked=[analysis["question_extracted"]]
+                        if analysis.get("question_extracted")
+                        else None,
                         topics_mentioned=analysis.get("topics_mentioned"),
                         is_substantive=len(content.split()) > 5,
                         word_count=len(content.split()),
-                        classifier_version="v1" if analysis.get("analysis_method") == "rules" else "ai-v1",
+                        classifier_version="v1"
+                        if analysis.get("analysis_method") == "rules"
+                        else "ai-v1",
                         session=self.session,
                     )
             except Exception as e:
                 # CIS recording is non-blocking
                 import logging
-                logging.getLogger(__name__).warning(f"CIS reply classification failed (non-blocking): {e}")
+
+                logging.getLogger(__name__).warning(
+                    f"CIS reply classification failed (non-blocking): {e}"
+                )
 
         return analysis
 

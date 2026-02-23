@@ -110,14 +110,32 @@ class CISService:
         if not db:
             async with get_db_session() as db:
                 return await self._record_outreach_outcome_impl(
-                    db, activity_id, lead_id, client_id, campaign_id, channel,
-                    sequence_step, als_score_at_send, als_tier_at_send,
-                    subject_line, hook_type, personalization_level
+                    db,
+                    activity_id,
+                    lead_id,
+                    client_id,
+                    campaign_id,
+                    channel,
+                    sequence_step,
+                    als_score_at_send,
+                    als_tier_at_send,
+                    subject_line,
+                    hook_type,
+                    personalization_level,
                 )
         return await self._record_outreach_outcome_impl(
-            db, activity_id, lead_id, client_id, campaign_id, channel,
-            sequence_step, als_score_at_send, als_tier_at_send,
-            subject_line, hook_type, personalization_level
+            db,
+            activity_id,
+            lead_id,
+            client_id,
+            campaign_id,
+            channel,
+            sequence_step,
+            als_score_at_send,
+            als_tier_at_send,
+            subject_line,
+            hook_type,
+            personalization_level,
         )
 
     async def _record_outreach_outcome_impl(
@@ -157,19 +175,22 @@ class CISService:
                 RETURNING id
             """)
 
-            result = await db.execute(query, {
-                "activity_id": str(activity_id),
-                "lead_id": str(lead_id),
-                "client_id": str(client_id),
-                "campaign_id": str(campaign_id) if campaign_id else None,
-                "channel": channel,
-                "sequence_step": sequence_step,
-                "als_score": als_score_at_send,
-                "als_tier": als_tier_at_send,
-                "subject_hash": subject_hash,
-                "hook_type": hook_type,
-                "personalization_level": personalization_level,
-            })
+            result = await db.execute(
+                query,
+                {
+                    "activity_id": str(activity_id),
+                    "lead_id": str(lead_id),
+                    "client_id": str(client_id),
+                    "campaign_id": str(campaign_id) if campaign_id else None,
+                    "channel": channel,
+                    "sequence_step": sequence_step,
+                    "als_score": als_score_at_send,
+                    "als_tier": als_tier_at_send,
+                    "subject_hash": subject_hash,
+                    "hook_type": hook_type,
+                    "personalization_level": personalization_level,
+                },
+            )
             row = result.fetchone()
             await db.commit()
 
@@ -208,7 +229,9 @@ class CISService:
         db = session or self._session
         if not db:
             async with get_db_session() as db:
-                return await self._update_outreach_outcome_impl(db, activity_id, event_type, final_outcome)
+                return await self._update_outreach_outcome_impl(
+                    db, activity_id, event_type, final_outcome
+                )
         return await self._update_outreach_outcome_impl(db, activity_id, event_type, final_outcome)
 
     async def _update_outreach_outcome_impl(
@@ -252,9 +275,7 @@ class CISService:
                     "time_to_reply_minutes = EXTRACT(EPOCH FROM (NOW() - sent_at)) / 60"
                 )
             elif event_type in ("meeting_booked", "converted"):
-                update_parts.append(
-                    "days_to_outcome = EXTRACT(DAY FROM (NOW() - sent_at))"
-                )
+                update_parts.append("days_to_outcome = EXTRACT(DAY FROM (NOW() - sent_at))")
 
             update_parts.append("updated_at = NOW()")
 
@@ -335,18 +356,44 @@ class CISService:
         if not db:
             async with get_db_session() as db:
                 return await self._record_reply_classification_impl(
-                    db, reply_id, lead_id, client_id, primary_intent, intent_confidence,
-                    objection_category, sentiment, sentiment_score, questions_asked,
-                    topics_mentioned, competitor_mentioned, timeline_mentioned,
-                    budget_mentioned, is_substantive, word_count, response_time_hours,
-                    classifier_version
+                    db,
+                    reply_id,
+                    lead_id,
+                    client_id,
+                    primary_intent,
+                    intent_confidence,
+                    objection_category,
+                    sentiment,
+                    sentiment_score,
+                    questions_asked,
+                    topics_mentioned,
+                    competitor_mentioned,
+                    timeline_mentioned,
+                    budget_mentioned,
+                    is_substantive,
+                    word_count,
+                    response_time_hours,
+                    classifier_version,
                 )
         return await self._record_reply_classification_impl(
-            db, reply_id, lead_id, client_id, primary_intent, intent_confidence,
-            objection_category, sentiment, sentiment_score, questions_asked,
-            topics_mentioned, competitor_mentioned, timeline_mentioned,
-            budget_mentioned, is_substantive, word_count, response_time_hours,
-            classifier_version
+            db,
+            reply_id,
+            lead_id,
+            client_id,
+            primary_intent,
+            intent_confidence,
+            objection_category,
+            sentiment,
+            sentiment_score,
+            questions_asked,
+            topics_mentioned,
+            competitor_mentioned,
+            timeline_mentioned,
+            budget_mentioned,
+            is_substantive,
+            word_count,
+            response_time_hours,
+            classifier_version,
         )
 
     async def _record_reply_classification_impl(
@@ -409,30 +456,35 @@ class CISService:
                 RETURNING id
             """)
 
-            result = await db.execute(query, {
-                "reply_id": str(reply_id),
-                "lead_id": str(lead_id),
-                "client_id": str(client_id),
-                "primary_intent": primary_intent,
-                "intent_confidence": intent_confidence,
-                "objection_category": objection_category,
-                "sentiment": sentiment,
-                "sentiment_score": sentiment_score,
-                "questions_asked": questions_asked or [],
-                "topics_mentioned": topics_mentioned or [],
-                "competitor_mentioned": competitor_mentioned,
-                "timeline_mentioned": timeline_mentioned,
-                "budget_mentioned": budget_mentioned,
-                "is_substantive": is_substantive,
-                "word_count": word_count,
-                "response_time_hours": response_time_hours,
-                "classifier_version": classifier_version,
-            })
+            result = await db.execute(
+                query,
+                {
+                    "reply_id": str(reply_id),
+                    "lead_id": str(lead_id),
+                    "client_id": str(client_id),
+                    "primary_intent": primary_intent,
+                    "intent_confidence": intent_confidence,
+                    "objection_category": objection_category,
+                    "sentiment": sentiment,
+                    "sentiment_score": sentiment_score,
+                    "questions_asked": questions_asked or [],
+                    "topics_mentioned": topics_mentioned or [],
+                    "competitor_mentioned": competitor_mentioned,
+                    "timeline_mentioned": timeline_mentioned,
+                    "budget_mentioned": budget_mentioned,
+                    "is_substantive": is_substantive,
+                    "word_count": word_count,
+                    "response_time_hours": response_time_hours,
+                    "classifier_version": classifier_version,
+                },
+            )
             row = result.fetchone()
             await db.commit()
 
             classification_id = str(row.id) if row else None
-            logger.info(f"CIS: Recorded reply classification {classification_id} for reply {reply_id}")
+            logger.info(
+                f"CIS: Recorded reply classification {classification_id} for reply {reply_id}"
+            )
 
             return {
                 "success": True,
@@ -488,14 +540,30 @@ class CISService:
         if not db:
             async with get_db_session() as db:
                 return await self._update_channel_performance_impl(
-                    db, client_id, campaign_id, channel, messages_sent,
-                    replies, positive_replies, meetings_booked, conversions,
-                    cost_aud, date
+                    db,
+                    client_id,
+                    campaign_id,
+                    channel,
+                    messages_sent,
+                    replies,
+                    positive_replies,
+                    meetings_booked,
+                    conversions,
+                    cost_aud,
+                    date,
                 )
         return await self._update_channel_performance_impl(
-            db, client_id, campaign_id, channel, messages_sent,
-            replies, positive_replies, meetings_booked, conversions,
-            cost_aud, date
+            db,
+            client_id,
+            campaign_id,
+            channel,
+            messages_sent,
+            replies,
+            positive_replies,
+            meetings_booked,
+            conversions,
+            cost_aud,
+            date,
         )
 
     async def _update_channel_performance_impl(
@@ -557,25 +625,28 @@ class CISService:
                 RETURNING id
             """)
 
-            result = await db.execute(query, {
-                "client_id": str(client_id),
-                "campaign_id": str(campaign_id) if campaign_id else None,
-                "channel": channel,
-                "date": target_date.date(),
-                "sends": messages_sent,
-                "replies": replies,
-                "positive_replies": positive_replies,
-                "meetings_booked": meetings_booked,
-                "conversions": conversions,
-                "delivery_rate": delivery_rate,
-                "reply_rate": reply_rate,
-                "positive_reply_rate": positive_reply_rate,
-                "meeting_rate": meeting_rate,
-                "conversion_rate": conversion_rate,
-                "cost_aud": cost_aud,
-                "cost_per_reply": cost_per_reply,
-                "cost_per_meeting": cost_per_meeting,
-            })
+            result = await db.execute(
+                query,
+                {
+                    "client_id": str(client_id),
+                    "campaign_id": str(campaign_id) if campaign_id else None,
+                    "channel": channel,
+                    "date": target_date.date(),
+                    "sends": messages_sent,
+                    "replies": replies,
+                    "positive_replies": positive_replies,
+                    "meetings_booked": meetings_booked,
+                    "conversions": conversions,
+                    "delivery_rate": delivery_rate,
+                    "reply_rate": reply_rate,
+                    "positive_reply_rate": positive_reply_rate,
+                    "meeting_rate": meeting_rate,
+                    "conversion_rate": conversion_rate,
+                    "cost_aud": cost_aud,
+                    "cost_per_reply": cost_per_reply,
+                    "cost_per_meeting": cost_per_meeting,
+                },
+            )
             row = result.fetchone()
             await db.commit()
 
@@ -627,14 +698,30 @@ class CISService:
         if not db:
             async with get_db_session() as db:
                 return await self._record_als_conversion_impl(
-                    db, lead_id, client_id, als_score, als_tier,
-                    channel_that_converted, sequence_step_that_converted,
-                    conversion_type, campaign_id, touches_before_conversion, days_in_sequence
+                    db,
+                    lead_id,
+                    client_id,
+                    als_score,
+                    als_tier,
+                    channel_that_converted,
+                    sequence_step_that_converted,
+                    conversion_type,
+                    campaign_id,
+                    touches_before_conversion,
+                    days_in_sequence,
                 )
         return await self._record_als_conversion_impl(
-            db, lead_id, client_id, als_score, als_tier,
-            channel_that_converted, sequence_step_that_converted,
-            conversion_type, campaign_id, touches_before_conversion, days_in_sequence
+            db,
+            lead_id,
+            client_id,
+            als_score,
+            als_tier,
+            channel_that_converted,
+            sequence_step_that_converted,
+            conversion_type,
+            campaign_id,
+            touches_before_conversion,
+            days_in_sequence,
         )
 
     async def _record_als_conversion_impl(
@@ -668,18 +755,21 @@ class CISService:
                 RETURNING id
             """)
 
-            result = await db.execute(query, {
-                "client_id": str(client_id),
-                "campaign_id": str(campaign_id) if campaign_id else None,
-                "lead_id": str(lead_id),
-                "als_tier": als_tier,
-                "als_score": als_score,
-                "channel": channel_that_converted,
-                "sequence_step": sequence_step_that_converted,
-                "conversion_type": conversion_type,
-                "touches": touches_before_conversion,
-                "days": days_in_sequence,
-            })
+            result = await db.execute(
+                query,
+                {
+                    "client_id": str(client_id),
+                    "campaign_id": str(campaign_id) if campaign_id else None,
+                    "lead_id": str(lead_id),
+                    "als_tier": als_tier,
+                    "als_score": als_score,
+                    "channel": channel_that_converted,
+                    "sequence_step": sequence_step_that_converted,
+                    "conversion_type": conversion_type,
+                    "touches": touches_before_conversion,
+                    "days": days_in_sequence,
+                },
+            )
             row = result.fetchone()
             await db.commit()
 
@@ -738,14 +828,28 @@ class CISService:
         if not db:
             async with get_db_session() as db:
                 return await self._update_message_patterns_impl(
-                    db, client_id, hook_type, template_id, channel,
-                    subject_pattern, times_used, replies_generated,
-                    positive_replies, meetings_generated
+                    db,
+                    client_id,
+                    hook_type,
+                    template_id,
+                    channel,
+                    subject_pattern,
+                    times_used,
+                    replies_generated,
+                    positive_replies,
+                    meetings_generated,
                 )
         return await self._update_message_patterns_impl(
-            db, client_id, hook_type, template_id, channel,
-            subject_pattern, times_used, replies_generated,
-            positive_replies, meetings_generated
+            db,
+            client_id,
+            hook_type,
+            template_id,
+            channel,
+            subject_pattern,
+            times_used,
+            replies_generated,
+            positive_replies,
+            meetings_generated,
         )
 
     async def _update_message_patterns_impl(
@@ -788,7 +892,7 @@ class CISService:
                     replies_generated = cis_message_patterns.replies_generated + EXCLUDED.replies_generated,
                     positive_replies = cis_message_patterns.positive_replies + EXCLUDED.positive_replies,
                     meetings_generated = cis_message_patterns.meetings_generated + EXCLUDED.meetings_generated,
-                    reply_rate = (cis_message_patterns.replies_generated + EXCLUDED.replies_generated)::NUMERIC / 
+                    reply_rate = (cis_message_patterns.replies_generated + EXCLUDED.replies_generated)::NUMERIC /
                                  NULLIF(cis_message_patterns.times_used + EXCLUDED.times_used, 0),
                     positive_rate = (cis_message_patterns.positive_replies + EXCLUDED.positive_replies)::NUMERIC /
                                     NULLIF(cis_message_patterns.replies_generated + EXCLUDED.replies_generated, 0),
@@ -799,20 +903,23 @@ class CISService:
                 RETURNING id
             """)
 
-            result = await db.execute(query, {
-                "client_id": str(client_id),
-                "channel": channel,
-                "hook_type": hook_type,
-                "template_id": str(template_id) if template_id else None,
-                "subject_pattern": subject_pattern,
-                "times_used": times_used,
-                "replies_generated": replies_generated,
-                "positive_replies": positive_replies,
-                "meetings_generated": meetings_generated,
-                "reply_rate": reply_rate,
-                "positive_rate": positive_rate,
-                "meeting_rate": meeting_rate,
-            })
+            result = await db.execute(
+                query,
+                {
+                    "client_id": str(client_id),
+                    "channel": channel,
+                    "hook_type": hook_type,
+                    "template_id": str(template_id) if template_id else None,
+                    "subject_pattern": subject_pattern,
+                    "times_used": times_used,
+                    "replies_generated": replies_generated,
+                    "positive_replies": positive_replies,
+                    "meetings_generated": meetings_generated,
+                    "reply_rate": reply_rate,
+                    "positive_rate": positive_rate,
+                    "meeting_rate": meeting_rate,
+                },
+            )
             row = result.fetchone()
             await db.commit()
 
@@ -874,18 +981,40 @@ class CISService:
         if not db:
             async with get_db_session() as db:
                 return await self._update_agency_learnings_impl(
-                    db, client_id, month, total_leads_processed, total_sends,
-                    total_replies, total_meetings, total_conversions,
-                    best_performing_channel, best_performing_hook, best_als_tier,
-                    avg_reply_rate, avg_meeting_rate, total_spend_aud,
-                    cost_per_meeting_aud, learnings_summary
+                    db,
+                    client_id,
+                    month,
+                    total_leads_processed,
+                    total_sends,
+                    total_replies,
+                    total_meetings,
+                    total_conversions,
+                    best_performing_channel,
+                    best_performing_hook,
+                    best_als_tier,
+                    avg_reply_rate,
+                    avg_meeting_rate,
+                    total_spend_aud,
+                    cost_per_meeting_aud,
+                    learnings_summary,
                 )
         return await self._update_agency_learnings_impl(
-            db, client_id, month, total_leads_processed, total_sends,
-            total_replies, total_meetings, total_conversions,
-            best_performing_channel, best_performing_hook, best_als_tier,
-            avg_reply_rate, avg_meeting_rate, total_spend_aud,
-            cost_per_meeting_aud, learnings_summary
+            db,
+            client_id,
+            month,
+            total_leads_processed,
+            total_sends,
+            total_replies,
+            total_meetings,
+            total_conversions,
+            best_performing_channel,
+            best_performing_hook,
+            best_als_tier,
+            avg_reply_rate,
+            avg_meeting_rate,
+            total_spend_aud,
+            cost_per_meeting_aud,
+            learnings_summary,
         )
 
     async def _update_agency_learnings_impl(
@@ -949,23 +1078,26 @@ class CISService:
                 RETURNING id
             """)
 
-            result = await db.execute(query, {
-                "client_id": str(client_id),
-                "month": month,
-                "leads": total_leads_processed,
-                "sends": total_sends,
-                "replies": total_replies,
-                "meetings": total_meetings,
-                "conversions": total_conversions,
-                "best_channel": best_performing_channel,
-                "best_hook": best_performing_hook,
-                "best_tier": best_als_tier,
-                "reply_rate": avg_reply_rate,
-                "meeting_rate": avg_meeting_rate,
-                "spend": total_spend_aud,
-                "cost_per_meeting": cost_per_meeting_aud,
-                "summary": learnings_summary,
-            })
+            result = await db.execute(
+                query,
+                {
+                    "client_id": str(client_id),
+                    "month": month,
+                    "leads": total_leads_processed,
+                    "sends": total_sends,
+                    "replies": total_replies,
+                    "meetings": total_meetings,
+                    "conversions": total_conversions,
+                    "best_channel": best_performing_channel,
+                    "best_hook": best_performing_hook,
+                    "best_tier": best_als_tier,
+                    "reply_rate": avg_reply_rate,
+                    "meeting_rate": avg_meeting_rate,
+                    "spend": total_spend_aud,
+                    "cost_per_meeting": cost_per_meeting_aud,
+                    "summary": learnings_summary,
+                },
+            )
             row = result.fetchone()
             await db.commit()
 

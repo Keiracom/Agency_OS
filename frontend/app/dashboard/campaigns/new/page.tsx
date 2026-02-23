@@ -379,7 +379,7 @@ export default function NewCampaignPage() {
                     <label className="block text-sm font-medium text-text-primary">
                       Target Industries
                     </label>
-                    {icpSuggestion?.targetIndustries?.length > 0 && (
+                    {(icpSuggestion?.targetIndustries?.length ?? 0) > 0 && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-accent-primary/20 text-accent-primary">
                         <Sparkles className="w-3 h-3" />
                         Suggested

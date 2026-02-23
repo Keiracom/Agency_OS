@@ -1252,7 +1252,7 @@ class ScoutEngine(BaseEngine):
 
         query = text("""
             INSERT INTO lead_pool (
-                apollo_id, email, linkedin_url,
+                email, linkedin_url,
                 first_name, last_name, title, seniority,
                 linkedin_headline, photo_url, twitter_url,
                 phone, personal_email,
@@ -1271,7 +1271,7 @@ class ScoutEngine(BaseEngine):
                 enriched_at, enrichment_data,
                 pool_status
             ) VALUES (
-                :apollo_id, :email, :linkedin_url,
+                :email, :linkedin_url,
                 :first_name, :last_name, :title, :seniority,
                 :linkedin_headline, :photo_url, :twitter_url,
                 :phone, :personal_email,
@@ -1297,7 +1297,7 @@ class ScoutEngine(BaseEngine):
         """)
 
         params = {
-            "apollo_id": lead_data.get("apollo_id"),
+            # apollo_id removed - column dropped in migration 064
             "email": lead_data.get("email", "").lower().strip(),
             "linkedin_url": lead_data.get("linkedin_url"),
             "first_name": lead_data.get("first_name"),

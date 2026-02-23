@@ -485,6 +485,35 @@ class CloserEngine(BaseEngine):
                 )
                 actions.append("booking_link_generated")
                 actions.append("automated_reply_sent")
+                
+                # CIS: Record ALS tier conversion when meeting is requested
+                try:
+                    from src.services.cis_service import get_cis_service
+                    cis_service = get_cis_service(db)
+                    
+                    # Calculate touches and days in sequence
+                    touches = lead.reply_count + (lead.email_count or 0) + (lead.linkedin_count or 0)
+                    days_in_sequence = None
+                    if lead.created_at:
+                        days_in_sequence = (datetime.utcnow() - lead.created_at).days
+                    
+                    await cis_service.record_als_conversion(
+                        lead_id=lead.id,
+                        client_id=lead.client_id,
+                        als_score=lead.als_score or 0,
+                        als_tier=lead.als_tier or "unknown",
+                        channel_that_converted=channel.value if channel else "email",
+                        sequence_step_that_converted=lead.sequence_step,
+                        conversion_type="meeting_booked",
+                        campaign_id=lead.campaign_id,
+                        touches_before_conversion=touches,
+                        days_in_sequence=days_in_sequence,
+                        session=db,
+                    )
+                    actions.append("cis_conversion_recorded")
+                except Exception as cis_error:
+                    logger.warning(f"CIS conversion recording failed (non-blocking): {cis_error}")
+                    
             except Exception as e:
                 logger.warning(f"Failed to send booking link for lead {lead.id}: {e}")
                 actions.append("booking_link_failed")

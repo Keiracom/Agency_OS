@@ -48,6 +48,7 @@ from src.engines.linkedin import get_linkedin_engine
 from src.engines.sms import get_sms_engine
 from src.engines.timing import get_timing_engine
 from src.integrations.supabase import get_db_session
+from src.services.cis_service import get_cis_service
 from src.models.base import (
     CampaignStatus,
     ChannelType,
@@ -801,6 +802,31 @@ async def send_email_outreach_task(
             sdk_used = should_use_sdk_email(lead_data)
             logger.info(f"Email sent to lead {lead_id} (SDK: {sdk_used})")
 
+            # CIS: Record outreach outcome for learning
+            try:
+                cis_service = get_cis_service(db)
+                activity_id = send_result.data.get("activity_id")
+                if activity_id:
+                    # Determine personalization level based on SDK usage
+                    personalization_level = "sdk_enhanced" if sdk_used else "basic"
+                    
+                    await cis_service.record_outreach_outcome(
+                        activity_id=activity_id,
+                        lead_id=lead_uuid,
+                        client_id=lead.client_id,
+                        campaign_id=campaign_uuid,
+                        channel="email",
+                        sequence_step=lead.sequence_step,
+                        als_score_at_send=lead.als_score,
+                        als_tier_at_send=lead.als_tier,
+                        subject_line=content_result.data.get("subject"),
+                        hook_type=content_result.data.get("hook_type"),
+                        personalization_level=personalization_level,
+                        session=db,
+                    )
+            except Exception as cis_error:
+                logger.warning(f"CIS recording failed (non-blocking): {cis_error}")
+
         return {
             "lead_id": lead_id,
             "channel": "email",
@@ -934,6 +960,33 @@ async def send_linkedin_outreach_task(
         if send_result.success:
             logger.info(f"LinkedIn connection request sent to lead {lead_id} via Unipile")
 
+            # CIS: Record outreach outcome for learning
+            try:
+                cis_service = get_cis_service(db)
+                activity_id = send_result.data.get("activity_id")
+                if activity_id:
+                    # Fetch lead for ALS data
+                    lead_result = await db.execute(
+                        select(Lead).where(Lead.id == lead_uuid)
+                    )
+                    lead = lead_result.scalar_one_or_none()
+                    
+                    await cis_service.record_outreach_outcome(
+                        activity_id=activity_id,
+                        lead_id=lead_uuid,
+                        client_id=lead.client_id if lead else None,
+                        campaign_id=campaign_uuid,
+                        channel="linkedin",
+                        sequence_step=lead.sequence_step if lead else None,
+                        als_score_at_send=lead.als_score if lead else None,
+                        als_tier_at_send=lead.als_tier if lead else None,
+                        hook_type=content_result.data.get("hook_type"),
+                        personalization_level="basic",
+                        session=db,
+                    )
+            except Exception as cis_error:
+                logger.warning(f"CIS recording failed (non-blocking): {cis_error}")
+
         return {
             "lead_id": lead_id,
             "channel": "linkedin",
@@ -1042,6 +1095,27 @@ async def send_sms_outreach_task(
 
         if send_result.success:
             logger.info(f"SMS sent to lead {lead_id}")
+
+            # CIS: Record outreach outcome for learning
+            try:
+                cis_service = get_cis_service(db)
+                activity_id = send_result.data.get("activity_id")
+                if activity_id:
+                    await cis_service.record_outreach_outcome(
+                        activity_id=activity_id,
+                        lead_id=lead_uuid,
+                        client_id=lead.client_id,
+                        campaign_id=campaign_uuid,
+                        channel="sms",
+                        sequence_step=lead.sequence_step,
+                        als_score_at_send=lead.als_score,
+                        als_tier_at_send=lead.als_tier,
+                        hook_type=content_result.data.get("hook_type"),
+                        personalization_level="basic",
+                        session=db,
+                    )
+            except Exception as cis_error:
+                logger.warning(f"CIS recording failed (non-blocking): {cis_error}")
 
         return {
             "lead_id": lead_id,
@@ -1255,6 +1329,51 @@ async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
     emails_sent = sum(1 for r in results["email"] if r["success"])
     linkedin_sent = sum(1 for r in results["linkedin"] if r["success"])
     sms_sent = sum(1 for r in results["sms"] if r["success"])
+
+    # CIS: Update channel performance metrics per campaign
+    try:
+        async with get_db_session() as db:
+            cis_service = get_cis_service(db)
+            
+            # Group sends by campaign and channel
+            campaign_channel_counts: dict[str, dict[str, int]] = {}
+            campaign_clients: dict[str, str] = {}
+            
+            for channel_name, channel_results in results.items():
+                for result in channel_results:
+                    if result.get("success"):
+                        campaign_id = None
+                        client_id = None
+                        
+                        # Find campaign_id from leads_data
+                        for lead_data in leads_data["leads_by_channel"].get(channel_name, []):
+                            if lead_data["lead_id"] == result.get("lead_id"):
+                                campaign_id = lead_data.get("campaign_id")
+                                client_id = lead_data.get("client_id")
+                                break
+                        
+                        if campaign_id:
+                            key = f"{campaign_id}_{channel_name}"
+                            if key not in campaign_channel_counts:
+                                campaign_channel_counts[key] = {"count": 0, "campaign_id": campaign_id, "channel": channel_name}
+                            campaign_channel_counts[key]["count"] += 1
+                            if client_id:
+                                campaign_clients[campaign_id] = client_id
+            
+            # Update CIS channel performance for each campaign/channel combo
+            for key, data in campaign_channel_counts.items():
+                campaign_id = data["campaign_id"]
+                client_id = campaign_clients.get(campaign_id)
+                if client_id:
+                    await cis_service.update_channel_performance(
+                        client_id=client_id,
+                        campaign_id=campaign_id,
+                        channel=data["channel"],
+                        messages_sent=data["count"],
+                        session=db,
+                    )
+    except Exception as cis_error:
+        logger.warning(f"CIS channel performance update failed (non-blocking): {cis_error}")
 
     summary = {
         "total_leads": leads_data["total_leads"],

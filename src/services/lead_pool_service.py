@@ -97,7 +97,7 @@ class LeadPoolService:
                     details=details,
                 )
 
-        # Check for existing lead by email or apollo_id
+        # Check for existing lead by email
         existing = await self.get_by_email(email)
 
         if existing:
@@ -120,7 +120,7 @@ class LeadPoolService:
         # Build insert statement
         query = """
             INSERT INTO lead_pool (
-                apollo_id, email, linkedin_url,
+                email, linkedin_url,
                 first_name, last_name, title, seniority,
                 linkedin_headline, photo_url, twitter_url,
                 phone, personal_email,
@@ -140,7 +140,7 @@ class LeadPoolService:
                 enrichment_source_url, enrichment_captured_at,
                 pool_status
             ) VALUES (
-                :apollo_id, :email, :linkedin_url,
+                :email, :linkedin_url,
                 :first_name, :last_name, :title, :seniority,
                 :linkedin_headline, :photo_url, :twitter_url,
                 :phone, :personal_email,
@@ -308,23 +308,7 @@ class LeadPoolService:
         row = result.fetchone()
         return self._row_to_dict(row) if row else None
 
-    async def get_by_apollo_id(self, apollo_id: str) -> dict[str, Any] | None:
-        """
-        Get a lead by Apollo ID.
-
-        Args:
-            apollo_id: Apollo's internal ID
-
-        Returns:
-            Lead pool record or None
-        """
-        query = """
-            SELECT * FROM lead_pool
-            WHERE apollo_id = :apollo_id
-        """
-        result = await self.session.execute(text(query), {"apollo_id": apollo_id})
-        row = result.fetchone()
-        return self._row_to_dict(row) if row else None
+    # get_by_apollo_id removed - Apollo deprecated, column dropped in migration 064
 
     async def search_available(
         self,
@@ -534,7 +518,7 @@ class LeadPoolService:
             email_status = "unknown"
 
         return {
-            "apollo_id": lead_data.get("apollo_id"),
+            # apollo_id removed - column dropped in migration 064
             "email": lead_data.get("email"),
             "linkedin_url": lead_data.get("linkedin_url"),
             "first_name": lead_data.get("first_name"),
@@ -604,7 +588,7 @@ class LeadPoolService:
 # [x] create_or_update for upsert logic
 # [x] create for new leads
 # [x] update for existing leads
-# [x] get_by_id, get_by_email, get_by_apollo_id
+# [x] get_by_id, get_by_email
 # [x] search_available for ICP matching
 # [x] mark_bounced for global bounce handling
 # [x] mark_unsubscribed for global unsubscribe

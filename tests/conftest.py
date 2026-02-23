@@ -398,7 +398,7 @@ def mock_scout_engine() -> MagicMock:
             "company_name": "TechCompany",
             "industry": "Technology",
         },
-        "source": "apollo",
+        "source": "leadmagic",
         "cached": False,
     })
     return engine

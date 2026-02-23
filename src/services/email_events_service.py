@@ -158,6 +158,45 @@ class EmailEventsService:
         await self.session.commit()
 
         event_id = str(row.id) if row else "unknown"
+
+        # CIS: Update outreach outcome with this event
+        try:
+            from src.services.cis_service import get_cis_service
+
+            cis_service = get_cis_service(self.session)
+
+            # Map event type to CIS outcome
+            cis_event_map = {
+                "delivered": "delivered",
+                "opened": "opened",
+                "clicked": "clicked",
+                "replied": "replied",
+                "bounced": None,  # Handled separately
+                "complained": None,
+                "unsubscribed": None,
+            }
+
+            cis_event = cis_event_map.get(event_type)
+            if cis_event:
+                # Determine final outcome for terminal events
+                final_outcome = None
+                if event_type == "replied":
+                    final_outcome = "replied_neutral"  # Will be updated by reply analyzer
+
+                await cis_service.update_outreach_outcome(
+                    activity_id=activity_id,
+                    event_type=cis_event,
+                    final_outcome=final_outcome,
+                    session=self.session,
+                )
+        except Exception as cis_error:
+            # CIS update is non-blocking
+            import logging
+
+            logging.getLogger(__name__).warning(
+                f"CIS outcome update failed (non-blocking): {cis_error}"
+            )
+
         return {
             "status": "created",
             "event_id": event_id,

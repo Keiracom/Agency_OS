@@ -9,14 +9,87 @@
 import { useQuery } from "@tanstack/react-query";
 import { useClient } from "./use-client";
 import api from "@/lib/api";
-import type {
-  DashboardV4Data,
-  HotProspect,
-  UpcomingMeeting,
-  WarmReply,
-  QuickStat,
-  InsightData,
-} from "@/components/dashboard-v4/types";
+
+// Dashboard V4 types (inlined after dashboard-v4 components removal in PR #64)
+export interface HotProspect {
+  id: string;
+  initials: string;
+  name: string;
+  company: string;
+  title: string;
+  signal: string;
+  score: number;
+  isVeryHot: boolean;
+}
+
+export interface UpcomingMeeting {
+  id: string;
+  date: Date;
+  dayLabel: string;
+  dayNumber: number;
+  time: string;
+  name: string;
+  company: string;
+  type: string;
+  duration: string;
+  potentialValue: number;
+}
+
+export interface WarmReply {
+  id: string;
+  initials: string;
+  name: string;
+  company: string;
+  preview: string;
+  leadId: string;
+}
+
+export interface QuickStat {
+  value: string;
+  label: string;
+  change: string;
+  changeDirection: "up" | "down" | "neutral";
+}
+
+export interface InsightData {
+  icon: string;
+  headline: string;
+  detail: string;
+  highlightText?: string;
+}
+
+export interface CelebrationData {
+  show: boolean;
+  title: string;
+  subtitle: string;
+}
+
+export interface MeetingsGoal {
+  current: number;
+  target: number;
+  percentComplete: number;
+  targetHit: boolean;
+  daysEarly?: number;
+}
+
+export interface MomentumData {
+  percentChange: number;
+  direction: "up" | "down" | "flat";
+  label: string;
+}
+
+export interface DashboardV4Data {
+  greeting: string;
+  subtext: string;
+  celebration: CelebrationData | null;
+  meetingsGoal: MeetingsGoal;
+  momentum: MomentumData;
+  quickStats: QuickStat[];
+  hotProspects: HotProspect[];
+  weekAhead: UpcomingMeeting[];
+  insight: InsightData;
+  warmReplies: WarmReply[];
+}
 
 // Backend response types
 interface HotLeadResponse {

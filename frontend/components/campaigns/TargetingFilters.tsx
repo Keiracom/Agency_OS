@@ -12,7 +12,7 @@ import {
   Flame,
   ThermometerSun,
   Snowflake,
-  IceCreamCone,
+  IceCream,
   Briefcase,
   DollarSign,
   TrendingUp,
@@ -24,7 +24,7 @@ const ALS_TIERS = [
   { id: "Hot", icon: Flame, color: "text-red-500", bg: "bg-red-500/20" },
   { id: "Warm", icon: ThermometerSun, color: "text-orange-400", bg: "bg-orange-400/20" },
   { id: "Cool", icon: Snowflake, color: "text-blue-400", bg: "bg-blue-400/20" },
-  { id: "Cold", icon: IceCreamCone, color: "text-slate-400", bg: "bg-slate-400/20" },
+  { id: "Cold", icon: IceCream, color: "text-slate-400", bg: "bg-slate-400/20" },
 ] as const;
 
 // Funding stage options

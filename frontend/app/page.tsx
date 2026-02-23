@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { WaitlistForm } from "@/components/marketing/waitlist-form";
 import { useFoundingSpots } from "@/components/marketing/founding-spots";
+import { FoundingDepositButton } from "@/components/billing/StripeCheckoutButton";
 import { FloatingFoundingSpots } from "@/components/marketing/floating-founding-spots";
 import HeroSection from "@/components/landing/HeroSection";
 import TypingDemo from "@/components/landing/TypingDemo";
@@ -679,8 +680,9 @@ export default function LandingPage() {
                   </span>
                 </div>
                 <h3 className="text-2xl font-bold text-center mb-2">Claim your founding spot</h3>
-                <p className="text-text-primary0 text-sm text-center mb-6">Booking results guaranteed or your money back. Cancel anytime.</p>
-                <WaitlistForm source="landing-page-bottom" variant="full" />
+                <p className="text-text-primary0 text-sm text-center mb-6">$500 AUD deposit • Credited to first month • 50% lifetime discount</p>
+                {/* Step 8/8: Stripe Checkout Button */}
+                <FoundingDepositButton spotsRemaining={spotsRemaining ?? undefined} />
                 <div className="mt-6 pt-6 border-t border-gray-100">
                   <div className="grid grid-cols-2 gap-4 text-xs text-text-primary0">
                     <div className="flex items-center gap-2">

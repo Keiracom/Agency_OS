@@ -382,6 +382,7 @@ async def root() -> dict[str, Any]:
 # ============================================
 
 from src.api.routes.admin import router as admin_router
+from src.api.routes.billing import router as billing_router
 from src.api.routes.campaign_generation import router as campaign_generation_router
 from src.api.routes.campaigns import router as campaigns_router
 from src.api.routes.crm import router as crm_router
@@ -426,6 +427,8 @@ app.include_router(pool_router, prefix="/api/v1")
 app.include_router(digest_router, prefix="/api/v1")
 # Unipile BYOA Multi-Tenancy
 app.include_router(unipile_router, prefix="/api/v1")
+# Step 8/8: Stripe Billing
+app.include_router(billing_router, prefix="/api/v1")
 
 
 # ============================================

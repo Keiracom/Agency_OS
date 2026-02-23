@@ -3,12 +3,12 @@
 /**
  * FILE: frontend/app/dashboard/campaigns/new/page.tsx
  * PURPOSE: New Campaign Wizard - Multi-step form to create a campaign
- * SPRINT: Dashboard Sprint 3a - Campaign Management
+ * SPRINT: Dashboard Sprint 3a - Campaign Management + Step 5/8 Targeting Filters
  * SSOT: frontend/design/html-prototypes/campaign-new-v2.html
  * THEME: Bloomberg Terminal dark mode (charcoal #0C0A08, amber #D4956A)
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import {
@@ -19,7 +19,11 @@ import {
   Eye,
   Heart,
   Clock,
+  Sparkles,
+  Wand2,
 } from "lucide-react";
+import { TargetingFilters, TargetingFiltersData } from "@/components/campaigns/TargetingFilters";
+import { useICPAutoPopulate } from "@/hooks/useICPAutoPopulate";
 
 // Wizard steps
 const STEPS = [
@@ -52,6 +56,27 @@ const GOALS = [
   },
 ];
 
+// Industry options
+const INDUSTRIES = [
+  "Technology", "SaaS", "Fintech", "Healthcare", "E-commerce",
+  "Manufacturing", "Professional Services", "Real Estate", "Education", "Media"
+];
+
+// Company size options
+const COMPANY_SIZES = [
+  { id: "1-10", label: "1-10 employees" },
+  { id: "11-50", label: "11-50 employees" },
+  { id: "51-200", label: "51-200 employees" },
+  { id: "201-500", label: "201-500 employees" },
+  { id: "500+", label: "500+ employees" },
+];
+
+// Location options
+const LOCATIONS = [
+  "Australia", "New Zealand", "Singapore", "United States", 
+  "United Kingdom", "Canada", "Germany", "Global"
+];
+
 export default function NewCampaignPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -61,7 +86,34 @@ export default function NewCampaignPage() {
     startDate: "",
     endDate: "",
     ongoing: false,
+    // Step 2: Audience targeting
+    targetIndustries: [] as string[],
+    targetCompanySizes: [] as string[],
+    targetLocations: [] as string[],
+    targeting: {
+      alsTiers: ["Hot", "Warm"] as string[],
+      hiringOnly: false,
+      revenueMinAud: null as number | null,
+      revenueMaxAud: null as number | null,
+      fundingStages: [] as string[],
+    } as TargetingFiltersData,
+    // ICP tracking
+    icpPrefilled: false,
+    icpSourceProfileId: null as string | null,
   });
+  
+  // TODO: Replace with actual client ID from session/context
+  const clientId = "demo-client-id";
+  const { suggestion: icpSuggestion, loading: icpLoading, applyToForm } = useICPAutoPopulate(clientId);
+  const [icpApplied, setIcpApplied] = useState(false);
+
+  // Auto-apply ICP suggestion when available and not yet applied
+  useEffect(() => {
+    if (icpSuggestion && !icpApplied && currentStep === 2) {
+      applyToForm(setFormData);
+      setIcpApplied(true);
+    }
+  }, [icpSuggestion, icpApplied, currentStep, applyToForm]);
 
   const handleNext = () => {
     if (currentStep < STEPS.length) {
@@ -277,8 +329,187 @@ export default function NewCampaignPage() {
             </div>
           )}
 
-          {/* Steps 2-5: Coming Soon Placeholder */}
-          {currentStep > 1 && (
+          {/* Step 2: Audience Targeting */}
+          {currentStep === 2 && (
+            <div className="animate-fade-in">
+              <div className="p-6 border-b border-border-subtle">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-serif font-semibold text-text-primary">
+                      Target Audience
+                    </h2>
+                    <p className="text-sm text-text-muted mt-1">
+                      Define who you want to reach with this campaign
+                    </p>
+                  </div>
+                  {icpSuggestion && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent-primary/10 border border-accent-primary/30">
+                      <Wand2 className="w-4 h-4 text-accent-primary" />
+                      <span className="text-sm font-medium text-accent-primary">
+                        Pre-filled from your ICP
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="p-6 space-y-8">
+                {/* ICP Suggestion Banner */}
+                {icpSuggestion && formData.icpPrefilled && (
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-accent-primary/10 to-accent-secondary/10 border border-accent-primary/20">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-accent-primary/20 flex items-center justify-center shrink-0">
+                        <Sparkles className="w-5 h-5 text-accent-primary" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-semibold text-text-primary">
+                          Suggested by Maya based on your ICP
+                        </h4>
+                        <p className="text-xs text-text-muted mt-1">
+                          We've pre-filled targeting based on your agency profile. 
+                          Feel free to adjust any settings below.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Target Industries */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <label className="block text-sm font-medium text-text-primary">
+                      Target Industries
+                    </label>
+                    {icpSuggestion?.targetIndustries?.length > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-accent-primary/20 text-accent-primary">
+                        <Sparkles className="w-3 h-3" />
+                        Suggested
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {INDUSTRIES.map((industry) => {
+                      const isSelected = formData.targetIndustries.includes(industry);
+                      return (
+                        <button
+                          key={industry}
+                          onClick={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              targetIndustries: isSelected
+                                ? prev.targetIndustries.filter((i) => i !== industry)
+                                : [...prev.targetIndustries, industry],
+                            }));
+                          }}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                            isSelected
+                              ? "bg-accent-primary/20 text-accent-primary border border-accent-primary/50"
+                              : "bg-bg-surface text-text-secondary border border-border-default hover:border-border-strong"
+                          }`}
+                        >
+                          {industry}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Target Locations */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <label className="block text-sm font-medium text-text-primary">
+                      Geographic Focus
+                    </label>
+                    {icpSuggestion?.targetLocations?.length > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-accent-primary/20 text-accent-primary">
+                        <Sparkles className="w-3 h-3" />
+                        Suggested
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {LOCATIONS.map((location) => {
+                      const isSelected = formData.targetLocations.includes(location);
+                      return (
+                        <button
+                          key={location}
+                          onClick={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              targetLocations: isSelected
+                                ? prev.targetLocations.filter((l) => l !== location)
+                                : [...prev.targetLocations, location],
+                            }));
+                          }}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                            isSelected
+                              ? "bg-blue-500/20 text-blue-400 border border-blue-500/50"
+                              : "bg-bg-surface text-text-secondary border border-border-default hover:border-border-strong"
+                          }`}
+                        >
+                          {location}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Company Size */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <label className="block text-sm font-medium text-text-primary">
+                      Company Size
+                    </label>
+                    {icpSuggestion?.targetCompanySizes?.length > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-accent-primary/20 text-accent-primary">
+                        <Sparkles className="w-3 h-3" />
+                        Suggested
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-5 gap-3">
+                    {COMPANY_SIZES.map((size) => {
+                      const isSelected = formData.targetCompanySizes.includes(size.id);
+                      return (
+                        <button
+                          key={size.id}
+                          onClick={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              targetCompanySizes: isSelected
+                                ? prev.targetCompanySizes.filter((s) => s !== size.id)
+                                : [...prev.targetCompanySizes, size.id],
+                            }));
+                          }}
+                          className={`p-3 rounded-xl text-center transition-all ${
+                            isSelected
+                              ? "bg-green-500/20 text-green-400 border-2 border-green-500/50"
+                              : "bg-bg-surface text-text-secondary border-2 border-border-default hover:border-border-strong"
+                          }`}
+                        >
+                          <span className="text-sm font-medium">{size.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Advanced Targeting Filters (4 new filters) */}
+                <div className="pt-6 border-t border-border-subtle">
+                  <h3 className="text-lg font-serif font-semibold text-text-primary mb-4">
+                    Advanced Targeting
+                  </h3>
+                  <TargetingFilters
+                    value={formData.targeting}
+                    onChange={(targeting) => setFormData((prev) => ({ ...prev, targeting }))}
+                    icpSuggested={icpSuggestion?.targeting}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Steps 3-5: Coming Soon Placeholder */}
+          {currentStep > 2 && (
             <div className="animate-fade-in">
               <div className="p-6 border-b border-border-subtle">
                 <h2 className="text-xl font-serif font-semibold text-text-primary">

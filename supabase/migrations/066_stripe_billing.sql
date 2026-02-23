@@ -1,4 +1,4 @@
--- Migration: 010_stripe_billing.sql
+-- Migration: 066_stripe_billing.sql
 -- Purpose: Add Stripe billing fields to clients table for deposit + subscription tracking
 -- Step: 8/8 Build Sequence
 -- Created: 2026-02-23

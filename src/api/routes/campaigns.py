@@ -34,6 +34,7 @@ from src.api.dependencies import (
     require_admin,
     require_member,
 )
+from src.api.routes.billing import activate_subscription_on_approval
 from src.exceptions import (
     ResourceDeletedError,
     ResourceNotFoundError,
@@ -44,9 +45,6 @@ from src.exceptions import (
 from src.models.base import CampaignStatus, ChannelType, PermissionMode
 from src.models.campaign import Campaign, CampaignResource, CampaignSequence
 from src.models.client import Client
-
-# Step 8/8: Import subscription activation helper
-from src.api.routes.billing import activate_subscription_on_approval
 
 router = APIRouter(tags=["campaigns"])
 

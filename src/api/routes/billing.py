@@ -21,7 +21,7 @@ RULES APPLIED:
 
 import logging
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated
 from uuid import UUID
 
 import httpx
@@ -349,7 +349,7 @@ async def _send_welcome_email(email: str | None, agency_name: str) -> None:
                         </ol>
                         <p>Your $500 deposit will be credited against your first month's invoice.</p>
                         <p style="margin-top: 24px;">
-                            <a href="{settings.frontend_url}/onboarding" 
+                            <a href="{settings.frontend_url}/onboarding"
                                style="background: #1a1a2e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px;">
                                 Continue Onboarding →
                             </a>

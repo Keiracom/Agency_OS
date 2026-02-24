@@ -13,11 +13,11 @@ from typing import Any
 
 import structlog
 
-from enrichment.discovery_filters import DiscoveryFilters
-from enrichment.keyword_expander import KeywordExpander
-from enrichment.location_expander import LocationExpander
-from integrations.abn_client import ABNClient
-from integrations.bright_data_client import BrightDataClient
+from src.enrichment.discovery_filters import DiscoveryFilters
+from src.enrichment.keyword_expander import KeywordExpander
+from src.enrichment.location_expander import LocationExpander
+from src.integrations.abn_client import ABNClient
+from src.integrations.bright_data_client import BrightDataClient
 
 logger = structlog.get_logger()
 

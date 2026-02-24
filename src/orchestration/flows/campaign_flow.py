@@ -24,7 +24,10 @@ from uuid import UUID
 from prefect import flow, task
 from sqlalchemy import and_, select, update
 
-from src.integrations.supabase import get_db_session
+from src.integrations.supabase import get_db_session, get_supabase_client
+from src.integrations.abn_client import get_abn_client
+from src.integrations.bright_data_client import BrightDataClient
+from src.enrichment.campaign_trigger import CampaignDiscoveryTrigger
 from src.models.base import CampaignStatus, LeadStatus, SubscriptionStatus
 from src.models.campaign import Campaign
 from src.models.client import Client
@@ -273,6 +276,47 @@ async def trigger_enrichment_task(lead_ids: list[str], campaign_id: str) -> dict
         }
 
 
+
+@task(name="trigger_discovery", retries=2, retry_delay_seconds=30)
+async def trigger_discovery_task(campaign_id: str) -> dict[str, Any]:
+    """
+    Trigger discovery pipeline for newly activated campaign.
+
+    CEO Directive #059: Wires campaign activation → discovery trigger.
+    This connects the campaign status change to CampaignDiscoveryTrigger.on_campaign_activated().
+
+    Args:
+        campaign_id: Campaign UUID string
+
+    Returns:
+        Dict with discovery result including leads discovered and created
+    """
+    logger.info(f"Triggering discovery for campaign {campaign_id}")
+
+    # Initialize clients
+    supabase_client = get_supabase_client()
+    abn_client = get_abn_client()
+    bright_data_client = BrightDataClient()
+
+    # Create trigger instance
+    trigger = CampaignDiscoveryTrigger(
+        supabase_client=supabase_client,
+        abn_client=abn_client,
+        bright_data_client=bright_data_client,
+    )
+
+    # Execute discovery
+    result = await trigger.on_campaign_activated(campaign_id)
+
+    logger.info(
+        f"Discovery completed for campaign {campaign_id}: "
+        f"discovered={result.get('discovered', 0)}, "
+        f"leads_created={result.get('leads_created', 0)}"
+    )
+
+    return result
+
+
 # ============================================
 # FLOW
 # ============================================
@@ -291,6 +335,7 @@ async def campaign_activation_flow(campaign_id: str | UUID) -> dict[str, Any]:
     1. Validate campaign configuration
     2. Validate client billing/credits (JIT)
     3. Activate campaign
+    3.5. Trigger discovery pipeline (CEO Directive #059)
     4. Get campaign leads
     5. Trigger enrichment for new leads
 
@@ -325,6 +370,13 @@ async def campaign_activation_flow(campaign_id: str | UUID) -> dict[str, Any]:
     activation_result = await activate_campaign_task(campaign_id)
     logger.info(f"Campaign activated: {activation_result['status']}")
 
+    # Step 3.5: Trigger discovery pipeline (CEO Directive #059)
+    discovery_result = await trigger_discovery_task(campaign_id=str(campaign_id))
+    logger.info(
+        f"Discovery completed: discovered={discovery_result.get('discovered', 0)}, "
+        f"leads_created={discovery_result.get('leads_created', 0)}"
+    )
+
     # Step 4: Get campaign leads
     leads_data = await get_campaign_leads_task(campaign_id)
     logger.info(f"Found {leads_data['lead_count']} leads to enrich")
@@ -344,6 +396,12 @@ async def campaign_activation_flow(campaign_id: str | UUID) -> dict[str, Any]:
         "campaign_name": campaign_data["name"],
         "client_id": str(client_id),
         "status": "activated",
+        "discovery_results": {
+            "discovered": discovery_result.get("discovered", 0),
+            "passed_filters": discovery_result.get("passed_filters", 0),
+            "leads_created": discovery_result.get("leads_created", 0),
+            "total_cost_aud": discovery_result.get("total_cost_aud", 0),
+        },
         "leads_count": leads_data["lead_count"],
         "leads_queued_for_enrichment": enrichment_result["queued_count"],
         "client_credits_remaining": client_data["credits_remaining"],
@@ -362,7 +420,7 @@ async def campaign_activation_flow(campaign_id: str | UUID) -> dict[str, Any]:
 # [x] No hardcoded credentials
 # [x] Session passed via get_db_session() context manager
 # [x] No imports from other orchestration files
-# [x] Imports from engines (scout), models, integrations
+# [x] Imports from engines (scout), models, integrations, enrichment
 # [x] JIT validation in validate_client_status_task (Rule 13)
 # [x] Soft delete checks in all queries (Rule 14)
 # [x] @flow and @task decorators from Prefect
@@ -371,3 +429,4 @@ async def campaign_activation_flow(campaign_id: str | UUID) -> dict[str, Any]:
 # [x] All functions have type hints
 # [x] All functions have docstrings
 # [x] Returns structured dict results
+# [x] CEO Directive #059: Discovery trigger wired to campaign activation

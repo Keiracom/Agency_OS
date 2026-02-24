@@ -29,6 +29,7 @@ from .waterfall_v2 import (
     LeadRecord,
     WaterfallV2,
 )
+from .campaign_trigger import CampaignDiscoveryTrigger
 
 __all__ = [
     # Discovery filters
@@ -43,4 +44,6 @@ __all__ = [
     # Waterfall pipeline
     "LeadRecord",
     "WaterfallV2",
+    # Campaign trigger
+    "CampaignDiscoveryTrigger",
 ]

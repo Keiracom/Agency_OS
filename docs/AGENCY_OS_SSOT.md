@@ -159,7 +159,7 @@ The daily enrichment flow processes leads in batches of 100 using Prefect's Conc
 
 **Tier 3: Email Finder** — Leadmagic's email finder locates professional email addresses using the lead's name and company domain, returning confidence scores for verification.
 
-**Tier 4: LinkedIn Intelligence** — Currently deprecated pending migration from Proxycurl to Unipile.
+**Tier 4: LinkedIn Intelligence** — Unipile collects LinkedIn profile data including job title, company, connections, recent posts, and engagement patterns. This powers decision-maker identification and authority scoring.
 
 **Tier 5: Mobile Finder** — For leads scoring 85 or higher, Leadmagic's mobile finder locates direct mobile phone numbers via LinkedIn profile data.
 
@@ -175,6 +175,7 @@ Processing 1,250 leads takes approximately 4-8 hours of compute time spread acro
 - **ABN Bulk Extract** — Australian government business data (free)
 - **Bright Data Web Scraper** — GMB and Google Ads signal collection
 - **Leadmagic Email Finder** — Professional email discovery
+- **Unipile** — LinkedIn profile data and intelligence
 - **Leadmagic Mobile Finder** — Direct mobile number discovery
 - **DNCR API** — Do Not Call Register compliance checking
 - **ALS Scorer** — Adaptive lead scoring engine
@@ -211,7 +212,7 @@ Channel allocation is based on lead tier:
 
 **SMS Outreach** — ClickSend sends text messages to Hot tier leads only. Messages are limited to 160 characters with proper opt-out language. Only numbers not on the DNCR receive SMS.
 
-**Voice Outreach** — ElevenLabs provides text-to-speech with Australian-appropriate voices. Calls only occur Monday-Friday 9am-8pm AEST, Saturday 9am-5pm AEST, never Sundays or holidays. Maximum 3 concurrent calls per agency. A Voice Context Builder compiles talking points and objection scripts before each call.
+**Voice Outreach** — ElevenLabs ElevenAgents powers conversational AI calls with Australian voices. The voice stack uses Groq's Llama 4 Maverick for fast responses (90% of interactions) with Claude Haiku handling complex objections (10%). Calls only occur Monday-Friday 9am-8pm AEST, Saturday 9am-5pm AEST, never Sundays or holidays. Maximum 3 concurrent calls per agency. A Voice Context Builder compiles talking points and objection scripts before each call.
 
 All content passes through QA validators before sending, checking length limits, personalization, prohibited phrases, and compliance requirements.
 
@@ -220,8 +221,10 @@ All content passes through QA validators before sending, checking length limits,
 - **Unipile** — LinkedIn automation (replaced HeyReach, 70-85% cost reduction)
 - **Salesforge** — Email sending with Warmforge mailbox compatibility
 - **ClickSend** — Australian SMS provider with DNCR compliance
-- **ElevenLabs** — Text-to-speech for voice calls
-- **Twilio AU** — Telephony infrastructure for voice
+- **ElevenLabs ElevenAgents** — Conversational AI platform with Australian voices
+- **Groq Llama 4 Maverick** — Fast LLM for voice responses (90%)
+- **Claude Haiku** — Complex objection handling fallback (10%)
+- **Twilio AU** — Telephony infrastructure for voice calls
 - **Claude AI** — Hyper-personalization for hot leads
 - **QA Validators** — Content compliance checking per channel
 
@@ -281,7 +284,7 @@ This data feeds back into the pattern learning system, continuously improving fu
 |-------|----------|-------------|
 | Onboarding | 5 minutes | ICP extracted, resources provisioned, dashboard ready |
 | Discovery | Hours to days | Raw leads collected from ABN/Maps based on ICP |
-| Enrichment | 4-8 hours per 1,250 leads | Leads scored, tiered, and compliance-checked |
+| Enrichment | 4-8 hours compute time | Leads scored, tiered, and compliance-checked |
 | Outreach | Ongoing (hourly batches) | Multi-channel sequences personalized by tier |
 | Conversion | Ongoing | Replies analyzed, meetings booked, clients won |
 
@@ -293,7 +296,7 @@ This data feeds back into the pattern learning system, continuously improving fu
 - SMS: 100/number
 - Voice: ~50 calls (with concurrency limits)
 
-**Time to process 1,250 leads with 10 parallel resources per channel:** 2-3 days
+**Time to complete outreach to 1,250 leads (with rate limits):** 2-3 days using 10 parallel resources per channel
 
 ---
 

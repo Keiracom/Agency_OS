@@ -34,7 +34,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies import get_db_session
 from src.config.settings import settings
 from src.engines.closer import get_closer_engine
-from src.engines.voice import get_voice_engine
+
+# DEPRECATED: Vapi voice engine removed 2026-02-25. Voice stack: ElevenAgents + Twilio AU
+# from src.engines.voice import get_voice_engine
 from src.exceptions import WebhookError
 from src.integrations.postmark import get_postmark_client
 from src.integrations.twilio import get_twilio_client
@@ -999,56 +1001,18 @@ async def vapi_webhook(
     db: AsyncSession = Depends(get_db_session),
 ):
     """
-    Handle Vapi call webhooks.
+    DEPRECATED: Vapi webhook handler.
 
-    Events:
-    - call-started: Call has been initiated
-    - call-ended: Call has ended
-    - end-of-call-report: Final call summary with transcript
+    Voice stack migrated to ElevenAgents + Twilio AU (2026-02-25).
+    This endpoint returns 410 Gone.
 
-    Webhook-first architecture (Rule 20). This is the primary method
-    for processing voice call completions and transcripts.
-
-    Args:
-        request: FastAPI request
-        db: Database session
-
-    Returns:
-        Success response
+    New voice webhooks go through Twilio webhook at /twilio/inbound.
     """
-    try:
-        payload = await request.json()
-
-        # Get event type
-        event_type = payload.get("message", {}).get("type", payload.get("type"))
-
-        # Only process call completion events
-        if event_type not in ["call-ended", "end-of-call-report"]:
-            return {"status": "acknowledged", "event": event_type}
-
-        # Process via Voice engine
-        voice = get_voice_engine()
-        result = await voice.process_call_webhook(db, payload)
-
-        if not result.success:
-            # Log error but return 200 to prevent Vapi retries
-            return {
-                "status": "error",
-                "error": result.error,
-            }
-
-        return {
-            "status": "processed",
-            "call_id": result.data.get("call_id"),
-            "event": result.data.get("event"),
-        }
-
-    except Exception as e:
-        # Return 200 to prevent Vapi retries
-        return {
-            "status": "error",
-            "error": str(e),
-        }
+    return {
+        "status": "deprecated",
+        "message": "Vapi voice stack deprecated. Voice now uses ElevenAgents + Twilio AU.",
+        "migration_date": "2026-02-25",
+    }
 
 
 # ============================================

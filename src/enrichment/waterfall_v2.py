@@ -7,8 +7,7 @@ DEPENDENCIES:
   - src/enrichment/discovery_modes.py
   - src/integrations/bright_data_client.py (TBD)
   - src/integrations/abn_client.py
-  - src/integrations/hunter.py
-  - src/integrations/kaspr.py
+  - src/integrations/leadmagic.py
   - src/config/settings.py
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
@@ -25,11 +24,16 @@ WATERFALL V2 PIPELINE:
     Tier 1.5a: SERP Google Maps - $0.0015
     Tier 1.5b: SERP LinkedIn Discovery - $0.0015
     Tier 2: LinkedIn Company Scraper - $0.0015
-    Tier 2.5: LinkedIn People Profile - $0.0015 (ALS >= 30)
-    Tier 3: Hunter.io Email - $0.012 (ALS >= 30)
-    Tier 5: Kaspr Direct Contact - $0.45 (ALS >= 85)
+    Tier 2.5: LinkedIn People Profile - $0.0015 (ALS >= 35)
+    Tier 3: Leadmagic Email Finder - $0.015 (ALS >= 35)
+    Tier 5: Leadmagic Mobile Finder - $0.077 (ALS >= 85)
+
+  NOTE: Leadmagic replaces Hunter (T3) and Kaspr (T5) per CEO decision.
+        If credits exhausted, raises LeadmagicCreditExhaustedError (hard fail).
+        Use LEADMAGIC_MOCK=true for testing without credits.
 
 Created: 2026-02-16 by subagent (CEO Directive #023)
+Updated: 2026-02-25 - Leadmagic migration (CEO Directive)
 """
 
 from __future__ import annotations
@@ -87,15 +91,15 @@ class LeadRecord:
     headquarters: str = None
     specialties: str = None
 
-    # Contact enrichment fields (Tier 2.5 + 3)
+    # Contact enrichment fields (Tier 2.5 + 3 + 5)
     email: str = None
     email_confidence: float = None
     direct_mobile: str = None
     contact_source: str = None
 
-    # Kaspr Premium fields (Tier 5)
-    kaspr_data: dict = field(default_factory=dict)
-    verified_contacts: list[dict] = field(default_factory=list)
+    # Leadmagic Premium fields (Tier 5)
+    leadmagic_data: dict = field(default_factory=dict)
+    verified_contacts: list[dict] = field(default_factory=dict)
 
     # Scoring and quality
     als_score: int = 0
@@ -123,30 +127,42 @@ class WaterfallV2:
 
     Quality Gates:
     - PRE_ALS_GATE: Minimum score to continue past Tier 2 (cost control)
-    - HOT_THRESHOLD: Minimum score for Tier 5 Kaspr enrichment (premium leads only)
+    - HOT_THRESHOLD: Minimum score for Tier 5 Leadmagic mobile enrichment (premium leads only)
+
+    Enrichment Providers:
+    - Tier 3 (Email): Leadmagic email finder ($0.015 AUD, ALS >= 35)
+    - Tier 5 (Mobile): Leadmagic mobile finder ($0.077 AUD, ALS >= 85)
+
+    Error Handling:
+    - LeadmagicCreditExhaustedError: Hard fail, do not silently skip
+    - LeadmagicNoPlanError: Hard fail, do not silently skip
     """
 
-    PRE_ALS_GATE = 30  # Minimum score to continue past Tier 2
-    HOT_THRESHOLD = 85  # Minimum for Tier 5 (Kaspr)
+    PRE_ALS_GATE = 35  # Minimum score for premium enrichment (T2.5, T3) - matches campaign floor
+    HOT_THRESHOLD = 85  # Minimum for Tier 5 (Leadmagic mobile)
 
-    # Cost constants (AUD)
+    # Cost constants (AUD) - Updated for Leadmagic
     COSTS = {
         "serp_maps": 0.0015,
         "serp_linkedin": 0.0015,
         "linkedin_company": 0.0015,
         "linkedin_people": 0.0015,
-        "hunter_email": 0.012,
-        "kaspr_contact": 0.45,
+        "leadmagic_email": 0.015,  # T3: Leadmagic email finder (replaces Hunter $0.012)
+        "leadmagic_mobile": 0.077,  # T5: Leadmagic mobile finder (replaces Kaspr $0.45)
     }
 
-    def __init__(
-        self, bright_data_client=None, abn_client=None, hunter_client=None, kaspr_client=None
-    ):
-        """Initialize waterfall with all integration clients"""
+    def __init__(self, bright_data_client=None, abn_client=None, leadmagic_client=None):
+        """
+        Initialize waterfall with all integration clients.
+
+        Args:
+            bright_data_client: Bright Data client for SERP and LinkedIn scraping
+            abn_client: ABN Lookup client for Tier 1
+            leadmagic_client: Leadmagic client for T3 email + T5 mobile enrichment
+        """
         self.bd = bright_data_client
         self.abn_client = abn_client
-        self.hunter = hunter_client
-        self.kaspr = kaspr_client
+        self.leadmagic = leadmagic_client
 
         # Initialize discovery engines
         self.abn_discovery = ABNFirstDiscovery(abn_client=abn_client)
@@ -503,7 +519,7 @@ class WaterfallV2:
     # PREMIUM ENRICHMENT TIERS (WITH GATES)
 
     async def enrich_tier_2_5(self, lead: LeadRecord) -> LeadRecord:
-        """Tier 2.5: LinkedIn People Profile - $0.0015 - Only if ALS >= 30"""
+        """Tier 2.5: LinkedIn People Profile - $0.0015 - Only if ALS >= 35"""
         if "tier_2_5" in lead.enrichment_tiers_completed:
             return lead
 
@@ -554,7 +570,12 @@ class WaterfallV2:
         return lead
 
     async def enrich_tier_3(self, lead: LeadRecord) -> LeadRecord:
-        """Tier 3: Hunter.io Email - $0.012 - Only if ALS >= 30"""
+        """
+        Tier 3: Leadmagic Email Finder - $0.015 - Only if ALS >= 35
+
+        Replaces Hunter.io per CEO directive.
+        Raises LeadmagicCreditExhaustedError if credits exhausted (hard fail).
+        """
         if "tier_3" in lead.enrichment_tiers_completed:
             return lead
 
@@ -564,36 +585,86 @@ class WaterfallV2:
             )
             return lead
 
-        if not lead.website:
-            # Skip if no website for domain extraction
+        # Need either website (for domain) or decision maker with LinkedIn
+        if not lead.website and not lead.decision_makers:
             lead.enrichment_tiers_completed.append("tier_3")
             return lead
 
-        logger.debug(f"Tier 3: Hunter.io email enrichment for {lead.business_name}")
+        logger.debug(f"Tier 3: Leadmagic email enrichment for {lead.business_name}")
 
         try:
-            if not self.hunter:
-                raise ValueError("Hunter.io client not configured")
+            if not self.leadmagic:
+                raise ValueError(
+                    "Leadmagic client not configured - required for T3 email enrichment"
+                )
 
-            # Extract domain from website
-            domain = self._extract_domain(lead.website)
-            if domain:
-                # Find email addresses for domain
-                email_results = await self.hunter.domain_search(domain)
+            # Import error types for explicit handling
+            from src.integrations.leadmagic import (
+                LeadmagicCreditExhaustedError,
+                LeadmagicNoPlanError,
+            )
 
-                if email_results and email_results.get("emails"):
-                    # Find best email (decision maker or generic contact)
-                    best_email = self._select_best_email(
-                        email_results["emails"], lead.decision_makers
+            # Try to find email for best decision maker
+            email_found = False
+
+            if lead.decision_makers:
+                for dm in lead.decision_makers[:2]:  # Try top 2 decision makers
+                    first_name = dm.get("first_name") or dm.get("name", "").split()[0]
+                    last_name = dm.get("last_name") or (
+                        dm.get("name", "").split()[-1]
+                        if len(dm.get("name", "").split()) > 1
+                        else ""
                     )
-                    if best_email:
-                        lead.email = best_email.get("value")
-                        lead.email_confidence = best_email.get("confidence", 0) / 100.0
-                        lead.contact_source = "hunter"
+                    domain = self._extract_domain(lead.website) if lead.website else None
+
+                    if first_name and last_name and domain:
+                        result = await self.leadmagic.find_email(
+                            first_name=first_name,
+                            last_name=last_name,
+                            domain=domain,
+                            company=lead.business_name,
+                        )
+
+                        if result.found and result.email:
+                            lead.email = result.email
+                            lead.email_confidence = result.confidence / 100.0
+                            lead.contact_source = "leadmagic"
+                            lead.cost_aud += result.cost_aud
+                            email_found = True
+                            break
+
+            # If no decision maker email found, try generic domain search
+            if not email_found and lead.website:
+                domain = self._extract_domain(lead.website)
+                if domain:
+                    # Use company name as fallback for generic contact
+                    result = await self.leadmagic.find_email(
+                        first_name="info",
+                        last_name="",
+                        domain=domain,
+                        company=lead.business_name,
+                    )
+                    if result.found and result.email:
+                        lead.email = result.email
+                        lead.email_confidence = result.confidence / 100.0
+                        lead.contact_source = "leadmagic"
+                        lead.cost_aud += result.cost_aud
 
             lead.enrichment_tiers_completed.append("tier_3")
-            lead.cost_aud += self.COSTS["hunter_email"]
+            lead.cost_aud += self.COSTS["leadmagic_email"]
             logger.debug(f"Tier 3 completed for {lead.id}")
+
+        except (LeadmagicCreditExhaustedError, LeadmagicNoPlanError) as e:
+            # HARD FAIL - Do not silently skip, propagate error
+            logger.error(f"Tier 3 BLOCKED for {lead.id}: {str(e)}")
+            error = {
+                "tier": "tier_3",
+                "error": str(e),
+                "fatal": True,
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+            lead.enrichment_errors.append(error)
+            raise  # Re-raise to stop pipeline
 
         except Exception as e:
             error = {"tier": "tier_3", "error": str(e), "timestamp": datetime.now(UTC).isoformat()}
@@ -623,32 +694,13 @@ class WaterfallV2:
 
         return domain if "." in domain else None
 
-    def _select_best_email(self, emails: list[dict], decision_makers: list[dict]) -> dict | None:
-        """Select best email from Hunter results"""
-        if not emails:
-            return None
-
-        # Sort by confidence score first
-        emails_sorted = sorted(emails, key=lambda e: e.get("confidence", 0), reverse=True)
-
-        # If we have decision makers, try to match emails
-        if decision_makers:
-            dm_names = [dm.get("name", "").lower() for dm in decision_makers if dm.get("name")]
-
-            for email in emails_sorted:
-                first_name = email.get("first_name", "").lower()
-                last_name = email.get("last_name", "").lower()
-
-                # Check if email matches any decision maker
-                full_name = f"{first_name} {last_name}".strip()
-                if any(name in full_name or full_name in name for name in dm_names if name):
-                    return email
-
-        # Fall back to highest confidence email
-        return emails_sorted[0]
-
     async def enrich_tier_5(self, lead: LeadRecord) -> LeadRecord:
-        """Tier 5: Kaspr Direct Contact - $0.45 - Only if ALS >= 85"""
+        """
+        Tier 5: Leadmagic Mobile Finder - $0.077 - Only if ALS >= 85
+
+        Replaces Kaspr per CEO directive.
+        Raises LeadmagicCreditExhaustedError if credits exhausted (hard fail).
+        """
         if "tier_5" in lead.enrichment_tiers_completed:
             return lead
 
@@ -663,40 +715,73 @@ class WaterfallV2:
             lead.enrichment_tiers_completed.append("tier_5")
             return lead
 
-        logger.debug(f"Tier 5: Kaspr premium contact enrichment for {lead.business_name}")
+        logger.debug(f"Tier 5: Leadmagic mobile enrichment for {lead.business_name}")
 
         try:
-            if not self.kaspr:
-                raise ValueError("Kaspr client not configured")
+            if not self.leadmagic:
+                raise ValueError(
+                    "Leadmagic client not configured - required for T5 mobile enrichment"
+                )
 
-            # Enrich top decision makers with Kaspr
+            # Import error types for explicit handling
+            from src.integrations.leadmagic import (
+                LeadmagicCreditExhaustedError,
+                LeadmagicNoPlanError,
+            )
+
+            # Enrich top decision makers with Leadmagic mobile finder
             verified_contacts = []
 
             for dm in lead.decision_makers[:2]:  # Limit to top 2 to control costs
                 linkedin_url = dm.get("link")
                 if linkedin_url:
-                    kaspr_data = await self.kaspr.enrich_identity(linkedin_url)
-                    if kaspr_data:
-                        verified_contacts.append(kaspr_data)
+                    result = await self.leadmagic.find_mobile(linkedin_url)
+
+                    if result.found:
+                        contact_data = {
+                            "mobile": result.mobile_number,
+                            "mobile_confidence": result.mobile_confidence,
+                            "email": result.email,
+                            "full_name": result.full_name,
+                            "title": result.title,
+                            "company": result.company,
+                            "linkedin_url": result.linkedin_url,
+                            "source": "leadmagic",
+                        }
+                        verified_contacts.append(contact_data)
 
                         # Update lead with best contact info
-                        if not lead.direct_mobile and kaspr_data.get("mobile"):
-                            lead.direct_mobile = kaspr_data["mobile"]
-                        if not lead.email and kaspr_data.get("email"):
-                            lead.email = kaspr_data["email"]
-                            lead.email_confidence = 0.95  # Kaspr is high confidence
-                            lead.contact_source = "kaspr"
+                        if not lead.direct_mobile and result.mobile_number:
+                            lead.direct_mobile = result.mobile_number
+                        if not lead.email and result.email:
+                            lead.email = result.email
+                            lead.email_confidence = 0.95  # Leadmagic is high confidence
+                            lead.contact_source = "leadmagic"
+
+                        lead.cost_aud += result.cost_aud
 
             if verified_contacts:
                 lead.verified_contacts = verified_contacts
-                lead.kaspr_data = {
+                lead.leadmagic_data = {
                     "contacts_enriched": len(verified_contacts),
                     "enrichment_timestamp": datetime.now(UTC).isoformat(),
                 }
 
             lead.enrichment_tiers_completed.append("tier_5")
-            lead.cost_aud += self.COSTS["kaspr_contact"]
+            lead.cost_aud += self.COSTS["leadmagic_mobile"]
             logger.debug(f"Tier 5 completed for {lead.id}")
+
+        except (LeadmagicCreditExhaustedError, LeadmagicNoPlanError) as e:
+            # HARD FAIL - Do not silently skip, propagate error
+            logger.error(f"Tier 5 BLOCKED for {lead.id}: {str(e)}")
+            error = {
+                "tier": "tier_5",
+                "error": str(e),
+                "fatal": True,
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+            lead.enrichment_errors.append(error)
+            raise  # Re-raise to stop pipeline
 
         except Exception as e:
             error = {"tier": "tier_5", "error": str(e), "timestamp": datetime.now(UTC).isoformat()}
@@ -775,7 +860,7 @@ class WaterfallV2:
 
         except Exception as e:
             logger.error(f"Full pipeline failed: {str(e)}")
-            return []
+            raise  # Re-raise to surface Leadmagic credit errors
 
     # UTILITY METHODS
 

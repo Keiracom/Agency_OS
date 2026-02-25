@@ -54,7 +54,7 @@ GATE_1_TRIGGERS = {
 GATE_2_TRIGGERS = {
     "no_contact": "No email AND no phone after enrichment",
     "post_als_low": "ALS <35 after T3 enrichment",
-    "hunter_low_confidence": "Hunter email confidence <70%",
+    "leadmagic_low_confidence": "Leadmagic email confidence <70%",
 }
 
 # Gate 3: Never discard, only demote
@@ -359,16 +359,16 @@ async def apply_gate_2_filter_task(
                 "als_score": row.als_score,
             }
 
-        # Check Hunter confidence
+        # Check Leadmagic confidence
         enrichment_data = row.enrichment_data or {}
-        hunter_confidence = enrichment_data.get("hunter_confidence", 100)
+        leadmagic_confidence = enrichment_data.get("leadmagic_confidence", 100)
 
-        if hunter_confidence < 70:
+        if leadmagic_confidence < 70:
             await _soft_discard_lead(
                 db,
                 UUID(lead_pool_id),
                 gate=2,
-                reason=f"Hunter email confidence {hunter_confidence}% < 70%",
+                reason=f"Leadmagic email confidence {leadmagic_confidence}% < 70%",
                 client_id=UUID(client_id) if client_id else None,
                 campaign_id=UUID(campaign_id) if campaign_id else None,
             )
@@ -376,8 +376,8 @@ async def apply_gate_2_filter_task(
                 "lead_pool_id": lead_pool_id,
                 "passed": False,
                 "gate": 2,
-                "reason": "hunter_low_confidence",
-                "confidence": hunter_confidence,
+                "reason": "leadmagic_low_confidence",
+                "confidence": leadmagic_confidence,
             }
 
         return {

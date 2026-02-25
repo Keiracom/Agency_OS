@@ -1150,9 +1150,9 @@ class ScorerEngine(BaseEngine):
             if enrichment_data.get("gmb_verified") or enrichment_data.get("gmb_place_id"):
                 sources_verified.append("GMB")
 
-            # Check Hunter email verification
-            if row.email_status == "verified" or enrichment_data.get("hunter_verified"):
-                sources_verified.append("Hunter")
+            # Check Leadmagic email verification
+            if row.email_status == "verified" or enrichment_data.get("leadmagic_verified"):
+                sources_verified.append("Leadmagic")
 
             # Check LinkedIn data
             if enrichment_data.get("linkedin_person") or enrichment_data.get("linkedin_url"):
@@ -1168,9 +1168,9 @@ class ScorerEngine(BaseEngine):
             # Check if we have multiple enrichment sources in the data
             if enrichment_data.get("siege_waterfall_sources"):
                 waterfall_sources = enrichment_data.get("siege_waterfall_sources", [])
-                if "hunter" in [s.lower() for s in waterfall_sources]:
-                    if "Hunter" not in sources_verified:
-                        sources_verified.append("Hunter")
+                if "leadmagic" in [s.lower() for s in waterfall_sources]:
+                    if "Leadmagic" not in sources_verified:
+                        sources_verified.append("Leadmagic")
                 if "prospeo" in [s.lower() for s in waterfall_sources]:
                     if "Prospeo" not in sources_verified:
                         sources_verified.append("Prospeo")

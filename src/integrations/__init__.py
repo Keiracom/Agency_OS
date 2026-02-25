@@ -10,8 +10,7 @@ DEPENDENCIES:
 RULES APPLIED:
   - Rule 12: Can import from models, cannot import from engines/orchestration
 
-NOTE: proxycurl removed - service shutdown July 2025 (LinkedIn lawsuit).
-NOTE: Hunter (T3) and Kaspr (T5) deprecated - replaced by Leadmagic.
+NOTE: T3 email and T5 mobile enrichment provided by Leadmagic.
 """
 
 # Agency OS - Integrations Package

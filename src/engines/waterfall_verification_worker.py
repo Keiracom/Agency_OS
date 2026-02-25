@@ -55,7 +55,7 @@ class VerificationTier(StrEnum):
     ABN_SEED = "abn_seed"
     ASIC_VERIFY = "asic_verify"  # T1.25: ABR SearchByASIC for registered_name
     GMB_SCRAPER = "gmb_scraper"
-    HUNTER_IO = "hunter_io"  # NOTE: Now uses Leadmagic (Hunter deprecated)
+    LEADMAGIC_EMAIL = "leadmagic_email"  # T3: Leadmagic email finder
     ZEROBOUNCE = "zerobounce"
     DM0_LINKEDIN_DISCOVERY = (
         "dm0_linkedin_discovery"  # T-DM0: DataForSEO SERP + Bright Data Profile
@@ -82,7 +82,7 @@ COSTS_AUD = {
     VerificationTier.ABN_SEED: Decimal("0.00"),  # Free (data.gov.au)
     VerificationTier.ASIC_VERIFY: Decimal("0.00"),  # Free (ABR SearchByASIC) - CEO Directive #039
     VerificationTier.GMB_SCRAPER: Decimal("0.0062"),  # GMB scraper (Bright Data)
-    VerificationTier.HUNTER_IO: Decimal("0.015"),  # Leadmagic email finder (was Hunter $0.019)
+    VerificationTier.LEADMAGIC_EMAIL: Decimal("0.015"),  # Leadmagic email finder
     VerificationTier.ZEROBOUNCE: Decimal("0.010"),  # ZeroBounce average
     VerificationTier.DM0_LINKEDIN_DISCOVERY: Decimal(
         "0.0165"
@@ -122,7 +122,7 @@ BRIGHTDATA_PROFILE_COST_AUD = Decimal("0.0015")  # Per profile scrape
 FUZZY_MATCH_THRESHOLD = 70  # Minimum Levenshtein similarity for match
 HIGH_CONFIDENCE_THRESHOLD = 90
 MEDIUM_CONFIDENCE_THRESHOLD = 80
-HUNTER_CONFIDENCE_THRESHOLD = 70  # Below this → escalate to ZeroBounce
+LEADMAGIC_CONFIDENCE_THRESHOLD = 70  # Below this → escalate to ZeroBounce
 ALS_ESCALATION_THRESHOLD = 60  # Only verify Warm+ leads
 MULTI_SOURCE_BONUS = 15  # +15 ALS for 3+ source verification
 
@@ -187,8 +187,8 @@ class GMBRecord:
 
 
 @dataclass
-class HunterResult:
-    """Result from Hunter.io email verification."""
+class LeadmagicEmailResult:
+    """Result from Leadmagic email finder."""
 
     email: str
     confidence: int  # 0-100
@@ -342,7 +342,7 @@ class WaterfallVerificationWorker(BaseEngine):
         self,
         abn_client=None,
         gmb_scraper=None,
-        hunter_client=None,
+        leadmagic_client=None,
         zerobounce_client=None,
     ):
         """
@@ -350,13 +350,13 @@ class WaterfallVerificationWorker(BaseEngine):
 
         Args:
             abn_client: ABN Lookup API client
-            gmb_scraper: GMB scraper client (Apify deprecated)
-            hunter_client: Hunter.io API client
+            gmb_scraper: GMB scraper client
+            leadmagic_client: Leadmagic API client for email finding
             zerobounce_client: ZeroBounce API client
         """
         self._abn_client = abn_client
         self._gmb_scraper = gmb_scraper
-        self._hunter_client = hunter_client
+        self._leadmagic_client = leadmagic_client
         self._zerobounce_client = zerobounce_client
 
     @property
@@ -699,31 +699,32 @@ class WaterfallVerificationWorker(BaseEngine):
                 start_time = datetime.utcnow()
 
                 domain = self._extract_domain(result.website)
-                hunter_result = await self._tier3_hunter_io(domain, company_name)
+                leadmagic_result = await self._tier3_leadmagic_email(domain, company_name)
 
                 latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
-                hunter_success = False
+                leadmagic_success = False
                 data_added = []
+                needs_escalation = False
 
-                if hunter_result:
-                    result.email = hunter_result.email
-                    result.email_confidence = hunter_result.confidence
-                    result.verification_sources.append("hunter_io")
-                    hunter_success = True
+                if leadmagic_result:
+                    result.email = leadmagic_result.email
+                    result.email_confidence = leadmagic_result.confidence
+                    result.verification_sources.append("leadmagic_email")
+                    leadmagic_success = True
                     data_added = ["email"]
 
                     # ========== TIER 4: ZEROBOUNCE (Escalation) ==========
                     # Escalate if catch_all or low confidence
                     needs_escalation = (
-                        hunter_result.status == "catch_all"
-                        or hunter_result.confidence < HUNTER_CONFIDENCE_THRESHOLD
+                        leadmagic_result.status == "catch_all"
+                        or leadmagic_result.confidence < LEADMAGIC_CONFIDENCE_THRESHOLD
                     )
 
                     if needs_escalation:
                         step_number += 1
                         start_time = datetime.utcnow()
 
-                        zb_result = await self._tier4_zerobounce(hunter_result.email)
+                        zb_result = await self._tier4_zerobounce(leadmagic_result.email)
 
                         latency_ms_zb = int((datetime.utcnow() - start_time).total_seconds() * 1000)
                         zb_success = False
@@ -738,7 +739,7 @@ class WaterfallVerificationWorker(BaseEngine):
                                 result.email_confidence = 0
                                 errors.append(f"ZeroBounce rejected email: {zb_result.status}")
                             else:
-                                # Ambiguous result — keep Hunter's email with note
+                                # Ambiguous result — keep Leadmagic's email with note
                                 errors.append(f"ZeroBounce ambiguous: {zb_result.status}")
                                 result.verification_sources.append("zerobounce")
                                 zb_success = True
@@ -756,16 +757,16 @@ class WaterfallVerificationWorker(BaseEngine):
                         lineage.append(step)
                         total_cost += step.cost_aud
                 else:
-                    errors.append(f"Hunter.io: No email found for domain {domain}")
+                    errors.append(f"Leadmagic: No email found for domain {domain}")
 
                 step = LineageStep(
                     step_number=step_number if not needs_escalation else step_number - 1,
                     step_type="verification",
-                    source_name=VerificationTier.HUNTER_IO.value,
-                    cost_aud=COSTS_AUD[VerificationTier.HUNTER_IO],
-                    success=hunter_success,
+                    source_name=VerificationTier.LEADMAGIC_EMAIL.value,
+                    cost_aud=COSTS_AUD[VerificationTier.LEADMAGIC_EMAIL],
+                    success=leadmagic_success,
                     data_added=data_added,
-                    error_message=None if hunter_success else errors[-1],
+                    error_message=None if leadmagic_success else errors[-1],
                     latency_ms=latency_ms,
                 )
                 # Insert before ZeroBounce step if escalated
@@ -850,7 +851,7 @@ class WaterfallVerificationWorker(BaseEngine):
                 "base_score": 75,
                 "verification_bonus": 15,
                 "intent_bonus": 2,
-                "sources_used": ["abn", "gmb", "hunter_io"],
+                "sources_used": ["abn", "gmb", "leadmagic_email"],
                 "verification_method": "triple_check"
             }
         """
@@ -1806,32 +1807,39 @@ class WaterfallVerificationWorker(BaseEngine):
         match = re.search(r"\b(\d{4})\b", address)
         return match.group(1) if match else ""
 
-    async def _tier3_hunter_io(
+    async def _tier3_leadmagic_email(
         self,
         domain: str,
         company_name: str,
-    ) -> HunterResult | None:
+    ) -> LeadmagicEmailResult | None:
         """
-        Tier 3: Find and verify email via Hunter.io.
+        Tier 3: Find email via Leadmagic email finder.
         """
-        if self._hunter_client is None:
-            logger.warning("Hunter.io client not configured — skipping Tier 3")
+        if self._leadmagic_client is None:
+            logger.warning("Leadmagic client not configured — skipping Tier 3")
             return None
 
         try:
-            # Domain search for contacts
-            result = await self._hunter_client.domain_search(
+            # Use find_email with generic contact attempt
+            result = await self._leadmagic_client.find_email(
+                first_name="info",
+                last_name="",
                 domain=domain,
                 company=company_name,
             )
 
-            if result and result.email:
-                return result
+            if result and result.found and result.email:
+                return LeadmagicEmailResult(
+                    email=result.email,
+                    confidence=result.confidence,
+                    email_type="generic",
+                    status=result.status.value if result.status else "unknown",
+                )
 
             return None
 
         except Exception as e:
-            logger.error(f"Hunter.io failed: {e}")
+            logger.error(f"Leadmagic email finder failed: {e}")
             return None
 
     async def _tier4_zerobounce(
@@ -1994,14 +2002,14 @@ class WaterfallVerificationWorker(BaseEngine):
 def get_waterfall_worker(
     abn_client=None,
     gmb_scraper=None,
-    hunter_client=None,
+    leadmagic_client=None,
     zerobounce_client=None,
 ) -> WaterfallVerificationWorker:
     """Get singleton WaterfallVerificationWorker instance."""
     return WaterfallVerificationWorker(
         abn_client=abn_client,
         gmb_scraper=gmb_scraper,
-        hunter_client=hunter_client,
+        leadmagic_client=leadmagic_client,
         zerobounce_client=zerobounce_client,
     )
 

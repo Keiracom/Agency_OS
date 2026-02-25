@@ -1,12 +1,12 @@
 """
 FILE: src/integrations/siege_waterfall.py
-PURPOSE: Unified 5-tier Australian B2B enrichment waterfall
+PURPOSE: Unified 4-tier Australian B2B enrichment waterfall
 PHASE: SIEGE (System Overhaul)
 TASK: SIEGE-001
 DEPENDENCIES:
   - src/config/settings.py
   - src/exceptions.py
-  - src/integrations/leadmagic.py (replaces hunter.py + kaspr.py)
+  - src/integrations/leadmagic.py
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 4: Validation threshold 0.70
@@ -14,20 +14,18 @@ RULES APPLIED:
 
 SIEGE CONTEXT:
   This is the unified enrichment interface that replaces Apollo as the
-  single source of truth for lead enrichment. It orchestrates a 5-tier
+  single source of truth for lead enrichment. It orchestrates a 4-tier
   waterfall with cost tracking and graceful degradation.
 
   Tier 1: ABN Bulk (data.gov.au) - FREE
   Tier 2: GMB/Ads Signals (Bright Data) - $0.006/lead AUD
-  Tier 3: Leadmagic email finder - $0.015/lead AUD (replaces Hunter)
-  Tier 4: LinkedIn Intelligence - DEPRECATED (Proxycurl shutdown July 2025)
-         Migration: Unipile (CEO Directive #002) - not yet activated
-  Tier 5: Leadmagic mobile finder - $0.077/lead AUD (replaces Kaspr, ALS >= 85)
+  Tier 3: Leadmagic email finder - $0.015/lead AUD (ALS >= 35)
+  Tier 5: Leadmagic mobile finder - $0.077/lead AUD (ALS >= 85)
 
   Weighted Average: ~$0.098/lead vs Apollo $0.50+
 
   NOTE: Leadmagic plan unpurchased - API key present but 0 credits.
-        Do NOT make live API calls until credits are available.
+        Use LEADMAGIC_MOCK=true for testing without credits.
 """
 
 from __future__ import annotations
@@ -129,7 +127,6 @@ class EnrichmentTier(StrEnum):
     ABN = "tier1_abn"
     GMB = "tier2_gmb"
     LEADMAGIC_EMAIL = "tier3_leadmagic_email"
-    PROXYCURL = "tier4_proxycurl"
     IDENTITY = "tier5_identity"
 
 
@@ -138,9 +135,8 @@ class EnrichmentTier(StrEnum):
 TIER_COSTS_AUD: dict[EnrichmentTier, float] = {
     EnrichmentTier.ABN: 0.00,  # FREE - data.gov.au
     EnrichmentTier.GMB: 0.006,  # Google Maps signals (Bright Data)
-    EnrichmentTier.LEADMAGIC_EMAIL: 0.015,  # Leadmagic email finder (was Hunter $0.019)
-    EnrichmentTier.PROXYCURL: 0.024,  # LinkedIn enrichment - DEPRECATED
-    EnrichmentTier.IDENTITY: 0.077,  # Leadmagic mobile finder (was Kaspr $0.45)
+    EnrichmentTier.LEADMAGIC_EMAIL: 0.015,  # Leadmagic email finder
+    EnrichmentTier.IDENTITY: 0.077,  # Leadmagic mobile finder
 }
 
 # Minimum sources for ALS bonus
@@ -498,102 +494,7 @@ HunterClientAdapter = LeadmagicEmailAdapter
 HunterClientStub = LeadmagicEmailAdapter
 
 
-class ProxycurlClientAdapter:
-    """
-    Adapter for Proxycurl LinkedIn API.
-
-    NOTE: Proxycurl shutdown July 2025 (LinkedIn lawsuit).
-    This adapter is now a graceful skip - Tier 4 returns empty results.
-    LinkedIn enrichment will migrate to Unipile (CEO Directive #002).
-
-    Implements: Tier 4 of Siege Waterfall - LinkedIn Intelligence (DEPRECATED).
-    """
-
-    def __init__(self):
-        self._client = None
-        self._deprecated = True
-
-    def _get_client(self):
-        """Proxycurl is deprecated - always returns None."""
-        # Proxycurl shutdown July 2025. Do not attempt to import.
-        # Migration path: Unipile (CEO Directive #002)
-        if self._deprecated:
-            return None
-        return self._client
-
-    async def get_person_profile(
-        self,
-        linkedin_url: str,
-    ) -> dict[str, Any] | None:
-        """Get LinkedIn profile data."""
-        client = self._get_client()
-        if not client:
-            logger.warning("[Proxycurl] Client not available")
-            return None
-
-        try:
-            result = await client.enrich_profile(linkedin_url)
-            if result.found:
-                return result.to_dict()
-            return None
-        except Exception as e:
-            logger.warning(f"[Proxycurl] get_person_profile failed: {e}")
-            return None
-
-    async def get_company_profile(
-        self,
-        linkedin_url: str | None = None,
-        domain: str | None = None,
-    ) -> dict[str, Any] | None:
-        """Get LinkedIn company data."""
-        client = self._get_client()
-        if not client:
-            logger.warning("[Proxycurl] Client not available")
-            return None
-
-        if not linkedin_url:
-            logger.warning("[Proxycurl] linkedin_url required for company profile")
-            return None
-
-        try:
-            result = await client.enrich_company(linkedin_url)
-            if result.found:
-                return result.to_dict()
-            return None
-        except Exception as e:
-            logger.warning(f"[Proxycurl] get_company_profile failed: {e}")
-            return None
-
-    async def enrich_from_linkedin(
-        self,
-        linkedin_url: str | None = None,
-        email: str | None = None,
-    ) -> dict[str, Any]:
-        """Enrich lead with LinkedIn data."""
-        client = self._get_client()
-        if not client:
-            logger.warning("[Proxycurl] Client not available")
-            return {"found": False, "source": "proxycurl_unavailable"}
-
-        if not linkedin_url:
-            return {"found": False, "source": "proxycurl", "error": "linkedin_url required"}
-
-        try:
-            result = await client.enrich_profile(linkedin_url)
-            data = result.to_dict()
-            data["found"] = result.found
-            data["source"] = "proxycurl"
-            return data
-        except Exception as e:
-            logger.warning(f"[Proxycurl] enrich_from_linkedin failed: {e}")
-            return {"found": False, "source": "proxycurl", "error": str(e)}
-
-
-# Alias for backwards compatibility
-ProxycurlClientStub = ProxycurlClientAdapter
-
-
-# Import Leadmagic client for Tier 5 mobile enrichment
+# Import Leadmagic client for Tier 3 email and Tier 5 mobile enrichment
 # Replaces Kaspr - CEO Directive: Kaspr deprecated
 try:
     from src.integrations.leadmagic import LeadmagicClient, get_leadmagic_client
@@ -658,7 +559,6 @@ class SiegeWaterfall:
         abn_client: ABN Bulk client (Tier 1)
         gmb_scraper: GMB scraper (Tier 2)
         leadmagic_email_client: Leadmagic email client (Tier 3)
-        proxycurl_client: Proxycurl client (Tier 4)
         leadmagic_mobile_client: Leadmagic mobile client (Tier 5)
     """
 
@@ -666,8 +566,7 @@ class SiegeWaterfall:
         self,
         abn_client: ABNClientStub | None = None,
         gmb_scraper: GMBScraperAdapter | None = None,
-        leadmagic_email_client: HunterClientAdapter | None = None,
-        proxycurl_client: ProxycurlClientAdapter | None = None,
+        leadmagic_email_client: LeadmagicEmailAdapter | None = None,
         leadmagic_mobile_client: LeadmagicMobileClient | None = None,
     ):
         """
@@ -677,13 +576,11 @@ class SiegeWaterfall:
             abn_client: ABN Bulk client (uses default if None)
             gmb_scraper: GMB scraper adapter (uses default if None)
             leadmagic_email_client: Leadmagic email client adapter (uses default if None)
-            proxycurl_client: Proxycurl client adapter (uses default if None)
             leadmagic_mobile_client: Leadmagic mobile client (uses default if None)
         """
         self.abn_client = abn_client or ABNClientStub()
         self.gmb_scraper = gmb_scraper or GMBScraperAdapter()
-        self.leadmagic_email_client = leadmagic_email_client or HunterClientAdapter()
-        self.proxycurl_client = proxycurl_client or ProxycurlClientAdapter()
+        self.leadmagic_email_client = leadmagic_email_client or LeadmagicEmailAdapter()
 
         # Use real Leadmagic mobile client if available (Tier 5 - optional)
         # Leadmagic mobile requires LEADMAGIC_API_KEY; if missing, Tier 5 is simply unavailable
@@ -790,34 +687,30 @@ class SiegeWaterfall:
                 )
             )
 
-        # ===== TIER 3: Leadmagic =====
+        # ===== TIER 3: Leadmagic Email (ALS >= 35 only) =====
         if EnrichmentTier.LEADMAGIC_EMAIL not in skip_tiers:
-            result = await self.tier3_leadmagic_email(enriched_data)
-            tier_results.append(result)
-            if result.success:
-                enriched_data = self._merge_data(enriched_data, result.data)
-                total_cost_aud += result.cost_aud
+            # Recalculate ALS with current enrichment for gate check
+            current_als = self._calculate_als(enriched_data)
+
+            if current_als >= 35:
+                result = await self.tier3_leadmagic_email(enriched_data)
+                tier_results.append(result)
+                if result.success:
+                    enriched_data = self._merge_data(enriched_data, result.data)
+                    total_cost_aud += result.cost_aud
+            else:
+                tier_results.append(
+                    TierResult(
+                        tier=EnrichmentTier.LEADMAGIC_EMAIL,
+                        success=False,
+                        skipped=True,
+                        skip_reason=f"ALS {current_als} < 35 threshold",
+                    )
+                )
         else:
             tier_results.append(
                 TierResult(
                     tier=EnrichmentTier.LEADMAGIC_EMAIL,
-                    success=False,
-                    skipped=True,
-                    skip_reason="Tier skipped by request",
-                )
-            )
-
-        # ===== TIER 4: Proxycurl =====
-        if EnrichmentTier.PROXYCURL not in skip_tiers:
-            result = await self.tier4_proxycurl(enriched_data)
-            tier_results.append(result)
-            if result.success:
-                enriched_data = self._merge_data(enriched_data, result.data)
-                total_cost_aud += result.cost_aud
-        else:
-            tier_results.append(
-                TierResult(
-                    tier=EnrichmentTier.PROXYCURL,
                     success=False,
                     skipped=True,
                     skip_reason="Tier skipped by request",
@@ -1565,38 +1458,6 @@ class SiegeWaterfall:
                 success=False,
                 error=str(e),
             )
-
-    async def tier4_proxycurl(self, lead: dict[str, Any]) -> TierResult:
-        """
-        Tier 4: LinkedIn Intelligence (DEPRECATED)
-
-        NOTE: Proxycurl shutdown July 2025 (LinkedIn lawsuit).
-        Migration path: Unipile (CEO Directive #002).
-
-        This tier now returns a graceful skip until Unipile is activated.
-
-        Args:
-            lead: Lead data (unused - tier is deprecated)
-
-        Returns:
-            TierResult with skipped=True
-        """
-        tier = EnrichmentTier.PROXYCURL
-
-        # Log deprecation notice
-        logger.info(
-            f"[Siege] Tier 4 pending — Unipile not activated. "
-            f"LinkedIn enrichment skipped for lead: {lead.get('email', 'unknown')}"
-        )
-
-        return TierResult(
-            tier=tier,
-            success=False,
-            skipped=True,
-            skip_reason="Tier 4 pending — Unipile not activated",
-            data={"found": False, "source": "tier4_deprecated"},
-            cost_aud=0.0,  # No cost when skipped
-        )
 
     @retry(
         stop=stop_after_attempt(2),  # Fewer retries - expensive tier

@@ -13,7 +13,7 @@ DEPENDENCIES:
   - src/engines/base.py
   - src/engines/waterfall_verification_worker.py
   - src/integrations/lusha.py (to be created)
-  # NOTE: proxycurl.py removed per FCO-003 (Proxycurl shutdown July 2025)
+  - src/integrations/leadmagic.py
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 11: Session passed as argument
@@ -75,10 +75,9 @@ AU_LANDLINE_PATTERN = r"^(?:\+61|0)[2378]\d{8}$"  # Landline: 02/03/07/08
 # Cost per operation in AUD (2026 pricing)
 IDENTITY_COSTS_AUD = {
     "lusha_mobile": Decimal("0.25"),  # ~$0.15-0.30, using mid-range
-    "kaspr_mobile": Decimal("0.20"),  # Slightly cheaper
+    "leadmagic_mobile": Decimal("0.077"),  # Leadmagic mobile finder
     "asic_extract": Decimal("0.50"),  # Company extract via broker
     "team_page_scrape": Decimal("0.01"),  # Our own scraper
-    # NOTE: proxycurl_linkedin removed (FCO-003 deprecation, Proxycurl shutdown July 2025)
 }
 
 # Thresholds
@@ -124,7 +123,7 @@ class IdentityTier(StrEnum):
     LINKEDIN_EMPLOYEE = "linkedin_employee"
     ASIC_DIRECTOR = "asic_director"
     LUSHA_MOBILE = "lusha_mobile"
-    KASPR_MOBILE = "kaspr_mobile"
+    LEADMAGIC_MOBILE = "leadmagic_mobile"
     IDENTITY_GOLD = "identity_gold"  # Final verified identity
 
 
@@ -219,7 +218,7 @@ class IdentityEscalationEngine(BaseEngine):
     def __init__(
         self,
         lusha_client=None,
-        kaspr_client=None,
+        leadmagic_client=None,
         asic_client=None,
         web_scraper=None,
     ):
@@ -228,16 +227,12 @@ class IdentityEscalationEngine(BaseEngine):
 
         Args:
             lusha_client: Lusha API client for mobiles
-            kaspr_client: Kaspr API client for mobiles
+            leadmagic_client: Leadmagic API client for mobiles
             asic_client: ASIC broker API (InfoTrack/CreditorWatch)
             web_scraper: Autonomous browser for team page scraping
-
-        Note:
-            proxycurl_client removed per FCO-003 deprecation (Proxycurl shutdown July 2025).
-            LinkedIn employee search now degrades gracefully.
         """
         self._lusha = lusha_client
-        self._kaspr = kaspr_client
+        self._leadmagic = leadmagic_client
         self._asic = asic_client
         self._scraper = web_scraper
 
@@ -667,26 +662,23 @@ class IdentityEscalationEngine(BaseEngine):
             except Exception as e:
                 logger.warning(f"Lusha enrichment failed: {e}")
 
-        # Fallback to Kaspr
-        if self._kaspr:
+        # Fallback to Leadmagic mobile finder
+        if self._leadmagic:
             try:
-                kaspr_result = await self._kaspr.enrich_person(
+                leadmagic_result = await self._leadmagic.find_mobile(
                     linkedin_url=contact.linkedin_url,
                 )
 
-                if kaspr_result:
-                    phones = kaspr_result.get("phones", [])
-                    mobile = self.prioritize_mobile(phones)
-
-                    if mobile:
-                        contact.mobile_number = mobile
+                if leadmagic_result and leadmagic_result.found:
+                    if leadmagic_result.mobile_number:
+                        contact.mobile_number = leadmagic_result.mobile_number
                         contact.phone_type = PhoneType.MOBILE
-                        contact.work_email = kaspr_result.get("email")
-                        contact.source = "kaspr"
-                        contact.confidence = 85
+                        contact.work_email = leadmagic_result.email
+                        contact.source = "leadmagic"
+                        contact.confidence = leadmagic_result.mobile_confidence
                         return contact
             except Exception as e:
-                logger.warning(f"Kaspr enrichment failed: {e}")
+                logger.warning(f"Leadmagic enrichment failed: {e}")
 
         return None
 
@@ -804,18 +796,14 @@ class IdentityEscalationEngine(BaseEngine):
 
 def get_identity_escalation_engine(
     lusha_client=None,
-    kaspr_client=None,
+    leadmagic_client=None,
     asic_client=None,
     web_scraper=None,
 ) -> IdentityEscalationEngine:
-    """Get singleton IdentityEscalationEngine instance.
-
-    Note:
-        proxycurl_client removed per FCO-003 deprecation (Proxycurl shutdown July 2025).
-    """
+    """Get singleton IdentityEscalationEngine instance."""
     return IdentityEscalationEngine(
         lusha_client=lusha_client,
-        kaspr_client=kaspr_client,
+        leadmagic_client=leadmagic_client,
         asic_client=asic_client,
         web_scraper=web_scraper,
     )

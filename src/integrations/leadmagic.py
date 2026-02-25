@@ -23,6 +23,17 @@ SIEGE CONTEXT:
 
 WARNING: API key is present but plan is unpurchased.
          Do NOT make live API calls until credits are available.
+
+MOCK MODE (LEADMAGIC_MOCK=true):
+  When the environment variable LEADMAGIC_MOCK is set to "true", "1", or "yes":
+  - find_email() returns realistic fake email (firstname.lastname@domain)
+  - find_mobile() returns realistic fake AU mobile (+61 4XX XXX XXX)
+  - get_credits() returns unlimited mock credits (999999)
+  - All mock responses have cost_aud=0.0 and source="leadmagic-mock"
+  - NO API calls are made in mock mode
+
+  Usage:
+    export LEADMAGIC_MOCK=true
 """
 
 from __future__ import annotations
@@ -488,7 +499,9 @@ class LeadmagicClient:
         if _is_mock_mode():
             mock_email = f"{first_name.lower().strip()}.{last_name.lower().strip()}@{domain}"
             mock_confidence = random.randint(85, 98)
-            logger.info(f"[Leadmagic] MOCK MODE: Returning fake email for {first_name} {last_name} @ {domain}")
+            logger.info(
+                f"[Leadmagic] MOCK MODE: Returning fake email for {first_name} {last_name} @ {domain}"
+            )
             return EmailFinderResult(
                 found=True,
                 email=mock_email,
@@ -594,7 +607,7 @@ class LeadmagicClient:
         # MOCK MODE: Return realistic fake data without API call
         if _is_mock_mode():
             # Generate realistic AU mobile: +61 4XX XXX XXX
-            mock_mobile = f"+61 4{random.randint(0,9)}{random.randint(0,9)} {random.randint(100,999)} {random.randint(100,999)}"
+            mock_mobile = f"+61 4{random.randint(0, 9)}{random.randint(0, 9)} {random.randint(100, 999)} {random.randint(100, 999)}"
             mock_confidence = random.randint(80, 95)
             # Extract a fake name from the linkedin URL slug if possible
             slug = linkedin_url.rstrip("/").split("/")[-1]
@@ -690,8 +703,22 @@ class LeadmagicClient:
 
         Raises:
             LeadmagicError: If API call fails
+
+        Note:
+            When LEADMAGIC_MOCK=true, returns unlimited mock credits
+            without making an API call.
         """
         logger.info("[Leadmagic] Checking credit balance")
+
+        # MOCK MODE: Return unlimited credits without API call
+        if _is_mock_mode():
+            logger.info("[Leadmagic] MOCK MODE: Returning unlimited mock credits")
+            return CreditBalance(
+                email_credits=999999,
+                mobile_credits=999999,
+                total_credits=999999,
+                plan="mock-unlimited",
+            )
 
         try:
             response = await self._request(

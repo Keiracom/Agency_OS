@@ -7,10 +7,15 @@
  * SSOT: frontend/design/html-prototypes/onboarding-v3.html
  * THEME: Bloomberg Terminal dark mode (charcoal #0C0A08, amber #D4956A)
  * 
+ * ARCHITECTURE DECISION: LinkedIn and CRM connections are MANDATORY
+ * - Cannot proceed to dashboard without both connections
+ * - Clear messaging about why each connection is required
+ * 
  * STEP 3/8: Wired to real backend APIs (no more setTimeout placeholders)
  * - HubSpot OAuth: GET /api/v1/crm/auth/hubspot
  * - LinkedIn OAuth: GET /api/v1/linkedin/connect
  * - ICP Extraction: POST /api/v1/onboarding/analyze
+ * - Gate Check: GET /api/v1/onboarding/gates
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -223,7 +228,9 @@ export default function OnboardingPage() {
     }
   }, [websiteUrl, hubspotConnected, linkedinConnected, router]);
 
-  const canLaunch = websiteValid;
+  // MANDATORY GATES: Both LinkedIn AND CRM must be connected to proceed
+  // Architecture Decision: No bypass permitted
+  const canLaunch = websiteValid && hubspotConnected && linkedinConnected;
 
   // Dismiss error
   const dismissError = () => setError(null);
@@ -388,96 +395,153 @@ export default function OnboardingPage() {
 
               {/* Integration Buttons Grid */}
               <div className="grid grid-cols-2 gap-3 mt-6">
-                {/* HubSpot CRM */}
-                <button
-                  onClick={handleHubspotConnect}
-                  disabled={hubspotConnected || isHubspotLoading}
-                  className={`
-                    relative flex flex-col items-center justify-center p-5 rounded-xl
-                    transition-all duration-200 glass-surface-hover
-                    ${hubspotConnected 
-                      ? 'border-status-success/30' 
-                      : 'hover:border-accent-primary/50'
-                    }
-                    disabled:cursor-not-allowed
-                  `}
-                  style={{
-                    backgroundColor: hubspotConnected 
-                      ? 'rgba(16, 185, 129, 0.05)' 
-                      : 'rgba(255, 255, 255, 0.03)',
-                    border: `1px solid ${hubspotConnected 
-                      ? 'rgba(16, 185, 129, 0.3)' 
-                      : 'rgba(255, 255, 255, 0.08)'
-                    }`,
-                  }}
-                >
-                  {hubspotConnected ? (
-                    <div className="absolute top-2 right-2 w-5 h-5 bg-status-success rounded-full flex items-center justify-center">
-                      <Check className="w-3 h-3 text-text-primary" />
-                    </div>
-                  ) : null}
-                  
-                  {/* HubSpot Icon */}
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-3"
-                    style={{ backgroundColor: 'rgba(255, 122, 89, 0.15)' }}
+                {/* HubSpot CRM - REQUIRED */}
+                <div className="space-y-2">
+                  <button
+                    onClick={handleHubspotConnect}
+                    disabled={hubspotConnected || isHubspotLoading}
+                    className={`
+                      relative flex flex-col items-center justify-center p-5 rounded-xl w-full
+                      transition-all duration-200 glass-surface-hover
+                      ${hubspotConnected 
+                        ? 'border-status-success/30' 
+                        : 'hover:border-accent-primary/50'
+                      }
+                      disabled:cursor-not-allowed
+                    `}
+                    style={{
+                      backgroundColor: hubspotConnected 
+                        ? 'rgba(16, 185, 129, 0.05)' 
+                        : 'rgba(255, 255, 255, 0.03)',
+                      border: `1px solid ${hubspotConnected 
+                        ? 'rgba(16, 185, 129, 0.3)' 
+                        : 'rgba(255, 255, 255, 0.08)'
+                      }`,
+                    }}
                   >
-                    {isHubspotLoading ? (
-                      <div className="w-5 h-5 border-2 border-[#FF7A59] border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <span className="text-[#FF7A59] font-bold text-sm">H</span>
-                    )}
-                  </div>
-                  <span className="text-sm font-medium text-text-primary">HubSpot CRM</span>
-                  <span className="text-[11px] text-text-muted mt-1">
-                    {hubspotConnected ? 'Connected ✓' : isHubspotLoading ? 'Connecting...' : 'Click to connect'}
-                  </span>
-                </button>
+                    {/* Required Badge */}
+                    <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider"
+                      style={{
+                        backgroundColor: hubspotConnected ? 'rgba(16, 185, 129, 0.2)' : 'rgba(212, 149, 106, 0.2)',
+                        color: hubspotConnected ? '#10B981' : '#D4956A',
+                      }}
+                    >
+                      Required
+                    </div>
+                    
+                    {hubspotConnected ? (
+                      <div className="absolute top-2 right-2 w-5 h-5 bg-status-success rounded-full flex items-center justify-center">
+                        <Check className="w-3 h-3 text-text-primary" />
+                      </div>
+                    ) : null}
+                    
+                    {/* HubSpot Icon */}
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-3"
+                      style={{ backgroundColor: 'rgba(255, 122, 89, 0.15)' }}
+                    >
+                      {isHubspotLoading ? (
+                        <div className="w-5 h-5 border-2 border-[#FF7A59] border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <span className="text-[#FF7A59] font-bold text-sm">H</span>
+                      )}
+                    </div>
+                    <span className="text-sm font-medium text-text-primary">HubSpot CRM</span>
+                    <span className="text-[11px] text-text-muted mt-1">
+                      {hubspotConnected ? 'Connected ✓' : isHubspotLoading ? 'Connecting...' : 'Click to connect'}
+                    </span>
+                  </button>
+                  {/* CRM Gate Message */}
+                  {!hubspotConnected && (
+                    <p className="text-[10px] text-text-muted text-center px-2">
+                      Protects your existing clients from outreach and tracks booked meetings
+                    </p>
+                  )}
+                </div>
 
-                {/* LinkedIn */}
-                <button
-                  onClick={handleLinkedinConnect}
-                  disabled={linkedinConnected || isLinkedinLoading}
-                  className={`
-                    relative flex flex-col items-center justify-center p-5 rounded-xl
-                    transition-all duration-200 glass-surface-hover
-                    ${linkedinConnected 
-                      ? 'border-status-success/30' 
-                      : 'hover:border-accent-primary/50'
-                    }
-                    disabled:cursor-not-allowed
-                  `}
+                {/* LinkedIn - REQUIRED */}
+                <div className="space-y-2">
+                  <button
+                    onClick={handleLinkedinConnect}
+                    disabled={linkedinConnected || isLinkedinLoading}
+                    className={`
+                      relative flex flex-col items-center justify-center p-5 rounded-xl w-full
+                      transition-all duration-200 glass-surface-hover
+                      ${linkedinConnected 
+                        ? 'border-status-success/30' 
+                        : 'hover:border-accent-primary/50'
+                      }
+                      disabled:cursor-not-allowed
+                    `}
+                    style={{
+                      backgroundColor: linkedinConnected 
+                        ? 'rgba(16, 185, 129, 0.05)' 
+                        : 'rgba(255, 255, 255, 0.03)',
+                      border: `1px solid ${linkedinConnected 
+                        ? 'rgba(16, 185, 129, 0.3)' 
+                        : 'rgba(255, 255, 255, 0.08)'
+                      }`,
+                    }}
+                  >
+                    {/* Required Badge */}
+                    <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider"
+                      style={{
+                        backgroundColor: linkedinConnected ? 'rgba(16, 185, 129, 0.2)' : 'rgba(212, 149, 106, 0.2)',
+                        color: linkedinConnected ? '#10B981' : '#D4956A',
+                      }}
+                    >
+                      Required
+                    </div>
+                    
+                    {linkedinConnected ? (
+                      <div className="absolute top-2 right-2 w-5 h-5 bg-status-success rounded-full flex items-center justify-center">
+                        <Check className="w-3 h-3 text-text-primary" />
+                      </div>
+                    ) : null}
+                    
+                    {/* LinkedIn Icon */}
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-3"
+                      style={{ backgroundColor: 'rgba(10, 102, 194, 0.15)' }}
+                    >
+                      {isLinkedinLoading ? (
+                        <div className="w-5 h-5 border-2 border-[#0A66C2] border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Linkedin className="w-5 h-5 text-[#0A66C2]" />
+                      )}
+                    </div>
+                    <span className="text-sm font-medium text-text-primary">LinkedIn</span>
+                    <span className="text-[11px] text-text-muted mt-1">
+                      {linkedinConnected ? 'Connected ✓' : isLinkedinLoading ? 'Connecting...' : 'Click to connect'}
+                    </span>
+                  </button>
+                  {/* LinkedIn Gate Message */}
+                  {!linkedinConnected && (
+                    <p className="text-[10px] text-text-muted text-center px-2">
+                      Enables LinkedIn outreach and protects your network from outreach
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Gate Warning Banner - Shows when integrations are missing */}
+              {(currentStep === 'integrations' || currentStep === 'complete') && (!hubspotConnected || !linkedinConnected) && (
+                <div 
+                  className="mt-4 rounded-xl p-4 flex items-start gap-3"
                   style={{
-                    backgroundColor: linkedinConnected 
-                      ? 'rgba(16, 185, 129, 0.05)' 
-                      : 'rgba(255, 255, 255, 0.03)',
-                    border: `1px solid ${linkedinConnected 
-                      ? 'rgba(16, 185, 129, 0.3)' 
-                      : 'rgba(255, 255, 255, 0.08)'
-                    }`,
+                    backgroundColor: 'rgba(212, 149, 106, 0.1)',
+                    border: '1px solid rgba(212, 149, 106, 0.3)',
                   }}
                 >
-                  {linkedinConnected ? (
-                    <div className="absolute top-2 right-2 w-5 h-5 bg-status-success rounded-full flex items-center justify-center">
-                      <Check className="w-3 h-3 text-text-primary" />
-                    </div>
-                  ) : null}
-                  
-                  {/* LinkedIn Icon */}
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-3"
-                    style={{ backgroundColor: 'rgba(10, 102, 194, 0.15)' }}
-                  >
-                    {isLinkedinLoading ? (
-                      <div className="w-5 h-5 border-2 border-[#0A66C2] border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Linkedin className="w-5 h-5 text-[#0A66C2]" />
-                    )}
+                  <AlertCircle className="w-5 h-5 text-accent-primary flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-accent-primary">
+                      Both connections required to continue
+                    </p>
+                    <p className="text-xs text-text-muted mt-1">
+                      Connect {!hubspotConnected && !linkedinConnected ? 'both HubSpot CRM and LinkedIn' : !hubspotConnected ? 'HubSpot CRM' : 'LinkedIn'} to launch your dashboard
+                    </p>
                   </div>
-                  <span className="text-sm font-medium text-text-primary">LinkedIn</span>
-                  <span className="text-[11px] text-text-muted mt-1">
-                    {linkedinConnected ? 'Connected ✓' : isLinkedinLoading ? 'Connecting...' : 'Click to connect'}
-                  </span>
-                </button>
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Launch Button */}

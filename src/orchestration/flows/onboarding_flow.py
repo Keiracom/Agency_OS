@@ -921,6 +921,11 @@ async def complete_onboarding_flow(
     """
     Complete onboarding flow with full automation.
 
+    MANDATORY GATES (Architecture Decision):
+    - LinkedIn connection required
+    - CRM connection required
+    Both must be connected before this flow can proceed.
+
     Directive 048 Part H: On onboarding completion:
     1. Campaign auto-creates and enters warm-up queue
     2. Pool allocation happens automatically when quota met
@@ -932,7 +937,17 @@ async def complete_onboarding_flow(
 
     Returns:
         Dict with complete onboarding result
+
+    Raises:
+        LinkedInConnectionRequired: If LinkedIn is not connected
+        CRMConnectionRequired: If CRM is not connected
     """
+    from src.services.onboarding_gate_service import (
+        CRMConnectionRequired,
+        LinkedInConnectionRequired,
+        enforce_onboarding_gates,
+    )
+
     if isinstance(client_id, str):
         client_id = UUID(client_id)
 
@@ -943,6 +958,32 @@ async def complete_onboarding_flow(
     }
 
     try:
+        # Step 0: MANDATORY GATE CHECK - LinkedIn and CRM connections required
+        async with get_db_session() as db:
+            try:
+                gate_status = await enforce_onboarding_gates(db, client_id)
+                results["gate_status"] = gate_status.to_dict()
+                results["steps_completed"].append("gate_check")
+                logger.info(f"Onboarding gates passed for client {client_id}")
+            except LinkedInConnectionRequired as e:
+                logger.error(f"Onboarding blocked: {e.message}")
+                return {
+                    "success": False,
+                    "client_id": str(client_id),
+                    "error": e.message,
+                    "error_code": "LINKEDIN_CONNECTION_REQUIRED",
+                    "gate": "linkedin",
+                }
+            except CRMConnectionRequired as e:
+                logger.error(f"Onboarding blocked: {e.message}")
+                return {
+                    "success": False,
+                    "client_id": str(client_id),
+                    "error": e.message,
+                    "error_code": "CRM_CONNECTION_REQUIRED",
+                    "gate": "crm",
+                }
+
         # Step 1: Assign resources
         resource_result = await assign_client_resources_task(
             client_id=client_id,

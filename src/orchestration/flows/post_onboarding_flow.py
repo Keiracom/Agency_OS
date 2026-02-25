@@ -369,23 +369,39 @@ async def post_onboarding_setup_flow(
     """
     Post-onboarding setup flow.
 
+    MANDATORY GATES (Architecture Decision):
+    - LinkedIn connection required
+    - CRM connection required
+    Both must be connected before this flow can proceed.
+
     This flow should be triggered after ICP extraction completes:
-    1. Verifies ICP is ready
-    2. Generates AI campaign suggestions
-    3. Creates campaigns (as drafts by default)
-    4. Sources leads from Apollo based on tier allowance
-    5. Assigns leads to campaigns based on allocation %
+    1. Verifies LinkedIn and CRM gates pass
+    2. Verifies ICP is ready
+    3. Generates AI campaign suggestions
+    4. Creates campaigns (as drafts by default)
+    5. Sources leads based on tier allowance
+    6. Assigns leads to campaigns based on allocation %
 
     Args:
         client_id: Client UUID (string or UUID)
         auto_create_campaigns: Create campaigns from suggestions (default True)
-        auto_source_leads: Source leads from Apollo (default True)
+        auto_source_leads: Source leads (default True)
         auto_activate_campaigns: Activate campaigns immediately (default False)
         lead_count_override: Override tier-based lead count (optional)
 
     Returns:
         Dict with flow result
+
+    Raises:
+        LinkedInConnectionRequired: If LinkedIn is not connected
+        CRMConnectionRequired: If CRM is not connected
     """
+    from src.services.onboarding_gate_service import (
+        CRMConnectionRequired,
+        LinkedInConnectionRequired,
+        enforce_onboarding_gates,
+    )
+
     # Convert strings to UUIDs if needed (Prefect API passes strings)
     if isinstance(client_id, str):
         client_id = UUID(client_id)
@@ -393,6 +409,30 @@ async def post_onboarding_setup_flow(
     logger.info(f"Starting post-onboarding setup for client {client_id}")
 
     try:
+        # Step 0: MANDATORY GATE CHECK - LinkedIn and CRM connections required
+        async with get_db_session() as db:
+            try:
+                gate_status = await enforce_onboarding_gates(db, client_id)
+                logger.info(f"Onboarding gates passed for client {client_id}")
+            except LinkedInConnectionRequired as e:
+                logger.error(f"Post-onboarding blocked: {e.message}")
+                return {
+                    "success": False,
+                    "client_id": str(client_id),
+                    "error": e.message,
+                    "error_code": "LINKEDIN_CONNECTION_REQUIRED",
+                    "gate": "linkedin",
+                }
+            except CRMConnectionRequired as e:
+                logger.error(f"Post-onboarding blocked: {e.message}")
+                return {
+                    "success": False,
+                    "client_id": str(client_id),
+                    "error": e.message,
+                    "error_code": "CRM_CONNECTION_REQUIRED",
+                    "gate": "crm",
+                }
+
         # Step 1: Verify ICP is ready
         icp_status = await verify_icp_ready_task(client_id)
 

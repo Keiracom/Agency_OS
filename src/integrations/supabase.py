@@ -23,10 +23,10 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.pool import NullPool
+from supabase import AsyncClient, Client, create_async_client, create_client
 
 from src.config.settings import settings
 from src.exceptions import IntegrationError
-from supabase import Client, create_client
 
 # ============================================
 # SQLAlchemy Async Engine (for ORM operations)
@@ -168,6 +168,8 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 _supabase_client: Client | None = None
 _supabase_service_client: Client | None = None
+_async_supabase_client: AsyncClient | None = None
+_async_supabase_service_client: AsyncClient | None = None
 
 
 def get_supabase_client() -> Client:
@@ -213,6 +215,58 @@ def get_supabase_service_client() -> Client:
         )
 
     return _supabase_service_client
+
+
+# ============================================
+# Async Supabase Client (for await operations)
+# ============================================
+
+
+async def get_async_supabase_client() -> AsyncClient:
+    """
+    Get async Supabase client for await-compatible operations.
+
+    Uses the anon/public key for RLS-enforced operations.
+    This client returns coroutines that can be awaited.
+    """
+    global _async_supabase_client
+
+    if _async_supabase_client is None:
+        if not settings.supabase_url or not settings.supabase_key:
+            raise IntegrationError(
+                service="supabase",
+                message="Supabase URL and key are required",
+            )
+        _async_supabase_client = await create_async_client(
+            settings.supabase_url,
+            settings.supabase_key,
+        )
+
+    return _async_supabase_client
+
+
+async def get_async_supabase_service_client() -> AsyncClient:
+    """
+    Get async Supabase client with service role (bypasses RLS).
+
+    Used for backend operations that need full access.
+    WARNING: Only use in trusted backend code.
+    This client returns coroutines that can be awaited.
+    """
+    global _async_supabase_service_client
+
+    if _async_supabase_service_client is None:
+        if not settings.supabase_url or not settings.supabase_service_key:
+            raise IntegrationError(
+                service="supabase",
+                message="Supabase URL and service key are required",
+            )
+        _async_supabase_service_client = await create_async_client(
+            settings.supabase_url,
+            settings.supabase_service_key,
+        )
+
+    return _async_supabase_service_client
 
 
 # ============================================

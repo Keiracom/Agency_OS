@@ -10,6 +10,8 @@ import os
 import anthropic
 import structlog
 
+from src.integrations.supabase import get_async_supabase_client
+
 logger = structlog.get_logger()
 
 
@@ -48,12 +50,10 @@ Example: ["keyword1", "keyword2", "keyword3"]"""
 
     async def _lookup_db(self, industry_slug: str) -> list[str] | None:
         """Lookup keywords from industry_keywords table."""
-        if not self.supabase:
-            return None
-
         try:
+            supabase = await get_async_supabase_client()
             result = (
-                await self.supabase.table("industry_keywords")
+                await supabase.table("industry_keywords")
                 .select("keywords")
                 .eq("industry_slug", industry_slug)
                 .single()
@@ -106,12 +106,10 @@ Example: ["keyword1", "keyword2", "keyword3"]"""
 
     async def get_maps_categories(self, industry_slug: str) -> list[str]:
         """Get Google Maps category terms for an industry."""
-        if not self.supabase:
-            return []
-
         try:
+            supabase = await get_async_supabase_client()
             result = (
-                await self.supabase.table("industry_keywords")
+                await supabase.table("industry_keywords")
                 .select("maps_categories")
                 .eq("industry_slug", industry_slug)
                 .single()

@@ -622,9 +622,9 @@ class ScoutEngine(BaseEngine):
 
             # Use raw SQL insert to avoid needing a session
             # This logs to audit_logs table
-            from src.integrations.supabase import get_supabase_client
+            from src.integrations.supabase import get_async_supabase_client
 
-            supabase = get_supabase_client()
+            supabase = await get_async_supabase_client()
             await supabase.table("audit_logs").insert(log_entry).execute()
 
         except Exception as e:

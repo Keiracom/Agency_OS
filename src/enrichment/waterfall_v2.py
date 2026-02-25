@@ -25,7 +25,7 @@ WATERFALL V2 PIPELINE:
     Tier 1.5b: SERP LinkedIn Discovery - $0.0015
     Tier 2: LinkedIn Company Scraper - $0.0015
     Tier 2.5: LinkedIn People Profile - $0.0015 (ALS >= 30)
-    Tier 3: Leadmagic Email Finder - $0.015 (ALS >= 30)
+    Tier 3: Leadmagic Email Finder - $0.015 (ALS >= 35)
     Tier 5: Leadmagic Mobile Finder - $0.077 (ALS >= 85)
 
   NOTE: Leadmagic replaces Hunter (T3) and Kaspr (T5) per CEO decision.
@@ -130,7 +130,7 @@ class WaterfallV2:
     - HOT_THRESHOLD: Minimum score for Tier 5 Leadmagic mobile enrichment (premium leads only)
 
     Enrichment Providers:
-    - Tier 3 (Email): Leadmagic email finder ($0.015 AUD)
+    - Tier 3 (Email): Leadmagic email finder ($0.015 AUD, ALS >= 35)
     - Tier 5 (Mobile): Leadmagic mobile finder ($0.077 AUD, ALS >= 85)
 
     Error Handling:
@@ -139,6 +139,7 @@ class WaterfallV2:
     """
 
     PRE_ALS_GATE = 30  # Minimum score to continue past Tier 2
+    T3_ALS_GATE = 35  # Minimum score for T3 email enrichment (matches campaign floor)
     HOT_THRESHOLD = 85  # Minimum for Tier 5 (Leadmagic mobile)
 
     # Cost constants (AUD) - Updated for Leadmagic
@@ -571,7 +572,7 @@ class WaterfallV2:
 
     async def enrich_tier_3(self, lead: LeadRecord) -> LeadRecord:
         """
-        Tier 3: Leadmagic Email Finder - $0.015 - Only if ALS >= 30
+        Tier 3: Leadmagic Email Finder - $0.015 - Only if ALS >= 35
 
         Replaces Hunter.io per CEO directive.
         Raises LeadmagicCreditExhaustedError if credits exhausted (hard fail).
@@ -579,9 +580,9 @@ class WaterfallV2:
         if "tier_3" in lead.enrichment_tiers_completed:
             return lead
 
-        if lead.als_score < self.PRE_ALS_GATE:
+        if lead.als_score < self.T3_ALS_GATE:
             logger.debug(
-                f"Tier 3 skipped for {lead.id} - ALS score {lead.als_score} below gate {self.PRE_ALS_GATE}"
+                f"Tier 3 skipped for {lead.id} - ALS score {lead.als_score} below gate {self.T3_ALS_GATE}"
             )
             return lead
 

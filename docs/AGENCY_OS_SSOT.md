@@ -157,26 +157,30 @@ The daily enrichment flow processes leads in batches of 100 using Prefect's Conc
 
 **Tier 2: GMB & Ads Signals** — Bright Data's web scraper collects Google My Business data including ratings, review counts, photos, opening hours, and recent posts. Google Ads presence is detected as a buying signal.
 
-**Tier 3: Email Finder** — Leadmagic's email finder locates professional email addresses using the lead's name and company domain, returning confidence scores for verification.
+**Tier 3: Email Finder** — For leads with ALS ≥ 35, Leadmagic's email finder locates professional email addresses using the lead's name and company domain, returning confidence scores for verification.
 
-**Tier 4: LinkedIn Intelligence** — Unipile collects LinkedIn profile data including job title, company, connections, recent posts, and engagement patterns. This powers decision-maker identification and authority scoring.
+**Tier 4: LinkedIn Intelligence** — Bright Data handles all LinkedIn enrichment:
+- **T1.5**: Bright Data LinkedIn company profiles (industry, size, specialties)
+- **T-DM1**: Bright Data LinkedIn decision-maker profiles (job title, connections)
+- **T-DM2**: Bright Data LinkedIn posts from the past 90 days (engagement patterns, recent activity)
 
-**Tier 5: Mobile Finder** — For leads scoring 85 or higher, Leadmagic's mobile finder locates direct mobile phone numbers via LinkedIn profile data.
+This powers decision-maker identification and authority scoring.
+
+**Tier 5: Mobile Finder** — For leads with ALS ≥ 85, Leadmagic's mobile finder locates direct mobile phone numbers.
 
 After enrichment, the ALS (Adaptive Lead Score) is calculated based on data completeness, contact information availability, company fit, decision-maker authority, and engagement signals. Scores determine tier placement: Hot (85+), Warm (60-84), Cool (35-59), Cold (20-34), Dead (below 20).
 
 Australian phone numbers are batch-checked against the Do Not Call Register. Numbers found on the DNCR are blocked from receiving SMS or calls.
 
-Processing 1,250 leads takes approximately 4-8 hours of compute time spread across the daily enrichment schedule, with each batch of 100 leads taking 15-30 minutes.
+Processing 1,250 leads takes approximately 45 minutes with 10 parallel workers.
 
 ### Tools Involved
 
 - **Siege Waterfall** — Five-tier enrichment orchestrator
 - **ABN Bulk Extract** — Australian government business data (free)
-- **Bright Data Web Scraper** — GMB and Google Ads signal collection
-- **Leadmagic Email Finder** — Professional email discovery
-- **Unipile** — LinkedIn profile data and intelligence
-- **Leadmagic Mobile Finder** — Direct mobile number discovery
+- **Bright Data Web Scraper** — GMB signals, Google Ads detection, and all LinkedIn enrichment (company profiles, decision-maker profiles, posts)
+- **Leadmagic Email Finder** — Professional email discovery (ALS ≥ 35 gate)
+- **Leadmagic Mobile Finder** — Direct mobile number discovery (ALS ≥ 85 gate)
 - **DNCR API** — Do Not Call Register compliance checking
 - **ALS Scorer** — Adaptive lead scoring engine
 
@@ -212,19 +216,28 @@ Channel allocation is based on lead tier:
 
 **SMS Outreach** — ClickSend sends text messages to Hot tier leads only. Messages are limited to 160 characters with proper opt-out language. Only numbers not on the DNCR receive SMS.
 
-**Voice Outreach** — ElevenLabs ElevenAgents powers conversational AI calls with Australian voices. The voice stack uses Groq's Llama 4 Maverick for fast responses (90% of interactions) with Claude Haiku handling complex objections (10%). Calls only occur Monday-Friday 9am-8pm AEST, Saturday 9am-5pm AEST, never Sundays or holidays. Maximum 3 concurrent calls per agency. A Voice Context Builder compiles talking points and objection scripts before each call.
+**Voice Outreach** — The voice stack consists of:
+- **Orchestrator**: ElevenAgents
+- **Primary LLM**: Groq + Llama 4 Maverick (~200ms response time)
+- **Fallback LLM**: Claude Haiku (~400ms, error fallback)
+- **TTS**: ElevenLabs
+- **Telephony**: Twilio AU
+- **Agent name**: Alex
+
+Calls only occur Monday-Friday 9am-5pm AEST, never weekends or holidays. Maximum 3 concurrent calls per agency. A Voice Context Builder compiles talking points and objection scripts before each call.
 
 All content passes through QA validators before sending, checking length limits, personalization, prohibited phrases, and compliance requirements.
 
 ### Tools Involved
 
-- **Unipile** — LinkedIn automation (replaced HeyReach, 70-85% cost reduction)
+- **Unipile** — LinkedIn outreach only (connection requests, messages). Not used for enrichment.
 - **Salesforge** — Email sending with Warmforge mailbox compatibility
 - **ClickSend** — Australian SMS provider with DNCR compliance
-- **ElevenLabs ElevenAgents** — Conversational AI platform with Australian voices
-- **Groq Llama 4 Maverick** — Fast LLM for voice responses (90%)
-- **Claude Haiku** — Complex objection handling fallback (10%)
-- **Twilio AU** — Telephony infrastructure for voice calls
+- **ElevenAgents** — Voice orchestration platform
+- **Groq + Llama 4 Maverick** — Primary LLM (~200ms)
+- **Claude Haiku** — Fallback LLM (~400ms, error fallback)
+- **ElevenLabs** — Text-to-speech
+- **Twilio AU** — Telephony infrastructure
 - **Claude AI** — Hyper-personalization for hot leads
 - **QA Validators** — Content compliance checking per channel
 
@@ -284,7 +297,7 @@ This data feeds back into the pattern learning system, continuously improving fu
 |-------|----------|-------------|
 | Onboarding | 5 minutes | ICP extracted, resources provisioned, dashboard ready |
 | Discovery | Hours to days | Raw leads collected from ABN/Maps based on ICP |
-| Enrichment | 4-8 hours compute time | Leads scored, tiered, and compliance-checked |
+| Enrichment | ~45 minutes (10 workers) | Leads scored, tiered, and compliance-checked |
 | Outreach | Ongoing (hourly batches) | Multi-channel sequences personalized by tier |
 | Conversion | Ongoing | Replies analyzed, meetings booked, clients won |
 

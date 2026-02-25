@@ -24,10 +24,11 @@ from uuid import UUID
 from prefect import flow, task
 from sqlalchemy import and_, select, update
 
-from src.integrations.supabase import get_db_session, get_supabase_client
+from src.enrichment.campaign_trigger import CampaignDiscoveryTrigger
 from src.integrations.abn_client import get_abn_client
 from src.integrations.bright_data_client import BrightDataClient
-from src.enrichment.campaign_trigger import CampaignDiscoveryTrigger
+from src.integrations.leadmagic import get_leadmagic_client
+from src.integrations.supabase import get_db_session, get_supabase_client
 from src.models.base import CampaignStatus, LeadStatus, SubscriptionStatus
 from src.models.campaign import Campaign
 from src.models.client import Client
@@ -276,7 +277,6 @@ async def trigger_enrichment_task(lead_ids: list[str], campaign_id: str) -> dict
         }
 
 
-
 @task(name="trigger_discovery", retries=2, retry_delay_seconds=30)
 async def trigger_discovery_task(campaign_id: str) -> dict[str, Any]:
     """
@@ -297,12 +297,14 @@ async def trigger_discovery_task(campaign_id: str) -> dict[str, Any]:
     supabase_client = get_supabase_client()
     abn_client = get_abn_client()
     bright_data_client = BrightDataClient()
+    leadmagic_client = get_leadmagic_client()
 
     # Create trigger instance
     trigger = CampaignDiscoveryTrigger(
         supabase_client=supabase_client,
         abn_client=abn_client,
         bright_data_client=bright_data_client,
+        leadmagic_client=leadmagic_client,
     )
 
     # Execute discovery

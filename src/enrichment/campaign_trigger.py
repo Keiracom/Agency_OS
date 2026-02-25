@@ -35,14 +35,12 @@ class CampaignDiscoveryTrigger:
         supabase_client,
         abn_client: ABNClient,
         bright_data_client: BrightDataClient,
-        hunter_client=None,
-        kaspr_client=None,
+        leadmagic_client=None,
     ):
         self.supabase = supabase_client
         self.abn = abn_client
         self.bd = bright_data_client
-        self.hunter = hunter_client
-        self.kaspr = kaspr_client
+        self.leadmagic = leadmagic_client
 
         # Initialize components
         self.keyword_expander = KeywordExpander(supabase_client=supabase_client)
@@ -62,8 +60,8 @@ class CampaignDiscoveryTrigger:
 
         self.waterfall = WaterfallV2(
             bright_data_client=bright_data_client,
-            hunter_client=hunter_client,
-            kaspr_client=kaspr_client,
+            abn_client=abn_client,
+            leadmagic_client=leadmagic_client,
         )
 
     async def on_campaign_activated(self, campaign_id: str) -> dict:

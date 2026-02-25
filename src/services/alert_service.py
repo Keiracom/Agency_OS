@@ -31,7 +31,6 @@ ALERT TYPES:
 
 import json
 import logging
-from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -51,7 +50,7 @@ class AlertType:
 
     ANGRY_COMPLAINT = "angry_complaint"
     BRIGHT_DATA_ERROR = "bright_data_error"
-    HUNTER_RATE_LIMIT = "hunter_rate_limit"
+    LEADMAGIC_CREDITS_LOW = "leadmagic_credits_low"
     LINKEDIN_RATE_LIMIT = "linkedin_rate_limit"
     WARMUP_HEALTH_LOW = "warmup_health_low"
     HOT_WARM_RATIO_LOW = "hot_warm_ratio_low"
@@ -286,38 +285,34 @@ class AlertService:
             metadata={**(metadata or {}), "retry_count": retry_count, "error": error_message},
         )
 
-    async def alert_hunter_rate_limit(
+    async def alert_leadmagic_credits_low(
         self,
         client_id: UUID | None = None,
-        requests_remaining: int = 0,
-        reset_time: datetime | None = None,
+        credits_remaining: int = 0,
+        credit_type: str = "email",
         metadata: dict[str, Any] | None = None,
     ) -> UUID | None:
         """
-        Alert: Hunter rate limit hit with estimated recovery time.
+        Alert: Leadmagic credits running low.
 
         Args:
             client_id: Related client
-            requests_remaining: Remaining requests
-            reset_time: When rate limit resets
+            credits_remaining: Remaining credits
+            credit_type: Type of credits (email or mobile)
             metadata: Additional context
 
         Returns:
             Alert UUID
         """
-        recovery_msg = ""
-        if reset_time:
-            recovery_msg = f" Estimated recovery: {reset_time.strftime('%Y-%m-%d %H:%M UTC')}"
-
         return await self.create_alert(
-            alert_type=AlertType.HUNTER_RATE_LIMIT,
-            title="⚠️ Hunter Rate Limit Hit",
-            message=f"Hunter API rate limit reached. Remaining requests: {requests_remaining}.{recovery_msg}",
+            alert_type=AlertType.LEADMAGIC_CREDITS_LOW,
+            title="⚠️ Leadmagic Credits Low",
+            message=f"Leadmagic {credit_type} credits running low. Remaining: {credits_remaining}.",
             client_id=client_id,
             metadata={
                 **(metadata or {}),
-                "requests_remaining": requests_remaining,
-                "reset_time": reset_time.isoformat() if reset_time else None,
+                "credits_remaining": credits_remaining,
+                "credit_type": credit_type,
             },
         )
 
@@ -604,7 +599,7 @@ async def create_alert(
 # [x] Email sent to agency owner for campaign-level issues
 # [x] alert_angry_complaint (immediate + email)
 # [x] alert_bright_data_error (after 2 retries)
-# [x] alert_hunter_rate_limit (with estimated recovery time)
+# [x] alert_leadmagic_credits_low (with credit count)
 # [x] alert_linkedin_rate_limit (per seat)
 # [x] alert_warmup_health_low (below threshold)
 # [x] alert_hot_warm_ratio_low (below 20%)

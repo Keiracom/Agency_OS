@@ -142,11 +142,6 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("LEADMAGIC_API_KEY"),
     )
 
-    # === DEPRECATED: Hunter.io and Kaspr ===
-    # Kept for backwards compatibility during migration
-    # hunter_api_key: REMOVED - use leadmagic_api_key
-    # kaspr_api_key: REMOVED - use leadmagic_api_key
-
     # === Prospeo (Email Finding/Verification) ===
     prospeo_api_key: str = Field(
         default="", description="Prospeo API key for email finding and verification"

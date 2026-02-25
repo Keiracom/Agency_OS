@@ -8,8 +8,10 @@ DEPENDENCIES:
 - src/api/dependencies.py
 - src/agents/icp_discovery_agent.py
 - src/orchestration/flows/onboarding_flow.py
+- src/services/onboarding_gate_service.py
 
 ENDPOINTS:
+- GET /api/v1/onboarding/gates - Check LinkedIn and CRM connection gates
 - POST /api/v1/onboarding/analyze - Submit website URL for extraction
 - GET /api/v1/onboarding/status/{job_id} - Check extraction progress
 - GET /api/v1/onboarding/result/{job_id} - Get extracted ICP profile
@@ -151,6 +153,24 @@ class ICPUpdateRequest(BaseModel):
     als_weights: dict[str, int] | None = Field(None)
 
 
+class OnboardingGateResponse(BaseModel):
+    """Response for onboarding gate check."""
+
+    client_id: UUID = Field(description="Client UUID")
+    linkedin_connected: bool = Field(description="Whether LinkedIn is connected")
+    linkedin_connected_at: datetime | None = Field(None, description="When LinkedIn was connected")
+    linkedin_seat_count: int = Field(0, description="Number of active LinkedIn seats")
+    crm_connected: bool = Field(description="Whether CRM is connected")
+    crm_connected_at: datetime | None = Field(None, description="When CRM was connected")
+    crm_type: str | None = Field(None, description="Type of CRM connected (hubspot, pipedrive, close)")
+    can_proceed: bool = Field(description="Whether both gates pass and onboarding can proceed")
+    missing_gates: list[str] = Field(default_factory=list, description="List of missing gates")
+    gate_messages: dict[str, dict[str, str]] = Field(
+        default_factory=dict,
+        description="User-facing messages for each gate",
+    )
+
+
 class ConfirmICPRequest(BaseModel):
     """Request to confirm extracted ICP."""
 
@@ -161,6 +181,153 @@ class ConfirmICPRequest(BaseModel):
 # ============================================
 # Routes
 # ============================================
+
+
+@router.get(
+    "/onboarding/gates",
+    response_model=OnboardingGateResponse,
+)
+async def check_onboarding_gates(
+    current_user: Annotated[CurrentUser, Depends(get_current_user_from_token)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> OnboardingGateResponse:
+    """
+    Check LinkedIn and CRM connection gates for onboarding.
+
+    Both connections are MANDATORY to complete onboarding.
+
+    Returns gate status including:
+    - linkedin_connected: At least one active LinkedIn seat
+    - crm_connected: At least one active CRM configuration
+    - can_proceed: True only if BOTH are connected
+    - missing_gates: List of gates that are not yet connected
+    - gate_messages: User-facing messages explaining each gate
+
+    If can_proceed is False, dashboard access should be blocked.
+    """
+    from src.services.onboarding_gate_service import (
+        GATE_MESSAGES,
+        check_onboarding_gates as check_gates,
+    )
+
+    # Look up user's client from memberships
+    result = await db.execute(
+        select(Membership.client_id)
+        .where(
+            and_(
+                Membership.user_id == current_user.id,
+                Membership.deleted_at.is_(None),
+            )
+        )
+        .limit(1)
+    )
+    client_id = result.scalar_one_or_none()
+
+    if not client_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No client found for user. Please complete signup first.",
+        )
+
+    # Check gates
+    gate_status = await check_gates(db, client_id)
+
+    return OnboardingGateResponse(
+        client_id=gate_status.client_id,
+        linkedin_connected=gate_status.linkedin_connected,
+        linkedin_connected_at=gate_status.linkedin_connected_at,
+        linkedin_seat_count=gate_status.linkedin_seat_count,
+        crm_connected=gate_status.crm_connected,
+        crm_connected_at=gate_status.crm_connected_at,
+        crm_type=gate_status.crm_type,
+        can_proceed=gate_status.can_proceed,
+        missing_gates=gate_status._get_missing_gates(),
+        gate_messages=GATE_MESSAGES,
+    )
+
+
+@router.get(
+    "/onboarding/gates/enforce",
+    response_model=OnboardingGateResponse,
+)
+async def enforce_onboarding_gates_endpoint(
+    current_user: Annotated[CurrentUser, Depends(get_current_user_from_token)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> OnboardingGateResponse:
+    """
+    Enforce onboarding gates - returns 403 if either gate is missing.
+
+    Use this endpoint before allowing dashboard access.
+    Returns 403 Forbidden with clear message if either connection is missing.
+
+    LinkedIn: "Required — enables LinkedIn outreach channel and protects your network from outreach"
+    CRM: "Required — protects your existing clients from outreach and tracks booked meetings"
+    """
+    from src.services.onboarding_gate_service import (
+        CRMConnectionRequired,
+        GATE_MESSAGES,
+        LinkedInConnectionRequired,
+        check_onboarding_gates as check_gates,
+    )
+
+    # Look up user's client from memberships
+    result = await db.execute(
+        select(Membership.client_id)
+        .where(
+            and_(
+                Membership.user_id == current_user.id,
+                Membership.deleted_at.is_(None),
+            )
+        )
+        .limit(1)
+    )
+    client_id = result.scalar_one_or_none()
+
+    if not client_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No client found for user. Please complete signup first.",
+        )
+
+    # Check gates
+    gate_status = await check_gates(db, client_id)
+
+    # Enforce - return 403 if either gate is missing
+    if not gate_status.linkedin_connected:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": "LinkedIn connection required to proceed",
+                "error_code": "LINKEDIN_CONNECTION_REQUIRED",
+                "gate": "linkedin",
+                "message": GATE_MESSAGES["linkedin"],
+            },
+        )
+
+    if not gate_status.crm_connected:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": "CRM connection required to proceed",
+                "error_code": "CRM_CONNECTION_REQUIRED",
+                "gate": "crm",
+                "message": GATE_MESSAGES["crm"],
+            },
+        )
+
+    # Both gates pass - return success
+    return OnboardingGateResponse(
+        client_id=gate_status.client_id,
+        linkedin_connected=gate_status.linkedin_connected,
+        linkedin_connected_at=gate_status.linkedin_connected_at,
+        linkedin_seat_count=gate_status.linkedin_seat_count,
+        crm_connected=gate_status.crm_connected,
+        crm_connected_at=gate_status.crm_connected_at,
+        crm_type=gate_status.crm_type,
+        can_proceed=gate_status.can_proceed,
+        missing_gates=[],
+        gate_messages=GATE_MESSAGES,
+    )
 
 
 @router.post(

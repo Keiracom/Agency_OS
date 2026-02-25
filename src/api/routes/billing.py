@@ -116,9 +116,7 @@ async def create_checkout_session(
     Cancel URL: / (landing page)
     """
     # Check if spots are still available
-    spots_result = await db.execute(
-        text("SELECT spots_taken FROM founding_spots WHERE id = 1")
-    )
+    spots_result = await db.execute(text("SELECT spots_taken FROM founding_spots WHERE id = 1"))
     spots_row = spots_result.fetchone()
     spots_taken = spots_row[0] if spots_row else 0
 
@@ -129,9 +127,7 @@ async def create_checkout_session(
         )
 
     # Check if client already paid deposit
-    client_result = await db.execute(
-        select(Client).where(Client.id == request.agency_id)
-    )
+    client_result = await db.execute(select(Client).where(Client.id == request.agency_id))
     client = client_result.scalar_one_or_none()
 
     if client and client.deposit_paid:
@@ -188,9 +184,7 @@ async def create_checkout_session(
             client.stripe_customer_id = customer.id
             await db.commit()
 
-        logger.info(
-            f"Created Checkout session {session.id} for agency {request.agency_id}"
-        )
+        logger.info(f"Created Checkout session {session.id} for agency {request.agency_id}")
 
         return CheckoutSessionResponse(
             checkout_url=session.url,
@@ -237,9 +231,8 @@ async def stripe_webhook(
     else:
         # Dev mode: parse without signature verification
         import json
-        event = stripe.Event.construct_from(
-            json.loads(payload), stripe.api_key
-        )
+
+        event = stripe.Event.construct_from(json.loads(payload), stripe.api_key)
 
     event_type = event.type
     logger.info(f"Received Stripe webhook: {event_type}")
@@ -250,15 +243,11 @@ async def stripe_webhook(
 
     elif event_type == "customer.subscription.created":
         subscription = event.data.object
-        logger.info(
-            f"Subscription created: {subscription.id} for customer {subscription.customer}"
-        )
+        logger.info(f"Subscription created: {subscription.id} for customer {subscription.customer}")
 
     elif event_type == "customer.subscription.updated":
         subscription = event.data.object
-        logger.info(
-            f"Subscription updated: {subscription.id} status={subscription.status}"
-        )
+        logger.info(f"Subscription updated: {subscription.id} status={subscription.status}")
 
     elif event_type == "customer.subscription.deleted":
         subscription = event.data.object
@@ -287,9 +276,7 @@ async def _handle_checkout_completed(
         return
 
     # Update client deposit_paid status
-    result = await db.execute(
-        select(Client).where(Client.id == UUID(agency_id))
-    )
+    result = await db.execute(select(Client).where(Client.id == UUID(agency_id)))
     client = result.scalar_one_or_none()
 
     if not client:
@@ -390,9 +377,7 @@ async def activate_subscription(
     for the first time.
     """
     # Get client
-    result = await db.execute(
-        select(Client).where(Client.id == request.client_id)
-    )
+    result = await db.execute(select(Client).where(Client.id == request.client_id))
     client = result.scalar_one_or_none()
 
     if not client:
@@ -467,9 +452,7 @@ async def activate_subscription(
         await db.commit()
         await db.refresh(client)
 
-        logger.info(
-            f"Subscription {subscription.id} activated for client {client.id}"
-        )
+        logger.info(f"Subscription {subscription.id} activated for client {client.id}")
 
         return ActivateSubscriptionResponse(
             success=True,
@@ -518,7 +501,9 @@ async def get_founding_spots(
 
     # Fallback: count directly from clients table
     result = await db.execute(
-        select(func.count()).select_from(Client).where(
+        select(func.count())
+        .select_from(Client)
+        .where(
             Client.deposit_paid == True,  # noqa: E712
             Client.deleted_at.is_(None),
         )
@@ -547,9 +532,7 @@ async def activate_subscription_on_approval(
     Returns True if subscription was activated, False if already active or error.
     """
     try:
-        result = await db.execute(
-            select(Client).where(Client.id == client_id)
-        )
+        result = await db.execute(select(Client).where(Client.id == client_id))
         client = result.scalar_one_or_none()
 
         if not client:
@@ -562,16 +545,12 @@ async def activate_subscription_on_approval(
 
         # No deposit paid
         if not client.deposit_paid:
-            logger.warning(
-                f"Client {client_id} campaign approved but deposit not paid"
-            )
+            logger.warning(f"Client {client_id} campaign approved but deposit not paid")
             return False
 
         # No Stripe customer
         if not client.stripe_customer_id:
-            logger.warning(
-                f"Client {client_id} has no Stripe customer ID"
-            )
+            logger.warning(f"Client {client_id} has no Stripe customer ID")
             return False
 
         # Use the activate endpoint logic

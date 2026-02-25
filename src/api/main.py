@@ -26,6 +26,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.pydantic_ai import PydanticAIIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
 from sqlalchemy import text
@@ -60,6 +61,9 @@ if settings.sentry_dsn:
             StarletteIntegration(transaction_style="endpoint"),
             SqlalchemyIntegration(),
         ],
+        # Disable pydantic_ai integration - version mismatch causes startup crash
+        # See: AttributeError: type object 'ToolManager' has no attribute '_call_tool'
+        disabled_integrations=[PydanticAIIntegration],
         # Don't send PII by default
         send_default_pii=False,
         # Attach request data for debugging

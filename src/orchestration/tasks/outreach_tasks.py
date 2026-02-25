@@ -32,14 +32,16 @@ from prefect import task
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.agents.sdk_agents import should_use_sdk_voice_kb
 from src.engines.content import ContentEngine
 from src.engines.email import EmailEngine
 from src.engines.linkedin import LinkedInEngine
 from src.engines.mail import MailEngine
 from src.engines.sms import SMSEngine
 from src.engines.timing import get_timing_engine
-from src.engines.voice import VoiceEngine
+
+# DEPRECATED: Vapi voice engine removed 2026-02-25. Voice stack: ElevenAgents + Twilio AU
+# Voice tasks in this file are no longer used. See src/orchestration/flows/voice_flow.py
+# from src.engines.voice import VoiceEngine
 from src.exceptions import ResourceRateLimitError, ValidationError
 from src.integrations.redis import rate_limiter
 from src.integrations.supabase import get_db_session
@@ -53,7 +55,6 @@ from src.models.base import (
 from src.models.campaign import Campaign
 from src.models.client import Client
 from src.models.lead import Lead
-from src.services.content_qa_service import validate_voice_script
 
 logger = logging.getLogger(__name__)
 
@@ -453,10 +454,9 @@ async def send_linkedin_task(
 
 @task(
     name="send_voice",
-    description="Initiate voice call via Voice engine",
-    retries=2,
-    retry_delay_seconds=[120, 600],
-    tags=["outreach", "voice"],
+    description="DEPRECATED: Voice via Vapi. Use voice_flow.py with ElevenAgents.",
+    retries=0,
+    tags=["outreach", "voice", "deprecated"],
 )
 async def send_voice_task(
     lead_id: UUID,
@@ -464,138 +464,19 @@ async def send_voice_task(
     assistant_id: str,
 ) -> dict[str, Any]:
     """
-    Initiate AI voice call to a lead with JIT validation.
+    DEPRECATED: Vapi voice task removed 2026-02-25.
 
-    Hot leads (ALS 85+) get SDK-powered voice knowledge base generated first,
-    which enhances the script with personalized opening hooks, objection handlers,
-    and contextual information.
+    Voice stack migrated to ElevenAgents + Twilio AU.
+    Use src/orchestration/flows/voice_flow.py instead.
 
-    Rule 13: JIT validation before sending.
-    Requires ALS >= 70 (Warm or Hot).
-
-    Args:
-        lead_id: Lead UUID
-        script: Voice script
-        assistant_id: Synthflow assistant ID
-
-    Returns:
-        Send result with call_id
-
-    Raises:
-        ValidationError: If JIT validation fails or ALS too low
+    This task exists only for import compatibility.
     """
-    async with get_db_session() as db:
-        # === JIT VALIDATION (Rule 13) ===
-        lead, client, campaign = await _validate_outreach_jit(
-            db=db,
-            lead_id=lead_id,
-            channel=ChannelType.VOICE,
-        )
+    raise NotImplementedError(
+        "send_voice_task is DEPRECATED. Voice stack migrated to ElevenAgents + Twilio AU. "
+        "Use src/orchestration/flows/voice_flow.py instead."
+    )
 
-        # Voice requires ALS >= 70
-        if not lead.als_score or lead.als_score < 70:
-            raise ValidationError(
-                message=f"Voice requires ALS >= 70. Lead {lead_id} has ALS {lead.als_score}",
-                field="als_score",
-            )
-
-        voice_engine = VoiceEngine()
-        enhanced_script = script
-        sdk_used = False
-        voice_kb = None
-
-        # === SDK VOICE KB FOR HOT LEADS (ALS 85+) ===
-        lead_data = {
-            "als_score": lead.als_score,
-            "first_name": lead.first_name,
-            "last_name": lead.last_name,
-            "title": lead.title,
-            "company_name": lead.company,
-            "organization_industry": lead.organization_industry,
-            "organization_employee_count": lead.organization_employee_count,
-        }
-
-        if should_use_sdk_voice_kb(lead_data):
-            logger.info(f"Generating SDK voice KB for Hot lead {lead_id} (ALS: {lead.als_score})")
-
-            # Generate voice knowledge base
-            kb_result = await voice_engine.generate_voice_kb(
-                db=db,
-                lead_id=lead_id,
-                campaign_id=campaign.id,
-            )
-
-            if kb_result.success and kb_result.data:
-                voice_kb = kb_result.data
-                sdk_used = True
-
-                # Enhance script with KB data
-                if voice_kb.get("opening_hooks"):
-                    # Prepend best opening hook to script
-                    best_hook = voice_kb["opening_hooks"][0]
-                    enhanced_script = f"[OPENING HOOK: {best_hook}]\n\n{script}"
-
-                if voice_kb.get("company_context"):
-                    enhanced_script = (
-                        f"[CONTEXT: {voice_kb['company_context']}]\n\n{enhanced_script}"
-                    )
-
-                if voice_kb.get("objection_responses"):
-                    # Append objection handlers
-                    objections = "\n".join(
-                        [f"- {k}: {v}" for k, v in voice_kb["objection_responses"].items()]
-                    )
-                    enhanced_script = f"{enhanced_script}\n\n[OBJECTION HANDLERS]\n{objections}"
-
-                logger.info(f"SDK voice KB generated for lead {lead_id}, script enhanced")
-            else:
-                logger.warning(f"SDK voice KB failed for {lead_id}, using standard script")
-
-        # === PHASE 22: CONTENT QA VALIDATION ===
-        qa_result = validate_voice_script(
-            script=enhanced_script,
-            lead_first_name=lead.first_name,
-        )
-
-        if not qa_result.passed:
-            logger.warning(f"Voice QA failed for lead {lead_id}: {qa_result.error_messages}")
-            raise ValidationError(
-                message=f"Content QA failed: {'; '.join(qa_result.error_messages)}",
-                field="voice_script",
-            )
-
-        # === INITIATE VOICE CALL ===
-        logger.info(
-            f"Initiating voice call to lead {lead_id} (campaign {campaign.id}, SDK: {sdk_used})"
-        )
-
-        send_result = await voice_engine.send(
-            db=db,
-            lead_id=lead_id,
-            campaign_id=campaign.id,
-            content=enhanced_script,
-            assistant_id=assistant_id,
-        )
-
-        if not send_result.success:
-            raise ValidationError(
-                message=f"Voice call failed: {send_result.error}",
-                field="voice_send",
-            )
-
-        logger.info(
-            f"Successfully initiated voice call to lead {lead_id}. "
-            f"Call ID: {send_result.data.get('call_id')}, SDK: {sdk_used}"
-        )
-
-        return {
-            "success": True,
-            "lead_id": str(lead_id),
-            "channel": "voice",
-            "call_id": send_result.data.get("call_id"),
-            "sdk_used": sdk_used,
-            "voice_kb_generated": voice_kb is not None,
-        }
+    # Original Vapi implementation archived to: src/engines/deprecated/voice_vapi.py
 
 
 @task(

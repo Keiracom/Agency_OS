@@ -958,9 +958,9 @@ class SiegeWaterfall:
         CEO Directive #014: Log Tier 2 GMB match attempt to Supabase for monitoring.
         """
         try:
-            from src.integrations.supabase import get_supabase_client
+            from src.integrations.supabase import get_async_supabase_client
 
-            supabase = get_supabase_client()
+            supabase = await get_async_supabase_client()
             log_entry = {
                 "abn": lead.get("abn"),
                 "lead_id": lead.get("lead_id") or lead.get("id"),
@@ -1617,9 +1617,9 @@ class SiegeWaterfall:
         """
         try:
             # Lazy import to avoid circular dependencies
-            from src.integrations.supabase import get_supabase_client
+            from src.integrations.supabase import get_async_supabase_client
 
-            supabase = get_supabase_client()
+            supabase = await get_async_supabase_client()
 
             log_entry = {
                 "operation_type": "enrichment",

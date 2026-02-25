@@ -14,6 +14,7 @@ from src.enrichment.query_translator import CampaignConfig, QueryTranslator
 from src.enrichment.waterfall_v2 import LeadRecord, WaterfallV2
 from src.integrations.abn_client import ABNClient
 from src.integrations.bright_data_client import BrightDataClient
+from src.integrations.supabase import get_async_supabase_client
 
 logger = structlog.get_logger()
 
@@ -129,8 +130,9 @@ class CampaignDiscoveryTrigger:
     async def _fetch_campaign(self, campaign_id: str) -> dict | None:
         """Fetch campaign from database."""
         try:
+            supabase = await get_async_supabase_client()
             result = (
-                await self.supabase.table("campaigns")
+                await supabase.table("campaigns")
                 .select("*")
                 .eq("id", campaign_id)
                 .single()
@@ -229,7 +231,8 @@ class CampaignDiscoveryTrigger:
                 )
 
             # Batch insert
-            await self.supabase.table("discovery_results").insert(records).execute()
+            supabase = await get_async_supabase_client()
+            await supabase.table("discovery_results").insert(records).execute()
 
         except Exception as e:
             logger.error("store_discovery_results_failed", error=str(e))
@@ -237,6 +240,7 @@ class CampaignDiscoveryTrigger:
     async def _create_leads(self, campaign_id: str, leads: list) -> int:
         """Create leads in leads table."""
         created = 0
+        supabase = await get_async_supabase_client()
 
         for lead in leads:
             try:
@@ -253,7 +257,7 @@ class CampaignDiscoveryTrigger:
                     "cost_basis": lead.cost_aud,
                 }
 
-                await self.supabase.table("leads").insert(lead_data).execute()
+                await supabase.table("leads").insert(lead_data).execute()
                 created += 1
 
             except Exception as e:
@@ -264,8 +268,9 @@ class CampaignDiscoveryTrigger:
     async def _update_campaign_stats(self, campaign_id: str, leads_created: int):
         """Update campaign with lead count."""
         try:
+            supabase = await get_async_supabase_client()
             await (
-                self.supabase.table("campaigns")
+                supabase.table("campaigns")
                 .update({"lead_count": leads_created})
                 .eq("id", campaign_id)
                 .execute()

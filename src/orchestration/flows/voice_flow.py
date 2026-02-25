@@ -3,6 +3,13 @@ FILE: src/orchestration/flows/voice_flow.py
 PURPOSE: Voice outreach flow with compliance validation and ElevenLabs integration
 PHASE: 7 (Voice Outreach)
 TASK: FLOW-029
+
+VOICE STACK: ElevenAgents + Twilio AU
+  - Vapi deprecated and removed (2026-02-25)
+  - Active client: src/integrations/elevenagets_client.py
+  - Twilio AU number: +61240126220 (voice-only)
+  - Morgan assistant in Vapi dashboard is STALE - do not use
+
 DEPENDENCIES:
   - src/integrations/supabase.py
   - src/integrations/elevenagets_client.py

@@ -134,15 +134,31 @@ class BrightDataClient:
         return await self._serp_request(url)
 
     async def _serp_request(self, url: str, max_retries: int = 2) -> Any:
-        """Execute SERP API request via proxy with retry and alerting."""
-        proxy_url = f"http://brd-customer-hl_4af12f98-zone-{self.serp_zone}:{self.api_key}@brd.superproxy.io:33335"
+        """Execute SERP API request via Direct API with Bearer token auth."""
+        # Use Direct API endpoint with Bearer token (not proxy format)
+        # serp_api1 zone uses: Authorization: Bearer {api_key}
+        api_endpoint = "https://api.brightdata.com/request"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
 
         client = await self._get_client()
         last_error = None
 
         for attempt in range(max_retries + 1):
             try:
-                response = await client.get(url, proxy=proxy_url, timeout=30.0)
+                # Direct API request with URL in body
+                response = await client.post(
+                    api_endpoint,
+                    headers=headers,
+                    json={
+                        "zone": self.serp_zone,
+                        "url": url,
+                        "format": "json",
+                    },
+                    timeout=30.0,
+                )
                 response.raise_for_status()
                 self.costs.serp_requests += 1
 

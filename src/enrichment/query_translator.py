@@ -212,7 +212,7 @@ class QueryTranslator:
                     break
 
                 try:
-                    maps_results = self.bd.search_google_maps(
+                    maps_results = await self.bd.search_google_maps(
                         query=keyword, location=f"{suburb} {config.state}"
                     )
 

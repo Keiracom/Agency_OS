@@ -1,4 +1,4 @@
--- Migration: 067_gohighlevel_crm.sql
+-- Migration: 068_gohighlevel_crm.sql
 -- Purpose: Add GoHighLevel CRM support columns to client_crm_configs
 -- Phase: 24E - CRM Push
 -- Task: CRM-010 (GoHighLevel Adapter)

@@ -40,6 +40,7 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
+import { useUpcomingMeetings, type Meeting as APIMeeting } from "@/hooks/use-meetings";
 
 // ============================================
 // Types
@@ -256,34 +257,44 @@ const mockVoiceCalls: VoiceCall[] = [
   },
 ];
 
-const mockMeetings: Meeting[] = [
-  {
-    id: "1",
-    title: "Discovery Call",
-    time: "Today 2:00 PM",
-    contact: "James Cooper",
-    company: "Creative Co",
-    dealValue: "$8K",
-    status: "today",
-  },
-  {
-    id: "2",
-    title: "Proposal Review",
-    time: "Monday 10:00 AM",
-    contact: "Emma Wilson",
-    company: "Brand Forward",
-    dealValue: "$15K",
-    status: "upcoming",
-  },
-  {
-    id: "3",
-    title: "Intro Call",
-    time: "Wednesday 3:30 PM",
-    contact: "Tom Brown",
-    company: "Scale Agency",
-    status: "upcoming",
-  },
-];
+// Transform API meetings to WeekAhead display format
+function transformMeetingsForWeekAhead(apiMeetings: APIMeeting[]): Meeting[] {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+
+  return apiMeetings.map((m) => {
+    const scheduledDate = m.scheduled_at ? new Date(m.scheduled_at) : null;
+    const isToday = scheduledDate && scheduledDate >= todayStart && scheduledDate < todayEnd;
+    
+    // Format time string
+    let timeStr = "TBD";
+    if (scheduledDate) {
+      const dayName = isToday ? "Today" : scheduledDate.toLocaleDateString("en-US", { weekday: "long" });
+      const timeOfDay = scheduledDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      timeStr = `${dayName} ${timeOfDay}`;
+    }
+
+    // Map meeting_type to display title
+    const typeLabels: Record<string, string> = {
+      discovery: "Discovery Call",
+      demo: "Demo",
+      follow_up: "Follow-up",
+      close: "Closing Call",
+      onboarding: "Onboarding",
+      other: "Meeting",
+    };
+
+    return {
+      id: m.id,
+      title: typeLabels[m.meeting_type] || "Meeting",
+      time: timeStr,
+      contact: m.lead_name || "Unknown",
+      company: m.lead_company || "Unknown",
+      status: isToday ? "today" : "upcoming",
+    } as Meeting;
+  });
+}
 
 const mockWhoConverts: Insight[] = [
   { label: "CEO/Founder", value: "2.3x ↑" },
@@ -1180,11 +1191,20 @@ export interface DashboardMainProps {
 }
 
 export function DashboardMain({ className }: DashboardMainProps) {
+  // Fetch real meetings data
+  const { data: meetingsData, isLoading: meetingsLoading } = useUpcomingMeetings(5);
+  
+  // Transform API meetings to WeekAhead display format
+  const weekAheadMeetings = useMemo(() => {
+    if (!meetingsData?.items) return [];
+    return transformMeetingsForWeekAhead(meetingsData.items);
+  }, [meetingsData?.items]);
+
   return (
     <div className={cn("space-y-6", className)}>
       {/* Hero Section - Metrics + Channel Status */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <HeroMeetingsCard booked={12} target={10} changePercent={25} />
+        <HeroMeetingsCard booked={meetingsData?.total ?? 0} target={10} changePercent={25} />
         <div className="xl:col-span-2">
           <ChannelStatusPanel stats={mockChannelStats} channelStatus={mockChannelStatus} />
         </div>
@@ -1214,7 +1234,7 @@ export function DashboardMain({ className }: DashboardMainProps) {
           channelMix={mockChannelMix}
           discovery="Prospects are most responsive on Tuesdays. Pipeline momentum is strongest mid-week."
         />
-        <WeekAheadCard meetings={mockMeetings} />
+        <WeekAheadCard meetings={weekAheadMeetings} />
       </div>
     </div>
   );

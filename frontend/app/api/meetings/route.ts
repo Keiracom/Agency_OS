@@ -1,34 +1,27 @@
 /**
  * FILE: app/api/meetings/route.ts
  * PURPOSE: Meeting list for dashboard - upcoming and past meetings
- * PHASE: 14 (Frontend-Backend Connection)
- * STATUS: Real Supabase data
+ * TODO: Replace mock data with Supabase + calendar integration (Cal.com/Calendly)
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 
-// Types matching database schema
+// Types
 export interface Meeting {
   id: string;
-  client_id: string;
-  lead_id: string;
-  campaign_id: string | null;
-  booked_at: string;
-  scheduled_at: string;
-  meeting_type: string;
-  confirmed: boolean;
-  showed_up: boolean | null;
-  meeting_outcome: string | null;
-  converting_channel: string | null;
-  touches_before_booking: number | null;
-  days_to_booking: number | null;
-  duration_minutes: number;
-  meeting_link: string | null;
-  // Joined lead data
-  lead_name?: string;
-  lead_company?: string;
-  lead_email?: string;
+  leadId: string;
+  leadName: string;
+  companyName: string;
+  leadTitle: string;
+  leadEmail: string;
+  type: "discovery" | "demo" | "follow_up" | "proposal";
+  status: "scheduled" | "completed" | "cancelled" | "no_show";
+  scheduledAt: string;
+  duration: number; // minutes
+  source: "email" | "linkedin" | "voice" | "sms";
+  notes?: string;
+  meetingUrl?: string;
+  calendarEventId?: string;
 }
 
 export interface MeetingsResponse {
@@ -38,141 +31,102 @@ export interface MeetingsResponse {
   upcoming: number;
 }
 
+// Mock data
+const mockMeetings: Meeting[] = [
+  {
+    id: "mtg_001",
+    leadId: "lead_101",
+    leadName: "Marcus Thompson",
+    companyName: "GrowthLab Agency",
+    leadTitle: "CEO",
+    leadEmail: "marcus@growthlab.com.au",
+    type: "discovery",
+    status: "scheduled",
+    scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+    duration: 30,
+    source: "email",
+    meetingUrl: "https://meet.google.com/abc-defg-hij",
+    notes: "Interested in full-service outbound",
+  },
+  {
+    id: "mtg_002",
+    leadId: "lead_102",
+    leadName: "Jessica Lee",
+    companyName: "Spark Creative",
+    leadTitle: "Marketing Director",
+    leadEmail: "jessica@sparkcreative.com.au",
+    type: "demo",
+    status: "scheduled",
+    scheduledAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+    duration: 45,
+    source: "linkedin",
+    meetingUrl: "https://meet.google.com/xyz-uvwx-abc",
+  },
+  {
+    id: "mtg_003",
+    leadId: "lead_103",
+    leadName: "Tom Richards",
+    companyName: "Digital First Agency",
+    leadTitle: "Founder",
+    leadEmail: "tom@digitalfirst.com.au",
+    type: "discovery",
+    status: "completed",
+    scheduledAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    duration: 30,
+    source: "voice",
+    notes: "Very interested - sending proposal",
+  },
+  {
+    id: "mtg_004",
+    leadId: "lead_104",
+    leadName: "Anna Kowalski",
+    companyName: "Bright Ideas Marketing",
+    leadTitle: "CEO",
+    leadEmail: "anna@brightideas.com.au",
+    type: "proposal",
+    status: "scheduled",
+    scheduledAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+    duration: 60,
+    source: "email",
+  },
+];
+
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    // Get user's client_id from memberships
-    const { data: membership, error: membershipError } = await supabase
-      .from("memberships")
-      .select("client_id")
-      .eq("user_id", user.id)
-      .not("accepted_at", "is", null)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .single();
-
-    if (membershipError || !membership) {
-      return NextResponse.json(
-        { success: false, error: "No client membership found" },
-        { status: 403 }
-      );
-    }
-
-    const clientId = membership.client_id;
-
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status"); // scheduled, completed, cancelled
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const limit = parseInt(searchParams.get("limit") || "20");
     const upcoming = searchParams.get("upcoming") === "true";
 
-    // Build query for meetings with lead data
-    let query = supabase
-      .from("meetings")
-      .select(`
-        id,
-        client_id,
-        lead_id,
-        campaign_id,
-        booked_at,
-        scheduled_at,
-        meeting_type,
-        confirmed,
-        showed_up,
-        meeting_outcome,
-        converting_channel,
-        touches_before_booking,
-        days_to_booking,
-        duration_minutes,
-        meeting_link,
-        leads (
-          name,
-          company_name,
-          email
-        )
-      `)
-      .eq("client_id", clientId)
-      .order("scheduled_at", { ascending: false })
-      .limit(limit);
+    // TODO: Supabase integration
+    // const supabase = createClient(...)
+    // let query = supabase.from('meetings').select('*, leads(name, company_name, title, email)')
+    // if (status) query = query.eq('status', status)
+    // if (upcoming) query = query.gte('scheduled_at', new Date().toISOString()).eq('status', 'scheduled')
+    // const { data, error } = await query.order('scheduled_at', { ascending: true }).limit(limit)
 
-    // Filter by upcoming (scheduled in future)
+    let filtered = [...mockMeetings];
+    
+    if (status) {
+      filtered = filtered.filter((m) => m.status === status);
+    }
+    
     if (upcoming) {
-      query = query
-        .gte("scheduled_at", new Date().toISOString())
-        .is("meeting_outcome", null);
-    }
-
-    // Filter by meeting outcome status
-    if (status === "scheduled") {
-      query = query.is("meeting_outcome", null);
-    } else if (status === "completed") {
-      query = query.not("meeting_outcome", "is", null);
-    } else if (status === "cancelled") {
-      query = query.eq("meeting_outcome", "cancelled");
-    }
-
-    const { data: meetings, error: meetingsError } = await query;
-
-    if (meetingsError) {
-      console.error("Meetings query error:", meetingsError);
-      return NextResponse.json(
-        { success: false, error: "Failed to fetch meetings" },
-        { status: 500 }
+      const now = new Date();
+      filtered = filtered.filter(
+        (m) => m.status === "scheduled" && new Date(m.scheduledAt) > now
       );
     }
 
-    // Transform data to flatten lead info
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const transformedMeetings = (meetings || []).map((m: any) => {
-      // leads can be object or array depending on query
-      const leadData = Array.isArray(m.leads) ? m.leads[0] : m.leads;
-      const lead = leadData as { name: string; company_name: string; email: string } | null;
-      return {
-        id: m.id,
-        client_id: m.client_id,
-        lead_id: m.lead_id,
-        campaign_id: m.campaign_id,
-        booked_at: m.booked_at,
-        scheduled_at: m.scheduled_at,
-        meeting_type: m.meeting_type,
-        confirmed: m.confirmed,
-        showed_up: m.showed_up,
-        meeting_outcome: m.meeting_outcome,
-        converting_channel: m.converting_channel,
-        touches_before_booking: m.touches_before_booking,
-        days_to_booking: m.days_to_booking,
-        duration_minutes: m.duration_minutes,
-        meeting_link: m.meeting_link,
-        // Flattened lead data
-        lead_name: lead?.name || "Unknown Lead",
-        lead_company: lead?.company_name || null,
-        lead_email: lead?.email || null,
-      };
-    });
-
-    // Count upcoming meetings for the header
-    const { count: upcomingCount } = await supabase
-      .from("meetings")
-      .select("id", { count: "exact", head: true })
-      .eq("client_id", clientId)
-      .gte("scheduled_at", new Date().toISOString())
-      .is("meeting_outcome", null);
+    const upcomingCount = mockMeetings.filter(
+      (m) => m.status === "scheduled" && new Date(m.scheduledAt) > new Date()
+    ).length;
 
     return NextResponse.json({
       success: true,
-      data: transformedMeetings,
-      total: transformedMeetings.length,
-      upcoming: upcomingCount || 0,
+      data: filtered.slice(0, limit),
+      total: filtered.length,
+      upcoming: upcomingCount,
     } as MeetingsResponse);
   } catch (error) {
     console.error("Meetings error:", error);

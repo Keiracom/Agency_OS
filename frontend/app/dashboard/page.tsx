@@ -27,7 +27,6 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import {
-  mockMeetingsHero,
   mockChannelOrchestration,
   mockStatsGrid,
   mockHotProspects,
@@ -38,6 +37,7 @@ import {
   mockWeekAhead,
   mockWarmReplies,
 } from "@/data/mock-dashboard";
+import { useMeetings } from "@/hooks/use-meetings";
 import Link from "next/link";
 
 // Channel icon component
@@ -53,6 +53,11 @@ const ChannelIcon = ({ type }: { type: string }) => {
 };
 
 export default function DashboardPage() {
+  // Fetch real meetings data
+  const { data: meetingsData } = useMeetings({ limit: 50 });
+  const meetingsBooked = meetingsData?.total ?? 0;
+  const meetingsTarget = 10; // TODO: Make configurable per client
+
   return (
     <AppShell>
       {/* Page background with ambient radials */}
@@ -76,19 +81,23 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-baseline gap-0">
                 <span className="text-6xl font-extrabold text-text-primary font-mono tracking-tight">
-                  {mockMeetingsHero.current}
+                  {meetingsBooked}
                 </span>
                 <span className="text-3xl font-extrabold text-text-muted font-mono">
-                  /{mockMeetingsHero.target}
+                  /{meetingsTarget}
                 </span>
               </div>
               <div className="text-base text-text-secondary mt-3">
-                <span className="text-amber font-semibold">Target exceeded</span> — 3 days early
+                {meetingsBooked >= meetingsTarget ? (
+                  <span className="text-amber font-semibold">Target exceeded</span>
+                ) : (
+                  <span className="text-text-muted">{meetingsTarget - meetingsBooked} to go</span>
+                )}
               </div>
               <div className="flex items-center gap-2 mt-4 pt-4 border-t border-amber/20 text-sm">
                 <ArrowUpRight className="w-4 h-4 text-amber" strokeWidth={1.5} />
-                <span className="text-amber font-mono">{mockMeetingsHero.trendPercent}%</span>
-                <span className="text-text-secondary">{mockMeetingsHero.trendLabel}</span>
+                <span className="text-amber font-mono">{Math.round((meetingsBooked / meetingsTarget) * 100)}%</span>
+                <span className="text-text-secondary">of target</span>
               </div>
             </HeroMetricCard>
 

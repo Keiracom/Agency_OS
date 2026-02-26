@@ -8,6 +8,7 @@ Note: All methods are async - use with await.
 """
 
 import asyncio
+import os
 import urllib.parse
 from dataclasses import dataclass
 from typing import Any
@@ -332,3 +333,30 @@ class BrightDataClient:
             "scraper_cost_aud": self.costs.scraper_records * COSTS_AUD["scraper_record"],
             "total_aud": self.costs.total_aud,
         }
+
+
+# ============================================
+# FACTORY FUNCTION
+# ============================================
+
+# Module-level singleton
+_bright_data_client: BrightDataClient | None = None
+
+
+def get_bright_data_client() -> BrightDataClient:
+    """
+    Get or create BrightDataClient singleton instance.
+
+    Returns:
+        BrightDataClient instance
+
+    Raises:
+        ValueError: If BRIGHTDATA_API_KEY not configured
+    """
+    global _bright_data_client
+    if _bright_data_client is None:
+        api_key = os.getenv("BRIGHTDATA_API_KEY")
+        if not api_key:
+            raise ValueError("BRIGHTDATA_API_KEY not set")
+        _bright_data_client = BrightDataClient(api_key=api_key)
+    return _bright_data_client

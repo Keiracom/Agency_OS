@@ -40,6 +40,12 @@ class TestTokenResponse(BaseModel):
     expires_in: int = 3600
 
 
+class SeedMockDataRequest(BaseModel):
+    """Request for mock data seeding."""
+
+    campaign_id: UUID
+
+
 class SeedMockDataResponse(BaseModel):
     """Response for mock data seeding."""
 
@@ -122,12 +128,14 @@ async def generate_test_auth_token(
 )
 async def seed_mock_data(
     client_id: UUID,
+    request: SeedMockDataRequest,
     _test_mode: bool = Depends(require_test_mode),
 ) -> SeedMockDataResponse:
     """
     Seed mock CRM data for E2E testing.
 
     Seeds:
+    - 6 test leads (assigned to the provided campaign)
     - 8 agency_exclusion_list rows (5 crm_client, 2 crm_pipeline, 1 crm_lost_deal)
     - 6 deals (2 closed_won, 2 closed_lost, 2 open)
     - 3 meetings (1 confirmed+showed, 1 no-show, 1 scheduled)
@@ -137,6 +145,7 @@ async def seed_mock_data(
 
     Args:
         client_id: Client UUID to seed data for
+        request: Request body containing campaign_id
 
     Returns:
         SeedMockDataResponse with counts of seeded records
@@ -145,6 +154,7 @@ async def seed_mock_data(
         result = await mock_crm_service.seed_mock_data(
             db=db,
             client_id=client_id,
+            campaign_id=request.campaign_id,
         )
 
         return SeedMockDataResponse(

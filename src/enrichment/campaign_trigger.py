@@ -240,10 +240,22 @@ class CampaignDiscoveryTrigger:
     async def _create_leads(self, campaign_id: str, leads: list) -> int:
         """Create leads in leads table."""
         created = 0
+        skipped = 0
         supabase = await get_async_supabase_service_client()
 
         for lead in leads:
             try:
+                # Gate: Skip leads without email (NOT NULL constraint)
+                # Unenriched leads without email have low value
+                if not lead.email:
+                    logger.info(
+                        "lead_skipped_no_email",
+                        business=lead.business_name,
+                        reason="email required but not discovered during enrichment"
+                    )
+                    skipped += 1
+                    continue
+
                 # Get campaign's client_id
                 campaign = await self._fetch_campaign(campaign_id)
                 client_id = campaign.get("client_id") if campaign else None
@@ -251,7 +263,11 @@ class CampaignDiscoveryTrigger:
                 lead_data = {
                     "campaign_id": campaign_id,
                     "client_id": client_id,
+                    "email": lead.email,
                     "company": lead.business_name,
+                    "phone": lead.phone,
+                    "website": lead.website,
+                    "linkedin_url": lead.linkedin_company_url,
                     "als_score": lead.als_score,
                     "als_components": lead.als_breakdown,
                     "cost_basis": lead.cost_aud,
@@ -262,6 +278,9 @@ class CampaignDiscoveryTrigger:
 
             except Exception as e:
                 logger.warning("create_lead_failed", error=str(e), business=lead.business_name)
+
+        if skipped > 0:
+            logger.info("leads_skipped_summary", skipped=skipped, reason="no_email")
 
         return created
 

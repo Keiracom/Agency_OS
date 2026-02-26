@@ -77,13 +77,13 @@ async def _ensure_test_user_exists(client_id: UUID) -> UUID:
                 # Silently skip if user already exists
                 logger.debug(f"Test user insert skipped (may already exist): {e}")
 
-            # Create membership
+            # Create membership (with accepted_at so it's immediately usable)
             try:
                 await db.execute(
                     text("""
-                        INSERT INTO memberships (user_id, client_id, role, created_at, updated_at)
-                        VALUES (:user_id, :client_id, 'admin', NOW(), NOW())
-                        ON CONFLICT (user_id, client_id) DO NOTHING
+                        INSERT INTO memberships (user_id, client_id, role, accepted_at, created_at, updated_at)
+                        VALUES (:user_id, :client_id, 'admin', NOW(), NOW(), NOW())
+                        ON CONFLICT (user_id, client_id) DO UPDATE SET accepted_at = NOW(), updated_at = NOW()
                     """),
                     {
                         "user_id": str(user_id),

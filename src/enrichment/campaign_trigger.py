@@ -14,7 +14,7 @@ from src.enrichment.query_translator import CampaignConfig, QueryTranslator
 from src.enrichment.waterfall_v2 import LeadRecord, WaterfallV2
 from src.integrations.abn_client import ABNClient
 from src.integrations.bright_data_client import BrightDataClient
-from src.integrations.supabase import get_async_supabase_client
+from src.integrations.supabase import get_async_supabase_service_client
 
 logger = structlog.get_logger()
 
@@ -130,7 +130,7 @@ class CampaignDiscoveryTrigger:
     async def _fetch_campaign(self, campaign_id: str) -> dict | None:
         """Fetch campaign from database."""
         try:
-            supabase = await get_async_supabase_client()
+            supabase = await get_async_supabase_service_client()
             result = (
                 await supabase.table("campaigns")
                 .select("*")
@@ -231,7 +231,7 @@ class CampaignDiscoveryTrigger:
                 )
 
             # Batch insert
-            supabase = await get_async_supabase_client()
+            supabase = await get_async_supabase_service_client()
             await supabase.table("discovery_results").insert(records).execute()
 
         except Exception as e:
@@ -240,7 +240,7 @@ class CampaignDiscoveryTrigger:
     async def _create_leads(self, campaign_id: str, leads: list) -> int:
         """Create leads in leads table."""
         created = 0
-        supabase = await get_async_supabase_client()
+        supabase = await get_async_supabase_service_client()
 
         for lead in leads:
             try:
@@ -268,7 +268,7 @@ class CampaignDiscoveryTrigger:
     async def _update_campaign_stats(self, campaign_id: str, leads_created: int):
         """Update campaign with lead count."""
         try:
-            supabase = await get_async_supabase_client()
+            supabase = await get_async_supabase_service_client()
             await (
                 supabase.table("campaigns")
                 .update({"lead_count": leads_created})

@@ -358,6 +358,19 @@ class Settings(BaseSettings):
         description="HubSpot OAuth scopes (comma-separated)",
     )
 
+    # GoHighLevel OAuth (required for GHL integration)
+    # Register app at: https://marketplace.gohighlevel.com/
+    ghl_client_id: str = Field(default="", description="GoHighLevel OAuth client ID")
+    ghl_client_secret: str = Field(default="", description="GoHighLevel OAuth client secret")
+    ghl_redirect_uri: str = Field(
+        default="http://localhost:8000/api/v1/crm/callback/gohighlevel",
+        description="GoHighLevel OAuth redirect URI",
+    )
+    ghl_scopes: str = Field(
+        default="contacts.readonly,contacts.write,opportunities.readonly,opportunities.write,calendars.readonly,users.readonly",
+        description="GoHighLevel OAuth scopes (space-separated)",
+    )
+
     # Pipedrive (API key auth - no OAuth needed)
     # Note: Pipedrive API key is stored per-client in client_crm_configs
 

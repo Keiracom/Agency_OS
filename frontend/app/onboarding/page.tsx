@@ -92,14 +92,14 @@ export default function OnboardingPage() {
     }
   };
 
-  // HubSpot OAuth - calls GET /api/v1/crm/auth/hubspot
+  // HubSpot OAuth - calls POST /api/v1/crm/connect/hubspot
   const handleHubspotConnect = useCallback(async () => {
     setError(null);
     setIsHubspotLoading(true);
     
     try {
-      const response = await fetch(`${API_BASE}/api/v1/crm/auth/hubspot`, {
-        method: 'GET',
+      const response = await fetch(`${API_BASE}/api/v1/crm/connect/hubspot`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -108,13 +108,16 @@ export default function OnboardingPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HubSpot auth failed (${response.status})`);
+        throw new Error(errorData.detail || errorData.message || `HubSpot auth failed (${response.status})`);
       }
 
       const data = await response.json();
       
-      if (data.redirect_url || data.auth_url || data.url) {
-        // Open OAuth in new window or redirect
+      if (data.oauth_url) {
+        // Redirect to OAuth URL
+        window.location.href = data.oauth_url;
+      } else if (data.redirect_url || data.auth_url || data.url) {
+        // Fallback for other URL fields
         const authUrl = data.redirect_url || data.auth_url || data.url;
         window.location.href = authUrl;
       } else {

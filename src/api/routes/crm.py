@@ -376,6 +376,95 @@ async def hubspot_oauth_callback(
 
 
 # ============================================
+# GoHighLevel OAuth Flow
+# ============================================
+
+
+@router.post("/connect/gohighlevel", response_model=HubSpotOAuthResponse)
+async def start_ghl_oauth(
+    user: CurrentUser = Depends(get_current_user_from_token),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Start GoHighLevel OAuth flow. Returns URL to redirect user."""
+    client_id = await get_user_client_id(user, db)
+
+    # Generate state for CSRF protection
+    state = secrets.token_urlsafe(32)
+    _oauth_states[state] = {
+        "client_id": str(client_id),
+        "user_id": str(user.id),
+        "crm_type": "gohighlevel",
+        "created_at": datetime.utcnow().isoformat(),
+    }
+
+    # Build OAuth URL
+    crm_service = CRMPushService(db)
+    oauth_url = crm_service.get_ghl_oauth_url(state)
+    await crm_service.close()
+
+    return HubSpotOAuthResponse(oauth_url=oauth_url, state=state)
+
+
+@router.get("/callback/gohighlevel")
+async def ghl_oauth_callback(
+    code: str = Query(..., description="Authorization code from GoHighLevel"),
+    state: str = Query(..., description="State parameter for CSRF"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    GoHighLevel OAuth callback. Exchanges code for tokens and saves config.
+    Redirects to frontend settings page.
+    """
+    # Verify state
+    state_data = _oauth_states.pop(state, None)
+    if not state_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OAuth state",
+        )
+
+    client_id = UUID(state_data["client_id"])
+
+    # Exchange code for tokens
+    crm_service = CRMPushService(db)
+    try:
+        tokens = await crm_service.exchange_ghl_code(code)
+
+        # GHL returns locationId and companyId in token response
+        location_id = tokens.get("locationId")
+        company_id = tokens.get("companyId")
+
+        # Calculate token expiration (GHL tokens expire in ~24 hours)
+        expires_in = tokens.get("expires_in", 86400)
+        from datetime import timedelta
+        expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+
+        # Save config
+        config = CRMConfig(
+            id=uuid4(),
+            client_id=client_id,
+            crm_type="gohighlevel",
+            oauth_access_token=tokens["access_token"],
+            oauth_refresh_token=tokens.get("refresh_token"),
+            oauth_expires_at=expires_at,
+            ghl_location_id=location_id,
+            ghl_company_id=company_id,
+            is_active=True,
+        )
+
+        await crm_service.save_config(config)
+
+    finally:
+        await crm_service.close()
+
+    # Redirect to frontend settings page
+    return RedirectResponse(
+        url=f"{settings.frontend_url}/settings/integrations?crm=gohighlevel&status=connected",
+        status_code=status.HTTP_302_FOUND,
+    )
+
+
+# ============================================
 # API Key CRM Connections (Pipedrive, Close)
 # ============================================
 

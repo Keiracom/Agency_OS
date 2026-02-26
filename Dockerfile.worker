@@ -21,6 +21,10 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Cache bust for pip install layer (increment to force reinstall)
+# Bug #16: Railway layer cache was serving stale deps missing fuzzywuzzy
+ARG PIP_CACHE_BUST=2026-02-26
+
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

@@ -68,7 +68,7 @@ def generate_test_token(
         "exp": expires_at,
         "iat": now,
         "iss": settings.supabase_url or "http://localhost:54321",
-        "sub": str(user_id) if user_id else f"test-user-{client_id}",
+        "sub": str(user_id) if user_id else str(client_id),
         "email": f"test@client-{client_id}.example",
         "role": "authenticated",
         # Custom claims for Agency OS

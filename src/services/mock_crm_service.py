@@ -102,8 +102,8 @@ class MockCRMService:
             lead_id = uuid4()
             await db.execute(
                 text("""
-                    INSERT INTO leads (id, client_id, first_name, last_name, email, company_name, job_title, status)
-                    VALUES (:id, :client_id, :first_name, :last_name, :email, :company_name, :job_title, 'qualified')
+                    INSERT INTO leads (id, client_id, first_name, last_name, email, company, title, status)
+                    VALUES (:id, :client_id, :first_name, :last_name, :email, :company, :title, 'qualified')
                 """),
                 {
                     "id": str(lead_id),
@@ -111,8 +111,8 @@ class MockCRMService:
                     "first_name": f"TestLead{len(lead_ids) + 1}",
                     "last_name": "MockData",
                     "email": f"testlead{len(lead_ids) + 1}@mocktest.example",
-                    "company_name": f"Test Company {len(lead_ids) + 1}",
-                    "job_title": "Decision Maker",
+                    "company": f"Test Company {len(lead_ids) + 1}",
+                    "title": "Decision Maker",
                 },
             )
             lead_ids.append(lead_id)

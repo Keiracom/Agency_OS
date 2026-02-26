@@ -171,10 +171,61 @@ class CampaignDiscoveryTrigger:
         return self.location_expander.get_state_from_city(location)
 
     def _convert_to_lead_record(self, discovery_result) -> LeadRecord:
-        """Convert DiscoveryResult to LeadRecord for waterfall."""
+        """
+        Convert DiscoveryResult to LeadRecord for waterfall.
+
+        Extracts all available fields from raw_data (Maps SERP or ABN API)
+        to maximize ALS score calculation accuracy before enrichment tiers run.
+        """
+        raw = discovery_result.raw_data or {}
+
+        # Extract category from Maps SERP (first category title)
+        category = None
+        if raw.get("category") and isinstance(raw["category"], list) and len(raw["category"]) > 0:
+            first_cat = raw["category"][0]
+            if isinstance(first_cat, dict):
+                category = first_cat.get("title")
+            elif isinstance(first_cat, str):
+                category = first_cat
+
+        # Extract reviews_count (Maps SERP uses reviews_cnt)
+        reviews_count = raw.get("reviews_cnt") or raw.get("reviews_count")
+        if reviews_count is not None:
+            try:
+                reviews_count = int(reviews_count)
+            except (ValueError, TypeError):
+                reviews_count = None
+
+        # Extract rating
+        rating = raw.get("rating")
+        if rating is not None:
+            try:
+                rating = float(rating)
+            except (ValueError, TypeError):
+                rating = None
+
         return LeadRecord(
+            # Core identifiers
             abn=discovery_result.abn,
-            business_name=discovery_result.business_name,
+            business_name=discovery_result.business_name or raw.get("title"),
+            legal_name=discovery_result.trading_name,
+            discovery_source=discovery_result.source,
+
+            # ABN Registry fields (from ABN API raw_data)
+            state=raw.get("state"),
+            gst_registered=raw.get("gst_registered", False),
+            entity_type=raw.get("entity_type"),
+
+            # GMB fields (from Maps SERP raw_data)
+            phone=raw.get("phone"),
+            website=raw.get("link") or raw.get("website"),
+            address=raw.get("address"),
+            rating=rating,
+            reviews_count=reviews_count,
+            category=category,
+            gmb_place_id=raw.get("map_id") or raw.get("fid"),
+
+            # Initialize empty lists/dicts
             enrichment_tiers_completed=[],
         )
 

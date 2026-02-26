@@ -7,7 +7,7 @@ Uses curated lookup table with SERP fallback for unknown cities.
 
 import structlog
 
-from src.integrations.supabase import get_async_supabase_client
+from src.integrations.supabase import get_async_supabase_service_client
 
 logger = structlog.get_logger()
 
@@ -50,7 +50,7 @@ class LocationExpander:
     async def _lookup_db(self, city: str, state: str) -> list[str]:
         """Lookup suburbs from location_suburbs table."""
         try:
-            supabase = await get_async_supabase_client()
+            supabase = await get_async_supabase_service_client()
             result = (
                 await supabase.table("location_suburbs")
                 .select("suburb")

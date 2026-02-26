@@ -45,22 +45,7 @@ async def _ensure_test_user_exists(client_id: UUID) -> UUID:
 
     try:
         async with get_db_session() as db:
-            # Check if membership already exists
-            result = await db.execute(
-                text("""
-                    SELECT user_id FROM memberships
-                    WHERE client_id = :client_id
-                    LIMIT 1
-                """),
-                {"client_id": str(client_id)},
-            )
-            existing = result.fetchone()
-
-            if existing:
-                logger.debug(f"Test membership already exists for client {client_id}")
-                return UUID(str(existing.user_id))
-
-            # Create test user in auth.users
+            # Create test user in auth.users (ON CONFLICT DO NOTHING if exists)
             try:
                 await db.execute(
                     text("""

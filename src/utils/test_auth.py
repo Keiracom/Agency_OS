@@ -8,13 +8,18 @@ SECURITY: Only active when MOCK_CRM=true (test mode)
 These tokens bypass normal authentication for E2E test flows.
 """
 
+import logging
 import time
 from typing import Optional
 from uuid import UUID
 
 import jwt
+from sqlalchemy import text
 
 from src.config.settings import settings
+from src.integrations.supabase import get_db_session
+
+logger = logging.getLogger(__name__)
 
 
 class TestAuthError(Exception):
@@ -23,7 +28,83 @@ class TestAuthError(Exception):
     pass
 
 
-def generate_test_token(
+async def _ensure_test_user_exists(client_id: UUID) -> UUID:
+    """
+    Ensure test user and membership exist in database.
+
+    Creates auth.users and memberships records if they don't exist.
+    Uses client_id as user_id for simplicity.
+
+    Args:
+        client_id: Client UUID to create test user for
+
+    Returns:
+        user_id (UUID) for the test user
+    """
+    user_id = client_id  # Reuse client_id as user_id for test users
+
+    try:
+        async with get_db_session() as db:
+            # Check if membership already exists
+            result = await db.execute(
+                text("""
+                    SELECT user_id FROM memberships
+                    WHERE client_id = :client_id
+                    LIMIT 1
+                """),
+                {"client_id": str(client_id)},
+            )
+            existing = result.fetchone()
+
+            if existing:
+                logger.debug(f"Test membership already exists for client {client_id}")
+                return UUID(str(existing.user_id))
+
+            # Create test user in auth.users
+            try:
+                await db.execute(
+                    text("""
+                        INSERT INTO auth.users (id, email, role, aud, created_at, updated_at)
+                        VALUES (:id, :email, 'authenticated', 'authenticated', NOW(), NOW())
+                        ON CONFLICT (id) DO NOTHING
+                    """),
+                    {
+                        "id": str(user_id),
+                        "email": f"test@client-{client_id}.example",
+                    },
+                )
+            except Exception as e:
+                # Silently skip if user already exists
+                logger.debug(f"Test user insert skipped (may already exist): {e}")
+
+            # Create membership
+            try:
+                await db.execute(
+                    text("""
+                        INSERT INTO memberships (user_id, client_id, role, created_at, updated_at)
+                        VALUES (:user_id, :client_id, 'admin', NOW(), NOW())
+                        ON CONFLICT (user_id, client_id) DO NOTHING
+                    """),
+                    {
+                        "user_id": str(user_id),
+                        "client_id": str(client_id),
+                    },
+                )
+            except Exception as e:
+                # Silently skip if membership already exists
+                logger.debug(f"Membership insert skipped (may already exist): {e}")
+
+            await db.commit()
+            logger.info(f"Created test user and membership for client {client_id}")
+
+    except Exception as e:
+        # Log but don't fail - token generation can proceed
+        logger.warning(f"Could not ensure test user exists: {e}")
+
+    return user_id
+
+
+async def generate_test_token(
     client_id: UUID,
     user_id: Optional[UUID] = None,
     role: str = "admin",
@@ -59,6 +140,10 @@ def generate_test_token(
             "No JWT secret available. Set SUPABASE_JWT_SECRET or SUPABASE_SERVICE_KEY."
         )
 
+    # Ensure test user exists in database (only when MOCK_CRM=true)
+    if user_id is None:
+        user_id = await _ensure_test_user_exists(client_id)
+
     now = int(time.time())
     expires_at = now + expires_in
 
@@ -68,7 +153,7 @@ def generate_test_token(
         "exp": expires_at,
         "iat": now,
         "iss": settings.supabase_url or "http://localhost:54321",
-        "sub": str(user_id) if user_id else str(client_id),
+        "sub": str(user_id),
         "email": f"test@client-{client_id}.example",
         "role": "authenticated",
         # Custom claims for Agency OS

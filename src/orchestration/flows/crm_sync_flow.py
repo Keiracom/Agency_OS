@@ -840,3 +840,4 @@ async def crm_sync_flow(
 # [x] Session passed as argument (Rule 11)
 # [x] Error handling with graceful degradation
 # [x] Summary statistics returned
+# [x] Deployment via prefect.yaml (4-hour schedule)

@@ -69,7 +69,7 @@ class LocationExpander:
     async def _expand_with_serp(self, city: str, state: str) -> list[str]:
         """Use Google SERP to find suburbs for unlisted city."""
         try:
-            results = self.bd.search_google(f"{city} {state} suburbs list")
+            results = await self.bd.search_google(f"{city} {state} suburbs list")
 
             # Parse suburbs from search results
             # This is heuristic - look for suburb names in snippets

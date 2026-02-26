@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y \
 
 # Cache bust for pip install layer (increment to force reinstall)
 # Bug #16: Railway layer cache was serving stale deps missing fuzzywuzzy
-ARG PIP_CACHE_BUST=2026-02-26
+ARG PIP_CACHE_BUST=2026-02-26-v2
 
 # Install Python dependencies
 COPY requirements.txt .

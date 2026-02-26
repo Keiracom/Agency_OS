@@ -43,6 +43,7 @@ class HealthResponse(BaseModel):
     status: Literal["healthy", "unhealthy"]
     service: str
     version: str
+    test_mode: bool | None = None
 
 
 class ReadinessResponse(BaseModel):
@@ -52,6 +53,7 @@ class ReadinessResponse(BaseModel):
     service: str
     version: str
     components: dict[str, ComponentStatus]
+    test_mode: bool | None = None
 
 
 class LivenessResponse(BaseModel):
@@ -155,6 +157,11 @@ async def check_prefect() -> ComponentStatus:
 # ============================================
 
 
+def _is_test_mode() -> bool:
+    """Check if any mock/test flags are enabled."""
+    return settings.TEST_MODE or settings.MOCK_CRM or settings.MOCK_UNIPILE
+
+
 @router.get(
     "",
     response_model=HealthResponse,
@@ -169,10 +176,18 @@ async def health_check() -> HealthResponse:
     Returns service status without checking dependencies.
     Useful for load balancer health checks.
 
+    Includes test_mode=true if any mock flags (MOCK_CRM, MOCK_UNIPILE, TEST_MODE) are enabled.
+
     Returns:
         HealthResponse with basic service information.
     """
-    return HealthResponse(status="healthy", service="agency-os-api", version="3.0.0")
+    response = HealthResponse(status="healthy", service="agency-os-api", version="3.0.0")
+
+    # Include test_mode flag if any mock settings are enabled
+    if _is_test_mode():
+        response.test_mode = True
+
+    return response
 
 
 @router.get(
@@ -227,9 +242,15 @@ async def readiness_check() -> ReadinessResponse:
         # Database unhealthy = not ready
         overall_status = "not_ready"
 
-    return ReadinessResponse(
+    response = ReadinessResponse(
         status=overall_status, service="agency-os-api", version="3.0.0", components=components
     )
+
+    # Include test_mode flag if any mock settings are enabled
+    if _is_test_mode():
+        response.test_mode = True
+
+    return response
 
 
 @router.get(
@@ -268,6 +289,7 @@ async def liveness_check() -> LivenessResponse:
 # [x] Return component status in response
 # [x] Response models with Pydantic
 # [x] Status logic: ready/degraded/not_ready
+# [x] test_mode flag when MOCK_CRM/MOCK_UNIPILE/TEST_MODE enabled
 # [x] All functions have type hints
 # [x] All functions have docstrings
 # [x] No hardcoded credentials

@@ -23,6 +23,8 @@ ENDPOINTS:
 - GET /api/v1/crm/logs - Get CRM push logs
 """
 
+import json
+import logging
 import secrets
 from datetime import datetime
 from uuid import UUID, uuid4
@@ -39,10 +41,13 @@ from src.api.dependencies import (
     get_db_session,
 )
 from src.config.settings import settings
+from src.integrations.redis import get_redis
 from src.services.crm_push_service import (
     CRMConfig,
     CRMPushService,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/crm", tags=["crm"])
 
@@ -286,9 +291,28 @@ async def update_crm_config(
 # HubSpot OAuth Flow
 # ============================================
 
+# OAuth state TTL: 10 minutes (600 seconds)
+OAUTH_STATE_TTL = 600
 
-# Store OAuth states temporarily (in production, use Redis)
-_oauth_states: dict[str, dict] = {}
+
+async def _store_oauth_state(state: str, data: dict) -> None:
+    """Store OAuth state in Redis with TTL."""
+    redis = await get_redis()
+    key = f"oauth_state:{state}"
+    await redis.set(key, json.dumps(data), ex=OAUTH_STATE_TTL)
+    logger.debug(f"Stored OAuth state {state[:8]}... in Redis")
+
+
+async def _get_and_delete_oauth_state(state: str) -> dict | None:
+    """Get and delete OAuth state from Redis (atomic pop)."""
+    redis = await get_redis()
+    key = f"oauth_state:{state}"
+    data = await redis.get(key)
+    if data:
+        await redis.delete(key)
+        logger.debug(f"Retrieved and deleted OAuth state {state[:8]}... from Redis")
+        return json.loads(data)
+    return None
 
 
 @router.post("/connect/hubspot", response_model=HubSpotOAuthResponse)
@@ -301,11 +325,11 @@ async def start_hubspot_oauth(
 
     # Generate state for CSRF protection
     state = secrets.token_urlsafe(32)
-    _oauth_states[state] = {
+    await _store_oauth_state(state, {
         "client_id": str(client_id),
         "user_id": str(user.id),
         "created_at": datetime.utcnow().isoformat(),
-    }
+    })
 
     # Build OAuth URL
     crm_service = CRMPushService(db)
@@ -325,8 +349,8 @@ async def hubspot_oauth_callback(
     HubSpot OAuth callback. Exchanges code for tokens and saves config.
     Redirects to frontend settings page.
     """
-    # Verify state
-    state_data = _oauth_states.pop(state, None)
+    # Verify state (retrieve and delete from Redis)
+    state_data = await _get_and_delete_oauth_state(state)
     if not state_data:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -390,12 +414,12 @@ async def start_ghl_oauth(
 
     # Generate state for CSRF protection
     state = secrets.token_urlsafe(32)
-    _oauth_states[state] = {
+    await _store_oauth_state(state, {
         "client_id": str(client_id),
         "user_id": str(user.id),
         "crm_type": "gohighlevel",
         "created_at": datetime.utcnow().isoformat(),
-    }
+    })
 
     # Build OAuth URL
     crm_service = CRMPushService(db)
@@ -415,8 +439,8 @@ async def ghl_oauth_callback(
     GoHighLevel OAuth callback. Exchanges code for tokens and saves config.
     Redirects to frontend settings page.
     """
-    # Verify state
-    state_data = _oauth_states.pop(state, None)
+    # Verify state (retrieve and delete from Redis)
+    state_data = await _get_and_delete_oauth_state(state)
     if not state_data:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -761,5 +785,5 @@ async def get_crm_push_logs(
 # [x] All functions have type hints
 # [x] All functions have docstrings
 # [x] Pydantic response models
-# [x] OAuth state management
+# [x] OAuth state management (Redis with 600s TTL)
 # [x] Error handling

@@ -835,7 +835,7 @@ async def activate_campaign(
     logger = logging.getLogger(__name__)
     try:
         await run_deployment(
-            name="campaign-flow/campaign-flow",
+            name="campaign_activation/campaign-flow",
             parameters={
                 "client_id": str(client_id),
                 "campaign_id": str(campaign_id),

@@ -49,19 +49,19 @@ async def get_crm_enabled_clients(db: AsyncSession) -> list[dict[str, Any]]:
             c.id,
             c.company_name,
             c.tier,
-            c.crm_type,
-            c.crm_api_key,
-            c.hubspot_access_token,
-            c.pipedrive_api_token,
-            c.close_api_key
+            cc.crm_type,
+            cc.api_key as crm_api_key,
+            cc.oauth_access_token,
+            cc.oauth_refresh_token,
+            cc.oauth_expires_at,
+            cc.ghl_location_id,
+            cc.ghl_company_id,
+            cc.hubspot_portal_id
         FROM clients c
+        JOIN client_crm_configs cc ON c.id = cc.client_id
         WHERE c.deleted_at IS NULL
-        AND (
-            c.crm_type IS NOT NULL
-            OR c.hubspot_access_token IS NOT NULL
-            OR c.pipedrive_api_token IS NOT NULL
-            OR c.close_api_key IS NOT NULL
-        )
+        AND cc.is_active = true
+        AND cc.crm_type IS NOT NULL
     """)
 
     result = await db.execute(query)
@@ -69,24 +69,27 @@ async def get_crm_enabled_clients(db: AsyncSession) -> list[dict[str, Any]]:
 
     clients = []
     for row in rows:
-        # Determine which CRM(s) are configured
-        crms = []
-        if row.hubspot_access_token:
-            crms.append({"type": "hubspot", "token": row.hubspot_access_token})
-        if row.pipedrive_api_token:
-            crms.append({"type": "pipedrive", "token": row.pipedrive_api_token})
-        if row.close_api_key:
-            crms.append({"type": "close", "token": row.close_api_key})
+        # Build CRM config based on type
+        crm_config = {
+            "type": row.crm_type,
+            "token": row.oauth_access_token or row.crm_api_key,
+            "refresh_token": row.oauth_refresh_token,
+            "expires_at": row.oauth_expires_at,
+        }
 
-        if crms:
-            clients.append(
-                {
-                    "id": row.id,
-                    "company_name": row.company_name,
-                    "tier": row.tier,
-                    "crm_configs": crms,
-                }
-            )
+        # Add GHL-specific fields
+        if row.crm_type == "gohighlevel":
+            crm_config["location_id"] = row.ghl_location_id
+            crm_config["company_id"] = row.ghl_company_id
+
+        clients.append(
+            {
+                "id": row.id,
+                "company_name": row.company_name,
+                "tier": row.tier,
+                "crm_configs": [crm_config],
+            }
+        )
 
     logger.info(f"Found {len(clients)} clients with CRM integrations")
     return clients
@@ -494,6 +497,160 @@ async def poll_close_opportunities(
 
 
 # ============================================================================
+# TASK: Poll GoHighLevel for Recent Opportunities
+# ============================================================================
+
+
+@task(name="poll_ghl_opportunities", retries=2, retry_delay_seconds=60)
+async def poll_ghl_opportunities(
+    db: AsyncSession,
+    client_id: UUID,
+    access_token: str,
+    location_id: str,
+    since_hours: int = 24,
+) -> dict[str, Any]:
+    """
+    Poll GoHighLevel for recently updated opportunities.
+
+    Args:
+        db: Database session
+        client_id: Client UUID
+        access_token: GHL access token
+        location_id: GHL location ID
+        since_hours: Hours to look back
+
+    Returns:
+        Sync result summary
+    """
+    import httpx
+
+    synced = 0
+    errors = 0
+    blind_meetings = 0
+
+    GHL_API = "https://services.leadconnectorhq.com"
+    GHL_VERSION = "2021-07-28"
+
+    try:
+        # GHL opportunities API
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{GHL_API}/opportunities/search",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Version": GHL_VERSION,
+                    "Accept": "application/json",
+                },
+                params={
+                    "locationId": location_id,
+                    "limit": 100,
+                },
+                timeout=30.0,
+            )
+
+            if response.status_code != 200:
+                logger.error(f"GHL API error: {response.status_code} - {response.text}")
+                return {"synced": 0, "errors": 1, "blind_meetings": 0, "error": response.text}
+
+            data = response.json()
+            opportunities = data.get("opportunities", [])
+
+            # Filter by update time (client-side)
+            since_dt = datetime.utcnow() - timedelta(hours=since_hours)
+            recent_opps = []
+            for opp in opportunities:
+                update_time = opp.get("updatedAt") or opp.get("dateUpdated")
+                if update_time:
+                    try:
+                        opp_dt = datetime.fromisoformat(
+                            update_time.replace("Z", "+00:00").split("+")[0]
+                        )
+                        if opp_dt >= since_dt:
+                            recent_opps.append(opp)
+                    except ValueError:
+                        recent_opps.append(opp)  # Include if date parsing fails
+                else:
+                    recent_opps.append(opp)  # Include if no date
+
+            logger.info(
+                f"GHL returned {len(recent_opps)} recent opportunities for client {client_id}"
+            )
+
+            # Process each opportunity
+            from src.services.deal_service import DealService
+            from src.services.meeting_service import MeetingService
+
+            deal_service = DealService(db)
+            meeting_service = MeetingService(db)
+
+            for opp in recent_opps:
+                try:
+                    external_id = opp.get("id")
+
+                    # Check if we already have this deal
+                    existing = await deal_service.get_by_external_id("gohighlevel", external_id)
+
+                    # Map GHL status to our stages
+                    status = opp.get("status", "open").lower()
+                    stage_map = {
+                        "open": "qualification",
+                        "won": "closed_won",
+                        "lost": "closed_lost",
+                        "abandoned": "closed_lost",
+                    }
+                    stage = stage_map.get(status, "qualification")
+
+                    # Parse opportunity data
+                    deal_data = {
+                        "external_id": external_id,
+                        "name": opp.get("name", "GHL Opportunity"),
+                        "value": opp.get("monetaryValue"),
+                        "stage": stage,
+                        "close_date": opp.get("dateAdded"),
+                    }
+
+                    # Sync deal
+                    synced_deal = await deal_service.sync_from_external(
+                        client_id=client_id,
+                        external_crm="gohighlevel",
+                        external_deal_id=external_id,
+                        data=deal_data,
+                    )
+
+                    synced += 1
+
+                    # Create blind meeting if new deal without meeting
+                    if not existing and not synced_deal.get("meeting_id"):
+                        try:
+                            await meeting_service.create_blind_meeting(
+                                client_id=client_id,
+                                lead_id=synced_deal.get("lead_id"),
+                                deal_id=synced_deal["id"],
+                                source="gohighlevel_poll",
+                                notes="Blind meeting captured from GoHighLevel sync (polling)",
+                                external_deal_id=external_id,
+                            )
+                            blind_meetings += 1
+                        except Exception as e:
+                            logger.warning(f"Failed to create blind meeting: {e}")
+
+                except Exception as e:
+                    logger.error(f"Error syncing GHL opportunity {opp.get('id')}: {e}")
+                    errors += 1
+
+    except Exception as e:
+        logger.error(f"GHL polling error for client {client_id}: {e}")
+        errors += 1
+
+    return {
+        "synced": synced,
+        "errors": errors,
+        "blind_meetings": blind_meetings,
+        "crm": "gohighlevel",
+    }
+
+
+# ============================================================================
 # TASK: Log Sync Results
 # ============================================================================
 
@@ -617,6 +774,18 @@ async def crm_sync_flow(
                             db=db,
                             client_id=client_uuid,
                             api_key=token,
+                            since_hours=since_hours,
+                        )
+                    elif crm_type == "gohighlevel":
+                        location_id = crm_config.get("location_id")
+                        if not location_id:
+                            logger.warning(f"GHL location_id missing for client {client_uuid}")
+                            continue
+                        result = await poll_ghl_opportunities(
+                            db=db,
+                            client_id=client_uuid,
+                            access_token=token,
+                            location_id=location_id,
                             since_hours=since_hours,
                         )
                     else:

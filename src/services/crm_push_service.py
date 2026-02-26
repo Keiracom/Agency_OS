@@ -35,6 +35,9 @@ HUBSPOT_API = "https://api.hubapi.com"
 HUBSPOT_OAUTH = "https://app.hubspot.com/oauth"
 PIPEDRIVE_API = "https://api.pipedrive.com/v1"
 CLOSE_API = "https://api.close.com/api/v1"
+GHL_API = "https://services.leadconnectorhq.com"
+GHL_OAUTH = "https://marketplace.gohighlevel.com/oauth/chooselocation"
+GHL_API_VERSION = "2021-07-28"
 
 
 # ============================================================================
@@ -59,12 +62,14 @@ class CRMConfig(BaseModel):
 
     id: UUID
     client_id: UUID
-    crm_type: Literal["hubspot", "pipedrive", "close"]
+    crm_type: Literal["hubspot", "pipedrive", "close", "gohighlevel"]
     api_key: str | None = None
     oauth_access_token: str | None = None
     oauth_refresh_token: str | None = None
     oauth_expires_at: datetime | None = None
     hubspot_portal_id: str | None = None
+    ghl_location_id: str | None = None  # GoHighLevel location ID
+    ghl_company_id: str | None = None  # GoHighLevel company/agency ID
     pipeline_id: str | None = None
     stage_id: str | None = None
     owner_id: str | None = None
@@ -175,6 +180,8 @@ class CRMPushService:
             oauth_refresh_token=row.oauth_refresh_token,
             oauth_expires_at=row.oauth_expires_at,
             hubspot_portal_id=row.hubspot_portal_id,
+            ghl_location_id=getattr(row, "ghl_location_id", None),
+            ghl_company_id=getattr(row, "ghl_company_id", None),
             pipeline_id=row.pipeline_id,
             stage_id=row.stage_id,
             owner_id=row.owner_id,
@@ -188,11 +195,13 @@ class CRMPushService:
             INSERT INTO client_crm_configs (
                 id, client_id, crm_type, api_key, oauth_access_token,
                 oauth_refresh_token, oauth_expires_at, hubspot_portal_id,
+                ghl_location_id, ghl_company_id,
                 pipeline_id, stage_id, owner_id, is_active,
                 connection_status, connected_at
             ) VALUES (
                 :id, :client_id, :crm_type, :api_key, :oauth_access_token,
                 :oauth_refresh_token, :oauth_expires_at, :hubspot_portal_id,
+                :ghl_location_id, :ghl_company_id,
                 :pipeline_id, :stage_id, :owner_id, :is_active,
                 'connected', NOW()
             )
@@ -203,6 +212,8 @@ class CRMPushService:
                 oauth_refresh_token = EXCLUDED.oauth_refresh_token,
                 oauth_expires_at = EXCLUDED.oauth_expires_at,
                 hubspot_portal_id = EXCLUDED.hubspot_portal_id,
+                ghl_location_id = EXCLUDED.ghl_location_id,
+                ghl_company_id = EXCLUDED.ghl_company_id,
                 pipeline_id = EXCLUDED.pipeline_id,
                 stage_id = EXCLUDED.stage_id,
                 owner_id = EXCLUDED.owner_id,
@@ -219,6 +230,8 @@ class CRMPushService:
                 "oauth_refresh_token": config.oauth_refresh_token,
                 "oauth_expires_at": config.oauth_expires_at,
                 "hubspot_portal_id": config.hubspot_portal_id,
+                "ghl_location_id": config.ghl_location_id,
+                "ghl_company_id": config.ghl_company_id,
                 "pipeline_id": config.pipeline_id,
                 "stage_id": config.stage_id,
                 "owner_id": config.owner_id,
@@ -320,9 +333,11 @@ class CRMPushService:
         start_time = time.time()
 
         try:
-            # Refresh OAuth token if needed (HubSpot)
+            # Refresh OAuth token if needed (HubSpot, GoHighLevel)
             if config.crm_type == "hubspot":
                 config = await self._refresh_hubspot_token_if_needed(config)
+            elif config.crm_type == "gohighlevel":
+                config = await self._refresh_ghl_token_if_needed(config)
 
             # Step 1: Find or create contact
             contact_id = await self.find_or_create_contact(config, lead)
@@ -402,6 +417,8 @@ class CRMPushService:
             return await self._pipedrive_find_or_create_person(config, lead)
         elif config.crm_type == "close":
             return await self._close_find_or_create_lead(config, lead)
+        elif config.crm_type == "gohighlevel":
+            return await self._ghl_find_or_create_contact(config, lead)
         else:
             raise ValueError(f"Unsupported CRM type: {config.crm_type}")
 
@@ -423,6 +440,9 @@ class CRMPushService:
             deal_id = await self._close_create_opportunity(
                 config, lead, meeting, contact_id, deal_name
             )
+            return deal_id, None
+        elif config.crm_type == "gohighlevel":
+            deal_id = await self._ghl_create_opportunity(config, lead, meeting, contact_id, deal_name)
             return deal_id, None
         else:
             raise ValueError(f"Unsupported CRM type: {config.crm_type}")
@@ -638,6 +658,241 @@ class CRMPushService:
                 email=u.get("email"),
             )
             for u in response.json().get("results", [])
+        ]
+
+    # =========================================================================
+    # GOHIGHLEVEL IMPLEMENTATION
+    # =========================================================================
+
+    def get_ghl_oauth_url(self, state: str) -> str:
+        """Generate GoHighLevel OAuth authorization URL."""
+        from urllib.parse import urlencode
+
+        params = {
+            "response_type": "code",
+            "client_id": settings.ghl_client_id,
+            "redirect_uri": settings.ghl_redirect_uri,
+            "scope": settings.ghl_scopes.replace(",", " "),
+            "state": state,
+        }
+        return f"{GHL_OAUTH}?{urlencode(params)}"
+
+    async def exchange_ghl_code(self, code: str) -> dict:
+        """Exchange GoHighLevel authorization code for tokens."""
+        response = await self.http.post(
+            f"{GHL_API}/oauth/token",
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            json={
+                "client_id": settings.ghl_client_id,
+                "client_secret": settings.ghl_client_secret,
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": settings.ghl_redirect_uri,
+            },
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def _refresh_ghl_token_if_needed(self, config: CRMConfig) -> CRMConfig:
+        """Refresh GoHighLevel OAuth token if expired or expiring soon."""
+        if not config.oauth_expires_at:
+            return config
+
+        # Refresh if expiring in next 5 minutes
+        if config.oauth_expires_at > datetime.utcnow() + timedelta(minutes=5):
+            return config
+
+        if not config.oauth_refresh_token:
+            raise ValueError("GoHighLevel refresh token missing")
+
+        logger.info(f"Refreshing GoHighLevel token for client {config.client_id}")
+
+        response = await self.http.post(
+            f"{GHL_API}/oauth/token",
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            data={
+                "client_id": settings.ghl_client_id,
+                "client_secret": settings.ghl_client_secret,
+                "grant_type": "refresh_token",
+                "refresh_token": config.oauth_refresh_token,
+            },
+        )
+        response.raise_for_status()
+        tokens = response.json()
+
+        # Update config with new tokens
+        # Note: GHL invalidates old refresh token and returns new one
+        config.oauth_access_token = tokens["access_token"]
+        config.oauth_refresh_token = tokens.get("refresh_token", config.oauth_refresh_token)
+        config.oauth_expires_at = datetime.utcnow() + timedelta(seconds=tokens["expires_in"])
+
+        await self.save_config(config)
+
+        await self.log_push(
+            client_id=config.client_id,
+            crm_config_id=config.id,
+            operation="oauth_token_refresh",
+            status="success",
+        )
+
+        return config
+
+    def _ghl_headers(self, config: CRMConfig) -> dict[str, str]:
+        """Get standard headers for GHL API calls."""
+        return {
+            "Authorization": f"Bearer {config.oauth_access_token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Version": GHL_API_VERSION,
+        }
+
+    async def _ghl_find_or_create_contact(self, config: CRMConfig, lead: LeadData) -> str:
+        """Find or create GoHighLevel contact."""
+        headers = self._ghl_headers(config)
+
+        if not config.ghl_location_id:
+            raise ValueError("GoHighLevel location_id not configured")
+
+        # Search for existing contact by email
+        search_url = f"{GHL_API}/contacts/"
+        search_params = {
+            "locationId": config.ghl_location_id,
+            "query": lead.email,
+            "limit": 10,
+        }
+
+        response = await self.http.get(search_url, params=search_params, headers=headers)
+        response.raise_for_status()
+        contacts = response.json().get("contacts", [])
+
+        # Find exact email match
+        for contact in contacts:
+            if contact.get("email", "").lower() == lead.email.lower():
+                contact_id = contact["id"]
+                logger.info(f"Found existing GHL contact: {contact_id}")
+                return contact_id
+
+        # Create new contact
+        create_url = f"{GHL_API}/contacts/"
+        create_body = {
+            "locationId": config.ghl_location_id,
+            "email": lead.email,
+            "firstName": lead.first_name or "",
+            "lastName": lead.last_name or "",
+            "phone": lead.phone or "",
+            "companyName": lead.organization_name or "",
+            "website": lead.organization_website or "",
+            "tags": ["Agency OS"],
+        }
+
+        response = await self.http.post(create_url, json=create_body, headers=headers)
+        response.raise_for_status()
+        result = response.json()
+        contact_id = result.get("contact", result).get("id")
+
+        logger.info(f"Created GHL contact: {contact_id}")
+
+        await self.log_push(
+            client_id=config.client_id,
+            crm_config_id=config.id,
+            operation="create_contact",
+            crm_contact_id=contact_id,
+            status="success",
+            request_payload=create_body,
+            response_payload=result,
+        )
+
+        return contact_id
+
+    async def _ghl_create_opportunity(
+        self,
+        config: CRMConfig,
+        lead: LeadData,
+        meeting: MeetingData,
+        contact_id: str,
+        deal_name: str,
+    ) -> str:
+        """Create GoHighLevel opportunity (deal)."""
+        headers = self._ghl_headers(config)
+
+        if not config.ghl_location_id:
+            raise ValueError("GoHighLevel location_id not configured")
+
+        url = f"{GHL_API}/opportunities/"
+        body: dict[str, Any] = {
+            "locationId": config.ghl_location_id,
+            "pipelineId": config.pipeline_id,
+            "pipelineStageId": config.stage_id,
+            "contactId": contact_id,
+            "name": deal_name,
+            "status": "open",
+        }
+
+        # Add owner if configured
+        if config.owner_id:
+            body["assignedTo"] = config.owner_id
+
+        response = await self.http.post(url, json=body, headers=headers)
+        response.raise_for_status()
+        result = response.json()
+        opportunity_id = result.get("opportunity", result).get("id")
+
+        logger.info(f"Created GHL opportunity: {opportunity_id}, contact: {contact_id}")
+        return opportunity_id
+
+    async def get_ghl_pipelines(self, config: CRMConfig) -> list[CRMPipeline]:
+        """Get available pipelines from GoHighLevel."""
+        headers = self._ghl_headers(config)
+
+        if not config.ghl_location_id:
+            raise ValueError("GoHighLevel location_id not configured")
+
+        url = f"{GHL_API}/opportunities/pipelines"
+        params = {"locationId": config.ghl_location_id}
+
+        response = await self.http.get(url, params=params, headers=headers)
+        response.raise_for_status()
+
+        pipelines = []
+        for p in response.json().get("pipelines", []):
+            stages = [
+                CRMStage(
+                    id=s["id"],
+                    name=s["name"],
+                    probability=None,  # GHL doesn't have stage probability
+                )
+                for s in p.get("stages", [])
+            ]
+            pipelines.append(CRMPipeline(id=p["id"], name=p["name"], stages=stages))
+
+        return pipelines
+
+    async def get_ghl_users(self, config: CRMConfig) -> list[CRMUser]:
+        """Get available users from GoHighLevel (for owner dropdown)."""
+        headers = self._ghl_headers(config)
+
+        if not config.ghl_location_id:
+            raise ValueError("GoHighLevel location_id not configured")
+
+        url = f"{GHL_API}/users/"
+        params = {"locationId": config.ghl_location_id}
+
+        response = await self.http.get(url, params=params, headers=headers)
+        response.raise_for_status()
+
+        return [
+            CRMUser(
+                id=u["id"],
+                name=u.get("name") or f"{u.get('firstName', '')} {u.get('lastName', '')}".strip(),
+                email=u.get("email"),
+            )
+            for u in response.json().get("users", [])
         ]
 
     # =========================================================================
@@ -943,6 +1198,9 @@ class CRMPushService:
                 await self.get_pipedrive_pipelines(config)
             elif config.crm_type == "close":
                 await self.get_close_pipelines(config)
+            elif config.crm_type == "gohighlevel":
+                config = await self._refresh_ghl_token_if_needed(config)
+                await self.get_ghl_pipelines(config)
 
             duration_ms = int((time.time() - start_time) * 1000)
 
@@ -984,6 +1242,9 @@ class CRMPushService:
             return await self.get_pipedrive_pipelines(config)
         elif config.crm_type == "close":
             return await self.get_close_pipelines(config)
+        elif config.crm_type == "gohighlevel":
+            config = await self._refresh_ghl_token_if_needed(config)
+            return await self.get_ghl_pipelines(config)
         else:
             raise ValueError(f"Unsupported CRM type: {config.crm_type}")
 
@@ -996,5 +1257,8 @@ class CRMPushService:
             return await self.get_pipedrive_users(config)
         elif config.crm_type == "close":
             return await self.get_close_users(config)
+        elif config.crm_type == "gohighlevel":
+            config = await self._refresh_ghl_token_if_needed(config)
+            return await self.get_ghl_users(config)
         else:
             raise ValueError(f"Unsupported CRM type: {config.crm_type}")

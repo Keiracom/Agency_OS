@@ -26,7 +26,7 @@ from sqlalchemy import and_, select, update
 
 from src.enrichment.campaign_trigger import CampaignDiscoveryTrigger
 from src.integrations.abn_client import get_abn_client
-from src.integrations.bright_data_client import BrightDataClient
+from src.integrations.bright_data_client import get_bright_data_client
 from src.integrations.leadmagic import get_leadmagic_client
 from src.integrations.supabase import get_db_session, get_supabase_client
 from src.models.base import CampaignStatus, LeadStatus, SubscriptionStatus
@@ -296,7 +296,7 @@ async def trigger_discovery_task(campaign_id: str) -> dict[str, Any]:
     # Initialize clients
     supabase_client = get_supabase_client()
     abn_client = get_abn_client()
-    bright_data_client = BrightDataClient()
+    bright_data_client = get_bright_data_client()
     leadmagic_client = get_leadmagic_client()
 
     # Create trigger instance

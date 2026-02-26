@@ -17,6 +17,7 @@ asyncpg>=0.29.0
 
 # === Cache ===
 redis>=5.0.0
+upstash-redis>=1.6.0  # REST-based Redis client (Upstash serverless)
 
 # === HTTP Client ===
 httpx>=0.26.0
@@ -45,6 +46,7 @@ python-jose>=3.3.0
 stripe>=7.0.0
 
 # === Email ===
+resend>=2.23.0  # Resend email SDK
 # Salesforge uses REST API with httpx, no SDK needed
 
 # === SMS ===

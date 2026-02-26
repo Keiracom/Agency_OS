@@ -31,6 +31,7 @@ class MockCRMService:
         self,
         db: AsyncSession,
         client_id: UUID,
+        campaign_id: UUID,
     ) -> dict:
         """
         Seed mock CRM data for a single test client.
@@ -38,6 +39,7 @@ class MockCRMService:
         Args:
             db: Database session
             client_id: Client UUID to seed data for
+            campaign_id: Campaign UUID for the leads
 
         Returns:
             Dict with counts of seeded records
@@ -58,7 +60,7 @@ class MockCRMService:
             return {"status": "already_seeded", "exclusion_count": existing_count}
 
         # Get or create test leads for deals/meetings
-        lead_ids = await self._ensure_test_leads(db, client_id)
+        lead_ids = await self._ensure_test_leads(db, client_id, campaign_id)
 
         # Seed the data
         exclusion_count = await self._seed_exclusion_list(db, client_id)
@@ -83,6 +85,7 @@ class MockCRMService:
         self,
         db: AsyncSession,
         client_id: UUID,
+        campaign_id: UUID,
     ) -> list[UUID]:
         """Ensure we have test leads for deals and meetings."""
         # Check for existing leads
@@ -102,12 +105,13 @@ class MockCRMService:
             lead_id = uuid4()
             await db.execute(
                 text("""
-                    INSERT INTO leads (id, client_id, first_name, last_name, email, company, title, status)
-                    VALUES (:id, :client_id, :first_name, :last_name, :email, :company, :title, 'enriched')
+                    INSERT INTO leads (id, client_id, campaign_id, first_name, last_name, email, company, title, status)
+                    VALUES (:id, :client_id, :campaign_id, :first_name, :last_name, :email, :company, :title, 'enriched')
                 """),
                 {
                     "id": str(lead_id),
                     "client_id": str(client_id),
+                    "campaign_id": str(campaign_id),
                     "first_name": f"TestLead{len(lead_ids) + 1}",
                     "last_name": "MockData",
                     "email": f"testlead{len(lead_ids) + 1}@mocktest.example",

@@ -97,7 +97,7 @@ async def generate_test_auth_token(
     """
     try:
         expires_in = 3600  # 1 hour
-        token = generate_test_token(
+        token = await generate_test_token(
             client_id=request.client_id,
             expires_in=expires_in,
         )

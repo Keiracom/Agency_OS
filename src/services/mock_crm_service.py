@@ -103,7 +103,7 @@ class MockCRMService:
             await db.execute(
                 text("""
                     INSERT INTO leads (id, client_id, first_name, last_name, email, company_name, job_title, status)
-                    VALUES (:id, :client_id, :first_name, :last_name, :email, :company_name, :job_title, 'qualified')
+                    VALUES (:id, :client_id, :first_name, :last_name, :email, :company_name, :job_title, 'enriched')
                 """),
                 {
                     "id": str(lead_id),

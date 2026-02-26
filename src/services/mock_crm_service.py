@@ -353,6 +353,7 @@ class MockCRMService:
                 "showed_up": True,
                 "showed_up_confirmed_at": now - timedelta(days=3),
                 "meeting_outcome": "good",
+                "no_show_reason": None,
                 "meeting_notes": "MOCK_CRM: Great initial conversation, strong interest in solution",
             },
             # 1 Confirmed + No Show
@@ -380,6 +381,7 @@ class MockCRMService:
                 "showed_up": None,
                 "showed_up_confirmed_at": None,
                 "meeting_outcome": None,
+                "no_show_reason": None,
                 "meeting_notes": "MOCK_CRM: Pending confirmation, reminder scheduled",
             },
         ]

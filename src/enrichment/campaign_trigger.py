@@ -170,6 +170,23 @@ class CampaignDiscoveryTrigger:
         """Infer state from location name."""
         return self.location_expander.get_state_from_city(location)
 
+    def _get_discovery_tiers(self, source: str) -> list[str]:
+        """
+        Credit enrichment tiers based on discovery source.
+
+        Discovery sources already represent completed enrichment work:
+        - abn_api/abn_lookup: T1 ABN enrichment already done
+        - maps_serp/google_maps: T1 ABN + T1.5a Maps already done
+
+        This ensures ALS data_quality component correctly reflects
+        the enrichment work completed during discovery phase.
+        """
+        if source in ("abn_api", "abn_lookup"):
+            return ["tier_1"]
+        elif source in ("maps_serp", "google_maps", "both"):
+            return ["tier_1", "tier_1_5a"]
+        return []
+
     def _convert_to_lead_record(self, discovery_result) -> LeadRecord:
         """
         Convert DiscoveryResult to LeadRecord for waterfall.
@@ -225,8 +242,9 @@ class CampaignDiscoveryTrigger:
             category=category,
             gmb_place_id=raw.get("map_id") or raw.get("fid"),
 
-            # Initialize empty lists/dicts
-            enrichment_tiers_completed=[],
+            # Credit discovery tiers based on source
+            # This ensures ALS data_quality component reflects work already done
+            enrichment_tiers_completed=self._get_discovery_tiers(discovery_result.source),
         )
 
     async def _enrich_lead(self, lead: LeadRecord, config: CampaignConfig) -> LeadRecord:

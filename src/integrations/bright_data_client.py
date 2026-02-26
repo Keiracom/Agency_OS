@@ -8,6 +8,7 @@ Note: All methods are async - use with await.
 """
 
 import asyncio
+import json
 import os
 import urllib.parse
 from dataclasses import dataclass
@@ -110,29 +111,49 @@ class BrightDataClient:
         result = await self._serp_request(url)
 
         # Extract business results (limit to max_results)
-        if isinstance(result, list):
+        # Response format: {"status_code": 200, "body": "{\"organic\": [...]}"}
+        if isinstance(result, dict) and "body" in result:
+            try:
+                body = json.loads(result["body"])
+                return body.get("organic", [])[:max_results]
+            except (json.JSONDecodeError, KeyError, TypeError):
+                return []
+        elif isinstance(result, list):
             return result[:max_results]
         elif isinstance(result, dict) and "organic" in result:
             return result["organic"][:max_results]
 
         return []
 
-    async def search_google(self, query: str) -> dict:
+    async def search_google(self, query: str, max_results: int = 10) -> list[dict]:
         """
         Search Google via SERP API.
 
         Args:
             query: Search query (e.g., 'site:linkedin.com/company "business name"')
+            max_results: Maximum results to return (default 10)
 
         Returns:
-            Search results with organic results list
+            List of organic search results
 
         Cost: $0.0015 AUD per request
         """
         encoded_query = urllib.parse.quote(query)
         url = f"https://www.google.com/search?q={encoded_query}&brd_json=1"
 
-        return await self._serp_request(url)
+        result = await self._serp_request(url)
+
+        # Parse response body (same format as Maps SERP)
+        if isinstance(result, dict) and "body" in result:
+            try:
+                body = json.loads(result["body"])
+                return body.get("organic", [])[:max_results]
+            except (json.JSONDecodeError, KeyError, TypeError):
+                return []
+        elif isinstance(result, dict) and "organic" in result:
+            return result["organic"][:max_results]
+
+        return []
 
     async def _serp_request(self, url: str, max_retries: int = 2) -> Any:
         """Execute SERP API request via Direct API with Bearer token auth."""

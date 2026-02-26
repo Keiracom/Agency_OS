@@ -288,9 +288,12 @@ class WaterfallV2:
                 raise ValueError("Bright Data client not configured")
 
             # Search Google Maps for business
-            search_query = f"{lead.business_name} {lead.address or lead.state or ''}"
+            search_query = lead.business_name or ""
+            location = lead.address or lead.state or "Australia"
             gmb_results = await self.bd.search_google_maps(
-                query=search_query.strip(), max_results=5
+                query=search_query.strip(),
+                location=location.strip(),
+                max_results=5
             )
 
             if gmb_results:

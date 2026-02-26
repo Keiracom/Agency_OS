@@ -163,6 +163,11 @@ class CampaignSuggestion(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     # Relationships
     client = relationship("Client", back_populates="campaign_suggestions")
     campaign = relationship("Campaign", back_populates="suggestions")
+    history: Mapped[list["CampaignSuggestionHistory"]] = relationship(
+        "CampaignSuggestionHistory",
+        back_populates="suggestion",
+        cascade="all, delete-orphan",
+    )
 
     # Table constraints
     __table_args__ = (
@@ -249,7 +254,10 @@ class CampaignSuggestionHistory(Base, UUIDMixin):
     )
 
     # Relationship
-    suggestion = relationship("CampaignSuggestion", backref="history")
+    suggestion: Mapped["CampaignSuggestion"] = relationship(
+        "CampaignSuggestion",
+        back_populates="history",
+    )
 
 
 # ============================================

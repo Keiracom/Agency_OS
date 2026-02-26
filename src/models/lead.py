@@ -55,6 +55,7 @@ if TYPE_CHECKING:
     from src.models.campaign import Campaign
     from src.models.client import Client
     from src.models.lead_social_post import LeadSocialPost
+    from src.models.sdk_usage_log import SDKUsageLog
 
 
 class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
@@ -210,6 +211,11 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         "LeadSocialPost",
         back_populates="lead",
         cascade="all, delete-orphan",
+    )
+    sdk_usage_logs: Mapped[list["SDKUsageLog"]] = relationship(
+        "SDKUsageLog",
+        back_populates="lead",
+        lazy="selectin",
     )
 
     # Constraints - compound uniqueness per client

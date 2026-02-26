@@ -48,6 +48,7 @@ if TYPE_CHECKING:
     from src.models.linkedin_seat import LinkedInSeat
     from src.models.membership import Membership
     from src.models.resource_pool import ClientResource
+    from src.models.sdk_usage_log import SDKUsageLog
 
 
 class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
@@ -252,6 +253,11 @@ class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     )
     digest_logs: Mapped[list["DigestLog"]] = relationship(
         "DigestLog",
+        back_populates="client",
+        lazy="selectin",
+    )
+    sdk_usage_logs: Mapped[list["SDKUsageLog"]] = relationship(
+        "SDKUsageLog",
         back_populates="client",
         lazy="selectin",
     )

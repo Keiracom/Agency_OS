@@ -393,6 +393,7 @@ from src.api.routes.crm import router as crm_router
 from src.api.routes.customers import router as customers_router
 from src.api.routes.digest import router as digest_router
 from src.api.routes.health import router as health_router
+from src.api.routes.internal import router as internal_router
 from src.api.routes.leads import router as leads_router
 from src.api.routes.linkedin import router as linkedin_router
 from src.api.routes.meetings import router as meetings_router
@@ -433,6 +434,8 @@ app.include_router(digest_router, prefix="/api/v1")
 app.include_router(unipile_router, prefix="/api/v1")
 # Step 8/8: Stripe Billing
 app.include_router(billing_router, prefix="/api/v1")
+# E2E Test Infrastructure (only active when MOCK_CRM=true)
+app.include_router(internal_router, prefix="/api/v1")
 
 
 # ============================================

@@ -250,12 +250,12 @@ deployments:
   # CRM SYNC FLOWS (Item 20)
   # ============================================
 
-  # CRM sync flow (6-hourly safety net for missed webhooks)
+  # CRM sync flow (4-hourly safety net for missed webhooks)
   - name: crm-sync-flow
     version: 1.0.0
-    paused: true  # Safety net - enable when CRMs configured
+    paused: false  # Active - polls CRMs every 4 hours
     tags: [crm, sync, safety-net, blind-conversions]
-    description: "CRM sync every 6 hours - safety net for missed webhooks (blind conversions)"
+    description: "CRM sync every 4 hours - safety net for missed webhooks (blind conversions)"
     entrypoint: src/orchestration/flows/crm_sync_flow.py:crm_sync_flow
     work_pool:
       name: agency-os-pool
@@ -263,9 +263,9 @@ deployments:
     parameters:
       since_hours: 24
     schedules:
-      - interval: 21600
+      - interval: 14400  # 4 hours in seconds
         timezone: Australia/Sydney
-        active: false
+        active: true
 
   # ============================================
   # INTELLIGENCE FLOWS

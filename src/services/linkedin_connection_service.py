@@ -67,13 +67,19 @@ class LinkedInConnectionService:
         This replaces the email/password flow. User is redirected to
         Unipile's hosted login page, which handles all auth including 2FA.
 
+        When MOCK_UNIPILE=true, returns success immediately without calling Unipile API.
+
         Args:
             db: Database session
             client_id: Client UUID
 
         Returns:
-            Dict with auth_url for redirect
+            Dict with auth_url for redirect (or mock success if MOCK_UNIPILE enabled)
         """
+        # Check for mock mode
+        if settings.MOCK_UNIPILE:
+            return await self._mock_connect(db, client_id)
+
         # Create or update credential record with pending status
         credential = await self.get_credential(db, client_id)
 
@@ -266,6 +272,61 @@ class LinkedInConnectionService:
         stmt = select(LinkedInCredential).where(LinkedInCredential.client_id == client_id)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def _mock_connect(
+        self,
+        db: AsyncSession,
+        client_id: UUID,
+    ) -> dict:
+        """
+        Mock LinkedIn connection for testing (MOCK_UNIPILE=true).
+
+        Instead of calling Unipile API, immediately marks the client as connected
+        and returns success. Updates linkedin_connected_at in clients table.
+
+        Args:
+            db: Database session
+            client_id: Client UUID
+
+        Returns:
+            Dict with mock success response
+        """
+        logger.info(f"MOCK_UNIPILE: Simulating LinkedIn connection for client {client_id}")
+
+        # Create or update credential record
+        credential = await self.get_credential(db, client_id)
+
+        if not credential:
+            credential = LinkedInCredential(
+                client_id=client_id,
+                connection_status="connected",
+                auth_method="mock",
+            )
+            db.add(credential)
+        else:
+            credential.connection_status = "connected"
+            credential.auth_method = "mock"
+            credential.last_error = None
+
+        # Set mock profile data
+        credential.unipile_account_id = f"mock_account_{client_id}"
+        credential.linkedin_profile_url = "https://linkedin.com/in/mock-test-user"
+        credential.linkedin_profile_name = "Mock Test User"
+        credential.linkedin_headline = "Test Account for E2E Testing"
+        credential.linkedin_connection_count = 500
+        credential.connected_at = datetime.utcnow()
+        credential.error_count = 0
+
+        await db.commit()
+        await db.refresh(credential)
+
+        logger.info(f"MOCK_UNIPILE: LinkedIn connection mocked for client {client_id}")
+
+        return {
+            "auth_url": f"{settings.frontend_url}/onboarding/linkedin/success?mock=true",
+            "status": "connected",
+            "message": "MOCK_UNIPILE: LinkedIn connection simulated successfully",
+        }
 
     async def get_status(
         self,

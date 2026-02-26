@@ -339,6 +339,17 @@ class Settings(BaseSettings):
         default=15, description="Daily email limit during TEST_MODE for mailbox warmup protection"
     )
 
+    # === Mock Service Flags (for E2E Testing) ===
+    # When enabled, services return mock data without calling external APIs
+    MOCK_CRM: bool = Field(
+        default=False,
+        description="Mock CRM integration - seeds test data without calling HubSpot/Pipedrive/Close",
+    )
+    MOCK_UNIPILE: bool = Field(
+        default=False,
+        description="Mock Unipile integration - bypasses LinkedIn connection check",
+    )
+
     # === Credential Encryption (Phase 24H) ===
     credential_encryption_key: str = Field(
         default="",

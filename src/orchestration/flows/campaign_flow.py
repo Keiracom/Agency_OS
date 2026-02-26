@@ -329,7 +329,10 @@ async def trigger_discovery_task(campaign_id: str) -> dict[str, Any]:
     description="Activate campaign with validation and enrichment trigger",
     log_prints=True,
 )
-async def campaign_activation_flow(campaign_id: str | UUID) -> dict[str, Any]:
+async def campaign_activation_flow(
+    campaign_id: str | UUID,
+    client_id: str | UUID | None = None,
+) -> dict[str, Any]:
     """
     Campaign activation flow.
 
@@ -343,6 +346,7 @@ async def campaign_activation_flow(campaign_id: str | UUID) -> dict[str, Any]:
 
     Args:
         campaign_id: Campaign UUID to activate (string or UUID)
+        client_id: Client UUID (optional, extracted from campaign if not provided)
 
     Returns:
         Dict with activation summary

@@ -296,11 +296,11 @@ class WaterfallV2:
         logger.debug(f"Tier 1.25: ABR entity lookup for {lead.business_name} ({lead.abn})")
 
         try:
-            if not self.abn:
+            if not self.abn_client:
                 raise ValueError("ABN client not configured")
 
             # Lookup full entity details by ABN
-            entity_data = await self.abn.search_by_abn(lead.abn)
+            entity_data = await self.abn_client.search_by_abn(lead.abn)
 
             if entity_data and entity_data.get("found"):
                 # Set legal name (entity/company name)

@@ -184,7 +184,7 @@ class QueryTranslator:
                     results.append(
                         DiscoveryResult(
                             abn=record.get("abn"),
-                            business_name=record.get("entity_name") or record.get("name"),
+                            business_name=record.get("business_name") or record.get("entity_name") or record.get("name"),
                             trading_name=record.get("trading_name"),
                             source="abn_api",
                             raw_data=record,

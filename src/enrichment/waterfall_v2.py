@@ -720,18 +720,44 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
                 profile_url = emp.get("link")
                 if profile_url:
                     profile_data = await self.bd.scrape_linkedin_profile(profile_url)
+                    
+                    # FIX B: Defensive check - BD sometimes returns string errors
+                    if not isinstance(profile_data, dict):
+                        logger.warning(
+                            "tier_2_5_invalid_response",
+                            type=type(profile_data).__name__,
+                            value=str(profile_data)[:100]
+                        )
+                        continue
+                    
                     if profile_data:
-                        # Extract key fields from profile
-                        # BD returns job title in 'headline' field, not 'title'
+                        # FIX A: Extract job title - BD returns "position" as STRING
+                        # Defensive chain tries all likely field names
                         job_title = (
-                            profile_data.get("headline")  # Primary: BD headline field
-                            or profile_data.get("title")  # Fallback: title field
+                            profile_data.get("position")  # Primary: BD position field (STRING)
+                            or profile_data.get("headline")  # Fallback: headline
+                            or profile_data.get("title")  # Fallback: title
+                            or profile_data.get("occupation")  # Fallback: occupation
                         )
                         
-                        # Fallback to position[0].title if still no title
-                        positions = profile_data.get("position", [])
-                        if not job_title and positions:
-                            job_title = positions[0].get("title")
+                        # If position is a list (legacy/edge case), extract from first item
+                        if isinstance(job_title, list) and job_title:
+                            first_pos = job_title[0]
+                            job_title = first_pos.get("title") if isinstance(first_pos, dict) else None
+                        
+                        # Last resort: parse from about/summary
+                        if not job_title:
+                            about = profile_data.get("about") or profile_data.get("summary") or ""
+                            if about:
+                                job_title = about.split("\n")[0][:100]  # First line, truncated
+                        
+                        # FIX C: Debug log showing extracted title
+                        logger.debug(
+                            "tier_2_5_title_extracted",
+                            name=profile_data.get("name"),
+                            job_title=job_title,
+                            source_field="position" if profile_data.get("position") else "fallback"
+                        )
                         
                         profile_info = {
                             "first_name": profile_data.get("first_name"),
@@ -740,7 +766,7 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
                             "title": job_title,  # Normalized job title
                             "link": profile_url,
                             "about": profile_data.get("about"),
-                            "position": positions,
+                            "position": profile_data.get("position"),  # Keep original for reference
                         }
                         
                         scraped_profiles.append(profile_info)

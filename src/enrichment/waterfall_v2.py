@@ -68,6 +68,8 @@ class LeadRecord:
     abn: str = None
     business_name: str = None
     legal_name: str = None
+    trading_name: str = None
+    discovery_source: str = None
 
     # ABN Registry fields (Tier 1)
     gst_registered: bool = False
@@ -275,6 +277,145 @@ class WaterfallV2:
 
         return lead
 
+    async def enrich_tier_1_25(self, lead: LeadRecord) -> LeadRecord:
+        """
+        Tier 1.25: ABR Entity Lookup - FREE - Get trading name for ABN-sourced leads.
+        
+        Only runs for ABN-sourced leads. Maps SERP leads already have real names.
+        SDK disambiguation used when ABR returns no trading name and legal name
+        ends with "Pty Ltd" (indicates company, not trading name).
+        """
+        if "tier_1_25" in lead.enrichment_tiers_completed:
+            return lead
+
+        # Only run for ABN-sourced leads that have an ABN
+        if lead.discovery_source not in ("abn_api", "abn_lookup") or not lead.abn:
+            lead.enrichment_tiers_completed.append("tier_1_25")
+            return lead
+
+        logger.debug(f"Tier 1.25: ABR entity lookup for {lead.business_name} ({lead.abn})")
+
+        try:
+            if not self.abn:
+                raise ValueError("ABN client not configured")
+
+            # Lookup full entity details by ABN
+            entity_data = await self.abn.search_by_abn(lead.abn)
+
+            if entity_data and entity_data.get("found"):
+                # Set legal name (entity/company name)
+                lead.legal_name = entity_data.get("business_name")
+
+                # Set trading name: prefer trading_name, then first business_name, fallback to legal
+                trading = entity_data.get("trading_name")
+                business_names = entity_data.get("business_names") or []
+
+                if trading:
+                    lead.trading_name = trading
+                elif business_names:
+                    lead.trading_name = business_names[0]
+                else:
+                    lead.trading_name = lead.legal_name
+
+                # Update other ABN fields if available
+                if entity_data.get("gst_registered") is not None:
+                    lead.gst_registered = entity_data.get("gst_registered")
+                if entity_data.get("entity_type"):
+                    lead.entity_type = entity_data.get("entity_type")
+
+                logger.info(
+                    f"Tier 1.25: Found trading_name='{lead.trading_name}' "
+                    f"legal_name='{lead.legal_name}' for ABN {lead.abn}"
+                )
+
+                # SDK disambiguation: if trading_name == legal_name AND looks like company name
+                if (
+                    lead.trading_name == lead.legal_name
+                    and lead.legal_name
+                    and any(
+                        lead.legal_name.upper().endswith(suffix)
+                        for suffix in ("PTY LTD", "PTY LIMITED", "PTY. LTD.", "PTY. LIMITED")
+                    )
+                ):
+                    # Try SDK disambiguation
+                    try:
+                        sdk_trading = await self._sdk_disambiguate_trading_name(lead)
+                        if sdk_trading and sdk_trading != lead.legal_name:
+                            lead.trading_name = sdk_trading
+                            logger.info(f"Tier 1.25: SDK disambiguated to '{sdk_trading}'")
+                    except Exception as sdk_err:
+                        logger.warning(f"SDK disambiguation failed: {sdk_err}")
+
+            lead.enrichment_tiers_completed.append("tier_1_25")
+
+            # Write audit log
+            if self.supabase:
+                await self._log_enrichment(
+                    lead,
+                    "tier_1_25_complete",
+                    {
+                        "abn": lead.abn,
+                        "trading_name": lead.trading_name,
+                        "legal_name": lead.legal_name,
+                        "business_name": lead.business_name,
+                        "source": lead.discovery_source,
+                    },
+                )
+
+            logger.debug(f"Tier 1.25 completed for {lead.id}")
+
+        except Exception as e:
+            error = {
+                "tier": "tier_1_25",
+                "error": str(e),
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+            lead.enrichment_errors.append(error)
+            logger.warning(f"Tier 1.25 failed for {lead.id}: {str(e)}")
+
+        return lead
+
+    async def _sdk_disambiguate_trading_name(self, lead: LeadRecord) -> str | None:
+        """
+        Use SDK to disambiguate trading name when ABR returns only legal name.
+        
+        Cost: ~$0.01 per call (Haiku)
+        Returns: Trading name string or None
+        """
+        from src.integrations.sdk_brain import get_simple_client
+
+        client = get_simple_client("classification")
+
+        prompt = f"""What is the likely trading name for this Australian business?
+
+Legal Name: {lead.legal_name}
+State: {lead.state or 'Unknown'}
+Industry: {lead.category or lead.industry or 'Unknown'}
+
+Return ONLY the trading name, no explanation. 
+If the trading name is likely the same as the legal name (minus Pty Ltd suffix), return just the company name without the suffix.
+If truly unknown, return the legal name without the Pty Ltd suffix."""
+
+        result = await client.complete(
+            prompt=prompt,
+            system="You are a business name expert. Return only the trading name, nothing else.",
+            max_tokens=50,
+            temperature=0.3,
+        )
+
+        trading_name = result.get("content", "").strip()
+        cost = result.get("cost_aud", 0)
+
+        # Log SDK usage
+        if self.supabase and cost > 0:
+            await self._log_enrichment(
+                lead,
+                "tier_1_25_sdk_used",
+                {"cost_aud": cost, "result": trading_name},
+            )
+
+        return trading_name if trading_name else None
+
     async def enrich_tier_1_5a(self, lead: LeadRecord) -> LeadRecord:
         """Tier 1.5a: SERP Google Maps - $0.0015 - If missing phone/website"""
         if "tier_1_5a" in lead.enrichment_tiers_completed:
@@ -285,14 +426,16 @@ class WaterfallV2:
             lead.enrichment_tiers_completed.append("tier_1_5a")
             return lead
 
-        logger.debug(f"Tier 1.5a: Google Maps enrichment for {lead.business_name}")
+        # Prefer trading name over legal/entity name for GMB search
+        search_name = lead.trading_name or lead.business_name or ""
+        logger.debug(f"Tier 1.5a: Google Maps enrichment for {search_name}")
 
         try:
             if not self.bd:
                 raise ValueError("Bright Data client not configured")
 
-            # Search Google Maps for business
-            search_query = lead.business_name or ""
+            # Search Google Maps for business - use trading name if available
+            search_query = search_name
             location = lead.address or lead.state or "Australia"
             gmb_results = await self.bd.search_google_maps(
                 query=search_query.strip(),
@@ -340,14 +483,16 @@ class WaterfallV2:
         if "tier_1_5b" in lead.enrichment_tiers_completed:
             return lead
 
-        logger.debug(f"Tier 1.5b: LinkedIn URL discovery for {lead.business_name}")
+        # Prefer trading name over legal/entity name for LinkedIn search
+        search_name = lead.trading_name or lead.business_name or ""
+        logger.debug(f"Tier 1.5b: LinkedIn URL discovery for {search_name}")
 
         try:
             if not self.bd:
                 raise ValueError("Bright Data client not configured")
 
-            # Search LinkedIn company URL via SERP
-            search_query = f'site:linkedin.com/company "{lead.business_name}" {lead.address or lead.state or ""}'
+            # Search LinkedIn company URL via SERP - use trading name if available
+            search_query = f'site:linkedin.com/company "{search_name}" {lead.address or lead.state or ""}'
 
             serp_results = await self.bd.search_google(query=search_query.strip(), max_results=10)
 
@@ -811,9 +956,11 @@ class WaterfallV2:
                 logger.debug(f"Processing lead: {lead.business_name} ({lead.id})")
 
                 # Phase 2: Core Enrichment (Always run)
+                # v2.2 Order: T1 → T1.25(ABR) → T1.5b(LinkedIn) → T1.5a(GMB) → T2
                 lead = await self.enrich_tier_1(lead)
-                lead = await self.enrich_tier_1_5a(lead)
-                lead = await self.enrich_tier_1_5b(lead)
+                lead = await self.enrich_tier_1_25(lead)   # ABR trading name lookup
+                lead = await self.enrich_tier_1_5b(lead)   # LinkedIn first (confirms business exists)
+                lead = await self.enrich_tier_1_5a(lead)   # GMB second (cross-reference with trading name)
                 lead = await self.enrich_tier_2(lead)
 
                 # Phase 3: Initial ALS Scoring

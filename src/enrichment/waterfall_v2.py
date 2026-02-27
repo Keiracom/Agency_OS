@@ -347,7 +347,7 @@ class WaterfallV2:
             if serp_results:
                 # Find LinkedIn company URL in results
                 for result in serp_results:
-                    url = result.get("url", "")
+                    url = result.get("link") or result.get("url", "")
                     if "linkedin.com/company/" in url and not url.endswith("/jobs"):
                         lead.linkedin_company_url = url
                         break

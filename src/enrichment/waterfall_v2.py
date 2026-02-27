@@ -552,12 +552,10 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
                 if not lead.website:
                     lead.website = linkedin_data.get("website")
 
-                # Extract employee data for decision makers
+                # Store employees for T2.5 to process (T2.5 scrapes profiles to get real job titles)
                 employees = linkedin_data.get("employees", [])
                 if employees:
-                    lead.employees = employees
-                    # Filter for decision makers (C-level, VP, Director, Manager)
-                    lead.decision_makers = self._extract_decision_makers(employees)
+                    lead.employees = employees[:5]  # Store top 5 for T2.5 to filter
 
             lead.enrichment_tiers_completed.append("tier_2")
             lead.cost_aud += self.COSTS["linkedin_company"]
@@ -616,19 +614,19 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
         if lead.specialties:
             score_breakdown["company_fit"] += 5
 
-        # Authority (25 points)
+        # Authority (25 points) - Score based on best decision maker title
         if lead.decision_makers:
-            score_breakdown["authority"] += min(len(lead.decision_makers) * 5, 15)
-            # Bonus for C-level contacts
-            c_level = sum(
-                1
-                for dm in lead.decision_makers
-                if any(
-                    keyword in dm.get("title", "").lower()
-                    for keyword in ["ceo", "cto", "cfo", "cmo", "chief", "founder"]
-                )
-            )
-            score_breakdown["authority"] += min(c_level * 5, 10)
+            for dm in lead.decision_makers[:1]:  # Score on best DM only
+                title = dm.get("title", "").lower()
+                if any(k in title for k in ["ceo", "founder", "owner", "chief", "president", "managing director"]):
+                    score_breakdown["authority"] = 25
+                elif any(k in title for k in ["vp", "vice president"]):
+                    score_breakdown["authority"] = 18
+                elif any(k in title for k in ["director", "head of"]):
+                    score_breakdown["authority"] = 15
+                elif any(k in title for k in ["manager", "partner"]):
+                    score_breakdown["authority"] = 7
+                break  # Score on best DM only
 
         # Timing (15 points) - Based on recent activity signals
         if lead.linkedin_data.get("updates"):
@@ -675,7 +673,13 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
     # PREMIUM ENRICHMENT TIERS (WITH GATES)
 
     async def enrich_tier_2_5(self, lead: LeadRecord) -> LeadRecord:
-        """Tier 2.5: LinkedIn People Profile - $0.0015 - Only if ALS >= 35"""
+        """
+        Tier 2.5: LinkedIn People Profile - $0.0015 per profile - Only if ALS >= gate
+        
+        Scrapes employee profiles from T2 to get real job titles, then filters for decision makers.
+        BD company scraper returns employee NAME in 'title' field, not job title.
+        This tier scrapes each profile to extract actual title for DM filtering.
+        """
         if "tier_2_5" in lead.enrichment_tiers_completed:
             return lead
 
@@ -685,8 +689,8 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
             )
             return lead
 
-        if not lead.decision_makers:
-            # Skip if no decision makers found
+        # Use employees from T2 (not decision_makers which is empty at this point)
+        if not lead.employees:
             lead.enrichment_tiers_completed.append("tier_2_5")
             return lead
 
@@ -696,22 +700,55 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
             if not self.bd:
                 raise ValueError("Bright Data client not configured")
 
-            # Enrich decision maker profiles
-            enriched_decision_makers = []
+            # Decision maker keywords for filtering
+            dm_keywords = [
+                "ceo", "cto", "cfo", "cmo", "coo", "chief", "founder", "president",
+                "vp", "vice president", "director", "head of", "owner", "partner", "managing"
+            ]
 
-            for dm in lead.decision_makers[:3]:  # Limit to top 3 to control costs
-                profile_url = dm.get("link")
+            # Scrape profiles and filter for decision makers
+            scraped_profiles = []
+            decision_makers = []
+
+            for emp in lead.employees[:3]:  # Limit to top 3 to control costs
+                profile_url = emp.get("link")
                 if profile_url:
                     profile_data = await self.bd.scrape_linkedin_profile(profile_url)
                     if profile_data:
-                        dm.update(profile_data)
-                        enriched_decision_makers.append(dm)
+                        # Extract key fields from profile
+                        profile_info = {
+                            "first_name": profile_data.get("first_name"),
+                            "last_name": profile_data.get("last_name"),
+                            "name": profile_data.get("name"),
+                            "title": profile_data.get("title"),  # Real job title
+                            "link": profile_url,
+                            "about": profile_data.get("about"),
+                            "position": profile_data.get("position", []),
+                        }
+                        
+                        # Get current role from position if title not set
+                        if not profile_info["title"] and profile_info["position"]:
+                            profile_info["title"] = profile_info["position"][0].get("title")
+                        
+                        scraped_profiles.append(profile_info)
+                        
+                        # Check if decision maker
+                        title = (profile_info.get("title") or "").lower()
+                        if any(kw in title for kw in dm_keywords):
+                            decision_makers.append(profile_info)
+                        
+                        lead.cost_aud += self.COSTS["linkedin_people"]
 
-            if enriched_decision_makers:
-                lead.decision_makers = enriched_decision_makers
+            # Store decision makers, or best profile if none found
+            if decision_makers:
+                lead.decision_makers = decision_makers
+                logger.info(f"Tier 2.5: Found {len(decision_makers)} decision makers for {lead.business_name}")
+            elif scraped_profiles:
+                # Any contact is better than none
+                lead.decision_makers = [scraped_profiles[0]]
+                logger.info(f"Tier 2.5: No DM found, using top profile for {lead.business_name}")
 
             lead.enrichment_tiers_completed.append("tier_2_5")
-            lead.cost_aud += self.COSTS["linkedin_people"]
             logger.debug(f"Tier 2.5 completed for {lead.id}")
 
         except Exception as e:

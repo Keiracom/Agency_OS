@@ -138,7 +138,7 @@ class WaterfallV2:
     - LeadmagicNoPlanError: Hard fail, do not silently skip
     """
 
-    PRE_ALS_GATE = 35  # Minimum score for premium enrichment (T2.5, T3) - matches campaign floor
+    PRE_ALS_GATE = 20  # Minimum score for premium enrichment (T2.5, T3) - lowered to allow leads with GMB data
     HOT_THRESHOLD = 85  # Minimum for Tier 5 (Leadmagic mobile)
 
     # Cost constants (AUD) - Updated for Leadmagic

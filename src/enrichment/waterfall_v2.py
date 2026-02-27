@@ -403,6 +403,10 @@ class WaterfallV2:
                 lead.headquarters = linkedin_data.get("headquarters")
                 lead.specialties = linkedin_data.get("specialties")
 
+                # Extract website from LinkedIn if not already set
+                if not lead.website:
+                    lead.website = linkedin_data.get("website")
+
                 # Extract employee data for decision makers
                 employees = linkedin_data.get("employees", [])
                 if employees:

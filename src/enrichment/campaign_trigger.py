@@ -403,7 +403,7 @@ class CampaignDiscoveryTrigger:
                     "email": lead.email,
                     "company": lead.business_name,
                     "phone": lead.phone,
-                    "website": lead.website,
+                    "organization_website": lead.website,
                     "linkedin_url": lead.linkedin_company_url,
                     "als_score": lead.als_score,
                     "als_components": lead.als_breakdown,
@@ -415,6 +415,16 @@ class CampaignDiscoveryTrigger:
 
             except Exception as e:
                 logger.warning("create_lead_failed", error=str(e), business=lead.business_name)
+                await self._write_audit_log(
+                    supabase,
+                    campaign_id,
+                    "lead_insert_failed",
+                    {
+                        "business_name": lead.business_name,
+                        "error": str(e),
+                        "als_score": lead.als_score,
+                    },
+                )
 
         if skipped > 0:
             logger.info("leads_skipped_summary", skipped=skipped, reason="no_email")

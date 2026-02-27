@@ -541,6 +541,12 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
             if linkedin_data:
                 lead.linkedin_data = linkedin_data
 
+                # Update business_name from LinkedIn company name if available
+                # This fixes truncated names from Maps SERP (e.g., "MARKETING" -> "Bright Valley Marketing")
+                linkedin_name = linkedin_data.get("name")
+                if linkedin_name and len(linkedin_name) > len(lead.business_name or ""):
+                    lead.business_name = linkedin_name
+
                 # Extract key fields
                 lead.company_size = linkedin_data.get("company_size")
                 lead.industry = linkedin_data.get("industries")
@@ -588,7 +594,7 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
         ]
 
         for employee in employees:
-            title = employee.get("title", "").lower()
+            title = (employee.get("title") or "").lower()
             if any(keyword in title for keyword in decision_keywords):
                 decision_makers.append(employee)
 
@@ -617,7 +623,7 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
         # Authority (25 points) - Score based on best decision maker title
         if lead.decision_makers:
             for dm in lead.decision_makers[:1]:  # Score on best DM only
-                title = dm.get("title", "").lower()
+                title = (dm.get("title") or "").lower()
                 if any(k in title for k in ["ceo", "founder", "owner", "chief", "president", "managing director"]):
                     score_breakdown["authority"] = 25
                 elif any(k in title for k in ["vp", "vice president"]):

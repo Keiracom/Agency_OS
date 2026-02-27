@@ -417,11 +417,17 @@ class ParallelDiscovery:
 
         # Process ABN results first (higher confidence for business data)
         for record in abn_results:
+            # Skip records with no usable identity data
+            if not record.business_name and not record.abn:
+                continue
             key = self._generate_dedup_key(record, config)
             merged[key] = record
 
         # Process Maps results, merging with ABN data where possible
         for record in maps_results:
+            # Skip records with no usable identity data
+            if not record.business_name and not record.abn:
+                continue
             key = self._generate_dedup_key(record, config)
 
             if key in merged:
@@ -441,7 +447,7 @@ class ParallelDiscovery:
             return f"abn_{record.abn.strip()}"
 
         # Fall back to fuzzy business name matching
-        clean_name = record.business_name.lower().strip()
+        clean_name = (record.business_name or "").lower().strip()
         # Remove common business suffixes for better matching
         suffixes = ["pty ltd", "pty. ltd.", "proprietary limited", "limited", "ltd", "corp", "inc"]
         for suffix in suffixes:

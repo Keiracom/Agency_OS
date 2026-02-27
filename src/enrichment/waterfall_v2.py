@@ -722,19 +722,26 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
                     profile_data = await self.bd.scrape_linkedin_profile(profile_url)
                     if profile_data:
                         # Extract key fields from profile
+                        # BD returns job title in 'headline' field, not 'title'
+                        job_title = (
+                            profile_data.get("headline")  # Primary: BD headline field
+                            or profile_data.get("title")  # Fallback: title field
+                        )
+                        
+                        # Fallback to position[0].title if still no title
+                        positions = profile_data.get("position", [])
+                        if not job_title and positions:
+                            job_title = positions[0].get("title")
+                        
                         profile_info = {
                             "first_name": profile_data.get("first_name"),
                             "last_name": profile_data.get("last_name"),
                             "name": profile_data.get("name"),
-                            "title": profile_data.get("title"),  # Real job title
+                            "title": job_title,  # Normalized job title
                             "link": profile_url,
                             "about": profile_data.get("about"),
-                            "position": profile_data.get("position", []),
+                            "position": positions,
                         }
-                        
-                        # Get current role from position if title not set
-                        if not profile_info["title"] and profile_info["position"]:
-                            profile_info["title"] = profile_info["position"][0].get("title")
                         
                         scraped_profiles.append(profile_info)
                         

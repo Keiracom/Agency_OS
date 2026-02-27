@@ -106,12 +106,17 @@ class CampaignDiscoveryTrigger:
 
         # 6. Run waterfall enrichment on passed results
         enriched_leads = []
+        logger.info("waterfall_start", leads_to_process=len(passed_results[:config.lead_volume]))
         for result in passed_results[: config.lead_volume]:  # Limit to target volume
-            lead_record = self._convert_to_lead_record(result)
+            try:
+                lead_record = self._convert_to_lead_record(result)
 
-            # Run through waterfall tiers
-            lead_record = await self._enrich_lead(lead_record, config)
-            enriched_leads.append(lead_record)
+                # Run through waterfall tiers
+                lead_record = await self._enrich_lead(lead_record, config)
+                enriched_leads.append(lead_record)
+            except Exception as e:
+                logger.error("waterfall_lead_failed", business=result.business_name, error=str(e))
+                continue
 
         # 7. Create leads in database
         leads_created = await self._create_leads(campaign_id, enriched_leads)
@@ -155,7 +160,8 @@ class CampaignDiscoveryTrigger:
         state = icp.get("state") or self._infer_state(location)
 
         # Lead volume from campaign or default
-        lead_count = campaign.get("lead_count") or 100
+        # Cast to int to handle string "0" from DB (string "0" is truthy, int 0 is falsy)
+        lead_count = int(campaign.get("lead_count") or 0) or 100
 
         return CampaignConfig(
             campaign_id=campaign["id"],

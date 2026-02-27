@@ -68,6 +68,8 @@ class LeadRecord:
     abn: str = None
     business_name: str = None
     legal_name: str = None
+    trading_name: str = None
+    discovery_source: str = None
 
     # ABN Registry fields (Tier 1)
     gst_registered: bool = False
@@ -275,6 +277,79 @@ class WaterfallV2:
 
         return lead
 
+    async def enrich_tier_1_25(self, lead: LeadRecord) -> LeadRecord:
+        """Tier 1.25: ABR Entity Lookup - FREE - Get trading name for ABN-sourced leads"""
+        if "tier_1_25" in lead.enrichment_tiers_completed:
+            return lead
+
+        # Only run for ABN-sourced leads that have an ABN
+        if lead.discovery_source not in ("abn_api", "abn_lookup") or not lead.abn:
+            lead.enrichment_tiers_completed.append("tier_1_25")
+            return lead
+
+        logger.debug(f"Tier 1.25: ABR entity lookup for {lead.business_name} ({lead.abn})")
+
+        try:
+            if not self.abn:
+                raise ValueError("ABN client not configured")
+
+            # Lookup full entity details by ABN
+            entity_data = await self.abn.search_by_abn(lead.abn)
+
+            if entity_data and entity_data.get("found"):
+                # Set legal name (entity/company name)
+                lead.legal_name = entity_data.get("business_name")
+
+                # Set trading name: prefer trading_name, then first business_name, fallback to legal
+                trading = entity_data.get("trading_name")
+                business_names = entity_data.get("business_names") or []
+                
+                if trading:
+                    lead.trading_name = trading
+                elif business_names:
+                    lead.trading_name = business_names[0]
+                else:
+                    lead.trading_name = lead.legal_name
+
+                # Update other ABN fields if available
+                if entity_data.get("gst_registered") is not None:
+                    lead.gst_registered = entity_data.get("gst_registered")
+                if entity_data.get("entity_type"):
+                    lead.entity_type = entity_data.get("entity_type")
+
+                logger.info(
+                    f"Tier 1.25: Found trading_name='{lead.trading_name}' "
+                    f"legal_name='{lead.legal_name}' for ABN {lead.abn}"
+                )
+
+            lead.enrichment_tiers_completed.append("tier_1_25")
+
+            # Write audit log
+            if self.supabase:
+                await self._log_enrichment(
+                    lead,
+                    "tier_1_25_complete",
+                    {
+                        "abn": lead.abn,
+                        "trading_name": lead.trading_name,
+                        "legal_name": lead.legal_name,
+                        "business_name": lead.business_name,
+                    },
+                )
+
+            logger.debug(f"Tier 1.25 completed for {lead.id}")
+
+        except Exception as e:
+            error = {
+                "tier": "tier_1_25",
+                "error": str(e),
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+            lead.enrichment_errors.append(error)
+            logger.warning(f"Tier 1.25 failed for {lead.id}: {str(e)}")
+
+        return lead
+
     async def enrich_tier_1_5a(self, lead: LeadRecord) -> LeadRecord:
         """Tier 1.5a: SERP Google Maps - $0.0015 - If missing phone/website"""
         if "tier_1_5a" in lead.enrichment_tiers_completed:
@@ -340,14 +415,16 @@ class WaterfallV2:
         if "tier_1_5b" in lead.enrichment_tiers_completed:
             return lead
 
-        logger.debug(f"Tier 1.5b: LinkedIn URL discovery for {lead.business_name}")
+        # Prefer trading name over legal/entity name for LinkedIn search
+        search_name = lead.trading_name or lead.business_name or ""
+        logger.debug(f"Tier 1.5b: LinkedIn URL discovery for {search_name}")
 
         try:
             if not self.bd:
                 raise ValueError("Bright Data client not configured")
 
-            # Search LinkedIn company URL via SERP
-            search_query = f'site:linkedin.com/company "{lead.business_name}" {lead.address or lead.state or ""}'
+            # Search LinkedIn company URL via SERP - use trading name if available
+            search_query = f'site:linkedin.com/company "{search_name}" {lead.address or lead.state or ""}'
 
             serp_results = await self.bd.search_google(query=search_query.strip(), max_results=10)
 
@@ -812,6 +889,7 @@ class WaterfallV2:
 
                 # Phase 2: Core Enrichment (Always run)
                 lead = await self.enrich_tier_1(lead)
+                lead = await self.enrich_tier_1_25(lead)  # ABR trading name lookup
                 lead = await self.enrich_tier_1_5a(lead)
                 lead = await self.enrich_tier_1_5b(lead)
                 lead = await self.enrich_tier_2(lead)

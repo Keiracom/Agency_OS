@@ -312,7 +312,7 @@ class CampaignDiscoveryTrigger:
         """Write enrichment audit log entry."""
         try:
             await supabase.table("audit_logs").insert({
-                "action": "enrichment",
+                "action": "create",
                 "resource_type": "lead",
                 "operation": operation,
                 "campaign_id": campaign_id,

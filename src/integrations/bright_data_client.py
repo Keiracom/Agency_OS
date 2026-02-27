@@ -143,15 +143,25 @@ class BrightDataClient:
 
         result = await self._serp_request(url)
 
-        # Parse response body (same format as Maps SERP)
+        # Parse response body - handle both "organic" and "results" keys
         if isinstance(result, dict) and "body" in result:
             try:
                 body = json.loads(result["body"])
-                return body.get("organic", [])[:max_results]
+                # Handle both formats from Bright Data SERP
+                if "organic" in body:
+                    return body["organic"][:max_results]
+                elif "results" in body:
+                    # Filter for organic type results
+                    organic = [r for r in body["results"] if r.get("type") == "organic"]
+                    return organic[:max_results]
+                return []
             except (json.JSONDecodeError, KeyError, TypeError):
                 return []
         elif isinstance(result, dict) and "organic" in result:
             return result["organic"][:max_results]
+        elif isinstance(result, dict) and "results" in result:
+            organic = [r for r in result["results"] if r.get("type") == "organic"]
+            return organic[:max_results]
 
         return []
 

@@ -249,6 +249,9 @@ class CampaignDiscoveryTrigger:
 
     async def _enrich_lead(self, lead: LeadRecord, config: CampaignConfig) -> LeadRecord:
         """Run lead through waterfall enrichment tiers."""
+        supabase = await get_async_supabase_service_client()
+        campaign_id = config.campaign_id
+
         # Tier 1: ABN (if not already from ABN discovery)
         if not lead.abn:
             lead = await self.waterfall.enrich_tier_1(lead)
@@ -260,15 +263,43 @@ class CampaignDiscoveryTrigger:
         # Tier 1.5b: SERP LinkedIn Discovery
         lead = await self.waterfall.enrich_tier_1_5b(lead)
 
+        # Audit: T1.5b complete
+        await self._write_audit_log(supabase, campaign_id, "tier_1_5b_complete", {
+            "linkedin_url_found": bool(lead.linkedin_company_url),
+            "business_name": lead.business_name,
+        })
+
         # Tier 2: LinkedIn Company (if URL found)
         if lead.linkedin_company_url:
             lead = await self.waterfall.enrich_tier_2(lead)
+            # Audit: T2 complete
+            await self._write_audit_log(supabase, campaign_id, "tier_2_complete", {
+                "business_name": lead.business_name,
+                "industry": getattr(lead, "industry", None),
+                "company_size": getattr(lead, "company_size", None),
+            })
+        else:
+            # Audit: T2 skipped
+            await self._write_audit_log(supabase, campaign_id, "tier_2_skipped", {
+                "business_name": lead.business_name,
+                "reason": "no_linkedin_url",
+            })
 
         # Calculate ALS
         lead.als_score = self.waterfall.calculate_als(lead)
+        gate_passed = lead.als_score >= self.waterfall.PRE_ALS_GATE
+
+        # Audit: ALS calculated
+        await self._write_audit_log(supabase, campaign_id, "als_calculated", {
+            "business_name": lead.business_name,
+            "score": lead.als_score,
+            "breakdown": lead.als_breakdown,
+            "gate_passed": gate_passed,
+            "gate_threshold": self.waterfall.PRE_ALS_GATE,
+        })
 
         # Gate check for further enrichment
-        if lead.als_score >= self.waterfall.PRE_ALS_GATE:
+        if gate_passed:
             lead = await self.waterfall.enrich_tier_2_5(lead)
             lead = await self.waterfall.enrich_tier_3(lead)
             lead = await self.waterfall.enrich_tier_5(lead)
@@ -276,6 +307,20 @@ class CampaignDiscoveryTrigger:
             lead.als_score = self.waterfall.calculate_als(lead)
 
         return lead
+
+    async def _write_audit_log(self, supabase, campaign_id: str, operation: str, details: dict):
+        """Write enrichment audit log entry."""
+        try:
+            await supabase.table("audit_logs").insert({
+                "action": "create",
+                "resource_type": "lead",
+                "operation": operation,
+                "campaign_id": campaign_id,
+                "success": True,
+                "metadata": details,
+            }).execute()
+        except Exception as e:
+            logger.warning(f"audit_log_write_failed: {operation} - {e}")
 
     async def _store_discovery_results(self, campaign_id: str, results: list):
         """Store discovery results in discovery_results table."""
@@ -322,6 +367,12 @@ class CampaignDiscoveryTrigger:
                         business=lead.business_name,
                         reason="email required but not discovered during enrichment"
                     )
+                    # Audit: lead skipped
+                    await self._write_audit_log(supabase, campaign_id, "lead_skipped", {
+                        "business_name": lead.business_name,
+                        "reason": "no_email",
+                        "als_score": lead.als_score,
+                    })
                     skipped += 1
                     continue
 

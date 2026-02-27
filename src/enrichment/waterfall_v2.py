@@ -643,7 +643,7 @@ class WaterfallV2:
                     # Use company name as fallback for generic contact
                     result = await self.leadmagic.find_email(
                         first_name="info",
-                        last_name="",
+                        last_name="Contact",
                         domain=domain,
                         company=lead.business_name,
                     )

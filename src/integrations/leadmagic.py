@@ -485,6 +485,34 @@ class LeadmagicClient:
             ValidationError: If required params missing
             LeadmagicError: If API call fails
         """
+        # MOCK MODE: Bypass validation and return synthetic email
+        if _is_mock_mode():
+            domain_clean = (domain or "").lower().strip()
+            if domain_clean.startswith(("http://", "https://")):
+                domain_clean = domain_clean.split("//")[1].split("/")[0]
+            fn = (first_name or "").lower().strip()
+            ln = (last_name or "").lower().strip()
+            if fn and ln:
+                mock_email = f"{fn}.{ln}@{domain_clean}"
+            else:
+                mock_email = f"info@{domain_clean}"
+            logger.info(f"[Leadmagic] MOCK MODE: Returning fake email {mock_email}")
+            return EmailFinderResult(
+                found=bool(domain_clean),
+                email=mock_email if domain_clean else None,
+                confidence=85,
+                status=EmailStatus.VALID,
+                first_name=(first_name or "").strip(),
+                last_name=(last_name or "").strip(),
+                domain=domain_clean,
+                company=company.strip() if company else None,
+                position=None,
+                linkedin_url=None,
+                cost_aud=0.0,
+                source="leadmagic-mock",
+            )
+
+        # Real mode validation
         if not domain:
             raise ValidationError(message="Domain is required for email finder")
         if not first_name or not last_name:
@@ -494,28 +522,6 @@ class LeadmagicClient:
         domain = domain.lower().strip()
         if domain.startswith(("http://", "https://")):
             domain = domain.split("//")[1].split("/")[0]
-
-        # MOCK MODE: Return realistic fake data without API call
-        if _is_mock_mode():
-            mock_email = f"{first_name.lower().strip()}.{last_name.lower().strip()}@{domain}"
-            mock_confidence = random.randint(85, 98)
-            logger.info(
-                f"[Leadmagic] MOCK MODE: Returning fake email for {first_name} {last_name} @ {domain}"
-            )
-            return EmailFinderResult(
-                found=True,
-                email=mock_email,
-                confidence=mock_confidence,
-                status=EmailStatus.VALID,
-                first_name=first_name.strip(),
-                last_name=last_name.strip(),
-                domain=domain,
-                company=company.strip() if company else None,
-                position=None,
-                linkedin_url=None,
-                cost_aud=0.0,  # No charge for mock
-                source="leadmagic-mock",
-            )
 
         logger.info(f"[Leadmagic] Email finder: {first_name} {last_name} @ {domain}")
 

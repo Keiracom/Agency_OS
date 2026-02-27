@@ -300,11 +300,28 @@ class CampaignDiscoveryTrigger:
 
         # Gate check for further enrichment
         if gate_passed:
-            lead = await self.waterfall.enrich_tier_2_5(lead)
-            lead = await self.waterfall.enrich_tier_3(lead)
-            lead = await self.waterfall.enrich_tier_5(lead)
-            # Recalculate ALS after enrichment
-            lead.als_score = self.waterfall.calculate_als(lead)
+            try:
+                lead = await self.waterfall.enrich_tier_2_5(lead)
+                lead = await self.waterfall.enrich_tier_3(lead)
+                lead = await self.waterfall.enrich_tier_5(lead)
+                # Recalculate ALS after enrichment
+                lead.als_score = self.waterfall.calculate_als(lead)
+            except Exception as e:
+                logger.warning(
+                    "enrichment_post_gate_failed",
+                    business=lead.business_name,
+                    error=str(e),
+                )
+                await self._write_audit_log(
+                    supabase,
+                    campaign_id,
+                    "post_gate_enrichment_failed",
+                    {
+                        "business_name": lead.business_name,
+                        "error": str(e),
+                        "als_score": lead.als_score,
+                    },
+                )
 
         return lead
 

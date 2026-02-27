@@ -51,6 +51,10 @@ from src.enrichment.discovery_modes import (
     MapsFirstDiscovery,
     ParallelDiscovery,
 )
+from src.integrations.leadmagic import (
+    LeadmagicCreditExhaustedError,
+    LeadmagicNoPlanError,
+)
 
 logger = structlog.get_logger()
 
@@ -601,12 +605,6 @@ class WaterfallV2:
                     "Leadmagic client not configured - required for T3 email enrichment"
                 )
 
-            # Import error types for explicit handling
-            from src.integrations.leadmagic import (
-                LeadmagicCreditExhaustedError,
-                LeadmagicNoPlanError,
-            )
-
             # Try to find email for best decision maker
             email_found = False
 
@@ -725,12 +723,6 @@ class WaterfallV2:
                 raise ValueError(
                     "Leadmagic client not configured - required for T5 mobile enrichment"
                 )
-
-            # Import error types for explicit handling
-            from src.integrations.leadmagic import (
-                LeadmagicCreditExhaustedError,
-                LeadmagicNoPlanError,
-            )
 
             # Enrich top decision makers with Leadmagic mobile finder
             verified_contacts = []

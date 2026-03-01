@@ -1,14 +1,14 @@
 """
 Contract: src/engines/scorer.py
-Purpose: Calculate ALS (Agency Lead Score) using 5-component formula
+Purpose: Calculate ALS (Agency Lead Score) + Dual Scoring (Siege Waterfall v3)
 Layer: 3 - engines
 Imports: models, integrations
 Consumers: orchestration only
 
 FILE: src/engines/scorer.py
-PURPOSE: Calculate ALS (Agency Lead Score) using 5-component formula
-PHASE: 4 (Engines), modified Phase 16, 24A (Lead Pool), 24F (Buyer Signals)
-TASK: ENG-003, 16A-006, 16E-004, POOL-009, CUST-012
+PURPOSE: Calculate ALS + Dual Scoring (Reachability + Propensity)
+PHASE: 4 (Engines), modified Phase 16, 24A (Lead Pool), 24F (Buyer Signals), Directive #144
+TASK: ENG-003, 16A-006, 16E-004, POOL-009, CUST-012, SIEGE-V3
 DEPENDENCIES:
   - src/engines/base.py
   - src/models/lead.py
@@ -19,6 +19,16 @@ RULES APPLIED:
   - Rule 11: Session passed as argument
   - Rule 12: No imports from other engines
   - Rule 14: Soft deletes only
+
+SIEGE WATERFALL V3 (Directive #144):
+  DUAL SCORING replaces single ALS for richer lead prioritization:
+  - Reachability (0-100): Can we reach them? (verified email, DM confirmed, mobile, LinkedIn)
+  - Propensity (0-100+): Will they buy? (ICP fit, timing signals, engagement, buyer history)
+
+  CRITICAL CONSTRAINTS:
+  - Weights fetched from ceo_memory (ceo:propensity_weights_v3), NOT hardcoded
+  - Agency sees priority_rank (1,2,3...) + plain-English reason ONLY, no raw scores
+
 PHASE 16 CHANGES:
   - Loads learned weights from client's WHO patterns
   - Stores raw component scores in als_components
@@ -118,6 +128,43 @@ LINKEDIN_HIGH_CONNECTIONS_BOOST = 2  # 500+ connections (influential)
 LINKEDIN_HIGH_FOLLOWERS_BOOST = 2  # Company 1000+ followers
 LINKEDIN_RECENT_ACTIVITY_BOOST = 1  # Posted in last 30 days
 
+# ============================================
+# SIEGE WATERFALL V3: DUAL SCORING (Directive #144)
+# ============================================
+# Reachability (0-100): Can we reach them?
+# Propensity (0-100+): Will they buy?
+# NOTE: Actual weights fetched from ceo_memory, NOT hardcoded here
+
+# Default reachability weights (fetched from ceo_memory in production)
+DEFAULT_REACHABILITY_WEIGHTS = {
+    "verified_email": 35,
+    "dm_confirmed": 30,  # LinkedIn DM confirmed
+    "direct_mobile": 25,
+    "linkedin_url": 10,
+}
+
+# Propensity signal categories
+PROPENSITY_SIGNAL_CATEGORIES = [
+    "industry_match",
+    "company_size_fit",
+    "authority_level",
+    "timing_signals",
+    "engagement_signals",
+    "buyer_history",
+]
+
+# CEO Memory key for weights
+CEO_MEMORY_WEIGHTS_KEY = "ceo:propensity_weights_v3"
+
+# Priority rank reason templates (plain English, no raw scores)
+PRIORITY_REASONS = {
+    "top": "High intent signals, strong contact data",
+    "high": "Good intent indicators, verified contact",
+    "medium": "Moderate signals, needs enrichment",
+    "low": "Limited signals, basic contact only",
+    "minimal": "Minimal data, requires discovery",
+}
+
 # Phase 24E: Funnel conversion patterns boost (max 12 points boost)
 MAX_FUNNEL_BOOST = 12
 FUNNEL_HIGH_SHOW_RATE_BOOST = 4  # Tier has high show rate (80%+)
@@ -126,7 +173,7 @@ FUNNEL_STRONG_WIN_RATE_BOOST = 4  # Strong win rate (30%+)
 
 # Directive 048: Multi-source verified boost (max 15 points)
 MAX_MULTI_SOURCE_BOOST = 15
-# Sources: ABN, GMB, Hunter, LinkedIn, Apollo, Prospeo, etc.
+# Sources: ABN, GMB, Leadmagic, LinkedIn, Prospeo, etc.
 
 # Directive 048: Social post timing signals for Timing component (max 15 points)
 SOCIAL_POST_TIMING_SIGNALS = [
@@ -698,6 +745,335 @@ class ScorerEngine(BaseEngine):
         }
         return tier_channels.get(tier, [])
 
+    # ============================================
+    # SIEGE WATERFALL V3: DUAL SCORING (Directive #144)
+    # ============================================
+
+    async def _get_weights_from_ceo_memory(self, db: AsyncSession) -> dict:
+        """
+        Fetch proprietary scoring weights from Supabase ceo_memory.
+
+        Directive #144: Weights MUST NOT be hardcoded in code.
+        They are fetched from ceo_memory table with key 'ceo:propensity_weights_v3'.
+
+        Args:
+            db: Database session
+
+        Returns:
+            Weights dict with 'reachability' and 'propensity' sub-dicts
+        """
+        try:
+            result = await db.execute(
+                text("""
+                    SELECT value
+                    FROM ceo_memory
+                    WHERE key = :key
+                """),
+                {"key": CEO_MEMORY_WEIGHTS_KEY},
+            )
+            row = result.fetchone()
+
+            if row and row.value:
+                weights = row.value
+                if isinstance(weights, str):
+                    import json
+                    weights = json.loads(weights)
+                logger.info(f"Loaded weights from ceo_memory: {CEO_MEMORY_WEIGHTS_KEY}")
+                return weights
+
+            # Fallback to default weights if not in ceo_memory
+            logger.warning(
+                f"Weights not found in ceo_memory ({CEO_MEMORY_WEIGHTS_KEY}), "
+                "using defaults. Please populate ceo_memory."
+            )
+            return {
+                "reachability": DEFAULT_REACHABILITY_WEIGHTS,
+                "propensity": {
+                    "industry_match": 15,
+                    "company_size_fit": 10,
+                    "authority_level": 20,
+                    "timing_signals": 15,
+                    "engagement_signals": 25,
+                    "buyer_history": 15,
+                },
+            }
+
+        except Exception as e:
+            logger.error(f"Error fetching weights from ceo_memory: {e}")
+            return {
+                "reachability": DEFAULT_REACHABILITY_WEIGHTS,
+                "propensity": {},
+            }
+
+    async def calculate_reachability(
+        self,
+        db: AsyncSession,
+        lead_data: dict,
+    ) -> int:
+        """
+        Calculate Reachability score (0-100).
+
+        Reachability answers: "Can we reach this person?"
+        Based on verified contact channels.
+
+        Directive #144: Weights fetched from ceo_memory, NOT hardcoded.
+
+        Args:
+            db: Database session
+            lead_data: Lead/pool data dict
+
+        Returns:
+            Reachability score 0-100
+        """
+        weights = await self._get_weights_from_ceo_memory(db)
+        reach_weights = weights.get("reachability", DEFAULT_REACHABILITY_WEIGHTS)
+
+        score = 0
+
+        # Verified email channel
+        if lead_data.get("verified_email") or lead_data.get("email_status") == "verified":
+            score += reach_weights.get("verified_email", 35)
+
+        # DM confirmed (LinkedIn InMail/connection confirmed)
+        if lead_data.get("dm_confirmed") or lead_data.get("linkedin_connection_status") == "connected":
+            score += reach_weights.get("dm_confirmed", 30)
+
+        # Direct mobile number
+        if lead_data.get("direct_mobile") or lead_data.get("mobile_verified"):
+            score += reach_weights.get("direct_mobile", 25)
+
+        # LinkedIn profile URL (can at least attempt InMail)
+        if lead_data.get("linkedin_url"):
+            score += reach_weights.get("linkedin_url", 10)
+
+        return min(score, 100)
+
+    async def calculate_propensity(
+        self,
+        db: AsyncSession,
+        lead_data: dict,
+        icp_config: dict | None = None,
+    ) -> int:
+        """
+        Calculate Propensity score (0-100+).
+
+        Propensity answers: "Will they buy?"
+        Based on intent signals, ICP fit, engagement.
+
+        Directive #144: Weights fetched from ceo_memory, NOT hardcoded.
+        Service-aware weights applied from icp_config.
+
+        Args:
+            db: Database session
+            lead_data: Lead/pool data dict
+            icp_config: Optional ICP configuration with service-specific weights
+
+        Returns:
+            Propensity score 0-100+ (can exceed 100 for exceptional matches)
+        """
+        weights = await self._get_weights_from_ceo_memory(db)
+        prop_weights = weights.get("propensity", {})
+
+        score = 0
+
+        # Industry match
+        if lead_data.get("industry_match") or self._check_industry_match(lead_data, icp_config):
+            score += prop_weights.get("industry_match", 15)
+
+        # Company size fit
+        if self._check_company_size_fit(lead_data, icp_config):
+            score += prop_weights.get("company_size_fit", 10)
+
+        # Authority level (decision-maker power)
+        authority_score = self._score_authority_for_propensity(lead_data)
+        if authority_score >= 20:
+            score += prop_weights.get("authority_level", 20)
+        elif authority_score >= 10:
+            score += prop_weights.get("authority_level", 20) // 2
+
+        # Timing signals (hiring, funding, new role)
+        timing_signals = self._count_timing_signals(lead_data)
+        if timing_signals >= 2:
+            score += prop_weights.get("timing_signals", 15)
+        elif timing_signals >= 1:
+            score += prop_weights.get("timing_signals", 15) // 2
+
+        # Engagement signals (posts, activity, reviews)
+        if lead_data.get("has_recent_posts") or lead_data.get("dm_linkedin_posts_count", 0) > 0:
+            score += prop_weights.get("engagement_signals", 25) // 2
+        if lead_data.get("gmb_reviews_count", 0) > 10:
+            score += prop_weights.get("engagement_signals", 25) // 2
+
+        # Buyer history (from platform_buyer_signals)
+        if lead_data.get("buyer_history") or lead_data.get("times_bought", 0) > 0:
+            score += prop_weights.get("buyer_history", 15)
+
+        # Service-aware weights from ICP config
+        if icp_config and icp_config.get("propensity_boosts"):
+            boosts = icp_config["propensity_boosts"]
+            for boost_key, boost_value in boosts.items():
+                if lead_data.get(boost_key):
+                    score += boost_value
+
+        return score  # Can exceed 100 for exceptional matches
+
+    def _check_industry_match(self, lead_data: dict, icp_config: dict | None) -> bool:
+        """Check if lead's industry matches ICP target industries."""
+        if not icp_config:
+            return False
+        target_industries = icp_config.get("industries", [])
+        lead_industry = (lead_data.get("company_industry") or "").lower()
+        return any(t.lower() in lead_industry for t in target_industries)
+
+    def _check_company_size_fit(self, lead_data: dict, icp_config: dict | None) -> bool:
+        """Check if lead's company size fits ICP range."""
+        if not icp_config:
+            return False
+        emp_range = icp_config.get("employee_range", {})
+        emp_count = lead_data.get("company_employee_count", 0)
+        return emp_range.get("min", 0) <= emp_count <= emp_range.get("max", 999999)
+
+    def _score_authority_for_propensity(self, lead_data: dict) -> int:
+        """Score authority level for propensity calculation."""
+        title = (lead_data.get("title") or "").lower()
+        for keyword, points in AUTHORITY_SCORES.items():
+            if keyword in title:
+                return points
+        return 5  # Default for unknown titles
+
+    def _count_timing_signals(self, lead_data: dict) -> int:
+        """Count timing signals present in lead data."""
+        count = 0
+        if lead_data.get("company_is_hiring"):
+            count += 1
+        if lead_data.get("company_latest_funding_date"):
+            count += 1
+        if lead_data.get("new_role") or lead_data.get("employment_start_recent"):
+            count += 1
+        return count
+
+    def score_to_priority_rank(
+        self,
+        reachability: int,
+        propensity: int,
+        batch_leads: list[dict],
+    ) -> tuple[int, str]:
+        """
+        Convert scores to priority rank + plain-English reason.
+
+        Directive #144: NO RAW SCORES EXPOSED to agency.
+        Agency sees priority rank (1,2,3...) + plain-English reason only.
+
+        Args:
+            reachability: Reachability score 0-100
+            propensity: Propensity score 0-100+
+            batch_leads: All leads in batch for relative ranking
+
+        Returns:
+            Tuple of (rank: int, reason: str)
+        """
+        # Calculate combined score for ranking
+        combined = propensity * 0.6 + reachability * 0.4
+
+        # Sort batch by combined score to determine rank
+        all_scores = []
+        for lead in batch_leads:
+            lead_combined = lead.get("propensity", 0) * 0.6 + lead.get("reachability", 0) * 0.4
+            all_scores.append(lead_combined)
+
+        all_scores.append(combined)
+        all_scores.sort(reverse=True)
+
+        # Find rank (1-indexed)
+        rank = all_scores.index(combined) + 1
+
+        # Generate plain-English reason based on score tiers
+        if combined >= 80:
+            reason = PRIORITY_REASONS["top"]
+        elif combined >= 60:
+            reason = PRIORITY_REASONS["high"]
+        elif combined >= 40:
+            reason = PRIORITY_REASONS["medium"]
+        elif combined >= 20:
+            reason = PRIORITY_REASONS["low"]
+        else:
+            reason = PRIORITY_REASONS["minimal"]
+
+        return rank, reason
+
+    async def score_dual(
+        self,
+        db: AsyncSession,
+        lead_pool_id: UUID,
+        icp_config: dict | None = None,
+        batch_leads: list[dict] | None = None,
+    ) -> EngineResult[dict[str, Any]]:
+        """
+        Calculate dual scores (Reachability + Propensity) for a lead.
+
+        Siege Waterfall v3 scoring (Directive #144).
+
+        Args:
+            db: Database session
+            lead_pool_id: Lead pool UUID
+            icp_config: Optional ICP configuration
+            batch_leads: Optional batch for relative ranking
+
+        Returns:
+            EngineResult with dual scores and priority rank
+        """
+        # Get pool lead data
+        pool_lead = await self._get_pool_lead(db, lead_pool_id)
+        if not pool_lead:
+            return EngineResult.fail(
+                error="Lead not found in pool",
+                metadata={"lead_pool_id": str(lead_pool_id)},
+            )
+
+        # Calculate dual scores
+        reachability = await self.calculate_reachability(db, pool_lead)
+        propensity = await self.calculate_propensity(db, pool_lead, icp_config)
+
+        # Calculate priority rank (no raw scores exposed)
+        batch_leads = batch_leads or []
+        rank, reason = self.score_to_priority_rank(reachability, propensity, batch_leads)
+
+        # Update lead_pool with scores
+        await db.execute(
+            text("""
+                UPDATE lead_pool
+                SET reachability_score = :reachability,
+                    propensity_score = :propensity,
+                    priority_rank = :rank,
+                    priority_reason = :reason,
+                    dual_scored_at = NOW(),
+                    updated_at = NOW()
+                WHERE id = :lead_pool_id
+            """),
+            {
+                "lead_pool_id": str(lead_pool_id),
+                "reachability": reachability,
+                "propensity": propensity,
+                "rank": rank,
+                "reason": reason,
+            },
+        )
+        await db.commit()
+
+        return EngineResult.ok(
+            data={
+                "lead_pool_id": str(lead_pool_id),
+                "reachability": reachability,
+                "propensity": propensity,
+                "priority_rank": rank,
+                "priority_reason": reason,
+            },
+            metadata={
+                "engine": self.name,
+                "scoring_type": "dual_v3",
+            },
+        )
+
     async def _get_learned_weights(
         self,
         db: AsyncSession,
@@ -1158,10 +1534,8 @@ class ScorerEngine(BaseEngine):
             if enrichment_data.get("linkedin_person") or enrichment_data.get("linkedin_url"):
                 sources_verified.append("LinkedIn")
 
-            # Check Apollo/Prospeo enrichment
+            # Check Prospeo enrichment
             enrichment_source = row.enrichment_source or ""
-            if "apollo" in enrichment_source.lower():
-                sources_verified.append("Apollo")
             if "prospeo" in enrichment_source.lower():
                 sources_verified.append("Prospeo")
 

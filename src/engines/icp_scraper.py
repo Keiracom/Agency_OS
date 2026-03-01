@@ -1038,35 +1038,6 @@ Respond in JSON format only:
 
         return None
 
-    async def get_agency_apollo_data(
-        self,
-        company_name: str,
-        domain: str | None = None,
-        icp_config: dict | None = None,
-    ) -> EngineResult[dict[str, Any]]:
-        """
-        Look up the agency data.
-
-        NOTE: Apollo integration removed (CEO Directive #003).
-        This method now returns not found. Use website scraping
-        and Claude inference for agency data.
-
-        Args:
-            company_name: Agency name to search for
-            domain: Optional agency domain
-            icp_config: Optional ICP config dict
-
-        Returns:
-            EngineResult with found=False (Apollo removed)
-        """
-        logger.info(
-            f"get_agency_apollo_data called for {company_name} - Apollo removed (CEO Directive #003)"
-        )
-        return EngineResult.ok(
-            data={"found": False, "legacy_removed": True},
-            metadata={"source": "none", "note": "Apollo removed (CEO Directive #003)"},
-        )
-
     async def enrich_portfolio_batch(
         self,
         companies: list[dict[str, Any]],

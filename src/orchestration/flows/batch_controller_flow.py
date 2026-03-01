@@ -19,7 +19,7 @@ DIRECTIVE 048 REQUIREMENTS:
 - Loops until quota of ALS ≥35 leads is met
 - After 3 failed replacement loops, fires quota shortfall alert
 - Gate 1 triggers: ICP fail, invalid ABN, duplicate, pre-ALS <35 on free tiers only
-- Gate 2 triggers: no email AND no phone, ALS <35 after T3, Hunter confidence <70%
+- Gate 2 triggers: no email AND no phone, ALS <35 after T3, Leadmagic confidence <70%
 - Gate 3: demote tier only, never discard
 - Every discard writes reason to discarded_leads before status change
 """
@@ -297,7 +297,7 @@ async def apply_gate_2_filter_task(
     Triggers:
     - No email AND no phone
     - ALS <35 after T3
-    - Hunter confidence <70%
+    - Leadmagic confidence <70%
 
     Args:
         lead_pool_id: Lead pool UUID
@@ -495,17 +495,30 @@ async def trigger_replacement_discovery_task(
 
             icp_config = row.icp_config or {}
 
-            # Trigger GMB discovery via the discovery service
-            # This would call the actual GMB scraper/discovery flow
-            from src.integrations.gmb_scraper import trigger_gmb_discovery
+            # Siege Waterfall v3: GMB-first discovery via Bright Data (Directive #144)
+            from src.integrations.bright_data_client import get_bright_data_client
+            from src.enrichment.discovery_modes import GMBFirstDiscovery, CampaignConfig, DiscoveryMode
 
-            discovery_result = await trigger_gmb_discovery(
-                search_queries=icp_config.get("search_queries", []),
-                locations=icp_config.get("countries", ["Australia"]),
-                limit=count_needed * 2,  # Get 2x to account for filtering
-                campaign_id=campaign_id,
-                client_id=client_id,
+            bd_client = get_bright_data_client()
+            gmb_discovery = GMBFirstDiscovery(bright_data_client=bd_client)
+
+            # Build discovery config from ICP
+            discovery_config = CampaignConfig(
+                mode=DiscoveryMode.GMB_FIRST,
+                industry=icp_config.get("industry") or icp_config.get("search_queries", ["business"])[0],
+                location=icp_config.get("location", "Australia"),
+                state=icp_config.get("state"),
+                max_results=count_needed * 2,  # Get 2x to account for filtering
             )
+
+            # Execute GMB-first discovery
+            discovery_records = await gmb_discovery.discover(discovery_config)
+
+            discovery_result = {
+                "count": len(discovery_records),
+                "records": discovery_records,
+                "mode": "gmb_first",
+            }
 
             # Update discovery loop count
             await db.execute(
@@ -893,7 +906,7 @@ async def apply_quality_gates_flow(
 # =============================================================================
 # [x] Contract comment at top
 # [x] Gate 1 triggers: ICP fail, invalid ABN, duplicate, pre-ALS <35 (free only)
-# [x] Gate 2 triggers: no contact, ALS <35 after T3, Hunter <70%
+# [x] Gate 2 triggers: no contact, ALS <35 after T3, Leadmagic <70%
 # [x] Gate 3: demote only, never discard
 # [x] Quota monitoring via campaign_quota_status table
 # [x] Replacement discovery triggers after discards

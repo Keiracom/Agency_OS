@@ -36,7 +36,6 @@ COSTS = {
 
 async def main():
     api_key = os.getenv("BRIGHTDATA_API_KEY")
-    hunter_key = os.getenv("HUNTER_API_KEY")
     dfs_login = os.getenv("DATAFORSEO_LOGIN")
     dfs_pass = os.getenv("DATAFORSEO_PASSWORD")
 

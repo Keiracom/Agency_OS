@@ -76,7 +76,7 @@ ENV_VARS = [
     EnvVar("ELEVENLABS_API_KEY", "Voice synthesis (TTS)", "required", "Voice", "https://elevenlabs.io"),
 
     # DIRECT MAIL
-    EnvVar("LOB_API_KEY", "Physical mail campaigns", "optional", "Direct Mail", "https://dashboard.lob.com"),
+    EnvVar("CLICKSEND_API_KEY", "Physical mail campaigns", "optional", "Direct Mail", "https://dashboard.clicksend.com"),
 
     # PAYMENTS
     EnvVar("STRIPE_API_KEY", "Billing (secret key)", "required", "Payments", "https://dashboard.stripe.com/apikeys"),

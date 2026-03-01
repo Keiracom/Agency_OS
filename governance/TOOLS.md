@@ -237,7 +237,7 @@ See **🔌 MCP Bridge (PRIMARY API ACCESS)** section above for full documentatio
 
 | Key | Service | Get From |
 | :--- | :--- | :--- |
-| `HUNTER_API_KEY` | Hunter.io | https://hunter.io/api (free tier: 25/mo) |
+| `LEADMAGIC_API_KEY` | LeadMagic | https://leadmagic.io/ |
 | `SLACK_BOT_TOKEN` | Slack | https://api.slack.com/apps |
 | `NOTION_API_KEY` | Notion | https://www.notion.so/my-integrations |
 | `LINEAR_API_KEY` | Linear | https://linear.app/settings/api |

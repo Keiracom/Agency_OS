@@ -267,8 +267,6 @@ Before deployment, ensure you have:
 | `REDIS_URL` | Upstash Redis URL | Yes | `rediss://...` |
 | `ANTHROPIC_API_KEY` | Claude API key | Yes | `sk-ant-...` |
 | `AI_DAILY_SPEND_LIMIT_AUD` | Daily AI budget | No | `50` |
-| `APOLLO_API_KEY` | Apollo enrichment | Yes | `...` |
-| `APIFY_API_KEY` | Apify scraping | Yes | `...` |
 | `CLAY_API_KEY` | Clay enrichment | Yes | `...` |
 | `RESEND_API_KEY` | Email sending | Yes | `re_...` |
 | `POSTMARK_API_KEY` | Inbound webhooks | Yes | `...` |
@@ -276,7 +274,7 @@ Before deployment, ensure you have:
 | `TWILIO_AUTH_TOKEN` | Twilio auth | Yes | `...` |
 | `HEYREACH_API_KEY` | LinkedIn automation | Yes | `...` |
 | `SYNTHFLOW_API_KEY` | Voice AI | Yes | `...` |
-| `LOB_API_KEY` | Direct mail | Yes | `...` |
+| `CLICKSEND_API_KEY` | Direct mail | Yes | `...` |
 | `STRIPE_SECRET_KEY` | Stripe API | Yes | `sk_live_...` |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhooks | Yes | `whsec_...` |
 | `SENTRY_DSN` | Error tracking | Yes | `https://...@sentry.io/...` |

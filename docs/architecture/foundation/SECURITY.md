@@ -475,7 +475,7 @@ All secrets are stored in environment variables, loaded via `src/config/settings
 |-----------------|-----------|
 | Database | `DATABASE_URL`, `DATABASE_URL_MIGRATIONS` |
 | Supabase | `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET` |
-| External APIs | `ANTHROPIC_API_KEY`, `APOLLO_API_KEY`, `TWILIO_AUTH_TOKEN`, etc. |
+| External APIs | `ANTHROPIC_API_KEY`, `LEADMAGIC_API_KEY`, `TWILIO_AUTH_TOKEN`, etc. |
 | Webhooks | `WEBHOOK_HMAC_SECRET`, `STRIPE_WEBHOOK_SECRET`, `SMARTLEAD_WEBHOOK_SECRET` |
 | Encryption | `CREDENTIAL_ENCRYPTION_KEY` |
 

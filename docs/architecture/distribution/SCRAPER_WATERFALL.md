@@ -358,8 +358,8 @@ vs. using Camoufox for all: 100 x $0.05 = **$5.00**
 ### Environment Variables
 
 ```bash
-# Apify (Tier 1-2)
-APIFY_API_KEY=apify_api_xxx
+# BrightData (Tier 1-2)
+BRIGHTDATA_API_KEY=your_brightdata_key
 
 # Residential Proxy (Tier 3 - Optional)
 RESIDENTIAL_PROXY_HOST=proxy.example.com
@@ -402,7 +402,7 @@ if is_camoufox_configured():
 |-------------|---------|
 | [`../flows/ONBOARDING_FLOW.md`](../flows/ONBOARDING_FLOW.md) | Uses scraper for ICP extraction |
 | [`../../specs/engines/ICP_SCRAPER_ENGINE.md`](../../specs/engines/ICP_SCRAPER_ENGINE.md) | Full engine specification |
-| [`../../specs/integrations/APIFY.md`](../../specs/integrations/APIFY.md) | Apify integration details |
+| [`../../specs/integrations/BRIGHTDATA.md`](../../specs/integrations/BRIGHTDATA.md) | BrightData integration details |
 | [`../TODO.md`](../TODO.md) | Implementation gaps |
 
 ---

@@ -3,8 +3,14 @@
 Siege Waterfall - ABN→GMB Name Resolution Pipeline
 Implements CEO Directive #014
 
-This module handles Tier 2 GMB (Google My Business) enrichment with waterfall
-name resolution to improve match rates from 85% to 90%+.
+This module contains waterfall name resolution utilities for GMB matching.
+
+NOTE: T2 GMB enrichment has been deprecated (CEO Directive T0/T2 Merge).
+T0 discovery via Bright Data GMB already returns all GMB fields (rating, phone,
+address, website, review_count, category). T2 enrichment was redundant.
+
+The waterfall name utilities (NameProcessor, GenericNameFilter) remain available
+for T0 discovery query building.
 """
 
 import re
@@ -379,40 +385,40 @@ class SiegeWaterfall:
         Process a single lead through the siege waterfall
         
         Args:
-            lead_data: Lead data containing ABN information
+            lead_data: Lead data containing ABN information and T0 GMB data
             
         Returns:
-            Processed lead data with GMB enrichment results
+            Processed lead data (GMB fields preserved from T0 discovery)
+            
+        NOTE: T2 GMB enrichment has been removed (CEO Directive T0/T2 Merge).
+        T0 discovery via Bright Data GMB already provides all GMB fields:
+        rating, phone, address, website, review_count, category.
+        This method now passes through leads without redundant GMB API calls.
         """
-        # Extract ABN record from lead data
-        abn_record = ABNRecord(
-            abn=lead_data.get('abn', ''),
-            business_name=lead_data.get('business_name', ''),
-            business_names=lead_data.get('business_names', []),
-            trading_name=lead_data.get('trading_name'),
-            postcode=lead_data.get('postcode'),
-            state=lead_data.get('state')
-        )
-        
-        # Process through Tier 2 GMB enrichment
-        success, gmb_result, status = self.tier2_enricher.process_abn_record(abn_record)
-        
-        # Update lead data with results
         result_data = lead_data.copy()
-        result_data['tier2_status'] = status
-        result_data['tier2_success'] = success
         
-        if gmb_result:
-            result_data['gmb_data'] = {
-                'place_id': gmb_result.place_id,
-                'name': gmb_result.name,
-                'address': gmb_result.address,
-                'phone': gmb_result.phone,
-                'website': gmb_result.website,
-                'rating': gmb_result.rating,
-                'review_count': gmb_result.review_count,
-                'match_score': gmb_result.match_score
-            }
+        # T2 GMB enrichment removed — T0 discovery already provides GMB fields
+        # Check if T0 already populated GMB data
+        has_gmb_from_t0 = any([
+            lead_data.get('rating'),
+            lead_data.get('phone'),
+            lead_data.get('address'),
+            lead_data.get('website'),
+            lead_data.get('review_count'),
+            lead_data.get('category'),
+            lead_data.get('gmb_data')  # Alternative: nested GMB object
+        ])
+        
+        if has_gmb_from_t0:
+            result_data['tier2_status'] = 'tier2_skipped_t0_has_gmb'
+            result_data['tier2_success'] = True  # T0 already succeeded
+            logger.info(f"Skipping T2 GMB enrichment for {lead_data.get('abn', 'unknown')} - T0 already has GMB data")
+        else:
+            # No GMB data from T0 — mark as not enriched
+            # This shouldn't happen if T0 ran correctly, but handle gracefully
+            result_data['tier2_status'] = 'tier2_skipped_no_t0_gmb'
+            result_data['tier2_success'] = False
+            logger.warning(f"Lead {lead_data.get('abn', 'unknown')} has no GMB data from T0 discovery")
         
         return result_data
 

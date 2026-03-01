@@ -2,6 +2,10 @@
 """
 Test suite for siege_waterfall.py
 CEO Directive #014 - ABN→GMB Waterfall Name Resolution
+
+NOTE: T2 GMB enrichment has been removed (CEO Directive T0/T2 Merge).
+T0 discovery via Bright Data GMB already provides all GMB fields.
+Tests updated to verify T2 is properly skipped.
 """
 
 import pytest
@@ -229,50 +233,93 @@ class TestSiegeWaterfall:
             'business_names': ['Test Services'],
             'trading_name': 'TestCorp',
             'postcode': '2000',
-            'state': 'NSW'
+            'state': 'NSW',
+            # T0 GMB data (from Bright Data discovery)
+            'rating': 4.5,
+            'phone': '+61 2 1234 5678',
+            'address': '123 Test St, Sydney NSW 2000',
+            'website': 'https://test.com.au',
+            'review_count': 42,
+            'category': 'Business Services'
         }
         
         result = self.waterfall.process_lead(lead_data)
         
-        # Should contain original data plus tier2 results
+        # Should contain original data plus tier2 skip status
         assert 'tier2_status' in result
         assert 'tier2_success' in result
         assert result['abn'] == lead_data['abn']
         assert result['business_name'] == lead_data['business_name']
+        # T2 should be skipped since T0 has GMB data
+        assert result['tier2_status'] == 'tier2_skipped_t0_has_gmb'
+        assert result['tier2_success'] is True
+        # GMB fields from T0 should be preserved
+        assert result['rating'] == 4.5
+        assert result['phone'] == '+61 2 1234 5678'
+        assert result['website'] == 'https://test.com.au'
     
-    def test_process_lead_generic_filter(self):
-        """Test lead processing with generic name"""
+    def test_process_lead_without_t0_gmb_data(self):
+        """Test lead processing when T0 didn't provide GMB data"""
         lead_data = {
             'abn': '12345678901',
-            'business_name': 'Investment Holdings Pty Ltd',
-            'business_names': [],  # No ASIC names
-            'trading_name': None,
+            'business_name': 'Test Business Pty Ltd',
+            'business_names': ['Test Services'],
+            'trading_name': 'TestCorp',
             'postcode': '2000',
             'state': 'NSW'
+            # No GMB fields - T0 discovery didn't find this business
         }
         
         result = self.waterfall.process_lead(lead_data)
         
-        assert result['tier2_status'] == 'tier2_skipped_generic_name'
+        # T2 is skipped (removed), but status indicates no T0 GMB data
+        assert result['tier2_status'] == 'tier2_skipped_no_t0_gmb'
         assert result['tier2_success'] is False
+    
+    def test_process_lead_with_nested_gmb_data(self):
+        """Test lead processing with GMB data in nested object"""
+        lead_data = {
+            'abn': '12345678901',
+            'business_name': 'Test Business Pty Ltd',
+            'gmb_data': {
+                'rating': 4.2,
+                'phone': '+61 3 9876 5432',
+                'address': '456 Example Ave, Melbourne VIC 3000',
+                'website': 'https://example.com.au'
+            }
+        }
+        
+        result = self.waterfall.process_lead(lead_data)
+        
+        # Should recognize nested GMB data from T0
+        assert result['tier2_status'] == 'tier2_skipped_t0_has_gmb'
+        assert result['tier2_success'] is True
 
 
-# Integration test data
+# Integration test data — updated for T2 removal (T0/T2 Merge directive)
 TEST_LEADS = [
     {
-        'name': 'Full Data Lead',
+        'name': 'Full Data Lead with T0 GMB',
         'data': {
             'abn': '11234567890',
             'business_name': 'Melbourne Coffee Roasters Pty Ltd',
             'business_names': ['Melbourne Coffee Co', 'Coffee Roasters Melbourne'],
             'trading_name': 'MelbCoffee',
             'postcode': '3000',
-            'state': 'VIC'
+            'state': 'VIC',
+            # T0 GMB data from Bright Data discovery
+            'rating': 4.8,
+            'phone': '+61 3 9000 1234',
+            'address': '100 Collins St, Melbourne VIC 3000',
+            'website': 'https://melbcoffee.com.au',
+            'review_count': 156,
+            'category': 'Coffee Roasters'
         },
-        'expected_steps': 5  # 2 ASIC + trading + stripped + location
+        'expected_status': 'tier2_skipped_t0_has_gmb',
+        'expected_success': True
     },
     {
-        'name': 'Generic Holdings Lead',
+        'name': 'Lead without T0 GMB data',
         'data': {
             'abn': '22345678901',
             'business_name': 'ABC Holdings Pty Ltd',
@@ -280,11 +327,13 @@ TEST_LEADS = [
             'trading_name': None,
             'postcode': '2000',
             'state': 'NSW'
+            # No GMB fields - T0 didn't find this in GMB
         },
-        'expected_status': 'tier2_skipped_generic_name'
+        'expected_status': 'tier2_skipped_no_t0_gmb',
+        'expected_success': False
     },
     {
-        'name': 'Minimal Data Lead',
+        'name': 'Minimal Data Lead no GMB',
         'data': {
             'abn': '33456789012',
             'business_name': 'Simple Trading Pty Ltd',
@@ -293,25 +342,43 @@ TEST_LEADS = [
             'postcode': None,
             'state': None
         },
-        'expected_steps': 1  # Only stripped legal name
+        'expected_status': 'tier2_skipped_no_t0_gmb',
+        'expected_success': False
+    },
+    {
+        'name': 'Lead with nested gmb_data',
+        'data': {
+            'abn': '44567890123',
+            'business_name': 'Nested GMB Test Pty Ltd',
+            'gmb_data': {
+                'rating': 4.2,
+                'phone': '+61 2 5555 1234'
+            }
+        },
+        'expected_status': 'tier2_skipped_t0_has_gmb',
+        'expected_success': True
     }
 ]
 
 
 @pytest.mark.parametrize("test_lead", TEST_LEADS, ids=[lead['name'] for lead in TEST_LEADS])
 def test_integration_scenarios(test_lead):
-    """Integration tests for various lead scenarios"""
+    """Integration tests for various lead scenarios — T2 removed, T0 GMB passthrough"""
     waterfall = SiegeWaterfall()
     result = waterfall.process_lead(test_lead['data'])
     
-    if 'expected_status' in test_lead:
-        assert result['tier2_status'] == test_lead['expected_status']
+    # Check tier2 status matches expected (T2 is now always skipped)
+    assert result['tier2_status'] == test_lead['expected_status']
+    assert result['tier2_success'] == test_lead['expected_success']
     
-    if 'expected_steps' in test_lead:
-        # This would require mocking the enricher to count actual steps
-        # For now, just ensure processing completed
-        assert 'tier2_status' in result
-        assert 'tier2_success' in result
+    # Verify original lead data is preserved
+    assert result['abn'] == test_lead['data']['abn']
+    
+    # If T0 had GMB data, it should still be there
+    if 'rating' in test_lead['data']:
+        assert result['rating'] == test_lead['data']['rating']
+    if 'gmb_data' in test_lead['data']:
+        assert result['gmb_data'] == test_lead['data']['gmb_data']
 
 
 if __name__ == '__main__':

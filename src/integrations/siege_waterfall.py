@@ -18,7 +18,9 @@ SIEGE CONTEXT:
   waterfall with cost tracking and graceful degradation.
 
   Tier 1: ABN Bulk (data.gov.au) - FREE
-  Tier 2: GMB/Ads Signals (Bright Data) - $0.006/lead AUD
+  Tier 2: GMB/Ads Signals (Bright Data) - DEPRECATED (T0/T2 merge)
+          T0 GMB-first discovery already returns all GMB fields.
+          T2 now skips if T0 data present — saves $0.001/lead.
   Tier 3: Leadmagic email finder - $0.015/lead AUD (ALS >= 35)
   Tier 5: Leadmagic mobile finder - $0.077/lead AUD (ALS >= 85)
 
@@ -671,12 +673,38 @@ class SiegeWaterfall:
             )
 
         # ===== TIER 2: GMB/Ads Signals =====
+        # CEO Directive: T0/T2 GMB Merge - Skip T2 if T0 discovery already has GMB data
+        # In Siege Waterfall v3, GMB-first discovery (T0) returns all GMB fields.
+        # T2 enrichment is redundant — saves $0.001/lead with zero data loss.
+        has_gmb_from_t0 = any([
+            enriched_data.get("gmb_rating"),
+            enriched_data.get("gmb_review_count"),
+            enriched_data.get("gmb_category"),
+            enriched_data.get("gmb_address"),
+            enriched_data.get("gmb_phone"),
+            enriched_data.get("gmb_website"),
+            enriched_data.get("gmb_data"),  # Alternative: nested GMB object from T0
+        ])
+
         if EnrichmentTier.GMB not in skip_tiers:
-            result = await self.tier2_gmb(enriched_data)
-            tier_results.append(result)
-            if result.success:
-                enriched_data = self._merge_data(enriched_data, result.data)
-                total_cost_aud += result.cost_aud
+            if has_gmb_from_t0:
+                # T0 already provided GMB data — skip redundant T2 call
+                tier_results.append(
+                    TierResult(
+                        tier=EnrichmentTier.GMB,
+                        success=True,  # T0 already succeeded
+                        skipped=True,
+                        skip_reason="T0 discovery already has GMB data (T0/T2 merge)",
+                    )
+                )
+                logger.info(f"[T2] Skipping GMB enrichment — T0 already has data")
+            else:
+                # Fallback: T0 didn't provide GMB data (shouldn't happen in GMB-first mode)
+                result = await self.tier2_gmb(enriched_data)
+                tier_results.append(result)
+                if result.success:
+                    enriched_data = self._merge_data(enriched_data, result.data)
+                    total_cost_aud += result.cost_aud
         else:
             tier_results.append(
                 TierResult(

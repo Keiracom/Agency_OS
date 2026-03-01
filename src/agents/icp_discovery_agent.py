@@ -319,22 +319,7 @@ class ICPDiscoveryAgent(BaseAgent):
         linkedin_specialties: list[str] = []
         google_results: list[dict] = []
 
-        # Tier F1: Apollo agency lookup
-        logger.info("Tier F1: Looking up agency in Apollo...")
-        legacy_result = await self.scraper.get_agency_apollo_data(
-            company_name=company_name,
-            domain=website_domain,
-        )
-        if legacy_result.success and legacy_result.data:
-            data = legacy_result.data
-            if data.get("found"):
-                legacy_description = data.get("description")
-                legacy_keywords = data.get("keywords", [])
-                logger.info(
-                    f"Tier F1: Found Apollo data - description length: {len(legacy_description or '')}"
-                )
-            else:
-                logger.info("Tier F1: Agency not found in Apollo")
+        # Tier F1: Apollo removed (Directive #144 Phase 0)
 
         # Tier F2: Social profile discovery (only if we don't have social links)
         if not collected_social_links or not social_profiles or not social_profiles.has_profiles:

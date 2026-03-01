@@ -1158,10 +1158,8 @@ class ScorerEngine(BaseEngine):
             if enrichment_data.get("linkedin_person") or enrichment_data.get("linkedin_url"):
                 sources_verified.append("LinkedIn")
 
-            # Check Apollo/Prospeo enrichment
+            # Check Prospeo enrichment
             enrichment_source = row.enrichment_source or ""
-            if "apollo" in enrichment_source.lower():
-                sources_verified.append("Apollo")
             if "prospeo" in enrichment_source.lower():
                 sources_verified.append("Prospeo")
 

@@ -1,33 +1,38 @@
 """
 FILE: src/integrations/siege_waterfall.py
-PURPOSE: Unified 4-tier Australian B2B enrichment waterfall
+PURPOSE: Siege Waterfall v3 - Multi-tier Australian B2B enrichment (Directive #144)
 PHASE: SIEGE (System Overhaul)
 TASK: SIEGE-001
 DEPENDENCIES:
   - src/config/settings.py
   - src/exceptions.py
   - src/integrations/leadmagic.py
+  - src/integrations/bright_data_client.py
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 4: Validation threshold 0.70
   - LAW II: All costs in $AUD
 
-SIEGE CONTEXT:
-  This is the unified enrichment interface that replaces Apollo as the
-  single source of truth for lead enrichment. It orchestrates a 4-tier
-  waterfall with cost tracking and graceful degradation.
+SIEGE WATERFALL V3 TIERS (Directive #144):
+  T0:    GMB-first discovery (handled in discovery_modes.py) - $0.001/record
+  T1:    ABN Bulk (data.gov.au) - FREE
+  T1.5:  BD LinkedIn Company - $0.025 | Gate: ICP pass
+  T2:    SKIP (T0/T2 merged) - T0 already has GMB data
+  T2.5:  BD GMB Reviews - $0.001 | Gate: Propensity ≥70
+  T3:    Leadmagic email - $0.015 | Gate: ICP pass
+  T-DM0: DataForSEO (5 endpoints) - $0.0465 | Gate: ICP pass
+  T-DM1: BD LinkedIn Profile - $0.0015 | Gate: ICP pass
+  T-DM2: BD LinkedIn Posts 90d - $0.0015 | Gate: Propensity ≥70
+  T-DM2b: Company LI posts (from T1.5) - FREE | Gate: Propensity ≥70
+  T-DM3: BD X Posts 90d - $0.0025 | Gate: Propensity ≥70
+  T5:    Leadmagic mobile - $0.077 | Gate: Reachability needs mobile channel
 
-  Tier 1: ABN Bulk (data.gov.au) - FREE
-  Tier 2: GMB/Ads Signals (Bright Data) - DEPRECATED (T0/T2 merge)
-          T0 GMB-first discovery already returns all GMB fields.
-          T2 now skips if T0 data present — saves $0.001/lead.
-  Tier 3: Leadmagic email finder - $0.015/lead AUD (ALS >= 35)
-  Tier 5: Leadmagic mobile finder - $0.077/lead AUD (ALS >= 85)
+DUAL SCORING:
+  - Reachability (0-100): Can we reach them? (verified channels)
+  - Propensity (0-100+): Will they buy? (intent signals + ICP fit)
 
-  Weighted Average: ~$0.098/lead vs Apollo $0.50+
-
-  NOTE: Leadmagic plan unpurchased - API key present but 0 credits.
-        Use LEADMAGIC_MOCK=true for testing without credits.
+NOTE: Leadmagic plan unpurchased - API key present but 0 credits.
+      Use LEADMAGIC_MOCK=true for testing without credits.
 """
 
 from __future__ import annotations
@@ -124,21 +129,39 @@ class EnrichmentSkippedError(IntegrationError):
 
 
 class EnrichmentTier(StrEnum):
-    """Enrichment tier identifiers."""
+    """Enrichment tier identifiers - Siege Waterfall v3 (Directive #144)."""
 
-    ABN = "tier1_abn"
-    GMB = "tier2_gmb"
-    LEADMAGIC_EMAIL = "tier3_leadmagic_email"
-    IDENTITY = "tier5_identity"
+    # Core tiers
+    ABN = "tier1_abn"  # T1: ABN verification (FREE)
+    LINKEDIN_COMPANY = "tier1_5_linkedin_company"  # T1.5: BD LinkedIn Company ($0.025)
+    GMB = "tier2_gmb"  # T2: SKIP if T0 has GMB data (T0/T2 merge)
+    GMB_REVIEWS = "tier2_5_gmb_reviews"  # T2.5: BD GMB Reviews ($0.001, Prop ≥70)
+    LEADMAGIC_EMAIL = "tier3_leadmagic_email"  # T3: Leadmagic email ($0.015)
+
+    # Decision Maker tiers
+    DM_DATAFORSEO = "tier_dm0_dataforseo"  # T-DM0: DataForSEO 5 endpoints ($0.0465)
+    DM_LINKEDIN_PROFILE = "tier_dm1_linkedin_profile"  # T-DM1: BD LinkedIn Profile ($0.0015)
+    DM_LINKEDIN_POSTS = "tier_dm2_linkedin_posts"  # T-DM2: BD LinkedIn Posts 90d ($0.0015, Prop ≥70)
+    DM_COMPANY_POSTS = "tier_dm2b_company_posts"  # T-DM2b: Company LI posts (FREE from T1.5)
+    DM_X_POSTS = "tier_dm3_x_posts"  # T-DM3: BD X Posts 90d ($0.0025, Prop ≥70)
+
+    # Identity tier
+    IDENTITY = "tier5_identity"  # T5: Leadmagic mobile ($0.077, Reachability needs mobile)
 
 
-# Cost per lead in $AUD (LAW II compliance)
-# Updated for Leadmagic (replaces Hunter T3 + Kaspr T5)
+# Cost per lead in $AUD (LAW II compliance) - Siege Waterfall v3
 TIER_COSTS_AUD: dict[EnrichmentTier, float] = {
     EnrichmentTier.ABN: 0.00,  # FREE - data.gov.au
-    EnrichmentTier.GMB: 0.006,  # Google Maps signals (Bright Data)
-    EnrichmentTier.LEADMAGIC_EMAIL: 0.015,  # Leadmagic email finder
-    EnrichmentTier.IDENTITY: 0.077,  # Leadmagic mobile finder
+    EnrichmentTier.LINKEDIN_COMPANY: 0.025,  # T1.5: BD LinkedIn Company
+    EnrichmentTier.GMB: 0.001,  # T2: Google Maps (DEPRECATED - skipped if T0 has data)
+    EnrichmentTier.GMB_REVIEWS: 0.001,  # T2.5: BD GMB Reviews
+    EnrichmentTier.LEADMAGIC_EMAIL: 0.015,  # T3: Leadmagic email finder
+    EnrichmentTier.DM_DATAFORSEO: 0.0465,  # T-DM0: DataForSEO (5 endpoints)
+    EnrichmentTier.DM_LINKEDIN_PROFILE: 0.0015,  # T-DM1: BD LinkedIn Profile
+    EnrichmentTier.DM_LINKEDIN_POSTS: 0.0015,  # T-DM2: BD LinkedIn Posts 90d
+    EnrichmentTier.DM_COMPANY_POSTS: 0.00,  # T-DM2b: FREE (reuses T1.5 field)
+    EnrichmentTier.DM_X_POSTS: 0.0025,  # T-DM3: BD X Posts 90d
+    EnrichmentTier.IDENTITY: 0.077,  # T5: Leadmagic mobile finder
 }
 
 # Minimum sources for ALS bonus
@@ -570,19 +593,32 @@ class SiegeWaterfall:
         gmb_scraper: GMBScraperAdapter | None = None,
         leadmagic_email_client: LeadmagicEmailAdapter | None = None,
         leadmagic_mobile_client: LeadmagicMobileClient | None = None,
+        bright_data_client=None,
     ):
         """
-        Initialize Siege Waterfall with optional client overrides.
+        Initialize Siege Waterfall v3 with optional client overrides.
 
         Args:
             abn_client: ABN Bulk client (uses default if None)
             gmb_scraper: GMB scraper adapter (uses default if None)
             leadmagic_email_client: Leadmagic email client adapter (uses default if None)
             leadmagic_mobile_client: Leadmagic mobile client (uses default if None)
+            bright_data_client: Bright Data client for T1.5, T2.5, T-DM tiers
         """
         self.abn_client = abn_client or ABNClientStub()
         self.gmb_scraper = gmb_scraper or GMBScraperAdapter()
         self.leadmagic_email_client = leadmagic_email_client or LeadmagicEmailAdapter()
+
+        # Siege Waterfall v3: Bright Data client for new tiers
+        if bright_data_client:
+            self.bright_data_client = bright_data_client
+        else:
+            try:
+                from src.integrations.bright_data_client import get_bright_data_client
+                self.bright_data_client = get_bright_data_client()
+            except Exception as e:
+                logger.warning(f"[Siege] Bright Data client unavailable: {e}")
+                self.bright_data_client = None
 
         # Use real Leadmagic mobile client if available (Tier 5 - optional)
         # Leadmagic mobile requires LEADMAGIC_API_KEY; if missing, Tier 5 is simply unavailable
@@ -1486,6 +1522,520 @@ class SiegeWaterfall:
                 success=False,
                 error=str(e),
             )
+
+    # ============================================
+    # SIEGE WATERFALL V3: NEW ENRICHMENT TIERS (Directive #144)
+    # ============================================
+
+    async def tier1_5_linkedin_company(
+        self,
+        lead: dict[str, Any],
+        icp_passed: bool = True,
+    ) -> TierResult:
+        """
+        T1.5: BD LinkedIn Company enrichment - $0.025/lead
+        Gate: ICP pass
+
+        Provides company info + recent posts for T-DM2b (FREE reuse).
+
+        Args:
+            lead: Lead data (needs linkedin_url or company name)
+            icp_passed: Whether lead passed ICP filter
+
+        Returns:
+            TierResult with LinkedIn company data + posts
+        """
+        tier = EnrichmentTier.LINKEDIN_COMPANY
+        cost = TIER_COSTS_AUD[tier]
+
+        # Gate: ICP pass required
+        if not icp_passed:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="ICP filter not passed",
+            )
+
+        # Guard: Bright Data client required
+        if not self.bright_data_client:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="Bright Data client not configured",
+            )
+
+        linkedin_url = lead.get("company_linkedin_url") or lead.get("linkedin_company_url")
+        if not linkedin_url:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="No company LinkedIn URL available",
+            )
+
+        try:
+            result = await self.bright_data_client.scrape_linkedin_company_enriched(linkedin_url)
+
+            if result and result.get("name"):
+                # Store company posts for T-DM2b (FREE reuse)
+                company_posts = result.get("updates", []) or result.get("posts", [])
+
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="linkedin_company",
+                    lead_data=lead,
+                    success=True,
+                    cost_aud=cost,
+                )
+
+                return TierResult(
+                    tier=tier,
+                    success=True,
+                    data={
+                        "linkedin_company_name": result.get("name"),
+                        "linkedin_company_industry": result.get("industry"),
+                        "linkedin_company_size": result.get("employees"),
+                        "linkedin_company_followers": result.get("followers"),
+                        "linkedin_company_posts": company_posts,  # For T-DM2b
+                        "linkedin_company_url": linkedin_url,
+                    },
+                    cost_aud=cost,
+                    source_url=linkedin_url,
+                )
+
+            return TierResult(
+                tier=tier,
+                success=False,
+                error="No LinkedIn company data found",
+                cost_aud=cost,
+            )
+
+        except Exception as e:
+            logger.warning(f"[Siege] T1.5 LinkedIn Company failed: {e}")
+            sentry_sdk.capture_exception(e)
+            return TierResult(tier=tier, success=False, error=str(e))
+
+    async def tier2_5_gmb_reviews(
+        self,
+        lead: dict[str, Any],
+        propensity: int = 0,
+    ) -> TierResult:
+        """
+        T2.5: BD GMB Reviews - $0.001/lead
+        Gate: Propensity >= 70
+
+        Provides recent reviews for hook generation.
+
+        Args:
+            lead: Lead data (needs gmb_place_id)
+            propensity: Current propensity score
+
+        Returns:
+            TierResult with GMB reviews
+        """
+        tier = EnrichmentTier.GMB_REVIEWS
+        cost = TIER_COSTS_AUD[tier]
+
+        # Gate: Propensity >= 70
+        if propensity < 70:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason=f"Propensity {propensity} < 70 threshold",
+            )
+
+        # Guard: Bright Data client required
+        if not self.bright_data_client:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="Bright Data client not configured",
+            )
+
+        place_id = lead.get("gmb_place_id") or lead.get("place_id")
+        if not place_id:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="No GMB place_id available",
+            )
+
+        try:
+            reviews = await self.bright_data_client.scrape_gmb_reviews(place_id, limit=20)
+
+            if reviews:
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="gmb_reviews",
+                    lead_data=lead,
+                    success=True,
+                    cost_aud=cost,
+                )
+
+                return TierResult(
+                    tier=tier,
+                    success=True,
+                    data={
+                        "gmb_reviews": reviews,
+                        "gmb_reviews_count": len(reviews),
+                        "gmb_avg_rating": sum(r.get("rating", 0) for r in reviews) / len(reviews) if reviews else 0,
+                    },
+                    cost_aud=cost,
+                )
+
+            return TierResult(
+                tier=tier,
+                success=False,
+                error="No GMB reviews found",
+                cost_aud=cost,
+            )
+
+        except Exception as e:
+            logger.warning(f"[Siege] T2.5 GMB Reviews failed: {e}")
+            sentry_sdk.capture_exception(e)
+            return TierResult(tier=tier, success=False, error=str(e))
+
+    async def tier_dm1_linkedin_profile(
+        self,
+        lead: dict[str, Any],
+        icp_passed: bool = True,
+    ) -> TierResult:
+        """
+        T-DM1: BD LinkedIn Profile - $0.0015/lead
+        Gate: ICP pass
+
+        Provides decision-maker profile with experience, skills.
+
+        Args:
+            lead: Lead data (needs linkedin_url)
+            icp_passed: Whether lead passed ICP filter
+
+        Returns:
+            TierResult with LinkedIn profile data
+        """
+        tier = EnrichmentTier.DM_LINKEDIN_PROFILE
+        cost = TIER_COSTS_AUD[tier]
+
+        # Gate: ICP pass required
+        if not icp_passed:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="ICP filter not passed",
+            )
+
+        # Guard: Bright Data client required
+        if not self.bright_data_client:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="Bright Data client not configured",
+            )
+
+        linkedin_url = lead.get("linkedin_url")
+        if not linkedin_url:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="No LinkedIn profile URL available",
+            )
+
+        try:
+            result = await self.bright_data_client.scrape_linkedin_profile_enriched(linkedin_url)
+
+            if result and result.get("name"):
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="linkedin_profile",
+                    lead_data=lead,
+                    success=True,
+                    cost_aud=cost,
+                )
+
+                return TierResult(
+                    tier=tier,
+                    success=True,
+                    data={
+                        "dm_linkedin_name": result.get("name"),
+                        "dm_linkedin_title": result.get("headline"),
+                        "dm_linkedin_experience": result.get("experience", []),
+                        "dm_linkedin_skills": result.get("skills", []),
+                        "dm_linkedin_connections": result.get("connections"),
+                    },
+                    cost_aud=cost,
+                    source_url=linkedin_url,
+                )
+
+            return TierResult(
+                tier=tier,
+                success=False,
+                error="No LinkedIn profile found",
+                cost_aud=cost,
+            )
+
+        except Exception as e:
+            logger.warning(f"[Siege] T-DM1 LinkedIn Profile failed: {e}")
+            sentry_sdk.capture_exception(e)
+            return TierResult(tier=tier, success=False, error=str(e))
+
+    async def tier_dm2_linkedin_posts(
+        self,
+        lead: dict[str, Any],
+        propensity: int = 0,
+    ) -> TierResult:
+        """
+        T-DM2: BD LinkedIn Posts 90d - $0.0015/lead
+        Gate: Propensity >= 70
+
+        Provides DM's recent posts for hook generation.
+
+        Args:
+            lead: Lead data (needs linkedin_url)
+            propensity: Current propensity score
+
+        Returns:
+            TierResult with LinkedIn posts
+        """
+        tier = EnrichmentTier.DM_LINKEDIN_POSTS
+        cost = TIER_COSTS_AUD[tier]
+
+        # Gate: Propensity >= 70
+        if propensity < 70:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason=f"Propensity {propensity} < 70 threshold",
+            )
+
+        # Guard: Bright Data client required
+        if not self.bright_data_client:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="Bright Data client not configured",
+            )
+
+        linkedin_url = lead.get("linkedin_url")
+        if not linkedin_url:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="No LinkedIn profile URL available",
+            )
+
+        try:
+            posts = await self.bright_data_client.scrape_linkedin_posts_90d(linkedin_url)
+
+            if posts:
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="linkedin_posts",
+                    lead_data=lead,
+                    success=True,
+                    cost_aud=cost,
+                )
+
+                return TierResult(
+                    tier=tier,
+                    success=True,
+                    data={
+                        "dm_linkedin_posts": posts,
+                        "dm_linkedin_posts_count": len(posts),
+                    },
+                    cost_aud=cost,
+                    source_url=linkedin_url,
+                )
+
+            return TierResult(
+                tier=tier,
+                success=False,
+                error="No LinkedIn posts found in last 90 days",
+                cost_aud=cost,
+            )
+
+        except Exception as e:
+            logger.warning(f"[Siege] T-DM2 LinkedIn Posts failed: {e}")
+            sentry_sdk.capture_exception(e)
+            return TierResult(tier=tier, success=False, error=str(e))
+
+    async def tier_dm2b_company_posts(
+        self,
+        lead: dict[str, Any],
+        propensity: int = 0,
+    ) -> TierResult:
+        """
+        T-DM2b: Company LinkedIn Posts - FREE (reuses T1.5 field)
+        Gate: Propensity >= 70
+
+        Uses company posts already captured in T1.5.
+
+        Args:
+            lead: Lead data (needs linkedin_company_posts from T1.5)
+            propensity: Current propensity score
+
+        Returns:
+            TierResult with company posts (no additional cost)
+        """
+        tier = EnrichmentTier.DM_COMPANY_POSTS
+        cost = TIER_COSTS_AUD[tier]  # 0.00 - FREE
+
+        # Gate: Propensity >= 70
+        if propensity < 70:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason=f"Propensity {propensity} < 70 threshold",
+            )
+
+        # Check if T1.5 already captured company posts
+        company_posts = lead.get("linkedin_company_posts", [])
+        if not company_posts:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="No company posts from T1.5 (run T1.5 first)",
+            )
+
+        # Already have the data - no API call needed (FREE)
+        return TierResult(
+            tier=tier,
+            success=True,
+            data={
+                "company_linkedin_posts": company_posts,
+                "company_linkedin_posts_count": len(company_posts),
+            },
+            cost_aud=cost,  # 0.00
+        )
+
+    async def tier_dm3_x_posts(
+        self,
+        lead: dict[str, Any],
+        propensity: int = 0,
+    ) -> TierResult:
+        """
+        T-DM3: BD X Posts 90d - $0.0025/lead
+        Gate: Propensity >= 70
+
+        Provides DM's recent X/Twitter posts for hook generation.
+
+        Args:
+            lead: Lead data (needs x_handle or twitter_handle)
+            propensity: Current propensity score
+
+        Returns:
+            TierResult with X posts
+        """
+        tier = EnrichmentTier.DM_X_POSTS
+        cost = TIER_COSTS_AUD[tier]
+
+        # Gate: Propensity >= 70
+        if propensity < 70:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason=f"Propensity {propensity} < 70 threshold",
+            )
+
+        # Guard: Bright Data client required
+        if not self.bright_data_client:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="Bright Data client not configured",
+            )
+
+        x_handle = lead.get("x_handle") or lead.get("twitter_handle") or lead.get("twitter")
+        if not x_handle:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="No X/Twitter handle available",
+            )
+
+        try:
+            posts = await self.bright_data_client.scrape_x_posts_90d(x_handle)
+
+            if posts:
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="x_posts",
+                    lead_data=lead,
+                    success=True,
+                    cost_aud=cost,
+                )
+
+                return TierResult(
+                    tier=tier,
+                    success=True,
+                    data={
+                        "dm_x_posts": posts,
+                        "dm_x_posts_count": len(posts),
+                    },
+                    cost_aud=cost,
+                )
+
+            return TierResult(
+                tier=tier,
+                success=False,
+                error="No X posts found in last 90 days",
+                cost_aud=cost,
+            )
+
+        except Exception as e:
+            logger.warning(f"[Siege] T-DM3 X Posts failed: {e}")
+            sentry_sdk.capture_exception(e)
+            return TierResult(tier=tier, success=False, error=str(e))
+
+    async def tier5_identity_v3(
+        self,
+        lead: dict[str, Any],
+        reachability: int = 0,
+        needs_mobile_channel: bool = False,
+    ) -> TierResult:
+        """
+        T5: Leadmagic mobile - $0.077/lead
+        Gate: Reachability indicates mobile channel needed
+
+        Siege Waterfall v3 version with reachability gating.
+
+        Args:
+            lead: Lead data (linkedin_url preferred)
+            reachability: Current reachability score
+            needs_mobile_channel: Whether outreach plan requires mobile
+
+        Returns:
+            TierResult with mobile/identity data
+        """
+        tier = EnrichmentTier.IDENTITY
+        cost = TIER_COSTS_AUD[tier]
+
+        # Gate: Only if mobile channel is needed for outreach
+        if not needs_mobile_channel:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="Mobile channel not required by outreach plan",
+            )
+
+        # Delegate to existing tier5_identity method
+        return await self.tier5_identity(lead, reachability, force=True)
 
     @retry(
         stop=stop_after_attempt(2),  # Fewer retries - expensive tier

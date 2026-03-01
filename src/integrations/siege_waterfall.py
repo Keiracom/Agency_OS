@@ -640,6 +640,7 @@ class SiegeWaterfall:
         lead: dict[str, Any],
         skip_tiers: list[EnrichmentTier] | None = None,
         force_tier5: bool = False,
+        icp_criteria: dict[str, Any] | None = None,
     ) -> EnrichmentResult:
         """
         Full 5-tier enrichment cascade.
@@ -666,6 +667,7 @@ class SiegeWaterfall:
         """
         started_at = datetime.now(UTC).isoformat()
         skip_tiers = skip_tiers or []
+        icp_criteria = icp_criteria or {}
 
         # Validate we have something to work with
         if not any(
@@ -707,6 +709,108 @@ class SiegeWaterfall:
                     skip_reason="Tier skipped by request",
                 )
             )
+
+        # ===== TIER 1.5: BD LinkedIn Company =====
+        if EnrichmentTier.LINKEDIN_COMPANY not in skip_tiers:
+            result = await self.tier1_5_linkedin_company(enriched_data, icp_passed=True)
+            tier_results.append(result)
+            if result.success:
+                enriched_data = self._merge_data(enriched_data, result.data)
+                total_cost_aud += result.cost_aud
+        else:
+            tier_results.append(
+                TierResult(
+                    tier=EnrichmentTier.LINKEDIN_COMPANY,
+                    success=False,
+                    skipped=True,
+                    skip_reason="Tier skipped by request",
+                )
+            )
+
+        # ===== POST-T1.5 SIZE GATE =====
+        # CEO Directive #144 Addendum 2: Size filtering immediately after T1.5
+        employee_count = enriched_data.get("linkedin_company_size") or enriched_data.get("company_size") or enriched_data.get("employee_count")
+
+        if not employee_count:
+            # HELD: No size data from LinkedIn
+            tier_results.append(
+                TierResult(
+                    tier=EnrichmentTier.LINKEDIN_COMPANY,  # Use LINKEDIN_COMPANY tier for SIZE_GATE
+                    success=False,
+                    skipped=False,
+                    skip_reason="No company size data — LinkedIn profile incomplete",
+                )
+            )
+            enriched_data["status"] = "HELD"
+            enriched_data["hold_reason"] = "No company size data — LinkedIn profile incomplete"
+            logger.warning(f"[SIZE_GATE] Lead HELD - no employee count from T1.5")
+            # Return early - do not fire deeper tiers
+            return EnrichmentResult(
+                lead_id=lead.get("id") or lead.get("lead_id"),
+                original_data=lead,
+                enriched_data=enriched_data,
+                tier_results=tier_results,
+                total_cost_aud=total_cost_aud,
+                sources_used=sum(1 for r in tier_results if r.success),
+                als_bonus_applied=False,
+                als_bonus_amount=0,
+                enrichment_lineage=[
+                    {
+                        "tier": r.tier.value if hasattr(r.tier, 'value') else str(r.tier),
+                        "success": r.success,
+                        "skipped": r.skipped,
+                        "skip_reason": r.skip_reason,
+                        "cost_aud": r.cost_aud,
+                        "timestamp": r.timestamp,
+                        "error": r.error,
+                    }
+                    for r in tier_results
+                ],
+                started_at=started_at,
+                completed_at=datetime.now(UTC).isoformat(),
+            )
+
+        # Check campaign size constraints (from ICP criteria)
+        icp_size_min = icp_criteria.get("employee_min")
+        icp_size_max = icp_criteria.get("employee_max")
+        if icp_size_min or icp_size_max:
+            if not self._check_size_in_range(employee_count, icp_size_min, icp_size_max):
+                tier_results.append(
+                    TierResult(
+                        tier=EnrichmentTier.LINKEDIN_COMPANY,  # Use LINKEDIN_COMPANY tier for SIZE_GATE
+                        success=False,
+                        skipped=False,
+                        skip_reason=f"Company size {employee_count} outside campaign range ({icp_size_min}-{icp_size_max})",
+                    )
+                )
+                enriched_data["status"] = "HELD"
+                enriched_data["hold_reason"] = f"Company size {employee_count} outside campaign range"
+                logger.info(f"[SIZE_GATE] Lead HELD - size {employee_count} outside {icp_size_min}-{icp_size_max}")
+                # Return early - do not fire deeper tiers
+                return EnrichmentResult(
+                    lead_id=lead.get("id") or lead.get("lead_id"),
+                    original_data=lead,
+                    enriched_data=enriched_data,
+                    tier_results=tier_results,
+                    total_cost_aud=total_cost_aud,
+                    sources_used=sum(1 for r in tier_results if r.success),
+                    als_bonus_applied=False,
+                    als_bonus_amount=0,
+                    enrichment_lineage=[
+                        {
+                            "tier": r.tier.value if hasattr(r.tier, 'value') else str(r.tier),
+                            "success": r.success,
+                            "skipped": r.skipped,
+                            "skip_reason": r.skip_reason,
+                            "cost_aud": r.cost_aud,
+                            "timestamp": r.timestamp,
+                            "error": r.error,
+                        }
+                        for r in tier_results
+                    ],
+                    started_at=started_at,
+                    completed_at=datetime.now(UTC).isoformat(),
+                )
 
         # ===== TIER 2: GMB/Ads Signals =====
         # CEO Directive: T0/T2 GMB Merge - Skip T2 if T0 discovery already has GMB data
@@ -2327,6 +2431,70 @@ class SiegeWaterfall:
                 result[key] = {**result[key], **value}
 
         return result
+
+    def _check_size_in_range(
+        self,
+        size_str: str | int,
+        min_size: int | None,
+        max_size: int | None,
+    ) -> bool:
+        """
+        Parse LinkedIn size string (e.g. '11-50') and check against constraints.
+
+        CEO Directive #144 Addendum 2: Size filtering at SIZE_GATE.
+
+        Args:
+            size_str: Company size string like "11-50", "51-200", or integer
+            min_size: Minimum employee count (ICP constraint)
+            max_size: Maximum employee count (ICP constraint)
+
+        Returns:
+            True if size is within range, False otherwise
+        """
+        import re
+
+        if not size_str:
+            return False
+
+        # If already an integer, use directly
+        if isinstance(size_str, int):
+            upper_bound = size_str
+        else:
+            # Parse size string like "11-50", "51-200", "1-10", "10000+"
+            size_str = str(size_str).strip()
+
+            # Handle "10000+" format (take the number as lower bound)
+            if size_str.endswith("+"):
+                match = re.match(r"(\d+)\+", size_str)
+                if match:
+                    upper_bound = int(match.group(1))
+                else:
+                    return False
+            # Handle range format "11-50"
+            elif "-" in size_str:
+                parts = size_str.split("-")
+                if len(parts) == 2:
+                    try:
+                        # Use upper bound for comparison
+                        upper_bound = int(parts[1].replace(",", "").strip())
+                    except ValueError:
+                        return False
+                else:
+                    return False
+            # Handle plain number
+            else:
+                try:
+                    upper_bound = int(size_str.replace(",", "").strip())
+                except ValueError:
+                    return False
+
+        # Check constraints
+        if min_size is not None and upper_bound < min_size:
+            return False
+        if max_size is not None and upper_bound > max_size:
+            return False
+
+        return True
 
     def _calculate_als(self, lead: dict[str, Any]) -> int:
         """

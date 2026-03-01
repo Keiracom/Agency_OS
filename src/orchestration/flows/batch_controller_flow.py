@@ -19,7 +19,7 @@ DIRECTIVE 048 REQUIREMENTS:
 - Loops until quota of ALS ≥35 leads is met
 - After 3 failed replacement loops, fires quota shortfall alert
 - Gate 1 triggers: ICP fail, invalid ABN, duplicate, pre-ALS <35 on free tiers only
-- Gate 2 triggers: no email AND no phone, ALS <35 after T3, Hunter confidence <70%
+- Gate 2 triggers: no email AND no phone, ALS <35 after T3, Leadmagic confidence <70%
 - Gate 3: demote tier only, never discard
 - Every discard writes reason to discarded_leads before status change
 """
@@ -297,7 +297,7 @@ async def apply_gate_2_filter_task(
     Triggers:
     - No email AND no phone
     - ALS <35 after T3
-    - Hunter confidence <70%
+    - Leadmagic confidence <70%
 
     Args:
         lead_pool_id: Lead pool UUID
@@ -906,7 +906,7 @@ async def apply_quality_gates_flow(
 # =============================================================================
 # [x] Contract comment at top
 # [x] Gate 1 triggers: ICP fail, invalid ABN, duplicate, pre-ALS <35 (free only)
-# [x] Gate 2 triggers: no contact, ALS <35 after T3, Hunter <70%
+# [x] Gate 2 triggers: no contact, ALS <35 after T3, Leadmagic <70%
 # [x] Gate 3: demote only, never discard
 # [x] Quota monitoring via campaign_quota_status table
 # [x] Replacement discovery triggers after discards

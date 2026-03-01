@@ -173,7 +173,7 @@ FUNNEL_STRONG_WIN_RATE_BOOST = 4  # Strong win rate (30%+)
 
 # Directive 048: Multi-source verified boost (max 15 points)
 MAX_MULTI_SOURCE_BOOST = 15
-# Sources: ABN, GMB, Hunter, LinkedIn, Apollo, Prospeo, etc.
+# Sources: ABN, GMB, Leadmagic, LinkedIn, Prospeo, etc.
 
 # Directive 048: Social post timing signals for Timing component (max 15 points)
 SOCIAL_POST_TIMING_SIGNALS = [

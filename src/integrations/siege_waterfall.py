@@ -690,6 +690,8 @@ class SiegeWaterfall:
         tier_results: list[TierResult] = []
         enriched_data: dict[str, Any] = dict(lead)  # Start with original
         total_cost_aud = 0.0
+        # CEO Directive #149: Track field conflicts for provenance lineage
+        field_conflicts: list[dict[str, Any]] = []
 
         # Current ALS score (may be passed in or calculated)
         current_als = lead.get("als_score", 0)
@@ -699,7 +701,10 @@ class SiegeWaterfall:
             result = await self.tier1_abn(enriched_data)
             tier_results.append(result)
             if result.success:
-                enriched_data = self._merge_data(enriched_data, result.data)
+                enriched_data = self._merge_data(
+                    enriched_data, result.data,
+                    source=result.tier.value, conflicts=field_conflicts
+                )
                 total_cost_aud += result.cost_aud
         else:
             tier_results.append(
@@ -718,7 +723,10 @@ class SiegeWaterfall:
         ):
             url_result = await self.resolve_linkedin_url(enriched_data)
             if url_result.success:
-                enriched_data = self._merge_data(enriched_data, url_result.data)
+                enriched_data = self._merge_data(
+                    enriched_data, url_result.data,
+                    source="linkedin_url_resolution", conflicts=field_conflicts
+                )
                 total_cost_aud += url_result.cost_aud
             elif url_result.data.get("linkedin_url_unknown"):
                 # Tag that we tried but couldn't find LinkedIn URL
@@ -730,7 +738,10 @@ class SiegeWaterfall:
             result = await self.tier1_5_linkedin_company(enriched_data, icp_passed=True)
             tier_results.append(result)
             if result.success:
-                enriched_data = self._merge_data(enriched_data, result.data)
+                enriched_data = self._merge_data(
+                    enriched_data, result.data,
+                    source=result.tier.value, conflicts=field_conflicts
+                )
                 total_cost_aud += result.cost_aud
         else:
             tier_results.append(
@@ -774,6 +785,21 @@ class SiegeWaterfall:
             enriched_data["hold_reason"] = "No company size data — LinkedIn profile incomplete"
             logger.warning("[SIZE_GATE] Lead HELD - no employee count from T1.5")
             # Return early - do not fire deeper tiers
+            # CEO Directive #149: Include field conflicts in early return lineage
+            early_lineage = [
+                {
+                    "tier": r.tier.value if hasattr(r.tier, "value") else str(r.tier),
+                    "success": r.success,
+                    "skipped": r.skipped,
+                    "skip_reason": r.skip_reason,
+                    "cost_aud": r.cost_aud,
+                    "timestamp": r.timestamp,
+                    "error": r.error,
+                }
+                for r in tier_results
+            ]
+            if field_conflicts:
+                early_lineage.extend(field_conflicts)
             return EnrichmentResult(
                 lead_id=lead.get("id") or lead.get("lead_id"),
                 original_data=lead,
@@ -783,18 +809,7 @@ class SiegeWaterfall:
                 sources_used=sum(1 for r in tier_results if r.success),
                 als_bonus_applied=False,
                 als_bonus_amount=0,
-                enrichment_lineage=[
-                    {
-                        "tier": r.tier.value if hasattr(r.tier, "value") else str(r.tier),
-                        "success": r.success,
-                        "skipped": r.skipped,
-                        "skip_reason": r.skip_reason,
-                        "cost_aud": r.cost_aud,
-                        "timestamp": r.timestamp,
-                        "error": r.error,
-                    }
-                    for r in tier_results
-                ],
+                enrichment_lineage=early_lineage,
                 started_at=started_at,
                 completed_at=datetime.now(UTC).isoformat(),
             )
@@ -816,6 +831,21 @@ class SiegeWaterfall:
                 enriched_data["hold_reason"] = f"Company size {employee_count} outside campaign range"
                 logger.info(f"[SIZE_GATE] Lead HELD - size {employee_count} outside {icp_size_min}-{icp_size_max}")
                 # Return early - do not fire deeper tiers
+                # CEO Directive #149: Include field conflicts in early return lineage
+                size_gate_lineage = [
+                    {
+                        "tier": r.tier.value if hasattr(r.tier, 'value') else str(r.tier),
+                        "success": r.success,
+                        "skipped": r.skipped,
+                        "skip_reason": r.skip_reason,
+                        "cost_aud": r.cost_aud,
+                        "timestamp": r.timestamp,
+                        "error": r.error,
+                    }
+                    for r in tier_results
+                ]
+                if field_conflicts:
+                    size_gate_lineage.extend(field_conflicts)
                 return EnrichmentResult(
                     lead_id=lead.get("id") or lead.get("lead_id"),
                     original_data=lead,
@@ -825,18 +855,7 @@ class SiegeWaterfall:
                     sources_used=sum(1 for r in tier_results if r.success),
                     als_bonus_applied=False,
                     als_bonus_amount=0,
-                    enrichment_lineage=[
-                        {
-                            "tier": r.tier.value if hasattr(r.tier, 'value') else str(r.tier),
-                            "success": r.success,
-                            "skipped": r.skipped,
-                            "skip_reason": r.skip_reason,
-                            "cost_aud": r.cost_aud,
-                            "timestamp": r.timestamp,
-                            "error": r.error,
-                        }
-                        for r in tier_results
-                    ],
+                    enrichment_lineage=size_gate_lineage,
                     started_at=started_at,
                     completed_at=datetime.now(UTC).isoformat(),
                 )
@@ -872,7 +891,10 @@ class SiegeWaterfall:
                 result = await self.tier2_gmb(enriched_data)
                 tier_results.append(result)
                 if result.success:
-                    enriched_data = self._merge_data(enriched_data, result.data)
+                    enriched_data = self._merge_data(
+                        enriched_data, result.data,
+                        source=result.tier.value, conflicts=field_conflicts
+                    )
                     total_cost_aud += result.cost_aud
         else:
             tier_results.append(
@@ -893,7 +915,10 @@ class SiegeWaterfall:
                 result = await self.tier3_leadmagic_email(enriched_data)
                 tier_results.append(result)
                 if result.success:
-                    enriched_data = self._merge_data(enriched_data, result.data)
+                    enriched_data = self._merge_data(
+                        enriched_data, result.data,
+                        source=result.tier.value, conflicts=field_conflicts
+                    )
                     total_cost_aud += result.cost_aud
             else:
                 tier_results.append(
@@ -923,7 +948,10 @@ class SiegeWaterfall:
                 result = await self.tier5_identity(enriched_data, current_als, force=force_tier5)
                 tier_results.append(result)
                 if result.success:
-                    enriched_data = self._merge_data(enriched_data, result.data)
+                    enriched_data = self._merge_data(
+                        enriched_data, result.data,
+                        source=result.tier.value, conflicts=field_conflicts
+                    )
                     total_cost_aud += result.cost_aud
             else:
                 tier_results.append(
@@ -969,6 +997,9 @@ class SiegeWaterfall:
             }
             for r in tier_results
         ]
+        # CEO Directive #149: Add field conflicts to lineage for provenance tracking
+        if field_conflicts:
+            enrichment_lineage.extend(field_conflicts)
 
         # ===== Finalize =====
         completed_at = datetime.now(UTC).isoformat()
@@ -2506,35 +2537,98 @@ class SiegeWaterfall:
         self,
         base: dict[str, Any],
         new_data: dict[str, Any],
+        source: str | None = None,
+        conflicts: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """
-        Merge new enrichment data into base, preserving existing values.
+        Merge new enrichment data into base with provenance tracking.
 
-        New data only fills gaps - doesn't overwrite existing data.
+        CEO Directive #149: Preserve provenance for all enriched fields.
+        Each field is stored with structure: {"value": X, "source": "tier_name"}
+        When two tiers provide the same field: last-write-wins with conflict logging.
 
         Args:
             base: Base lead data
             new_data: New data to merge in
+            source: Source tier identifier (e.g., "tier1_abn", "T1.5_linkedin")
+            conflicts: Optional list to append conflict entries for enrichment_lineage
 
         Returns:
-            Merged dictionary
+            Merged dictionary with provenance-wrapped values
         """
         result = dict(base)
 
+        # Keys that are metadata about the enrichment, not actual field values
+        # These are NOT skipped - we preserve them with provenance
+        META_KEYS = {"found"}  # Only skip "found" - it's a lookup status, not data
+
         for key, value in new_data.items():
-            # Skip meta keys
-            if key in ("found", "source", "confidence"):
+            # Skip only the lookup status flag
+            if key in META_KEYS:
                 continue
 
-            # Only add if not already set
+            # Handle backward compatibility: check if value is already provenance-wrapped
+            if isinstance(value, dict) and "value" in value and "source" in value:
+                # Already wrapped - use as-is
+                wrapped_value = value
+                raw_value = value["value"]
+                value_source = value["source"]
+            else:
+                # Wrap raw value with provenance
+                raw_value = value
+                value_source = source or "unknown"
+                wrapped_value = {"value": raw_value, "source": value_source}
+
+            # Check if key already exists with a value
             if key not in result or result[key] is None:
-                result[key] = value
-            # Merge lists (e.g., phone_numbers)
-            elif isinstance(value, list) and isinstance(result[key], list):
-                result[key] = list(set(result[key] + value))
-            # Merge dicts
-            elif isinstance(value, dict) and isinstance(result[key], dict):
-                result[key] = {**result[key], **value}
+                # New field - just add it
+                result[key] = wrapped_value
+            else:
+                # Field exists - check for conflict
+                existing = result[key]
+
+                # Extract existing raw value for comparison
+                if isinstance(existing, dict) and "value" in existing:
+                    existing_raw = existing["value"]
+                    existing_source = existing.get("source", "unknown")
+                else:
+                    # Legacy unwrapped value
+                    existing_raw = existing
+                    existing_source = "original"
+
+                # Check if values are actually different (conflict)
+                values_differ = existing_raw != raw_value
+
+                if values_differ:
+                    # Log conflict to enrichment_lineage
+                    if conflicts is not None:
+                        conflicts.append({
+                            "type": "field_conflict",
+                            "field": key,
+                            "existing_value": existing_raw,
+                            "existing_source": existing_source,
+                            "new_value": raw_value,
+                            "new_source": value_source,
+                            "resolution": "last_write_wins",
+                        })
+                    logger.debug(
+                        f"[Siege] Field conflict on '{key}': "
+                        f"'{existing_source}' -> '{value_source}' (last-write-wins)"
+                    )
+
+                # Last-write-wins: overwrite with new value
+                # Special handling for lists and dicts
+                if isinstance(raw_value, list) and isinstance(existing_raw, list):
+                    # Merge lists, preserve provenance of the merge
+                    merged_list = list(set(existing_raw + raw_value))
+                    result[key] = {"value": merged_list, "source": value_source}
+                elif isinstance(raw_value, dict) and isinstance(existing_raw, dict):
+                    # Merge dicts, preserve provenance
+                    merged_dict = {**existing_raw, **raw_value}
+                    result[key] = {"value": merged_dict, "source": value_source}
+                else:
+                    # Scalar value - last-write-wins
+                    result[key] = wrapped_value
 
         return result
 

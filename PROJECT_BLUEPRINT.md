@@ -83,7 +83,7 @@ Phase 17 (Prerequisites)
 Phase 18 (Email Infra) ✅
     ↓ Salesforge Ecosystem validated — DONE
 Phase 19 (Siege Waterfall)
-    ↓ 5-tier enrichment: ABN → GMB → Hunter → Proxycurl → Kaspr
+    ↓ 5-tier enrichment: ABN → GMB → LeadMagic
 Phase 20 (UI Wiring)
     ↓ Maya + Simplified Onboarding + Campaign Allocation
 Phase 21 (E2E Tests)
@@ -136,9 +136,7 @@ Phase 23 (Platform Intel)
 |------|--------|------------|------|
 | 1 | ABN Bulk (data.gov.au) | FREE | Always |
 | 2 | GMB/Ads Signals | $0.006 | Always |
-| 3 | Hunter.io | $0.012 | Email needed |
-| 4 | LinkedIn Pulse (Proxycurl) | $0.024 | Social context |
-| 5 | Identity Gold (Kaspr/Lusha) | $0.45 | **ALS ≥ 85 ONLY** |
+| 3 | LeadMagic | $0.02 | Email + Mobile |
 
 **Weighted cost per lead: ~$0.14 AUD**
 
@@ -297,7 +295,7 @@ Perform these steps sequentially. Do not skip verification.
 
 ## Current Focus
 
-**Phase 19:** Siege Waterfall implementation (API clients for Hunter, Proxycurl, Kaspr)  
+**Phase 19:** Siege Waterfall implementation (consolidated to LeadMagic)  
 **Phase 20:** UI Wiring — Maya + Simplified Onboarding + Campaign Allocation  
 
 **Formal Change Orders (FCO):**

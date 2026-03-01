@@ -176,17 +176,11 @@ print(f"Enriched data: {result.enriched_data}")
 # ABN Lookup (Tier 1)
 ABN_GUID=your_registered_guid
 
-# GMB Scraper (Tier 2) - uses Autonomous Browser
-WEBSHARE_API_KEY=your_webshare_key
+# GMB/BrightData (Tier 2)
+BRIGHTDATA_API_KEY=your_brightdata_key
 
-# Hunter.io (Tier 3)
-HUNTER_API_KEY=your_hunter_key
-
-# Proxycurl (Tier 4)
-PROXYCURL_API_KEY=your_proxycurl_key
-
-# Kaspr (Tier 5)
-KASPR_API_KEY=your_kaspr_key
+# LeadMagic (Tier 3 - consolidated email/mobile enrichment)
+LEADMAGIC_API_KEY=your_leadmagic_key
 ```
 
 ---

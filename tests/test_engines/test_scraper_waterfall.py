@@ -38,14 +38,6 @@ class ScrapeResult:
         """Check if scrape has valid content."""
         return len(self.raw_html) >= 500 and not self.needs_fallback
 
-class ApifyClient:
-    """Stub for deprecated ApifyClient."""
-    def __init__(self, *args, **kwargs):
-        pass
-    async def scrape(self, *args, **kwargs) -> ScrapeResult:
-        return ScrapeResult(url="", needs_fallback=True, failure_reason="Apify deprecated (FCO-003)")
-
-
 # ============================================
 # Fixtures
 # ============================================
@@ -55,12 +47,6 @@ class ApifyClient:
 def url_validator():
     """Create URL validator instance."""
     return URLValidator(timeout=5.0)
-
-
-@pytest.fixture
-def apify_client():
-    """Create Apify client instance."""
-    return ApifyClient(api_key="test-api-key")
 
 
 # ============================================
@@ -323,149 +309,6 @@ class TestScrapeResult:
             tier_used=1,
         )
         assert result.has_valid_content() is False
-
-
-class TestApifyCheerioScraper:
-    """Test Apify Cheerio scraper (Tier 1)."""
-
-    @pytest.mark.asyncio
-    async def test_cheerio_success(self, apify_client):
-        """Test successful Cheerio scrape returns Tier 1 result."""
-        mock_response = {
-            "items": [
-                {"url": "https://example.com", "html": "<html>" + "a" * 1000 + "</html>"},
-            ]
-        }
-
-        with patch.object(apify_client, "_run_actor", return_value=mock_response):
-            result = await apify_client._scrape_cheerio("https://example.com", max_pages=1)
-
-            assert result.tier_used == 1
-            assert result.needs_fallback is False
-            assert len(result.raw_html) > 500
-
-    @pytest.mark.asyncio
-    async def test_cheerio_empty_response_needs_fallback(self, apify_client):
-        """Test empty Cheerio response sets needs_fallback."""
-        mock_response = {"items": []}
-
-        with patch.object(apify_client, "_run_actor", return_value=mock_response):
-            result = await apify_client._scrape_cheerio("https://example.com", max_pages=1)
-
-            assert result.tier_used == 1
-            assert result.needs_fallback is True
-
-    @pytest.mark.asyncio
-    async def test_cheerio_short_content_needs_fallback(self, apify_client):
-        """Test short Cheerio content sets needs_fallback."""
-        mock_response = {
-            "items": [
-                {"url": "https://example.com", "html": "<html>short</html>"},
-            ]
-        }
-
-        with patch.object(apify_client, "_run_actor", return_value=mock_response):
-            result = await apify_client._scrape_cheerio("https://example.com", max_pages=1)
-
-            assert result.tier_used == 1
-            assert result.needs_fallback is True
-
-
-class TestApifyPlaywrightScraper:
-    """Test Apify Playwright scraper (Tier 2)."""
-
-    @pytest.mark.asyncio
-    async def test_playwright_success(self, apify_client):
-        """Test successful Playwright scrape returns Tier 2 result."""
-        mock_response = {
-            "items": [
-                {"url": "https://example.com", "html": "<html>" + "a" * 1000 + "</html>"},
-            ]
-        }
-
-        with patch.object(apify_client, "_run_actor", return_value=mock_response):
-            result = await apify_client._scrape_playwright("https://example.com", max_pages=1)
-
-            assert result.tier_used == 2
-            assert result.needs_fallback is False
-            assert len(result.raw_html) > 500
-
-    @pytest.mark.asyncio
-    async def test_playwright_blocked_content_needs_fallback(self, apify_client):
-        """Test Playwright blocked content sets needs_fallback."""
-        mock_response = {
-            "items": [
-                {
-                    "url": "https://example.com",
-                    "html": "<html>Access Denied. Ray ID: 12345. Enable JavaScript and cookies to continue.</html>",
-                },
-            ]
-        }
-
-        with patch.object(apify_client, "_run_actor", return_value=mock_response):
-            result = await apify_client._scrape_playwright("https://example.com", max_pages=1)
-
-            assert result.tier_used == 2
-            assert result.needs_fallback is True
-            assert "blocked" in (result.failure_reason or "").lower() or result.has_valid_content() is False
-
-
-class TestScraperWaterfall:
-    """Test scraper waterfall fallback logic."""
-
-    @pytest.mark.asyncio
-    async def test_waterfall_tier1_success_stops(self, apify_client):
-        """Test waterfall stops at Tier 1 if successful."""
-        good_html = "<html>" + "a" * 1000 + "</html>"
-        mock_cheerio_response = {
-            "items": [{"url": "https://example.com", "html": good_html}]
-        }
-
-        with patch.object(apify_client, "_run_actor", return_value=mock_cheerio_response) as mock_run:
-            result = await apify_client.scrape_website_with_waterfall("https://example.com", max_pages=1)
-
-            assert result.tier_used == 1
-            assert result.needs_fallback is False
-            # Should only call Cheerio actor, not Playwright
-            assert mock_run.call_count == 1
-
-    @pytest.mark.asyncio
-    async def test_waterfall_falls_to_tier2(self, apify_client):
-        """Test waterfall falls to Tier 2 when Tier 1 fails."""
-        short_html = "<html>short</html>"
-        good_html = "<html>" + "a" * 1000 + "</html>"
-
-        call_count = [0]
-
-        async def mock_run_actor(actor_id, run_input, **kwargs):
-            call_count[0] += 1
-            if call_count[0] == 1:
-                # Cheerio returns short content
-                return {"items": [{"url": "https://example.com", "html": short_html}]}
-            else:
-                # Playwright returns good content
-                return {"items": [{"url": "https://example.com", "html": good_html}]}
-
-        with patch.object(apify_client, "_run_actor", side_effect=mock_run_actor):
-            result = await apify_client.scrape_website_with_waterfall("https://example.com", max_pages=1)
-
-            assert result.tier_used == 2
-            assert result.needs_fallback is False
-            assert call_count[0] == 2
-
-    @pytest.mark.asyncio
-    async def test_waterfall_both_tiers_fail(self, apify_client):
-        """Test waterfall sets needs_fallback when both tiers fail."""
-        short_html = "<html>short</html>"
-
-        async def mock_run_actor(actor_id, run_input, **kwargs):
-            return {"items": [{"url": "https://example.com", "html": short_html}]}
-
-        with patch.object(apify_client, "_run_actor", side_effect=mock_run_actor):
-            result = await apify_client.scrape_website_with_waterfall("https://example.com", max_pages=1)
-
-            assert result.needs_fallback is True
-            assert result.failure_reason is not None
 
 
 # ============================================

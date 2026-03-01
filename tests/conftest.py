@@ -29,7 +29,6 @@ os.environ["RESEND_API_KEY"] = "test-resend-key"
 os.environ["TWILIO_ACCOUNT_SID"] = "test-twilio-sid"
 os.environ["TWILIO_AUTH_TOKEN"] = "test-twilio-token"
 os.environ["HEYREACH_API_KEY"] = "test-heyreach-key"
-os.environ["LOB_API_KEY"] = "test-lob-key"
 os.environ["SYNTHFLOW_API_KEY"] = "test-synthflow-key"
 
 

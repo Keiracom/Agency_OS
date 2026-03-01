@@ -29,8 +29,6 @@ Test the complete Agency OS user experience with:
 |-------------|---------------------|---------|----------|
 | Supabase | `SUPABASE_URL`, `SUPABASE_KEY` | Database | ✅ Yes |
 | Anthropic | `ANTHROPIC_API_KEY` | AI (ICP, Messaging) | ✅ Yes |
-| Apify | `APIFY_API_KEY` | Website scraping | ✅ Yes |
-| Apollo | `APOLLO_API_KEY` | Lead enrichment | ✅ Yes |
 | Resend | `RESEND_API_KEY` | Email delivery | ✅ Yes |
 | Twilio | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | SMS delivery | Optional |
 | HeyReach | `HEYREACH_API_KEY` | LinkedIn | Optional |
@@ -108,8 +106,6 @@ class LiveTestConfig:
     has_resend: bool
     has_twilio: bool
     has_heyreach: bool
-    has_apollo: bool
-    has_apify: bool
     
     # Test mode flags
     skip_sends: bool = False  # Set True to log but not send
@@ -133,8 +129,6 @@ def load_config() -> LiveTestConfig:
         has_resend=bool(os.environ.get("RESEND_API_KEY")),
         has_twilio=bool(os.environ.get("TWILIO_ACCOUNT_SID")),
         has_heyreach=bool(os.environ.get("HEYREACH_API_KEY")),
-        has_apollo=bool(os.environ.get("APOLLO_API_KEY")),
-        has_apify=bool(os.environ.get("APIFY_API_KEY")),
         skip_sends=os.environ.get("SKIP_SENDS", "false").lower() == "true",
         cleanup_after=os.environ.get("CLEANUP_AFTER", "true").lower() == "true",
     )
@@ -333,10 +327,9 @@ Test real onboarding flow with live ICP extraction.
 
 This test:
 1. Submits a real website URL
-2. Verifies Apify scrapes successfully
-3. Verifies Apollo enriches portfolio
-4. Verifies Anthropic extracts ICP
-5. Checks ICP profile is saved to database
+2. Verifies website scraping succeeds
+3. Verifies Anthropic extracts ICP
+4. Checks ICP profile is saved to database
 """
 
 import pytest

@@ -82,7 +82,7 @@ def valid_enrichment_data():
     return {
         "found": True,
         "confidence": 0.85,
-        "source": "apollo",
+        "source": "siege_waterfall",
         "email": "john.doe@acme.com",
         "first_name": "John",
         "last_name": "Doe",
@@ -377,8 +377,8 @@ class TestBatchEnrichment:
             # Simulate mixed results
             results_cycle = [
                 EngineResult.ok(data={}, metadata={"tier": 0, "source": "cache"}),
-                EngineResult.ok(data={}, metadata={"tier": 1, "source": "apollo"}),
-                EngineResult.ok(data={}, metadata={"tier": 1, "source": "apollo"}),
+                EngineResult.ok(data={}, metadata={"tier": 1, "source": "siege_waterfall"}),
+                EngineResult.ok(data={}, metadata={"tier": 1, "source": "siege_waterfall"}),
                 EngineResult.ok(data={}, metadata={"tier": 2, "source": "clay"}),
                 EngineResult.fail(error="Failed"),
             ]
@@ -408,13 +408,13 @@ class TestEnrichmentMerge:
     def test_merge_fills_missing_fields(self, scout_engine):
         """Test merge fills in missing fields from secondary."""
         primary = {
-            "source": "apollo",
+            "source": "siege_waterfall",
             "email": "test@test.com",
             "first_name": "John",
             "confidence": 0.8,
         }
         secondary = {
-            "source": "apify",
+            "source": "camoufox",
             "last_name": "Doe",
             "company": "Acme",
             "confidence": 0.7,
@@ -426,18 +426,18 @@ class TestEnrichmentMerge:
         assert merged["first_name"] == "John"
         assert merged["last_name"] == "Doe"
         assert merged["company"] == "Acme"
-        assert "apollo" in merged["source"]
-        assert "apify" in merged["source"]
+        assert "siege_waterfall" in merged["source"]
+        assert "camoufox" in merged["source"]
 
     def test_merge_prefers_primary(self, scout_engine):
         """Test merge prefers primary data over secondary."""
         primary = {
-            "source": "apollo",
+            "source": "siege_waterfall",
             "first_name": "John",
             "confidence": 0.9,
         }
         secondary = {
-            "source": "apify",
+            "source": "camoufox",
             "first_name": "Jonathan",  # Different
             "confidence": 0.7,
         }

@@ -670,7 +670,7 @@ async def test_enrich_lead_already_enriched(
 ):
     """Test enriching already enriched lead fails without force."""
     # Mark lead as enriched
-    test_lead.enrichment_source = "apollo"
+    test_lead.enrichment_source = "siege_waterfall"
     await db_session.commit()
 
     response = await async_client.post(
@@ -692,7 +692,7 @@ async def test_enrich_lead_force_re_enrich(
 ):
     """Test force re-enrichment works."""
     # Mark lead as enriched
-    test_lead.enrichment_source = "apollo"
+    test_lead.enrichment_source = "siege_waterfall"
     await db_session.commit()
 
     response = await async_client.post(

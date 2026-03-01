@@ -35,7 +35,7 @@ The `tools/` directory (autonomous_browser.py, proxy_manager.py) is **no longer 
 **Critical credentials (verified 2026-02-17):**
 - `ABN_LOOKUP_GUID` — Tier 1 ABN Lookup (FREE)
 - `BRIGHTDATA_API_KEY` — Tiers 1.5, 2 (LinkedIn, GMB)
-- `HUNTER_API_KEY` — Tier 3 (email discovery)
+- `LEADMAGIC_API_KEY` — Tier 3 (email discovery)
 
 ---
 

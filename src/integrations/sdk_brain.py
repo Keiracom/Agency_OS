@@ -1066,6 +1066,184 @@ Return ONLY the category name. Nothing else."""
             logger.warning(f"[SiegeSDK] Reply classification failed: {e}")
             return "negative_response"
 
+    # =========================================================================
+    # CIS LEARNING ENGINE (Directive #147)
+    # =========================================================================
+
+    async def analyze_cis_outcomes(
+        self,
+        outcomes: list[dict],
+        current_weights: dict,
+    ) -> dict:
+        """
+        Directive #147: CIS Learning Engine analysis.
+
+        Analyze outcome data to recommend propensity weight adjustments.
+        This is the core of the continuous improvement system — the moat.
+
+        Cost cap: $2 AUD per run.
+
+        Args:
+            outcomes: List of outcome records with signals_active
+            current_weights: Current weights from ceo:propensity_weights_v3
+
+        Returns:
+            {
+                "adjustments": {
+                    "signal_name": {"delta": int, "confidence": float, "reasoning": str}
+                },
+                "total_outcomes": int,
+                "meeting_booked_count": int,
+                "analysis_summary": str
+            }
+        """
+        # Segment outcomes by type
+        meeting_outcomes = [o for o in outcomes if o.get("outcome_type") == "booked"]
+        non_converting = [o for o in outcomes if o.get("outcome_type") in ("no_response", "bounced")]
+
+        prompt = f"""You are the CIS (Continuous Improvement System) analyst for Agency OS.
+
+TASK: Analyze outcome data to recommend propensity weight adjustments.
+
+CURRENT WEIGHTS:
+{json.dumps(current_weights, indent=2)}
+
+MEETING_BOOKED OUTCOMES ({len(meeting_outcomes)} total):
+{json.dumps([{"signals_active": o.get("signals_active"), "propensity_at_send": o.get("propensity_at_send")} for o in meeting_outcomes[:50]], indent=2)}
+
+NON-CONVERTING OUTCOMES (sample of {min(50, len(non_converting))}):
+{json.dumps([{"signals_active": o.get("signals_active"), "propensity_at_send": o.get("propensity_at_send")} for o in non_converting[:50]], indent=2)}
+
+ANALYSIS REQUIRED:
+1. Which signals in signals_active appeared frequently in MEETING_BOOKED outcomes?
+2. Which signals appeared frequently in non-converting leads?
+3. For each signal, recommend a weight adjustment (delta, not absolute).
+
+CONSTRAINTS:
+- Max delta: ±5 points per signal
+- Only recommend adjustments with confidence >= 0.7
+- If insufficient data for a signal, skip it
+- Preserve relative balance of weights
+
+RESPONSE FORMAT (JSON only):
+{{
+    "adjustments": {{
+        "signal_name": {{"delta": -3, "confidence": 0.85, "reasoning": "Appeared in 80% of non-converters"}}
+    }},
+    "analysis_summary": "Brief summary of patterns found"
+}}
+
+Respond with JSON only, no markdown."""
+
+        try:
+            # Call Claude Sonnet 4 with cost cap
+            response = await self._call_claude_with_cost_cap(
+                prompt=prompt,
+                model="claude-sonnet-4-20250514",
+                max_cost_usd=2.0,
+                max_tokens=2000,
+            )
+
+            result = json.loads(response)
+
+            # Add metadata
+            result["total_outcomes"] = len(outcomes)
+            result["meeting_booked_count"] = len(meeting_outcomes)
+
+            return result
+
+        except json.JSONDecodeError as e:
+            logger.error(f"[SiegeSDK] CIS analysis returned invalid JSON: {e}")
+            return {
+                "adjustments": {},
+                "total_outcomes": len(outcomes),
+                "meeting_booked_count": len(meeting_outcomes),
+                "analysis_summary": f"Analysis failed: invalid JSON response - {str(e)}",
+            }
+        except Exception as e:
+            logger.error(f"[SiegeSDK] CIS outcome analysis failed: {e}")
+            return {
+                "adjustments": {},
+                "total_outcomes": len(outcomes),
+                "meeting_booked_count": len(meeting_outcomes),
+                "analysis_summary": f"Analysis failed: {str(e)}",
+            }
+
+    async def _call_claude_with_cost_cap(
+        self,
+        prompt: str,
+        model: str = "claude-sonnet-4-20250514",
+        max_cost_usd: float = 2.0,
+        max_tokens: int = 2000,
+    ) -> str:
+        """
+        Call Claude with a cost cap.
+
+        Converts USD cost cap to AUD and enforces limits.
+
+        Args:
+            prompt: The prompt to send
+            model: Model to use
+            max_cost_usd: Maximum cost in USD
+            max_tokens: Maximum output tokens
+
+        Returns:
+            Response text content
+
+        Raises:
+            ValueError: If cost would exceed cap
+        """
+        # Convert USD to AUD (approx 1.55 conversion rate)
+        max_cost_aud = max_cost_usd * 1.55
+
+        # Check daily budget first
+        if self._spend_tracker:
+            remaining = await self._spend_tracker.get_remaining()
+            if remaining < max_cost_aud:
+                raise ValueError(f"Insufficient daily budget: ${remaining:.2f} AUD remaining")
+
+        # Create brain with cost limit
+        config = SDKBrainConfig(
+            model=model,
+            max_turns=1,
+            max_cost_aud=max_cost_aud,
+            timeout_seconds=120,
+        )
+
+        brain = SDKBrain(
+            config=config,
+            api_key=self._api_key,
+            spend_tracker=self._spend_tracker,
+        )
+
+        # Make the request
+        response = await brain.async_client.messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        # Calculate and track cost
+        pricing = MODEL_PRICING.get(model, MODEL_PRICING["claude-sonnet-4-20250514"])
+        cost = (
+            (response.usage.input_tokens / 1_000_000) * pricing["input"]
+            + (response.usage.output_tokens / 1_000_000) * pricing["output"]
+        )
+
+        if self._spend_tracker:
+            await self._spend_tracker.add_spend(cost)
+
+        logger.info(
+            f"[SiegeSDK] CIS analysis cost: ${cost:.4f} AUD "
+            f"(in: {response.usage.input_tokens}, out: {response.usage.output_tokens})"
+        )
+
+        # Extract text content
+        if response.content and len(response.content) > 0:
+            return response.content[0].text
+
+        raise ValueError("Empty response from Claude")
+
 
 # Singleton instances
 _sdk_brain: SDKBrain | None = None

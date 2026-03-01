@@ -16,6 +16,7 @@ RULES APPLIED:
 SIEGE WATERFALL V3 TIERS (Directive #144):
   T0:    GMB-first discovery (handled in discovery_modes.py) - $0.001/record
   T1:    ABN Bulk (data.gov.au) - FREE
+  T1→T1.5: LinkedIn URL resolution - $0.0015 | Gate: None (always runs) [Directive #148]
   T1.5:  BD LinkedIn Company - $0.025 | Gate: ICP pass
   T2:    SKIP (T0/T2 merged) - T0 already has GMB data
   T2.5:  BD GMB Reviews - $0.001 | Gate: Propensity ≥70
@@ -710,6 +711,20 @@ class SiegeWaterfall:
                 )
             )
 
+        # ===== LINKEDIN URL RESOLUTION =====
+        # Directive #148: Resolve LinkedIn URL before T1.5
+        if not enriched_data.get("company_linkedin_url") and not enriched_data.get(
+            "linkedin_company_url"
+        ):
+            url_result = await self.resolve_linkedin_url(enriched_data)
+            if url_result.success:
+                enriched_data = self._merge_data(enriched_data, url_result.data)
+                total_cost_aud += url_result.cost_aud
+            elif url_result.data.get("linkedin_url_unknown"):
+                # Tag that we tried but couldn't find LinkedIn URL
+                enriched_data["linkedin_url_unknown"] = True
+            # Don't append to tier_results - this is a helper step, not a full tier
+
         # ===== TIER 1.5: BD LinkedIn Company =====
         if EnrichmentTier.LINKEDIN_COMPANY not in skip_tiers:
             result = await self.tier1_5_linkedin_company(enriched_data, icp_passed=True)
@@ -729,10 +744,24 @@ class SiegeWaterfall:
 
         # ===== POST-T1.5 SIZE GATE =====
         # CEO Directive #144 Addendum 2: Size filtering immediately after T1.5
-        employee_count = enriched_data.get("linkedin_company_size") or enriched_data.get("company_size") or enriched_data.get("employee_count")
+        # CEO Directive #148: Don't HELD if LinkedIn URL wasn't found (linkedin_url_unknown)
+        employee_count = (
+            enriched_data.get("linkedin_company_size")
+            or enriched_data.get("company_size")
+            or enriched_data.get("employee_count")
+        )
 
-        if not employee_count:
-            # HELD: No size data from LinkedIn
+        # Directive #148: If we couldn't find a LinkedIn URL, continue without T1.5
+        # Tag the lead but don't HELD - they can still be enriched via other channels
+        if enriched_data.get("linkedin_url_unknown"):
+            enriched_data["size_gate_skipped"] = True
+            enriched_data["size_gate_skip_reason"] = "LinkedIn URL not found via SERP"
+            logger.info(
+                "[SIZE_GATE] Skipping size gate - LinkedIn URL not found (Directive #148)"
+            )
+            # Continue to other tiers without employee count filtering
+        elif not employee_count:
+            # HELD: T1.5 ran (we had LinkedIn URL) but no size data
             tier_results.append(
                 TierResult(
                     tier=EnrichmentTier.LINKEDIN_COMPANY,  # Use LINKEDIN_COMPANY tier for SIZE_GATE
@@ -743,7 +772,7 @@ class SiegeWaterfall:
             )
             enriched_data["status"] = "HELD"
             enriched_data["hold_reason"] = "No company size data — LinkedIn profile incomplete"
-            logger.warning(f"[SIZE_GATE] Lead HELD - no employee count from T1.5")
+            logger.warning("[SIZE_GATE] Lead HELD - no employee count from T1.5")
             # Return early - do not fire deeper tiers
             return EnrichmentResult(
                 lead_id=lead.get("id") or lead.get("lead_id"),
@@ -756,7 +785,7 @@ class SiegeWaterfall:
                 als_bonus_amount=0,
                 enrichment_lineage=[
                     {
-                        "tier": r.tier.value if hasattr(r.tier, 'value') else str(r.tier),
+                        "tier": r.tier.value if hasattr(r.tier, "value") else str(r.tier),
                         "success": r.success,
                         "skipped": r.skipped,
                         "skip_reason": r.skip_reason,
@@ -837,7 +866,7 @@ class SiegeWaterfall:
                         skip_reason="T0 discovery already has GMB data (T0/T2 merge)",
                     )
                 )
-                logger.info(f"[T2] Skipping GMB enrichment — T0 already has data")
+                logger.info("[T2] Skipping GMB enrichment — T0 already has data")
             else:
                 # Fallback: T0 didn't provide GMB data (shouldn't happen in GMB-first mode)
                 result = await self.tier2_gmb(enriched_data)
@@ -1077,6 +1106,83 @@ class SiegeWaterfall:
                 tier=tier,
                 success=False,
                 error=str(e),
+            )
+
+    async def resolve_linkedin_url(self, lead: dict[str, Any]) -> TierResult:
+        """
+        Resolve LinkedIn company URL via SERP search.
+
+        Directive #148: LinkedIn URL resolution between T1 and T1.5.
+
+        Query: "[company_name] site:linkedin.com/company"
+        Fallback: "[trading_name] site:linkedin.com/company"
+
+        Cost: ~$0.0015 AUD per search
+
+        Returns:
+            TierResult with linkedin_company_url if found
+        """
+        tier = EnrichmentTier.LINKEDIN_COMPANY  # Use same tier for cost tracking
+        cost = 0.0015  # SERP search cost
+
+        company_name = lead.get("company_name") or lead.get("trading_name") or ""
+        trading_name = lead.get("trading_name") or lead.get("company_name") or ""
+
+        if not company_name:
+            return TierResult(tier=tier, success=False, skipped=True, skip_reason="No company name")
+
+        if not self.bright_data_client:
+            return TierResult(
+                tier=tier, success=False, skipped=True, skip_reason="Bright Data client not configured"
+            )
+
+        try:
+            # Try primary query
+            query = f'"{company_name}" site:linkedin.com/company'
+            results = await self.bright_data_client.search_google(query, max_results=3)
+
+            linkedin_url = None
+            for r in results:
+                url = r.get("link") or r.get("url") or ""
+                if "linkedin.com/company/" in url:
+                    linkedin_url = url
+                    break
+
+            # Fallback to trading name if different
+            if not linkedin_url and trading_name and trading_name != company_name:
+                query = f'"{trading_name}" site:linkedin.com/company'
+                results = await self.bright_data_client.search_google(query, max_results=3)
+                for r in results:
+                    url = r.get("link") or r.get("url") or ""
+                    if "linkedin.com/company/" in url:
+                        linkedin_url = url
+                        break
+
+            if linkedin_url:
+                logger.info(f"[LinkedIn URL] Resolved: {linkedin_url}")
+                return TierResult(
+                    tier=tier,
+                    success=True,
+                    data={"company_linkedin_url": linkedin_url, "linkedin_url_resolved": True},
+                    cost_aud=cost,
+                )
+            else:
+                logger.warning(f"[LinkedIn URL] Not found for: {company_name}")
+                return TierResult(
+                    tier=tier,
+                    success=False,
+                    data={"linkedin_url_unknown": True},
+                    cost_aud=cost,
+                )
+
+        except Exception as e:
+            logger.warning(f"[LinkedIn URL] Resolution failed: {e}")
+            sentry_sdk.capture_exception(e)
+            return TierResult(
+                tier=tier,
+                success=False,
+                error=str(e),
+                cost_aud=cost,
             )
 
     def _is_generic_name(self, name: str) -> bool:

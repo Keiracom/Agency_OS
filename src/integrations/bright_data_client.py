@@ -24,9 +24,24 @@ DATASET_IDS = {
     "linkedin_company": "gd_l1vikfnt1wgvvqz95w",
     "linkedin_people": "gd_l1viktl72bvl7bjuj0",
     "linkedin_jobs": "gd_lpfll7v5hcqtkxl6l",
+    # Siege Waterfall v3: GMB-first discovery (Directive #144)
+    "gmb_business": "gd_m8ebnr0q2qlklc02fz",
+    "gmb_reviews": "gd_m8ebnr0q2qlklc02fz",  # Same dataset, reviews in response
+    "linkedin_posts": "gd_l1viktl72bvl7bjuj0",  # Posts included in people profile
+    "x_posts": "gd_lwdb4vjm1qvm96sbq2",  # X/Twitter posts dataset
 }
 
-COSTS_AUD = {"serp_request": 0.0015, "scraper_record": 0.0015}
+COSTS_AUD = {
+    "serp_request": 0.0015,
+    "scraper_record": 0.0015,
+    # Siege Waterfall v3 costs (Directive #144)
+    "gmb_discovery": 0.001,  # T0 GMB-first discovery
+    "gmb_reviews": 0.001,  # T2.5 GMB reviews
+    "linkedin_company": 0.025,  # T1.5 LinkedIn company
+    "linkedin_profile": 0.0015,  # T-DM1 LinkedIn profile
+    "linkedin_posts": 0.0015,  # T-DM2 LinkedIn posts 90d
+    "x_posts": 0.0025,  # T-DM3 X posts 90d
+}
 
 
 class BrightDataError(Exception):
@@ -348,6 +363,260 @@ class BrightDataClient:
             raise BrightDataError(f"Scraper download failed: HTTP {e.response.status_code}")
         except httpx.RequestError as e:
             raise BrightDataError(f"Scraper download failed: {str(e)}")
+
+    # ============================================
+    # SIEGE WATERFALL V3 METHODS (Directive #144)
+    # ============================================
+
+    async def discover_gmb_by_category(
+        self, category: str, location: str, limit: int = 100
+    ) -> list[dict]:
+        """
+        T0 GMB-first discovery via Bright Data Web Scraper API.
+
+        Dataset: gd_m8ebnr0q2qlklc02fz
+        Cost: $0.001/record
+
+        Args:
+            category: Business category (e.g., "plumber", "accountant")
+            location: Location string (e.g., "Melbourne VIC", "Sydney NSW")
+            limit: Maximum results to return
+
+        Returns:
+            List of business records with phone, website, address, rating, etc.
+        """
+        results = await self._scraper_request(
+            DATASET_IDS["gmb_business"],
+            [{"keyword": category, "country": "AU", "location": location}],
+            discover_by="location",
+        )
+
+        # Track GMB-specific cost
+        records_returned = min(len(results), limit)
+        self.costs.scraper_records += records_returned
+
+        logger.info(
+            "gmb_discovery_complete",
+            category=category,
+            location=location,
+            records=records_returned,
+            cost_aud=records_returned * COSTS_AUD["gmb_discovery"],
+        )
+
+        return results[:limit]
+
+    async def scrape_gmb_reviews(
+        self, place_id: str, limit: int = 20
+    ) -> list[dict]:
+        """
+        T2.5 GMB Reviews via Bright Data Web Scraper API.
+
+        Dataset: gd_m8ebnr0q2qlklc02fz (reviews field)
+        Cost: $0.001/record
+        Gate: Propensity >= 70
+
+        Args:
+            place_id: Google Maps place_id
+            limit: Maximum reviews to return
+
+        Returns:
+            List of review records with rating, text, date, etc.
+        """
+        results = await self._scraper_request(
+            DATASET_IDS["gmb_reviews"],
+            [{"place_id": place_id}],
+        )
+
+        if results and len(results) > 0:
+            # Reviews are nested in the first result
+            reviews = results[0].get("reviews", [])[:limit]
+            logger.info(
+                "gmb_reviews_complete",
+                place_id=place_id,
+                reviews_count=len(reviews),
+                cost_aud=COSTS_AUD["gmb_reviews"],
+            )
+            return reviews
+
+        return []
+
+    async def scrape_linkedin_company_enriched(
+        self, linkedin_url: str
+    ) -> dict:
+        """
+        T1.5 LinkedIn Company enrichment via Bright Data.
+
+        Dataset: gd_l1vikfnt1wgvvqz95w
+        Cost: $0.025/record
+        Gate: ICP pass
+
+        Returns company info + recent posts for T-DM2b.
+
+        Args:
+            linkedin_url: LinkedIn company URL
+
+        Returns:
+            Company profile with posts field for T-DM2b (FREE reuse)
+        """
+        results = await self._scraper_request(
+            DATASET_IDS["linkedin_company"],
+            [{"url": linkedin_url}],
+        )
+
+        if results:
+            result = results[0] if results else {}
+            logger.info(
+                "linkedin_company_enriched",
+                url=linkedin_url,
+                has_posts=bool(result.get("updates", [])),
+                cost_aud=COSTS_AUD["linkedin_company"],
+            )
+            return result
+
+        return {}
+
+    async def scrape_linkedin_profile_enriched(
+        self, linkedin_url: str
+    ) -> dict:
+        """
+        T-DM1 LinkedIn Profile enrichment via Bright Data.
+
+        Dataset: gd_l1viktl72bvl7bjuj0
+        Cost: $0.0015/record
+        Gate: ICP pass
+
+        Args:
+            linkedin_url: LinkedIn profile URL
+
+        Returns:
+            Person profile with experience, education, skills
+        """
+        results = await self._scraper_request(
+            DATASET_IDS["linkedin_people"],
+            [{"url": linkedin_url}],
+        )
+
+        if results:
+            result = results[0] if results else {}
+            logger.info(
+                "linkedin_profile_enriched",
+                url=linkedin_url,
+                cost_aud=COSTS_AUD["linkedin_profile"],
+            )
+            return result
+
+        return {}
+
+    async def scrape_linkedin_posts_90d(
+        self, linkedin_url: str, days: int = 90
+    ) -> list[dict]:
+        """
+        T-DM2 LinkedIn Posts (90 days) via Bright Data.
+
+        Dataset: gd_l1viktl72bvl7bjuj0 (posts field from profile)
+        Cost: $0.0015/record
+        Gate: Propensity >= 70
+
+        Args:
+            linkedin_url: LinkedIn profile URL
+            days: Days of posts to retrieve (default 90)
+
+        Returns:
+            List of posts from the last N days
+        """
+        from datetime import datetime, timedelta
+
+        results = await self._scraper_request(
+            DATASET_IDS["linkedin_people"],
+            [{"url": linkedin_url}],
+        )
+
+        if results and len(results) > 0:
+            profile = results[0]
+            posts = profile.get("posts", []) or profile.get("updates", [])
+
+            # Filter to last N days
+            cutoff = datetime.utcnow() - timedelta(days=days)
+            filtered_posts = []
+
+            for post in posts:
+                post_date_str = post.get("posted_date") or post.get("date")
+                if post_date_str:
+                    try:
+                        # Parse ISO date
+                        post_date = datetime.fromisoformat(post_date_str[:10])
+                        if post_date >= cutoff:
+                            filtered_posts.append(post)
+                    except (ValueError, TypeError):
+                        # Include if we can't parse date
+                        filtered_posts.append(post)
+                else:
+                    filtered_posts.append(post)
+
+            logger.info(
+                "linkedin_posts_90d_complete",
+                url=linkedin_url,
+                posts_count=len(filtered_posts),
+                cost_aud=COSTS_AUD["linkedin_posts"],
+            )
+            return filtered_posts
+
+        return []
+
+    async def scrape_x_posts_90d(
+        self, x_handle: str, days: int = 90
+    ) -> list[dict]:
+        """
+        T-DM3 X/Twitter Posts (90 days) via Bright Data.
+
+        Dataset: gd_lwdb4vjm1qvm96sbq2
+        Cost: $0.0025/record
+        Gate: Propensity >= 70
+
+        Args:
+            x_handle: X/Twitter handle (with or without @)
+            days: Days of posts to retrieve (default 90)
+
+        Returns:
+            List of tweets/posts from the last N days
+        """
+        from datetime import datetime, timedelta
+
+        # Normalize handle
+        handle = x_handle.lstrip("@")
+
+        results = await self._scraper_request(
+            DATASET_IDS["x_posts"],
+            [{"handle": handle}],
+            discover_by="keyword",
+        )
+
+        if results:
+            # Filter to last N days
+            cutoff = datetime.utcnow() - timedelta(days=days)
+            filtered_posts = []
+
+            for post in results:
+                post_date_str = post.get("created_at") or post.get("date")
+                if post_date_str:
+                    try:
+                        post_date = datetime.fromisoformat(post_date_str[:10])
+                        if post_date >= cutoff:
+                            filtered_posts.append(post)
+                    except (ValueError, TypeError):
+                        filtered_posts.append(post)
+                else:
+                    filtered_posts.append(post)
+
+            logger.info(
+                "x_posts_90d_complete",
+                handle=handle,
+                posts_count=len(filtered_posts),
+                cost_aud=COSTS_AUD["x_posts"],
+            )
+            return filtered_posts
+
+        return []
 
     # Cost tracking methods
 

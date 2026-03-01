@@ -36,9 +36,11 @@ logger = logging.getLogger(__name__)
 class DiscoveryMode(Enum):
     """Discovery modes for lead generation campaigns"""
 
-    ABN_FIRST = "mode_a"  # Universal B2B - ABN API first
+    ABN_FIRST = "mode_a"  # Universal B2B - ABN API first (DEPRECATED: use GMB_FIRST)
     MAPS_FIRST = "mode_b"  # Local businesses with GMB - Google Maps first
     PARALLEL = "mode_c"  # Premium - both modes with deduplication
+    # Siege Waterfall v3: GMB-first is now the default (Directive #144)
+    GMB_FIRST = "mode_gmb"  # T0 GMB-first discovery - DEFAULT mode
 
 
 @dataclass
@@ -87,9 +89,13 @@ class DiscoveryRecord:
     category: str = None
 
     # Discovery metadata
-    discovery_source: str = None  # "abn_api", "google_maps", "both"
+    discovery_source: str = None  # "abn_api", "google_maps", "gmb_first", "both"
     confidence_score: float = 0.0
     discovered_at: str = None
+
+    # Siege Waterfall v3: GMB data for T2 skip logic (Directive #144)
+    # When populated, T2 GMB enrichment is skipped (saves $0.001/lead)
+    gmb_data: dict = field(default_factory=dict)
 
 
 class ABNFirstDiscovery:
@@ -203,6 +209,121 @@ class ABNFirstDiscovery:
                 confidence_score=0.85,  # ABN API is high-confidence
                 discovered_at=result.get("timestamp") or "now",
             )
+
+            records.append(record)
+
+        return records
+
+
+class GMBFirstDiscovery:
+    """
+    Siege Waterfall v3: GMB-first discovery mode (Directive #144).
+
+    T0 GMB-first discovery - replaces ABN keyword search as default.
+
+    Flow:
+    1. Query GMB via Bright Data by category + location
+    2. Return DiscoveryRecords with phone, website, address, rating
+    3. Does NOT call ABN (that's T1 verification in the waterfall)
+
+    Cost: $0.001/record via Bright Data
+    """
+
+    def __init__(self, bright_data_client=None):
+        """Initialize with Bright Data client dependency."""
+        self.bd = bright_data_client
+        if not bright_data_client:
+            logger.warning("GMBFirstDiscovery: No Bright Data client provided - will fail at runtime")
+
+    async def discover(self, config: CampaignConfig) -> list[DiscoveryRecord]:
+        """
+        T0 GMB-first discovery flow:
+        1. Build search query from category + state
+        2. Call Bright Data GMB dataset
+        3. Convert results to DiscoveryRecord format
+        4. Return records for T1 ABN verification
+
+        Args:
+            config: Campaign configuration with industry and location
+
+        Returns:
+            List of DiscoveryRecords ready for waterfall enrichment
+        """
+        logger.info(
+            f"Starting GMB-first discovery for category='{config.industry}', "
+            f"location='{config.location}', state='{config.state}'"
+        )
+
+        try:
+            if not self.bd:
+                raise ValueError("Bright Data client not configured")
+
+            # Build location string
+            location = config.location
+            if config.state and config.state not in location:
+                location = f"{location} {config.state}"
+
+            # Call GMB discovery via Bright Data
+            gmb_results = await self.bd.discover_gmb_by_category(
+                category=config.industry,
+                location=location,
+                limit=config.max_results,
+            )
+
+            # Convert to DiscoveryRecord format
+            discovery_records = self._convert_gmb_to_records(gmb_results)
+
+            logger.info(
+                f"GMB-first discovery completed: {len(discovery_records)} records found"
+            )
+            return discovery_records
+
+        except Exception as e:
+            logger.error(f"GMB-first discovery failed: {str(e)}")
+            return []
+
+    def _convert_gmb_to_records(self, gmb_results: list[dict]) -> list[DiscoveryRecord]:
+        """Convert GMB API results to unified DiscoveryRecord format."""
+        records = []
+
+        for result in gmb_results:
+            # Skip results with errors
+            if "error" in result:
+                continue
+
+            business_name = result.get("name", "").strip()
+            if not business_name:
+                continue
+
+            record = DiscoveryRecord(
+                business_name=business_name,
+                # GMB fields - T0 already captures all GMB data
+                gmb_place_id=result.get("place_id"),
+                phone=result.get("phone_number") or result.get("phone"),
+                website=result.get("open_website") or result.get("website"),
+                address=result.get("address"),
+                rating=result.get("rating"),
+                reviews_count=result.get("reviews_count") or result.get("reviews"),
+                category=result.get("category"),
+                # Discovery metadata
+                discovery_source="gmb_first",
+                confidence_score=0.80,  # GMB data is reliable
+                discovered_at=result.get("timestamp") or "now",
+            )
+
+            # Store additional GMB data for T2 skip logic
+            # This prevents redundant T2 GMB enrichment
+            record.gmb_data = {
+                "gmb_rating": result.get("rating"),
+                "gmb_review_count": result.get("reviews_count"),
+                "gmb_category": result.get("category"),
+                "gmb_address": result.get("address"),
+                "gmb_phone": result.get("phone_number"),
+                "gmb_website": result.get("open_website"),
+                "lat": result.get("lat"),
+                "lon": result.get("lon"),
+                "google_maps_url": result.get("url"),
+            }
 
             records.append(record)
 

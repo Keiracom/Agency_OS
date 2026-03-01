@@ -495,17 +495,30 @@ async def trigger_replacement_discovery_task(
 
             icp_config = row.icp_config or {}
 
-            # Trigger GMB discovery via the discovery service
-            # This would call the actual GMB scraper/discovery flow
-            from src.integrations.gmb_scraper import trigger_gmb_discovery
+            # Siege Waterfall v3: GMB-first discovery via Bright Data (Directive #144)
+            from src.integrations.bright_data_client import get_bright_data_client
+            from src.enrichment.discovery_modes import GMBFirstDiscovery, CampaignConfig, DiscoveryMode
 
-            discovery_result = await trigger_gmb_discovery(
-                search_queries=icp_config.get("search_queries", []),
-                locations=icp_config.get("countries", ["Australia"]),
-                limit=count_needed * 2,  # Get 2x to account for filtering
-                campaign_id=campaign_id,
-                client_id=client_id,
+            bd_client = get_bright_data_client()
+            gmb_discovery = GMBFirstDiscovery(bright_data_client=bd_client)
+
+            # Build discovery config from ICP
+            discovery_config = CampaignConfig(
+                mode=DiscoveryMode.GMB_FIRST,
+                industry=icp_config.get("industry") or icp_config.get("search_queries", ["business"])[0],
+                location=icp_config.get("location", "Australia"),
+                state=icp_config.get("state"),
+                max_results=count_needed * 2,  # Get 2x to account for filtering
             )
+
+            # Execute GMB-first discovery
+            discovery_records = await gmb_discovery.discover(discovery_config)
+
+            discovery_result = {
+                "count": len(discovery_records),
+                "records": discovery_records,
+                "mode": "gmb_first",
+            }
 
             # Update discovery loop count
             await db.execute(

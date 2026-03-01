@@ -47,6 +47,7 @@ from src.orchestration.flows.stale_lead_refresh_flow import (
 )
 from src.orchestration.flows.voice_flow import voice_outreach_flow
 from src.orchestration.flows.warmup_monitor_flow import warmup_monitor_flow
+from src.orchestration.flows.cis_learning_flow import cis_learning_flow
 
 __all__ = [
     # Core flows
@@ -76,4 +77,6 @@ __all__ = [
     "get_buffer_status",
     # Voice Outreach
     "voice_outreach_flow",
+    # Directive #147: CIS Learning Engine
+    "cis_learning_flow",
 ]

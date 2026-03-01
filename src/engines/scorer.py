@@ -7,7 +7,7 @@ Consumers: orchestration only
 
 FILE: src/engines/scorer.py
 PURPOSE: Calculate ALS + Dual Scoring (Reachability + Propensity)
-PHASE: 4 (Engines), modified Phase 16, 24A (Lead Pool), 24F (Buyer Signals), Directive #144
+PHASE: 4 (Engines), modified Phase 16, 24A (Lead Pool), 24F (Buyer Signals), Directive #144, #146
 TASK: ENG-003, 16A-006, 16E-004, POOL-009, CUST-012, SIEGE-V3
 DEPENDENCIES:
   - src/engines/base.py
@@ -903,6 +903,22 @@ class ScorerEngine(BaseEngine):
             score += prop_weights.get("engagement_signals", 25) // 2
         if lead_data.get("gmb_reviews_count", 0) > 10:
             score += prop_weights.get("engagement_signals", 25) // 2
+
+        # Directive #146: Active Google Ads presence = revenue signal
+        # DataForSEO estimated_paid_traffic_cost > 0 indicates active paid advertising
+        # This implies minimum $500K+ revenue (research-2 benchmark)
+        has_active_ads = (
+            lead_data.get("active_google_ads")
+            or lead_data.get("estimated_paid_traffic_cost", 0) > 0
+            or lead_data.get("dataforseo_paid_traffic_cost", 0) > 0
+        )
+        if has_active_ads:
+            score += prop_weights.get("active_ad_spend", 15)
+            # Tag implied revenue floor for CIS feedback loop
+            if "metadata" not in lead_data:
+                lead_data["metadata"] = {}
+            lead_data["metadata"]["implied_revenue_floor"] = "$500K+"
+            lead_data["metadata"]["revenue_signal_source"] = "google_ads_detected"
 
         # Buyer history (from platform_buyer_signals)
         if lead_data.get("buyer_history") or lead_data.get("times_bought", 0) > 0:

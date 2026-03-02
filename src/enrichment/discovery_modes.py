@@ -13,9 +13,9 @@ RULES APPLIED:
   - LAW II: All costs in $AUD
 
 DISCOVERY MODES:
-  Mode A: ABN_FIRST - Query ABN API first, then enrich with external data
-  Mode B: MAPS_FIRST - Query Google Maps first, then verify with ABN
-  Mode C: PARALLEL - Run both modes in parallel, deduplicate results
+  Mode A: ABN_FIRST - DEPRECATED (Waterfall v3 Decision #1, 2026-03-01)
+  Mode B: MAPS_FIRST - Query Google Maps first, then verify with ABN (primary)
+  Mode C: PARALLEL - Both modes with deduplication
 
 Created: 2026-02-16 by subagent (CEO Directive #023)
 """
@@ -36,11 +36,10 @@ logger = logging.getLogger(__name__)
 class DiscoveryMode(Enum):
     """Discovery modes for lead generation campaigns"""
 
-    ABN_FIRST = "mode_a"  # Universal B2B - ABN API first (DEPRECATED: use GMB_FIRST)
+    # ABN_FIRST deprecated per Waterfall v3 Decision #1 (2026-03-01)
+    # GMB is now primary discovery source; ABN used for verification only
     MAPS_FIRST = "mode_b"  # Local businesses with GMB - Google Maps first
     PARALLEL = "mode_c"  # Premium - both modes with deduplication
-    # Siege Waterfall v3: GMB-first is now the default (Directive #144)
-    GMB_FIRST = "mode_gmb"  # T0 GMB-first discovery - DEFAULT mode
 
 
 @dataclass
@@ -89,245 +88,9 @@ class DiscoveryRecord:
     category: str = None
 
     # Discovery metadata
-    discovery_source: str = None  # "abn_api", "google_maps", "gmb_first", "both"
+    discovery_source: str = None  # "abn_api", "google_maps", "both"
     confidence_score: float = 0.0
     discovered_at: str = None
-
-    # Siege Waterfall v3: GMB data for T2 skip logic (Directive #144)
-    # When populated, T2 GMB enrichment is skipped (saves $0.001/lead)
-    gmb_data: dict = field(default_factory=dict)
-
-
-class ABNFirstDiscovery:
-    """Mode A: Query ABN API first, then enrich with external data"""
-
-    def __init__(self, abn_client=None):
-        """Initialize with ABN client dependency"""
-        self.abn_client = abn_client
-        if not abn_client:
-            logger.warning("ABNFirstDiscovery: No ABN client provided - will fail at runtime")
-
-    async def discover(self, config: CampaignConfig) -> list[DiscoveryRecord]:
-        """
-        Discovery flow for Mode A:
-        1. Build ABN search query from campaign config
-        2. Call ABN API SearchByNameAdvanced2017
-        3. Apply hard filters (discard trusts, cancelled, no GST)
-        4. Return qualified ABN records for enrichment
-        """
-        logger.info(
-            f"Starting ABN-first discovery for industry='{config.industry}', location='{config.location}'"
-        )
-
-        try:
-            # Build search query for ABN API
-            search_query = self._build_abn_search_query(config)
-
-            # Query ABN API
-            abn_results = await self._query_abn_api(search_query, config)
-
-            # Apply hard filters
-            filtered_results = self._apply_abn_filters(abn_results, config)
-
-            # Convert to unified format
-            discovery_records = self._convert_abn_to_records(filtered_results)
-
-            logger.info(
-                f"ABN-first discovery completed: {len(discovery_records)} qualified records"
-            )
-            return discovery_records
-
-        except Exception as e:
-            logger.error(f"ABN-first discovery failed: {str(e)}")
-            return []
-
-    def _build_abn_search_query(self, config: CampaignConfig) -> dict:
-        """Build ABN API search parameters"""
-        query = {
-            "name": config.industry,
-            "postcode": None,  # Extract from config.location if available
-            "state": config.state,
-            "isCurrentIndicator": "Y" if config.abn_only_active else None,
-        }
-
-        # Extract postcode from location if format is "City, State Postcode"
-        if config.location and any(char.isdigit() for char in config.location):
-            parts = config.location.split()
-            if len(parts) > 0 and parts[-1].isdigit():
-                query["postcode"] = parts[-1]
-
-        return {k: v for k, v in query.items() if v is not None}
-
-    async def _query_abn_api(self, query: dict, config: CampaignConfig) -> list[dict]:
-        """Query ABN API with search parameters"""
-        if not self.abn_client:
-            raise ValueError("ABN client not configured")
-
-        # Call ABN API SearchByNameAdvanced2017
-        # This would integrate with existing abn_client.py
-        results = await self.abn_client.search_by_name_advanced(
-            **query, max_results=config.max_results
-        )
-
-        return results or []
-
-    def _apply_abn_filters(self, results: list[dict], config: CampaignConfig) -> list[dict]:
-        """Apply hard filters to ABN results"""
-        filtered = []
-
-        for record in results:
-            # Filter out trusts if configured
-            if config.exclude_trusts and record.get("entityType", "").upper() in ["TRUST"]:
-                continue
-
-            # Filter GST registration if configured
-            if config.abn_only_gst and not record.get("gstRegistered", False):
-                continue
-
-            # Filter cancelled ABNs
-            if record.get("abnStatus", "").upper() in ["CANCELLED", "INACTIVE"]:
-                continue
-
-            filtered.append(record)
-
-        return filtered
-
-    def _convert_abn_to_records(self, abn_results: list[dict]) -> list[DiscoveryRecord]:
-        """Convert ABN API results to unified DiscoveryRecord format"""
-        records = []
-
-        for result in abn_results:
-            record = DiscoveryRecord(
-                business_name=result.get("businessName", "").strip(),
-                abn=result.get("abn", "").strip(),
-                acn=result.get("acn", "").strip(),
-                legal_name=result.get("legalName", "").strip(),
-                entity_type=result.get("entityType", "").strip(),
-                gst_registered=result.get("gstRegistered", False),
-                state=result.get("state", "").strip(),
-                discovery_source="abn_api",
-                confidence_score=0.85,  # ABN API is high-confidence
-                discovered_at=result.get("timestamp") or "now",
-            )
-
-            records.append(record)
-
-        return records
-
-
-class GMBFirstDiscovery:
-    """
-    Siege Waterfall v3: GMB-first discovery mode (Directive #144).
-
-    T0 GMB-first discovery - replaces ABN keyword search as default.
-
-    Flow:
-    1. Query GMB via Bright Data by category + location
-    2. Return DiscoveryRecords with phone, website, address, rating
-    3. Does NOT call ABN (that's T1 verification in the waterfall)
-
-    Cost: $0.001/record via Bright Data
-    """
-
-    def __init__(self, bright_data_client=None):
-        """Initialize with Bright Data client dependency."""
-        self.bd = bright_data_client
-        if not bright_data_client:
-            logger.warning("GMBFirstDiscovery: No Bright Data client provided - will fail at runtime")
-
-    async def discover(self, config: CampaignConfig) -> list[DiscoveryRecord]:
-        """
-        T0 GMB-first discovery flow:
-        1. Build search query from category + state
-        2. Call Bright Data GMB dataset
-        3. Convert results to DiscoveryRecord format
-        4. Return records for T1 ABN verification
-
-        Args:
-            config: Campaign configuration with industry and location
-
-        Returns:
-            List of DiscoveryRecords ready for waterfall enrichment
-        """
-        logger.info(
-            f"Starting GMB-first discovery for category='{config.industry}', "
-            f"location='{config.location}', state='{config.state}'"
-        )
-
-        try:
-            if not self.bd:
-                raise ValueError("Bright Data client not configured")
-
-            # Build location string
-            location = config.location
-            if config.state and config.state not in location:
-                location = f"{location} {config.state}"
-
-            # Call GMB discovery via Bright Data
-            gmb_results = await self.bd.discover_gmb_by_category(
-                category=config.industry,
-                location=location,
-                limit=config.max_results,
-            )
-
-            # Convert to DiscoveryRecord format
-            discovery_records = self._convert_gmb_to_records(gmb_results)
-
-            logger.info(
-                f"GMB-first discovery completed: {len(discovery_records)} records found"
-            )
-            return discovery_records
-
-        except Exception as e:
-            logger.error(f"GMB-first discovery failed: {str(e)}")
-            return []
-
-    def _convert_gmb_to_records(self, gmb_results: list[dict]) -> list[DiscoveryRecord]:
-        """Convert GMB API results to unified DiscoveryRecord format."""
-        records = []
-
-        for result in gmb_results:
-            # Skip results with errors
-            if "error" in result:
-                continue
-
-            business_name = result.get("name", "").strip()
-            if not business_name:
-                continue
-
-            record = DiscoveryRecord(
-                business_name=business_name,
-                # GMB fields - T0 already captures all GMB data
-                gmb_place_id=result.get("place_id"),
-                phone=result.get("phone_number") or result.get("phone"),
-                website=result.get("open_website") or result.get("website"),
-                address=result.get("address"),
-                rating=result.get("rating"),
-                reviews_count=result.get("reviews_count") or result.get("reviews"),
-                category=result.get("category"),
-                # Discovery metadata
-                discovery_source="gmb_first",
-                confidence_score=0.80,  # GMB data is reliable
-                discovered_at=result.get("timestamp") or "now",
-            )
-
-            # Store additional GMB data for T2 skip logic
-            # This prevents redundant T2 GMB enrichment
-            record.gmb_data = {
-                "gmb_rating": result.get("rating"),
-                "gmb_review_count": result.get("reviews_count"),
-                "gmb_category": result.get("category"),
-                "gmb_address": result.get("address"),
-                "gmb_phone": result.get("phone_number"),
-                "gmb_website": result.get("open_website"),
-                "lat": result.get("lat"),
-                "lon": result.get("lon"),
-                "google_maps_url": result.get("url"),
-            }
-
-            records.append(record)
-
-        return records
 
 
 class MapsFirstDiscovery:
@@ -490,11 +253,15 @@ class MapsFirstDiscovery:
 
 
 class ParallelDiscovery:
-    """Mode C: Run both modes in parallel, deduplicate on ABN + fuzzy name match"""
+    """Mode C: Enhanced GMB discovery with deduplication.
+    
+    Note: ABN_FIRST discovery deprecated per Waterfall v3 Decision #1 (2026-03-01).
+    ParallelDiscovery now delegates to MapsFirstDiscovery (GMB primary, ABN verification).
+    """
 
     def __init__(self, abn_client=None, bright_data_client=None):
-        """Initialize with both discovery modes"""
-        self.abn_discovery = ABNFirstDiscovery(abn_client=abn_client)
+        """Initialize with MapsFirst discovery (ABN_FIRST deprecated)"""
+        # ABNFirstDiscovery removed per Waterfall v3 Decision #1
         self.maps_discovery = MapsFirstDiscovery(
             bright_data_client=bright_data_client, abn_client=abn_client
         )
@@ -502,23 +269,20 @@ class ParallelDiscovery:
     async def discover(self, config: CampaignConfig) -> list[DiscoveryRecord]:
         """
         Discovery flow for Mode C:
-        1. Run both ABN-first and Maps-first in parallel
-        2. Deduplicate results on ABN + fuzzy name matching
-        3. Return merged records with highest confidence scores
+        1. Run GMB discovery with ABN verification (ABN_FIRST deprecated)
+        2. Return records with deduplication
         """
         logger.info(
             f"Starting parallel discovery for industry='{config.industry}', location='{config.location}'"
         )
 
         try:
-            # Run both discovery modes in parallel
-            abn_task = asyncio.create_task(self.abn_discovery.discover(config))
-            maps_task = asyncio.create_task(self.maps_discovery.discover(config))
+            # GMB-first discovery with ABN verification
+            # ABN_FIRST path removed per Waterfall v3 Decision #1
+            maps_results = await self.maps_discovery.discover(config)
 
-            abn_results, maps_results = await asyncio.gather(abn_task, maps_task)
-
-            # Deduplicate and merge
-            merged_records = self._deduplicate_and_merge(abn_results, maps_results, config)
+            # Deduplicate (single source now)
+            merged_records = self._deduplicate_records(maps_results, config)
 
             logger.info(f"Parallel discovery completed: {len(merged_records)} deduplicated records")
             return merged_records
@@ -527,36 +291,23 @@ class ParallelDiscovery:
             logger.error(f"Parallel discovery failed: {str(e)}")
             return []
 
-    def _deduplicate_and_merge(
+    def _deduplicate_records(
         self,
-        abn_results: list[DiscoveryRecord],
-        maps_results: list[DiscoveryRecord],
+        records: list[DiscoveryRecord],
         config: CampaignConfig,
     ) -> list[DiscoveryRecord]:
         """Deduplicate records on ABN + fuzzy name matching"""
         merged = {}
 
-        # Process ABN results first (higher confidence for business data)
-        for record in abn_results:
-            # Skip records with no usable identity data
-            if not record.business_name and not record.abn:
-                continue
-            key = self._generate_dedup_key(record, config)
-            merged[key] = record
-
-        # Process Maps results, merging with ABN data where possible
-        for record in maps_results:
-            # Skip records with no usable identity data
-            if not record.business_name and not record.abn:
-                continue
+        for record in records:
             key = self._generate_dedup_key(record, config)
 
             if key in merged:
-                # Merge GMB data into existing ABN record
+                # Keep higher confidence record
                 existing = merged[key]
-                merged[key] = self._merge_records(existing, record)
+                if record.confidence_score > existing.confidence_score:
+                    merged[key] = record
             else:
-                # Add new Maps-only record
                 merged[key] = record
 
         return list(merged.values())
@@ -568,7 +319,7 @@ class ParallelDiscovery:
             return f"abn_{record.abn.strip()}"
 
         # Fall back to fuzzy business name matching
-        clean_name = (record.business_name or "").lower().strip()
+        clean_name = record.business_name.lower().strip()
         # Remove common business suffixes for better matching
         suffixes = ["pty ltd", "pty. ltd.", "proprietary limited", "limited", "ltd", "corp", "inc"]
         for suffix in suffixes:
@@ -576,31 +327,4 @@ class ParallelDiscovery:
 
         return f"name_{clean_name}"
 
-    def _merge_records(
-        self, abn_record: DiscoveryRecord, maps_record: DiscoveryRecord
-    ) -> DiscoveryRecord:
-        """Merge ABN and Maps records, preferring non-empty values"""
-        # Start with ABN record as base
-        merged = abn_record
-
-        # Add GMB-specific fields from Maps record
-        if not merged.phone and maps_record.phone:
-            merged.phone = maps_record.phone
-        if not merged.website and maps_record.website:
-            merged.website = maps_record.website
-        if not merged.address and maps_record.address:
-            merged.address = maps_record.address
-        if maps_record.rating:
-            merged.rating = maps_record.rating
-        if maps_record.reviews_count:
-            merged.reviews_count = maps_record.reviews_count
-        if maps_record.category:
-            merged.category = maps_record.category
-        if maps_record.gmb_place_id:
-            merged.gmb_place_id = maps_record.gmb_place_id
-
-        # Update metadata
-        merged.discovery_source = "both"
-        merged.confidence_score = max(abn_record.confidence_score, maps_record.confidence_score)
-
-        return merged
+    # _merge_records removed - ABN_FIRST deprecated per Waterfall v3 Decision #1

@@ -18,7 +18,6 @@ Key components:
 
 from .discovery_filters import DiscoveryFilters
 from .discovery_modes import (
-    ABNFirstDiscovery,
     CampaignConfig,
     DiscoveryMode,
     DiscoveryRecord,
@@ -38,7 +37,7 @@ __all__ = [
     "DiscoveryMode",
     "CampaignConfig",
     "DiscoveryRecord",
-    "ABNFirstDiscovery",
+    # ABNFirstDiscovery removed per Waterfall v3 Decision #1
     "MapsFirstDiscovery",
     "ParallelDiscovery",
     # Waterfall pipeline

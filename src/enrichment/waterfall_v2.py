@@ -44,7 +44,6 @@ from datetime import UTC, datetime
 import structlog
 
 from src.enrichment.discovery_modes import (
-    ABNFirstDiscovery,
     CampaignConfig,
     DiscoveryMode,
     DiscoveryRecord,
@@ -171,7 +170,7 @@ class WaterfallV2:
         self.leadmagic = leadmagic_client
 
         # Initialize discovery engines
-        self.abn_discovery = ABNFirstDiscovery(abn_client=abn_client)
+        # ABNFirstDiscovery deprecated per Waterfall v3 Decision #1 (2026-03-01)
         self.maps_discovery = MapsFirstDiscovery(
             bright_data_client=bright_data_client, abn_client=abn_client
         )
@@ -187,9 +186,8 @@ class WaterfallV2:
 
         try:
             # Select discovery engine based on mode
-            if config.mode == DiscoveryMode.ABN_FIRST:
-                discovery_records = await self.abn_discovery.discover(config)
-            elif config.mode == DiscoveryMode.MAPS_FIRST:
+            # ABN_FIRST deprecated per Waterfall v3 Decision #1 (2026-03-01)
+            if config.mode == DiscoveryMode.MAPS_FIRST:
                 discovery_records = await self.maps_discovery.discover(config)
             elif config.mode == DiscoveryMode.PARALLEL:
                 discovery_records = await self.parallel_discovery.discover(config)

@@ -23,11 +23,8 @@ logger = structlog.get_logger()
 
 
 class DiscoveryMode(Enum):
-    ABN_FIRST = "abn"  # DEPRECATED: use GMB_FIRST (Directive #144)
     MAPS_FIRST = "maps"
     PARALLEL = "parallel"
-    # Siege Waterfall v3: GMB-first is now the default (Directive #144)
-    GMB_FIRST = "gmb"  # T0 GMB-first discovery - DEFAULT mode
 
 
 @dataclass
@@ -93,19 +90,11 @@ class QueryTranslator:
         """
         Determine discovery mode based on industry vertical.
 
-        Siege Waterfall v3 (Directive #144):
-        - GMB_FIRST is now the default mode for all verticals
-        - ABN_FIRST is deprecated but kept for backward compat
-        - PARALLEL still available for premium campaigns
+        Maps-first: Local services with physical presence
+        ABN-first: Non-local B2B, professional services
+        Parallel: Premium campaigns or mixed verticals
         """
         if config.discovery_mode:
-            # Log deprecation warning for ABN_FIRST
-            if config.discovery_mode == DiscoveryMode.ABN_FIRST:
-                logger.warning(
-                    "ABN_FIRST discovery mode is DEPRECATED (Directive #144). "
-                    "Use GMB_FIRST for T0 discovery, ABN verification happens at T1. "
-                    f"Campaign: {config.campaign_id}"
-                )
             return config.discovery_mode
 
         # Get mode from industry_keywords table
@@ -113,36 +102,18 @@ class QueryTranslator:
 
         mode_map = {
             "maps_first": DiscoveryMode.MAPS_FIRST,
-            "abn_first": DiscoveryMode.ABN_FIRST,  # Deprecated
-            "gmb_first": DiscoveryMode.GMB_FIRST,
             "both": DiscoveryMode.PARALLEL,
         }
 
-        resolved_mode = mode_map.get(mode)
-
-        # Siege Waterfall v3: GMB_FIRST is the default (Directive #144)
-        if resolved_mode is None:
-            resolved_mode = DiscoveryMode.GMB_FIRST
-
-        # Log deprecation for ABN_FIRST from industry_keywords
-        if resolved_mode == DiscoveryMode.ABN_FIRST:
-            logger.warning(
-                f"industry_keywords returned 'abn_first' for {config.industry_slug} - "
-                "this is DEPRECATED (Directive #144). Consider updating to 'gmb_first'."
-            )
-
-        return resolved_mode
+        # Legacy abn_first mode deprecated per Waterfall v3 Decision #1 (2026-03-01)
+        # Falls through to PARALLEL
+        return mode_map.get(mode, DiscoveryMode.PARALLEL)
 
     def estimate_queries_needed(self, config: CampaignConfig, mode: DiscoveryMode) -> int:
         """Estimate number of queries needed to hit lead_volume target."""
         target = config.lead_volume
 
-        if mode == DiscoveryMode.ABN_FIRST:
-            # Account for waste ratio
-            adjusted = target * self.ABN_WASTE_RATIO
-            return max(1, int(adjusted / self.ABN_RESULTS_PER_QUERY) + 1)
-
-        elif mode == DiscoveryMode.MAPS_FIRST:
+        if mode == DiscoveryMode.MAPS_FIRST:
             return max(1, int(target / self.MAPS_RESULTS_PER_QUERY) + 1)
 
         else:  # Parallel
@@ -208,7 +179,7 @@ class QueryTranslator:
                     results.append(
                         DiscoveryResult(
                             abn=record.get("abn"),
-                            business_name=record.get("business_name") or record.get("entity_name") or record.get("name"),
+                            business_name=record.get("entity_name") or record.get("name"),
                             trading_name=record.get("trading_name"),
                             source="abn_api",
                             raw_data=record,
@@ -280,108 +251,6 @@ class QueryTranslator:
 
         return results
 
-    async def execute_gmb_queries(
-        self, config: CampaignConfig, keywords: list[str], max_queries: int
-    ) -> list[DiscoveryResult]:
-        """
-        Execute GMB-first discovery via Bright Data (Directive #144).
-
-        Siege Waterfall v3 T0 discovery - replaces ABN keyword search.
-
-        Args:
-            config: Campaign configuration
-            keywords: Expanded industry keywords
-            max_queries: Maximum queries to execute
-
-        Returns:
-            List of DiscoveryResults ready for T1 ABN verification
-        """
-        results = []
-        queries_run = 0
-
-        # Build location string
-        location = config.location
-        if config.state and config.state not in location:
-            location = f"{location} {config.state}"
-
-        for keyword in keywords:
-            if queries_run >= max_queries:
-                break
-
-            try:
-                # Call Bright Data GMB discovery
-                gmb_results = await self.bd.discover_gmb_by_category(
-                    category=keyword,
-                    location=location,
-                    limit=100,  # Get 100 per keyword
-                )
-
-                queries_run += 1
-
-                # Log query
-                if self.supabase:
-                    await self._log_query(
-                        config.campaign_id,
-                        "gmb_first",
-                        "gmb_discovery",
-                        {"keyword": keyword, "location": location},
-                        len(gmb_results),
-                        len(gmb_results) * 0.001,  # $0.001 per record
-                    )
-
-                for record in gmb_results:
-                    # Skip records with errors
-                    if "error" in record:
-                        continue
-
-                    business_name = record.get("name", "").strip()
-                    if not business_name:
-                        continue
-
-                    dedup_hash = self._compute_dedup_hash(record, "gmb_first")
-
-                    if dedup_hash in self._seen_hashes:
-                        continue
-                    self._seen_hashes.add(dedup_hash)
-
-                    # Build raw_data with GMB fields for T2 skip logic
-                    raw_data = {
-                        **record,
-                        # Siege Waterfall v3: GMB data captured at T0
-                        "gmb_data": {
-                            "gmb_rating": record.get("rating"),
-                            "gmb_review_count": record.get("reviews_count"),
-                            "gmb_category": record.get("category"),
-                            "gmb_address": record.get("address"),
-                            "gmb_phone": record.get("phone_number"),
-                            "gmb_website": record.get("open_website"),
-                        },
-                    }
-
-                    results.append(
-                        DiscoveryResult(
-                            abn=None,  # ABN lookup happens at T1 verification
-                            business_name=business_name,
-                            trading_name=None,
-                            source="gmb_first",
-                            raw_data=raw_data,
-                            dedup_hash=dedup_hash,
-                            passed_filters=True,  # Filters applied at T1
-                        )
-                    )
-
-            except Exception as e:
-                logger.error("gmb_query_failed", keyword=keyword, location=location, error=str(e))
-
-        logger.info(
-            "gmb_first_discovery_complete",
-            queries_run=queries_run,
-            results_count=len(results),
-            campaign_id=config.campaign_id,
-        )
-
-        return results
-
     async def _log_query(
         self,
         campaign_id: str,
@@ -442,19 +311,7 @@ class QueryTranslator:
         # 5. Execute queries
         results = []
 
-        if mode == DiscoveryMode.GMB_FIRST:
-            # Siege Waterfall v3: GMB-first discovery (Directive #144)
-            results = await self.execute_gmb_queries(config, keywords, max_queries)
-
-        elif mode == DiscoveryMode.ABN_FIRST:
-            # DEPRECATED: ABN keyword search discovery
-            logger.warning(
-                f"Using deprecated ABN_FIRST mode for campaign {config.campaign_id}. "
-                "Consider migrating to GMB_FIRST (Directive #144)."
-            )
-            results = await self.execute_abn_queries(config, keywords, max_queries)
-
-        elif mode == DiscoveryMode.MAPS_FIRST:
+        if mode == DiscoveryMode.MAPS_FIRST:
             results = await self.execute_maps_queries(config, keywords, suburbs, max_queries)
 
         else:  # Parallel

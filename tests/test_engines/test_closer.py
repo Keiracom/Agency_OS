@@ -88,10 +88,16 @@ class MockLead:
         self.company = kwargs.get("company", "Test Company")
         self.status = kwargs.get("status", LeadStatus.IN_SEQUENCE)
         self.propensity_score = kwargs.get("propensity_score", 75)
+        self.propensity_tier = kwargs.get("propensity_tier", "A")
         self.last_replied_at = kwargs.get("last_replied_at")
         self.reply_count = kwargs.get("reply_count", 0)
         self.next_outreach_at = kwargs.get("next_outreach_at")
         self.deleted_at = None
+        self.lead_metadata = kwargs.get("lead_metadata", {})
+        self.created_at = kwargs.get("created_at", datetime.utcnow())
+        self.email_count = kwargs.get("email_count", 0)
+        self.linkedin_count = kwargs.get("linkedin_count", 0)
+        self.sequence_step = kwargs.get("sequence_step", 1)
 
     @property
     def full_name(self):
@@ -400,7 +406,9 @@ async def test_handle_meeting_request_intent():
     campaign = MockCampaign()
 
     patches = get_standard_patches(engine, lead, campaign)
-    with patches[0], patches[1], patches[2], patches[3]:
+    with patches[0], patches[1], patches[2], patches[3], \
+         patch("src.engines.closer.generate_booking_link", new_callable=AsyncMock, return_value="https://calendly.com/test"), \
+         patch("src.engines.closer.send_booking_reply", new_callable=AsyncMock):
         result = await engine.process_reply(
             db=mock_db,
             lead_id=lead.id,
@@ -409,9 +417,11 @@ async def test_handle_meeting_request_intent():
         )
 
         assert result.success
-        assert lead.status == LeadStatus.CONVERTED
-        assert "marked_as_converted" in result.data["actions"]
-        assert "created_meeting_task" in result.data["actions"]
+        # Status stays IN_SEQUENCE until Calendly webhook confirms booking
+        assert lead.status == LeadStatus.IN_SEQUENCE
+        assert "booking_link_generated" in result.data["actions"]
+        assert "automated_reply_sent" in result.data["actions"]
+        assert "awaiting_booking_confirmation" in result.data["actions"]
 
 
 @pytest.mark.asyncio

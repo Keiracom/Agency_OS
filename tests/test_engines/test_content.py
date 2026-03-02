@@ -149,25 +149,27 @@ class TestEmailGeneration:
         with patch.object(content_engine, "get_campaign_by_id", new_callable=AsyncMock, return_value=mock_campaign):
             with patch(f"{SMART_PROMPTS_MODULE}.build_full_lead_context", new_callable=AsyncMock, return_value=mock_lead_context):
                 with patch(f"{SMART_PROMPTS_MODULE}.build_client_proof_points", new_callable=AsyncMock, return_value=mock_proof_points):
-                    # Mock AI response
-                    content_engine.anthropic.complete.return_value = {
-                        "content": '{"subject": "Test Subject", "body": "Test Body"}',
-                        "cost_aud": 0.05,
-                        "input_tokens": 100,
-                        "output_tokens": 50,
-                    }
+                    with patch.object(content_engine, "_fact_check_content", new_callable=AsyncMock, return_value={"verdict": "PASS", "unsupported_claims": [], "risk_level": "LOW", "cost_aud": 0.01}):
+                        # Mock AI response
+                        content_engine.anthropic.complete.return_value = {
+                            "content": '{"subject": "Test Subject", "body": "Test Body"}',
+                            "cost_aud": 0.05,
+                            "input_tokens": 100,
+                            "output_tokens": 50,
+                        }
 
-                    result = await content_engine.generate_email(
-                        db=mock_db_session,
-                        lead_id=mock_lead.id,
-                        campaign_id=mock_campaign.id,
-                    )
+                        result = await content_engine.generate_email(
+                            db=mock_db_session,
+                            lead_id=mock_lead.id,
+                            campaign_id=mock_campaign.id,
+                        )
 
-                    assert result.success is True
-                    assert result.data["subject"] == "Test Subject"
-                    assert result.data["body"] == "Test Body"
-                    assert result.metadata["cost_aud"] == 0.05
-                    assert result.metadata.get("smart_prompt") is True
+                        assert result.success is True
+                        assert result.data["subject"] == "Test Subject"
+                        assert result.data["body"] == "Test Body"
+                        # Cost now includes fact-check cost
+                        assert result.metadata["cost_aud"] == 0.06  # 0.05 + 0.01 from fact-check
+                        assert result.metadata.get("smart_prompt") is True
 
     @pytest.mark.asyncio
     async def test_generate_email_with_template(
@@ -178,23 +180,24 @@ class TestEmailGeneration:
         with patch.object(content_engine, "get_campaign_by_id", new_callable=AsyncMock, return_value=mock_campaign):
             with patch(f"{SMART_PROMPTS_MODULE}.build_full_lead_context", new_callable=AsyncMock, return_value=mock_lead_context):
                 with patch(f"{SMART_PROMPTS_MODULE}.build_client_proof_points", new_callable=AsyncMock, return_value=mock_proof_points):
-                    content_engine.anthropic.complete.return_value = {
-                        "content": '{"subject": "Custom Subject", "body": "Custom Body"}',
-                        "cost_aud": 0.05,
-                        "input_tokens": 150,
-                        "output_tokens": 60,
-                    }
+                    with patch.object(content_engine, "_fact_check_content", new_callable=AsyncMock, return_value={"verdict": "PASS", "unsupported_claims": [], "risk_level": "LOW", "cost_aud": 0.01}):
+                        content_engine.anthropic.complete.return_value = {
+                            "content": '{"subject": "Custom Subject", "body": "Custom Body"}',
+                            "cost_aud": 0.05,
+                            "input_tokens": 150,
+                            "output_tokens": 60,
+                        }
 
-                    result = await content_engine.generate_email(
-                        db=mock_db_session,
-                        lead_id=mock_lead.id,
-                        campaign_id=mock_campaign.id,
-                        template="Hi {{first_name}}, from {{company}}",
-                    )
+                        result = await content_engine.generate_email(
+                            db=mock_db_session,
+                            lead_id=mock_lead.id,
+                            campaign_id=mock_campaign.id,
+                            template="Hi {{first_name}}, from {{company}}",
+                        )
 
-                    assert result.success is True
-                    # Verify AI was called
-                    content_engine.anthropic.complete.assert_called_once()
+                        assert result.success is True
+                        # Verify AI was called for email generation
+                        content_engine.anthropic.complete.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_generate_email_missing_lead_data(

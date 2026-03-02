@@ -289,31 +289,30 @@ class TestEmailEngine:
 
     @pytest.mark.asyncio
     async def test_batch_send(self, email_engine, mock_db):
-        """Test batch email sending."""
+        """Test batch email sending with mocked send_batch internals."""
         from src.engines.base import EngineResult
+        from unittest.mock import AsyncMock
 
-        # Mock validate_and_send directly with controlled responses
-        send_count = 0
+        # Create mock responses: 2 success, 1 rate limited
+        send_count = {"value": 0}
 
-        async def mock_validate_and_send(**kwargs):
-            # Handle all args as kwargs since send_batch passes duplicates
-            nonlocal send_count
-            send_count += 1
-            if send_count <= 2:
-                # Success response
+        async def mock_send_effect(*args, **kwargs):
+            send_count["value"] += 1
+            if send_count["value"] <= 2:
                 return EngineResult.ok(
                     data={
-                        "message_id": f"msg_{send_count}",
+                        "message_id": f"msg_{send_count['value']}",
                         "to_email": "test@example.com",
-                        "from_email": kwargs.get("from_email"),
-                        "subject": kwargs.get("subject"),
+                        "from_email": "sender@example.com",
+                        "subject": f"Subject {send_count['value']}",
                     }
                 )
             else:
-                # Rate limit response
                 return EngineResult.fail(error="Rate limit exceeded")
 
-        email_engine.validate_and_send = mock_validate_and_send
+        # Mock validate_and_send with AsyncMock that handles any call signature
+        mock_validate = AsyncMock(side_effect=mock_send_effect)
+        email_engine.validate_and_send = mock_validate
 
         emails = [
             {

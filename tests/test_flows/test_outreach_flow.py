@@ -5,6 +5,7 @@ PHASE: 5 (Orchestration)
 TASK: ORC-004
 """
 
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -39,6 +40,7 @@ def mock_client():
     client.subscription_status = SubscriptionStatus.ACTIVE
     client.credits_remaining = 1000
     client.deleted_at = None
+    client.paused_at = None  # Phase H, Item 43
     return client
 
 
@@ -50,6 +52,7 @@ def mock_campaign():
     campaign.status = CampaignStatus.ACTIVE
     campaign.permission_mode = PermissionMode.CO_PILOT
     campaign.deleted_at = None
+    campaign.paused_at = None  # Phase H, Item 43
     return campaign
 
 
@@ -71,30 +74,32 @@ def mock_lead():
 @pytest.mark.asyncio
 async def test_get_leads_ready_for_outreach_success():
     """Test getting leads ready for outreach with JIT validation."""
-    with patch(
-        "src.orchestration.flows.outreach_flow.get_db_session"
-    ) as mock_get_session:
-        mock_db = AsyncMock()
-        mock_result = AsyncMock()
-        # Mock query result
-        mock_result.all = AsyncMock(
-            return_value=[
-                (
-                    uuid4(),  # lead_id
-                    uuid4(),  # client_id
-                    uuid4(),  # campaign_id
-                    "domain.com",  # email_resource
-                    "seat123",  # linkedin_seat
-                    "+1234567890",  # phone_resource
-                    PermissionMode.CO_PILOT,  # permission_mode
-                    SubscriptionStatus.ACTIVE,  # subscription_status
-                    1000,  # credits_remaining
-                ),
-            ]
-        )
-        mock_db.execute = AsyncMock(return_value=mock_result)
-        mock_get_session.return_value.__aenter__.return_value = mock_db
+    mock_db = AsyncMock()
+    mock_result = MagicMock()
+    # Mock query result
+    mock_result.all.return_value = [
+        (
+            uuid4(),  # lead_id
+            uuid4(),  # client_id
+            uuid4(),  # campaign_id
+            "domain.com",  # email_resource
+            "seat123",  # linkedin_seat
+            "+1234567890",  # phone_resource
+            PermissionMode.CO_PILOT,  # permission_mode
+            SubscriptionStatus.ACTIVE,  # subscription_status
+            1000,  # credits_remaining
+        ),
+    ]
+    mock_db.execute = AsyncMock(return_value=mock_result)
 
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_db
+
+    with patch(
+        "src.orchestration.flows.outreach_flow.get_db_session",
+        mock_get_session
+    ):
         result = await get_leads_ready_for_outreach_task(limit=50)
 
         assert result["total_leads"] == 1
@@ -105,15 +110,19 @@ async def test_get_leads_ready_for_outreach_success():
 @pytest.mark.asyncio
 async def test_get_leads_ready_for_outreach_no_leads():
     """Test getting leads when none are ready."""
-    with patch(
-        "src.orchestration.flows.outreach_flow.get_db_session"
-    ) as mock_get_session:
-        mock_db = AsyncMock()
-        mock_result = AsyncMock()
-        mock_result.all = AsyncMock(return_value=[])
-        mock_db.execute = AsyncMock(return_value=mock_result)
-        mock_get_session.return_value.__aenter__.return_value = mock_db
+    mock_db = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.all.return_value = []
+    mock_db.execute = AsyncMock(return_value=mock_result)
 
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_db
+
+    with patch(
+        "src.orchestration.flows.outreach_flow.get_db_session",
+        mock_get_session
+    ):
         result = await get_leads_ready_for_outreach_task(limit=50)
 
         assert result["total_leads"] == 0
@@ -127,26 +136,30 @@ async def test_get_leads_ready_for_outreach_no_leads():
 @pytest.mark.asyncio
 async def test_jit_validate_outreach_success(mock_client, mock_campaign, mock_lead):
     """Test successful JIT validation for outreach."""
+    mock_db = AsyncMock()
+
+    # Mock three separate queries
+    mock_client_result = MagicMock()
+    mock_client_result.scalar_one_or_none.return_value = mock_client
+
+    mock_campaign_result = MagicMock()
+    mock_campaign_result.scalar_one_or_none.return_value = mock_campaign
+
+    mock_lead_result = MagicMock()
+    mock_lead_result.scalar_one_or_none.return_value = mock_lead
+
+    mock_db.execute = AsyncMock(
+        side_effect=[mock_client_result, mock_campaign_result, mock_lead_result]
+    )
+
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_db
+
     with patch(
-        "src.orchestration.flows.outreach_flow.get_db_session"
-    ) as mock_get_session:
-        mock_db = AsyncMock()
-
-        # Mock three separate queries
-        mock_client_result = AsyncMock()
-        mock_client_result.scalar_one_or_none = AsyncMock(return_value=mock_client)
-
-        mock_campaign_result = AsyncMock()
-        mock_campaign_result.scalar_one_or_none = AsyncMock(return_value=mock_campaign)
-
-        mock_lead_result = AsyncMock()
-        mock_lead_result.scalar_one_or_none = AsyncMock(return_value=mock_lead)
-
-        mock_db.execute = AsyncMock(
-            side_effect=[mock_client_result, mock_campaign_result, mock_lead_result]
-        )
-        mock_get_session.return_value.__aenter__.return_value = mock_db
-
+        "src.orchestration.flows.outreach_flow.get_db_session",
+        mock_get_session
+    ):
         result = await jit_validate_outreach_task(
             lead_id=str(mock_lead.id),
             campaign_id=str(mock_campaign.id),
@@ -162,15 +175,19 @@ async def test_jit_validate_outreach_no_credits(mock_client, mock_campaign, mock
     """Test JIT validation fails when client has no credits."""
     mock_client.credits_remaining = 0
 
-    with patch(
-        "src.orchestration.flows.outreach_flow.get_db_session"
-    ) as mock_get_session:
-        mock_db = AsyncMock()
-        mock_client_result = AsyncMock()
-        mock_client_result.scalar_one_or_none = AsyncMock(return_value=mock_client)
-        mock_db.execute = AsyncMock(return_value=mock_client_result)
-        mock_get_session.return_value.__aenter__.return_value = mock_db
+    mock_db = AsyncMock()
+    mock_client_result = MagicMock()
+    mock_client_result.scalar_one_or_none.return_value = mock_client
+    mock_db.execute = AsyncMock(return_value=mock_client_result)
 
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_db
+
+    with patch(
+        "src.orchestration.flows.outreach_flow.get_db_session",
+        mock_get_session
+    ):
         with pytest.raises(ValueError, match="no credits"):
             await jit_validate_outreach_task(
                 lead_id=str(mock_lead.id),
@@ -186,25 +203,29 @@ async def test_jit_validate_outreach_lead_unsubscribed(
     """Test JIT validation fails when lead is unsubscribed."""
     mock_lead.status = LeadStatus.UNSUBSCRIBED
 
+    mock_db = AsyncMock()
+
+    mock_client_result = MagicMock()
+    mock_client_result.scalar_one_or_none.return_value = mock_client
+
+    mock_campaign_result = MagicMock()
+    mock_campaign_result.scalar_one_or_none.return_value = mock_campaign
+
+    mock_lead_result = MagicMock()
+    mock_lead_result.scalar_one_or_none.return_value = mock_lead
+
+    mock_db.execute = AsyncMock(
+        side_effect=[mock_client_result, mock_campaign_result, mock_lead_result]
+    )
+
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_db
+
     with patch(
-        "src.orchestration.flows.outreach_flow.get_db_session"
-    ) as mock_get_session:
-        mock_db = AsyncMock()
-
-        mock_client_result = AsyncMock()
-        mock_client_result.scalar_one_or_none = AsyncMock(return_value=mock_client)
-
-        mock_campaign_result = AsyncMock()
-        mock_campaign_result.scalar_one_or_none = AsyncMock(return_value=mock_campaign)
-
-        mock_lead_result = AsyncMock()
-        mock_lead_result.scalar_one_or_none = AsyncMock(return_value=mock_lead)
-
-        mock_db.execute = AsyncMock(
-            side_effect=[mock_client_result, mock_campaign_result, mock_lead_result]
-        )
-        mock_get_session.return_value.__aenter__.return_value = mock_db
-
+        "src.orchestration.flows.outreach_flow.get_db_session",
+        mock_get_session
+    ):
         with pytest.raises(ValueError, match="unsubscribed"):
             await jit_validate_outreach_task(
                 lead_id=str(mock_lead.id),
@@ -225,43 +246,46 @@ async def test_send_email_outreach_success():
     campaign_id = str(uuid4())
     resource = "domain.com"
 
+    # Mock database
+    mock_db = AsyncMock()
+
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_db
+
+    # Mock allocator (rate limit check)
+    mock_allocator = MagicMock()
+    mock_allocator.check_and_consume_quota = AsyncMock(
+        return_value=EngineResult.ok(data={"remaining": 45})
+    )
+
+    # Mock content engine
+    mock_content = MagicMock()
+    mock_content.generate_email = AsyncMock(
+        return_value=EngineResult.ok(
+            data={"subject": "Test Subject", "body": "Test Body"}
+        )
+    )
+
+    # Mock email engine
+    mock_email = MagicMock()
+    mock_email.send_email = AsyncMock(
+        return_value=EngineResult.ok(data={"message_id": "msg123"})
+    )
+
     with patch(
-        "src.orchestration.flows.outreach_flow.get_db_session"
-    ) as mock_get_session, patch(
-        "src.orchestration.flows.outreach_flow.get_content_engine"
-    ) as mock_get_content, patch(
-        "src.orchestration.flows.outreach_flow.get_email_engine"
-    ) as mock_get_email, patch(
-        "src.orchestration.flows.outreach_flow.get_allocator_engine"
-    ) as mock_get_allocator:
-
-        # Mock database
-        mock_db = AsyncMock()
-        mock_get_session.return_value.__aenter__.return_value = mock_db
-
-        # Mock allocator (rate limit check)
-        mock_allocator = MagicMock()
-        mock_allocator.check_and_consume_quota = AsyncMock(
-            return_value=EngineResult.ok(data={"remaining": 45})
-        )
-        mock_get_allocator.return_value = mock_allocator
-
-        # Mock content engine
-        mock_content = MagicMock()
-        mock_content.generate_email = AsyncMock(
-            return_value=EngineResult.ok(
-                data={"subject": "Test Subject", "body": "Test Body"}
-            )
-        )
-        mock_get_content.return_value = mock_content
-
-        # Mock email engine
-        mock_email = MagicMock()
-        mock_email.send_email = AsyncMock(
-            return_value=EngineResult.ok(data={"message_id": "msg123"})
-        )
-        mock_get_email.return_value = mock_email
-
+        "src.orchestration.flows.outreach_flow.get_db_session",
+        mock_get_session
+    ), patch(
+        "src.orchestration.flows.outreach_flow.get_content_engine",
+        return_value=mock_content
+    ), patch(
+        "src.orchestration.flows.outreach_flow.get_email_engine",
+        return_value=mock_email
+    ), patch(
+        "src.orchestration.flows.outreach_flow.get_allocator_engine",
+        return_value=mock_allocator
+    ):
         result = await send_email_outreach_task(
             lead_id, campaign_id, resource, "autopilot"
         )
@@ -278,22 +302,25 @@ async def test_send_email_outreach_rate_limit_exceeded():
     campaign_id = str(uuid4())
     resource = "domain.com"
 
+    mock_db = AsyncMock()
+
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_db
+
+    # Mock allocator (rate limit exceeded)
+    mock_allocator = MagicMock()
+    mock_allocator.check_and_consume_quota = AsyncMock(
+        return_value=EngineResult.fail(error="Rate limit exceeded")
+    )
+
     with patch(
-        "src.orchestration.flows.outreach_flow.get_db_session"
-    ) as mock_get_session, patch(
-        "src.orchestration.flows.outreach_flow.get_allocator_engine"
-    ) as mock_get_allocator:
-
-        mock_db = AsyncMock()
-        mock_get_session.return_value.__aenter__.return_value = mock_db
-
-        # Mock allocator (rate limit exceeded)
-        mock_allocator = MagicMock()
-        mock_allocator.check_and_consume_quota = AsyncMock(
-            return_value=EngineResult.fail(error="Rate limit exceeded")
-        )
-        mock_get_allocator.return_value = mock_allocator
-
+        "src.orchestration.flows.outreach_flow.get_db_session",
+        mock_get_session
+    ), patch(
+        "src.orchestration.flows.outreach_flow.get_allocator_engine",
+        return_value=mock_allocator
+    ):
         result = await send_email_outreach_task(
             lead_id, campaign_id, resource, "autopilot"
         )
@@ -314,40 +341,43 @@ async def test_send_linkedin_outreach_success():
     campaign_id = str(uuid4())
     resource = "seat123"
 
+    mock_db = AsyncMock()
+
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_db
+
+    # Mock allocator
+    mock_allocator = MagicMock()
+    mock_allocator.check_and_consume_quota = AsyncMock(
+        return_value=EngineResult.ok(data={"remaining": 15})
+    )
+
+    # Mock content engine
+    mock_content = MagicMock()
+    mock_content.generate_linkedin_message = AsyncMock(
+        return_value=EngineResult.ok(data={"message": "Test Message"})
+    )
+
+    # Mock LinkedIn engine
+    mock_linkedin = MagicMock()
+    mock_linkedin.send_connection_request = AsyncMock(
+        return_value=EngineResult.ok(data={})
+    )
+
     with patch(
-        "src.orchestration.flows.outreach_flow.get_db_session"
-    ) as mock_get_session, patch(
-        "src.orchestration.flows.outreach_flow.get_content_engine"
-    ) as mock_get_content, patch(
-        "src.orchestration.flows.outreach_flow.get_linkedin_engine"
-    ) as mock_get_linkedin, patch(
-        "src.orchestration.flows.outreach_flow.get_allocator_engine"
-    ) as mock_get_allocator:
-
-        mock_db = AsyncMock()
-        mock_get_session.return_value.__aenter__.return_value = mock_db
-
-        # Mock allocator
-        mock_allocator = MagicMock()
-        mock_allocator.check_and_consume_quota = AsyncMock(
-            return_value=EngineResult.ok(data={"remaining": 15})
-        )
-        mock_get_allocator.return_value = mock_allocator
-
-        # Mock content engine
-        mock_content = MagicMock()
-        mock_content.generate_linkedin_message = AsyncMock(
-            return_value=EngineResult.ok(data={"message": "Test Message"})
-        )
-        mock_get_content.return_value = mock_content
-
-        # Mock LinkedIn engine
-        mock_linkedin = MagicMock()
-        mock_linkedin.send_connection_request = AsyncMock(
-            return_value=EngineResult.ok(data={})
-        )
-        mock_get_linkedin.return_value = mock_linkedin
-
+        "src.orchestration.flows.outreach_flow.get_db_session",
+        mock_get_session
+    ), patch(
+        "src.orchestration.flows.outreach_flow.get_content_engine",
+        return_value=mock_content
+    ), patch(
+        "src.orchestration.flows.outreach_flow.get_linkedin_engine",
+        return_value=mock_linkedin
+    ), patch(
+        "src.orchestration.flows.outreach_flow.get_allocator_engine",
+        return_value=mock_allocator
+    ):
         result = await send_linkedin_outreach_task(
             lead_id, campaign_id, resource, "autopilot"
         )
@@ -368,40 +398,43 @@ async def test_send_sms_outreach_success():
     campaign_id = str(uuid4())
     resource = "+1234567890"
 
+    mock_db = AsyncMock()
+
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_db
+
+    # Mock allocator
+    mock_allocator = MagicMock()
+    mock_allocator.check_and_consume_quota = AsyncMock(
+        return_value=EngineResult.ok(data={"remaining": 95})
+    )
+
+    # Mock content engine
+    mock_content = MagicMock()
+    mock_content.generate_sms = AsyncMock(
+        return_value=EngineResult.ok(data={"message": "Test SMS"})
+    )
+
+    # Mock SMS engine
+    mock_sms = MagicMock()
+    mock_sms.send_sms = AsyncMock(
+        return_value=EngineResult.ok(data={"message_id": "sms123"})
+    )
+
     with patch(
-        "src.orchestration.flows.outreach_flow.get_db_session"
-    ) as mock_get_session, patch(
-        "src.orchestration.flows.outreach_flow.get_content_engine"
-    ) as mock_get_content, patch(
-        "src.orchestration.flows.outreach_flow.get_sms_engine"
-    ) as mock_get_sms, patch(
-        "src.orchestration.flows.outreach_flow.get_allocator_engine"
-    ) as mock_get_allocator:
-
-        mock_db = AsyncMock()
-        mock_get_session.return_value.__aenter__.return_value = mock_db
-
-        # Mock allocator
-        mock_allocator = MagicMock()
-        mock_allocator.check_and_consume_quota = AsyncMock(
-            return_value=EngineResult.ok(data={"remaining": 95})
-        )
-        mock_get_allocator.return_value = mock_allocator
-
-        # Mock content engine
-        mock_content = MagicMock()
-        mock_content.generate_sms = AsyncMock(
-            return_value=EngineResult.ok(data={"message": "Test SMS"})
-        )
-        mock_get_content.return_value = mock_content
-
-        # Mock SMS engine
-        mock_sms = MagicMock()
-        mock_sms.send_sms = AsyncMock(
-            return_value=EngineResult.ok(data={"message_id": "sms123"})
-        )
-        mock_get_sms.return_value = mock_sms
-
+        "src.orchestration.flows.outreach_flow.get_db_session",
+        mock_get_session
+    ), patch(
+        "src.orchestration.flows.outreach_flow.get_content_engine",
+        return_value=mock_content
+    ), patch(
+        "src.orchestration.flows.outreach_flow.get_sms_engine",
+        return_value=mock_sms
+    ), patch(
+        "src.orchestration.flows.outreach_flow.get_allocator_engine",
+        return_value=mock_allocator
+    ):
         result = await send_sms_outreach_task(
             lead_id, campaign_id, resource, "autopilot"
         )
@@ -419,18 +452,19 @@ async def test_send_sms_outreach_success():
 @pytest.mark.asyncio
 async def test_hourly_outreach_flow_no_leads():
     """Test hourly outreach flow with no leads."""
-    with patch(
-        "src.orchestration.flows.outreach_flow.get_leads_ready_for_outreach_task"
-    ) as mock_get_leads:
-        mock_get_leads.return_value = {
-            "total_leads": 0,
-            "leads_by_channel": {
-                "email": [],
-                "linkedin": [],
-                "sms": [],
-            },
-        }
+    mock_get_leads = AsyncMock(return_value={
+        "total_leads": 0,
+        "leads_by_channel": {
+            "email": [],
+            "linkedin": [],
+            "sms": [],
+        },
+    })
 
+    with patch(
+        "src.orchestration.flows.outreach_flow.get_leads_ready_for_outreach_task",
+        mock_get_leads
+    ):
         result = await hourly_outreach_flow(batch_size=50)
 
         assert result["total_leads"] == 0
@@ -444,45 +478,47 @@ async def test_hourly_outreach_flow_success():
     campaign_id = str(uuid4())
     client_id = str(uuid4())
 
+    # Mock getting leads
+    mock_get_leads = AsyncMock(return_value={
+        "total_leads": 1,
+        "leads_by_channel": {
+            "email": [
+                {
+                    "lead_id": lead_id,
+                    "campaign_id": campaign_id,
+                    "client_id": client_id,
+                    "resource": "domain.com",
+                }
+            ],
+            "linkedin": [],
+            "sms": [],
+        },
+    })
+
+    # Mock JIT validation
+    mock_validate = AsyncMock(return_value={
+        "valid": True,
+        "permission_mode": "autopilot",
+    })
+
+    # Mock sending email
+    mock_send_email = AsyncMock(return_value={
+        "lead_id": lead_id,
+        "channel": "email",
+        "success": True,
+        "message_id": "msg123",
+    })
+
     with patch(
-        "src.orchestration.flows.outreach_flow.get_leads_ready_for_outreach_task"
-    ) as mock_get_leads, patch(
-        "src.orchestration.flows.outreach_flow.jit_validate_outreach_task"
-    ) as mock_validate, patch(
-        "src.orchestration.flows.outreach_flow.send_email_outreach_task"
-    ) as mock_send_email:
-
-        # Mock getting leads
-        mock_get_leads.return_value = {
-            "total_leads": 1,
-            "leads_by_channel": {
-                "email": [
-                    {
-                        "lead_id": lead_id,
-                        "campaign_id": campaign_id,
-                        "client_id": client_id,
-                        "resource": "domain.com",
-                    }
-                ],
-                "linkedin": [],
-                "sms": [],
-            },
-        }
-
-        # Mock JIT validation
-        mock_validate.return_value = {
-            "valid": True,
-            "permission_mode": "autopilot",
-        }
-
-        # Mock sending email
-        mock_send_email.return_value = {
-            "lead_id": lead_id,
-            "channel": "email",
-            "success": True,
-            "message_id": "msg123",
-        }
-
+        "src.orchestration.flows.outreach_flow.get_leads_ready_for_outreach_task",
+        mock_get_leads
+    ), patch(
+        "src.orchestration.flows.outreach_flow.jit_validate_outreach_task",
+        mock_validate
+    ), patch(
+        "src.orchestration.flows.outreach_flow.send_email_outreach_task",
+        mock_send_email
+    ):
         result = await hourly_outreach_flow(batch_size=50)
 
         assert result["emails_sent"] == 1

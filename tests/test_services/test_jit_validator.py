@@ -167,11 +167,15 @@ class TestJITValidatorAssignmentChecks:
         pool_result = MagicMock()
         pool_result.fetchone.return_value = MagicMock(_mapping=valid_pool_lead)
 
+        # Mock suppression check - not suppressed
+        suppression_result = MagicMock()
+        suppression_result.fetchone.return_value = MagicMock(suppressed=False)
+
         # Mock no assignment
         assign_result = MagicMock()
         assign_result.fetchone.return_value = None
 
-        mock_session.execute.side_effect = [pool_result, assign_result]
+        mock_session.execute.side_effect = [pool_result, suppression_result, assign_result]
 
         result = await jit_validator.validate(pool_id, client_id, "email")
 
@@ -188,6 +192,10 @@ class TestJITValidatorAssignmentChecks:
         pool_result = MagicMock()
         pool_result.fetchone.return_value = MagicMock(_mapping=valid_pool_lead)
 
+        # Mock suppression check - not suppressed
+        suppression_result = MagicMock()
+        suppression_result.fetchone.return_value = MagicMock(suppressed=False)
+
         # Mock assignment at max touches
         assign_result = MagicMock()
         assign_result.fetchone.return_value = MagicMock(_mapping={
@@ -202,7 +210,7 @@ class TestJITValidatorAssignmentChecks:
             "channels_used": ["email"],
         })
 
-        mock_session.execute.side_effect = [pool_result, assign_result]
+        mock_session.execute.side_effect = [pool_result, suppression_result, assign_result]
 
         result = await jit_validator.validate(pool_id, client_id, "email")
 
@@ -219,6 +227,10 @@ class TestJITValidatorAssignmentChecks:
         pool_result = MagicMock()
         pool_result.fetchone.return_value = MagicMock(_mapping=valid_pool_lead)
 
+        # Mock suppression check - not suppressed
+        suppression_result = MagicMock()
+        suppression_result.fetchone.return_value = MagicMock(suppressed=False)
+
         # Mock assignment with negative reply
         assign_result = MagicMock()
         assign_result.fetchone.return_value = MagicMock(_mapping={
@@ -233,7 +245,7 @@ class TestJITValidatorAssignmentChecks:
             "channels_used": ["email"],
         })
 
-        mock_session.execute.side_effect = [pool_result, assign_result]
+        mock_session.execute.side_effect = [pool_result, suppression_result, assign_result]
 
         result = await jit_validator.validate(pool_id, client_id, "email")
 
@@ -254,6 +266,10 @@ class TestJITValidatorTimingChecks:
         pool_result = MagicMock()
         pool_result.fetchone.return_value = MagicMock(_mapping=valid_pool_lead)
 
+        # Mock suppression check - not suppressed
+        suppression_result = MagicMock()
+        suppression_result.fetchone.return_value = MagicMock(suppressed=False)
+
         # Mock assignment in cooling
         assign_result = MagicMock()
         assign_result.fetchone.return_value = MagicMock(_mapping={
@@ -268,7 +284,7 @@ class TestJITValidatorTimingChecks:
             "channels_used": ["email"],
         })
 
-        mock_session.execute.side_effect = [pool_result, assign_result]
+        mock_session.execute.side_effect = [pool_result, suppression_result, assign_result]
 
         result = await jit_validator.validate(pool_id, client_id, "email")
 
@@ -285,6 +301,10 @@ class TestJITValidatorTimingChecks:
         pool_result = MagicMock()
         pool_result.fetchone.return_value = MagicMock(_mapping=valid_pool_lead)
 
+        # Mock suppression check - not suppressed
+        suppression_result = MagicMock()
+        suppression_result.fetchone.return_value = MagicMock(suppressed=False)
+
         # Mock assignment contacted yesterday
         assign_result = MagicMock()
         assign_result.fetchone.return_value = MagicMock(_mapping={
@@ -299,7 +319,7 @@ class TestJITValidatorTimingChecks:
             "channels_used": ["email"],
         })
 
-        mock_session.execute.side_effect = [pool_result, assign_result]
+        mock_session.execute.side_effect = [pool_result, suppression_result, assign_result]
 
         result = await jit_validator.validate(pool_id, client_id, "email")
 
@@ -321,6 +341,10 @@ class TestJITValidatorSuccess:
         pool_result = MagicMock()
         pool_result.fetchone.return_value = MagicMock(_mapping=valid_pool_lead)
 
+        # Mock suppression check - not suppressed
+        suppression_result = MagicMock()
+        suppression_result.fetchone.return_value = MagicMock(suppressed=False)
+
         # Mock valid assignment
         valid_assignment["id"] = assignment_id
         assign_result = MagicMock()
@@ -336,7 +360,13 @@ class TestJITValidatorSuccess:
             created_at=datetime.now() - timedelta(days=30)
         )
 
-        mock_session.execute.side_effect = [pool_result, assign_result, rate_result, warmup_result]
+        # Mock client branding check - include valid physical address for CAN-SPAM
+        branding_result = MagicMock()
+        branding_result.fetchone.return_value = MagicMock(branding={
+            "address": "123 Main St, Sydney NSW 2000, AU"
+        })
+
+        mock_session.execute.side_effect = [pool_result, suppression_result, assign_result, rate_result, warmup_result, branding_result]
 
         result = await jit_validator.validate(pool_id, client_id, "email")
 

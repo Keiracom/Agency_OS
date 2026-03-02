@@ -95,7 +95,7 @@ async def test_campaign(
         name="Test Campaign",
         status=CampaignStatus.ACTIVE,
         permission_mode="co_pilot",
-        daily_limit=50,
+        outreach_daily_limit=50,
     )
     db_session.add(campaign)
     await db_session.commit()
@@ -141,15 +141,15 @@ def auth_headers(test_user: User) -> dict:
 
 @pytest.mark.asyncio
 async def test_list_leads_success(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     test_client_data: Client,
     test_campaign: Campaign,
     test_lead: Lead,
     auth_headers: dict,
 ):
     """Test listing leads."""
-    response = await api_client.get(
-        f"/api/v1/clients/{test_client_data.id}/leads",
+    response = await async_client.get(
+        f"/clients/{test_client_data.id}/leads",
         headers=auth_headers,
     )
 
@@ -172,7 +172,7 @@ async def test_list_leads_success(
 
 @pytest.mark.asyncio
 async def test_list_leads_pagination(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     db_session: AsyncSession,
     test_client_data: Client,
     test_campaign: Campaign,
@@ -192,8 +192,8 @@ async def test_list_leads_pagination(
     await db_session.commit()
 
     # Page 1
-    response = await api_client.get(
-        f"/api/v1/clients/{test_client_data.id}/leads?page=1&page_size=10",
+    response = await async_client.get(
+        f"/clients/{test_client_data.id}/leads?page=1&page_size=10",
         headers=auth_headers,
     )
 
@@ -205,8 +205,8 @@ async def test_list_leads_pagination(
     assert data["pages"] == 2
 
     # Page 2
-    response = await api_client.get(
-        f"/api/v1/clients/{test_client_data.id}/leads?page=2&page_size=10",
+    response = await async_client.get(
+        f"/clients/{test_client_data.id}/leads?page=2&page_size=10",
         headers=auth_headers,
     )
 
@@ -218,7 +218,7 @@ async def test_list_leads_pagination(
 
 @pytest.mark.asyncio
 async def test_list_leads_filter_by_campaign(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     db_session: AsyncSession,
     test_client_data: Client,
     test_campaign: Campaign,
@@ -252,8 +252,8 @@ async def test_list_leads_filter_by_campaign(
     await db_session.commit()
 
     # Filter by campaign 1
-    response = await api_client.get(
-        f"/api/v1/clients/{test_client_data.id}/leads?campaign_id={test_campaign.id}",
+    response = await async_client.get(
+        f"/clients/{test_client_data.id}/leads?campaign_id={test_campaign.id}",
         headers=auth_headers,
     )
 
@@ -264,7 +264,7 @@ async def test_list_leads_filter_by_campaign(
 
 @pytest.mark.asyncio
 async def test_list_leads_filter_by_tier(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     db_session: AsyncSession,
     test_client_data: Client,
     test_campaign: Campaign,
@@ -292,8 +292,8 @@ async def test_list_leads_filter_by_tier(
     await db_session.commit()
 
     # Filter by hot tier
-    response = await api_client.get(
-        f"/api/v1/clients/{test_client_data.id}/leads?tier=hot",
+    response = await async_client.get(
+        f"/clients/{test_client_data.id}/leads?tier=hot",
         headers=auth_headers,
     )
 
@@ -304,7 +304,7 @@ async def test_list_leads_filter_by_tier(
 
 @pytest.mark.asyncio
 async def test_list_leads_search(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     db_session: AsyncSession,
     test_client_data: Client,
     test_campaign: Campaign,
@@ -325,16 +325,16 @@ async def test_list_leads_search(
     await db_session.commit()
 
     # Search by email
-    response = await api_client.get(
-        f"/api/v1/clients/{test_client_data.id}/leads?search=john.smith",
+    response = await async_client.get(
+        f"/clients/{test_client_data.id}/leads?search=john.smith",
         headers=auth_headers,
     )
     assert response.status_code == status.HTTP_200_OK
     assert len(response.json()["leads"]) >= 1
 
     # Search by company
-    response = await api_client.get(
-        f"/api/v1/clients/{test_client_data.id}/leads?search=ACME",
+    response = await async_client.get(
+        f"/clients/{test_client_data.id}/leads?search=ACME",
         headers=auth_headers,
     )
     assert response.status_code == status.HTTP_200_OK
@@ -348,14 +348,14 @@ async def test_list_leads_search(
 
 @pytest.mark.asyncio
 async def test_get_lead_success(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     test_client_data: Client,
     test_lead: Lead,
     auth_headers: dict,
 ):
     """Test getting a single lead."""
-    response = await api_client.get(
-        f"/api/v1/clients/{test_client_data.id}/leads/{test_lead.id}",
+    response = await async_client.get(
+        f"/clients/{test_client_data.id}/leads/{test_lead.id}",
         headers=auth_headers,
     )
 
@@ -371,14 +371,14 @@ async def test_get_lead_success(
 
 @pytest.mark.asyncio
 async def test_get_lead_not_found(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     test_client_data: Client,
     auth_headers: dict,
 ):
     """Test getting non-existent lead."""
     fake_id = uuid4()
-    response = await api_client.get(
-        f"/api/v1/clients/{test_client_data.id}/leads/{fake_id}",
+    response = await async_client.get(
+        f"/clients/{test_client_data.id}/leads/{fake_id}",
         headers=auth_headers,
     )
 
@@ -387,7 +387,7 @@ async def test_get_lead_not_found(
 
 @pytest.mark.asyncio
 async def test_get_lead_soft_deleted(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     db_session: AsyncSession,
     test_client_data: Client,
     test_lead: Lead,
@@ -398,8 +398,8 @@ async def test_get_lead_soft_deleted(
     test_lead.deleted_at = datetime.utcnow()
     await db_session.commit()
 
-    response = await api_client.get(
-        f"/api/v1/clients/{test_client_data.id}/leads/{test_lead.id}",
+    response = await async_client.get(
+        f"/clients/{test_client_data.id}/leads/{test_lead.id}",
         headers=auth_headers,
     )
 
@@ -413,7 +413,7 @@ async def test_get_lead_soft_deleted(
 
 @pytest.mark.asyncio
 async def test_create_lead_success(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     test_client_data: Client,
     test_campaign: Campaign,
     auth_headers: dict,
@@ -428,8 +428,8 @@ async def test_create_lead_success(
         "title": "CEO",
     }
 
-    response = await api_client.post(
-        f"/api/v1/clients/{test_client_data.id}/leads",
+    response = await async_client.post(
+        f"/clients/{test_client_data.id}/leads",
         json=lead_data,
         headers=auth_headers,
     )
@@ -446,7 +446,7 @@ async def test_create_lead_success(
 
 @pytest.mark.asyncio
 async def test_create_lead_duplicate_email(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     test_client_data: Client,
     test_campaign: Campaign,
     test_lead: Lead,
@@ -459,8 +459,8 @@ async def test_create_lead_duplicate_email(
         "first_name": "Test",
     }
 
-    response = await api_client.post(
-        f"/api/v1/clients/{test_client_data.id}/leads",
+    response = await async_client.post(
+        f"/clients/{test_client_data.id}/leads",
         json=lead_data,
         headers=auth_headers,
     )
@@ -470,7 +470,7 @@ async def test_create_lead_duplicate_email(
 
 @pytest.mark.asyncio
 async def test_create_lead_invalid_campaign(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     test_client_data: Client,
     auth_headers: dict,
 ):
@@ -480,8 +480,8 @@ async def test_create_lead_invalid_campaign(
         "email": "test@example.com",
     }
 
-    response = await api_client.post(
-        f"/api/v1/clients/{test_client_data.id}/leads",
+    response = await async_client.post(
+        f"/clients/{test_client_data.id}/leads",
         json=lead_data,
         headers=auth_headers,
     )
@@ -496,7 +496,7 @@ async def test_create_lead_invalid_campaign(
 
 @pytest.mark.asyncio
 async def test_create_leads_bulk_success(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     test_client_data: Client,
     test_campaign: Campaign,
     auth_headers: dict,
@@ -510,8 +510,8 @@ async def test_create_leads_bulk_success(
         ],
     }
 
-    response = await api_client.post(
-        f"/api/v1/clients/{test_client_data.id}/leads/bulk",
+    response = await async_client.post(
+        f"/clients/{test_client_data.id}/leads/bulk",
         json=bulk_data,
         headers=auth_headers,
     )
@@ -526,7 +526,7 @@ async def test_create_leads_bulk_success(
 
 @pytest.mark.asyncio
 async def test_create_leads_bulk_skip_duplicates(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     db_session: AsyncSession,
     test_client_data: Client,
     test_campaign: Campaign,
@@ -552,8 +552,8 @@ async def test_create_leads_bulk_skip_duplicates(
         ],
     }
 
-    response = await api_client.post(
-        f"/api/v1/clients/{test_client_data.id}/leads/bulk",
+    response = await async_client.post(
+        f"/clients/{test_client_data.id}/leads/bulk",
         json=bulk_data,
         headers=auth_headers,
     )
@@ -573,7 +573,7 @@ async def test_create_leads_bulk_skip_duplicates(
 
 @pytest.mark.asyncio
 async def test_update_lead_success(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     test_client_data: Client,
     test_lead: Lead,
     auth_headers: dict,
@@ -585,8 +585,8 @@ async def test_update_lead_success(
         "title": "CTO",
     }
 
-    response = await api_client.put(
-        f"/api/v1/clients/{test_client_data.id}/leads/{test_lead.id}",
+    response = await async_client.put(
+        f"/clients/{test_client_data.id}/leads/{test_lead.id}",
         json=update_data,
         headers=auth_headers,
     )
@@ -606,15 +606,15 @@ async def test_update_lead_success(
 
 @pytest.mark.asyncio
 async def test_delete_lead_success(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     db_session: AsyncSession,
     test_client_data: Client,
     test_lead: Lead,
     auth_headers: dict,
 ):
     """Test soft deleting a lead."""
-    response = await api_client.delete(
-        f"/api/v1/clients/{test_client_data.id}/leads/{test_lead.id}",
+    response = await async_client.delete(
+        f"/clients/{test_client_data.id}/leads/{test_lead.id}",
         headers=auth_headers,
     )
 
@@ -625,8 +625,8 @@ async def test_delete_lead_success(
     assert test_lead.deleted_at is not None
 
     # Verify lead is not returned in list
-    response = await api_client.get(
-        f"/api/v1/clients/{test_client_data.id}/leads",
+    response = await async_client.get(
+        f"/clients/{test_client_data.id}/leads",
         headers=auth_headers,
     )
     data = response.json()
@@ -641,14 +641,14 @@ async def test_delete_lead_success(
 
 @pytest.mark.asyncio
 async def test_enrich_lead_success(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     test_client_data: Client,
     test_lead: Lead,
     auth_headers: dict,
 ):
     """Test triggering lead enrichment."""
-    response = await api_client.post(
-        f"/api/v1/clients/{test_client_data.id}/leads/{test_lead.id}/enrich",
+    response = await async_client.post(
+        f"/clients/{test_client_data.id}/leads/{test_lead.id}/enrich",
         json={"force": False},
         headers=auth_headers,
     )
@@ -662,7 +662,7 @@ async def test_enrich_lead_success(
 
 @pytest.mark.asyncio
 async def test_enrich_lead_already_enriched(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     db_session: AsyncSession,
     test_client_data: Client,
     test_lead: Lead,
@@ -673,8 +673,8 @@ async def test_enrich_lead_already_enriched(
     test_lead.enrichment_source = "siege_waterfall"
     await db_session.commit()
 
-    response = await api_client.post(
-        f"/api/v1/clients/{test_client_data.id}/leads/{test_lead.id}/enrich",
+    response = await async_client.post(
+        f"/clients/{test_client_data.id}/leads/{test_lead.id}/enrich",
         json={"force": False},
         headers=auth_headers,
     )
@@ -684,7 +684,7 @@ async def test_enrich_lead_already_enriched(
 
 @pytest.mark.asyncio
 async def test_enrich_lead_force_re_enrich(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     db_session: AsyncSession,
     test_client_data: Client,
     test_lead: Lead,
@@ -695,8 +695,8 @@ async def test_enrich_lead_force_re_enrich(
     test_lead.enrichment_source = "siege_waterfall"
     await db_session.commit()
 
-    response = await api_client.post(
-        f"/api/v1/clients/{test_client_data.id}/leads/{test_lead.id}/enrich",
+    response = await async_client.post(
+        f"/clients/{test_client_data.id}/leads/{test_lead.id}/enrich",
         json={"force": True},
         headers=auth_headers,
     )
@@ -706,14 +706,14 @@ async def test_enrich_lead_force_re_enrich(
 
 @pytest.mark.asyncio
 async def test_bulk_enrich_success(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     test_client_data: Client,
     test_campaign: Campaign,
     auth_headers: dict,
 ):
     """Test bulk enrichment trigger."""
-    response = await api_client.post(
-        f"/api/v1/clients/{test_client_data.id}/leads/bulk-enrich",
+    response = await async_client.post(
+        f"/clients/{test_client_data.id}/leads/bulk-enrich",
         headers=auth_headers,
     )
 
@@ -731,14 +731,14 @@ async def test_bulk_enrich_success(
 
 @pytest.mark.asyncio
 async def test_get_lead_activities_success(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     test_client_data: Client,
     test_lead: Lead,
     auth_headers: dict,
 ):
     """Test getting lead activity timeline."""
-    response = await api_client.get(
-        f"/api/v1/clients/{test_client_data.id}/leads/{test_lead.id}/activities",
+    response = await async_client.get(
+        f"/clients/{test_client_data.id}/leads/{test_lead.id}/activities",
         headers=auth_headers,
     )
 
@@ -758,12 +758,12 @@ async def test_get_lead_activities_success(
 
 @pytest.mark.asyncio
 async def test_unauthorized_access(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     test_client_data: Client,
 ):
     """Test accessing endpoints without auth fails."""
-    response = await api_client.get(
-        f"/api/v1/clients/{test_client_data.id}/leads"
+    response = await async_client.get(
+        f"/clients/{test_client_data.id}/leads"
     )
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -771,14 +771,14 @@ async def test_unauthorized_access(
 
 @pytest.mark.asyncio
 async def test_wrong_client_access(
-    api_client: AsyncClient,
+    async_client: AsyncClient,
     auth_headers: dict,
 ):
     """Test accessing different client's leads fails."""
     wrong_client_id = uuid4()
 
-    response = await api_client.get(
-        f"/api/v1/clients/{wrong_client_id}/leads",
+    response = await async_client.get(
+        f"/clients/{wrong_client_id}/leads",
         headers=auth_headers,
     )
 

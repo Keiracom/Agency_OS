@@ -306,7 +306,7 @@ class CampaignDiscoveryTrigger:
         await self._write_audit_log(supabase, campaign_id, "propensity_calculated", {
             "business_name": lead.business_name,
             "score": lead.propensity_score,
-            "breakdown": lead.als_breakdown,
+            "breakdown": lead.propensity_components,
             "gate_passed": gate_passed,
             "gate_threshold": self.waterfall.PRE_ALS_GATE,
         })
@@ -443,7 +443,7 @@ class CampaignDiscoveryTrigger:
                     "organization_website": lead.website,
                     "linkedin_url": dm_linkedin_url or lead.linkedin_company_url,
                     "propensity_score": lead.propensity_score,
-                    "als_components": lead.als_breakdown,
+                    "als_components": lead.propensity_components,
                     "cost_basis": lead.cost_aud,
                 }
 

@@ -1767,11 +1767,11 @@ class ScorerEngine(BaseEngine):
             .where(
                 and_(
                     Lead.client_id == client_id,
-                    Lead.als_tier == tier,
+                    Lead.propensity_tier == tier,
                     Lead.deleted_at.is_(None),  # Soft delete check
                 )
             )
-            .order_by(Lead.als_score.desc())
+            .order_by(Lead.propensity_score.desc())
             .limit(limit)
         )
         result = await db.execute(stmt)

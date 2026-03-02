@@ -517,9 +517,9 @@ async def send_mail_task(
         )
 
         # Direct mail requires reachability >= 85 (Hot tier only)
-        if not lead.als_score or lead.als_score < 85:
+        if not lead.propensity_score or lead.propensity_score < 85:
             raise ValidationError(
-                message=f"Direct mail requires reachability >= 85. Lead {lead_id} has reachability {lead.als_score}",
+                message=f"Direct mail requires reachability >= 85. Lead {lead_id} has reachability {lead.propensity_score}",
                 field="reachability_score",
             )
 

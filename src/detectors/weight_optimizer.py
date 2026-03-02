@@ -176,11 +176,11 @@ class WeightOptimizer:
         for lead in leads:
             # Build components dict from individual Lead fields
             components = {
-                "data_quality": lead.als_data_quality,
-                "authority": lead.als_authority,
-                "company_fit": lead.als_company_fit,
-                "timing": lead.als_timing,
-                "risk": lead.als_risk,
+                "data_quality": lead.propensity_data_quality,
+                "authority": lead.propensity_authority,
+                "company_fit": lead.propensity_company_fit,
+                "timing": lead.propensity_timing,
+                "risk": lead.propensity_risk,
             }
 
             # Build row in component order

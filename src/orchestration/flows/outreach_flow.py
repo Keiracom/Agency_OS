@@ -735,7 +735,7 @@ async def send_email_outreach_task(
 
         # Build lead_data for SDK eligibility check
         lead_data = {
-            "reachability_score": lead.als_score,
+            "reachability_score": lead.propensity_score,
             "first_name": lead.first_name,
             "last_name": lead.last_name,
             "title": lead.title,
@@ -753,7 +753,7 @@ async def send_email_outreach_task(
                 campaign_id=campaign_uuid,
                 tone="professional",
             )
-            logger.info(f"SDK email generated for Hot lead {lead_id} (ALS: {lead.als_score})")
+            logger.info(f"SDK email generated for Hot lead {lead_id} (ALS: {lead.propensity_score})")
         else:
             # Standard Haiku-based generation
             content_result = await content_engine.generate_email(
@@ -817,8 +817,8 @@ async def send_email_outreach_task(
                         campaign_id=campaign_uuid,
                         channel="email",
                         sequence_step=lead.sequence_step,
-                        propensity_score_at_send=lead.als_score,
-                        als_tier_at_send=lead.als_tier,
+                        propensity_score_at_send=lead.propensity_score,
+                        als_tier_at_send=lead.propensity_tier,
                         subject_line=content_result.data.get("subject"),
                         hook_type=content_result.data.get("hook_type"),
                         personalization_level=personalization_level,
@@ -976,8 +976,8 @@ async def send_linkedin_outreach_task(
                         campaign_id=campaign_uuid,
                         channel="linkedin",
                         sequence_step=lead.sequence_step if lead else None,
-                        propensity_score_at_send=lead.als_score if lead else None,
-                        als_tier_at_send=lead.als_tier if lead else None,
+                        propensity_score_at_send=lead.propensity_score if lead else None,
+                        als_tier_at_send=lead.propensity_tier if lead else None,
                         hook_type=content_result.data.get("hook_type"),
                         personalization_level="basic",
                         session=db,
@@ -1028,15 +1028,15 @@ async def send_sms_outreach_task(
                 "error": "Lead not found",
             }
 
-        if lead.als_score is None or lead.als_score < 85:
+        if lead.propensity_score is None or lead.propensity_score < 85:
             logger.warning(
-                f"SMS blocked for lead {lead_id}: reachability {lead.als_score} < 85 (Hot required)"
+                f"SMS blocked for lead {lead_id}: reachability {lead.propensity_score} < 85 (Hot required)"
             )
             return {
                 "lead_id": lead_id,
                 "channel": "sms",
                 "success": False,
-                "error": f"SMS requires Hot tier (reachability >= 85). Lead has reachability {lead.als_score}",
+                "error": f"SMS requires Hot tier (reachability >= 85). Lead has reachability {lead.propensity_score}",
             }
 
         # Check rate limit
@@ -1106,8 +1106,8 @@ async def send_sms_outreach_task(
                         campaign_id=campaign_uuid,
                         channel="sms",
                         sequence_step=lead.sequence_step,
-                        propensity_score_at_send=lead.als_score,
-                        als_tier_at_send=lead.als_tier,
+                        propensity_score_at_send=lead.propensity_score,
+                        als_tier_at_send=lead.propensity_tier,
                         hook_type=content_result.data.get("hook_type"),
                         personalization_level="basic",
                         session=db,

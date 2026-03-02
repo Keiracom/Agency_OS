@@ -225,9 +225,9 @@ async def get_tier_distribution_task(
     async with get_db_session() as db:
         # Build query
         stmt = select(
-            Lead.als_tier,
+            Lead.propensity_tier,
             func.count(Lead.id).label("count"),
-            func.avg(Lead.als_score).label("avg_score"),
+            func.avg(Lead.propensity_score).label("avg_score"),
         ).where(Lead.deleted_at.is_(None))
 
         # Apply filters
@@ -237,7 +237,7 @@ async def get_tier_distribution_task(
             stmt = stmt.where(Lead.client_id == client_id)
 
         # Group by tier
-        stmt = stmt.group_by(Lead.als_tier)
+        stmt = stmt.group_by(Lead.propensity_tier)
 
         result = await db.execute(stmt)
         rows = result.all()
@@ -251,7 +251,7 @@ async def get_tier_distribution_task(
         }
 
         # Calculate average score
-        avg_score_stmt = select(func.avg(Lead.als_score)).where(Lead.deleted_at.is_(None))
+        avg_score_stmt = select(func.avg(Lead.propensity_score)).where(Lead.deleted_at.is_(None))
         if campaign_id:
             avg_score_stmt = avg_score_stmt.where(Lead.campaign_id == campaign_id)
         if client_id:

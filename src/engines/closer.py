@@ -503,8 +503,8 @@ class CloserEngine(BaseEngine):
                     await cis_service.record_als_conversion(
                         lead_id=lead.id,
                         client_id=lead.client_id,
-                        propensity_score=lead.als_score or 0,
-                        als_tier=lead.als_tier or "unknown",
+                        propensity_score=lead.propensity_score or 0,
+                        als_tier=lead.propensity_tier or "unknown",
                         channel_that_converted=channel.value if channel else "email",
                         sequence_step_that_converted=lead.sequence_step,
                         conversion_type="meeting_booked",

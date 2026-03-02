@@ -348,7 +348,7 @@ async def allocate_channels_for_lead_task(lead_id: str, als_tier: str) -> dict[s
             }
 
         # P1 Fix: Use canonical channel access from tiers.py (single source of truth)
-        reachability_score = lead.als_score or 0
+        reachability_score = lead.propensity_score or 0
         available_channels = get_available_channels_enum(reachability_score)
 
         if not available_channels:

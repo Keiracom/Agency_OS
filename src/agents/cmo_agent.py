@@ -283,7 +283,7 @@ Provide specific reasoning and actionable suggestions."""
         if not lead:
             return AgentResult.fail(f"Lead {lead_id} not found")
 
-        if not lead.als_score:
+        if not lead.propensity_score:
             return AgentResult.fail(f"Lead {lead_id} not scored yet")
 
         # Prepare lead profile
@@ -295,14 +295,14 @@ LinkedIn: {lead.linkedin_url or "N/A"}
 Title: {lead.title or "N/A"}
 Company: {lead.company or "N/A"}
 
-ALS Score: {lead.als_score}
-ALS Tier: {lead.als_tier or lead.get_als_tier()}
+ALS Score: {lead.propensity_score}
+ALS Tier: {lead.propensity_tier or lead.get_als_tier()}
 Component Scores:
-- Data Quality: {lead.als_data_quality}/20
-- Authority: {lead.als_authority}/25
-- Company Fit: {lead.als_company_fit}/25
-- Timing: {lead.als_timing}/15
-- Risk: {lead.als_risk}/15
+- Data Quality: {lead.propensity_data_quality}/20
+- Authority: {lead.propensity_authority}/25
+- Company Fit: {lead.propensity_company_fit}/25
+- Timing: {lead.propensity_timing}/15
+- Risk: {lead.propensity_risk}/15
 
 Organization:
 - Industry: {lead.organization_industry or "N/A"}
@@ -380,7 +380,7 @@ Provide priority order and reasoning for channel selection."""
                     Lead.deleted_at.is_(None),
                 )
             )
-            .order_by(Lead.als_score.desc())
+            .order_by(Lead.propensity_score.desc())
         )
         result = await db.execute(stmt)
         leads = result.scalars().all()
@@ -398,7 +398,7 @@ Provide priority order and reasoning for channel selection."""
         lead_summaries = []
         for i, lead in enumerate(leads[:20], 1):  # Top 20 for analysis
             lead_summaries.append(
-                f"{i}. {lead.full_name} ({lead.company}) - ALS {lead.als_score} ({lead.get_als_tier()}) - "
+                f"{i}. {lead.full_name} ({lead.company}) - ALS {lead.propensity_score} ({lead.get_als_tier()}) - "
                 f"Step {lead.current_sequence_step}, Replies {lead.reply_count}"
             )
 
@@ -428,7 +428,7 @@ Consider ALS score, tier, engagement history, and sequence position."""
                         "lead_id": str(lead.id),
                         "name": lead.full_name,
                         "company": lead.company,
-                        "als_score": lead.als_score,
+                        "als_score": lead.propensity_score,
                         "als_tier": lead.get_als_tier(),
                         "current_step": lead.current_sequence_step,
                         "reply_count": lead.reply_count,
@@ -503,7 +503,7 @@ Consider ALS score, tier, engagement history, and sequence position."""
         # Prepare timing context
         timing_context = f"""
 Lead: {lead.full_name} ({lead.company})
-ALS Score: {lead.als_score} ({lead.get_als_tier()})
+ALS Score: {lead.propensity_score} ({lead.get_als_tier()})
 
 Current Sequence:
 - Current Step: {lead.current_sequence_step}
@@ -566,14 +566,14 @@ Consider reply patterns, sequence position, and optimal timing principles."""
     ) -> dict[str, int]:
         """Get lead tier distribution for a campaign."""
         stmt = (
-            select(Lead.als_tier, func.count(Lead.id))
+            select(Lead.propensity_tier, func.count(Lead.id))
             .where(
                 and_(
                     Lead.campaign_id == campaign_id,
                     Lead.deleted_at.is_(None),
                 )
             )
-            .group_by(Lead.als_tier)
+            .group_by(Lead.propensity_tier)
         )
         result = await db.execute(stmt)
         rows = result.all()

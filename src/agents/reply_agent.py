@@ -465,7 +465,7 @@ Be thorough and extract all relevant information."""
         context = f"""Lead: {lead.full_name}
 Title: {lead.title or "Unknown"}
 Company: {lead.company or "Unknown"}
-ALS Score: {lead.als_score or "Not scored"}
+ALS Score: {lead.propensity_score or "Not scored"}
 Status: {lead.status.value}
 Last Contacted: {lead.last_contacted_at.isoformat() if lead.last_contacted_at else "Never"}
 Reply Count: {lead.reply_count}

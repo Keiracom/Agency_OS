@@ -671,7 +671,7 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
             score_breakdown["engagement"] += 2
 
         total_score = sum(score_breakdown.values())
-        lead.als_breakdown = score_breakdown
+        lead.propensity_components = score_breakdown
 
         logger.debug(f"ALS calculated for {lead.id}: {total_score} (breakdown: {score_breakdown})")
         return total_score

@@ -23,7 +23,6 @@ logger = structlog.get_logger()
 
 
 class DiscoveryMode(Enum):
-    ABN_FIRST = "abn"
     MAPS_FIRST = "maps"
     PARALLEL = "parallel"
 
@@ -103,22 +102,18 @@ class QueryTranslator:
 
         mode_map = {
             "maps_first": DiscoveryMode.MAPS_FIRST,
-            "abn_first": DiscoveryMode.ABN_FIRST,
             "both": DiscoveryMode.PARALLEL,
         }
 
+        # Legacy abn_first mode deprecated per Waterfall v3 Decision #1 (2026-03-01)
+        # Falls through to PARALLEL
         return mode_map.get(mode, DiscoveryMode.PARALLEL)
 
     def estimate_queries_needed(self, config: CampaignConfig, mode: DiscoveryMode) -> int:
         """Estimate number of queries needed to hit lead_volume target."""
         target = config.lead_volume
 
-        if mode == DiscoveryMode.ABN_FIRST:
-            # Account for waste ratio
-            adjusted = target * self.ABN_WASTE_RATIO
-            return max(1, int(adjusted / self.ABN_RESULTS_PER_QUERY) + 1)
-
-        elif mode == DiscoveryMode.MAPS_FIRST:
+        if mode == DiscoveryMode.MAPS_FIRST:
             return max(1, int(target / self.MAPS_RESULTS_PER_QUERY) + 1)
 
         else:  # Parallel
@@ -316,10 +311,7 @@ class QueryTranslator:
         # 5. Execute queries
         results = []
 
-        if mode == DiscoveryMode.ABN_FIRST:
-            results = await self.execute_abn_queries(config, keywords, max_queries)
-
-        elif mode == DiscoveryMode.MAPS_FIRST:
+        if mode == DiscoveryMode.MAPS_FIRST:
             results = await self.execute_maps_queries(config, keywords, suburbs, max_queries)
 
         else:  # Parallel

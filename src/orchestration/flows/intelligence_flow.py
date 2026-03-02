@@ -72,7 +72,7 @@ async def get_hot_leads_needing_research_task(
             .join(Client, Lead.client_id == Client.id)
             .where(
                 and_(
-                    Lead.als_score >= HOT_LEAD_THRESHOLD,
+                    Lead.als_score >= HOT_LEAD_THRESHOLD,  # reachability threshold
                     Lead.als_tier == "hot",
                     Lead.linkedin_url.isnot(None),
                     Lead.deep_research_run_at.is_(None),
@@ -87,7 +87,7 @@ async def get_hot_leads_needing_research_task(
                     Client.credits_remaining > 0,
                 )
             )
-            .order_by(Lead.als_score.desc())
+            .order_by(Lead.als_score.desc())  # ordered by reachability
             .limit(limit)
         )
 
@@ -98,12 +98,12 @@ async def get_hot_leads_needing_research_task(
         rows = result.all()
 
         leads_data = []
-        for lead_id, client_id_val, als_score, first_name, last_name, linkedin_url, credits in rows:
+        for lead_id, client_id_val, propensity_score, first_name, last_name, linkedin_url, credits in rows:
             leads_data.append(
                 {
                     "lead_id": str(lead_id),
                     "client_id": str(client_id_val),
-                    "als_score": als_score,
+                    "propensity_score": propensity_score,
                     "name": f"{first_name or ''} {last_name or ''}".strip(),
                     "linkedin_url": linkedin_url,
                     "credits_remaining": credits,

@@ -359,7 +359,7 @@ class ScorerEngine(BaseEngine):
 
         # Build result
         score_breakdown = {
-            "als_score": total_score,
+            "propensity_score": total_score,
             "als_tier": tier,
             "als_data_quality": raw_data_quality,
             "als_authority": raw_authority,
@@ -435,7 +435,7 @@ class ScorerEngine(BaseEngine):
                 if result.success:
                     results["scored"] += 1
                     tier = result.data["als_tier"]
-                    score = result.data["als_score"]
+                    score = result.data["propensity_score"]
                     total_score += score
                     results["tier_distribution"][tier] += 1
                     results["scored_leads"].append(
@@ -1725,7 +1725,7 @@ class ScorerEngine(BaseEngine):
             update(Lead)
             .where(Lead.id == lead.id)
             .values(
-                als_score=score_data["als_score"],
+                als_score=score_data["propensity_score"],
                 als_tier=score_data["als_tier"],
                 als_data_quality=score_data["als_data_quality"],
                 als_authority=score_data["als_authority"],
@@ -1876,7 +1876,7 @@ class ScorerEngine(BaseEngine):
 
         # Build result
         score_breakdown = {
-            "als_score": total_score,
+            "propensity_score": total_score,
             "als_tier": tier,
             "als_data_quality": raw_data_quality,
             "als_authority": raw_authority,
@@ -1968,7 +1968,7 @@ class ScorerEngine(BaseEngine):
                 if result.success:
                     results["scored"] += 1
                     tier = result.data["als_tier"]
-                    score = result.data["als_score"]
+                    score = result.data["propensity_score"]
                     total_score += score
                     results["tier_distribution"][tier] += 1
                     results["scored_leads"].append(
@@ -2073,7 +2073,7 @@ class ScorerEngine(BaseEngine):
                 if result.success:
                     results["scored"] += 1
                     tier = result.data["als_tier"]
-                    score = result.data["als_score"]
+                    score = result.data["propensity_score"]
                     total_score += score
                     results["tier_distribution"][tier] += 1
                     results["scored_leads"].append(
@@ -2219,7 +2219,7 @@ class ScorerEngine(BaseEngine):
         # Build result
         lead_pool_uuid = UUID(str(lead_pool_id)) if lead_pool_id else None
         score_breakdown = {
-            "als_score": total_score,
+            "propensity_score": total_score,
             "als_tier": tier,
             "als_data_quality": raw_data_quality,
             "als_authority": raw_authority,
@@ -2339,7 +2339,7 @@ class ScorerEngine(BaseEngine):
             query,
             {
                 "assignment_id": str(assignment_id),
-                "als_score": score_data["als_score"],
+                "als_score": score_data["propensity_score"],
                 "als_tier": score_data["als_tier"],
                 "als_components": json.dumps(score_data.get("als_components", {})),
                 "als_weights_used": json.dumps(score_data.get("als_weights_used", {})),
@@ -2638,7 +2638,7 @@ class ScorerEngine(BaseEngine):
             query,
             {
                 "id": str(lead_pool_id),
-                "als_score": score_data["als_score"],
+                "als_score": score_data["propensity_score"],
                 "als_tier": score_data["als_tier"],
                 "als_components": json.dumps(score_data.get("als_components", {})),
             },

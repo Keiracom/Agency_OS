@@ -102,13 +102,13 @@ async def score_lead_task(
 
         logger.info(
             f"Successfully scored lead {lead_id}: "
-            f"ALS {score_result.data['als_score']} ({score_result.data['als_tier']})"
+            f"propensity {score_result.data['propensity_score']} ({score_result.data['als_tier']})"
         )
 
         return {
             "success": True,
             "lead_id": str(lead_id),
-            "als_score": score_result.data["als_score"],
+            "propensity_score": score_result.data["propensity_score"],
             "als_tier": score_result.data["als_tier"],
             "components": {
                 "data_quality": score_result.data.get("als_data_quality", 0),
@@ -177,7 +177,7 @@ async def score_batch_task(
             )
             failed += 1
 
-    logger.info(f"Scored {successful}/{len(lead_ids)} leads. Distribution: {tier_counts}")
+    logger.info(f"Scored {successful}/{len(lead_ids)} leads (propensity). Distribution: {tier_counts}")
 
     return {
         "total": len(lead_ids),

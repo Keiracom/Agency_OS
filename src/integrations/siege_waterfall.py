@@ -693,8 +693,8 @@ class SiegeWaterfall:
         # CEO Directive #149: Track field conflicts for provenance lineage
         field_conflicts: list[dict[str, Any]] = []
 
-        # Current ALS score (may be passed in or calculated)
-        current_als = lead.get("als_score", 0)
+        # Current propensity score (may be passed in or calculated)
+        current_propensity = lead.get("propensity_score", 0)
 
         # ===== TIER 1: ABN Bulk =====
         if EnrichmentTier.ABN not in skip_tiers:
@@ -979,10 +979,10 @@ class SiegeWaterfall:
 
         # Apply bonus to enriched data
         if als_bonus_applied:
-            final_als = self._calculate_als(enriched_data) + als_bonus_amount
-            enriched_data["als_score"] = min(final_als, 100)  # Cap at 100
+            final_propensity = self._calculate_als(enriched_data) + als_bonus_amount
+            enriched_data["propensity_score"] = min(final_propensity, 100)  # Cap at 100
             enriched_data["als_bonus_sources"] = sources_used
-            logger.info(f"[Siege] +{als_bonus_amount} ALS bonus applied ({sources_used} sources)")
+            logger.info(f"[Siege] +{als_bonus_amount} propensity bonus applied ({sources_used} sources)")
 
         # ===== Build Lineage =====
         enrichment_lineage = [
@@ -2286,14 +2286,14 @@ class SiegeWaterfall:
     async def tier5_identity(
         self,
         lead: dict[str, Any],
-        als_score: int,
+        reachability_score: int,
         force: bool = False,
     ) -> TierResult:
         """
         Tier 5: Identity Gold (Leadmagic mobile) - $0.45/lead AUD
 
         Premium enrichment for high-value leads only.
-        Only runs when ALS >= 85.
+        Only runs when reachability >= 85.
 
         Provides:
         - Direct mobile numbers
@@ -2302,7 +2302,7 @@ class SiegeWaterfall:
 
         Args:
             lead: Lead data (linkedin_url preferred)
-            als_score: Current ALS score (must be >= 85)
+            reachability_score: Current reachability score (must be >= 85)
 
         Returns:
             TierResult with identity data
@@ -2310,13 +2310,13 @@ class SiegeWaterfall:
         tier = EnrichmentTier.IDENTITY
         cost = TIER_COSTS_AUD[tier]
 
-        # Guard: Only for high-ALS leads (unless forced)
-        if als_score < 85 and not force:
+        # Guard: Only for high-reachability leads (unless forced)
+        if reachability_score < 85 and not force:
             return TierResult(
                 tier=tier,
                 success=False,
                 skipped=True,
-                skip_reason=f"ALS {als_score} below 85 threshold",
+                skip_reason=f"Reachability {reachability_score} below 85 threshold",
             )
 
         # Guard: Leadmagic mobile client must be available
@@ -2352,7 +2352,7 @@ class SiegeWaterfall:
             )
 
             if enriched.get("found"):
-                logger.info(f"[Siege] Tier 5 Identity Gold success for ALS={als_score} lead")
+                logger.info(f"[Siege] Tier 5 Identity Gold success for reachability={reachability_score} lead")
                 # CEO Directive #057: LinkedIn is the primary source for Leadmagic mobile
                 identity_source_url = linkedin_url or enriched.get("linkedin_url")
 
@@ -2362,7 +2362,7 @@ class SiegeWaterfall:
                     lead_data=lead,
                     success=True,
                     cost_aud=cost,
-                    metadata={"als_score": als_score},
+                    metadata={"reachability_score": reachability_score},
                 )
                 return TierResult(
                     tier=tier,
@@ -2379,7 +2379,7 @@ class SiegeWaterfall:
                     success=False,
                     cost_aud=cost,
                     error="No identity data found",
-                    metadata={"als_score": als_score},
+                    metadata={"reachability_score": reachability_score},
                 )
                 return TierResult(
                     tier=tier,
@@ -2397,7 +2397,7 @@ class SiegeWaterfall:
                 lead_data=lead,
                 success=False,
                 error=str(e),
-                metadata={"als_score": als_score},
+                metadata={"reachability_score": reachability_score},
             )
             return TierResult(
                 tier=tier,

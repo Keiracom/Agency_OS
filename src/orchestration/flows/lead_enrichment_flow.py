@@ -376,7 +376,7 @@ async def score_enriched_lead_task(
             update_query = text("""
                 UPDATE lead_assignments
                 SET
-                    als_score = :als_score,
+                    als_score = :propensity_score,
                     als_tier = :als_tier,
                     als_components = :als_components,
                     scored_at = NOW(),
@@ -392,7 +392,7 @@ async def score_enriched_lead_task(
                 update_query,
                 {
                     "assignment_id": assignment_id,
-                    "als_score": result.data["als_score"],
+                    "propensity_score": result.data["propensity_score"],
                     "als_tier": result.data["als_tier"],
                     "als_components": json.dumps(result.data.get("als_components", {})),
                 },
@@ -402,13 +402,13 @@ async def score_enriched_lead_task(
             linkedin_boost = result.data.get("linkedin_boost", 0)
             logger.info(
                 f"Scored assignment {assignment_id}: "
-                f"{result.data['als_score']} ({result.data['als_tier']} tier)"
+                f"{result.data['propensity_score']} ({result.data['als_tier']} tier)"
                 f"{f', LinkedIn boost +{linkedin_boost}' if linkedin_boost else ''}"
             )
 
             return {
                 "success": True,
-                "als_score": result.data["als_score"],
+                "propensity_score": result.data["propensity_score"],
                 "als_tier": result.data["als_tier"],
                 "linkedin_boost": linkedin_boost,
                 "linkedin_signals": result.data.get("linkedin_signals", []),
@@ -521,14 +521,14 @@ async def lead_enrichment_flow(
         "best_channel": analysis_result.get("best_channel")
         if analysis_result.get("success")
         else None,
-        "als_score": scoring_result.get("als_score") if scoring_result.get("success") else None,
+        "propensity_score": scoring_result.get("propensity_score") if scoring_result.get("success") else None,
         "als_tier": scoring_result.get("als_tier") if scoring_result.get("success") else None,
         "completed_at": datetime.utcnow().isoformat(),
     }
 
     logger.info(
         f"Enrichment complete for {summary['lead_name']}: "
-        f"ALS {summary['als_score']} ({summary['als_tier']}), "
+        f"propensity {summary['propensity_score']} ({summary['als_tier']}), "
         f"best channel: {summary['best_channel']}"
     )
 
@@ -570,8 +570,8 @@ async def batch_lead_enrichment_flow(
             )
 
     # Compile batch summary
-    successful = [r for r in results if r.get("als_score") is not None]
-    failed = [r for r in results if r.get("als_score") is None]
+    successful = [r for r in results if r.get("propensity_score") is not None]
+    failed = [r for r in results if r.get("propensity_score") is None]
 
     tier_distribution = {}
     for r in successful:
@@ -583,7 +583,7 @@ async def batch_lead_enrichment_flow(
         "successful": len(successful),
         "failed": len(failed),
         "tier_distribution": tier_distribution,
-        "average_score": sum(r.get("als_score", 0) for r in successful) / len(successful)
+        "average_score": sum(r.get("propensity_score", 0) for r in successful) / len(successful)
         if successful
         else 0,
         "completed_at": datetime.utcnow().isoformat(),

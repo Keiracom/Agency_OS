@@ -167,15 +167,15 @@ def get_als_tier(score: int) -> str:
         return "dead"
 
 
-def get_available_channels(als_score: int) -> list[str]:
-    """Get available channels for a given ALS score."""
-    tier = get_als_tier(als_score)
+def get_available_channels(reachability_score: int) -> list[str]:
+    """Get available channels for a given reachability score."""
+    tier = get_als_tier(reachability_score)
     return CHANNEL_ACCESS_BY_ALS.get(tier, [])
 
 
-def get_available_channels_enum(als_score: int) -> list["ChannelType"]:
+def get_available_channels_enum(reachability_score: int) -> list["ChannelType"]:
     """
-    Get available channels as ChannelType enums for a given ALS score.
+    Get available channels as ChannelType enums for a given reachability score.
 
     Use this in orchestration flows where ChannelType enums are needed.
     Canonical source - replaces any hardcoded tier_channel_map.
@@ -190,7 +190,7 @@ def get_available_channels_enum(als_score: int) -> list["ChannelType"]:
         "mail": ChannelType.MAIL,
     }
 
-    channels_str = get_available_channels(als_score)
+    channels_str = get_available_channels(reachability_score)
     return [channel_str_to_enum[ch] for ch in channels_str if ch in channel_str_to_enum]
 
 

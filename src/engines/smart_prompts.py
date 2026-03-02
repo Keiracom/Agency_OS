@@ -75,7 +75,7 @@ FIELD_PRIORITIES: dict[str, tuple[FieldPriority, str]] = {
     "company.employee_count": (FieldPriority.MEDIUM, "Affects enterprise vs SMB approach"),
     "signals.technologies": (FieldPriority.MEDIUM, "Tech stack for relevance matching"),
     "signals.keywords": (FieldPriority.MEDIUM, "Business keywords for relevance"),
-    "score.als_score": (FieldPriority.MEDIUM, "Indicates lead quality/fit"),
+    "score.propensity_score": (FieldPriority.MEDIUM, "Indicates lead quality/fit"),
     # LOW PRIORITY - Background context (use if space allows)
     "person.full_name": (FieldPriority.LOW, "Basic personalization"),
     "person.location": (FieldPriority.LOW, "Geographic context"),
@@ -341,7 +341,7 @@ async def build_full_lead_context(
             "new_in_role": _is_new_in_role(row.employment_start_date),
         },
         "score": {
-            "als_score": row.als_score,
+            "propensity_score": row.als_score,
             "als_tier": row.als_tier,
             "authority": row.als_authority,
             "company_fit": row.als_company_fit,
@@ -525,7 +525,7 @@ async def build_full_pool_lead_context(
     # Add assignment context if available
     if row.als_score is not None:
         context["score"] = {
-            "als_score": row.als_score,
+            "propensity_score": row.als_score,
             "als_tier": row.als_tier,
         }
         context["engagement"] = {
@@ -1225,9 +1225,9 @@ def format_lead_context_for_prompt(context: dict[str, Any]) -> str:
 
     # Score - MEDIUM priority
     score = context.get("score", {})
-    if score.get("als_score"):
+    if score.get("propensity_score"):
         medium_lines.append(
-            f"**ALS Score:** {score['als_score']} ({score.get('als_tier', 'unknown')} tier)"
+            f"**Propensity Score:** {score['propensity_score']} ({score.get('als_tier', 'unknown')} tier)"
         )
 
     # --- LOW PRIORITY FIELDS ---

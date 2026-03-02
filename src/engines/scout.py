@@ -720,7 +720,7 @@ class ScoutEngine(BaseEngine):
         self,
         db: AsyncSession,
         lead_id: UUID,
-        als_score: int | None = None,
+        propensity_score: int | None = None,
         force_refresh: bool = False,
     ) -> EngineResult[dict[str, Any]]:
         """
@@ -733,7 +733,7 @@ class ScoutEngine(BaseEngine):
         Args:
             db: Database session (passed by caller)
             lead_id: Lead UUID to enrich
-            als_score: Pre-calculated ALS score (optional, not used)
+            propensity_score: Pre-calculated propensity score (optional, not used)
             force_refresh: Skip cache and force re-enrichment
 
         Returns:

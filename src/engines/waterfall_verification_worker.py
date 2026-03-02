@@ -374,7 +374,7 @@ class WaterfallVerificationWorker(BaseEngine):
         company_name: str,
         postcode: str,
         state: str,
-        current_als_score: int = 0,
+        current_reachability_score: int = 0,
         force_full_waterfall: bool = False,
     ) -> EngineResult[WaterfallResult]:
         """
@@ -386,7 +386,7 @@ class WaterfallVerificationWorker(BaseEngine):
             company_name: Company name to match
             postcode: Australian postcode
             state: Australian state (NSW, VIC, etc.)
-            current_als_score: Current ALS for escalation decisions
+            current_reachability_score: Current reachability score for escalation decisions
             force_full_waterfall: Force all tiers regardless of score
 
         Returns:
@@ -531,8 +531,8 @@ class WaterfallVerificationWorker(BaseEngine):
                 errors.append(f"T-DM0: No decision maker found for '{dm_search_name}'")
 
             # ========== TIER DM-2: LINKEDIN POSTS (CEO Directive #041) ==========
-            # Only run for ALS ≥70 leads with a valid LinkedIn URL
-            should_get_social = current_als_score >= 70 or force_full_waterfall
+            # Only run for reachability ≥70 leads with a valid LinkedIn URL
+            should_get_social = current_reachability_score >= 70 or force_full_waterfall
 
             if should_get_social and result.dm_linkedin_url:
                 step_number += 1
@@ -689,9 +689,9 @@ class WaterfallVerificationWorker(BaseEngine):
             total_cost += step.cost_aud
 
             # ========== TIER 3: HUNTER.IO (Conditional) ==========
-            # Only proceed if ALS >= 60 (Warm+) or forced
+            # Only proceed if reachability >= 60 (Warm+) or forced
             should_verify_email = (
-                force_full_waterfall or current_als_score >= ALS_ESCALATION_THRESHOLD
+                force_full_waterfall or current_reachability_score >= ALS_ESCALATION_THRESHOLD
             )
 
             if should_verify_email and result.website:
@@ -825,22 +825,22 @@ class WaterfallVerificationWorker(BaseEngine):
     # ALS CALCULATION
     # ============================================
 
-    def calculate_als_score(
+    def calculate_propensity_score(
         self,
-        base_als_score: int,
+        base_propensity_score: int,
         waterfall_result: WaterfallResult,
         intent_signals: dict | None = None,
     ) -> dict[str, Any]:
         """
-        Calculate ALS with waterfall verification bonus.
+        Calculate propensity score with waterfall verification bonus.
 
-        The ALS combines:
-        - Base ALS score (0-100)
+        The propensity score combines:
+        - Base propensity score (0-100)
         - Multi-source verification bonus (+15 for 3+ sources)
         - Intent signal multipliers
 
         Args:
-            base_als_score: Original ALS (0-100)
+            base_propensity_score: Original propensity score (0-100)
             waterfall_result: Result from verify_lead()
             intent_signals: Optional dict with ad_volume, is_hiring, etc.
 
@@ -856,7 +856,7 @@ class WaterfallVerificationWorker(BaseEngine):
             }
         """
         components = {
-            "base_score": base_als_score,
+            "base_score": base_propensity_score,
             "verification_bonus": 0,
             "intent_bonus": 0,
             "sources_used": waterfall_result.verification_sources,

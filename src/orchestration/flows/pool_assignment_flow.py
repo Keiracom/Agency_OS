@@ -496,14 +496,14 @@ async def pool_campaign_assignment_flow(
         "leads_allocated": allocation_result["leads_allocated"],
         "leads_scored": scoring_result.get("scored", 0),
         "tier_distribution": scoring_result.get("tier_distribution", {}),
-        "average_als_score": scoring_result.get("average_score", 0),
+        "average_propensity_score": scoring_result.get("average_score", 0),
         "enrichment_triggered": enrichment_triggered.get("triggered", 0),
         "completed_at": datetime.utcnow().isoformat(),
     }
 
     logger.info(
         f"Pool assignment completed: {summary['leads_allocated']} leads, "
-        f"avg score {summary['average_als_score']:.1f}, "
+        f"avg score {summary['average_propensity_score']:.1f}, "
         f"{summary['enrichment_triggered']} queued for enrichment"
     )
 

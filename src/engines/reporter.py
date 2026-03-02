@@ -516,7 +516,7 @@ class ReporterEngine(BaseEngine):
                 "lead_id": str(lead_id),
                 "lead_name": lead.full_name,
                 "lead_email": lead.email,
-                "als_score": lead.als_score,
+                "propensity_score": lead.als_score,
                 "als_tier": lead.als_tier,
                 "status": lead.status.value,
                 "timeline": [],

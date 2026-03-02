@@ -108,7 +108,7 @@ class LeadRecord:
     verified_contacts: list[dict] = field(default_factory=dict)
 
     # Scoring and quality
-    als_score: int = 0
+    propensity_score: int = 0
     als_breakdown: dict = field(default_factory=dict)
     confidence_score: float = 0.0
 
@@ -689,9 +689,9 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
         if "tier_2_5" in lead.enrichment_tiers_completed:
             return lead
 
-        if lead.als_score < self.PRE_ALS_GATE:
+        if lead.propensity_score < self.PRE_ALS_GATE:
             logger.debug(
-                f"Tier 2.5 skipped for {lead.id} - ALS score {lead.als_score} below gate {self.PRE_ALS_GATE}"
+                f"Tier 2.5 skipped for {lead.id} - propensity score {lead.propensity_score} below gate {self.PRE_ALS_GATE}"
             )
             return lead
 
@@ -811,9 +811,9 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
         if "tier_3" in lead.enrichment_tiers_completed:
             return lead
 
-        if lead.als_score < self.PRE_ALS_GATE:
+        if lead.propensity_score < self.PRE_ALS_GATE:
             logger.debug(
-                f"Tier 3 skipped for {lead.id} - ALS score {lead.als_score} below gate {self.PRE_ALS_GATE}"
+                f"Tier 3 skipped for {lead.id} - propensity score {lead.propensity_score} below gate {self.PRE_ALS_GATE}"
             )
             return lead
 
@@ -930,9 +930,9 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
         if "tier_5" in lead.enrichment_tiers_completed:
             return lead
 
-        if lead.als_score < self.HOT_THRESHOLD:
+        if lead.propensity_score < self.HOT_THRESHOLD:
             logger.debug(
-                f"Tier 5 skipped for {lead.id} - ALS score {lead.als_score} below hot threshold {self.HOT_THRESHOLD}"
+                f"Tier 5 skipped for {lead.id} - propensity score {lead.propensity_score} below hot threshold {self.HOT_THRESHOLD}"
             )
             return lead
 
@@ -1039,14 +1039,14 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
                 lead = await self.enrich_tier_1_5a(lead)   # GMB second (cross-reference with trading name)
                 lead = await self.enrich_tier_2(lead)
 
-                # Phase 3: Initial ALS Scoring
-                lead.als_score = self.calculate_als(lead)
-                logger.debug(f"Initial ALS score for {lead.id}: {lead.als_score}")
+                # Phase 3: Initial Propensity Scoring
+                lead.propensity_score = self.calculate_als(lead)
+                logger.debug(f"Initial propensity score for {lead.id}: {lead.propensity_score}")
 
                 # Quality Gate Check - Continue enrichment only if score >= PRE_ALS_GATE
-                if lead.als_score >= self.PRE_ALS_GATE:
+                if lead.propensity_score >= self.PRE_ALS_GATE:
                     logger.debug(
-                        f"Lead {lead.id} passed ALS gate ({lead.als_score} >= {self.PRE_ALS_GATE})"
+                        f"Lead {lead.id} passed propensity gate ({lead.propensity_score} >= {self.PRE_ALS_GATE})"
                     )
 
                     # Phase 2 continued: Premium Enrichment
@@ -1054,12 +1054,12 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
                     lead = await self.enrich_tier_3(lead)
                     lead = await self.enrich_tier_5(lead)
 
-                    # Phase 3: Final ALS Scoring
-                    lead.als_score = self.calculate_als(lead)
-                    logger.debug(f"Final ALS score for {lead.id}: {lead.als_score}")
+                    # Phase 3: Final Propensity Scoring
+                    lead.propensity_score = self.calculate_als(lead)
+                    logger.debug(f"Final propensity score for {lead.id}: {lead.propensity_score}")
                 else:
                     logger.debug(
-                        f"Lead {lead.id} did not pass ALS gate ({lead.als_score} < {self.PRE_ALS_GATE})"
+                        f"Lead {lead.id} did not pass propensity gate ({lead.propensity_score} < {self.PRE_ALS_GATE})"
                     )
 
                 # Update final metadata
@@ -1069,7 +1069,7 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
             # Pipeline summary
             total_cost = sum(lead.cost_aud for lead in enriched)
             high_quality_leads = len(
-                [lead for lead in enriched if lead.als_score >= self.HOT_THRESHOLD]
+                [lead for lead in enriched if lead.propensity_score >= self.HOT_THRESHOLD]
             )
 
             logger.info(
@@ -1095,10 +1095,10 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
             "total_leads": len(leads),
             "total_cost_aud": sum(lead.cost_aud for lead in leads),
             "average_cost_per_lead": sum(lead.cost_aud for lead in leads) / len(leads),
-            "als_distribution": {
-                "hot_leads": len([l for l in leads if l.als_score >= self.HOT_THRESHOLD]),
-                "qualified_leads": len([l for l in leads if l.als_score >= self.PRE_ALS_GATE]),
-                "low_quality_leads": len([l for l in leads if l.als_score < self.PRE_ALS_GATE]),
+            "propensity_distribution": {
+                "hot_leads": len([l for l in leads if l.propensity_score >= self.HOT_THRESHOLD]),
+                "qualified_leads": len([l for l in leads if l.propensity_score >= self.PRE_ALS_GATE]),
+                "low_quality_leads": len([l for l in leads if l.propensity_score < self.PRE_ALS_GATE]),
             },
             "enrichment_completion": {},
             "discovery_sources": {},

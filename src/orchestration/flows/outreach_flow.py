@@ -297,8 +297,8 @@ async def auto_assign_resources_task(lead_id: str, campaign_id: str) -> dict[str
         if not lead_row:
             return {"lead_id": lead_id, "success": False, "error": "Lead not found"}
 
-        als_score = lead_row.als_score or 0
-        als_tier = get_als_tier(als_score)
+        reachability_score = lead_row.als_score or 0
+        als_tier = get_als_tier(reachability_score)
         client_id = lead_row.client_id
         assigned = {}
 
@@ -390,7 +390,7 @@ async def auto_assign_resources_task(lead_id: str, campaign_id: str) -> dict[str
             "lead_id": lead_id,
             "success": True,
             "tier": als_tier,
-            "als_score": als_score,
+            "reachability_score": reachability_score,
             "allowed_channels": allowed_channels,
             "assigned": assigned,
         }
@@ -735,7 +735,7 @@ async def send_email_outreach_task(
 
         # Build lead_data for SDK eligibility check
         lead_data = {
-            "als_score": lead.als_score,
+            "reachability_score": lead.als_score,
             "first_name": lead.first_name,
             "last_name": lead.last_name,
             "title": lead.title,
@@ -817,7 +817,7 @@ async def send_email_outreach_task(
                         campaign_id=campaign_uuid,
                         channel="email",
                         sequence_step=lead.sequence_step,
-                        als_score_at_send=lead.als_score,
+                        propensity_score_at_send=lead.als_score,
                         als_tier_at_send=lead.als_tier,
                         subject_line=content_result.data.get("subject"),
                         hook_type=content_result.data.get("hook_type"),
@@ -976,7 +976,7 @@ async def send_linkedin_outreach_task(
                         campaign_id=campaign_uuid,
                         channel="linkedin",
                         sequence_step=lead.sequence_step if lead else None,
-                        als_score_at_send=lead.als_score if lead else None,
+                        propensity_score_at_send=lead.als_score if lead else None,
                         als_tier_at_send=lead.als_tier if lead else None,
                         hook_type=content_result.data.get("hook_type"),
                         personalization_level="basic",
@@ -1018,7 +1018,7 @@ async def send_sms_outreach_task(
         lead_uuid = UUID(lead_id)
         campaign_uuid = UUID(campaign_id)
 
-        # P1 Fix: Validate ALS score (SMS requires Hot tier, ALS >= 85)
+        # P1 Fix: Validate reachability score (SMS requires Hot tier, reachability >= 85)
         lead = await db.get(Lead, lead_uuid)
         if not lead:
             return {
@@ -1030,13 +1030,13 @@ async def send_sms_outreach_task(
 
         if lead.als_score is None or lead.als_score < 85:
             logger.warning(
-                f"SMS blocked for lead {lead_id}: ALS {lead.als_score} < 85 (Hot required)"
+                f"SMS blocked for lead {lead_id}: reachability {lead.als_score} < 85 (Hot required)"
             )
             return {
                 "lead_id": lead_id,
                 "channel": "sms",
                 "success": False,
-                "error": f"SMS requires Hot tier (ALS >= 85). Lead has ALS {lead.als_score}",
+                "error": f"SMS requires Hot tier (reachability >= 85). Lead has reachability {lead.als_score}",
             }
 
         # Check rate limit
@@ -1106,7 +1106,7 @@ async def send_sms_outreach_task(
                         campaign_id=campaign_uuid,
                         channel="sms",
                         sequence_step=lead.sequence_step,
-                        als_score_at_send=lead.als_score,
+                        propensity_score_at_send=lead.als_score,
                         als_tier_at_send=lead.als_tier,
                         hook_type=content_result.data.get("hook_type"),
                         personalization_level="basic",

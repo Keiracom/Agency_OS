@@ -101,7 +101,7 @@ async def test_health_check_returns_200():
     transport = ASGITransport(app=app)
 
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/health")
+        response = await client.get("/api/v1/health")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -117,7 +117,7 @@ async def test_health_check_no_dependencies():
     transport = ASGITransport(app=app)
 
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/health")
+        response = await client.get("/api/v1/health")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -135,7 +135,7 @@ async def test_liveness_check_returns_alive():
     transport = ASGITransport(app=app)
 
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/health/live")
+        response = await client.get("/api/v1/health/live")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -151,7 +151,7 @@ async def test_liveness_check_no_dependencies():
     transport = ASGITransport(app=app)
 
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/health/live")
+        response = await client.get("/api/v1/health/live")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -178,7 +178,7 @@ async def test_readiness_check_all_healthy(
 
 
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.get("/health/ready")
+            response = await client.get("/api/v1/health/ready")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -218,7 +218,7 @@ async def test_readiness_check_redis_unhealthy(
 
 
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.get("/health/ready")
+            response = await client.get("/api/v1/health/ready")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -250,7 +250,7 @@ async def test_readiness_check_prefect_unhealthy(
 
 
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.get("/health/ready")
+            response = await client.get("/api/v1/health/ready")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -284,7 +284,7 @@ async def test_readiness_check_database_unhealthy(
 
 
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.get("/health/ready")
+            response = await client.get("/api/v1/health/ready")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -316,7 +316,7 @@ async def test_readiness_check_all_unhealthy(
 
 
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.get("/health/ready")
+            response = await client.get("/api/v1/health/ready")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -341,7 +341,7 @@ async def test_health_response_structure():
     transport = ASGITransport(app=app)
 
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/health")
+        response = await client.get("/api/v1/health")
 
     data = response.json()
 
@@ -360,7 +360,7 @@ async def test_liveness_response_structure():
     transport = ASGITransport(app=app)
 
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/health/live")
+        response = await client.get("/api/v1/health/live")
 
     data = response.json()
 
@@ -388,7 +388,7 @@ async def test_readiness_response_structure(
 
 
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.get("/health/ready")
+            response = await client.get("/api/v1/health/ready")
 
     data = response.json()
 

@@ -100,22 +100,22 @@ class TestSERPAPI:
 
         client = BrightDataClient(api_key="test-key")
 
-        # Mock the httpx client - use Mock() for response since .json() is synchronous
+        # Mock the httpx client - uses POST to Direct API with URL in body
         mock_response = Mock()
-        mock_response.json.return_value = {"results": []}
+        mock_response.json.return_value = {"organic": []}
         mock_response.raise_for_status = Mock()
+        mock_response.status_code = 200
 
         mock_client = AsyncMock()
-        mock_client.get.return_value = mock_response
-        mock_client.__aenter__.return_value = mock_client
-        mock_client.__aexit__.return_value = None
+        mock_client.post.return_value = mock_response
 
         with patch.object(client, '_get_client', return_value=mock_client):
             await client.search_google_maps("restaurants", "Melbourne")
 
-        # Verify the URL was constructed correctly
-        call_args = mock_client.get.call_args
-        url = call_args[0][0]
+        # Verify the URL was constructed correctly in the request body
+        call_args = mock_client.post.call_args
+        json_body = call_args.kwargs.get("json", {})
+        url = json_body.get("url", "")
         assert "google.com/maps/search" in url
         assert "restaurants" in url
         assert "Melbourne" in url
@@ -130,17 +130,17 @@ class TestSERPAPI:
         mock_response = Mock()
         mock_response.json.return_value = {"organic": []}
         mock_response.raise_for_status = Mock()
+        mock_response.status_code = 200
 
         mock_client = AsyncMock()
-        mock_client.get.return_value = mock_response
-        mock_client.__aenter__.return_value = mock_client
-        mock_client.__aexit__.return_value = None
+        mock_client.post.return_value = mock_response
 
         with patch.object(client, '_get_client', return_value=mock_client):
             await client.search_google('site:linkedin.com/company "test"')
 
-        call_args = mock_client.get.call_args
-        url = call_args[0][0]
+        call_args = mock_client.post.call_args
+        json_body = call_args.kwargs.get("json", {})
+        url = json_body.get("url", "")
         assert "google.com/search" in url
         assert "brd_json=1" in url
 
@@ -154,11 +154,10 @@ class TestSERPAPI:
         mock_response = Mock()
         mock_response.json.return_value = {}
         mock_response.raise_for_status = Mock()
+        mock_response.status_code = 200
 
         mock_client = AsyncMock()
-        mock_client.get.return_value = mock_response
-        mock_client.__aenter__.return_value = mock_client
-        mock_client.__aexit__.return_value = None
+        mock_client.post.return_value = mock_response
 
         with patch.object(client, '_get_client', return_value=mock_client):
             await client.search_google("test query")
@@ -264,9 +263,7 @@ class TestErrorHandling:
         client = BrightDataClient(api_key="test-key")
 
         mock_client = AsyncMock()
-        mock_client.get.side_effect = httpx.RequestError("Connection failed")
-        mock_client.__aenter__.return_value = mock_client
-        mock_client.__aexit__.return_value = None
+        mock_client.post.side_effect = httpx.RequestError("Connection failed")
 
         with patch.object(client, '_get_client', return_value=mock_client):
             with pytest.raises(BrightDataError):

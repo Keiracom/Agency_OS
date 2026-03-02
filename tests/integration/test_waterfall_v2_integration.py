@@ -59,7 +59,8 @@ class TestBrightDataClientIntegration:
     Run with: pytest -m integration tests/integration/
     """
 
-    def test_scrape_linkedin_company_mustard_creative(self, bright_data_client):
+    @pytest.mark.asyncio
+    async def test_scrape_linkedin_company_mustard_creative(self, bright_data_client):
         """
         Test LinkedIn Company scraper with Mustard Creative.
         
@@ -68,7 +69,7 @@ class TestBrightDataClientIntegration:
         
         Cost: $0.0015 AUD
         """
-        result = bright_data_client.scrape_linkedin_company(
+        result = await bright_data_client.scrape_linkedin_company(
             MUSTARD_CREATIVE["linkedin_url"]
         )
 
@@ -93,7 +94,8 @@ class TestBrightDataClientIntegration:
         assert bright_data_client.costs.scraper_records == 1
         assert bright_data_client.get_total_cost() == pytest.approx(0.0015, rel=0.01)
 
-    def test_search_google_linkedin_discovery(self, bright_data_client):
+    @pytest.mark.asyncio
+    async def test_search_google_linkedin_discovery(self, bright_data_client):
         """
         Test SERP Google search to find LinkedIn URL.
         
@@ -102,7 +104,7 @@ class TestBrightDataClientIntegration:
         Cost: $0.0015 AUD
         """
         query = f'site:linkedin.com/company "{MUSTARD_CREATIVE["business_name"]}"'
-        results = bright_data_client.search_google(query)
+        results = await bright_data_client.search_google(query)
 
         # Should find the LinkedIn URL in organic results
         found_url = False
@@ -116,7 +118,8 @@ class TestBrightDataClientIntegration:
         # Verify cost tracking
         assert bright_data_client.costs.serp_requests == 1
 
-    def test_full_tier_1_5b_to_tier_2_flow(self, bright_data_client):
+    @pytest.mark.asyncio
+    async def test_full_tier_1_5b_to_tier_2_flow(self, bright_data_client):
         """
         Test complete enrichment flow:
         1. SERP search to find LinkedIn URL
@@ -128,7 +131,7 @@ class TestBrightDataClientIntegration:
         """
         # Tier 1.5b: Find LinkedIn URL
         query = f'site:linkedin.com/company "{MUSTARD_CREATIVE["business_name"]}"'
-        serp_results = bright_data_client.search_google(query)
+        serp_results = await bright_data_client.search_google(query)
 
         # Extract LinkedIn URL from results
         linkedin_url = None
@@ -141,7 +144,7 @@ class TestBrightDataClientIntegration:
         assert linkedin_url is not None, "Should find LinkedIn URL"
 
         # Tier 2: Scrape LinkedIn Company
-        company_data = bright_data_client.scrape_linkedin_company(linkedin_url)
+        company_data = await bright_data_client.scrape_linkedin_company(linkedin_url)
 
         # Verify we got company data
         assert "name" in company_data
@@ -161,14 +164,15 @@ class TestWaterfallIntegration:
     These are expensive - use sparingly for validation.
     """
 
-    def test_employee_extraction_for_decision_makers(self, bright_data_client):
+    @pytest.mark.asyncio
+    async def test_employee_extraction_for_decision_makers(self, bright_data_client):
         """
         Test that LinkedIn Company scrape returns employee data
         suitable for decision maker identification.
         
         This data feeds into Tier 2.5 (LinkedIn Profile enrichment).
         """
-        result = bright_data_client.scrape_linkedin_company(
+        result = await bright_data_client.scrape_linkedin_company(
             MUSTARD_CREATIVE["linkedin_url"]
         )
 
@@ -180,14 +184,15 @@ class TestWaterfallIntegration:
             assert "title" in emp, "Employee should have title"
             assert "link" in emp, "Employee should have LinkedIn URL"
 
-    def test_hiring_signal_detection(self, bright_data_client):
+    @pytest.mark.asyncio
+    async def test_hiring_signal_detection(self, bright_data_client):
         """
         Test that LinkedIn Company scrape returns posts
         that can be analyzed for hiring signals.
         
         "#hiring" in posts indicates active growth (Timing score).
         """
-        result = bright_data_client.scrape_linkedin_company(
+        result = await bright_data_client.scrape_linkedin_company(
             MUSTARD_CREATIVE["linkedin_url"]
         )
 

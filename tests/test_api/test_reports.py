@@ -23,8 +23,22 @@ from src.engines.base import EngineResult
 
 @pytest.fixture
 def client():
-    """Create FastAPI test client."""
-    return TestClient(app)
+    """Create FastAPI test client with auth mocked."""
+    from src.api.dependencies import get_current_user_from_token, CurrentUser
+    
+    # Mock user for authentication bypass
+    mock_current_user = CurrentUser(
+        id=uuid4(),
+        email="test@example.com",
+        full_name="Test User",
+    )
+    
+    def override_get_current_user():
+        return mock_current_user
+    
+    app.dependency_overrides[get_current_user_from_token] = override_get_current_user
+    yield TestClient(app)
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -241,7 +255,7 @@ class TestCampaignMetrics:
             )
             mock_get_engine.return_value = mock_engine
 
-            response = client.get(f"/reports/campaigns/{mock_campaign_id}")
+            response = client.get(f"/api/v1/reports/campaigns/{mock_campaign_id}")
 
             assert response.status_code == status.HTTP_200_OK
             data = response.json()
@@ -268,7 +282,7 @@ class TestCampaignMetrics:
             end = date.today().isoformat()
 
             response = client.get(
-                f"/reports/campaigns/{mock_campaign_id}",
+                f"/api/v1/reports/campaigns/{mock_campaign_id}",
                 params={"start_date": start, "end_date": end},
             )
 
@@ -287,7 +301,7 @@ class TestCampaignMetrics:
             )
             mock_get_engine.return_value = mock_engine
 
-            response = client.get(f"/reports/campaigns/{mock_campaign_id}")
+            response = client.get(f"/api/v1/reports/campaigns/{mock_campaign_id}")
 
             assert response.status_code == status.HTTP_404_NOT_FOUND
             assert "not found" in response.json()["detail"].lower()
@@ -306,7 +320,7 @@ class TestCampaignMetrics:
             )
             mock_get_engine.return_value = mock_engine
 
-            response = client.get(f"/reports/campaigns/{mock_campaign_id}/daily")
+            response = client.get(f"/api/v1/reports/campaigns/{mock_campaign_id}/daily")
 
             assert response.status_code == status.HTTP_200_OK
             data = response.json()
@@ -336,7 +350,7 @@ class TestClientMetrics:
             )
             mock_get_engine.return_value = mock_engine
 
-            response = client.get(f"/reports/clients/{mock_client_id}")
+            response = client.get(f"/api/v1/reports/clients/{mock_client_id}")
 
             assert response.status_code == status.HTTP_200_OK
             data = response.json()
@@ -364,7 +378,7 @@ class TestClientMetrics:
             end = date.today().isoformat()
 
             response = client.get(
-                f"/reports/clients/{mock_client_id}",
+                f"/api/v1/reports/clients/{mock_client_id}",
                 params={"start_date": start, "end_date": end},
             )
 
@@ -383,7 +397,7 @@ class TestClientMetrics:
             )
             mock_get_engine.return_value = mock_engine
 
-            response = client.get(f"/reports/clients/{mock_client_id}")
+            response = client.get(f"/api/v1/reports/clients/{mock_client_id}")
 
             assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -411,7 +425,7 @@ class TestALSDistribution:
             mock_get_engine.return_value = mock_engine
 
             response = client.get(
-                "/reports/leads/distribution",
+                "/api/v1/reports/leads/distribution",
                 params={"campaign_id": str(mock_campaign_id)},
             )
 
@@ -438,7 +452,7 @@ class TestALSDistribution:
             mock_get_engine.return_value = mock_engine
 
             response = client.get(
-                "/reports/leads/distribution",
+                "/api/v1/reports/leads/distribution",
                 params={"client_id": str(mock_client_id)},
             )
 
@@ -450,7 +464,7 @@ class TestALSDistribution:
     @pytest.mark.asyncio
     async def test_get_als_distribution_missing_params(self, client):
         """Test ALS distribution without required parameters."""
-        response = client.get("/reports/leads/distribution")
+        response = client.get("/api/v1/reports/leads/distribution")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "campaign_id or client_id must be provided" in response.json()["detail"]
@@ -478,7 +492,7 @@ class TestLeadEngagement:
             )
             mock_get_engine.return_value = mock_engine
 
-            response = client.get(f"/reports/leads/{mock_lead_id}/engagement")
+            response = client.get(f"/api/v1/reports/leads/{mock_lead_id}/engagement")
 
             assert response.status_code == status.HTTP_200_OK
             data = response.json()
@@ -500,7 +514,7 @@ class TestLeadEngagement:
             )
             mock_get_engine.return_value = mock_engine
 
-            response = client.get(f"/reports/leads/{mock_lead_id}/engagement")
+            response = client.get(f"/api/v1/reports/leads/{mock_lead_id}/engagement")
 
             assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -528,7 +542,7 @@ class TestDailyActivity:
             mock_get_engine.return_value = mock_engine
 
             response = client.get(
-                "/reports/activity/daily",
+                "/api/v1/reports/activity/daily",
                 params={"client_id": str(mock_client_id)},
             )
 
@@ -557,7 +571,7 @@ class TestDailyActivity:
             target_date = (date.today() - timedelta(days=1)).isoformat()
 
             response = client.get(
-                "/reports/activity/daily",
+                "/api/v1/reports/activity/daily",
                 params={"client_id": str(mock_client_id), "target_date": target_date},
             )
 
@@ -567,7 +581,7 @@ class TestDailyActivity:
     @pytest.mark.asyncio
     async def test_get_daily_activity_missing_client_id(self, client):
         """Test daily activity without client_id."""
-        response = client.get("/reports/activity/daily")
+        response = client.get("/api/v1/reports/activity/daily")
 
         # FastAPI will return 422 for missing required query parameter
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -599,12 +613,12 @@ class TestReportsAuthorization:
 # ============================================
 # [x] Contract comment at top
 # [x] Test all 6 report endpoints:
-#     - GET /reports/campaigns/{id}
-#     - GET /reports/campaigns/{id}/daily
-#     - GET /reports/clients/{id}
-#     - GET /reports/leads/distribution
-#     - GET /reports/leads/{lead_id}/engagement
-#     - GET /reports/activity/daily
+#     - GET /api/v1/reports/campaigns/{id}
+#     - GET /api/v1/reports/campaigns/{id}/daily
+#     - GET /api/v1/reports/clients/{id}
+#     - GET /api/v1/reports/leads/distribution
+#     - GET /api/v1/reports/leads/{lead_id}/engagement
+#     - GET /api/v1/reports/activity/daily
 # [x] Test date range filtering for campaign/client metrics
 # [x] Test missing parameters validation (ALS distribution, daily activity)
 # [x] Test 404 responses for non-existent resources

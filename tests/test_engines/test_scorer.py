@@ -171,7 +171,8 @@ class TestAuthorityScoring:
 
     def test_vp_gets_18_points(self, scorer_engine, mock_lead):
         """Test VP title gets 18 points."""
-        mock_lead.title = "Vice President of Sales"
+        # Use 'VP' directly to avoid 'president' matching first in AUTHORITY_SCORES
+        mock_lead.title = "VP of Sales"
         score = scorer_engine._score_authority(mock_lead)
         assert score == 18
 

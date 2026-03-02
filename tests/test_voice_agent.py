@@ -714,15 +714,15 @@ class VoiceAgentService:
         if any(phrase in transcript_lower for phrase in unsubscribe_phrases):
             return CallOutcome.UNSUBSCRIBE
 
-        # Check for interest
-        interest_phrases = ["interested", "tell me more", "sounds good"]
-        if any(phrase in transcript_lower for phrase in interest_phrases):
-            return CallOutcome.INTERESTED
-
-        # Check for rejection
+        # Check for rejection BEFORE interest (since "not interested" contains "interested")
         rejection_phrases = ["not interested", "no thanks", "not for us"]
         if any(phrase in transcript_lower for phrase in rejection_phrases):
             return CallOutcome.NOT_INTERESTED
+
+        # Check for interest (after rejection to avoid false positives)
+        interest_phrases = ["interested", "tell me more", "sounds good"]
+        if any(phrase in transcript_lower for phrase in interest_phrases):
+            return CallOutcome.INTERESTED
 
         return CallOutcome.NO_ANSWER
 

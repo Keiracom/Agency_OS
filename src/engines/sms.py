@@ -322,12 +322,17 @@ class SMSEngine(OutreachEngine):
                 )
                 continue
 
+            # Filter out already-extracted keys to avoid duplicate kwargs
+            extra_config = {
+                k: v for k, v in message_config.items()
+                if k not in ("lead_id", "campaign_id", "content")
+            }
             result = await self.validate_and_send(
                 db=db,
                 lead_id=lead_id,
                 campaign_id=campaign_id,
                 content=content,
-                **message_config,
+                **extra_config,
             )
 
             if result.success:

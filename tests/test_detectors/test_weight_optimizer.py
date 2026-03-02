@@ -72,11 +72,11 @@ class TestWeightOptimizerInit:
         optimizer = WeightOptimizer()
         assert optimizer is not None
 
-    def test_has_min_sample_attribute(self):
+    def test_has_min_samples_attribute(self):
         """Optimizer has minimum sample requirement."""
         optimizer = WeightOptimizer()
-        assert hasattr(optimizer, "min_sample")
-        assert optimizer.min_sample > 0
+        assert hasattr(optimizer, "min_samples")
+        assert optimizer.min_samples > 0
 
 
 class TestWeightNormalization:

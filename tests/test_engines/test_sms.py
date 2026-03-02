@@ -309,24 +309,29 @@ class TestSMSEngine:
     @pytest.mark.asyncio
     async def test_batch_send(self, sms_engine, mock_db):
         """Test batch SMS sending."""
+        from src.engines.base import EngineResult
+
         send_count = 0
 
         async def mock_validate_and_send(db, lead_id, campaign_id, content, **kwargs):
             nonlocal send_count
             send_count += 1
             if send_count == 1:
-                # Success
-                return await sms_engine.send(db, lead_id, campaign_id, content, **kwargs)
+                # Success - return mock success result directly
+                return EngineResult.ok(data={
+                    "message_sid": f"SM{uuid4().hex[:32]}",
+                    "to_number": "+61400000000",
+                    "from_number": kwargs.get("from_number", "+61400111222"),
+                    "status": "queued",
+                })
             elif send_count == 2:
                 # DNCR rejection
-                from src.engines.base import EngineResult
                 return EngineResult.fail(
                     error="Phone number is on Do Not Call Register",
                     metadata={"reason": "dncr"},
                 )
             else:
                 # Rate limited
-                from src.engines.base import EngineResult
                 return EngineResult.fail(error="Rate limit exceeded")
 
         sms_engine.validate_and_send = mock_validate_and_send

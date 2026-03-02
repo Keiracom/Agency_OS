@@ -13,7 +13,7 @@ RULES APPLIED:
 
 SIEGE CONTEXT:
   Replaces Hunter (T3) and Kaspr (T5) in the Siege Waterfall.
-  
+
   Costs (in AUD):
     - Email Finder (T3): $0.015 AUD per lookup
     - Mobile Finder (T5): $0.077 AUD per lookup
@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any

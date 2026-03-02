@@ -160,7 +160,7 @@ def should_use_sdk_enrichment(lead_data: dict[str, Any]) -> tuple[bool, list[str
     Average mid-market contacts have no press/podcast coverage.
 
     Args:
-        lead_data: Dict with lead info including als_score and company data
+        lead_data: Dict with lead info including propensity_score and company data
 
     Returns:
         Tuple of (eligible: bool, signals: list[str])

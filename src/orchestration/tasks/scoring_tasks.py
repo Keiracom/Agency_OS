@@ -57,7 +57,7 @@ async def score_lead_task(
         Scoring result with:
             - success: bool
             - lead_id: UUID
-            - als_score: int (0-100)
+            - propensity_score: int (0-100)
             - als_tier: str (Hot/Warm/Cool/Cold/Dead)
             - components: dict with breakdown
 

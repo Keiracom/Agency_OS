@@ -89,7 +89,7 @@ async def check_campaign_quota_task(campaign_id: str) -> dict[str, Any]:
                     c.client_id,
                     c.name,
                     COALESCE(cqs.target_lead_count, 100) as target_lead_count,
-                    COALESCE(cqs.min_als_score, 35) as min_als_score,
+                    COALESCE(cqs.min_propensity_score, 35) as min_propensity_score,
                     COALESCE(cqs.current_qualified_count, 0) as current_qualified_count,
                     COALESCE(cqs.discovery_loops_run, 0) as discovery_loops_run
                 FROM campaigns c
@@ -119,7 +119,7 @@ async def check_campaign_quota_task(campaign_id: str) -> dict[str, Any]:
                 AND lp.als_score >= :min_als  -- propensity threshold
                 AND lp.deleted_at IS NULL
             """),
-            {"campaign_id": campaign_id, "min_als": row.min_als_score},
+            {"campaign_id": campaign_id, "min_als": row.min_propensity_score},
         )
         count_row = count_result.fetchone()
         qualified_count = count_row.qualified_count if count_row else 0
@@ -132,7 +132,7 @@ async def check_campaign_quota_task(campaign_id: str) -> dict[str, Any]:
             "client_id": str(row.client_id),
             "campaign_name": row.name,
             "target_count": row.target_lead_count,
-            "min_als": row.min_als_score,
+            "min_als": row.min_propensity_score,
             "current_qualified": qualified_count,
             "shortfall": shortfall,
             "quota_met": shortfall == 0,

@@ -754,7 +754,7 @@ async def auto_create_campaign_task(
             await db.execute(
                 text("""
                     INSERT INTO campaign_quota_status (
-                        campaign_id, client_id, target_lead_count, min_als_score
+                        campaign_id, client_id, target_lead_count, min_propensity_score
                     ) VALUES (
                         :campaign_id, :client_id, 100, 35
                     )

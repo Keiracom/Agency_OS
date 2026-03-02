@@ -55,7 +55,7 @@ class ChannelRecommendation(BaseModel):
     """Channel mix recommendation for a lead."""
 
     lead_id: str
-    als_score: int
+    propensity_score: int
     als_tier: str
     recommended_channels: list[str]
     reasoning: str
@@ -428,7 +428,7 @@ Consider ALS score, tier, engagement history, and sequence position."""
                         "lead_id": str(lead.id),
                         "name": lead.full_name,
                         "company": lead.company,
-                        "als_score": lead.propensity_score,
+                        "propensity_score": lead.propensity_score,
                         "als_tier": lead.get_als_tier(),
                         "current_step": lead.current_sequence_step,
                         "reply_count": lead.reply_count,

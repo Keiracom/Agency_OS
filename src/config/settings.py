@@ -108,7 +108,7 @@ class Settings(BaseSettings):
     sdk_brain_enabled: bool = Field(
         default=True, description="Enable SDK Brain for agentic AI tasks"
     )
-    sdk_min_als_score: int = Field(
+    sdk_min_propensity_score: int = Field(
         default=85, description="Minimum ALS score for SDK enrichment (Hot tier threshold)"
     )
     sdk_daily_limit_ignition: float = Field(

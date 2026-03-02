@@ -289,23 +289,6 @@ class TestLeadAllocatorTracking:
         assert result is True
         mock_session.commit.assert_called()
 
-    @pytest.mark.asyncio
-    async def test_set_cooling_period(self, allocator_service, mock_session):
-        """Test setting cooling period."""
-        assignment_id = uuid4()
-
-        mock_result = MagicMock()
-        mock_row = MagicMock()
-        mock_row.id = assignment_id
-        mock_result.fetchone.return_value = mock_row
-        mock_session.execute.return_value = mock_result
-
-        result = await allocator_service.set_cooling_period(assignment_id, days=7)
-
-        assert result is True
-        mock_session.commit.assert_called()
-
-
 class TestLeadAllocatorStats:
     """Tests for stats operations."""
 

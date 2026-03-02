@@ -89,8 +89,10 @@ class TestLeadPoolServiceCreate:
         mock_session.execute.side_effect = [existing_result, update_result]
 
         # API takes a single dict with email included
+        # skip_icp_check=True since we're testing create/update logic, not ICP filtering
         result = await pool_service.create_or_update(
             lead_data={**sample_pool_lead, "title": "CTO"},
+            skip_icp_check=True,
         )
 
         assert result is not None

@@ -94,8 +94,18 @@ class TestWebsiteParserSkill:
             "cost_aud": 0.01,
         })
 
+        # HTML must be >= 100 chars to pass validation in WebsiteParserSkill
+        realistic_html = """<!DOCTYPE html>
+<html>
+<head><title>Test Corp</title></head>
+<body>
+<h1>Welcome to Test Corp</h1>
+<p>We provide excellent services.</p>
+</body>
+</html>"""
+
         input_data = skill.Input(
-            html="<html>Test</html>",
+            html=realistic_html,
             url="https://test.com",
         )
 

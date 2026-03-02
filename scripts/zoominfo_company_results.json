@@ -1,0 +1,319 @@
+[
+  {
+    "timestamp": "2026-03-01T22:00:50.164Z",
+    "input": {
+      "url": "https://www.zoominfo.com/c/ogilvy/47882"
+    },
+    "error": "We can\u2019t seem to find the page you are looking for.",
+    "error_code": "dead_page"
+  },
+  {
+    "timestamp": "2026-03-01T22:00:50.268Z",
+    "input": {
+      "url": "https://www.zoominfo.com/c/clemenger-group-ltd/1155585405"
+    },
+    "error": "We can\u2019t seem to find the page you are looking for.",
+    "error_code": "dead_page"
+  },
+  {
+    "timestamp": "2026-03-01T22:00:51.222Z",
+    "input": {
+      "url": "https://www.zoominfo.com/c/tbwa-worldwide/166093"
+    },
+    "error": "We can\u2019t seem to find the page you are looking for.",
+    "error_code": "dead_page"
+  },
+  {
+    "timestamp": "2026-03-01T22:00:59.816Z",
+    "input": {
+      "url": "https://www.zoominfo.com/c/ddb-worldwide/55648"
+    },
+    "error": "We can\u2019t seem to find the page you are looking for.",
+    "error_code": "dead_page"
+  },
+  {
+    "url": "https://www.zoominfo.com/c/clemenger-bbdo/11338759",
+    "id": "11338759",
+    "name": "Clemenger BBDO",
+    "description": "Clemenger BBDO is a full-service creative agency known for delivering impactful ideas across brand strategy, advertising, and communications. The agency partners with leading organizations to create bold, culturally relevant work that drives meaningful connections with audiences. With a focus on creativity, collaboration, and ambition, Clemenger BB... ",
+    "revenue": 119000000,
+    "revenue_currency": "USD",
+    "revenue_text": "$119 Million",
+    "stock_symbol": null,
+    "website": "https://www.clemengerbbdo.com.au/",
+    "employees": 201500,
+    "employees_text": "201-500",
+    "industry": [
+      "Advertising Networks",
+      "Business Services"
+    ],
+    "headquarters": "474 St Kilda Rd L 3, Melbourne, Victoria, 3004, Australia",
+    "phone_number": "+61 279083008",
+    "total_funding_amount": null,
+    "most_recent_funding_amount": null,
+    "funding_currency": "USD",
+    "funding_rounds": null,
+    "leadership": [
+      {
+        "name": "Alisha Vaissiere",
+        "title": " Director, Digital Strategy ",
+        "avatar": "https://www.zoominfo.com/ge-assets/country-flags/AU.svg",
+        "url": "https://www.zoominfo.com/p/Alisha-Vaissiere/9022910937"
+      },
+      {
+        "name": "Jeff Clark",
+        "title": " Director, Strategic Planning ",
+        "avatar": "https://www.zoominfo.com/ge-assets/country-flags/AU.svg",
+        "url": "https://www.zoominfo.com/p/Jeff-Clark/1934322979"
+      },
+      {
+        "name": "Ant Phillips",
+        "title": " Executive Creative Director ",
+        "avatar": "https://www.zoominfo.com/ge-assets/country-flags/AU.svg",
+        "url": "https://www.zoominfo.com/p/Ant-Phillips/12681018483"
+      },
+      {
+        "name": "James Greaney",
+        "title": " Chief Data Officer ",
+        "avatar": "https://www.zoominfo.com/ge-assets/country-flags/AU.svg",
+        "url": "https://www.zoominfo.com/p/James-Greaney/1677615968"
+      },
+      {
+        "name": "Tori Taylor",
+        "title": " Director, Lead Strategy, Cx ",
+        "avatar": "https://www.zoominfo.com/ge-assets/country-flags/AU.svg",
+        "url": "https://www.zoominfo.com/p/Tori-Taylor/1622320948"
+      },
+      {
+        "name": "Caitlin Burgess",
+        "title": " Chief Financial Officer & Chief Operating Off... ",
+        "avatar": "https://storage.zoominfo.com/1952015678",
+        "url": "https://www.zoominfo.com/p/Caitlin-Burgess/1952015678"
+      }
+    ],
+    "popular_searches": [
+      "Clemenger Bbdo",
+      "Clemenger BBDO Brisbane",
+      "Clemenger BBDO (Adelaide) Pty Ltd",
+      "Clemenger Bbdo( brisbane) Pty Ltd",
+      "Clemenger Group"
+    ],
+    "business_classification_codes": [
+      {
+        "code_type": "SIC",
+        "code": "73,731"
+      },
+      {
+        "code_type": "NAICS",
+        "code": "54,541"
+      }
+    ],
+    "ceo": {
+      "name": null,
+      "title": null,
+      "score": 0,
+      "url": null
+    },
+    "total_employees": 201500,
+    "c_level_employees": 5,
+    "vp_level_employees": null,
+    "director_level_employees": 122,
+    "manager_level_employees": 45,
+    "non_manager_employees": 130,
+    "top_contacts": 237,
+    "org_chart": [
+      {
+        "name": "Lee Leggett",
+        "title": "Chief Executive Officer",
+        "avatar": "https://www.zoominfo.com/undefined",
+        "url": "https://www.zoominfo.com/p/Lee-Leggett/1550158208"
+      },
+      {
+        "name": "Caitlin Burgess",
+        "title": "Chief Financial Officer & Chief Operating Off...",
+        "avatar": "https://www.zoominfo.com/undefined",
+        "url": "https://www.zoominfo.com/p/Caitlin-Burgess/1952015678"
+      },
+      {
+        "name": "Rowan Darling",
+        "title": "Chief Financial Officer",
+        "avatar": "https://www.zoominfo.com/undefined",
+        "url": "https://www.zoominfo.com/p/Rowan-Darling/3080572326"
+      },
+      {
+        "name": "Ana Rasic",
+        "title": "Director, Investment",
+        "avatar": "https://www.zoominfo.com/undefined",
+        "url": "https://www.zoominfo.com/p/Ana-Rasic/2955836616"
+      }
+    ],
+    "social_media": [
+      "http://www.linkedin.com/company/clemenger-bbdo",
+      "http://www.facebook.com/placeholder"
+    ],
+    "ceo_rating": {
+      "business_results_score": null,
+      "management_style_score": null
+    },
+    "enps score": {
+      "score": 0,
+      "percentage": null
+    },
+    "similar_companies": [
+      {
+        "title": "UrsaClemenger",
+        "employees": 15000,
+        "revenue": 461200000,
+        "revenue_currency": "USD",
+        "url": "https://www.zoominfo.com/c/ursaclemenger/558788043"
+      },
+      {
+        "title": "Animal Logic",
+        "employees": 5011000,
+        "revenue": 175800000,
+        "revenue_currency": "USD",
+        "url": "https://www.zoominfo.com/c/animal-logic/2261182"
+      },
+      {
+        "title": "McCANN Australia",
+        "employees": 51200,
+        "revenue": 73600000,
+        "revenue_currency": "USD",
+        "url": "https://www.zoominfo.com/c/mccann-australia/446774738"
+      },
+      {
+        "title": "MCN Holdings",
+        "employees": 5011000,
+        "revenue": 67500000,
+        "revenue_currency": "USD",
+        "url": "https://www.zoominfo.com/c/mcn-holdings/1135671690"
+      },
+      {
+        "title": "303 MullenLowe",
+        "employees": 51200,
+        "revenue": 34300000,
+        "revenue_currency": "USD",
+        "url": "https://www.zoominfo.com/c/303-mullenlowe/406160138"
+      },
+      {
+        "title": "Clemenger Tasmania",
+        "employees": 1150,
+        "revenue": 5000000,
+        "revenue_currency": "USD",
+        "url": "https://www.zoominfo.com/c/clemenger-tasmania/346891149"
+      }
+    ],
+    "email_formats": null,
+    "products_owned": null,
+    "tech_stack": [
+      {
+        "tech_name": "Gupy",
+        "company_name": "Gupy",
+        "tech_url": "https://www.zoominfo.com/tech/102901/gupy-tech-by-revenue",
+        "company_url": "https://www.zoominfo.com/c/gupy/465794301"
+      },
+      {
+        "tech_name": "Zingfit",
+        "company_name": "Zingfit",
+        "tech_url": "https://www.zoominfo.com/tech/103745/zingfit-tech-by-revenue",
+        "company_url": "https://www.zoominfo.com/c/zingfit/356936445"
+      },
+      {
+        "tech_name": "WordPress.org",
+        "company_name": "Automattic",
+        "tech_url": "https://www.zoominfo.com/tech/111/wordpressorg-tech-by-revenue",
+        "company_url": "https://www.zoominfo.com/c/automattic-inc/13079571"
+      },
+      {
+        "tech_name": "Drupal",
+        "company_name": "Drupal",
+        "tech_url": "https://www.zoominfo.com/tech/112/drupal-tech-by-revenue",
+        "company_url": "https://www.zoominfo.com/c/drupal-companies/15893754"
+      }
+    ],
+    "recent_scoops": [
+      {
+        "date": null,
+        "text": "As previously announced, Simon Wassef, Chief Strategy & Experience Officer, has left the organization.",
+        "topics": [
+          "Executive Moves",
+          "Left Company"
+        ],
+        "tags": [
+          "Left CompanyExecutive Move"
+        ]
+      },
+      {
+        "date": null,
+        "text": "Mark Gretton, Chief Technology Officer, has left the company.",
+        "topics": [
+          "Executive Moves",
+          "Left Company"
+        ],
+        "tags": [
+          "Left CompanyExecutive Move"
+        ]
+      },
+      {
+        "date": null,
+        "text": "Simon Wassef, Chief Strategy & Experience Officer, will be leaving the organization to join M&C Saatchi Group as Group Chief Strategy Officer, effective in January 1, 2026.",
+        "topics": [
+          "Executive Moves",
+          "Left Company"
+        ],
+        "tags": [
+          "Left CompanyExecutive Move"
+        ]
+      },
+      {
+        "date": null,
+        "text": "Simon Wassef is highlighted as a highly talented creative strategist, narrowly missing out on a top 10 list due to the strong competition in the industry.",
+        "topics": null,
+        "tags": [
+          "Person-Based"
+        ]
+      }
+    ],
+    "news_and_media": [
+      {
+        "title": "Clemenger BBDO, CHEP Network, and Traffik have officially united under the Clemenger BBDO banner as of today, with Simon Wassef to join Lee Leggett at the helm of the newly merged unit as chief strategy and experience officer, alongside Glen Dickson as deputy creative officer. The titles have been carried through from the pair's respective roles at Clemenger BBDO and CHEP Network.",
+        "summary": null,
+        "date": null,
+        "news_website": "https://www.mi-3.com.au/",
+        "url": "https://www.mi-3.com.au/index.php/31-03-2025/chep-networks-gavin-mcleod-lilian-sors-exit-clemenger-bbdo-merger-lands-new-unit"
+      },
+      {
+        "title": "Little Black Book, CHEP CCO Gavin McLeod and CSO Lilian Sor will depart the business, reports LBB's Tess Connery-Britten",
+        "summary": null,
+        "date": null,
+        "news_website": "https://lbbonline.com/",
+        "url": "https://lbbonline.com/news/clemenger-bbdo-merger-takes-effect"
+      },
+      {
+        "title": "A week after a visit Down Under by BBDO\u2019s global CEO and creative boss, widespread conjecture that a consolidation of creative agency networks in the Clemenger Group has landed - staff across the diversified firm were informed this morning of the changes, effective next month. \u201cThis is not about doing more for less. This is about doing more with more,\u201d Clemenger Group CEO Les Timar said on the rationale for the three-to-one consolidation.",
+        "summary": null,
+        "date": null,
+        "news_website": "https://www.mi-3.com.au/",
+        "url": "https://www.mi-3.com.au/24-02-2025/macro-merger-clemenger-chep-traffik-consolidate-under-clemenger-bbdo-lee-leggett-tapped"
+      },
+      {
+        "title": "Little Black Book, At the heart of the campaign is an endearing character, Wendell \u2013 a wombat-shaped soap who has been thoughtlessly regifted year after year, from Christmas to Hanukkah",
+        "summary": null,
+        "date": null,
+        "news_website": "https://www.lbbonline.com/",
+        "url": "https://www.lbbonline.com/news/myer-unveils-inspiring-christmas-campaign-make-your-merry-meaningful-from-clemenger-bbdo"
+      },
+      {
+        "title": null,
+        "summary": null,
+        "date": null,
+        "news_website": "https://mumbrella.com.au/",
+        "url": "https://mumbrella.com.au/clemenger-bbdo-melbourne-named-as-victorias-department-of-transport-agency-of-record-730687"
+      }
+    ],
+    "timestamp": "2026-03-01T22:00:57.259Z",
+    "input": {
+      "url": "https://www.zoominfo.com/c/clemenger-bbdo/11338759"
+    }
+  }
+]

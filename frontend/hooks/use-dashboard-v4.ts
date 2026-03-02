@@ -98,8 +98,8 @@ interface HotLeadResponse {
   last_name: string | null;
   company: string | null;
   title: string | null;
-  als_score: number | null;
-  als_tier: string | null;
+  propensity_score: number | null;
+  propensity_tier: string | null;
   sdk_signals: string[] | null;
 }
 
@@ -203,7 +203,7 @@ async function fetchHotLeads(clientId: string): Promise<HotProspect[]> {
   try {
     // Get hot tier leads sorted by score
     const response = await api.get<{ items: HotLeadResponse[] }>(
-      `/api/v1/leads?client_id=${clientId}&tier=hot&page_size=5&sort_by=als_score&sort_order=desc`
+      `/api/v1/leads?client_id=${clientId}&tier=hot&page_size=5&sort_by=propensity_score&sort_order=desc`
     );
     
     return response.items.map((lead): HotProspect => {
@@ -214,9 +214,9 @@ async function fetchHotLeads(clientId: string): Promise<HotProspect[]> {
         name,
         company: lead.company || "Unknown Company",
         title: lead.title || "Unknown Title",
-        signal: getSignalDescription(lead.sdk_signals, lead.als_score),
-        score: lead.als_score || 0,
-        isVeryHot: (lead.als_score || 0) >= 90,
+        signal: getSignalDescription(lead.sdk_signals, lead.propensity_score),
+        score: lead.propensity_score || 0,
+        isVeryHot: (lead.propensity_score || 0) >= 90,
       };
     });
   } catch (error) {

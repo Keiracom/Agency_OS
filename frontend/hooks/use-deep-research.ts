@@ -38,8 +38,8 @@ export interface TriggerResponse {
   lead_id: string;
   status: "queued" | "already_complete" | "not_eligible" | "complete" | "failed";
   message: string;
-  als_score: number | null;
-  als_tier: string | null;
+  propensity_score: number | null;
+  propensity_tier: string | null;
 }
 
 // API Functions
@@ -152,8 +152,8 @@ export function useTriggerDeepResearch() {
  * Hook to check if a lead is eligible for deep research
  */
 export function useResearchEligibility(lead: {
-  als_score?: number | null;
-  als_tier?: string | null;
+  propensity_score?: number | null;
+  propensity_tier?: string | null;
   linkedin_url?: string | null;
   deep_research_run_at?: string | null;
 } | null | undefined) {
@@ -167,7 +167,7 @@ export function useResearchEligibility(lead: {
     };
   }
 
-  const isHotLead = (lead.als_score ?? 0) >= 85;
+  const isHotLead = (lead.propensity_score ?? 0) >= 85;
   const hasLinkedIn = !!lead.linkedin_url;
   const alreadyResearched = !!lead.deep_research_run_at;
 

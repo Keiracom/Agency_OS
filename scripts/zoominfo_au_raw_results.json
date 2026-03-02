@@ -1,0 +1,18 @@
+[
+  {
+    "timestamp": "2026-03-01T21:59:42.786Z",
+    "input": {
+      "url": "https://www.zoominfo.com/companies-search/location-australia-industry-marketing-services"
+    },
+    "error": "We can\u2019t seem to find the page you are looking for.",
+    "error_code": "dead_page"
+  },
+  {
+    "timestamp": "2026-03-01T21:59:44.262Z",
+    "input": {
+      "url": "https://www.zoominfo.com/companies-search/location-australia-industry-advertising-services"
+    },
+    "error": "We can\u2019t seem to find the page you are looking for.",
+    "error_code": "dead_page"
+  }
+]

@@ -129,7 +129,7 @@ class MockLead:
         self.title = kwargs.get("title", "CEO")
         self.company = kwargs.get("company", "Test Company")
         self.status = kwargs.get("status", LeadStatus.ENRICHED)
-        self.als_score = kwargs.get("als_score", 90)  # Default high for mail
+        self.propensity_score = kwargs.get("propensity_score", 90)  # Default high for mail
         self.last_contacted_at = kwargs.get("last_contacted_at")
         self.deleted_at = None
 
@@ -310,7 +310,7 @@ async def test_send_letter_success(valid_to_address, valid_from_address):
     """Test successful letter sending."""
     engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
-    lead = MockLead(als_score=90)
+    lead = MockLead(propensity_score=90)
     campaign = MockCampaign()
 
     with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead, \
@@ -344,7 +344,7 @@ async def test_send_letter_missing_template(valid_to_address, valid_from_address
     """Test letter fails without template_id."""
     engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
-    lead = MockLead(als_score=90)
+    lead = MockLead(propensity_score=90)
     campaign = MockCampaign()
 
     with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead, \
@@ -377,7 +377,7 @@ async def test_send_postcard_success(valid_to_address, valid_from_address):
     """Test successful postcard sending."""
     engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
-    lead = MockLead(als_score=90)
+    lead = MockLead(propensity_score=90)
     campaign = MockCampaign()
 
     with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead, \
@@ -409,7 +409,7 @@ async def test_send_postcard_missing_templates(valid_to_address, valid_from_addr
     """Test postcard fails without both template IDs."""
     engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
-    lead = MockLead(als_score=90)
+    lead = MockLead(propensity_score=90)
     campaign = MockCampaign()
 
     with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead, \
@@ -442,7 +442,7 @@ async def test_send_mail_low_als(valid_to_address, valid_from_address):
     """Test mail fails when ALS score is below 85."""
     engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
-    lead = MockLead(als_score=80)  # Below 85 threshold
+    lead = MockLead(propensity_score=80)  # Below 85 threshold
 
     with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead:
         mock_get_lead.return_value = lead
@@ -468,7 +468,7 @@ async def test_send_mail_als_exactly_85(valid_to_address, valid_from_address):
     """Test mail succeeds when ALS score is exactly 85."""
     engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
-    lead = MockLead(als_score=85)
+    lead = MockLead(propensity_score=85)
     campaign = MockCampaign()
 
     with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead, \
@@ -496,7 +496,7 @@ async def test_send_mail_als_none(valid_to_address, valid_from_address):
     """Test mail fails when ALS score is None."""
     engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
-    lead = MockLead(als_score=None)
+    lead = MockLead(propensity_score=None)
 
     with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead:
         mock_get_lead.return_value = lead
@@ -525,7 +525,7 @@ async def test_send_mail_missing_to_address(valid_from_address):
     """Test mail fails without to_address."""
     engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
-    lead = MockLead(als_score=90)
+    lead = MockLead(propensity_score=90)
     campaign = MockCampaign()
 
     with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead, \
@@ -554,7 +554,7 @@ async def test_send_mail_missing_from_address(valid_to_address):
     """Test mail fails without from_address."""
     engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
-    lead = MockLead(als_score=90)
+    lead = MockLead(propensity_score=90)
     campaign = MockCampaign()
 
     with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead, \
@@ -706,7 +706,7 @@ async def test_activity_logging(valid_to_address, valid_from_address):
     """Test that mail activities are logged correctly."""
     engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
-    lead = MockLead(als_score=90)
+    lead = MockLead(propensity_score=90)
     campaign = MockCampaign()
 
     with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead, \
@@ -743,7 +743,7 @@ async def test_lead_update_on_success(valid_to_address, valid_from_address):
     """Test that lead is updated after successful mail send."""
     engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
-    lead = MockLead(als_score=90, last_contacted_at=None)
+    lead = MockLead(propensity_score=90, last_contacted_at=None)
     campaign = MockCampaign()
 
     with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead, \
@@ -776,7 +776,7 @@ async def test_send_invalid_mail_type(valid_to_address, valid_from_address):
     """Test mail fails with invalid mail_type."""
     engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
-    lead = MockLead(als_score=90)
+    lead = MockLead(propensity_score=90)
     campaign = MockCampaign()
 
     with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead, \
@@ -808,7 +808,7 @@ async def test_send_mail_api_error(valid_to_address, valid_from_address):
     """Test mail handling when Lob API fails."""
     engine = MailEngine(clicksend_client=MockClickSendClient(should_fail=True))
     mock_db = MockDB()
-    lead = MockLead(als_score=90)
+    lead = MockLead(propensity_score=90)
     campaign = MockCampaign()
 
     with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead, \

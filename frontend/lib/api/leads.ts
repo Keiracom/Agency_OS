@@ -134,14 +134,14 @@ export interface TriggerResearchResponse {
   lead_id: string;
   status: "queued" | "already_complete" | "not_eligible" | "complete" | "failed";
   message: string;
-  als_score: number | null;
-  als_tier: string | null;
+  propensity_score: number | null;
+  propensity_tier: string | null;
 }
 
 export interface ScoreLeadResponse {
   lead_id: string;
-  als_score: number;
-  als_tier: string;
+  propensity_score: number;
+  propensity_tier: string;
   als_breakdown: Record<string, number>;
   deep_research_triggered: boolean;
   message: string;

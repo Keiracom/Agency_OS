@@ -154,7 +154,7 @@ export function LeadTable({
     // If we have unfiltered data, calculate counts
     // For now, use placeholder counts - in production, this would come from API aggregation
     leads.forEach((lead) => {
-      const tier = lead.als_tier ?? "cool";
+      const tier = lead.propensity_tier ?? "cool";
       counts[tier]++;
     });
     return counts;
@@ -272,7 +272,7 @@ export function LeadTable({
                 </td>
                 <td className="p-4">
                   {/* Per LEADS.md: Show tier label, NOT raw score */}
-                  <TierBadge tier={lead.als_tier ?? "cool"} />
+                  <TierBadge tier={lead.propensity_tier ?? "cool"} />
                 </td>
                 <td className="p-4">
                   <StatusBadge status={lead.status} />
@@ -328,8 +328,8 @@ export function LeadTable({
             location: selectedLead.organization_country ?? "Unknown",
             recentIntelligence: [],
           },
-          score: selectedLead.als_score ?? 50,
-          tier: selectedLead.als_tier ?? "cool",
+          score: selectedLead.propensity_score ?? 50,
+          tier: selectedLead.propensity_tier ?? "cool",
           whyHot: [],
           engagementProfile: {
             dataQuality: { label: "Data Quality", value: selectedLead.als_data_quality ?? 15, maxValue: 20, level: "medium" as const },

@@ -167,8 +167,8 @@ export interface Lead {
   domain: string | null;
 
   // ALS Score
-  als_score: number | null;
-  als_tier: ALSTier | null;
+  propensity_score: number | null;
+  propensity_tier: ALSTier | null;
   als_data_quality: number | null;
   als_authority: number | null;
   als_company_fit: number | null;

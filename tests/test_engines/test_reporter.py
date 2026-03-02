@@ -59,8 +59,8 @@ def mock_lead():
     lead.first_name = "John"
     lead.last_name = "Doe"
     lead.full_name = "John Doe"
-    lead.als_score = 85
-    lead.als_tier = "hot"
+    lead.propensity_score = 85
+    lead.propensity_tier = "hot"
     lead.status = LeadStatus.IN_SEQUENCE
     lead.deleted_at = None
     return lead
@@ -432,8 +432,8 @@ class TestLeadEngagement:
 
             assert result.success is True
             assert result.data["lead_id"] == str(mock_lead.id)
-            assert result.data["als_score"] == 85
-            assert result.data["als_tier"] == "hot"
+            assert result.data["propensity_score"] == 85
+            assert result.data["propensity_tier"] == "hot"
             assert result.data["engagement_summary"]["total_touches"] == 4
             assert result.data["engagement_summary"]["reply_count"] == 1
             assert result.data["engagement_summary"]["open_count"] == 1

@@ -418,8 +418,8 @@ class TestVoiceRateLimits:
         cool_lead = create_cool_lead(client["id"], campaign["id"])  # ALS 48
 
         # Act
-        def is_voice_eligible(lead: dict, min_als: int = 70) -> bool:
-            return lead["als_score"] >= min_als
+        def is_voice_eligible(lead: dict, min_propensity: int = 70) -> bool:
+            return lead["propensity_score"] >= min_propensity
 
         # Assert
         assert is_voice_eligible(hot_lead) is True

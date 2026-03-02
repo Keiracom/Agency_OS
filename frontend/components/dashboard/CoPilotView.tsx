@@ -41,8 +41,8 @@ interface LeadData {
   title?: string;
   email?: string;
   linkedin_url?: string;
-  als_score?: number;
-  als_tier?: string;
+  propensity_score?: number;
+  propensity_tier?: string;
   als_data_quality?: number;
   als_authority?: number;
   als_company_fit?: number;
@@ -136,8 +136,8 @@ Best,
                 Draft Email
               </CardTitle>
               <div className="flex items-center gap-2">
-                <Badge className={getTierColor(lead.als_tier)}>
-                  {lead.als_tier || "Unscored"} ({lead.als_score || 0})
+                <Badge className={getTierColor(lead.propensity_tier)}>
+                  {lead.propensity_tier || "Unscored"} ({lead.propensity_score || 0})
                 </Badge>
               </div>
             </div>
@@ -316,14 +316,14 @@ Best,
         )}
 
         {/* ALS Score Breakdown Card */}
-        {(lead.als_data_quality !== undefined || lead.als_score !== undefined) && (
+        {(lead.als_data_quality !== undefined || lead.propensity_score !== undefined) && (
           <Card className="bg-[#1a1a1f] border-white/10">
             <CardHeader className="pb-2">
               <CardTitle className="text-text-primary text-sm flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-amber" />
                 ALS Score Breakdown
-                <Badge className={getTierColor(lead.als_tier)}>
-                  {lead.als_score || 0}/100
+                <Badge className={getTierColor(lead.propensity_tier)}>
+                  {lead.propensity_score || 0}/100
                 </Badge>
               </CardTitle>
             </CardHeader>

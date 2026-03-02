@@ -209,7 +209,7 @@ async function fetchPersonalisation(supabase: SupabaseClient, clientId: string):
       `)
       .eq('client_id', clientId)
       .is('deleted_at', null)
-      .order('als_score', { ascending: false })
+      .order('propensity_score', { ascending: false })
       .limit(5);
     
     if (error) throw error;

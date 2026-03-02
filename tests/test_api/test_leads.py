@@ -165,8 +165,8 @@ async def test_list_leads_success(
     lead = data["leads"][0]
     assert "id" in lead
     assert "email" in lead
-    assert "als_score" in lead
-    assert "als_tier" in lead
+    assert "propensity_score" in lead
+    assert "propensity_tier" in lead
     assert "status" in lead
 
 
@@ -276,16 +276,16 @@ async def test_list_leads_filter_by_tier(
         client_id=test_client_data.id,
         campaign_id=test_campaign.id,
         email="hot@example.com",
-        als_score=90,
-        als_tier="hot",
+        propensity_score=90,
+        propensity_tier="hot",
         status=LeadStatus.SCORED,
     )
     warm_lead = Lead(
         client_id=test_client_data.id,
         campaign_id=test_campaign.id,
         email="warm@example.com",
-        als_score=70,
-        als_tier="warm",
+        propensity_score=70,
+        propensity_tier="warm",
         status=LeadStatus.SCORED,
     )
     db_session.add_all([hot_lead, warm_lead])

@@ -90,8 +90,8 @@ def mock_lead_context():
             "recently_funded": False,
         },
         "score": {
-            "als_score": 75,
-            "als_tier": "warm",
+            "propensity_score": 75,
+            "propensity_tier": "warm",
         },
     }
 

@@ -32,11 +32,11 @@ MOCK_CAMPAIGN = {
 }
 
 MOCK_LEADS_100_COLD = [
-    {"als_tier": "cold", "als_score": 25, "email_verified": True, "is_dm": False},
-    {"als_tier": "cold", "als_score": 22, "email_verified": True, "is_dm": False},
-    {"als_tier": "cold", "als_score": 28, "email_verified": False, "is_dm": False},
-    {"als_tier": "dead", "als_score": 15, "email_verified": True, "is_dm": True},
-    {"als_tier": "cold", "als_score": 30, "email_verified": False, "is_dm": False},
+    {"propensity_tier": "cold", "propensity_score": 25, "email_verified": True, "is_dm": False},
+    {"propensity_tier": "cold", "propensity_score": 22, "email_verified": True, "is_dm": False},
+    {"propensity_tier": "cold", "propensity_score": 28, "email_verified": False, "is_dm": False},
+    {"propensity_tier": "dead", "propensity_score": 15, "email_verified": True, "is_dm": True},
+    {"propensity_tier": "cold", "propensity_score": 30, "email_verified": False, "is_dm": False},
 ]
 
 

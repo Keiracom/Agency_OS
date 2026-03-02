@@ -92,8 +92,11 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     linkedin_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     domain: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
 
-    # === Propensity Score Components (100 points max) ===
-    propensity_score: Mapped[int | None] = mapped_column(Integer, nullable=True, name="als_score")
+    # === Dual Scoring (Directive #153) ===
+    # reachability_score: channel deliverability (0-100)
+    # propensity_score: purchase likelihood (0-100)
+    reachability_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    propensity_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     propensity_tier: Mapped[str | None] = mapped_column(String(20), nullable=True, name="als_tier")
     propensity_data_quality: Mapped[int | None] = mapped_column(Integer, nullable=True, name="als_data_quality")  # Max 20
     propensity_authority: Mapped[int | None] = mapped_column(Integer, nullable=True, name="als_authority")  # Max 25

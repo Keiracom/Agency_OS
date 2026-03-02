@@ -238,8 +238,11 @@ class LeadPool(Base, UUIDMixin, TimestampMixin):
     dncr_result: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     dncr_checked_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
-    # ===== PROPENSITY SCORING (Phase 37) =====
-    propensity_score: Mapped[int | None] = mapped_column(Integer, nullable=True, name="als_score")
+    # ===== DUAL SCORING (Directive #153) =====
+    # reachability_score: channel deliverability (0-100)
+    # propensity_score: purchase likelihood (0-100)
+    reachability_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    propensity_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     propensity_tier: Mapped[str | None] = mapped_column(String(20), nullable=True, name="als_tier")
     propensity_components: Mapped[dict | None] = mapped_column(JSONB, nullable=True, name="als_components")
     scored_at: Mapped[datetime | None] = mapped_column(nullable=True)

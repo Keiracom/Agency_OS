@@ -310,7 +310,8 @@ class LeadmagicClient:
         """
         self.api_key = api_key or getattr(settings, "leadmagic_api_key", "")
 
-        if not self.api_key:
+        # Mock mode doesn't require API key
+        if not self.api_key and not _is_mock_mode():
             raise IntegrationError(
                 service="leadmagic",
                 message="Leadmagic API key is required. Set LEADMAGIC_API_KEY in environment.",

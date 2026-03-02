@@ -106,6 +106,13 @@ class TestSkillRegistry:
         """Clear registry before each test."""
         SkillRegistry.clear()
 
+    def teardown_method(self):
+        """Re-register skills after each test to avoid polluting other tests."""
+        import importlib
+        import src.agents.skills
+        # Reload the skills module to re-register all skills
+        importlib.reload(src.agents.skills)
+
     def test_register_skill(self):
         """Test registering a skill."""
         # Create a mock skill

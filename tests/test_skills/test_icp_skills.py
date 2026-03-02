@@ -447,7 +447,30 @@ class TestSkillRegistration:
 
     def test_all_skills_registered(self):
         """Test all ICP skills are registered."""
-        # Import skills module to trigger registration
+        import importlib
+        # Reload all skill modules to ensure registration runs
+        # (handles case where another test cleared the registry)
+        import src.agents.skills.website_parser
+        import src.agents.skills.service_extractor
+        import src.agents.skills.value_prop_extractor
+        import src.agents.skills.portfolio_extractor
+        import src.agents.skills.industry_classifier
+        import src.agents.skills.company_size_estimator
+        import src.agents.skills.icp_deriver
+        import src.agents.skills.als_weight_suggester
+        
+        for mod in [
+            src.agents.skills.website_parser,
+            src.agents.skills.service_extractor,
+            src.agents.skills.value_prop_extractor,
+            src.agents.skills.portfolio_extractor,
+            src.agents.skills.industry_classifier,
+            src.agents.skills.company_size_estimator,
+            src.agents.skills.icp_deriver,
+            src.agents.skills.als_weight_suggester,
+        ]:
+            importlib.reload(mod)
+        
         from src.agents.skills import SkillRegistry
 
         expected_skills = [

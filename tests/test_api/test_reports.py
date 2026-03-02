@@ -499,7 +499,7 @@ class TestLeadEngagement:
             assert data["lead_id"] == str(mock_lead_id)
             assert "timeline" in data
             assert "engagement_summary" in data
-            assert data["als_tier"] == "hot"
+            assert data["propensity_tier"] == "hot"
             assert data["engagement_summary"]["is_engaged"] is True
 
     @pytest.mark.asyncio

@@ -298,15 +298,15 @@ class CampaignDiscoveryTrigger:
                 "reason": "no_linkedin_url",
             })
 
-        # Calculate ALS
-        lead.als_score = self.waterfall.calculate_als(lead)
-        gate_passed = lead.als_score >= self.waterfall.PRE_ALS_GATE
+        # Calculate propensity score
+        lead.propensity_score = self.waterfall.calculate_als(lead)
+        gate_passed = lead.propensity_score >= self.waterfall.PRE_ALS_GATE
 
-        # Audit: ALS calculated
-        await self._write_audit_log(supabase, campaign_id, "als_calculated", {
+        # Audit: propensity calculated
+        await self._write_audit_log(supabase, campaign_id, "propensity_calculated", {
             "business_name": lead.business_name,
-            "score": lead.als_score,
-            "breakdown": lead.als_breakdown,
+            "score": lead.propensity_score,
+            "breakdown": lead.propensity_components,
             "gate_passed": gate_passed,
             "gate_threshold": self.waterfall.PRE_ALS_GATE,
         })
@@ -317,8 +317,8 @@ class CampaignDiscoveryTrigger:
                 lead = await self.waterfall.enrich_tier_2_5(lead)
                 lead = await self.waterfall.enrich_tier_3(lead)
                 lead = await self.waterfall.enrich_tier_5(lead)
-                # Recalculate ALS after enrichment
-                lead.als_score = self.waterfall.calculate_als(lead)
+                # Recalculate propensity after enrichment
+                lead.propensity_score = self.waterfall.calculate_als(lead)
             except Exception as e:
                 logger.warning(
                     "enrichment_post_gate_failed",
@@ -332,7 +332,7 @@ class CampaignDiscoveryTrigger:
                     {
                         "business_name": lead.business_name,
                         "error": str(e),
-                        "als_score": lead.als_score,
+                        "propensity_score": lead.propensity_score,
                     },
                 )
 
@@ -401,7 +401,7 @@ class CampaignDiscoveryTrigger:
                     await self._write_audit_log(supabase, campaign_id, "lead_skipped", {
                         "business_name": lead.business_name,
                         "reason": "no_email",
-                        "als_score": lead.als_score,
+                        "propensity_score": lead.propensity_score,
                     })
                     skipped += 1
                     continue
@@ -442,8 +442,8 @@ class CampaignDiscoveryTrigger:
                     "title": title,
                     "organization_website": lead.website,
                     "linkedin_url": dm_linkedin_url or lead.linkedin_company_url,
-                    "als_score": lead.als_score,
-                    "als_components": lead.als_breakdown,
+                    "propensity_score": lead.propensity_score,
+                    "als_components": lead.propensity_components,
                     "cost_basis": lead.cost_aud,
                 }
 
@@ -459,7 +459,7 @@ class CampaignDiscoveryTrigger:
                     {
                         "business_name": lead.business_name,
                         "error": str(e),
-                        "als_score": lead.als_score,
+                        "propensity_score": lead.propensity_score,
                     },
                 )
 

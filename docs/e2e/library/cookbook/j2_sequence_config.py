@@ -99,7 +99,7 @@ CHECKS = [
             "auth": True,
             "expect": {
                 "status": 200,
-                "body_has_fields": ["als_score", "als_tier", "score_breakdown"]
+                "body_has_fields": ["propensity_score", "als_tier", "score_breakdown"]
             },
             "curl_command": """curl -X POST '{api_url}/api/v1/leads/{lead_id}/score' \\
   -H 'Authorization: Bearer {token}'"""
@@ -113,14 +113,14 @@ CHECKS = [
         "live_test": {
             "type": "db_query",
             "query": """
-                SELECT id, email, als_score, als_tier
+                SELECT id, email, propensity_score, als_tier
                 FROM lead_pool
-                WHERE als_score IS NOT NULL
-                ORDER BY als_score DESC
+                WHERE propensity_score IS NOT NULL
+                ORDER BY propensity_score DESC
                 LIMIT 10;
             """,
             "expect": {
-                "als_score_populated": True,
+                "propensity_score_populated": True,
                 "als_tier_populated": True
             }
         }

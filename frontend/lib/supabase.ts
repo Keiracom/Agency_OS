@@ -80,8 +80,8 @@ export type Database = {
           title: string | null;
           company: string | null;
           linkedin_url: string | null;
-          als_score: number | null;
-          als_tier: string | null;
+          propensity_score: number | null;
+          propensity_tier: string | null;
           status: "new" | "enriched" | "scored" | "in_sequence" | "converted" | "unsubscribed" | "bounced";
           created_at: string;
           updated_at: string;

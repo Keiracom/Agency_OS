@@ -191,8 +191,8 @@ def create_test_lead(
     client_id: str,
     campaign_id: str,
     email: str = "lead@techcompany.io",
-    als_score: int = 82,
-    als_tier: str = "warm",
+    propensity_score: int = 82,
+    propensity_tier: str = "warm",
     status: str = "enriched",
 ) -> dict[str, Any]:
     """Create a test lead fixture."""
@@ -209,13 +209,13 @@ def create_test_lead(
         "phone": "+61412345678",
         "linkedin_url": "https://linkedin.com/in/janesmith",
         "status": status,
-        "als_score": als_score,
-        "als_tier": als_tier,
-        "als_data_quality": 90,
-        "als_authority": 85,
-        "als_company_fit": 80,
-        "als_timing": 75,
-        "als_risk": 80,
+        "propensity_score": propensity_score,
+        "propensity_tier": propensity_tier,
+        "propensity_data_quality": 90,
+        "propensity_authority": 85,
+        "propensity_company_fit": 80,
+        "propensity_timing": 75,
+        "propensity_risk": 80,
         "enrichment_data": {
             "industry": "Technology",
             "company_size": "51-200",
@@ -232,84 +232,84 @@ def create_test_lead(
 
 
 def create_hot_lead(client_id: str, campaign_id: str) -> dict[str, Any]:
-    """Create a hot lead (ALS 85+)."""
+    """Create a hot lead (propensity 85+)."""
     lead = create_test_lead(
         client_id,
         campaign_id,
         email="hot.lead@bigcompany.io",
-        als_score=92,
-        als_tier="hot",
+        propensity_score=92,
+        propensity_tier="hot",
     )
     lead["first_name"] = "Michael"
     lead["last_name"] = "CEO"
     lead["title"] = "Chief Executive Officer"
-    lead["als_data_quality"] = 95
-    lead["als_authority"] = 98
-    lead["als_company_fit"] = 92
-    lead["als_timing"] = 88
-    lead["als_risk"] = 90
+    lead["propensity_data_quality"] = 95
+    lead["propensity_authority"] = 98
+    lead["propensity_company_fit"] = 92
+    lead["propensity_timing"] = 88
+    lead["propensity_risk"] = 90
     return lead
 
 
 def create_warm_lead(client_id: str, campaign_id: str) -> dict[str, Any]:
-    """Create a warm lead (ALS 60-84)."""
+    """Create a warm lead (propensity 60-84)."""
     return create_test_lead(
         client_id,
         campaign_id,
         email="warm.lead@mediumcompany.io",
-        als_score=72,
-        als_tier="warm",
+        propensity_score=72,
+        propensity_tier="warm",
     )
 
 
 def create_cool_lead(client_id: str, campaign_id: str) -> dict[str, Any]:
-    """Create a cool lead (ALS 35-59)."""
+    """Create a cool lead (propensity 35-59)."""
     lead = create_test_lead(
         client_id,
         campaign_id,
         email="cool.lead@smallcompany.io",
-        als_score=48,
-        als_tier="cool",
+        propensity_score=48,
+        propensity_tier="cool",
     )
-    lead["als_data_quality"] = 60
-    lead["als_authority"] = 50
-    lead["als_company_fit"] = 45
-    lead["als_timing"] = 40
-    lead["als_risk"] = 45
+    lead["propensity_data_quality"] = 60
+    lead["propensity_authority"] = 50
+    lead["propensity_company_fit"] = 45
+    lead["propensity_timing"] = 40
+    lead["propensity_risk"] = 45
     return lead
 
 
 def create_cold_lead(client_id: str, campaign_id: str) -> dict[str, Any]:
-    """Create a cold lead (ALS 20-34)."""
+    """Create a cold lead (propensity 20-34)."""
     lead = create_test_lead(
         client_id,
         campaign_id,
         email="cold.lead@tinycompany.io",
-        als_score=28,
-        als_tier="cold",
+        propensity_score=28,
+        propensity_tier="cold",
     )
-    lead["als_data_quality"] = 40
-    lead["als_authority"] = 30
-    lead["als_company_fit"] = 25
-    lead["als_timing"] = 20
-    lead["als_risk"] = 25
+    lead["propensity_data_quality"] = 40
+    lead["propensity_authority"] = 30
+    lead["propensity_company_fit"] = 25
+    lead["propensity_timing"] = 20
+    lead["propensity_risk"] = 25
     return lead
 
 
 def create_dead_lead(client_id: str, campaign_id: str) -> dict[str, Any]:
-    """Create a dead lead (ALS 0-19)."""
+    """Create a dead lead (propensity 0-19)."""
     lead = create_test_lead(
         client_id,
         campaign_id,
         email="dead.lead@defunct.io",
-        als_score=12,
-        als_tier="dead",
+        propensity_score=12,
+        propensity_tier="dead",
     )
-    lead["als_data_quality"] = 20
-    lead["als_authority"] = 15
-    lead["als_company_fit"] = 10
-    lead["als_timing"] = 5
-    lead["als_risk"] = 10
+    lead["propensity_data_quality"] = 20
+    lead["propensity_authority"] = 15
+    lead["propensity_company_fit"] = 10
+    lead["propensity_timing"] = 5
+    lead["propensity_risk"] = 10
     return lead
 
 
@@ -319,8 +319,8 @@ def create_new_lead(client_id: str, campaign_id: str) -> dict[str, Any]:
         client_id,
         campaign_id,
         email="new.lead@unknown.io",
-        als_score=0,
-        als_tier="dead",
+        propensity_score=0,
+        propensity_tier="dead",
         status="new",
     )
 
@@ -344,8 +344,8 @@ def create_converted_lead(client_id: str, campaign_id: str) -> dict[str, Any]:
         client_id,
         campaign_id,
         email="converted.lead@company.io",
-        als_score=88,
-        als_tier="hot",
+        propensity_score=88,
+        propensity_tier="hot",
         status="converted",
     )
     lead["sequence_step"] = 3
@@ -538,7 +538,7 @@ def create_lead_batch(
 # [x] Client fixtures (active, inactive, past_due, all tiers)
 # [x] User and membership fixtures
 # [x] Campaign fixtures (active, draft, paused, all permission modes)
-# [x] Lead fixtures (all ALS tiers: hot, warm, cool, cold, dead)
+# [x] Lead fixtures (all propensity tiers: hot, warm, cool, cold, dead)
 # [x] Lead status fixtures (new, enriched, in_sequence, converted, unsubscribed)
 # [x] Activity fixtures (all channels and directions)
 # [x] Resource fixtures (email, phone, linkedin)

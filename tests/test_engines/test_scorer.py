@@ -428,11 +428,11 @@ class TestFullScoring:
             )
 
             assert result.success is True
-            assert "als_score" in result.data
-            assert "als_tier" in result.data
-            assert result.data["als_score"] >= 0
-            assert result.data["als_score"] <= 100
-            assert result.data["als_tier"] in ["hot", "warm", "cool", "cold", "dead"]
+            assert "propensity_score" in result.data
+            assert "propensity_tier" in result.data
+            assert result.data["propensity_score"] >= 0
+            assert result.data["propensity_score"] <= 100
+            assert result.data["propensity_tier"] in ["hot", "warm", "cool", "cold", "dead"]
 
     @pytest.mark.asyncio
     async def test_score_lead_with_perfect_data(self, scorer_engine, mock_db_session, mock_lead):
@@ -446,8 +446,8 @@ class TestFullScoring:
 
             assert result.success is True
             # Perfect lead should be hot tier
-            assert result.data["als_tier"] == "hot"
-            assert result.data["als_score"] >= TIER_HOT
+            assert result.data["propensity_tier"] == "hot"
+            assert result.data["propensity_score"] >= TIER_HOT
 
 
 # ============================================

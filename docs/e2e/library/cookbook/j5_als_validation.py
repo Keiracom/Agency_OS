@@ -52,7 +52,7 @@ CHECKS = [
             "type": "code_verify",
             "check": "ALS validation exists in voice engine",
             "expect": {
-                "code_contains": ["als_score", "70", "ALS"]
+                "code_contains": ["propensity_score", "70", "ALS"]
             }
         }
     },

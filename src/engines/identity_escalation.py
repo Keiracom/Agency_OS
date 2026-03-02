@@ -328,7 +328,7 @@ class IdentityEscalationEngine(BaseEngine):
         current_email: str | None,
         current_phone: str | None,
         registered_address: str | None,
-        als_score: int,
+        reachability_score: int,
         acn: str | None = None,
     ) -> EngineResult[IdentityResult]:
         """
@@ -343,7 +343,7 @@ class IdentityEscalationEngine(BaseEngine):
             current_email: Current email (may be generic)
             current_phone: Current phone (may be landline)
             registered_address: Registered office address
-            als_score: Current ALS (determines mobile enrichment)
+            reachability_score: Current reachability score (determines mobile enrichment)
             acn: Australian Company Number (for ASIC lookup)
 
         Returns:
@@ -365,7 +365,7 @@ class IdentityEscalationEngine(BaseEngine):
             phone_type = self.classify_phone(current_phone) if current_phone else PhoneType.UNKNOWN
 
             # Also escalate if we only have landline and need mobile for Voice AI
-            if phone_type == PhoneType.LANDLINE and als_score > ALS_MOBILE_THRESHOLD:
+            if phone_type == PhoneType.LANDLINE and reachability_score > ALS_MOBILE_THRESHOLD:
                 needs_escalation = True
                 result.escalation_reason = "Landline only - need mobile for Voice AI"
             elif needs_escalation:
@@ -449,8 +449,8 @@ class IdentityEscalationEngine(BaseEngine):
                         break
 
             # ========== TIER 4/5: MOBILE ENRICHMENT (COGS GATED) ==========
-            # Only enrich mobile for ALS > 75
-            if als_score > ALS_MOBILE_THRESHOLD and decision_makers:
+            # Only enrich mobile for reachability > 75
+            if reachability_score > ALS_MOBILE_THRESHOLD and decision_makers:
                 step_number += 1
 
                 # Try Lusha first, then Kaspr
@@ -486,9 +486,9 @@ class IdentityEscalationEngine(BaseEngine):
                     result.errors.append(
                         f"Mobile enrichment failed for {decision_makers[0].full_name}"
                     )
-            elif als_score <= ALS_MOBILE_THRESHOLD:
+            elif reachability_score <= ALS_MOBILE_THRESHOLD:
                 result.errors.append(
-                    f"Mobile enrichment skipped: ALS {als_score} <= {ALS_MOBILE_THRESHOLD}"
+                    f"Mobile enrichment skipped: reachability {reachability_score} <= {ALS_MOBILE_THRESHOLD}"
                 )
 
             # ========== FALLBACK: Use best available email ==========

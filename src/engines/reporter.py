@@ -421,10 +421,10 @@ class ReporterEngine(BaseEngine):
                 )
 
             # Build query
-            query = select(Lead.als_tier, func.count(Lead.id)).where(
+            query = select(Lead.propensity_tier, func.count(Lead.id)).where(
                 and_(
                     Lead.deleted_at.is_(None),
-                    Lead.als_tier.isnot(None),
+                    Lead.propensity_tier.isnot(None),
                 )
             )
 
@@ -433,7 +433,7 @@ class ReporterEngine(BaseEngine):
             elif client_id:
                 query = query.where(Lead.client_id == client_id)
 
-            query = query.group_by(Lead.als_tier)
+            query = query.group_by(Lead.propensity_tier)
 
             # Execute query
             result = await db.execute(query)
@@ -516,8 +516,8 @@ class ReporterEngine(BaseEngine):
                 "lead_id": str(lead_id),
                 "lead_name": lead.full_name,
                 "lead_email": lead.email,
-                "als_score": lead.als_score,
-                "als_tier": lead.als_tier,
+                "propensity_score": lead.propensity_score,
+                "propensity_tier": lead.propensity_tier,
                 "status": lead.status.value,
                 "timeline": [],
                 "engagement_summary": {

@@ -111,7 +111,7 @@ async def fetch_voice_queue_task(agency_id: str | None = None) -> list[dict[str,
                 lp.lead_id,
                 lp.campaign_id,
                 lp.agency_id,
-                lp.als_score,
+                lp.als_score as reachability_score,
                 l.first_name,
                 l.last_name,
                 l.phone,
@@ -123,7 +123,7 @@ async def fetch_voice_queue_task(agency_id: str | None = None) -> list[dict[str,
             FROM lead_pool lp
             INNER JOIN leads l ON lp.lead_id = l.id
             INNER JOIN campaigns c ON lp.campaign_id = c.id
-            WHERE lp.als_score >= 85
+            WHERE lp.als_score >= 85  -- reachability threshold
               AND c.status = :campaign_status
               AND lp.voice_enabled = TRUE
               AND lp.suppressed = FALSE
@@ -151,7 +151,7 @@ async def fetch_voice_queue_task(agency_id: str | None = None) -> list[dict[str,
             query = text(str(query) + " AND lp.agency_id = :agency_id")
             params["agency_id"] = agency_id
 
-        query = text(str(query) + " ORDER BY lp.als_score DESC LIMIT 50")
+        query = text(str(query) + " ORDER BY lp.als_score DESC LIMIT 50")  # ordered by reachability
 
         result = await db.execute(query, params)
         rows = result.fetchall()
@@ -164,7 +164,7 @@ async def fetch_voice_queue_task(agency_id: str | None = None) -> list[dict[str,
                     "lead_id": str(row.lead_id),
                     "campaign_id": str(row.campaign_id),
                     "agency_id": str(row.agency_id),
-                    "als_score": row.als_score,
+                    "reachability_score": row.reachability_score,
                     "first_name": row.first_name,
                     "last_name": row.last_name,
                     "phone": row.phone,

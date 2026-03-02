@@ -245,7 +245,7 @@ pending → in_progress → linkedin_scraped → analysis_complete → completed
 | J2B.6.6 | Verify `pain_points` array stored | Check field |
 | J2B.6.7 | Verify `icebreaker_hooks` JSONB stored | Check field |
 | J2B.6.8 | Verify `best_channel` stored | Check field |
-| J2B.6.9 | Verify `als_score`, `als_tier`, `als_components` stored | Check score fields |
+| J2B.6.9 | Verify `propensity_score`, `als_tier`, `als_components` stored | Check score fields |
 | J2B.6.10 | Verify `enrichment_completed_at` timestamp set | Check timestamp |
 
 **Key Assignment Fields for Enrichment:**
@@ -265,7 +265,7 @@ personalization_confidence FLOAT,
 personalization_analyzed_at TIMESTAMP,
 
 -- ALS Scoring
-als_score INTEGER,
+propensity_score INTEGER,
 als_tier VARCHAR,
 als_components JSONB,
 scored_at TIMESTAMP,

@@ -47,26 +47,26 @@ CHECKS = [
         "live_test": {
             "type": "db_query",
             "query": """
-                SELECT als_score, als_tier,
+                SELECT propensity_score, als_tier,
                        CASE
-                           WHEN als_score >= 85 THEN 'hot'
-                           WHEN als_score >= 60 THEN 'warm'
-                           WHEN als_score >= 35 THEN 'cool'
-                           WHEN als_score >= 20 THEN 'cold'
+                           WHEN propensity_score >= 85 THEN 'hot'
+                           WHEN propensity_score >= 60 THEN 'warm'
+                           WHEN propensity_score >= 35 THEN 'cool'
+                           WHEN propensity_score >= 20 THEN 'cold'
                            ELSE 'dead'
                        END as expected_tier,
                        CASE WHEN als_tier = (
                            CASE
-                               WHEN als_score >= 85 THEN 'hot'
-                               WHEN als_score >= 60 THEN 'warm'
-                               WHEN als_score >= 35 THEN 'cool'
-                               WHEN als_score >= 20 THEN 'cold'
+                               WHEN propensity_score >= 85 THEN 'hot'
+                               WHEN propensity_score >= 60 THEN 'warm'
+                               WHEN propensity_score >= 35 THEN 'cool'
+                               WHEN propensity_score >= 20 THEN 'cold'
                                ELSE 'dead'
                            END
                        ) THEN 'CORRECT' ELSE 'MISMATCH' END as status
                 FROM lead_assignments
-                WHERE als_score IS NOT NULL
-                ORDER BY als_score DESC
+                WHERE propensity_score IS NOT NULL
+                ORDER BY propensity_score DESC
                 LIMIT 20;
             """,
             "expect": {
@@ -76,7 +76,7 @@ CHECKS = [
     },
     {
         "id": "J2B.6.2",
-        "part_a": "Verify `als_score`, `als_tier`, `als_components` fields in lead_assignments",
+        "part_a": "Verify `propensity_score`, `als_tier`, `als_components` fields in lead_assignments",
         "part_b": "Query assignment record for score fields",
         "key_files": ["src/models/lead.py"],
         "live_test": {
@@ -85,10 +85,10 @@ CHECKS = [
                 SELECT column_name, data_type
                 FROM information_schema.columns
                 WHERE table_name = 'lead_assignments'
-                AND column_name IN ('als_score', 'als_tier', 'als_components');
+                AND column_name IN ('propensity_score', 'als_tier', 'als_components');
             """,
             "expect": {
-                "columns_exist": ["als_score", "als_tier", "als_components"]
+                "columns_exist": ["propensity_score", "als_tier", "als_components"]
             }
         }
     },

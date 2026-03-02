@@ -47,7 +47,7 @@ class SequenceTouch(BaseModel):
         "intro", "connect", "value_add", "pattern_interrupt", "breakup", "discovery"
     ] = Field(..., description="Purpose of this touch")
     condition: str | None = Field(
-        None, description="Condition for sending (e.g., 'no_reply', 'als_score >= 85')"
+        None, description="Condition for sending (e.g., 'no_reply', 'propensity_score >= 85')"
     )
     skip_if: str | None = Field(
         None, description="Skip condition (e.g., 'phone_missing', 'linkedin_url_missing')"
@@ -136,7 +136,7 @@ SKIP CONDITIONS:
 
 CONDITIONS:
 - All touches after first: condition = "no_reply"
-- Voice: condition = "als_score >= 85 AND no_reply"
+- Voice: condition = "propensity_score >= 85 AND no_reply"
 
 ADAPTIVE RULES (always include):
 1. "Stop sequence immediately if reply detected"
@@ -420,7 +420,7 @@ Return the complete sequence as JSON."""
                     day=timing["discovery"],
                     channel="voice",
                     purpose="discovery",
-                    condition="als_score >= 85 AND no_reply",
+                    condition="propensity_score >= 85 AND no_reply",
                     skip_if="phone_missing",
                     messaging_key="touch_6_voice",
                 )

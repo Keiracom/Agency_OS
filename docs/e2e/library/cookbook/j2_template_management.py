@@ -45,9 +45,9 @@ CHECKS = [
                 "code_contains": ["85", "hot", "research", "trigger"]
             },
             "db_verify": """
-                SELECT id, email, als_score, research_completed_at
+                SELECT id, email, propensity_score, research_completed_at
                 FROM leads
-                WHERE als_score >= 85 AND research_completed_at IS NOT NULL
+                WHERE propensity_score >= 85 AND research_completed_at IS NOT NULL
                 LIMIT 5;
             """
         }

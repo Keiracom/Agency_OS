@@ -218,8 +218,8 @@ async def should_use_sdk_brain_tiered(
         service_level = row.service_level if row else "base"
 
     # Gate 1: Must be Hot
-    als_score = lead_data.get("als_score", 0)
-    if als_score < 85:
+    propensity_score = lead_data.get("propensity_score", 0)
+    if propensity_score < 85:
         return False, "not_hot"
 
     # Gate 2: Must have Intelligence add-on

@@ -341,9 +341,9 @@ async def get_weights(
             source="default",
         )
 
-    if client_obj.als_learned_weights:
+    if client_obj.propensity_learned_weights:
         return WeightsResponse(
-            weights=client_obj.als_learned_weights,
+            weights=client_obj.propensity_learned_weights,
             source="learned",
             sample_count=client_obj.conversion_sample_count,
             updated_at=client_obj.als_weights_updated_at,

@@ -109,13 +109,13 @@ class MailEngine(OutreachEngine):
         # Get lead
         lead = await self.get_lead_by_id(db, lead_id)
 
-        # Validate ALS score (85+ required for mail - hot tier only)
-        if lead.als_score is None or lead.als_score < 85:
+        # Validate reachability score (85+ required for mail - hot tier only)
+        if lead.propensity_score is None or lead.propensity_score < 85:
             return EngineResult.fail(
-                error=f"ALS score too low for direct mail: {lead.als_score} (minimum 85)",
+                error=f"Reachability score too low for direct mail: {lead.propensity_score} (minimum 85)",
                 metadata={
                     "lead_id": str(lead_id),
-                    "als_score": lead.als_score,
+                    "reachability_score": lead.propensity_score,
                 },
             )
 

@@ -159,8 +159,8 @@ def mock_lead_engagement(mock_lead_id):
         "lead_id": str(mock_lead_id),
         "lead_name": "John Doe",
         "lead_email": "john@acme.com",
-        "als_score": 85,
-        "als_tier": "hot",
+        "propensity_score": 85,
+        "propensity_tier": "hot",
         "status": "in_sequence",
         "timeline": [
             {

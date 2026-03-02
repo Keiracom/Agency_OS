@@ -89,7 +89,7 @@ async def check_campaign_quota_task(campaign_id: str) -> dict[str, Any]:
                     c.client_id,
                     c.name,
                     COALESCE(cqs.target_lead_count, 100) as target_lead_count,
-                    COALESCE(cqs.min_als_score, 35) as min_als_score,
+                    COALESCE(cqs.min_propensity_score, 35) as min_propensity_score,
                     COALESCE(cqs.current_qualified_count, 0) as current_qualified_count,
                     COALESCE(cqs.discovery_loops_run, 0) as discovery_loops_run
                 FROM campaigns c
@@ -116,10 +116,10 @@ async def check_campaign_quota_task(campaign_id: str) -> dict[str, Any]:
                 JOIN lead_assignments la ON lp.id = la.lead_pool_id
                 WHERE la.campaign_id = :campaign_id
                 AND lp.pool_status NOT IN ('discarded_pending', 'bounced', 'invalid')
-                AND lp.als_score >= :min_als
+                AND lp.als_score >= :min_als  -- propensity threshold
                 AND lp.deleted_at IS NULL
             """),
-            {"campaign_id": campaign_id, "min_als": row.min_als_score},
+            {"campaign_id": campaign_id, "min_als": row.min_propensity_score},
         )
         count_row = count_result.fetchone()
         qualified_count = count_row.qualified_count if count_row else 0
@@ -132,7 +132,7 @@ async def check_campaign_quota_task(campaign_id: str) -> dict[str, Any]:
             "client_id": str(row.client_id),
             "campaign_name": row.name,
             "target_count": row.target_lead_count,
-            "min_als": row.min_als_score,
+            "min_als": row.min_propensity_score,
             "current_qualified": qualified_count,
             "shortfall": shortfall,
             "quota_met": shortfall == 0,
@@ -260,13 +260,13 @@ async def apply_gate_1_filter_task(
                 "reason": "duplicate",
             }
 
-        # Check pre-ALS on free tier only
+        # Check pre-propensity on free tier only
         if is_free_tier and row.als_score is not None and row.als_score < MIN_QUALIFIED_ALS:
             await _soft_discard_lead(
                 db,
                 UUID(lead_pool_id),
                 gate=1,
-                reason=f"Pre-ALS {row.als_score} < {MIN_QUALIFIED_ALS} (free tier)",
+                reason=f"Pre-propensity {row.als_score} < {MIN_QUALIFIED_ALS} (free tier)",
                 client_id=UUID(client_id) if client_id else None,
                 campaign_id=UUID(campaign_id) if campaign_id else None,
             )
@@ -274,8 +274,8 @@ async def apply_gate_1_filter_task(
                 "lead_pool_id": lead_pool_id,
                 "passed": False,
                 "gate": 1,
-                "reason": "pre_als_low_free",
-                "als_score": row.als_score,
+                "reason": "pre_propensity_low_free",
+                "propensity_score": row.als_score,
             }
 
         return {
@@ -341,13 +341,13 @@ async def apply_gate_2_filter_task(
                 "reason": "no_contact",
             }
 
-        # Check ALS after T3
+        # Check propensity after T3
         if row.als_score is not None and row.als_score < MIN_QUALIFIED_ALS:
             await _soft_discard_lead(
                 db,
                 UUID(lead_pool_id),
                 gate=2,
-                reason=f"ALS {row.als_score} < {MIN_QUALIFIED_ALS} after T3",
+                reason=f"Propensity {row.als_score} < {MIN_QUALIFIED_ALS} after T3",
                 client_id=UUID(client_id) if client_id else None,
                 campaign_id=UUID(campaign_id) if campaign_id else None,
             )
@@ -355,8 +355,8 @@ async def apply_gate_2_filter_task(
                 "lead_pool_id": lead_pool_id,
                 "passed": False,
                 "gate": 2,
-                "reason": "post_als_low",
-                "als_score": row.als_score,
+                "reason": "post_propensity_low",
+                "propensity_score": row.als_score,
             }
 
         # Check Leadmagic confidence
@@ -417,10 +417,10 @@ async def apply_gate_3_filter_task(lead_pool_id: str) -> dict[str, Any]:
 
         # Gate 3 never discards - only demotes
         current_tier = row.als_tier
-        als_score = row.als_score or 0
+        propensity_score = row.als_score or 0
 
         # Check if tier needs demotion based on score
-        expected_tier = _get_tier_from_score(als_score)
+        expected_tier = _get_tier_from_score(propensity_score)
 
         if current_tier != expected_tier:
             # Demote tier
@@ -701,15 +701,15 @@ async def _soft_discard_lead(
         return None
 
 
-def _get_tier_from_score(als_score: int) -> str:
-    """Get tier name from ALS score."""
-    if als_score >= 85:
+def _get_tier_from_score(propensity_score: int) -> str:
+    """Get tier name from propensity score."""
+    if propensity_score >= 85:
         return "hot"
-    elif als_score >= 60:
+    elif propensity_score >= 60:
         return "warm"
-    elif als_score >= 35:
+    elif propensity_score >= 35:
         return "cool"
-    elif als_score >= 20:
+    elif propensity_score >= 20:
         return "cold"
     else:
         return "dead"

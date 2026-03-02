@@ -553,7 +553,7 @@ class AllocatorEngine(BaseEngine):
             prioritized_channels, pattern_insights = await self._prioritize_channels(
                 db=db,
                 client_id=lead.client_id,
-                tier=lead.als_tier,
+                tier=lead.propensity_tier,
                 available_channels=available_channels,
             )
 

@@ -135,7 +135,7 @@ CHECKS = [
             "curl_command": """curl -X PATCH '{api_url}/api/v1/leads/{lead_id}' \\
   -H 'Authorization: Bearer {token}' \\
   -H 'Content-Type: application/json' \\
-  -d '{"als_score": 90}'"""
+  -d '{"propensity_score": 90}'"""
         }
     },
 ]

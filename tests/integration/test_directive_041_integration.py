@@ -38,70 +38,70 @@ TEST_LEADS = [
         "company_name": "Efficient Media",
         "postcode": "2000",
         "state": "NSW",
-        "als_score": 85,  # Hot — will trigger T-DM2/T-DM3
+        "propensity_score": 85,  # Hot — will trigger T-DM2/T-DM3
     },
     {
         "id": uuid4(),
         "company_name": "Digital Marketing Lab",
         "postcode": "3000",
         "state": "VIC",
-        "als_score": 75,  # Warm — will trigger T-DM2/T-DM3
+        "propensity_score": 75,  # Warm — will trigger T-DM2/T-DM3
     },
     {
         "id": uuid4(),
         "company_name": "Social Media Agency",
         "postcode": "4000",
         "state": "QLD",
-        "als_score": 70,  # Warm — threshold for T-DM2/T-DM3
+        "propensity_score": 70,  # Warm — threshold for T-DM2/T-DM3
     },
     {
         "id": uuid4(),
         "company_name": "Growth Hacking Co",
         "postcode": "5000",
         "state": "SA",
-        "als_score": 82,
+        "propensity_score": 82,
     },
     {
         "id": uuid4(),
         "company_name": "SEO Masters",
         "postcode": "6000",
         "state": "WA",
-        "als_score": 78,
+        "propensity_score": 78,
     },
     {
         "id": uuid4(),
         "company_name": "Content Marketing Hub",
         "postcode": "2601",
         "state": "ACT",
-        "als_score": 88,
+        "propensity_score": 88,
     },
     {
         "id": uuid4(),
         "company_name": "PPC Experts",
         "postcode": "7000",
         "state": "TAS",
-        "als_score": 72,
+        "propensity_score": 72,
     },
     {
         "id": uuid4(),
         "company_name": "Brand Strategy Group",
         "postcode": "0800",
         "state": "NT",
-        "als_score": 90,
+        "propensity_score": 90,
     },
     {
         "id": uuid4(),
         "company_name": "Conversion Optimization Agency",
         "postcode": "2010",
         "state": "NSW",
-        "als_score": 65,  # Below threshold — T-DM2/T-DM3 skipped
+        "propensity_score": 65,  # Below threshold — T-DM2/T-DM3 skipped
     },
     {
         "id": uuid4(),
         "company_name": "Email Marketing Specialists",
         "postcode": "3001",
         "state": "VIC",
-        "als_score": 60,  # Below threshold — T-DM2/T-DM3 skipped
+        "propensity_score": 60,  # Below threshold — T-DM2/T-DM3 skipped
     },
 ]
 
@@ -112,7 +112,7 @@ class IntegrationTestResult:
     def __init__(self, lead: dict):
         self.lead_id = str(lead["id"])
         self.company_name = lead["company_name"]
-        self.als_score = lead["als_score"]
+        self.propensity_score = lead["propensity_score"]
 
         # Company data
         self.phone: str | None = None
@@ -143,7 +143,7 @@ class IntegrationTestResult:
         return {
             "lead_id": self.lead_id,
             "company_name": self.company_name,
-            "als_score": self.als_score,
+            "propensity_score": self.propensity_score,
             "company": {
                 "phone": self.phone,
                 "email": self.email,
@@ -213,9 +213,9 @@ async def run_waterfall_on_lead(lead: dict) -> IntegrationTestResult:
         result.total_cost_aud += COSTS_AUD["dm0_linkedin_discovery"]
 
         # Check ALS threshold for social intelligence
-        if lead["als_score"] >= 70:
+        if lead["propensity_score"] >= 70:
             # T-DM2: LinkedIn Posts
-            logger.info(f"Running T-DM2 for {lead['company_name']} (ALS={lead['als_score']})")
+            logger.info(f"Running T-DM2 for {lead['company_name']} (propensity={lead['propensity_score']})")
 
             # Note: In real test, this would call:
             # posts = await worker._tier_dm2_linkedin_posts(dm_linkedin_url)
@@ -224,7 +224,7 @@ async def run_waterfall_on_lead(lead: dict) -> IntegrationTestResult:
             result.total_cost_aud += COSTS_AUD["dm2_linkedin_posts"]
 
             # T-DM3: X Posts
-            logger.info(f"Running T-DM3 for {lead['company_name']} (ALS={lead['als_score']})")
+            logger.info(f"Running T-DM3 for {lead['company_name']} (propensity={lead['propensity_score']})")
 
             # Note: In real test, this would call:
             # x_handle = await worker._discover_x_handle(website, dm_name, registered_name)
@@ -235,7 +235,7 @@ async def run_waterfall_on_lead(lead: dict) -> IntegrationTestResult:
             # Below ALS threshold
             result.tiers_skipped.append("T_DM2_LINKEDIN_POSTS")
             result.tiers_skipped.append("T_DM3_X_POSTS")
-            logger.info(f"Skipping T-DM2/T-DM3 for {lead['company_name']} (ALS={lead['als_score']} < 70)")
+            logger.info(f"Skipping T-DM2/T-DM3 for {lead['company_name']} (propensity={lead['propensity_score']} < 70)")
 
         # T4/T5 parked
         result.tiers_skipped.append("T4_ZEROBOUNCE")
@@ -262,7 +262,7 @@ async def run_integration_test():
     total_cost = Decimal("0.00")
 
     for i, lead in enumerate(TEST_LEADS, 1):
-        logger.info(f"\n[{i}/10] Processing: {lead['company_name']} (ALS={lead['als_score']})")
+        logger.info(f"\n[{i}/10] Processing: {lead['company_name']} (propensity={lead['propensity_score']})")
         result = await run_waterfall_on_lead(lead)
         results.append(result)
         total_cost += result.total_cost_aud

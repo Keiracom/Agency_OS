@@ -205,7 +205,7 @@ async def build_full_lead_context(
             "person": {name, title, seniority, tenure_months, ...},
             "company": {name, industry, size, funding, ...},
             "signals": {hiring, recently_funded, new_in_role, ...},
-            "score": {als_score, als_tier, ...},
+            "score": {propensity_score, als_tier, ...},
             "research": {pain_points, icebreakers, ...},  # if SDK enriched
             "engagement": {touches, objections, ...},
         }

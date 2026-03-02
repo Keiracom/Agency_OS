@@ -57,7 +57,7 @@ async def score_lead_task(
         Scoring result with:
             - success: bool
             - lead_id: UUID
-            - als_score: int (0-100)
+            - propensity_score: int (0-100)
             - als_tier: str (Hot/Warm/Cool/Cold/Dead)
             - components: dict with breakdown
 
@@ -102,13 +102,13 @@ async def score_lead_task(
 
         logger.info(
             f"Successfully scored lead {lead_id}: "
-            f"ALS {score_result.data['als_score']} ({score_result.data['als_tier']})"
+            f"propensity {score_result.data['propensity_score']} ({score_result.data['als_tier']})"
         )
 
         return {
             "success": True,
             "lead_id": str(lead_id),
-            "als_score": score_result.data["als_score"],
+            "propensity_score": score_result.data["propensity_score"],
             "als_tier": score_result.data["als_tier"],
             "components": {
                 "data_quality": score_result.data.get("als_data_quality", 0),
@@ -177,7 +177,7 @@ async def score_batch_task(
             )
             failed += 1
 
-    logger.info(f"Scored {successful}/{len(lead_ids)} leads. Distribution: {tier_counts}")
+    logger.info(f"Scored {successful}/{len(lead_ids)} leads (propensity). Distribution: {tier_counts}")
 
     return {
         "total": len(lead_ids),
@@ -225,9 +225,9 @@ async def get_tier_distribution_task(
     async with get_db_session() as db:
         # Build query
         stmt = select(
-            Lead.als_tier,
+            Lead.propensity_tier,
             func.count(Lead.id).label("count"),
-            func.avg(Lead.als_score).label("avg_score"),
+            func.avg(Lead.propensity_score).label("avg_score"),
         ).where(Lead.deleted_at.is_(None))
 
         # Apply filters
@@ -237,7 +237,7 @@ async def get_tier_distribution_task(
             stmt = stmt.where(Lead.client_id == client_id)
 
         # Group by tier
-        stmt = stmt.group_by(Lead.als_tier)
+        stmt = stmt.group_by(Lead.propensity_tier)
 
         result = await db.execute(stmt)
         rows = result.all()
@@ -251,7 +251,7 @@ async def get_tier_distribution_task(
         }
 
         # Calculate average score
-        avg_score_stmt = select(func.avg(Lead.als_score)).where(Lead.deleted_at.is_(None))
+        avg_score_stmt = select(func.avg(Lead.propensity_score)).where(Lead.deleted_at.is_(None))
         if campaign_id:
             avg_score_stmt = avg_score_stmt.where(Lead.campaign_id == campaign_id)
         if client_id:

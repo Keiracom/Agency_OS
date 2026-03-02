@@ -10,7 +10,7 @@ RULES APPLIED:
 PHASE 37 CHANGES:
   - Added client_id for direct client ownership
   - Added campaign_id for direct campaign assignment
-  - Added als_score, als_tier, als_components
+  - Added propensity_score, propensity_tier, propensity_components
   - Added outreach tracking fields
 """
 
@@ -238,10 +238,13 @@ class LeadPool(Base, UUIDMixin, TimestampMixin):
     dncr_result: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     dncr_checked_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
-    # ===== ALS SCORING (Phase 37) =====
-    als_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    als_tier: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    als_components: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # ===== DUAL SCORING (Directive #153) =====
+    # reachability_score: channel deliverability (0-100)
+    # propensity_score: purchase likelihood (0-100)
+    reachability_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    propensity_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    propensity_tier: Mapped[str | None] = mapped_column(String(20), nullable=True, name="als_tier")
+    propensity_components: Mapped[dict | None] = mapped_column(JSONB, nullable=True, name="als_components")
     scored_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     # ===== OUTREACH TRACKING (Phase 37) =====
@@ -269,11 +272,11 @@ class LeadPool(Base, UUIDMixin, TimestampMixin):
     __table_args__ = (
         CheckConstraint(
             "als_tier IS NULL OR als_tier IN ('hot', 'warm', 'cool', 'cold', 'dead')",
-            name="valid_als_tier",
+            name="valid_propensity_tier",
         ),
         CheckConstraint(
             "als_score IS NULL OR (als_score >= 0 AND als_score <= 100)",
-            name="valid_als_score",
+            name="valid_propensity_score",
         ),
     )
 
@@ -311,17 +314,17 @@ class LeadPool(Base, UUIDMixin, TimestampMixin):
             and not (self.dncr_checked and self.dncr_result)
         )
 
-    def get_als_tier(self) -> str:
-        """Get ALS tier based on score."""
-        if self.als_score is None:
+    def get_propensity_tier(self) -> str:
+        """Get propensity tier based on score."""
+        if self.propensity_score is None:
             return "unscored"
-        if self.als_score >= 85:
+        if self.propensity_score >= 85:
             return "hot"
-        if self.als_score >= 60:
+        if self.propensity_score >= 60:
             return "warm"
-        if self.als_score >= 35:
+        if self.propensity_score >= 35:
             return "cool"
-        if self.als_score >= 20:
+        if self.propensity_score >= 20:
             return "cold"
         return "dead"
 
@@ -333,11 +336,11 @@ class LeadPool(Base, UUIDMixin, TimestampMixin):
 # [x] All 40+ Apollo fields from original lead_pool schema
 # [x] client_id for direct ownership (Phase 37)
 # [x] campaign_id for direct assignment (Phase 37)
-# [x] als_score, als_tier, als_components (Phase 37)
+# [x] propensity_score, propensity_tier, propensity_components (Phase 37)
 # [x] Outreach tracking fields (Phase 37)
 # [x] Pool status and email status enums
 # [x] Global flags (bounced, unsubscribed)
 # [x] Compliance fields (DNCR)
 # [x] Helper properties (is_available, is_assigned, is_contactable)
-# [x] Constraints for ALS values
+# [x] Constraints for propensity values
 # [x] No imports from engines/integrations/orchestration (Rule 12)

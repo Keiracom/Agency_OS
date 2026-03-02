@@ -547,13 +547,13 @@ Use Australian English. Be empathetic but confident."""
                     # Log but don't block - fail open (business decision)
                     logger.warning(f"DNCR check failed for voice call, proceeding: {e}")
 
-        # Validate ALS score (70+ required for voice)
-        if lead.als_score is None or lead.als_score < 70:
+        # Validate reachability score (70+ required for voice)
+        if lead.propensity_score is None or lead.propensity_score < 70:
             return EngineResult.fail(
-                error=f"ALS score too low for voice: {lead.als_score} (minimum 70)",
+                error=f"Reachability score too low for voice: {lead.propensity_score} (minimum 70)",
                 metadata={
                     "lead_id": str(lead_id),
-                    "als_score": lead.als_score,
+                    "reachability_score": lead.propensity_score,
                 },
             )
 
@@ -1002,7 +1002,7 @@ Always be respectful of their time."""
                         "name": lead.company,
                         "industry": lead.organization_industry,
                     },
-                    "score": {"als_score": lead.als_score},
+                    "score": {"propensity_score": lead.propensity_score},
                 }
 
             # Get campaign for context
@@ -1064,7 +1064,7 @@ Be specific and actionable. Return valid JSON only."""
                     metadata={
                         "cost_aud": result["cost_aud"],
                         "smart_prompt": True,
-                        "als_score": lead_context.get("score", {}).get("als_score"),
+                        "propensity_score": lead_context.get("score", {}).get("propensity_score"),
                         "has_proof_points": proof_points.get("available", False),
                     },
                 )
@@ -1084,7 +1084,7 @@ Be specific and actionable. Return valid JSON only."""
                     metadata={
                         "cost_aud": result["cost_aud"],
                         "fallback": True,
-                        "als_score": lead_context.get("score", {}).get("als_score"),
+                        "propensity_score": lead_context.get("score", {}).get("propensity_score"),
                     },
                 )
 

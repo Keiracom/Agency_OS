@@ -111,7 +111,7 @@ CHECKS = [
             "type": "db_query",
             "query": """
                 SELECT id, email, first_name, last_name, title, company_name,
-                       linkedin_url, email_status, pool_status, als_score
+                       linkedin_url, email_status, pool_status, propensity_score
                 FROM lead_pool
                 ORDER BY created_at DESC
                 LIMIT 5;

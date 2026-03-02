@@ -145,8 +145,8 @@ class LeadEngagementResponse(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     company: str | None = None
-    als_score: int | None = None
-    als_tier: str | None = None
+    propensity_score: int | None = None
+    propensity_tier: str | None = None
     open_count: int = 0
     click_count: int = 0
     reply_count: int = 0
@@ -1098,7 +1098,7 @@ class PoolAnalytics(BaseModel):
     converted: int = 0
     bounced: int = 0
     utilization_rate: float = 0.0
-    avg_als_score: float | None = None
+    avg_propensity_score: float | None = None
     tier_distribution: dict[str, int] = Field(default_factory=dict)
     industry_distribution: dict[str, int] = Field(default_factory=dict)
     email_status_distribution: dict[str, int] = Field(default_factory=dict)
@@ -1191,7 +1191,7 @@ async def get_pool_analytics(
     result = await db.execute(email_query)
     email_status_distribution = {row.status: row.count for row in result.fetchall()}
 
-    # Get average ALS score from lead_assignments (where ALS scoring happens)
+    # Get average propensity score from lead_assignments (where scoring happens)
     avg_query = text("""
         SELECT AVG(als_score) as avg_score
         FROM lead_assignments
@@ -1199,7 +1199,7 @@ async def get_pool_analytics(
     """)
     result = await db.execute(avg_query)
     row = result.fetchone()
-    avg_als_score = round(float(row.avg_score), 1) if row and row.avg_score else None
+    avg_propensity_score = round(float(row.avg_score), 1) if row and row.avg_score else None
 
     return PoolAnalytics(
         total_leads=total,
@@ -1208,7 +1208,7 @@ async def get_pool_analytics(
         converted=converted,
         bounced=bounced,
         utilization_rate=round(assigned / total * 100, 2) if total > 0 else 0.0,
-        avg_als_score=avg_als_score,
+        avg_propensity_score=avg_propensity_score,
         tier_distribution=tier_distribution,
         industry_distribution=industry_distribution,
         email_status_distribution=email_status_distribution,
@@ -1398,7 +1398,7 @@ async def get_client_pool_analytics(
             "warm": stats.warm_leads or 0,
             "cool": stats.cool_leads or 0,
         },
-        "avg_als_score": round(float(stats.avg_score), 1) if stats.avg_score else None,
+        "avg_propensity_score": round(float(stats.avg_score), 1) if stats.avg_score else None,
         "channel_usage": channel_usage,
     }
 

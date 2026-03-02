@@ -232,13 +232,13 @@ def mock_lead(mock_client: dict, mock_campaign: dict) -> dict:
         "phone": "+61412345678",
         "linkedin_url": "https://linkedin.com/in/janesmith",
         "status": "enriched",
-        "als_score": 82,
-        "als_tier": "warm",
-        "als_data_quality": 90,
-        "als_authority": 85,
-        "als_company_fit": 80,
-        "als_timing": 75,
-        "als_risk": 80,
+        "propensity_score": 82,
+        "propensity_tier": "warm",
+        "propensity_data_quality": 90,
+        "propensity_authority": 85,
+        "propensity_company_fit": 80,
+        "propensity_timing": 75,
+        "propensity_risk": 80,
         "enrichment_data": {
             "industry": "Technology",
             "company_size": "51-200",
@@ -255,31 +255,31 @@ def mock_lead(mock_client: dict, mock_campaign: dict) -> dict:
 
 @pytest.fixture
 def mock_lead_hot(mock_lead: dict) -> dict:
-    """Mock hot lead (ALS 85+)."""
+    """Mock hot lead (propensity 85+)."""
     lead = mock_lead.copy()
     lead["id"] = str(uuid.uuid4())
-    lead["als_score"] = 92
-    lead["als_tier"] = "hot"
-    lead["als_data_quality"] = 95
-    lead["als_authority"] = 95
-    lead["als_company_fit"] = 90
-    lead["als_timing"] = 88
-    lead["als_risk"] = 92
+    lead["propensity_score"] = 92
+    lead["propensity_tier"] = "hot"
+    lead["propensity_data_quality"] = 95
+    lead["propensity_authority"] = 95
+    lead["propensity_company_fit"] = 90
+    lead["propensity_timing"] = 88
+    lead["propensity_risk"] = 92
     return lead
 
 
 @pytest.fixture
 def mock_lead_cold(mock_lead: dict) -> dict:
-    """Mock cold lead (ALS 20-34)."""
+    """Mock cold lead (propensity 20-34)."""
     lead = mock_lead.copy()
     lead["id"] = str(uuid.uuid4())
-    lead["als_score"] = 28
-    lead["als_tier"] = "cold"
-    lead["als_data_quality"] = 40
-    lead["als_authority"] = 30
-    lead["als_company_fit"] = 25
-    lead["als_timing"] = 20
-    lead["als_risk"] = 25
+    lead["propensity_score"] = 28
+    lead["propensity_tier"] = "cold"
+    lead["propensity_data_quality"] = 40
+    lead["propensity_authority"] = 30
+    lead["propensity_company_fit"] = 25
+    lead["propensity_timing"] = 20
+    lead["propensity_risk"] = 25
     return lead
 
 
@@ -405,11 +405,11 @@ def mock_scout_engine() -> MagicMock:
 
 @pytest.fixture
 def mock_scorer_engine() -> MagicMock:
-    """Mock Scorer engine for ALS calculation."""
+    """Mock Scorer engine for propensity calculation."""
     engine = MagicMock()
     engine.score = AsyncMock(return_value={
-        "als_score": 82,
-        "als_tier": "warm",
+        "propensity_score": 82,
+        "propensity_tier": "warm",
         "components": {
             "data_quality": 90,
             "authority": 85,
@@ -536,6 +536,6 @@ def generate_phone() -> str:
 # [x] All engine mocks (Scout, Scorer, Allocator, etc.)
 # [x] Webhook payload fixtures (Postmark, Twilio, HeyReach)
 # [x] Authentication fixtures (user, client, membership)
-# [x] Lead fixtures with ALS tiers (hot, warm, cold)
+# [x] Lead fixtures with propensity tiers (hot, warm, cold)
 # [x] Rate limiting fixtures
 # [x] Utility functions for test data generation

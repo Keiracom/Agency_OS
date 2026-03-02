@@ -84,7 +84,7 @@ CHECKS = [
         "live_test": {
             "type": "db_query",
             "query": """
-                SELECT la.id, la.als_score, la.als_tier,
+                SELECT la.id, la.propensity_score, la.als_tier,
                        la.enrichment_data->>'pain_points' IS NOT NULL as has_pain_points,
                        la.enrichment_data->>'recent_news' IS NOT NULL as has_news,
                        la.enrichment_data->>'personalization_hooks' IS NOT NULL as has_hooks

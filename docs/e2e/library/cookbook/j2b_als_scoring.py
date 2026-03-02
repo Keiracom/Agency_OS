@@ -93,14 +93,14 @@ CHECKS = [
         "live_test": {
             "type": "db_query",
             "query": """
-                SELECT la.id, la.als_score,
+                SELECT la.id, la.propensity_score,
                        la.als_components->>'linkedin_boost' as linkedin_boost,
                        la.als_components->>'data_quality' as data_quality,
                        la.als_components->>'authority' as authority
                 FROM lead_assignments la
                 WHERE la.als_components IS NOT NULL
                 AND la.als_components->>'linkedin_boost' IS NOT NULL
-                ORDER BY la.als_score DESC
+                ORDER BY la.propensity_score DESC
                 LIMIT 10;
             """,
             "expect": {

@@ -1672,7 +1672,7 @@ Return as JSON with: {{"opening": "...", "value_prop": "...", "cta": "..."}}"""
         self,
         db: AsyncSession,
         lead_pool_id: UUID,
-        include_als_score: bool = False,
+        include_propensity_score: bool = False,
     ) -> dict[str, Any] | None:
         """
         Get lead data from pool for content generation.
@@ -1680,20 +1680,20 @@ Return as JSON with: {{"opening": "...", "value_prop": "...", "cta": "..."}}"""
         Args:
             db: Database session
             lead_pool_id: Pool lead UUID
-            include_als_score: If True, joins with lead_assignments for ALS score
+            include_propensity_score: If True, joins with lead_assignments for propensity score
 
         Returns:
             Pool lead data dict or None
         """
         from sqlalchemy import text
 
-        if include_als_score:
-            # Join with lead_assignments to get ALS score (for SDK routing)
+        if include_propensity_score:
+            # Join with lead_assignments to get propensity score (for SDK routing)
             query = text("""
                 SELECT lp.id, lp.first_name, lp.last_name, lp.title, lp.email,
                        lp.company_name, lp.company_industry, lp.company_employee_count,
                        lp.linkedin_url, lp.icebreaker_hook,
-                       la.als_score, la.als_tier,
+                       la.als_score as propensity_score, la.als_tier,
                        la.id as assignment_id
                 FROM lead_pool lp
                 LEFT JOIN lead_assignments la ON la.lead_pool_id = lp.id

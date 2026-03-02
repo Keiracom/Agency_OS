@@ -151,8 +151,8 @@ async def test_score_lead_success():
         mock_scorer.calculate_als = AsyncMock(
             return_value=EngineResult.ok(
                 data={
-                    "als_score": 85,
-                    "als_tier": "hot",
+                    "propensity_score": 85,
+                    "propensity_tier": "hot",
                 }
             )
         )
@@ -161,8 +161,8 @@ async def test_score_lead_success():
         result = await score_lead_task(lead_id)
 
         assert result["success"] is True
-        assert result["als_score"] == 85
-        assert result["als_tier"] == "hot"
+        assert result["propensity_score"] == 85
+        assert result["propensity_tier"] == "hot"
 
 
 # ============================================
@@ -326,8 +326,8 @@ async def test_daily_enrichment_flow_success():
 
         # Mock scoring
         mock_score.side_effect = [
-            {"success": True, "als_score": 85, "als_tier": "hot"},
-            {"success": True, "als_score": 65, "als_tier": "warm"},
+            {"success": True, "propensity_score": 85, "propensity_tier": "hot"},
+            {"success": True, "propensity_score": 65, "propensity_tier": "warm"},
         ]
 
         # Mock allocation

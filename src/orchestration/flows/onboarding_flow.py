@@ -754,7 +754,7 @@ async def auto_create_campaign_task(
             await db.execute(
                 text("""
                     INSERT INTO campaign_quota_status (
-                        campaign_id, client_id, target_lead_count, min_als_score
+                        campaign_id, client_id, target_lead_count, min_propensity_score
                     ) VALUES (
                         :campaign_id, :client_id, 100, 35
                     )
@@ -834,9 +834,9 @@ async def auto_allocate_pool_task(
                     LEFT JOIN lead_assignments la ON lp.id = la.lead_pool_id
                         AND la.campaign_id = :campaign_id
                     WHERE lp.pool_status = 'available'
-                    AND lp.als_score >= 35
+                    AND lp.als_score >= 35  -- propensity threshold
                     AND la.id IS NULL
-                    ORDER BY lp.als_score DESC
+                    ORDER BY lp.als_score DESC  -- ordered by propensity
                     LIMIT :limit
                 """),
                 {

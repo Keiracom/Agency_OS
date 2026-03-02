@@ -99,7 +99,7 @@ async def score_and_assign_tier(
     return EngineResult(
         success=True,
         data={
-            "als_score": raw_score,
+            "propensity_score": raw_score,
             "natural_tier": natural_tier,
             "assigned_tier": assigned_tier,
             "capped": natural_tier != assigned_tier,

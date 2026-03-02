@@ -604,7 +604,7 @@ CREATE TABLE leads (
     domain TEXT,
     
     -- ALS Score components
-    als_score INTEGER,
+    propensity_score INTEGER,
     als_tier TEXT,
     als_data_quality INTEGER,
     als_authority INTEGER,
@@ -648,7 +648,7 @@ CREATE TABLE global_suppression (
 CREATE INDEX idx_leads_client_email ON leads(client_id, email);
 CREATE INDEX idx_leads_campaign ON leads(campaign_id);
 CREATE INDEX idx_leads_status ON leads(status);
-CREATE INDEX idx_leads_als ON leads(als_score DESC);
+CREATE INDEX idx_leads_als ON leads(propensity_score DESC);
 CREATE INDEX idx_suppression_email ON global_suppression(email);
 ```
 

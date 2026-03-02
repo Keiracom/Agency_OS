@@ -290,7 +290,7 @@ class SequenceTouch(BaseModel):
     day: int                        # Day 1, Day 3, etc.
     channel: str                    # "email", "sms", etc.
     purpose: str                    # "intro", "value_add", etc.
-    condition: str | None           # "no_reply", "als_score >= 80"
+    condition: str | None           # "no_reply", "propensity_score >= 80"
     skip_if: str | None             # "phone_missing", "linkedin_missing"
     messaging_key: str              # Reference for content lookup
 
@@ -341,14 +341,14 @@ touches:
   - day: 14
     channel: voice
     purpose: discovery
-    condition: als_score >= 80 AND no_reply
+    condition: propensity_score >= 80 AND no_reply
     skip_if: phone_missing
 
 adaptive_rules:
   - "Stop sequence immediately if reply detected"
   - "Classify reply intent (interested, not_interested, meeting_request)"
   - "Accelerate next touch by 1 day if email opened 3+ times"
-  - "Add direct mail at day 10 if als_score >= 85"
+  - "Add direct mail at day 10 if propensity_score >= 85"
   - "Skip channel if required data missing (don't fail)"
 ```
 

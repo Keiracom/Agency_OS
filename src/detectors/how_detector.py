@@ -174,8 +174,8 @@ class HowDetector(BaseDetector):
                 {
                     "lead_id": lead.id,
                     "converted": lead.status == LeadStatus.CONVERTED,
-                    "als_tier": lead.als_tier,
-                    "als_score": lead.als_score,
+                    "als_tier": lead.propensity_tier,
+                    "propensity_score": lead.propensity_score,
                     "channels_used": channels_used,
                     "channel_sequence": sequence[:6],  # First 6 touches
                     "touch_count": len(acts),

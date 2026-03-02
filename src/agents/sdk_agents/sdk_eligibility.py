@@ -160,14 +160,14 @@ def should_use_sdk_enrichment(lead_data: dict[str, Any]) -> tuple[bool, list[str
     Average mid-market contacts have no press/podcast coverage.
 
     Args:
-        lead_data: Dict with lead info including als_score and company data
+        lead_data: Dict with lead info including propensity_score and company data
 
     Returns:
         Tuple of (eligible: bool, signals: list[str])
     """
-    # Gate 1: Must be Hot (ALS >= 85)
-    als_score = lead_data.get("als_score") or 0
-    if als_score < HOT_THRESHOLD:
+    # Gate 1: Must be Hot (reachability >= 85)
+    reachability_score = lead_data.get("reachability_score") or 0
+    if reachability_score < HOT_THRESHOLD:
         return False, []
 
     signals: list[str] = []
@@ -252,32 +252,32 @@ def should_use_sdk_email(lead_data: dict[str, Any]) -> bool:
     """
     Check if lead qualifies for SDK EMAIL (all Hot).
 
-    Simple check: ALS >= 85
+    Simple check: reachability >= 85
 
     Args:
-        lead_data: Dict with lead info including als_score
+        lead_data: Dict with lead info including reachability_score
 
     Returns:
         True if lead is Hot tier
     """
-    als_score = lead_data.get("als_score") or 0
-    return als_score >= HOT_THRESHOLD
+    reachability_score = lead_data.get("reachability_score") or 0
+    return reachability_score >= HOT_THRESHOLD
 
 
 def should_use_sdk_voice_kb(lead_data: dict[str, Any]) -> bool:
     """
     Check if lead qualifies for SDK VOICE KB (all Hot).
 
-    Simple check: ALS >= 85
+    Simple check: reachability >= 85
 
     Args:
-        lead_data: Dict with lead info including als_score
+        lead_data: Dict with lead info including reachability_score
 
     Returns:
         True if lead is Hot tier
     """
-    als_score = lead_data.get("als_score") or 0
-    return als_score >= HOT_THRESHOLD
+    reachability_score = lead_data.get("reachability_score") or 0
+    return reachability_score >= HOT_THRESHOLD
 
 
 def get_sdk_coverage_estimate(total_leads: int, hot_percentage: float = 0.10) -> dict[str, Any]:

@@ -263,7 +263,7 @@
     "users": {"verify_columns": ["id", "email", "full_name"]},
     "clients": {"verify_columns": ["id", "name", "tier", "subscription_status", "credits_remaining", "icp_confirmed_at"]},
     "memberships": {"verify_columns": ["id", "user_id", "client_id", "role", "accepted_at"]},
-    "leads": {"verify_columns": ["id", "client_id", "email", "als_score", "als_tier", "status"]},
+    "leads": {"verify_columns": ["id", "client_id", "email", "propensity_score", "als_tier", "status"]},
     "campaigns": {"verify_columns": ["id", "client_id", "name", "status"]},
     "activities": {"verify_columns": ["id", "lead_id", "channel", "action"]},
     "icp_extraction_jobs": {"verify_columns": ["id", "client_id", "status", "extracted_icp"]}

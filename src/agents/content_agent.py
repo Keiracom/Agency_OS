@@ -546,7 +546,7 @@ Adapt your tone based on:
             return "friendly"
 
         # ALS tier consideration
-        if lead.als_score and lead.als_score >= 85:  # Hot tier
+        if lead.propensity_score and lead.propensity_score >= 85:  # Hot tier
             return "direct"  # Confident approach for high-quality leads
 
         # Default to friendly for mid-level

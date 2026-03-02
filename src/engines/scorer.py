@@ -359,7 +359,7 @@ class ScorerEngine(BaseEngine):
 
         # Build result
         score_breakdown = {
-            "als_score": total_score,
+            "propensity_score": total_score,
             "als_tier": tier,
             "als_data_quality": raw_data_quality,
             "als_authority": raw_authority,
@@ -435,7 +435,7 @@ class ScorerEngine(BaseEngine):
                 if result.success:
                     results["scored"] += 1
                     tier = result.data["als_tier"]
-                    score = result.data["als_score"]
+                    score = result.data["propensity_score"]
                     total_score += score
                     results["tier_distribution"][tier] += 1
                     results["scored_leads"].append(
@@ -1096,9 +1096,9 @@ class ScorerEngine(BaseEngine):
         client_id: UUID,
     ) -> dict[str, float] | None:
         """
-        Get learned ALS weights for a client.
+        Get learned propensity weights for a client.
 
-        Phase 16: Checks client's als_learned_weights first,
+        Phase 16: Checks client's propensity_learned_weights first,
         then falls back to WHO pattern's recommended weights.
 
         Args:
@@ -1113,8 +1113,8 @@ class ScorerEngine(BaseEngine):
         client_result = await db.execute(client_stmt)
         client = client_result.scalar_one_or_none()
 
-        if client and client.als_learned_weights:
-            return client.als_learned_weights
+        if client and client.propensity_learned_weights:
+            return client.propensity_learned_weights
 
         # Fall back to WHO pattern's recommended weights
         pattern_stmt = select(ConversionPattern).where(
@@ -1725,7 +1725,7 @@ class ScorerEngine(BaseEngine):
             update(Lead)
             .where(Lead.id == lead.id)
             .values(
-                als_score=score_data["als_score"],
+                als_score=score_data["propensity_score"],
                 als_tier=score_data["als_tier"],
                 als_data_quality=score_data["als_data_quality"],
                 als_authority=score_data["als_authority"],
@@ -1767,11 +1767,11 @@ class ScorerEngine(BaseEngine):
             .where(
                 and_(
                     Lead.client_id == client_id,
-                    Lead.als_tier == tier,
+                    Lead.propensity_tier == tier,
                     Lead.deleted_at.is_(None),  # Soft delete check
                 )
             )
-            .order_by(Lead.als_score.desc())
+            .order_by(Lead.propensity_score.desc())
             .limit(limit)
         )
         result = await db.execute(stmt)
@@ -1876,7 +1876,7 @@ class ScorerEngine(BaseEngine):
 
         # Build result
         score_breakdown = {
-            "als_score": total_score,
+            "propensity_score": total_score,
             "als_tier": tier,
             "als_data_quality": raw_data_quality,
             "als_authority": raw_authority,
@@ -1968,7 +1968,7 @@ class ScorerEngine(BaseEngine):
                 if result.success:
                     results["scored"] += 1
                     tier = result.data["als_tier"]
-                    score = result.data["als_score"]
+                    score = result.data["propensity_score"]
                     total_score += score
                     results["tier_distribution"][tier] += 1
                     results["scored_leads"].append(
@@ -2073,7 +2073,7 @@ class ScorerEngine(BaseEngine):
                 if result.success:
                     results["scored"] += 1
                     tier = result.data["als_tier"]
-                    score = result.data["als_score"]
+                    score = result.data["propensity_score"]
                     total_score += score
                     results["tier_distribution"][tier] += 1
                     results["scored_leads"].append(
@@ -2219,7 +2219,7 @@ class ScorerEngine(BaseEngine):
         # Build result
         lead_pool_uuid = UUID(str(lead_pool_id)) if lead_pool_id else None
         score_breakdown = {
-            "als_score": total_score,
+            "propensity_score": total_score,
             "als_tier": tier,
             "als_data_quality": raw_data_quality,
             "als_authority": raw_authority,
@@ -2339,7 +2339,7 @@ class ScorerEngine(BaseEngine):
             query,
             {
                 "assignment_id": str(assignment_id),
-                "als_score": score_data["als_score"],
+                "als_score": score_data["propensity_score"],
                 "als_tier": score_data["als_tier"],
                 "als_components": json.dumps(score_data.get("als_components", {})),
                 "als_weights_used": json.dumps(score_data.get("als_weights_used", {})),
@@ -2638,7 +2638,7 @@ class ScorerEngine(BaseEngine):
             query,
             {
                 "id": str(lead_pool_id),
-                "als_score": score_data["als_score"],
+                "als_score": score_data["propensity_score"],
                 "als_tier": score_data["als_tier"],
                 "als_components": json.dumps(score_data.get("als_components", {})),
             },

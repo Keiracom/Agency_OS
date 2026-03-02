@@ -203,7 +203,7 @@ class VoicePostCallProcessor:
             client_id = call_data.get("client_id")
             campaign_id = call_data.get("campaign_id")
             hook_used = call_data.get("hook_used")
-            als_score_at_call = call_data.get("als_score_at_call")
+            propensity_score_at_call = call_data.get("propensity_score_at_call")
 
             # Step 2: Classify outcome via Claude Haiku
             classification = await self._classify_outcome(transcript, raw_outcome)
@@ -291,17 +291,17 @@ class VoicePostCallProcessor:
             # Handle VOICEMAIL and NO_ANSWER - no special routing needed
             # Voice retry service handles rescheduling separately
 
-            # Step 5: Update ALS score if adjustment needed
+            # Step 5: Update propensity score if adjustment needed
             if als_adjustment != 0 and lead_id:
-                await self._adjust_als_score(lead_id, als_adjustment)
-                actions_taken.append(f"als_adjusted_{als_adjustment:+d}")
+                await self._adjust_propensity_score(lead_id, als_adjustment)
+                actions_taken.append(f"propensity_adjusted_{als_adjustment:+d}")
 
             # Step 6: Write to CIS feed for learning
             await self._write_cis_feed(
                 call_sid=call_sid,
                 outcome=outcome,
                 hook_used=hook_used,
-                als_score_at_call=als_score_at_call,
+                propensity_score_at_call=propensity_score_at_call,
                 client_id=client_id,
             )
             actions_taken.append("cis_feed_updated")
@@ -610,7 +610,7 @@ Return JSON classification only."""
                     vc.client_id,
                     vc.campaign_id,
                     vc.hook_used,
-                    lp.als_score as als_score_at_call,
+                    lp.als_score as propensity_score_at_call,
                     lp.first_name as lead_first_name,
                     lp.phone as lead_phone,
                     lp.email as lead_email,
@@ -1097,16 +1097,16 @@ Return JSON classification only."""
         return actions
 
     # =========================================================================
-    # ALS & CIS
+    # PROPENSITY SCORING & CIS
     # =========================================================================
 
-    async def _adjust_als_score(
+    async def _adjust_propensity_score(
         self,
         lead_id: UUID,
         adjustment: int,
     ) -> None:
         """
-        Adjust ALS score for a lead.
+        Adjust propensity score for a lead.
 
         Args:
             lead_id: Lead UUID
@@ -1122,14 +1122,14 @@ Return JSON classification only."""
             """),
             {"lead_id": str(lead_id), "adjustment": adjustment},
         )
-        logger.info(f"Adjusted ALS score for lead {lead_id} by {adjustment:+d}")
+        logger.info(f"Adjusted propensity score for lead {lead_id} by {adjustment:+d}")
 
     async def _write_cis_feed(
         self,
         call_sid: str,
         outcome: str,
         hook_used: str | None,
-        als_score_at_call: int | None,
+        propensity_score_at_call: int | None,
         client_id: UUID | None,
     ) -> None:
         """
@@ -1139,7 +1139,7 @@ Return JSON classification only."""
             call_sid: Call identifier
             outcome: Call outcome
             hook_used: Voice hook/script used
-            als_score_at_call: ALS score at time of call
+            propensity_score_at_call: Propensity score at time of call
             client_id: Client UUID
         """
         try:
@@ -1159,7 +1159,7 @@ Return JSON classification only."""
                             "call_sid": call_sid,
                             "outcome": outcome,
                             "hook_used": hook_used,
-                            "als_score_at_call": als_score_at_call,
+                            "propensity_score_at_call": propensity_score_at_call,
                         }
                     ),
                 },

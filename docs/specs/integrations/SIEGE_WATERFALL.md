@@ -158,7 +158,7 @@ result = await waterfall.enrich(
         "domain": "acme.com.au",
         "state": "NSW",
     },
-    als_score=75,  # Determines if Tier 5 runs
+    propensity_score=75,  # Determines if Tier 5 runs
 )
 
 # Result contains
@@ -197,5 +197,5 @@ class EnrichmentResult:
     total_cost_aud: float
     sources_used: int
     als_bonus_applied: bool
-    final_als_score: int | None
+    final_propensity_score: int | None
 ```

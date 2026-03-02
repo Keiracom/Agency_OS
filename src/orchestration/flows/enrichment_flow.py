@@ -274,9 +274,9 @@ async def score_lead_task(lead_id: str) -> dict[str, Any]:
         result = await scorer_engine.calculate_als(db=db, lead_id=lead_uuid)
 
         if result.success:
-            als_score = result.data["als_score"]
+            propensity_score = result.data["propensity_score"]
             als_tier = result.data["als_tier"]
-            logger.info(f"Lead {lead_id} scored: {als_score} ({als_tier} tier)")
+            logger.info(f"Lead {lead_id} scored: {propensity_score} ({als_tier} tier)")
 
             # Check if Hot lead needs SDK enrichment
             # Fetch lead for signal check
@@ -286,9 +286,9 @@ async def score_lead_task(lead_id: str) -> dict[str, Any]:
 
             sdk_eligible = False
             sdk_signals = []
-            if lead and als_score >= 85:  # Hot threshold
+            if lead and propensity_score >= 85:  # Hot threshold
                 lead_data = {
-                    "als_score": als_score,
+                    "reachability_score": propensity_score,
                     "company_latest_funding_date": lead.organization_latest_funding_date,
                     "company_open_roles": 3 if lead.organization_is_hiring else 0,
                     "company_employee_count": lead.organization_employee_count,
@@ -299,7 +299,7 @@ async def score_lead_task(lead_id: str) -> dict[str, Any]:
             return {
                 "lead_id": lead_id,
                 "success": True,
-                "als_score": als_score,
+                "propensity_score": propensity_score,
                 "als_tier": als_tier,
                 "sdk_eligible": sdk_eligible,
                 "sdk_signals": sdk_signals,
@@ -310,7 +310,7 @@ async def score_lead_task(lead_id: str) -> dict[str, Any]:
             return {
                 "lead_id": lead_id,
                 "success": False,
-                "als_score": None,
+                "propensity_score": None,
                 "als_tier": None,
                 "sdk_eligible": False,
                 "sdk_signals": [],
@@ -338,7 +338,7 @@ async def allocate_channels_for_lead_task(lead_id: str, als_tier: str) -> dict[s
         allocator_engine = get_allocator_engine()
         lead_uuid = UUID(lead_id)
 
-        # Fetch lead to get current ALS score
+        # Fetch lead to get current reachability score
         lead = await db.get(Lead, lead_uuid)
         if not lead:
             return {
@@ -348,8 +348,8 @@ async def allocate_channels_for_lead_task(lead_id: str, als_tier: str) -> dict[s
             }
 
         # P1 Fix: Use canonical channel access from tiers.py (single source of truth)
-        als_score = lead.als_score or 0
-        available_channels = get_available_channels_enum(als_score)
+        reachability_score = lead.propensity_score or 0
+        available_channels = get_available_channels_enum(reachability_score)
 
         if not available_channels:
             return {

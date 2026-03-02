@@ -221,7 +221,7 @@ export function LeadEnrichmentCard({
     return <EnrichmentCardEmpty />;
   }
 
-  const isHotLead = lead.als_tier === "hot" || (lead.als_score && lead.als_score >= 85);
+  const isHotLead = lead.propensity_tier === "hot" || (lead.propensity_score && lead.propensity_score >= 85);
   const hasSDKEnrichment = lead.sdk_enriched_at !== null;
 
   return (

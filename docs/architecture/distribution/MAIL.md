@@ -37,7 +37,7 @@ def should_send_direct_mail(lead: Lead) -> bool:
     Determine if lead qualifies for direct mail.
     """
     return (
-        lead.als_score >= 90                    # Ultra-hot
+        lead.propensity_score >= 90                    # Ultra-hot
         or lead.company_employee_count >= 500   # Enterprise
         or lead.title in EXECUTIVE_TITLES       # C-suite
         or lead.deal_value_estimate >= 50000    # High value

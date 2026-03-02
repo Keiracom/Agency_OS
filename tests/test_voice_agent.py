@@ -121,8 +121,8 @@ def mock_lead_pool():
         "phone": "+61412345678",
         "linkedin_url": "https://linkedin.com/in/janesmith",
         "status": "enriched",
-        "als_score": 82,
-        "als_tier": "warm",
+        "propensity_score": 82,
+        "propensity_tier": "warm",
         "timezone": "Australia/Perth",
         "dncr_checked": True,
         "dncr_result": False,  # Not on DNCR
@@ -560,9 +560,9 @@ class VoiceAgentService:
                     .execute()
                 result.lead_status_updated = True
 
-            # Adjust ALS score for booked outcome
+            # Adjust propensity score for booked outcome
             if self.als_service:
-                current_score = lead.get("als_score", 0)
+                current_score = lead.get("propensity_score", 0)
                 new_score = min(100, current_score + self.ALS_BOOKED_ADJUSTMENT)
 
                 await self.als_service.adjust_score(
@@ -585,7 +585,7 @@ class VoiceAgentService:
                 # Also update in Supabase if available
                 if self.supabase:
                     await self.supabase.table("lead_pool") \
-                        .update({"als_score": new_score}) \
+                        .update({"propensity_score": new_score}) \
                         .eq("id", lead["id"]) \
                         .execute()
 
@@ -1431,29 +1431,29 @@ class TestEscalationHandling:
         assert alert_call_args.kwargs["call_id"] == "call_escalation_001"
 
 
-class TestALSScoreAdjustment:
-    """Test ALS score adjustments based on call outcomes."""
+class TestPropensityScoreAdjustment:
+    """Test propensity score adjustments based on call outcomes."""
 
     @pytest.mark.asyncio
-    async def test_als_score_updated_on_booked_outcome(
+    async def test_propensity_score_updated_on_booked_outcome(
         self, mock_lead_pool, mock_supabase_client, mock_als_service,
         mock_telnyx_client, mock_resend_client
     ):
         """
-        Test that ALS score is increased when a meeting is booked.
+        Test that propensity score is increased when a meeting is booked.
         
         Per CEO directive: Positive outcomes should boost lead scores.
         
         Validates:
-        - BOOKED outcome triggers +15 ALS adjustment
-        - ALS adjustment is logged for audit trail
-        - lead_pool.als_score is updated in database
+        - BOOKED outcome triggers +15 propensity adjustment
+        - Adjustment is logged for audit trail
+        - lead_pool.propensity_score is updated in database
         """
-        # Track updates to verify ALS score change
-        als_updates = []
+        # Track updates to verify propensity score change
+        propensity_updates = []
 
         def track_update(data):
-            als_updates.append(data)
+            propensity_updates.append(data)
             return MagicMock(eq=MagicMock(return_value=MagicMock(
                 execute=AsyncMock(return_value=MagicMock(data=data))
             )))
@@ -1462,8 +1462,8 @@ class TestALSScoreAdjustment:
         mock_table.update = track_update
         mock_supabase_client.table = MagicMock(return_value=mock_table)
 
-        # Set initial ALS score
-        mock_lead_pool["als_score"] = 82
+        # Set initial propensity score
+        mock_lead_pool["propensity_score"] = 82
 
         service = VoiceAgentService(
             supabase_client=mock_supabase_client,
@@ -1511,12 +1511,12 @@ class TestALSScoreAdjustment:
         assert log_call_args.kwargs["call_id"] == "call_booked_001"
 
         # Verify database was updated with new score
-        als_score_update = next(
-            (u for u in als_updates if "als_score" in u),
+        propensity_score_update = next(
+            (u for u in propensity_updates if "propensity_score" in u),
             None
         )
-        assert als_score_update is not None
-        assert als_score_update["als_score"] == 97
+        assert propensity_score_update is not None
+        assert propensity_score_update["propensity_score"] == 97
 
 
 class TestWebhookSecurity:
@@ -1632,6 +1632,6 @@ class TestWebhookSecurity:
 # [x] test_post_call_processor_booked_outcome_fires_calendly
 # [x] test_post_call_processor_unsubscribe_suppresses_all_channels
 # [x] test_post_call_processor_escalation_notifies_agency_owner
-# [x] test_als_score_updated_on_booked_outcome
+# [x] test_propensity_score_updated_on_booked_outcome
 # [x] test_webhook_signature_verification_rejects_invalid
 # [x] Additional edge cases and boundary tests

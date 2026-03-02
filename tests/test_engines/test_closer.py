@@ -87,7 +87,7 @@ class MockLead:
         self.title = kwargs.get("title", "CEO")
         self.company = kwargs.get("company", "Test Company")
         self.status = kwargs.get("status", LeadStatus.IN_SEQUENCE)
-        self.als_score = kwargs.get("als_score", 75)
+        self.propensity_score = kwargs.get("propensity_score", 75)
         self.last_replied_at = kwargs.get("last_replied_at")
         self.reply_count = kwargs.get("reply_count", 0)
         self.next_outreach_at = kwargs.get("next_outreach_at")

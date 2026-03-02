@@ -295,7 +295,7 @@ async def optimize_weights_backfill_task(client_id: str) -> dict[str, Any]:
                     update(Client)
                     .where(Client.id == client_uuid)
                     .values(
-                        als_learned_weights=result["weights"],
+                        propensity_learned_weights=result["weights"],
                         als_weights_updated_at=now,
                         conversion_sample_count=result["sample_size"],
                         updated_at=now,

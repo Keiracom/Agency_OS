@@ -191,8 +191,9 @@ class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     icp_keywords: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
     icp_exclusions: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
 
-    # ALS weights (customized scoring)
-    als_weights: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Propensity weights (customized scoring)
+    propensity_weights: Mapped[dict | None] = mapped_column(JSON, nullable=True, name="als_weights")
+    propensity_learned_weights: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # Branding (for signatures, personalization)
     branding: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=dict)

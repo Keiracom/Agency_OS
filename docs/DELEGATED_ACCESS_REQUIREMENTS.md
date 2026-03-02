@@ -55,10 +55,9 @@
 ### Enrichment / Data
 | Platform | Purpose | Env Vars |
 |----------|---------|----------|
-| Hunter | Email finder | `HUNTER_API_KEY` |
 | Prospeo | Email verification | `PROSPEO_API_KEY` |
 | DataForSEO | SEO data, SERP | `DATAFORSEO_LOGIN`, `DATAFORSEO_PASSWORD` |
-| Apify | Web scraping | `APIFY_API_KEY` |
+| BrightData | Web scraping, GMB data | `BRIGHTDATA_API_KEY` |
 | ABN Lookup | Australian business registry | `ABN_LOOKUP_GUID` |
 | Brave | Web search | `BRAVE_API_KEY` |
 
@@ -106,7 +105,6 @@
 | **ElevenLabs** | API Key | No | Never | Profile → API Keys → Copy |
 | **Vapi** | API Key | No | Never | Dashboard → API → Copy |
 | **Resend** | API Key | No | Never | Dashboard → API Keys → Create |
-| **Hunter** | API Key | No | Never | Dashboard → API → Copy |
 | **Prospeo** | API Key | No | Never | Settings → API → Copy |
 | **Brave** | API Key | No | Never | API Dashboard → Keys → Create |
 | **Apify** | API Key | No | Never | Settings → Integrations → API Token |
@@ -252,7 +250,6 @@ secrets/
 │   ├── unipile_api_key
 │   └── heyreach_api_key
 ├── enrichment/
-│   ├── hunter_api_key
 │   ├── prospeo_api_key
 │   ├── dataforseo_credentials
 │   ├── apify_api_key
@@ -401,7 +398,6 @@ Dave completes this checklist once to enable full Elliottbot autonomy:
 - [ ] Unipile: Copy API key
 
 ### Phase 6: Enrichment
-- [ ] Hunter: Copy API key
 - [ ] Prospeo: Copy API key
 - [ ] DataForSEO: Copy login + password
 - [ ] Apify: Copy API token

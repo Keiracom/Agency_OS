@@ -1,31 +1,39 @@
 """
 FILE: src/integrations/siege_waterfall.py
-PURPOSE: Unified 4-tier Australian B2B enrichment waterfall
+PURPOSE: Siege Waterfall v3 - Multi-tier Australian B2B enrichment (Directive #144)
 PHASE: SIEGE (System Overhaul)
 TASK: SIEGE-001
 DEPENDENCIES:
   - src/config/settings.py
   - src/exceptions.py
   - src/integrations/leadmagic.py
+  - src/integrations/bright_data_client.py
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 4: Validation threshold 0.70
   - LAW II: All costs in $AUD
 
-SIEGE CONTEXT:
-  This is the unified enrichment interface that replaces Apollo as the
-  single source of truth for lead enrichment. It orchestrates a 4-tier
-  waterfall with cost tracking and graceful degradation.
+SIEGE WATERFALL V3 TIERS (Directive #144):
+  T0:    GMB-first discovery (handled in discovery_modes.py) - $0.001/record
+  T1:    ABN Bulk (data.gov.au) - FREE
+  T1→T1.5: LinkedIn URL resolution - $0.0015 | Gate: None (always runs) [Directive #148]
+  T1.5:  BD LinkedIn Company - $0.025 | Gate: ICP pass
+  T2:    SKIP (T0/T2 merged) - T0 already has GMB data
+  T2.5:  BD GMB Reviews - $0.001 | Gate: Propensity ≥70
+  T3:    Leadmagic email - $0.015 | Gate: ICP pass
+  T-DM0: DataForSEO (5 endpoints) - $0.0465 | Gate: ICP pass
+  T-DM1: BD LinkedIn Profile - $0.0015 | Gate: ICP pass
+  T-DM2: BD LinkedIn Posts 90d - $0.0015 | Gate: Propensity ≥70
+  T-DM2b: Company LI posts (from T1.5) - FREE | Gate: Propensity ≥70
+  T-DM3: BD X Posts 90d - $0.0025 | Gate: Propensity ≥70
+  T5:    Leadmagic mobile - $0.077 | Gate: Reachability needs mobile channel
 
-  Tier 1: ABN Bulk (data.gov.au) - FREE
-  Tier 2: GMB/Ads Signals (Bright Data) - $0.006/lead AUD
-  Tier 3: Leadmagic email finder - $0.015/lead AUD (ALS >= 35)
-  Tier 5: Leadmagic mobile finder - $0.077/lead AUD (ALS >= 85)
+DUAL SCORING:
+  - Reachability (0-100): Can we reach them? (verified channels)
+  - Propensity (0-100+): Will they buy? (intent signals + ICP fit)
 
-  Weighted Average: ~$0.098/lead vs Apollo $0.50+
-
-  NOTE: Leadmagic plan unpurchased - API key present but 0 credits.
-        Use LEADMAGIC_MOCK=true for testing without credits.
+NOTE: Leadmagic plan unpurchased - API key present but 0 credits.
+      Use LEADMAGIC_MOCK=true for testing without credits.
 """
 
 from __future__ import annotations
@@ -122,21 +130,39 @@ class EnrichmentSkippedError(IntegrationError):
 
 
 class EnrichmentTier(StrEnum):
-    """Enrichment tier identifiers."""
+    """Enrichment tier identifiers - Siege Waterfall v3 (Directive #144)."""
 
-    ABN = "tier1_abn"
-    GMB = "tier2_gmb"
-    LEADMAGIC_EMAIL = "tier3_leadmagic_email"
-    IDENTITY = "tier5_identity"
+    # Core tiers
+    ABN = "tier1_abn"  # T1: ABN verification (FREE)
+    LINKEDIN_COMPANY = "tier1_5_linkedin_company"  # T1.5: BD LinkedIn Company ($0.025)
+    GMB = "tier2_gmb"  # T2: SKIP if T0 has GMB data (T0/T2 merge)
+    GMB_REVIEWS = "tier2_5_gmb_reviews"  # T2.5: BD GMB Reviews ($0.001, Prop ≥70)
+    LEADMAGIC_EMAIL = "tier3_leadmagic_email"  # T3: Leadmagic email ($0.015)
+
+    # Decision Maker tiers
+    DM_DATAFORSEO = "tier_dm0_dataforseo"  # T-DM0: DataForSEO 5 endpoints ($0.0465)
+    DM_LINKEDIN_PROFILE = "tier_dm1_linkedin_profile"  # T-DM1: BD LinkedIn Profile ($0.0015)
+    DM_LINKEDIN_POSTS = "tier_dm2_linkedin_posts"  # T-DM2: BD LinkedIn Posts 90d ($0.0015, Prop ≥70)
+    DM_COMPANY_POSTS = "tier_dm2b_company_posts"  # T-DM2b: Company LI posts (FREE from T1.5)
+    DM_X_POSTS = "tier_dm3_x_posts"  # T-DM3: BD X Posts 90d ($0.0025, Prop ≥70)
+
+    # Identity tier
+    IDENTITY = "tier5_identity"  # T5: Leadmagic mobile ($0.077, Reachability needs mobile)
 
 
-# Cost per lead in $AUD (LAW II compliance)
-# Updated for Leadmagic (replaces Hunter T3 + Kaspr T5)
+# Cost per lead in $AUD (LAW II compliance) - Siege Waterfall v3
 TIER_COSTS_AUD: dict[EnrichmentTier, float] = {
     EnrichmentTier.ABN: 0.00,  # FREE - data.gov.au
-    EnrichmentTier.GMB: 0.006,  # Google Maps signals (Bright Data)
-    EnrichmentTier.LEADMAGIC_EMAIL: 0.015,  # Leadmagic email finder
-    EnrichmentTier.IDENTITY: 0.077,  # Leadmagic mobile finder
+    EnrichmentTier.LINKEDIN_COMPANY: 0.025,  # T1.5: BD LinkedIn Company
+    EnrichmentTier.GMB: 0.001,  # T2: Google Maps (DEPRECATED - skipped if T0 has data)
+    EnrichmentTier.GMB_REVIEWS: 0.001,  # T2.5: BD GMB Reviews
+    EnrichmentTier.LEADMAGIC_EMAIL: 0.015,  # T3: Leadmagic email finder
+    EnrichmentTier.DM_DATAFORSEO: 0.0465,  # T-DM0: DataForSEO (5 endpoints)
+    EnrichmentTier.DM_LINKEDIN_PROFILE: 0.0015,  # T-DM1: BD LinkedIn Profile
+    EnrichmentTier.DM_LINKEDIN_POSTS: 0.0015,  # T-DM2: BD LinkedIn Posts 90d
+    EnrichmentTier.DM_COMPANY_POSTS: 0.00,  # T-DM2b: FREE (reuses T1.5 field)
+    EnrichmentTier.DM_X_POSTS: 0.0025,  # T-DM3: BD X Posts 90d
+    EnrichmentTier.IDENTITY: 0.077,  # T5: Leadmagic mobile finder
 }
 
 # Minimum sources for ALS bonus
@@ -568,19 +594,32 @@ class SiegeWaterfall:
         gmb_scraper: GMBScraperAdapter | None = None,
         leadmagic_email_client: LeadmagicEmailAdapter | None = None,
         leadmagic_mobile_client: LeadmagicMobileClient | None = None,
+        bright_data_client=None,
     ):
         """
-        Initialize Siege Waterfall with optional client overrides.
+        Initialize Siege Waterfall v3 with optional client overrides.
 
         Args:
             abn_client: ABN Bulk client (uses default if None)
             gmb_scraper: GMB scraper adapter (uses default if None)
             leadmagic_email_client: Leadmagic email client adapter (uses default if None)
             leadmagic_mobile_client: Leadmagic mobile client (uses default if None)
+            bright_data_client: Bright Data client for T1.5, T2.5, T-DM tiers
         """
         self.abn_client = abn_client or ABNClientStub()
         self.gmb_scraper = gmb_scraper or GMBScraperAdapter()
         self.leadmagic_email_client = leadmagic_email_client or LeadmagicEmailAdapter()
+
+        # Siege Waterfall v3: Bright Data client for new tiers
+        if bright_data_client:
+            self.bright_data_client = bright_data_client
+        else:
+            try:
+                from src.integrations.bright_data_client import get_bright_data_client
+                self.bright_data_client = get_bright_data_client()
+            except Exception as e:
+                logger.warning(f"[Siege] Bright Data client unavailable: {e}")
+                self.bright_data_client = None
 
         # Use real Leadmagic mobile client if available (Tier 5 - optional)
         # Leadmagic mobile requires LEADMAGIC_API_KEY; if missing, Tier 5 is simply unavailable
@@ -602,6 +641,7 @@ class SiegeWaterfall:
         lead: dict[str, Any],
         skip_tiers: list[EnrichmentTier] | None = None,
         force_tier5: bool = False,
+        icp_criteria: dict[str, Any] | None = None,
     ) -> EnrichmentResult:
         """
         Full 5-tier enrichment cascade.
@@ -628,6 +668,7 @@ class SiegeWaterfall:
         """
         started_at = datetime.now(UTC).isoformat()
         skip_tiers = skip_tiers or []
+        icp_criteria = icp_criteria or {}
 
         # Validate we have something to work with
         if not any(
@@ -649,6 +690,8 @@ class SiegeWaterfall:
         tier_results: list[TierResult] = []
         enriched_data: dict[str, Any] = dict(lead)  # Start with original
         total_cost_aud = 0.0
+        # CEO Directive #149: Track field conflicts for provenance lineage
+        field_conflicts: list[dict[str, Any]] = []
 
         # Current ALS score (may be passed in or calculated)
         current_als = lead.get("als_score", 0)
@@ -658,7 +701,10 @@ class SiegeWaterfall:
             result = await self.tier1_abn(enriched_data)
             tier_results.append(result)
             if result.success:
-                enriched_data = self._merge_data(enriched_data, result.data)
+                enriched_data = self._merge_data(
+                    enriched_data, result.data,
+                    source=result.tier.value, conflicts=field_conflicts
+                )
                 total_cost_aud += result.cost_aud
         else:
             tier_results.append(
@@ -670,13 +716,186 @@ class SiegeWaterfall:
                 )
             )
 
-        # ===== TIER 2: GMB/Ads Signals =====
-        if EnrichmentTier.GMB not in skip_tiers:
-            result = await self.tier2_gmb(enriched_data)
+        # ===== LINKEDIN URL RESOLUTION =====
+        # Directive #148: Resolve LinkedIn URL before T1.5
+        if not enriched_data.get("company_linkedin_url") and not enriched_data.get(
+            "linkedin_company_url"
+        ):
+            url_result = await self.resolve_linkedin_url(enriched_data)
+            if url_result.success:
+                enriched_data = self._merge_data(
+                    enriched_data, url_result.data,
+                    source="linkedin_url_resolution", conflicts=field_conflicts
+                )
+                total_cost_aud += url_result.cost_aud
+            elif url_result.data.get("linkedin_url_unknown"):
+                # Tag that we tried but couldn't find LinkedIn URL
+                enriched_data["linkedin_url_unknown"] = True
+            # Don't append to tier_results - this is a helper step, not a full tier
+
+        # ===== TIER 1.5: BD LinkedIn Company =====
+        if EnrichmentTier.LINKEDIN_COMPANY not in skip_tiers:
+            result = await self.tier1_5_linkedin_company(enriched_data, icp_passed=True)
             tier_results.append(result)
             if result.success:
-                enriched_data = self._merge_data(enriched_data, result.data)
+                enriched_data = self._merge_data(
+                    enriched_data, result.data,
+                    source=result.tier.value, conflicts=field_conflicts
+                )
                 total_cost_aud += result.cost_aud
+        else:
+            tier_results.append(
+                TierResult(
+                    tier=EnrichmentTier.LINKEDIN_COMPANY,
+                    success=False,
+                    skipped=True,
+                    skip_reason="Tier skipped by request",
+                )
+            )
+
+        # ===== POST-T1.5 SIZE GATE =====
+        # CEO Directive #144 Addendum 2: Size filtering immediately after T1.5
+        # CEO Directive #148: Don't HELD if LinkedIn URL wasn't found (linkedin_url_unknown)
+        employee_count = (
+            enriched_data.get("linkedin_company_size")
+            or enriched_data.get("company_size")
+            or enriched_data.get("employee_count")
+        )
+
+        # Directive #148: If we couldn't find a LinkedIn URL, continue without T1.5
+        # Tag the lead but don't HELD - they can still be enriched via other channels
+        if enriched_data.get("linkedin_url_unknown"):
+            enriched_data["size_gate_skipped"] = True
+            enriched_data["size_gate_skip_reason"] = "LinkedIn URL not found via SERP"
+            logger.info(
+                "[SIZE_GATE] Skipping size gate - LinkedIn URL not found (Directive #148)"
+            )
+            # Continue to other tiers without employee count filtering
+        elif not employee_count:
+            # HELD: T1.5 ran (we had LinkedIn URL) but no size data
+            tier_results.append(
+                TierResult(
+                    tier=EnrichmentTier.LINKEDIN_COMPANY,  # Use LINKEDIN_COMPANY tier for SIZE_GATE
+                    success=False,
+                    skipped=False,
+                    skip_reason="No company size data — LinkedIn profile incomplete",
+                )
+            )
+            enriched_data["status"] = "HELD"
+            enriched_data["hold_reason"] = "No company size data — LinkedIn profile incomplete"
+            logger.warning("[SIZE_GATE] Lead HELD - no employee count from T1.5")
+            # Return early - do not fire deeper tiers
+            # CEO Directive #149: Include field conflicts in early return lineage
+            early_lineage = [
+                {
+                    "tier": r.tier.value if hasattr(r.tier, "value") else str(r.tier),
+                    "success": r.success,
+                    "skipped": r.skipped,
+                    "skip_reason": r.skip_reason,
+                    "cost_aud": r.cost_aud,
+                    "timestamp": r.timestamp,
+                    "error": r.error,
+                }
+                for r in tier_results
+            ]
+            if field_conflicts:
+                early_lineage.extend(field_conflicts)
+            return EnrichmentResult(
+                lead_id=lead.get("id") or lead.get("lead_id"),
+                original_data=lead,
+                enriched_data=enriched_data,
+                tier_results=tier_results,
+                total_cost_aud=total_cost_aud,
+                sources_used=sum(1 for r in tier_results if r.success),
+                als_bonus_applied=False,
+                als_bonus_amount=0,
+                enrichment_lineage=early_lineage,
+                started_at=started_at,
+                completed_at=datetime.now(UTC).isoformat(),
+            )
+
+        # Check campaign size constraints (from ICP criteria)
+        icp_size_min = icp_criteria.get("employee_min")
+        icp_size_max = icp_criteria.get("employee_max")
+        if icp_size_min or icp_size_max:
+            if not self._check_size_in_range(employee_count, icp_size_min, icp_size_max):
+                tier_results.append(
+                    TierResult(
+                        tier=EnrichmentTier.LINKEDIN_COMPANY,  # Use LINKEDIN_COMPANY tier for SIZE_GATE
+                        success=False,
+                        skipped=False,
+                        skip_reason=f"Company size {employee_count} outside campaign range ({icp_size_min}-{icp_size_max})",
+                    )
+                )
+                enriched_data["status"] = "HELD"
+                enriched_data["hold_reason"] = f"Company size {employee_count} outside campaign range"
+                logger.info(f"[SIZE_GATE] Lead HELD - size {employee_count} outside {icp_size_min}-{icp_size_max}")
+                # Return early - do not fire deeper tiers
+                # CEO Directive #149: Include field conflicts in early return lineage
+                size_gate_lineage = [
+                    {
+                        "tier": r.tier.value if hasattr(r.tier, 'value') else str(r.tier),
+                        "success": r.success,
+                        "skipped": r.skipped,
+                        "skip_reason": r.skip_reason,
+                        "cost_aud": r.cost_aud,
+                        "timestamp": r.timestamp,
+                        "error": r.error,
+                    }
+                    for r in tier_results
+                ]
+                if field_conflicts:
+                    size_gate_lineage.extend(field_conflicts)
+                return EnrichmentResult(
+                    lead_id=lead.get("id") or lead.get("lead_id"),
+                    original_data=lead,
+                    enriched_data=enriched_data,
+                    tier_results=tier_results,
+                    total_cost_aud=total_cost_aud,
+                    sources_used=sum(1 for r in tier_results if r.success),
+                    als_bonus_applied=False,
+                    als_bonus_amount=0,
+                    enrichment_lineage=size_gate_lineage,
+                    started_at=started_at,
+                    completed_at=datetime.now(UTC).isoformat(),
+                )
+
+        # ===== TIER 2: GMB/Ads Signals =====
+        # CEO Directive: T0/T2 GMB Merge - Skip T2 if T0 discovery already has GMB data
+        # In Siege Waterfall v3, GMB-first discovery (T0) returns all GMB fields.
+        # T2 enrichment is redundant — saves $0.001/lead with zero data loss.
+        has_gmb_from_t0 = any([
+            enriched_data.get("gmb_rating"),
+            enriched_data.get("gmb_review_count"),
+            enriched_data.get("gmb_category"),
+            enriched_data.get("gmb_address"),
+            enriched_data.get("gmb_phone"),
+            enriched_data.get("gmb_website"),
+            enriched_data.get("gmb_data"),  # Alternative: nested GMB object from T0
+        ])
+
+        if EnrichmentTier.GMB not in skip_tiers:
+            if has_gmb_from_t0:
+                # T0 already provided GMB data — skip redundant T2 call
+                tier_results.append(
+                    TierResult(
+                        tier=EnrichmentTier.GMB,
+                        success=True,  # T0 already succeeded
+                        skipped=True,
+                        skip_reason="T0 discovery already has GMB data (T0/T2 merge)",
+                    )
+                )
+                logger.info("[T2] Skipping GMB enrichment — T0 already has data")
+            else:
+                # Fallback: T0 didn't provide GMB data (shouldn't happen in GMB-first mode)
+                result = await self.tier2_gmb(enriched_data)
+                tier_results.append(result)
+                if result.success:
+                    enriched_data = self._merge_data(
+                        enriched_data, result.data,
+                        source=result.tier.value, conflicts=field_conflicts
+                    )
+                    total_cost_aud += result.cost_aud
         else:
             tier_results.append(
                 TierResult(
@@ -696,7 +915,10 @@ class SiegeWaterfall:
                 result = await self.tier3_leadmagic_email(enriched_data)
                 tier_results.append(result)
                 if result.success:
-                    enriched_data = self._merge_data(enriched_data, result.data)
+                    enriched_data = self._merge_data(
+                        enriched_data, result.data,
+                        source=result.tier.value, conflicts=field_conflicts
+                    )
                     total_cost_aud += result.cost_aud
             else:
                 tier_results.append(
@@ -726,7 +948,10 @@ class SiegeWaterfall:
                 result = await self.tier5_identity(enriched_data, current_als, force=force_tier5)
                 tier_results.append(result)
                 if result.success:
-                    enriched_data = self._merge_data(enriched_data, result.data)
+                    enriched_data = self._merge_data(
+                        enriched_data, result.data,
+                        source=result.tier.value, conflicts=field_conflicts
+                    )
                     total_cost_aud += result.cost_aud
             else:
                 tier_results.append(
@@ -772,6 +997,9 @@ class SiegeWaterfall:
             }
             for r in tier_results
         ]
+        # CEO Directive #149: Add field conflicts to lineage for provenance tracking
+        if field_conflicts:
+            enrichment_lineage.extend(field_conflicts)
 
         # ===== Finalize =====
         completed_at = datetime.now(UTC).isoformat()
@@ -909,6 +1137,83 @@ class SiegeWaterfall:
                 tier=tier,
                 success=False,
                 error=str(e),
+            )
+
+    async def resolve_linkedin_url(self, lead: dict[str, Any]) -> TierResult:
+        """
+        Resolve LinkedIn company URL via SERP search.
+
+        Directive #148: LinkedIn URL resolution between T1 and T1.5.
+
+        Query: "[company_name] site:linkedin.com/company"
+        Fallback: "[trading_name] site:linkedin.com/company"
+
+        Cost: ~$0.0015 AUD per search
+
+        Returns:
+            TierResult with linkedin_company_url if found
+        """
+        tier = EnrichmentTier.LINKEDIN_COMPANY  # Use same tier for cost tracking
+        cost = 0.0015  # SERP search cost
+
+        company_name = lead.get("company_name") or lead.get("trading_name") or ""
+        trading_name = lead.get("trading_name") or lead.get("company_name") or ""
+
+        if not company_name:
+            return TierResult(tier=tier, success=False, skipped=True, skip_reason="No company name")
+
+        if not self.bright_data_client:
+            return TierResult(
+                tier=tier, success=False, skipped=True, skip_reason="Bright Data client not configured"
+            )
+
+        try:
+            # Try primary query
+            query = f'"{company_name}" site:linkedin.com/company'
+            results = await self.bright_data_client.search_google(query, max_results=3)
+
+            linkedin_url = None
+            for r in results:
+                url = r.get("link") or r.get("url") or ""
+                if "linkedin.com/company/" in url:
+                    linkedin_url = url
+                    break
+
+            # Fallback to trading name if different
+            if not linkedin_url and trading_name and trading_name != company_name:
+                query = f'"{trading_name}" site:linkedin.com/company'
+                results = await self.bright_data_client.search_google(query, max_results=3)
+                for r in results:
+                    url = r.get("link") or r.get("url") or ""
+                    if "linkedin.com/company/" in url:
+                        linkedin_url = url
+                        break
+
+            if linkedin_url:
+                logger.info(f"[LinkedIn URL] Resolved: {linkedin_url}")
+                return TierResult(
+                    tier=tier,
+                    success=True,
+                    data={"company_linkedin_url": linkedin_url, "linkedin_url_resolved": True},
+                    cost_aud=cost,
+                )
+            else:
+                logger.warning(f"[LinkedIn URL] Not found for: {company_name}")
+                return TierResult(
+                    tier=tier,
+                    success=False,
+                    data={"linkedin_url_unknown": True},
+                    cost_aud=cost,
+                )
+
+        except Exception as e:
+            logger.warning(f"[LinkedIn URL] Resolution failed: {e}")
+            sentry_sdk.capture_exception(e)
+            return TierResult(
+                tier=tier,
+                success=False,
+                error=str(e),
+                cost_aud=cost,
             )
 
     def _is_generic_name(self, name: str) -> bool:
@@ -1459,6 +1764,520 @@ class SiegeWaterfall:
                 error=str(e),
             )
 
+    # ============================================
+    # SIEGE WATERFALL V3: NEW ENRICHMENT TIERS (Directive #144)
+    # ============================================
+
+    async def tier1_5_linkedin_company(
+        self,
+        lead: dict[str, Any],
+        icp_passed: bool = True,
+    ) -> TierResult:
+        """
+        T1.5: BD LinkedIn Company enrichment - $0.025/lead
+        Gate: ICP pass
+
+        Provides company info + recent posts for T-DM2b (FREE reuse).
+
+        Args:
+            lead: Lead data (needs linkedin_url or company name)
+            icp_passed: Whether lead passed ICP filter
+
+        Returns:
+            TierResult with LinkedIn company data + posts
+        """
+        tier = EnrichmentTier.LINKEDIN_COMPANY
+        cost = TIER_COSTS_AUD[tier]
+
+        # Gate: ICP pass required
+        if not icp_passed:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="ICP filter not passed",
+            )
+
+        # Guard: Bright Data client required
+        if not self.bright_data_client:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="Bright Data client not configured",
+            )
+
+        linkedin_url = lead.get("company_linkedin_url") or lead.get("linkedin_company_url")
+        if not linkedin_url:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="No company LinkedIn URL available",
+            )
+
+        try:
+            result = await self.bright_data_client.scrape_linkedin_company_enriched(linkedin_url)
+
+            if result and result.get("name"):
+                # Store company posts for T-DM2b (FREE reuse)
+                company_posts = result.get("updates", []) or result.get("posts", [])
+
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="linkedin_company",
+                    lead_data=lead,
+                    success=True,
+                    cost_aud=cost,
+                )
+
+                return TierResult(
+                    tier=tier,
+                    success=True,
+                    data={
+                        "linkedin_company_name": result.get("name"),
+                        "linkedin_company_industry": result.get("industry"),
+                        "linkedin_company_size": result.get("employees"),
+                        "linkedin_company_followers": result.get("followers"),
+                        "linkedin_company_posts": company_posts,  # For T-DM2b
+                        "linkedin_company_url": linkedin_url,
+                    },
+                    cost_aud=cost,
+                    source_url=linkedin_url,
+                )
+
+            return TierResult(
+                tier=tier,
+                success=False,
+                error="No LinkedIn company data found",
+                cost_aud=cost,
+            )
+
+        except Exception as e:
+            logger.warning(f"[Siege] T1.5 LinkedIn Company failed: {e}")
+            sentry_sdk.capture_exception(e)
+            return TierResult(tier=tier, success=False, error=str(e))
+
+    async def tier2_5_gmb_reviews(
+        self,
+        lead: dict[str, Any],
+        propensity: int = 0,
+    ) -> TierResult:
+        """
+        T2.5: BD GMB Reviews - $0.001/lead
+        Gate: Propensity >= 70
+
+        Provides recent reviews for hook generation.
+
+        Args:
+            lead: Lead data (needs gmb_place_id)
+            propensity: Current propensity score
+
+        Returns:
+            TierResult with GMB reviews
+        """
+        tier = EnrichmentTier.GMB_REVIEWS
+        cost = TIER_COSTS_AUD[tier]
+
+        # Gate: Propensity >= 70
+        if propensity < 70:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason=f"Propensity {propensity} < 70 threshold",
+            )
+
+        # Guard: Bright Data client required
+        if not self.bright_data_client:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="Bright Data client not configured",
+            )
+
+        place_id = lead.get("gmb_place_id") or lead.get("place_id")
+        if not place_id:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="No GMB place_id available",
+            )
+
+        try:
+            reviews = await self.bright_data_client.scrape_gmb_reviews(place_id, limit=20)
+
+            if reviews:
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="gmb_reviews",
+                    lead_data=lead,
+                    success=True,
+                    cost_aud=cost,
+                )
+
+                return TierResult(
+                    tier=tier,
+                    success=True,
+                    data={
+                        "gmb_reviews": reviews,
+                        "gmb_reviews_count": len(reviews),
+                        "gmb_avg_rating": sum(r.get("rating", 0) for r in reviews) / len(reviews) if reviews else 0,
+                    },
+                    cost_aud=cost,
+                )
+
+            return TierResult(
+                tier=tier,
+                success=False,
+                error="No GMB reviews found",
+                cost_aud=cost,
+            )
+
+        except Exception as e:
+            logger.warning(f"[Siege] T2.5 GMB Reviews failed: {e}")
+            sentry_sdk.capture_exception(e)
+            return TierResult(tier=tier, success=False, error=str(e))
+
+    async def tier_dm1_linkedin_profile(
+        self,
+        lead: dict[str, Any],
+        icp_passed: bool = True,
+    ) -> TierResult:
+        """
+        T-DM1: BD LinkedIn Profile - $0.0015/lead
+        Gate: ICP pass
+
+        Provides decision-maker profile with experience, skills.
+
+        Args:
+            lead: Lead data (needs linkedin_url)
+            icp_passed: Whether lead passed ICP filter
+
+        Returns:
+            TierResult with LinkedIn profile data
+        """
+        tier = EnrichmentTier.DM_LINKEDIN_PROFILE
+        cost = TIER_COSTS_AUD[tier]
+
+        # Gate: ICP pass required
+        if not icp_passed:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="ICP filter not passed",
+            )
+
+        # Guard: Bright Data client required
+        if not self.bright_data_client:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="Bright Data client not configured",
+            )
+
+        linkedin_url = lead.get("linkedin_url")
+        if not linkedin_url:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="No LinkedIn profile URL available",
+            )
+
+        try:
+            result = await self.bright_data_client.scrape_linkedin_profile_enriched(linkedin_url)
+
+            if result and result.get("name"):
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="linkedin_profile",
+                    lead_data=lead,
+                    success=True,
+                    cost_aud=cost,
+                )
+
+                return TierResult(
+                    tier=tier,
+                    success=True,
+                    data={
+                        "dm_linkedin_name": result.get("name"),
+                        "dm_linkedin_title": result.get("headline"),
+                        "dm_linkedin_experience": result.get("experience", []),
+                        "dm_linkedin_skills": result.get("skills", []),
+                        "dm_linkedin_connections": result.get("connections"),
+                    },
+                    cost_aud=cost,
+                    source_url=linkedin_url,
+                )
+
+            return TierResult(
+                tier=tier,
+                success=False,
+                error="No LinkedIn profile found",
+                cost_aud=cost,
+            )
+
+        except Exception as e:
+            logger.warning(f"[Siege] T-DM1 LinkedIn Profile failed: {e}")
+            sentry_sdk.capture_exception(e)
+            return TierResult(tier=tier, success=False, error=str(e))
+
+    async def tier_dm2_linkedin_posts(
+        self,
+        lead: dict[str, Any],
+        propensity: int = 0,
+    ) -> TierResult:
+        """
+        T-DM2: BD LinkedIn Posts 90d - $0.0015/lead
+        Gate: Propensity >= 70
+
+        Provides DM's recent posts for hook generation.
+
+        Args:
+            lead: Lead data (needs linkedin_url)
+            propensity: Current propensity score
+
+        Returns:
+            TierResult with LinkedIn posts
+        """
+        tier = EnrichmentTier.DM_LINKEDIN_POSTS
+        cost = TIER_COSTS_AUD[tier]
+
+        # Gate: Propensity >= 70
+        if propensity < 70:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason=f"Propensity {propensity} < 70 threshold",
+            )
+
+        # Guard: Bright Data client required
+        if not self.bright_data_client:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="Bright Data client not configured",
+            )
+
+        linkedin_url = lead.get("linkedin_url")
+        if not linkedin_url:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="No LinkedIn profile URL available",
+            )
+
+        try:
+            posts = await self.bright_data_client.scrape_linkedin_posts_90d(linkedin_url)
+
+            if posts:
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="linkedin_posts",
+                    lead_data=lead,
+                    success=True,
+                    cost_aud=cost,
+                )
+
+                return TierResult(
+                    tier=tier,
+                    success=True,
+                    data={
+                        "dm_linkedin_posts": posts,
+                        "dm_linkedin_posts_count": len(posts),
+                    },
+                    cost_aud=cost,
+                    source_url=linkedin_url,
+                )
+
+            return TierResult(
+                tier=tier,
+                success=False,
+                error="No LinkedIn posts found in last 90 days",
+                cost_aud=cost,
+            )
+
+        except Exception as e:
+            logger.warning(f"[Siege] T-DM2 LinkedIn Posts failed: {e}")
+            sentry_sdk.capture_exception(e)
+            return TierResult(tier=tier, success=False, error=str(e))
+
+    async def tier_dm2b_company_posts(
+        self,
+        lead: dict[str, Any],
+        propensity: int = 0,
+    ) -> TierResult:
+        """
+        T-DM2b: Company LinkedIn Posts - FREE (reuses T1.5 field)
+        Gate: Propensity >= 70
+
+        Uses company posts already captured in T1.5.
+
+        Args:
+            lead: Lead data (needs linkedin_company_posts from T1.5)
+            propensity: Current propensity score
+
+        Returns:
+            TierResult with company posts (no additional cost)
+        """
+        tier = EnrichmentTier.DM_COMPANY_POSTS
+        cost = TIER_COSTS_AUD[tier]  # 0.00 - FREE
+
+        # Gate: Propensity >= 70
+        if propensity < 70:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason=f"Propensity {propensity} < 70 threshold",
+            )
+
+        # Check if T1.5 already captured company posts
+        company_posts = lead.get("linkedin_company_posts", [])
+        if not company_posts:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="No company posts from T1.5 (run T1.5 first)",
+            )
+
+        # Already have the data - no API call needed (FREE)
+        return TierResult(
+            tier=tier,
+            success=True,
+            data={
+                "company_linkedin_posts": company_posts,
+                "company_linkedin_posts_count": len(company_posts),
+            },
+            cost_aud=cost,  # 0.00
+        )
+
+    async def tier_dm3_x_posts(
+        self,
+        lead: dict[str, Any],
+        propensity: int = 0,
+    ) -> TierResult:
+        """
+        T-DM3: BD X Posts 90d - $0.0025/lead
+        Gate: Propensity >= 70
+
+        Provides DM's recent X/Twitter posts for hook generation.
+
+        Args:
+            lead: Lead data (needs x_handle or twitter_handle)
+            propensity: Current propensity score
+
+        Returns:
+            TierResult with X posts
+        """
+        tier = EnrichmentTier.DM_X_POSTS
+        cost = TIER_COSTS_AUD[tier]
+
+        # Gate: Propensity >= 70
+        if propensity < 70:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason=f"Propensity {propensity} < 70 threshold",
+            )
+
+        # Guard: Bright Data client required
+        if not self.bright_data_client:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="Bright Data client not configured",
+            )
+
+        x_handle = lead.get("x_handle") or lead.get("twitter_handle") or lead.get("twitter")
+        if not x_handle:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="No X/Twitter handle available",
+            )
+
+        try:
+            posts = await self.bright_data_client.scrape_x_posts_90d(x_handle)
+
+            if posts:
+                await self._log_enrichment_operation(
+                    tier=tier,
+                    operation="x_posts",
+                    lead_data=lead,
+                    success=True,
+                    cost_aud=cost,
+                )
+
+                return TierResult(
+                    tier=tier,
+                    success=True,
+                    data={
+                        "dm_x_posts": posts,
+                        "dm_x_posts_count": len(posts),
+                    },
+                    cost_aud=cost,
+                )
+
+            return TierResult(
+                tier=tier,
+                success=False,
+                error="No X posts found in last 90 days",
+                cost_aud=cost,
+            )
+
+        except Exception as e:
+            logger.warning(f"[Siege] T-DM3 X Posts failed: {e}")
+            sentry_sdk.capture_exception(e)
+            return TierResult(tier=tier, success=False, error=str(e))
+
+    async def tier5_identity_v3(
+        self,
+        lead: dict[str, Any],
+        reachability: int = 0,
+        needs_mobile_channel: bool = False,
+    ) -> TierResult:
+        """
+        T5: Leadmagic mobile - $0.077/lead
+        Gate: Reachability indicates mobile channel needed
+
+        Siege Waterfall v3 version with reachability gating.
+
+        Args:
+            lead: Lead data (linkedin_url preferred)
+            reachability: Current reachability score
+            needs_mobile_channel: Whether outreach plan requires mobile
+
+        Returns:
+            TierResult with mobile/identity data
+        """
+        tier = EnrichmentTier.IDENTITY
+        cost = TIER_COSTS_AUD[tier]
+
+        # Gate: Only if mobile channel is needed for outreach
+        if not needs_mobile_channel:
+            return TierResult(
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="Mobile channel not required by outreach plan",
+            )
+
+        # Delegate to existing tier5_identity method
+        return await self.tier5_identity(lead, reachability, force=True)
+
     @retry(
         stop=stop_after_attempt(2),  # Fewer retries - expensive tier
         wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -1718,37 +2537,164 @@ class SiegeWaterfall:
         self,
         base: dict[str, Any],
         new_data: dict[str, Any],
+        source: str | None = None,
+        conflicts: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """
-        Merge new enrichment data into base, preserving existing values.
+        Merge new enrichment data into base with provenance tracking.
 
-        New data only fills gaps - doesn't overwrite existing data.
+        CEO Directive #149: Preserve provenance for all enriched fields.
+        Each field is stored with structure: {"value": X, "source": "tier_name"}
+        When two tiers provide the same field: last-write-wins with conflict logging.
 
         Args:
             base: Base lead data
             new_data: New data to merge in
+            source: Source tier identifier (e.g., "tier1_abn", "T1.5_linkedin")
+            conflicts: Optional list to append conflict entries for enrichment_lineage
 
         Returns:
-            Merged dictionary
+            Merged dictionary with provenance-wrapped values
         """
         result = dict(base)
 
+        # Keys that are metadata about the enrichment, not actual field values
+        # These are NOT skipped - we preserve them with provenance
+        META_KEYS = {"found"}  # Only skip "found" - it's a lookup status, not data
+
         for key, value in new_data.items():
-            # Skip meta keys
-            if key in ("found", "source", "confidence"):
+            # Skip only the lookup status flag
+            if key in META_KEYS:
                 continue
 
-            # Only add if not already set
+            # Handle backward compatibility: check if value is already provenance-wrapped
+            if isinstance(value, dict) and "value" in value and "source" in value:
+                # Already wrapped - use as-is
+                wrapped_value = value
+                raw_value = value["value"]
+                value_source = value["source"]
+            else:
+                # Wrap raw value with provenance
+                raw_value = value
+                value_source = source or "unknown"
+                wrapped_value = {"value": raw_value, "source": value_source}
+
+            # Check if key already exists with a value
             if key not in result or result[key] is None:
-                result[key] = value
-            # Merge lists (e.g., phone_numbers)
-            elif isinstance(value, list) and isinstance(result[key], list):
-                result[key] = list(set(result[key] + value))
-            # Merge dicts
-            elif isinstance(value, dict) and isinstance(result[key], dict):
-                result[key] = {**result[key], **value}
+                # New field - just add it
+                result[key] = wrapped_value
+            else:
+                # Field exists - check for conflict
+                existing = result[key]
+
+                # Extract existing raw value for comparison
+                if isinstance(existing, dict) and "value" in existing:
+                    existing_raw = existing["value"]
+                    existing_source = existing.get("source", "unknown")
+                else:
+                    # Legacy unwrapped value
+                    existing_raw = existing
+                    existing_source = "original"
+
+                # Check if values are actually different (conflict)
+                values_differ = existing_raw != raw_value
+
+                if values_differ:
+                    # Log conflict to enrichment_lineage
+                    if conflicts is not None:
+                        conflicts.append({
+                            "type": "field_conflict",
+                            "field": key,
+                            "existing_value": existing_raw,
+                            "existing_source": existing_source,
+                            "new_value": raw_value,
+                            "new_source": value_source,
+                            "resolution": "last_write_wins",
+                        })
+                    logger.debug(
+                        f"[Siege] Field conflict on '{key}': "
+                        f"'{existing_source}' -> '{value_source}' (last-write-wins)"
+                    )
+
+                # Last-write-wins: overwrite with new value
+                # Special handling for lists and dicts
+                if isinstance(raw_value, list) and isinstance(existing_raw, list):
+                    # Merge lists, preserve provenance of the merge
+                    merged_list = list(set(existing_raw + raw_value))
+                    result[key] = {"value": merged_list, "source": value_source}
+                elif isinstance(raw_value, dict) and isinstance(existing_raw, dict):
+                    # Merge dicts, preserve provenance
+                    merged_dict = {**existing_raw, **raw_value}
+                    result[key] = {"value": merged_dict, "source": value_source}
+                else:
+                    # Scalar value - last-write-wins
+                    result[key] = wrapped_value
 
         return result
+
+    def _check_size_in_range(
+        self,
+        size_str: str | int,
+        min_size: int | None,
+        max_size: int | None,
+    ) -> bool:
+        """
+        Parse LinkedIn size string (e.g. '11-50') and check against constraints.
+
+        CEO Directive #144 Addendum 2: Size filtering at SIZE_GATE.
+
+        Args:
+            size_str: Company size string like "11-50", "51-200", or integer
+            min_size: Minimum employee count (ICP constraint)
+            max_size: Maximum employee count (ICP constraint)
+
+        Returns:
+            True if size is within range, False otherwise
+        """
+        import re
+
+        if not size_str:
+            return False
+
+        # If already an integer, use directly
+        if isinstance(size_str, int):
+            upper_bound = size_str
+        else:
+            # Parse size string like "11-50", "51-200", "1-10", "10000+"
+            size_str = str(size_str).strip()
+
+            # Handle "10000+" format (take the number as lower bound)
+            if size_str.endswith("+"):
+                match = re.match(r"(\d+)\+", size_str)
+                if match:
+                    upper_bound = int(match.group(1))
+                else:
+                    return False
+            # Handle range format "11-50"
+            elif "-" in size_str:
+                parts = size_str.split("-")
+                if len(parts) == 2:
+                    try:
+                        # Use upper bound for comparison
+                        upper_bound = int(parts[1].replace(",", "").strip())
+                    except ValueError:
+                        return False
+                else:
+                    return False
+            # Handle plain number
+            else:
+                try:
+                    upper_bound = int(size_str.replace(",", "").strip())
+                except ValueError:
+                    return False
+
+        # Check constraints
+        if min_size is not None and upper_bound < min_size:
+            return False
+        if max_size is not None and upper_bound > max_size:
+            return False
+
+        return True
 
     def _calculate_als(self, lead: dict[str, Any]) -> int:
         """

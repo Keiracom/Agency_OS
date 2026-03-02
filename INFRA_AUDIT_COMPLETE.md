@@ -187,7 +187,7 @@
 |----------|----------|
 | **AI/LLM** | ANTHROPIC_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY |
 | **Database** | DATABASE_URL, DATABASE_URL_MIGRATIONS, SUPABASE_* (6 keys), REDIS_URL, UPSTASH_* |
-| **Enrichment** | APOLLO_API_KEY, PROSPEO_API_KEY, DATAFORSEO_* |
+| **Enrichment** | PROSPEO_API_KEY, DATAFORSEO_*, LEADMAGIC_API_KEY |
 | **Outreach** | SALESFORGE_*, WARMFORGE_*, INFRAFORGE_*, HEYREACH_API_KEY |
 | **Communication** | TWILIO_*, TELNYX_*, RESEND_API_KEY, CLICKSEND_* |
 | **Voice** | VAPI_*, CARTESIA_API_KEY, ELEVENLABS_API_KEY |
@@ -199,7 +199,6 @@
 
 | Key | Service | Status |
 |-----|---------|--------|
-| `HUNTER_API_KEY` | Hunter.io | ❌ Not set |
 | `SLACK_BOT_TOKEN` | Slack | ❌ Not set |
 | `NOTION_API_KEY` | Notion | ❌ Not set |
 | `LINEAR_API_KEY` | Linear | ❌ Not set |
@@ -219,7 +218,6 @@
 | vercel | ✅ Built | Projects/deployments working |
 | apollo | ✅ Built | Enrichment |
 | prospeo | ✅ Built | Email finder |
-| hunter | ✅ Built | (Needs API key) |
 | dataforseo | ✅ Built | SEO data |
 | salesforge | ✅ Built | Outreach |
 | vapi | ✅ Built | Voice AI |
@@ -237,7 +235,7 @@
 2. **Prefect Worker:** Start local-pool worker or migrate deployments
 
 ### Short-term (P1):
-1. Add missing API keys (Hunter, Slack, Notion, Linear)
+1. Add missing API keys (Slack, Notion, Linear)
 2. Investigate 4 Vercel projects with ERROR status
 3. Unpause critical Prefect deployments (enrichment, outreach)
 

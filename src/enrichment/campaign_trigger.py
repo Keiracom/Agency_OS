@@ -5,6 +5,8 @@ Automatically triggers discovery when a campaign becomes active.
 Wired to Supabase campaign status changes via webhook/function.
 """
 
+import traceback
+
 import structlog
 
 from src.enrichment.discovery_filters import DiscoveryFilters
@@ -106,12 +108,22 @@ class CampaignDiscoveryTrigger:
 
         # 6. Run waterfall enrichment on passed results
         enriched_leads = []
+        logger.info("waterfall_start", leads_to_process=len(passed_results[:config.lead_volume]))
         for result in passed_results[: config.lead_volume]:  # Limit to target volume
-            lead_record = self._convert_to_lead_record(result)
+            try:
+                lead_record = self._convert_to_lead_record(result)
 
-            # Run through waterfall tiers
-            lead_record = await self._enrich_lead(lead_record, config)
-            enriched_leads.append(lead_record)
+                # Run through waterfall tiers
+                lead_record = await self._enrich_lead(lead_record, config)
+                enriched_leads.append(lead_record)
+            except Exception as e:
+                logger.error(
+                    "waterfall_lead_failed",
+                    business=result.business_name,
+                    error=str(e),
+                    traceback=traceback.format_exc(),
+                )
+                continue
 
         # 7. Create leads in database
         leads_created = await self._create_leads(campaign_id, enriched_leads)
@@ -155,7 +167,8 @@ class CampaignDiscoveryTrigger:
         state = icp.get("state") or self._infer_state(location)
 
         # Lead volume from campaign or default
-        lead_count = campaign.get("lead_count") or 100
+        # Cast to int to handle string "0" from DB (string "0" is truthy, int 0 is falsy)
+        lead_count = int(campaign.get("lead_count") or 0) or 100
 
         return CampaignConfig(
             campaign_id=campaign["id"],
@@ -397,14 +410,38 @@ class CampaignDiscoveryTrigger:
                 campaign = await self._fetch_campaign(campaign_id)
                 client_id = campaign.get("client_id") if campaign else None
 
+                # Extract decision maker fields from T2.5 enrichment
+                first_name = None
+                last_name = None
+                title = None
+                dm_linkedin_url = None
+
+                if lead.decision_makers:
+                    dm = lead.decision_makers[0]  # Use primary decision maker
+                    first_name = dm.get("first_name")
+                    last_name = dm.get("last_name")
+                    title = dm.get("title")
+                    dm_linkedin_url = dm.get("link")
+
+                    # Parse name from "name" field if first/last not available
+                    if not first_name and not last_name and dm.get("name"):
+                        name_parts = dm["name"].split()
+                        if len(name_parts) >= 1:
+                            first_name = name_parts[0]
+                        if len(name_parts) >= 2:
+                            last_name = " ".join(name_parts[1:])
+
                 lead_data = {
                     "campaign_id": campaign_id,
                     "client_id": client_id,
                     "email": lead.email,
                     "company": lead.business_name,
                     "phone": lead.phone,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "title": title,
                     "organization_website": lead.website,
-                    "linkedin_url": lead.linkedin_company_url,
+                    "linkedin_url": dm_linkedin_url or lead.linkedin_company_url,
                     "als_score": lead.als_score,
                     "als_components": lead.als_breakdown,
                     "cost_basis": lead.cost_aud,

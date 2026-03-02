@@ -2,10 +2,9 @@
 Test suite for SIEGE Discovery Enhancements.
 
 Tests:
-1. domain_search integration in Tier 3 (Hunter)
-2. Audit logging for all enrichment operations
-3. AU leads do not fall back to Apollo
-4. Mock data validation
+1. Audit logging for all enrichment operations
+2. AU leads use SIEGE waterfall
+3. Mock data validation
 
 TASK: SIEGE Discovery Enhancement
 """
@@ -15,15 +14,10 @@ from uuid import uuid4
 
 import pytest
 
-# Patch Kaspr before importing siege_waterfall to avoid API key errors
-with patch.dict("os.environ", {"KASPR_API_KEY": "mock_key"}):
-    pass
-
 # Import the modules under test
 from src.engines.scout import ScoutEngine
 from src.integrations.siege_waterfall import (
     EnrichmentTier,
-    HunterClientAdapter,
     SiegeWaterfall,
 )
 
@@ -55,148 +49,6 @@ class MockLead:
         self.organization_country = organization_country
         self.abn = abn
         self.phone = phone
-
-
-class TestDomainSearchIntegration:
-    """Test Tier 3 Hunter domain_search for decision-maker discovery."""
-
-    @pytest.fixture
-    def mock_hunter_adapter(self):
-        """Create a mock Hunter adapter (not client) that returns lists directly."""
-        adapter = AsyncMock()
-        # domain_search returns list of dicts
-        adapter.domain_search.return_value = [
-            {
-                "email": "john.smith@acme.com.au",
-                "first_name": "John",
-                "last_name": "Smith",
-                "position": "Managing Director",
-                "seniority": "executive",
-                "department": "executive",
-                "confidence": 95,
-                "linkedin_url": "https://linkedin.com/in/johnsmith",
-                "phone_number": "+61 2 9999 1234",
-            },
-            {
-                "email": "jane.doe@acme.com.au",
-                "first_name": "Jane",
-                "last_name": "Doe",
-                "position": "Marketing Manager",
-                "seniority": "senior",
-                "department": "marketing",
-                "confidence": 87,
-            },
-        ]
-        # Also mock verify_email and find_email in case they're called
-        adapter.verify_email.return_value = {"status": "valid", "score": 90}
-        adapter.find_email.return_value = {"found": False}
-        return adapter
-
-    @pytest.fixture
-    def mock_kaspr_client(self):
-        """Create a mock Kaspr client."""
-        return AsyncMock()
-
-    @pytest.mark.asyncio
-    async def test_domain_search_finds_decision_makers(self, mock_hunter_adapter, mock_kaspr_client):
-        """Test that domain_search finds and prioritizes decision-makers."""
-        # Lead with only company/domain, no email or name
-        lead_data = {
-            "company_name": "Acme Pty Ltd",
-            "domain": "acme.com.au",
-        }
-
-        # Create waterfall with mock hunter adapter AND mock kaspr
-        waterfall = SiegeWaterfall(hunter_client=mock_hunter_adapter, kaspr_client=mock_kaspr_client)
-
-        # Patch the audit logging to avoid DB calls
-        with patch.object(waterfall, "_log_enrichment_operation", new_callable=AsyncMock):
-            # Run tier 3
-            result = await waterfall.tier3_hunter(lead_data)
-
-        # Verify success
-        assert result.success is True
-        assert result.tier == EnrichmentTier.HUNTER
-
-        # Verify we got the executive (highest priority)
-        assert result.data["email"] == "john.smith@acme.com.au"
-        assert result.data["first_name"] == "John"
-        assert result.data["last_name"] == "Smith"
-        assert result.data["title"] == "Managing Director"
-        assert result.data["seniority_level"] == "executive"
-        assert result.data["email_source"] == "hunter_domain_search"
-        assert result.data["decision_makers_found"] == 2
-
-        # Verify domain_search was called
-        mock_hunter_adapter.domain_search.assert_called_once_with(
-            domain="acme.com.au",
-            limit=5,
-        )
-
-    @pytest.mark.asyncio
-    async def test_domain_search_no_contacts_found(self, mock_hunter_adapter, mock_kaspr_client):
-        """Test graceful handling when no contacts found."""
-        # Mock empty result
-        mock_hunter_adapter.domain_search.return_value = []
-
-        lead_data = {
-            "domain": "unknown-company.com.au",
-        }
-
-        waterfall = SiegeWaterfall(hunter_client=mock_hunter_adapter, kaspr_client=mock_kaspr_client)
-
-        # Patch the audit logging
-        with patch.object(waterfall, "_log_enrichment_operation", new_callable=AsyncMock):
-            result = await waterfall.tier3_hunter(lead_data)
-
-        # Verify failure with appropriate message
-        assert result.success is False
-        assert result.error == "No contacts found for domain"
-        assert result.cost_aud == 0.15  # Still charged for attempt
-
-
-class TestAuditLogging:
-    """Test audit logging for all enrichment operations."""
-
-    @pytest.fixture
-    def mock_kaspr_client(self):
-        """Create a mock Kaspr client."""
-        return AsyncMock()
-
-    @pytest.mark.asyncio
-    async def test_tier3_logs_successful_operation(self, mock_kaspr_client):
-        """Test that successful Hunter operations are logged."""
-        # Create mock Hunter that returns success
-        mock_hunter = AsyncMock()
-        mock_hunter.verify_email.return_value = {
-            "email": "test@example.com",
-            "status": "valid",
-            "score": 95,
-        }
-
-        adapter = HunterClientAdapter()
-        adapter._client = mock_hunter
-
-        waterfall = SiegeWaterfall(hunter_client=adapter, kaspr_client=mock_kaspr_client)
-
-        # Track if audit logging was called
-        audit_calls = []
-
-        async def mock_log(*args, **kwargs):
-            audit_calls.append(kwargs)
-
-        with patch.object(waterfall, "_log_enrichment_operation", side_effect=mock_log):
-            lead_data = {"email": "test@example.com"}
-            result = await waterfall.tier3_hunter(lead_data)
-
-        assert result.success is True
-
-        # Verify audit log was called with correct data
-        assert len(audit_calls) == 1
-        call_args = audit_calls[0]
-        assert call_args["operation"] == "verify_email"
-        assert call_args["success"] is True
-        assert call_args["tier"] == EnrichmentTier.HUNTER
 
 
 class TestAustralianLeadNoApolloFallback:
@@ -399,52 +251,40 @@ class TestMockDataEnrichment:
             "country": "United States",
         }
 
-    @pytest.fixture
-    def mock_kaspr_client(self):
-        """Create a mock Kaspr client."""
-        return AsyncMock()
-
     @pytest.mark.asyncio
-    async def test_au_lead_siege_enrichment(self, mock_au_lead_data, mock_kaspr_client):
+    async def test_au_lead_siege_enrichment(self, mock_au_lead_data):
         """Test Australian lead goes through SIEGE waterfall."""
-        # Create mocked hunter adapter (returns lists directly, like the adapter does)
-        mock_hunter = AsyncMock()
-        mock_hunter.domain_search.return_value = [
-            {
+        # Create mocked waterfall that returns enriched data
+        mock_waterfall = AsyncMock()
+        mock_waterfall.enrich_lead.return_value = MagicMock(
+            sources_used=2,
+            enriched_data={
                 "email": "sarah@brismarketing.com.au",
                 "first_name": "Sarah",
                 "last_name": "Thompson",
-                "position": "CEO",
-                "seniority": "executive",
-                "department": "executive",
-                "confidence": 92,
-            }
-        ]
-        mock_hunter.verify_email.return_value = {"status": "valid", "score": 90}
-        mock_hunter.find_email.return_value = {"found": False}
+                "title": "CEO",
+                "found": True,
+            },
+            total_cost_aud=0.02,
+            tier_results=[],
+        )
 
-        waterfall = SiegeWaterfall(hunter_client=mock_hunter, kaspr_client=mock_kaspr_client)
+        # Create scout engine with mock waterfall
+        engine = ScoutEngine(siege_waterfall=mock_waterfall)
 
         # Patch audit logging
-        with patch.object(waterfall, "_log_enrichment_operation", new_callable=AsyncMock):
-            # Run full waterfall (skip tiers that need real API keys)
-            result = await waterfall.enrich_lead(
-                mock_au_lead_data,
-                skip_tiers=[
-                    EnrichmentTier.ABN,  # Skip ABN (needs real client)
-                    EnrichmentTier.GMB,  # Skip GMB (needs real client)
-                    EnrichmentTier.PROXYCURL,  # Skip Proxycurl (needs API key)
-                    EnrichmentTier.IDENTITY,  # Skip expensive tier
-                ],
+        with patch.object(engine, "_log_enrichment_audit", new_callable=AsyncMock):
+            # Create mock lead
+            lead = MockLead(
+                company=mock_au_lead_data["company_name"],
+                domain=mock_au_lead_data["domain"],
             )
+            result = await engine._enrich_tier1(lead, mock_au_lead_data["domain"])
 
-        # Verify enrichment succeeded via Hunter
-        assert result.sources_used >= 1
-        assert result.total_cost_aud >= 0
-
-        # Check enriched data contains Hunter discovery
-        assert result.enriched_data.get("email") == "sarah@brismarketing.com.au"
-        assert result.enriched_data.get("first_name") == "Sarah"
+        # Verify enrichment succeeded
+        assert result is not None
+        assert result.get("email") == "sarah@brismarketing.com.au"
+        assert result.get("first_name") == "Sarah"
 
 
 # ============================================

@@ -24,8 +24,6 @@ numReplicas = 1
 #
 # Plus all API keys needed for flow execution:
 #   ANTHROPIC_API_KEY
-#   APOLLO_API_KEY
-#   APIFY_API_KEY
 #   CLAY_API_KEY
 #   RESEND_API_KEY
 #   etc.

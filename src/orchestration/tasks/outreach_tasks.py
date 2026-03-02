@@ -499,7 +499,7 @@ async def send_mail_task(
 
     Args:
         lead_id: Lead UUID
-        template_id: Lob template ID
+        template_id: Optional[str] = None  # ClickSend direct mail TBD
         merge_variables: Template merge variables
 
     Returns:

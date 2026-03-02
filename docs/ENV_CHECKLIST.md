@@ -35,8 +35,8 @@ These are needed for channels to function. Add to `config/.env` as you obtain th
 
 | Variable | Purpose | Get From |
 |----------|---------|----------|
-| `APOLLO_API_KEY` | Lead sourcing + contact enrichment | [developer.apollo.io](https://developer.apollo.io/) |
-| `APIFY_API_KEY` | Website scraping for ICP extraction | [console.apify.com](https://console.apify.com/account/integrations) |
+| `LEADMAGIC_API_KEY` | Lead enrichment (email, mobile, company) | [leadmagic.io](https://leadmagic.io/) |
+| `BRIGHTDATA_API_KEY` | Website scraping, GMB data | [brightdata.com](https://brightdata.com/) |
 
 ### Email Channel
 
@@ -120,13 +120,14 @@ These can be added later. System works without them.
 
 | Variable | Purpose | Get From |
 |----------|---------|----------|
-| `LOB_API_KEY` | Physical direct mail campaigns | [dashboard.lob.com](https://dashboard.lob.com/) |
+| `CLICKSEND_USERNAME` | Physical direct mail campaigns | [dashboard.clicksend.com](https://dashboard.clicksend.com/) |
+| `CLICKSEND_API_KEY` | Physical direct mail campaigns | [dashboard.clicksend.com](https://dashboard.clicksend.com/) |
 
 ---
 
 ## 🚀 Priority Order for Launch
 
-1. **Apollo + Apify** — Lead sourcing won't work without these
+1. **LeadMagic + BrightData** — Lead sourcing won't work without these
 2. **Stripe (all 6 vars)** — Can't charge customers
 3. **Postmark** — Won't detect email replies
 4. **ClickSend (2 vars)** — SMS channel
@@ -299,7 +300,7 @@ Add to `config/.env`:
 
 ```bash
 # Example
-APOLLO_API_KEY=your_key_here
+LEADMAGIC_API_KEY=your_key_here
 ```
 
 Then verify:

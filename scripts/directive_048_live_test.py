@@ -120,7 +120,6 @@ class Directive048Test:
 
     def __init__(self):
         self.bd_api_key = os.getenv("BRIGHTDATA_API_KEY")
-        self.hunter_api_key = os.getenv("HUNTER_API_KEY")
         self.dataforseo_login = os.getenv("DATAFORSEO_LOGIN")
         self.dataforseo_password = os.getenv("DATAFORSEO_PASSWORD")
 

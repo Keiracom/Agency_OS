@@ -856,8 +856,8 @@ TASK: ICP-011
 from typing import Optional
 
 from src.engines.base import BaseEngine
-from src.integrations.apify import ApifyClient
-from src.integrations.apollo import ApolloClient
+from src.integrations.camoufox_scraper import CamoufoxScraper
+from src.integrations.siege_waterfall import SiegeWaterfall
 from src.agents.skills.portfolio_extractor import PortfolioCompany
 from src.agents.skills.icp_deriver import EnrichedCompany
 from src.agents.skills.company_size_estimator import LinkedInData
@@ -869,23 +869,23 @@ class ICPScraperEngine(BaseEngine):
     Data fetching only - AI analysis done by skills.
     """
     
-    def __init__(self, apify: ApifyClient, apollo: ApolloClient):
-        self.apify = apify
-        self.apollo = apollo
+    def __init__(self, scraper: CamoufoxScraper, waterfall: SiegeWaterfall):
+        self.scraper = scraper
+        self.waterfall = waterfall
     
     async def scrape_website(self, url: str) -> str:
-        """Scrape website HTML via Apify."""
-        result = await self.apify.scrape_website(url)
-        return result.get("html", "")
+        """Scrape website HTML via Camoufox."""
+        result = await self.scraper.scrape(url)
+        return result.raw_html if result else ""
     
     async def get_linkedin_data(
         self, 
         company_name: str, 
         domain: Optional[str] = None
     ) -> Optional[LinkedInData]:
-        """Get LinkedIn company data via Apollo."""
+        """Get LinkedIn company data via SIEGE waterfall."""
         try:
-            result = await self.apollo.enrich_company(name=company_name, domain=domain)
+            result = await self.waterfall.enrich_company(name=company_name, domain=domain)
             if result:
                 return LinkedInData(
                     employee_count=result.get("employee_count"),
@@ -901,12 +901,12 @@ class ICPScraperEngine(BaseEngine):
         self, 
         companies: list[PortfolioCompany]
     ) -> list[EnrichedCompany]:
-        """Enrich portfolio companies via Apollo."""
+        """Enrich portfolio companies via SIEGE waterfall."""
         enriched = []
         
         for company in companies[:20]:
             try:
-                result = await self.apollo.enrich_company(
+                result = await self.waterfall.enrich_company(
                     name=company.company_name,
                     domain=company.company_domain
                 )

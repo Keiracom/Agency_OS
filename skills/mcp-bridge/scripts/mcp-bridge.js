@@ -46,20 +46,10 @@ const MCP_SERVERS = {
         env: { RAILWAY_TOKEN: process.env.Railway_Token || "" },
         description: "Railway deployment platform - projects, services, logs",
     },
-    apollo: {
-        path: "/home/elliotbot/clawd/mcp-servers/apollo-mcp/dist/index.js",
-        env: { APOLLO_API_KEY: process.env.APOLLO_API_KEY || "" },
-        description: "Apollo.io enrichment - people search, company data",
-    },
     prospeo: {
         path: "/home/elliotbot/clawd/mcp-servers/prospeo-mcp/dist/index.js",
         env: { PROSPEO_API_KEY: process.env.PROSPEO_API_KEY || "" },
         description: "Prospeo email finder - email lookup, verification",
-    },
-    hunter: {
-        path: "/home/elliotbot/clawd/mcp-servers/hunter-mcp/dist/index.js",
-        env: { HUNTER_API_KEY: process.env.HUNTER_API_KEY || "" },
-        description: "Hunter.io - domain search, email verification",
     },
     dataforseo: {
         path: "/home/elliotbot/clawd/mcp-servers/dataforseo-mcp/dist/index.js",

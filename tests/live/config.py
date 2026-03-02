@@ -130,9 +130,6 @@ class LiveTestConfig:
     anthropic_api_key: str = field(
         default_factory=lambda: os.environ.get("ANTHROPIC_API_KEY", "")
     )
-    apollo_api_key: str = field(
-        default_factory=lambda: os.environ.get("APOLLO_API_KEY", "")
-    )
     resend_api_key: str = field(
         default_factory=lambda: os.environ.get("RESEND_API_KEY", "")
     )
@@ -141,9 +138,6 @@ class LiveTestConfig:
     )
     twilio_auth_token: str = field(
         default_factory=lambda: os.environ.get("TWILIO_AUTH_TOKEN", "")
-    )
-    apify_api_key: str = field(
-        default_factory=lambda: os.environ.get("APIFY_API_KEY", "")
     )
 
     # ========================================
@@ -177,12 +171,6 @@ class LiveTestConfig:
         # Required for ICP extraction
         if not self.anthropic_api_key:
             errors.append("ANTHROPIC_API_KEY not set")
-        if not self.apify_api_key:
-            errors.append("APIFY_API_KEY not set (needed for website scraping)")
-
-        # Required for enrichment
-        if not self.apollo_api_key:
-            errors.append("APOLLO_API_KEY not set (needed for lead enrichment)")
 
         # Required for email tests
         if not self.skip_email_tests:
@@ -220,8 +208,6 @@ class LiveTestConfig:
 
         print("\nIntegrations:")
         print(f"  Anthropic: {'✅' if self.anthropic_api_key else '❌'}")
-        print(f"  Apollo: {'✅' if self.apollo_api_key else '❌'}")
-        print(f"  Apify: {'✅' if self.apify_api_key else '❌'}")
         print(f"  Resend: {'✅' if self.resend_api_key else '❌'}")
         print(f"  Twilio: {'✅' if self.twilio_account_sid else '❌'}")
 

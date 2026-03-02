@@ -89,7 +89,7 @@ VALUES ('<session>', 'LAW_V_VIOLATION', '<task>', <lines>, '<why>', NOW());
 
 ---
 
-## §7 — LAW VI: MCP-First Operations (HARD BLOCK)
+## §7 — LAW VI: Skills-First Operations (HARD BLOCK)
 
 When calling external services, follow this hierarchy:
 
@@ -98,6 +98,8 @@ When calling external services, follow this hierarchy:
 3. **No Skill, no MCP** → Use `exec` as last resort, then write a Skill afterward
 
 **Never call external services ad-hoc.** All external service calls must go through this decision tree.
+
+**Credential-hunting is a governance violation.** If a key or credential is needed, check `skills/` for existing integration first. Do not grep for API keys or construct ad-hoc authenticated requests.
 
 MCP Bridge command:
 ```

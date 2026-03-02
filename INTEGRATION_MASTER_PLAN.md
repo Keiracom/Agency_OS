@@ -35,7 +35,7 @@ This plan consolidates ALL recent architectural decisions into a single integrat
 | `src/engines/scout.py` | `enrich_person()` | Siege Waterfall Tiers 1-4 |
 | `src/engines/icp_scraper.py` | `enrich_company()` | ABN + GMB (Tiers 1-2) |
 | `src/orchestration/tasks/enrichment_tasks.py` | All Apollo calls | Waterfall worker |
-| `src/orchestration/flows/pool_population_flow.py` | `search_people_for_pool()` | Proxycurl + Hunter |
+| `src/orchestration/flows/pool_population_flow.py` | `search_people_for_pool()` | LeadMagic |
 | `src/services/lead_pool_service.py` | Apollo enrichment | Waterfall enrichment |
 | `src/agents/icp_discovery_agent.py` | Company lookup | ABN + GMB scraper |
 | `src/agents/skills/portfolio_fallback.py` | Apollo fallback | Remove (redundant) |
@@ -62,9 +62,9 @@ This plan consolidates ALL recent architectural decisions into a single integrat
 |------|-------------|-------------|
 | `src/engines/scout.py` | Website scraping | Autonomous Browser |
 | `src/engines/icp_scraper.py` | Waterfall scraping | Autonomous Browser |
-| `src/engines/client_intelligence.py` | Social scraping | Proxycurl + direct APIs |
-| `src/agents/skills/social_enricher.py` | LinkedIn/Twitter | Proxycurl |
-| `src/agents/skills/social_profile_discovery.py` | Profile discovery | Proxycurl |
+| `src/engines/client_intelligence.py` | Social scraping | LeadMagic + direct APIs |
+| `src/agents/skills/social_enricher.py` | LinkedIn/Twitter | LeadMagic |
+| `src/agents/skills/social_profile_discovery.py` | Profile discovery | LeadMagic |
 | `src/agents/skills/research_skills.py` | General scraping | Autonomous Browser |
 | `src/agents/sdk_agents/sdk_tools.py` | Apify tools | Remove |
 
@@ -72,8 +72,8 @@ This plan consolidates ALL recent architectural decisions into a single integrat
 | Function | Replacement |
 |----------|-------------|
 | `scrape_website_with_waterfall()` | `autonomous_browser.fetch()` |
-| `scrape_linkedin_profiles()` | Proxycurl Person API |
-| `scrape_linkedin_company()` | Proxycurl Company API |
+| `scrape_linkedin_profiles()` | LeadMagic Person API |
+| `scrape_linkedin_company()` | LeadMagic Company API |
 | `scrape_google_business()` | DIY GMB Scraper |
 | `scrape_instagram_profile()` | Skip (low value) |
 | `scrape_facebook_page()` | Skip (low value) |
@@ -83,7 +83,7 @@ This plan consolidates ALL recent architectural decisions into a single integrat
 **Migration Strategy:**
 1. Build `src/integrations/gmb_scraper.py` (FCO-003)
 2. Update website scraping to use Autonomous Browser
-3. Replace LinkedIn calls with Proxycurl
+3. Replace LinkedIn calls with LeadMagic
 4. Remove social scraping (low ROI)
 5. Remove Apify after validation
 
@@ -135,12 +135,8 @@ class SiegeWaterfall:
         # Tier 3: Hunter.io ($0.012)
         lead = await self.tier3_hunter(lead)
         
-        # Tier 4: Proxycurl ($0.024)
-        lead = await self.tier4_proxycurl(lead)
-        
-        # Tier 5: Identity Gold ($0.45) — ALS ≥85 only
-        if lead.als_score >= 85:
-            lead = await self.tier5_identity(lead)
+        # Tier 3+: LeadMagic ($0.02)
+        lead = await self.tier3_leadmagic(lead)
         
         return lead
 ```
@@ -149,8 +145,7 @@ class SiegeWaterfall:
 - `src/integrations/abn_client.py` (new)
 - `src/integrations/gmb_scraper.py` (new — FCO-003)
 - `src/integrations/hunter.py` (exists)
-- `src/integrations/proxycurl.py` (exists, needs update)
-- `src/integrations/kaspr.py` (new)
+- `src/integrations/leadmagic.py` (primary enrichment)
 
 ### 2.2 GMB Scraper (FCO-003)
 **New File:** `src/integrations/gmb_scraper.py`
@@ -166,29 +161,7 @@ Replaces Apify Google Maps scraping using Autonomous Browser.
 - `src/engines/proxy_waterfall.py` — Webshare proxy rotation
 - Autonomous Stealth Browser — JS rendering
 
-### 2.3 Proxycurl Integration (Upgrade)
-**File:** `src/integrations/proxycurl.py`
-
-**New Functions Needed:**
-- `get_person_profile(linkedin_url)` — Full profile data
-- `get_company_profile(linkedin_url)` — Company data
-- `get_person_activity(linkedin_url)` — Recent posts (for ALS)
-- `search_employees(company_domain, titles)` — Find decision makers
-
-**Cost:** $0.012-0.024/request = ~$15/mo for Ignition tier
-
-### 2.4 Kaspr Integration (New)
-**New File:** `src/integrations/kaspr.py`
-
-Tier 5 mobile enrichment for ALS ≥85 leads.
-
-**Functions:**
-- `enrich_mobile(linkedin_url)` — Get verified mobile
-- `batch_enrich(profiles)` — Bulk operation
-
-**Cost:** $0.43-0.56/phone, API on Starter plan
-
-### 2.5 ABN Client (New)
+### 2.3 ABN Client (New)
 **New File:** `src/integrations/abn_client.py`
 
 Tier 1 free data from data.gov.au.
@@ -251,7 +224,7 @@ Tier 1 free data from data.gov.au.
 **File:** `src/engines/identity_escalation.py` (31KB — recent)
 
 **Status:** Recently built for Tier 5. Verify integration with:
-- Kaspr API
+- LeadMagic API
 - Director Hunt (ASIC)
 - ALS ≥85 gate
 
@@ -262,7 +235,7 @@ Tier 1 free data from data.gov.au.
 - ABN integration
 - Hunter.io integration
 - ZeroBounce escalation
-- Proxycurl social scoring
+- LeadMagic social scoring
 
 ---
 
@@ -358,8 +331,7 @@ Replace 8 checkboxes with searchable ANZSIC dropdown (500+ industries).
 ALTER TABLE lead_pool ADD COLUMN tier1_abn_data JSONB;
 ALTER TABLE lead_pool ADD COLUMN tier2_gmb_data JSONB;
 ALTER TABLE lead_pool ADD COLUMN tier3_hunter_data JSONB;
-ALTER TABLE lead_pool ADD COLUMN tier4_proxycurl_data JSONB;
-ALTER TABLE lead_pool ADD COLUMN tier5_identity_data JSONB;
+ALTER TABLE lead_pool ADD COLUMN tier3_leadmagic_data JSONB;
 ALTER TABLE lead_pool ADD COLUMN enrichment_cost_aud DECIMAL(10,4);
 ```
 
@@ -389,9 +361,7 @@ CREATE TABLE maya_briefings (
 ```env
 # Siege Waterfall
 ABN_API_KEY=           # data.gov.au (if needed)
-HUNTER_API_KEY=        # hunter.io
-PROXYCURL_API_KEY=     # Proxycurl/Nubela
-KASPR_API_KEY=         # Kaspr Starter
+LEADMAGIC_API_KEY=     # LeadMagic
 
 # Voice AI
 TELNYX_API_KEY=        # Telnyx
@@ -422,8 +392,7 @@ MIDJOURNEY_FACE_URL=   # Maya's face asset
 | Create Telnyx account + ID verify | Dave | 30 min |
 | Build `siege_waterfall.py` interface | Elliot | M |
 | Build `gmb_scraper.py` (FCO-003) | Elliot | M |
-| Build `kaspr.py` integration | Elliot | S |
-| Test Proxycurl trial | Elliot | S |
+| Build `leadmagic.py` integration | Elliot | M |
 
 ### Phase 2: Enrichment Migration (Week 2)
 **Goal:** Replace Apollo with Siege Waterfall
@@ -443,7 +412,7 @@ MIDJOURNEY_FACE_URL=   # Maya's face asset
 |------|-------|--------|
 | Update website scraping in scout | Elliot | M |
 | Update icp_scraper waterfall | Elliot | M |
-| Replace social scraping with Proxycurl | Elliot | M |
+| Replace social scraping with LeadMagic | Elliot | M |
 | Remove client_intelligence Apify calls | Elliot | S |
 
 ### Phase 4: SDK Deprecation (Week 3)

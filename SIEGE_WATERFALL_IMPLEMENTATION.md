@@ -289,10 +289,8 @@ Update ALS scoring to use Siege Waterfall signals:
 ## Dependencies
 
 ### API Keys Required
-- ✅ HUNTER_API_KEY — Need to add
-- ❌ PROXYCURL_API_KEY — Need to obtain
-- ❌ KASPR_API_KEY — Need to obtain
-- ❌ LUSHA_API_KEY — Need to obtain
+- ✅ BRIGHTDATA_API_KEY — Already configured
+- ✅ LEADMAGIC_API_KEY — Already configured
 
 ### Infrastructure
 - ✅ Prefect server running

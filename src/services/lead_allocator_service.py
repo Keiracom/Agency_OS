@@ -107,13 +107,8 @@ class LeadAllocatorService:
             conditions.append("lp.company_country = ANY(:countries)")
             params["countries"] = countries
 
-        if icp_criteria.get("employee_min"):
-            conditions.append("lp.company_employee_count >= :employee_min")
-            params["employee_min"] = icp_criteria["employee_min"]
-
-        if icp_criteria.get("employee_max"):
-            conditions.append("lp.company_employee_count <= :employee_max")
-            params["employee_max"] = icp_criteria["employee_max"]
+        # NOTE: employee_min/employee_max removed per CEO Directive #144 Addendum 2
+        # Size filtering now happens at SIZE_GATE in siege_waterfall.py after T1.5 enrichment
 
         if icp_criteria.get("seniorities"):
             seniorities = icp_criteria["seniorities"]

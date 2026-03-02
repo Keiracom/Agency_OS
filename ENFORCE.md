@@ -91,15 +91,7 @@ VALUES ('<session>', 'LAW_V_VIOLATION', '<task>', <lines>, '<why>', NOW());
 
 ## §7 — LAW VI: Skills-First Operations (HARD BLOCK)
 
-For any external provider call: check the MCP bridge AND `skills/` folder for a configured integration before anything else.
-
-If a skill or MCP server exists for the provider, use it — never `exec+curl` as an alternative.
-
-**Never claim credentials are missing before checking both.**
-
-Every API we use has either an MCP server or a skill configured. Claiming "missing credentials" without checking is a governance violation, not a capability gap.
-
-### Hierarchy:
+When calling external services, follow this hierarchy:
 
 1. **Skill exists in `skills/`** → Use the Skill
 2. **No Skill, but MCP server available** → Use MCP Bridge
@@ -107,7 +99,9 @@ Every API we use has either an MCP server or a skill configured. Claiming "missi
 
 **Never call external services ad-hoc.** All external service calls must go through this decision tree.
 
-### MCP Bridge:
+**Credential-hunting is a governance violation.** If a key or credential is needed, check `skills/` for existing integration first. Do not grep for API keys or construct ad-hoc authenticated requests.
+
+MCP Bridge command:
 ```
 cd /home/elliotbot/clawd/skills/mcp-bridge && node scripts/mcp-bridge.js <command>
 ```
@@ -115,12 +109,7 @@ cd /home/elliotbot/clawd/skills/mcp-bridge && node scripts/mcp-bridge.js <comman
 - Check `mcp-bridge.js servers` for available MCPs
 - Use `mcp-bridge.js call` instead of `exec + curl/python` when MCP exists
 
-### Skills:
-- Check `skills/` directory for existing integrations
-- Read the skill's `SKILL.md` before first use (LAW I)
-- Credentials are documented in skills, not assumed missing
-
-**Violation:** Bypassing this hierarchy or claiming missing credentials without checking → log governance debt with type `LAW_VI_VIOLATION`.
+**Violation:** Bypassing this hierarchy → log governance debt with type `LAW_VI_VIOLATION`.
 
 ---
 

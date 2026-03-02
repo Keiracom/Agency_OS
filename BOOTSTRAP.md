@@ -87,8 +87,8 @@ VALUES (gen_random_uuid(), 'daily_log',
   '{}'::jsonb, NOW());
 ```
 
-### 4. Update HANDOFF.md
-Always update `/home/elliotbot/clawd/Agency_OS/HANDOFF.md` with session summary as file fallback.
+### 4. Write Session Summary to Supabase
+Write session summary to `elliot_internal.memories` (type: `daily_log`) per LAW IX. File-based HANDOFF.md is deprecated.
 
 ---
 
@@ -103,7 +103,7 @@ Always update `/home/elliotbot/clawd/Agency_OS/HANDOFF.md` with session summary 
 
 ### If Supabase MCP fails at startup:
 1. Try alternate path: `cd /home/elliotbot/clawd/skills/mcp-bridge && node scripts/mcp-bridge.js servers`
-2. If still failing, fall back to reading `HANDOFF.md`
+2. If still failing, query recent `daily_log` entries from `elliot_internal.memories`
 3. State: "Supabase MCP unavailable. Operating from file fallback. Will sync to ceo_memory when restored."
 4. Log the failure and attempt reconnection periodically
 

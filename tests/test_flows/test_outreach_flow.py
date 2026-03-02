@@ -246,8 +246,23 @@ async def test_send_email_outreach_success():
     campaign_id = str(uuid4())
     resource = "domain.com"
 
+    # Mock lead for database query
+    mock_lead = MagicMock()
+    mock_lead.id = uuid4()
+    mock_lead.propensity_score = 50  # Below 85, uses standard email
+    mock_lead.first_name = "John"
+    mock_lead.last_name = "Doe"
+    mock_lead.title = "CEO"
+    mock_lead.company = "Test Corp"
+    mock_lead.organization_industry = "Technology"
+    mock_lead.organization_employee_count = 100
+
     # Mock database
     mock_db = AsyncMock()
+    mock_lead_result = MagicMock()
+    mock_lead_result.scalar_one_or_none.return_value = mock_lead
+    mock_db.execute = AsyncMock(return_value=mock_lead_result)
+    mock_db.commit = AsyncMock()
 
     @asynccontextmanager
     async def mock_get_session():
@@ -341,7 +356,17 @@ async def test_send_linkedin_outreach_success():
     campaign_id = str(uuid4())
     resource = "seat123"
 
+    # Mock lead for database query
+    mock_lead = MagicMock()
+    mock_lead.id = uuid4()
+    mock_lead.linkedin_url = "https://linkedin.com/in/test"
+
+    # Mock database
     mock_db = AsyncMock()
+    mock_lead_result = MagicMock()
+    mock_lead_result.scalar_one_or_none.return_value = mock_lead
+    mock_db.execute = AsyncMock(return_value=mock_lead_result)
+    mock_db.commit = AsyncMock()
 
     @asynccontextmanager
     async def mock_get_session():
@@ -398,7 +423,17 @@ async def test_send_sms_outreach_success():
     campaign_id = str(uuid4())
     resource = "+1234567890"
 
+    # Mock lead for database query
+    mock_lead = MagicMock()
+    mock_lead.id = uuid4()
+    mock_lead.phone = "+1234567890"
+
+    # Mock database
     mock_db = AsyncMock()
+    mock_lead_result = MagicMock()
+    mock_lead_result.scalar_one_or_none.return_value = mock_lead
+    mock_db.execute = AsyncMock(return_value=mock_lead_result)
+    mock_db.commit = AsyncMock()
 
     @asynccontextmanager
     async def mock_get_session():

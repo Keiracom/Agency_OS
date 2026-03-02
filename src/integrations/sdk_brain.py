@@ -1100,6 +1100,15 @@ Return ONLY the category name. Nothing else."""
         # Segment outcomes by type
         meeting_outcomes = [o for o in outcomes if o.get("outcome_type") == "booked"]
         non_converting = [o for o in outcomes if o.get("outcome_type") in ("no_response", "bounced")]
+        
+        # Gap 2 fix (Directive #157): Include negative signals for CIS learning
+        # These indicate what NOT to do and should inform weight DECREASES
+        data_quality_failures = [o for o in outcomes if o.get("final_outcome") == "data_quality_failure"]
+        targeting_failures = [o for o in outcomes if o.get("final_outcome") == "targeting_failure"]
+        soft_rejections = [o for o in outcomes if o.get("final_outcome") == "soft_rejection"]
+        
+        # Total negative signals for analysis
+        total_negative = len(data_quality_failures) + len(targeting_failures) + len(soft_rejections)
 
         prompt = f"""You are the CIS (Continuous Improvement System) analyst for Agency OS.
 
@@ -1114,23 +1123,40 @@ MEETING_BOOKED OUTCOMES ({len(meeting_outcomes)} total):
 NON-CONVERTING OUTCOMES (sample of {min(50, len(non_converting))}):
 {json.dumps([{"signals_active": o.get("signals_active"), "propensity_at_send": o.get("propensity_at_send")} for o in non_converting[:50]], indent=2)}
 
+NEGATIVE SIGNAL OUTCOMES (Gap 2 - IMPORTANT FOR LEARNING):
+These outcomes indicate what NOT to target. Signals present here should have weights DECREASED.
+
+Data Quality Failures ({len(data_quality_failures)} bounced emails - bad enrichment data):
+{json.dumps([{"signals_active": o.get("signals_active"), "propensity_at_send": o.get("propensity_at_send")} for o in data_quality_failures[:20]], indent=2)}
+
+Targeting Failures ({len(targeting_failures)} spam complaints - wrong ICP or message):
+{json.dumps([{"signals_active": o.get("signals_active"), "propensity_at_send": o.get("propensity_at_send")} for o in targeting_failures[:20]], indent=2)}
+
+Soft Rejections ({len(soft_rejections)} unsubscribes - low fit):
+{json.dumps([{"signals_active": o.get("signals_active"), "propensity_at_send": o.get("propensity_at_send")} for o in soft_rejections[:20]], indent=2)}
+
 ANALYSIS REQUIRED:
-1. Which signals in signals_active appeared frequently in MEETING_BOOKED outcomes?
-2. Which signals appeared frequently in non-converting leads?
-3. For each signal, recommend a weight adjustment (delta, not absolute).
+1. Which signals in signals_active appeared frequently in MEETING_BOOKED outcomes? → INCREASE weights
+2. Which signals appeared frequently in non-converting leads? → Consider decreasing weights
+3. Which signals appeared frequently in NEGATIVE SIGNAL outcomes (bounced/spam/unsub)? → DECREASE weights
+   - Targeting failures (spam) are the strongest negative signal - leads with these signals should be avoided
+   - Soft rejections (unsubs) indicate lower fit - moderate weight decrease
+   - Data quality failures indicate enrichment issues, not necessarily targeting issues
 
 CONSTRAINTS:
 - Max delta: ±5 points per signal
 - Only recommend adjustments with confidence >= 0.7
 - If insufficient data for a signal, skip it
 - Preserve relative balance of weights
+- NEGATIVE SIGNALS MUST DECREASE WEIGHTS - they indicate what NOT to do
 
 RESPONSE FORMAT (JSON only):
 {{
     "adjustments": {{
-        "signal_name": {{"delta": -3, "confidence": 0.85, "reasoning": "Appeared in 80% of non-converters"}}
+        "signal_name": {{"delta": -3, "confidence": 0.85, "reasoning": "Appeared in 80% of spam complaints (targeting_failure)"}}
     }},
-    "analysis_summary": "Brief summary of patterns found"
+    "analysis_summary": "Brief summary of patterns found",
+    "negative_signal_insights": "What we learned from bounces/spam/unsubs"
 }}
 
 Respond with JSON only, no markdown."""
@@ -1149,6 +1175,13 @@ Respond with JSON only, no markdown."""
             # Add metadata
             result["total_outcomes"] = len(outcomes)
             result["meeting_booked_count"] = len(meeting_outcomes)
+            # Gap 2 fix: Include negative signal counts
+            result["negative_signal_counts"] = {
+                "data_quality_failure": len(data_quality_failures),
+                "targeting_failure": len(targeting_failures),
+                "soft_rejection": len(soft_rejections),
+                "total": total_negative,
+            }
 
             return result
 
@@ -1158,6 +1191,12 @@ Respond with JSON only, no markdown."""
                 "adjustments": {},
                 "total_outcomes": len(outcomes),
                 "meeting_booked_count": len(meeting_outcomes),
+                "negative_signal_counts": {
+                    "data_quality_failure": len(data_quality_failures),
+                    "targeting_failure": len(targeting_failures),
+                    "soft_rejection": len(soft_rejections),
+                    "total": total_negative,
+                },
                 "analysis_summary": f"Analysis failed: invalid JSON response - {str(e)}",
             }
         except Exception as e:
@@ -1166,6 +1205,12 @@ Respond with JSON only, no markdown."""
                 "adjustments": {},
                 "total_outcomes": len(outcomes),
                 "meeting_booked_count": len(meeting_outcomes),
+                "negative_signal_counts": {
+                    "data_quality_failure": len(data_quality_failures),
+                    "targeting_failure": len(targeting_failures),
+                    "soft_rejection": len(soft_rejections),
+                    "total": total_negative,
+                },
                 "analysis_summary": f"Analysis failed: {str(e)}",
             }
 

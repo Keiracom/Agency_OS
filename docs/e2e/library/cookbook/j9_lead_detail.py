@@ -80,7 +80,7 @@ CHECKS = [
             "auth": True,
             "expect": {
                 "status": 200,
-                "body_has_fields": ["id", "first_name", "last_name", "email", "als_score"]
+                "body_has_fields": ["id", "first_name", "last_name", "email", "propensity_score"]
             },
             "curl_command": """curl '{api_url}/api/v1/leads/{lead_id}' \\
   -H 'Authorization: Bearer {token}'"""

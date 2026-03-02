@@ -27,7 +27,7 @@ LEAD_TABLE_COLUMNS = [
     "company",
     "title",
     "email",
-    "als_score",
+    "propensity_score",
     "status",
     "last_activity",
     "created_at",
@@ -49,7 +49,7 @@ FILTER_OPTIONS = {
     "campaign_id": "UUID of campaign",
 }
 
-SORT_COLUMNS = ["als_score", "name", "company", "created_at", "last_activity"]
+SORT_COLUMNS = ["propensity_score", "name", "company", "created_at", "last_activity"]
 
 PAGINATION_DEFAULTS = {
     "page": 1,
@@ -65,7 +65,7 @@ API_ENDPOINTS = [
     {"method": "GET", "path": "/api/v1/leads", "purpose": "List leads with pagination", "auth": True},
     {"method": "GET", "path": "/api/v1/leads?tier=hot", "purpose": "Filter by ALS tier", "auth": True},
     {"method": "GET", "path": "/api/v1/leads?search=query", "purpose": "Search leads", "auth": True},
-    {"method": "GET", "path": "/api/v1/leads?sort=als_score&order=desc", "purpose": "Sort leads", "auth": True},
+    {"method": "GET", "path": "/api/v1/leads?sort=propensity_score&order=desc", "purpose": "Sort leads", "auth": True},
 ]
 
 # =============================================================================
@@ -145,7 +145,7 @@ CHECKS = [
                 "all_scores_gte": 85
             },
             "curl_command": """curl '{api_url}/api/v1/leads?tier=hot' \\
-  -H 'Authorization: Bearer {token}' | jq '.data[] | select(.als_score < 85)'"""
+  -H 'Authorization: Bearer {token}' | jq '.data[] | select(.propensity_score < 85)'"""
         }
     },
     {
@@ -174,14 +174,14 @@ CHECKS = [
         "live_test": {
             "type": "api",
             "method": "GET",
-            "url": "{api_url}/api/v1/leads?sort=als_score&order=desc",
+            "url": "{api_url}/api/v1/leads?sort=propensity_score&order=desc",
             "auth": True,
             "expect": {
                 "status": 200,
-                "results_sorted_desc_by": "als_score"
+                "results_sorted_desc_by": "propensity_score"
             },
-            "curl_command": """curl '{api_url}/api/v1/leads?sort=als_score&order=desc' \\
-  -H 'Authorization: Bearer {token}' | jq '.data[:5] | .[].als_score'"""
+            "curl_command": """curl '{api_url}/api/v1/leads?sort=propensity_score&order=desc' \\
+  -H 'Authorization: Bearer {token}' | jq '.data[:5] | .[].propensity_score'"""
         }
     },
     {

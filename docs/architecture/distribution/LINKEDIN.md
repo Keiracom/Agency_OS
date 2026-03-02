@@ -801,13 +801,13 @@ async def get_daily_linkedin_queue(
         .where(Lead.client_id == client_id)
         .where(Lead.linkedin_url.isnot(None))
         .where(Lead.linkedin_connected == False)
-        .where(Lead.als_score >= 35)
+        .where(Lead.propensity_score >= 35)
         .where(~exists(
             select(LinkedInConnection.id)
             .where(LinkedInConnection.lead_id == Lead.id)
         ))
         .order_by(
-            Lead.als_score.desc(),
+            Lead.propensity_score.desc(),
             Lead.mutual_connection_count.desc().nullslast(),
             Lead.created_at.asc(),
         )

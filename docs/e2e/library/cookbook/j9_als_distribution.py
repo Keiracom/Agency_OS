@@ -117,7 +117,7 @@ CHECKS = [
             "query": """SELECT COUNT(*) as hot_count
                        FROM leads
                        WHERE client_id = '{client_id}'
-                       AND als_score >= 85
+                       AND propensity_score >= 85
                        AND deleted_at IS NULL""",
             "expect": {
                 "hot_count_matches_widget": True

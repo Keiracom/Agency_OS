@@ -347,7 +347,7 @@ leads (
     campaign_id UUID REFERENCES campaigns,
     email TEXT,
     -- ALS Score components
-    als_score INTEGER,      -- 0-100
+    propensity_score INTEGER,      -- 0-100
     als_tier TEXT,          -- hot, warm, cool, cold, dead
     als_data_quality INTEGER,
     als_authority INTEGER,

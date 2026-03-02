@@ -104,10 +104,10 @@ The `outreach_flow.py` does NOT verify ALS score before sending. This is a safet
 from src.config.tiers import get_available_channels
 
 lead = await db.get(Lead, lead_uuid)
-allowed_channels = get_available_channels(lead.als_score)
+allowed_channels = get_available_channels(lead.propensity_score)
 
 if "sms" not in allowed_channels:
-    return {"success": False, "error": f"ALS {lead.als_score} not eligible for SMS"}
+    return {"success": False, "error": f"ALS {lead.propensity_score} not eligible for SMS"}
 ```
 
 ---
@@ -121,11 +121,11 @@ if "sms" not in allowed_channels:
 ```python
 def should_use_sdk_email(lead_data: dict) -> bool:
     """SDK email for Hot leads only."""
-    return lead_data.get("als_score", 0) >= 85
+    return lead_data.get("propensity_score", 0) >= 85
 
 def should_use_sdk_voice_kb(lead_data: dict) -> bool:
     """SDK voice KB for Hot leads only."""
-    return lead_data.get("als_score", 0) >= 85
+    return lead_data.get("propensity_score", 0) >= 85
 ```
 
 **Why:** SDK calls are expensive (~$0.05-0.15 per lead). Only worth it for leads likely to convert.

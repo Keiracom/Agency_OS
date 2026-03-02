@@ -769,7 +769,7 @@ All endpoints use Pydantic models for request/response validation:
 class LeadResponse(BaseModel):
     id: UUID
     email: str
-    als_score: int
+    propensity_score: int
     status: str
 
     class Config:

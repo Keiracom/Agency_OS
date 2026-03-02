@@ -85,7 +85,7 @@ def get_fix_patterns() -> list[dict[str, str]]:
             "name": "Import Hierarchy Violation",
             "severity": "CRITICAL",
             "detection": "Engine importing from another engine",
-            "before": "from src.engines.scorer import calculate_als_score",
+            "before": "from src.engines.scorer import calculate_propensity_score",
             "after": "# FIXED by fixer-agent: removed cross-engine import (Rule 12)\n# Data now passed from orchestration layer via method argument",
         },
         {
@@ -244,7 +244,7 @@ FIX_LOG_TEMPLATE = """
 
 IMPORT_HIERARCHY_FIX = """
 # BEFORE
-from src.engines.scorer import calculate_als_score
+from src.engines.scorer import calculate_propensity_score
 
 # AFTER
 # FIXED by fixer-agent: removed cross-engine import (Rule 12)

@@ -174,10 +174,10 @@ if settings.TEST_MODE:
 **ALS Validation (VERIFIED):**
 ```python
 # src/engines/voice.py lines 163-171
-if lead.als_score is None or lead.als_score < 70:
+if lead.propensity_score is None or lead.propensity_score < 70:
     return EngineResult.fail(
-        error=f"ALS score too low for voice: {lead.als_score} (minimum 70)",
-        metadata={"lead_id": str(lead_id), "als_score": lead.als_score},
+        error=f"ALS score too low for voice: {lead.propensity_score} (minimum 70)",
+        metadata={"lead_id": str(lead_id), "propensity_score": lead.propensity_score},
     )
 ```
 

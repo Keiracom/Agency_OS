@@ -87,7 +87,7 @@ interface Lead {
   domain: string | null;
 
   // ALS Score (Tier visible, raw score hidden from client)
-  als_score: number | null;           // Hidden from client
+  propensity_score: number | null;           // Hidden from client
   als_tier: ALSTier | null;           // Visible to client as label
   als_data_quality: number | null;    // Hidden from client
   als_authority: number | null;       // Hidden from client

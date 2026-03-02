@@ -64,7 +64,7 @@
           "status": "completed",
           "checks": [
             "sdk_brain_enabled flag",
-            "sdk_min_als_score (85)",
+            "sdk_min_propensity_score (85)",
             "SDK daily limits per tier"
           ],
           "completed_at": "2026-01-18T22:32:22.292839"

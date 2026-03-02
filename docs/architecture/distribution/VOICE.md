@@ -80,7 +80,7 @@ async def generate_voice_kb(
     lead = await get_lead(db, lead_id)
     context = await build_full_lead_context(db, lead_id)
 
-    if lead.als_score >= 85:
+    if lead.propensity_score >= 85:
         # SDK for deeper research on Hot leads
         kb = await sdk_voice_kb_agent.generate(context)
     else:
@@ -90,7 +90,7 @@ async def generate_voice_kb(
     return EngineResult.ok(data={
         'lead_id': str(lead_id),
         'kb_content': kb,
-        'generation_method': 'sdk' if lead.als_score >= 85 else 'smart_prompt',
+        'generation_method': 'sdk' if lead.propensity_score >= 85 else 'smart_prompt',
     })
 ```
 

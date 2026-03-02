@@ -98,7 +98,7 @@ else:
 async def process_lead(lead: Lead, db: AsyncSession):
     """Route to SDK or standard processing based on ALS."""
 
-    if lead.als_score >= 85:  # Hot lead
+    if lead.propensity_score >= 85:  # Hot lead
         # Use SDK Brain
         result = await sdk_enrichment_agent.enrich(lead)
     else:

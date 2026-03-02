@@ -341,8 +341,8 @@ class HowDetector:
                 
                 output.append({
                     "lead_id": lead_id,
-                    "als_score": lead.als_score or 50,
-                    "als_tier": self._get_als_tier(lead.als_score or 50),
+                    "propensity_score": lead.propensity_score or 50,
+                    "als_tier": self._get_als_tier(lead.propensity_score or 50),
                     "channel_sequence": channel_sequence,
                     "channel_count": len(set(channel_sequence)),
                     "touch_count": len(channel_sequence),
@@ -401,8 +401,8 @@ class HowDetector:
             if lead and channel_sequence:
                 output.append({
                     "lead_id": lead_id,
-                    "als_score": lead.als_score or 50,
-                    "als_tier": self._get_als_tier(lead.als_score or 50),
+                    "propensity_score": lead.propensity_score or 50,
+                    "als_tier": self._get_als_tier(lead.propensity_score or 50),
                     "channel_sequence": channel_sequence,
                     "channel_count": len(set(channel_sequence)),
                     "touch_count": len(channel_sequence),
@@ -860,7 +860,7 @@ async def select_channel(
     Uses HOW patterns if available.
     """
     # Get lead's ALS tier
-    als_tier = self._get_als_tier(lead.als_score or 50)
+    als_tier = self._get_als_tier(lead.propensity_score or 50)
     
     # Default channel from sequence
     default_channel = sequence[touch_number - 1].get("channel", "email")
@@ -958,7 +958,7 @@ async def generate_sequence(
             })
     
     # Adjust based on lead's tier
-    als_tier = self._get_als_tier(lead.als_score or 50)
+    als_tier = self._get_als_tier(lead.propensity_score or 50)
     
     if als_tier == "hot" and how_patterns:
         # Hot leads: prioritize voice if it works

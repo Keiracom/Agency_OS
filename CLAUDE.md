@@ -162,7 +162,7 @@ from src.agents.sdk_agents import (
 )
 
 # Check before content generation
-lead_data = {"als_score": 88, ...}
+lead_data = {"propensity_score": 88, ...}
 if should_use_sdk_email(lead_data):
     result = await content.generate_email_with_sdk(db, lead_id, campaign_id)
 else:
@@ -213,7 +213,7 @@ All orchestration flows now properly route Hot leads to SDK:
 # In orchestration flows - SDK routing for Hot leads
 from src.agents.sdk_agents import should_use_sdk_email, should_use_sdk_voice_kb
 
-lead_data = {"als_score": lead.als_score, ...}
+lead_data = {"propensity_score": lead.propensity_score, ...}
 if should_use_sdk_email(lead_data):  # Hot check (ALS >= 85)
     result = await content.generate_email_with_sdk(...)
 else:

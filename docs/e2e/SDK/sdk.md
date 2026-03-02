@@ -534,7 +534,7 @@ async def lead_enrichment_flow(
             update_lead(
                 lead_id=lead["id"],
                 enriched_data=final_data,
-                als_score=final_als,
+                propensity_score=final_als,
                 enrichment_method="brain" if should_use_brain(merged, baseline_als, confidence) else "api"
             )
 
@@ -651,7 +651,7 @@ async def classify_response(
     ## Lead Context
     - Company: {lead['company']}
     - Decision Maker: {lead['decision_maker']['name']}
-    - ALS Score: {lead['als_score']}
+    - ALS Score: {lead['propensity_score']}
 
     ## Classification Options
     - positive: Interested, wants to talk

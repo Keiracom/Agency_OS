@@ -314,7 +314,7 @@ def should_use_sdk_brain(lead: Lead) -> bool:
     """Only use SDK for highest-intent Hot leads."""
 
     # Must be Hot (ALS 85+)
-    if lead.als_score < 85:
+    if lead.propensity_score < 85:
         return False
 
     # Priority signals (any one qualifies)

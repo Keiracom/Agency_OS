@@ -762,7 +762,7 @@ class ScorerEngine:
         final_score = int(np.clip(raw_score, 0, 100))
         
         # 8. Update lead
-        lead.als_score = final_score
+        lead.propensity_score = final_score
         
         return final_score
     
@@ -1083,7 +1083,7 @@ class AllocatorEngine:
         Build channel sequence based on patterns and lead tier.
         """
         # Determine lead tier
-        als_tier = self._get_als_tier(lead.als_score or 50)
+        als_tier = self._get_als_tier(lead.propensity_score or 50)
         
         # Start with default or winning sequence
         if how_patterns and how_patterns.get("winning_sequences"):

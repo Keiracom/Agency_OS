@@ -783,7 +783,7 @@ async def generate_personalized_email(self, lead: Lead, research: dict):
 def should_use_sdk_brain(lead: Lead) -> bool:
     """Determine if lead qualifies for SDK Brain treatment."""
     # Must be Hot (ALS 85+)
-    if lead.als_score < 85:
+    if lead.propensity_score < 85:
         return False
 
     # Priority signals (use SDK for any of these):
@@ -924,7 +924,7 @@ sdk_voice_kb_enabled: bool = Field(default=True)
 sdk_objection_enabled: bool = Field(default=True)
 
 # Minimum ALS for SDK (default: Hot leads only)
-sdk_min_als_score: int = Field(default=85)
+sdk_min_propensity_score: int = Field(default=85)
 ```
 
 ---
@@ -1205,7 +1205,7 @@ class TestSDKEnrichmentFlow:
     async def test_hot_lead_gets_sdk_enrichment(self, test_client, test_db):
         """Test that Hot leads are routed to SDK."""
         # Create Hot lead (ALS 90)
-        lead = await create_test_lead(als_score=90)
+        lead = await create_test_lead(propensity_score=90)
 
         # Run enrichment flow
         await enrichment_flow(lead_ids=[lead.id])
@@ -1218,7 +1218,7 @@ class TestSDKEnrichmentFlow:
     async def test_cold_lead_skips_sdk(self, test_client, test_db):
         """Test that Cold leads don't use SDK."""
         # Create Cold lead (ALS 30)
-        lead = await create_test_lead(als_score=30)
+        lead = await create_test_lead(propensity_score=30)
 
         # Run enrichment flow
         await enrichment_flow(lead_ids=[lead.id])

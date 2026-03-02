@@ -235,11 +235,11 @@ async def run_waterfall(lead_id: str):
         await enrich_email_hunter(lead)
     
     # Tier 4: LinkedIn
-    if lead.als_score >= 60:
+    if lead.propensity_score >= 60:
         await enrich_linkedin(lead)
     
     # Tier 5: Mobile (GATED)
-    if lead.als_score >= 85 and not lead.mobile:
+    if lead.propensity_score >= 85 and not lead.mobile:
         await enrich_identity_gold(lead)
     
     # Recalculate ALS

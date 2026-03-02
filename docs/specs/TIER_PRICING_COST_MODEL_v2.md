@@ -286,9 +286,9 @@ async def enrich_lead(lead: Lead) -> EnrichedLead:
     Cold/Cool leads: Hunter direct
     Warm/Hot leads: Clay full waterfall
     """
-    als_score = lead.als_score or 0
+    propensity_score = lead.propensity_score or 0
     
-    if als_score < 60:  # Cold or Cool
+    if propensity_score < 60:  # Cold or Cool
         return await hunter_enrich(lead)
     else:  # Warm or Hot
         return await clay_waterfall_enrich(lead)

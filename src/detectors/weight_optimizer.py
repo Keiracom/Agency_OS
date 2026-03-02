@@ -143,7 +143,7 @@ class WeightOptimizer:
         stmt = select(Lead).where(
             and_(
                 Lead.client_id == client_id,
-                Lead.als_data_quality.isnot(None),  # Ensure components exist
+                Lead.propensity_data_quality.isnot(None),  # Ensure components exist
                 Lead.status.in_(
                     [
                         LeadStatus.CONVERTED,

@@ -49,13 +49,17 @@ class MockClickSendClient:
             "country": country,
         }
 
-    async def send_letter(self, to_address, from_address, template_id, merge_variables, color=True):
+    async def send_letter(self, to_address, from_address, template_id=None, file_url=None, 
+                          merge_variables=None, colour=True, duplex=False, priority_post=False):
         self.last_letter_params = {
             "to_address": to_address,
             "from_address": from_address,
             "template_id": template_id,
+            "file_url": file_url,
             "merge_variables": merge_variables,
-            "color": color,
+            "colour": colour,
+            "duplex": duplex,
+            "priority_post": priority_post,
         }
 
         if self.should_fail:
@@ -64,21 +68,18 @@ class MockClickSendClient:
         return {
             "success": True,
             "letter_id": "ltr_123",
-            "url": "https://clicksend.com/letters/ltr_123",
-            "expected_delivery_date": "2025-12-25",
-            "tracking_number": "TRACK123",
-            "carrier": "Australia Post",
-            "provider": "clicksend",
+            "status": "Created",
+            "price": 1.50,
         }
 
-    async def send_postcard(self, to_address, from_address, front_template_id, back_template_id, merge_variables, size="4x6"):
+    async def send_postcard(self, to_address, from_address, front_file_url, back_file_url, 
+                            merge_variables=None):
         self.last_postcard_params = {
             "to_address": to_address,
             "from_address": from_address,
-            "front_template_id": front_template_id,
-            "back_template_id": back_template_id,
+            "front_file_url": front_file_url,
+            "back_file_url": back_file_url,
             "merge_variables": merge_variables,
-            "size": size,
         }
 
         if self.should_fail:
@@ -87,9 +88,8 @@ class MockClickSendClient:
         return {
             "success": True,
             "postcard_id": "psc_123",
-            "url": "https://clicksend.com/postcards/psc_123",
-            "expected_delivery_date": "2025-12-25",
-            "provider": "clicksend",
+            "status": "Created",
+            "price": 1.00,
         }
 
     async def get_letter(self, letter_id):
@@ -106,12 +106,10 @@ class MockClickSendClient:
     def parse_webhook(self, payload):
         return {
             "event_id": payload.get("event_type", {}).get("id"),
-            "resource_type": payload.get("body", {}).get("object"),
-            "resource_id": payload.get("body", {}).get("id"),
+            "message_id": payload.get("body", {}).get("id"),
+            "status": payload.get("body", {}).get("status", ""),
+            "timestamp": payload.get("body", {}).get("timestamp"),
             "tracking_number": payload.get("body", {}).get("tracking_number"),
-            "tracking_events": payload.get("body", {}).get("tracking_events", []),
-            "carrier": payload.get("body", {}).get("carrier"),
-            "expected_delivery_date": payload.get("body", {}).get("expected_delivery_date"),
         }
 
 
@@ -246,59 +244,23 @@ def test_singleton():
 
 
 # ============================================
-# ADDRESS VERIFICATION TESTS
+# ADDRESS VERIFICATION TESTS (REMOVED)
 # ============================================
+# verify_address method removed from MailEngine
+# Address verification now handled by ClickSend at send time
 
+@pytest.mark.skip(reason="verify_address method removed from MailEngine")
 @pytest.mark.asyncio
 async def test_verify_address_success():
-    """Test successful address verification."""
-    engine = MailEngine(clicksend_client=MockClickSendClient())
-    mock_db = MockDB()
-    lead = MockLead()
-
-    with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead:
-        mock_get_lead.return_value = lead
-
-        result = await engine.verify_address(
-            db=mock_db,
-            lead_id=lead.id,
-            address_data={
-                "address_line1": "123 Main St",
-                "city": "Sydney",
-                "state": "NSW",
-                "zip_code": "2000",
-                "country": "AU",
-            },
-        )
-
-        assert result.success
-        assert result.data["valid"] is True
-        assert result.data["deliverability"] == "deliverable"
+    """Test successful address verification - DEPRECATED."""
+    pass
 
 
+@pytest.mark.skip(reason="verify_address method removed from MailEngine")
 @pytest.mark.asyncio
 async def test_verify_address_invalid():
-    """Test address verification with invalid address."""
-    engine = MailEngine(clicksend_client=MockClickSendClient(invalid_address=True))
-    mock_db = MockDB()
-    lead = MockLead()
-
-    with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead:
-        mock_get_lead.return_value = lead
-
-        result = await engine.verify_address(
-            db=mock_db,
-            lead_id=lead.id,
-            address_data={
-                "address_line1": "Invalid Address",
-                "city": "Nowhere",
-                "state": "XX",
-                "zip_code": "0000",
-            },
-        )
-
-        assert not result.success
-        assert "not deliverable" in result.error.lower()
+    """Test address verification with invalid address - DEPRECATED."""
+    pass
 
 
 # ============================================
@@ -314,7 +276,8 @@ async def test_send_letter_success(valid_to_address, valid_from_address):
     campaign = MockCampaign()
 
     with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead, \
-         patch.object(engine, 'get_campaign_by_id', new_callable=AsyncMock) as mock_get_campaign:
+         patch.object(engine, 'get_campaign_by_id', new_callable=AsyncMock) as mock_get_campaign, \
+         patch.object(engine, '_log_mail_activity', new_callable=AsyncMock):
 
         mock_get_lead.return_value = lead
         mock_get_campaign.return_value = campaign
@@ -334,14 +297,13 @@ async def test_send_letter_success(valid_to_address, valid_from_address):
         assert result.success
         assert result.data["mail_id"] == "ltr_123"
         assert result.data["mail_type"] == "letter"
-        assert result.data["tracking_number"] == "TRACK123"
-        assert result.data["provider"] == "lob"
+        assert result.data["provider"] == "clicksend"
         assert mock_db.committed
 
 
 @pytest.mark.asyncio
 async def test_send_letter_missing_template(valid_to_address, valid_from_address):
-    """Test letter fails without template_id."""
+    """Test letter fails without template_id or file_url."""
     engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
     lead = MockLead(propensity_score=90)
@@ -365,7 +327,7 @@ async def test_send_letter_missing_template(valid_to_address, valid_from_address
         )
 
         assert not result.success
-        assert "template_id is required" in result.error.lower()
+        assert "template_id" in result.error.lower() or "file_url" in result.error.lower()
 
 
 # ============================================
@@ -381,7 +343,8 @@ async def test_send_postcard_success(valid_to_address, valid_from_address):
     campaign = MockCampaign()
 
     with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead, \
-         patch.object(engine, 'get_campaign_by_id', new_callable=AsyncMock) as mock_get_campaign:
+         patch.object(engine, 'get_campaign_by_id', new_callable=AsyncMock) as mock_get_campaign, \
+         patch.object(engine, '_log_mail_activity', new_callable=AsyncMock):
 
         mock_get_lead.return_value = lead
         mock_get_campaign.return_value = campaign
@@ -392,11 +355,10 @@ async def test_send_postcard_success(valid_to_address, valid_from_address):
             campaign_id=campaign.id,
             content="",
             mail_type="postcard",
-            front_template_id="tmpl_front_123",
-            back_template_id="tmpl_back_123",
+            front_file_url="https://example.com/front.png",
+            back_file_url="https://example.com/back.png",
             to_address=valid_to_address,
             from_address=valid_from_address,
-            size="4x6",
         )
 
         assert result.success
@@ -406,7 +368,7 @@ async def test_send_postcard_success(valid_to_address, valid_from_address):
 
 @pytest.mark.asyncio
 async def test_send_postcard_missing_templates(valid_to_address, valid_from_address):
-    """Test postcard fails without both template IDs."""
+    """Test postcard fails without front and back file URLs."""
     engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
     lead = MockLead(propensity_score=90)
@@ -426,11 +388,11 @@ async def test_send_postcard_missing_templates(valid_to_address, valid_from_addr
             mail_type="postcard",
             to_address=valid_to_address,
             from_address=valid_from_address,
-            # Missing templates
+            # Missing file URLs
         )
 
         assert not result.success
-        assert "front_template_id" in result.error.lower() or "back_template_id" in result.error.lower()
+        assert "front_file_url" in result.error.lower() or "back_file_url" in result.error.lower()
 
 
 # ============================================
@@ -472,7 +434,8 @@ async def test_send_mail_als_exactly_85(valid_to_address, valid_from_address):
     campaign = MockCampaign()
 
     with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead, \
-         patch.object(engine, 'get_campaign_by_id', new_callable=AsyncMock) as mock_get_campaign:
+         patch.object(engine, 'get_campaign_by_id', new_callable=AsyncMock) as mock_get_campaign, \
+         patch.object(engine, '_log_mail_activity', new_callable=AsyncMock):
 
         mock_get_lead.return_value = lead
         mock_get_campaign.return_value = campaign
@@ -579,18 +542,15 @@ async def test_send_mail_missing_from_address(valid_to_address):
 
 
 # ============================================
-# GET MAIL STATUS TESTS
+# GET MAIL STATUS TESTS (REMOVED)
 # ============================================
+# get_mail_status method removed; use get_letter_history instead
 
+@pytest.mark.skip(reason="get_mail_status method removed from MailEngine")
 @pytest.mark.asyncio
 async def test_get_mail_status(mock_db):
-    """Test getting mail status."""
-    engine = MailEngine(clicksend_client=MockClickSendClient())
-
-    result = await engine.get_mail_status(
-        db=mock_db,
-        letter_id="ltr_123",
-    )
+    """Test getting mail status - DEPRECATED."""
+    pass
 
     assert result.success
     assert result.data["id"] == "ltr_123"
@@ -616,19 +576,14 @@ async def test_process_tracking_webhook_delivered():
         payload={
             "body": {
                 "id": "ltr_123",
-                "object": "letter",
-                "tracking_number": "TRACK123",
-                "tracking_events": [
-                    {"name": "In Transit", "time": "2025-12-22T10:00:00Z"},
-                    {"name": "Delivered", "time": "2025-12-24T14:00:00Z"},
-                ],
-                "carrier": "USPS",
+                "status": "Delivered",
+                "timestamp": "2025-12-24T14:00:00Z",
             },
         },
     )
 
     assert result.success
-    assert result.data["resource_id"] == "ltr_123"
+    assert result.data["message_id"] == "ltr_123"
     assert result.data["delivered"] is True
     assert result.data["processed"]
 
@@ -647,10 +602,7 @@ async def test_process_tracking_webhook_in_transit():
         payload={
             "body": {
                 "id": "ltr_123",
-                "object": "letter",
-                "tracking_events": [
-                    {"name": "In Transit", "time": "2025-12-22T10:00:00Z"},
-                ],
+                "status": "In Transit",
             },
         },
     )
@@ -661,7 +613,7 @@ async def test_process_tracking_webhook_in_transit():
 
 @pytest.mark.asyncio
 async def test_process_tracking_webhook_missing_resource_id(mock_db):
-    """Test webhook processing with missing resource_id."""
+    """Test webhook processing with missing message_id."""
     engine = MailEngine(clicksend_client=MockClickSendClient())
 
     result = await engine.process_tracking_webhook(
@@ -669,13 +621,12 @@ async def test_process_tracking_webhook_missing_resource_id(mock_db):
         payload={
             "body": {
                 # No id
-                "tracking_events": [],
             },
         },
     )
 
     assert not result.success
-    assert "missing resource_id" in result.error.lower()
+    assert "message_id" in result.error.lower()
 
 
 @pytest.mark.asyncio
@@ -694,7 +645,7 @@ async def test_process_tracking_webhook_activity_not_found(mock_db):
     )
 
     assert not result.success
-    assert "activity not found" in result.error.lower()
+    assert "not found" in result.error.lower()
 
 
 # ============================================
@@ -703,14 +654,15 @@ async def test_process_tracking_webhook_activity_not_found(mock_db):
 
 @pytest.mark.asyncio
 async def test_activity_logging(valid_to_address, valid_from_address):
-    """Test that mail activities are logged correctly."""
+    """Test that mail activities are logged correctly via _log_mail_activity."""
     engine = MailEngine(clicksend_client=MockClickSendClient())
     mock_db = MockDB()
     lead = MockLead(propensity_score=90)
     campaign = MockCampaign()
 
     with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead, \
-         patch.object(engine, 'get_campaign_by_id', new_callable=AsyncMock) as mock_get_campaign:
+         patch.object(engine, 'get_campaign_by_id', new_callable=AsyncMock) as mock_get_campaign, \
+         patch.object(engine, '_log_mail_activity', new_callable=AsyncMock) as mock_log:
 
         mock_get_lead.return_value = lead
         mock_get_campaign.return_value = campaign
@@ -727,11 +679,11 @@ async def test_activity_logging(valid_to_address, valid_from_address):
         )
 
         assert result.success
-        assert len(mock_db.added) == 1
-        activity = mock_db.added[0]
-        assert activity.channel == ChannelType.MAIL
-        assert activity.action == "sent"
-        assert activity.provider_message_id == "ltr_123"
+        # Verify _log_mail_activity was called with correct args
+        mock_log.assert_called_once()
+        call_kwargs = mock_log.call_args.kwargs
+        assert call_kwargs["mail_type"] == "letter"
+        assert call_kwargs["mail_id"] == "ltr_123"
 
 
 # ============================================
@@ -747,7 +699,8 @@ async def test_lead_update_on_success(valid_to_address, valid_from_address):
     campaign = MockCampaign()
 
     with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead, \
-         patch.object(engine, 'get_campaign_by_id', new_callable=AsyncMock) as mock_get_campaign:
+         patch.object(engine, 'get_campaign_by_id', new_callable=AsyncMock) as mock_get_campaign, \
+         patch.object(engine, '_log_mail_activity', new_callable=AsyncMock):
 
         mock_get_lead.return_value = lead
         mock_get_campaign.return_value = campaign

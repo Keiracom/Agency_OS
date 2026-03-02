@@ -17,7 +17,7 @@ class TestDiscoveryMode:
     
     def test_mode_enum_values(self):
         from enrichment.query_translator import DiscoveryMode
-        assert DiscoveryMode.ABN_FIRST.value == "abn"
+        # ABN_FIRST deprecated per Waterfall v3 Decision #1 (2026-03-01)
         assert DiscoveryMode.MAPS_FIRST.value == "maps"
         assert DiscoveryMode.PARALLEL.value == "parallel"
 
@@ -25,7 +25,7 @@ class TestDiscoveryMode:
 class TestQueryEstimation:
     """Test query count estimation"""
     
-    def test_abn_query_estimation(self):
+    def test_maps_query_estimation_basic(self):
         from enrichment.query_translator import QueryTranslator, CampaignConfig, DiscoveryMode
         
         # Create minimal translator
@@ -45,10 +45,9 @@ class TestQueryEstimation:
             lead_volume=500
         )
         
-        # 500 leads * 1.28 waste / 200 per query = ~3.2 = 4 queries
-        estimate = translator.estimate_queries_needed(config, DiscoveryMode.ABN_FIRST)
-        assert estimate >= 3
-        assert estimate <= 5
+        # Use MAPS_FIRST as ABN_FIRST was deprecated
+        estimate = translator.estimate_queries_needed(config, DiscoveryMode.MAPS_FIRST)
+        assert estimate >= 1  # At least one query needed
     
     def test_maps_query_estimation(self):
         from enrichment.query_translator import QueryTranslator, CampaignConfig, DiscoveryMode

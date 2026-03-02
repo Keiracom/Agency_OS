@@ -470,13 +470,15 @@ class VoiceAgentService:
 
     async def _select_hook(self, lead: dict, agency: dict) -> dict | None:
         """Use Claude to select personalized hook based on enrichment data."""
-        if not self.anthropic:
-            return None
-
         enrichment = lead.get("enrichment_data", {})
         linkedin_posts = enrichment.get("linkedin_posts", [])
 
+        # Return standard fallback when no LinkedIn posts available
         if not linkedin_posts:
+            return {"hook_text": "Standard introduction", "hook_type": "standard"}
+
+        # If no anthropic client, return standard hook
+        if not self.anthropic:
             return {"hook_text": "Standard introduction", "hook_type": "standard"}
 
         # Call Claude Sonnet for hook selection

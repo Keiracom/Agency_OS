@@ -322,17 +322,11 @@ class TestLeadAllocatorStats:
         """Test releasing all leads for a client."""
         client_id = uuid4()
 
-        # Mock release query
+        # Mock release query - service uses result.rowcount, not fetchall
         release_result = MagicMock()
-        release_result.fetchall.return_value = [
-            MagicMock(lead_pool_id=uuid4()),
-            MagicMock(lead_pool_id=uuid4()),
-        ]
+        release_result.rowcount = 2
 
-        # Mock pool update
-        pool_update_result = MagicMock()
-
-        mock_session.execute.side_effect = [release_result, pool_update_result]
+        mock_session.execute.return_value = release_result
 
         result = await allocator_service.release_client_leads(
             client_id=client_id,

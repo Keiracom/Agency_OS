@@ -73,8 +73,8 @@ async def test_validate_client_status_success(mock_client):
     from contextlib import asynccontextmanager
     
     mock_db = AsyncMock()
-    mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=mock_client)
+    mock_result = MagicMock()  # Result object is sync, not async
+    mock_result.scalar_one_or_none.return_value = mock_client  # sync method
     mock_db.execute = AsyncMock(return_value=mock_result)
 
     @asynccontextmanager
@@ -98,8 +98,8 @@ async def test_validate_client_status_no_credits(mock_client):
     mock_client.credits_remaining = 0
 
     mock_db = AsyncMock()
-    mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=mock_client)
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = mock_client
     mock_db.execute = AsyncMock(return_value=mock_result)
 
     @asynccontextmanager
@@ -118,8 +118,8 @@ async def test_validate_client_status_no_credits(mock_client):
 async def test_validate_client_status_not_found():
     """Test client validation fails when client not found."""
     mock_db = AsyncMock()
-    mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=None)
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
     mock_db.execute = AsyncMock(return_value=mock_result)
 
     @asynccontextmanager
@@ -143,8 +143,8 @@ async def test_validate_client_status_not_found():
 async def test_validate_campaign_success(mock_campaign):
     """Test successful campaign validation."""
     mock_db = AsyncMock()
-    mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=mock_campaign)
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = mock_campaign
     mock_db.execute = AsyncMock(return_value=mock_result)
 
     @asynccontextmanager
@@ -165,8 +165,8 @@ async def test_validate_campaign_success(mock_campaign):
 async def test_validate_campaign_not_found():
     """Test campaign validation fails when campaign not found."""
     mock_db = AsyncMock()
-    mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=None)
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
     mock_db.execute = AsyncMock(return_value=mock_result)
 
     @asynccontextmanager
@@ -192,8 +192,8 @@ async def test_activate_campaign_success():
     campaign_id = uuid4()
 
     mock_db = AsyncMock()
-    mock_result = AsyncMock()
-    mock_result.scalar_one_or_none = AsyncMock(return_value=campaign_id)
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = campaign_id
     mock_db.execute = AsyncMock(return_value=mock_result)
     mock_db.commit = AsyncMock()
 
@@ -224,8 +224,8 @@ async def test_get_campaign_leads_success():
     lead_ids = [uuid4(), uuid4(), uuid4()]
 
     mock_db = AsyncMock()
-    mock_result = AsyncMock()
-    mock_result.all = AsyncMock(return_value=[(lid,) for lid in lead_ids])
+    mock_result = MagicMock()
+    mock_result.all.return_value = [(lid,) for lid in lead_ids]
     mock_db.execute = AsyncMock(return_value=mock_result)
 
     @asynccontextmanager
@@ -254,7 +254,7 @@ async def test_trigger_enrichment_success():
     campaign_id = str(uuid4())
 
     mock_db = AsyncMock()
-    mock_result = AsyncMock()
+    mock_result = MagicMock()
     mock_result.rowcount = 2
     mock_db.execute = AsyncMock(return_value=mock_result)
     mock_db.commit = AsyncMock()
@@ -292,44 +292,55 @@ async def test_campaign_activation_flow_success(mock_campaign, mock_client):
     """Test full campaign activation flow."""
     campaign_id = uuid4()
 
+    # Use AsyncMock for all patched tasks since they're awaited
+    mock_validate_campaign = AsyncMock(return_value={
+        "campaign_id": str(campaign_id),
+        "client_id": str(mock_client.id),
+        "name": "Test Campaign",
+        "valid": True,
+    })
+    mock_validate_client = AsyncMock(return_value={
+        "subscription_status": "active",
+        "credits_remaining": 1000,
+        "valid": True,
+    })
+    mock_activate = AsyncMock(return_value={
+        "campaign_id": str(campaign_id),
+        "status": "active",
+        "activated_at": datetime.utcnow().isoformat(),
+    })
+    mock_discovery = AsyncMock(return_value={
+        "discovered": 10,
+        "leads_created": 5,
+    })
+    mock_get_leads = AsyncMock(return_value={
+        "lead_count": 5,
+        "lead_ids": [str(uuid4()) for _ in range(5)],
+    })
+    mock_trigger = AsyncMock(return_value={
+        "queued_count": 5,
+        "message": "Queued 5 leads",
+    })
+
     with patch(
-        "src.orchestration.flows.campaign_flow.validate_campaign_task"
-    ) as mock_validate_campaign, patch(
-        "src.orchestration.flows.campaign_flow.validate_client_status_task"
-    ) as mock_validate_client, patch(
-        "src.orchestration.flows.campaign_flow.activate_campaign_task"
-    ) as mock_activate, patch(
-        "src.orchestration.flows.campaign_flow.get_campaign_leads_task"
-    ) as mock_get_leads, patch(
-        "src.orchestration.flows.campaign_flow.trigger_enrichment_task"
-    ) as mock_trigger:
-
-        # Setup mocks
-        mock_validate_campaign.return_value = {
-            "campaign_id": str(campaign_id),
-            "client_id": str(mock_client.id),
-            "name": "Test Campaign",
-            "valid": True,
-        }
-        mock_validate_client.return_value = {
-            "subscription_status": "active",
-            "credits_remaining": 1000,
-            "valid": True,
-        }
-        mock_activate.return_value = {
-            "campaign_id": str(campaign_id),
-            "status": "active",
-            "activated_at": datetime.utcnow().isoformat(),
-        }
-        mock_get_leads.return_value = {
-            "lead_count": 5,
-            "lead_ids": [str(uuid4()) for _ in range(5)],
-        }
-        mock_trigger.return_value = {
-            "queued_count": 5,
-            "message": "Queued 5 leads",
-        }
-
+        "src.orchestration.flows.campaign_flow.validate_campaign_task",
+        mock_validate_campaign
+    ), patch(
+        "src.orchestration.flows.campaign_flow.validate_client_status_task",
+        mock_validate_client
+    ), patch(
+        "src.orchestration.flows.campaign_flow.activate_campaign_task",
+        mock_activate
+    ), patch(
+        "src.orchestration.flows.campaign_flow.trigger_discovery_task",
+        mock_discovery
+    ), patch(
+        "src.orchestration.flows.campaign_flow.get_campaign_leads_task",
+        mock_get_leads
+    ), patch(
+        "src.orchestration.flows.campaign_flow.trigger_enrichment_task",
+        mock_trigger
+    ):
         result = await campaign_activation_flow(campaign_id)
 
         assert result["status"] == "activated"

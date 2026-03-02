@@ -5,6 +5,7 @@ PHASE: 5 (Orchestration)
 TASK: ORC-002
 """
 
+from contextlib import asynccontextmanager
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -69,16 +70,21 @@ def mock_lead():
 @pytest.mark.asyncio
 async def test_validate_client_status_success(mock_client):
     """Test successful client validation."""
+    from contextlib import asynccontextmanager
+    
+    mock_db = AsyncMock()
+    mock_result = AsyncMock()
+    mock_result.scalar_one_or_none = AsyncMock(return_value=mock_client)
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_db
+
     with patch(
-        "src.orchestration.flows.campaign_flow.get_db_session"
-    ) as mock_get_session:
-        mock_db = AsyncMock()
-        mock_result = AsyncMock()
-        mock_result.scalar_one_or_none = AsyncMock(return_value=mock_client)
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        mock_get_session.return_value.__aenter__.return_value = mock_db
-
+        "src.orchestration.flows.campaign_flow.get_db_session",
+        mock_get_session
+    ):
         result = await validate_client_status_task(mock_client.id)
 
         assert result["valid"] is True
@@ -91,16 +97,19 @@ async def test_validate_client_status_no_credits(mock_client):
     """Test client validation fails when no credits."""
     mock_client.credits_remaining = 0
 
+    mock_db = AsyncMock()
+    mock_result = AsyncMock()
+    mock_result.scalar_one_or_none = AsyncMock(return_value=mock_client)
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_db
+
     with patch(
-        "src.orchestration.flows.campaign_flow.get_db_session"
-    ) as mock_get_session:
-        mock_db = AsyncMock()
-        mock_result = AsyncMock()
-        mock_result.scalar_one_or_none = AsyncMock(return_value=mock_client)
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        mock_get_session.return_value.__aenter__.return_value = mock_db
-
+        "src.orchestration.flows.campaign_flow.get_db_session",
+        mock_get_session
+    ):
         with pytest.raises(ValueError, match="must have credits"):
             await validate_client_status_task(mock_client.id)
 
@@ -108,16 +117,19 @@ async def test_validate_client_status_no_credits(mock_client):
 @pytest.mark.asyncio
 async def test_validate_client_status_not_found():
     """Test client validation fails when client not found."""
+    mock_db = AsyncMock()
+    mock_result = AsyncMock()
+    mock_result.scalar_one_or_none = AsyncMock(return_value=None)
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_db
+
     with patch(
-        "src.orchestration.flows.campaign_flow.get_db_session"
-    ) as mock_get_session:
-        mock_db = AsyncMock()
-        mock_result = AsyncMock()
-        mock_result.scalar_one_or_none = AsyncMock(return_value=None)
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        mock_get_session.return_value.__aenter__.return_value = mock_db
-
+        "src.orchestration.flows.campaign_flow.get_db_session",
+        mock_get_session
+    ):
         with pytest.raises(ValueError, match="not found"):
             await validate_client_status_task(uuid4())
 
@@ -130,16 +142,19 @@ async def test_validate_client_status_not_found():
 @pytest.mark.asyncio
 async def test_validate_campaign_success(mock_campaign):
     """Test successful campaign validation."""
+    mock_db = AsyncMock()
+    mock_result = AsyncMock()
+    mock_result.scalar_one_or_none = AsyncMock(return_value=mock_campaign)
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_db
+
     with patch(
-        "src.orchestration.flows.campaign_flow.get_db_session"
-    ) as mock_get_session:
-        mock_db = AsyncMock()
-        mock_result = AsyncMock()
-        mock_result.scalar_one_or_none = AsyncMock(return_value=mock_campaign)
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        mock_get_session.return_value.__aenter__.return_value = mock_db
-
+        "src.orchestration.flows.campaign_flow.get_db_session",
+        mock_get_session
+    ):
         result = await validate_campaign_task(mock_campaign.id)
 
         assert result["valid"] is True
@@ -149,16 +164,19 @@ async def test_validate_campaign_success(mock_campaign):
 @pytest.mark.asyncio
 async def test_validate_campaign_not_found():
     """Test campaign validation fails when campaign not found."""
+    mock_db = AsyncMock()
+    mock_result = AsyncMock()
+    mock_result.scalar_one_or_none = AsyncMock(return_value=None)
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_db
+
     with patch(
-        "src.orchestration.flows.campaign_flow.get_db_session"
-    ) as mock_get_session:
-        mock_db = AsyncMock()
-        mock_result = AsyncMock()
-        mock_result.scalar_one_or_none = AsyncMock(return_value=None)
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        mock_get_session.return_value.__aenter__.return_value = mock_db
-
+        "src.orchestration.flows.campaign_flow.get_db_session",
+        mock_get_session
+    ):
         with pytest.raises(ValueError, match="not found"):
             await validate_campaign_task(uuid4())
 
@@ -173,17 +191,20 @@ async def test_activate_campaign_success():
     """Test successful campaign activation."""
     campaign_id = uuid4()
 
+    mock_db = AsyncMock()
+    mock_result = AsyncMock()
+    mock_result.scalar_one_or_none = AsyncMock(return_value=campaign_id)
+    mock_db.execute = AsyncMock(return_value=mock_result)
+    mock_db.commit = AsyncMock()
+
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_db
+
     with patch(
-        "src.orchestration.flows.campaign_flow.get_db_session"
-    ) as mock_get_session:
-        mock_db = AsyncMock()
-        mock_result = AsyncMock()
-        mock_result.scalar_one_or_none = AsyncMock(return_value=campaign_id)
-        mock_db.execute = AsyncMock(return_value=mock_result)
-        mock_db.commit = AsyncMock()
-
-        mock_get_session.return_value.__aenter__.return_value = mock_db
-
+        "src.orchestration.flows.campaign_flow.get_db_session",
+        mock_get_session
+    ):
         result = await activate_campaign_task(campaign_id)
 
         assert result["status"] == "active"
@@ -202,16 +223,19 @@ async def test_get_campaign_leads_success():
     campaign_id = uuid4()
     lead_ids = [uuid4(), uuid4(), uuid4()]
 
+    mock_db = AsyncMock()
+    mock_result = AsyncMock()
+    mock_result.all = AsyncMock(return_value=[(lid,) for lid in lead_ids])
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_db
+
     with patch(
-        "src.orchestration.flows.campaign_flow.get_db_session"
-    ) as mock_get_session:
-        mock_db = AsyncMock()
-        mock_result = AsyncMock()
-        mock_result.all = AsyncMock(return_value=[(lid,) for lid in lead_ids])
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        mock_get_session.return_value.__aenter__.return_value = mock_db
-
+        "src.orchestration.flows.campaign_flow.get_db_session",
+        mock_get_session
+    ):
         result = await get_campaign_leads_task(campaign_id)
 
         assert result["lead_count"] == 3
@@ -229,17 +253,20 @@ async def test_trigger_enrichment_success():
     lead_ids = [str(uuid4()), str(uuid4())]
     campaign_id = str(uuid4())
 
+    mock_db = AsyncMock()
+    mock_result = AsyncMock()
+    mock_result.rowcount = 2
+    mock_db.execute = AsyncMock(return_value=mock_result)
+    mock_db.commit = AsyncMock()
+
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_db
+
     with patch(
-        "src.orchestration.flows.campaign_flow.get_db_session"
-    ) as mock_get_session:
-        mock_db = AsyncMock()
-        mock_result = AsyncMock()
-        mock_result.rowcount = 2
-        mock_db.execute = AsyncMock(return_value=mock_result)
-        mock_db.commit = AsyncMock()
-
-        mock_get_session.return_value.__aenter__.return_value = mock_db
-
+        "src.orchestration.flows.campaign_flow.get_db_session",
+        mock_get_session
+    ):
         result = await trigger_enrichment_task(lead_ids, campaign_id)
 
         assert result["queued_count"] == 2

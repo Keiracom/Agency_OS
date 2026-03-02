@@ -89,7 +89,7 @@ VALUES ('<session>', 'LAW_V_VIOLATION', '<task>', <lines>, '<why>', NOW());
 
 ---
 
-## §7 — LAW VI: MCP & Skills First (HARD BLOCK)
+## §7 — LAW VI: Skills-First Operations (HARD BLOCK)
 
 For any external provider call: check the MCP bridge AND `skills/` folder for a configured integration before anything else.
 

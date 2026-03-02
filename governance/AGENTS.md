@@ -1,10 +1,10 @@
 # LAW 0: THE BOOTSTRAP PROTOCOL (AUTOMATIC RECALL)
 **TRIGGER:** Start of any new session or after /reset.
 **MANDATE:** Before answering the user's first greeting, you MUST:
-1. Read the file: `/home/elliotbot/clawd/Agency_OS/HANDOFF.md`
+1. Query `elliot_internal.memories` via MCP Bridge for recent `daily_log` entries (per LAW IX)
 2. (Optional) Run a tool query for "latest critical decisions".
 
-**BEHAVIOR:** Do not introduce yourself as a new bot. Acknowledge the context from the Handoff file immediately.
+**BEHAVIOR:** Do not introduce yourself as a new bot. Acknowledge the context from Supabase memory immediately.
 
 ---
 

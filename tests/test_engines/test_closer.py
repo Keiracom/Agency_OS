@@ -455,8 +455,14 @@ async def test_handle_unsubscribe_intent():
     lead = MockLead(status=LeadStatus.IN_SEQUENCE)
     campaign = MockCampaign()
 
+    # Mock LeadPoolService
+    mock_pool_service = AsyncMock()
+    mock_pool_service.get_by_email = AsyncMock(return_value={"id": uuid4()})
+    mock_pool_service.mark_unsubscribed = AsyncMock()
+
     patches = get_standard_patches(engine, lead, campaign)
-    with patches[0], patches[1], patches[2], patches[3]:
+    with patches[0], patches[1], patches[2], patches[3], \
+         patch("src.engines.closer.LeadPoolService", return_value=mock_pool_service):
         result = await engine.process_reply(
             db=mock_db,
             lead_id=lead.id,

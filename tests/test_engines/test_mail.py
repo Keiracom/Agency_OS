@@ -459,7 +459,7 @@ async def test_send_mail_low_als(valid_to_address, valid_from_address):
         )
 
         assert not result.success
-        assert "als score too low" in result.error.lower()
+        assert "reachability score too low" in result.error.lower()
         assert "minimum 85" in result.error.lower()
 
 
@@ -513,7 +513,7 @@ async def test_send_mail_als_none(valid_to_address, valid_from_address):
         )
 
         assert not result.success
-        assert "als score too low" in result.error.lower()
+        assert "reachability score too low" in result.error.lower()
 
 
 # ============================================

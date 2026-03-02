@@ -166,14 +166,25 @@ class EmailEventsService:
             cis_service = get_cis_service(self.session)
 
             # Map event type to CIS outcome
+            # Gap 2 fix (Directive #157): Negative signals now map to explicit types
+            # instead of None, enabling CIS learning from negative outcomes
             cis_event_map = {
                 "delivered": "delivered",
                 "opened": "opened",
                 "clicked": "clicked",
                 "replied": "replied",
-                "bounced": None,  # Handled separately
-                "complained": None,
-                "unsubscribed": None,
+                # Negative signals - now tracked for CIS learning
+                "bounced": "bounced",
+                "complained": "complained",
+                "unsubscribed": "unsubscribed",
+            }
+
+            # Map negative event types to CIS final_outcome values
+            # These signal what NOT to do and should DECREASE confidence scores
+            negative_outcome_map = {
+                "bounced": "data_quality_failure",      # Bad enrichment data, not bad targeting
+                "complained": "targeting_failure",       # Wrong ICP or wrong message (spam)
+                "unsubscribed": "soft_rejection",        # Low fit, not hard rejection
             }
 
             cis_event = cis_event_map.get(event_type)
@@ -182,6 +193,9 @@ class EmailEventsService:
                 final_outcome = None
                 if event_type == "replied":
                     final_outcome = "replied_neutral"  # Will be updated by reply analyzer
+                elif event_type in negative_outcome_map:
+                    # Negative signals get explicit outcome types for CIS learning
+                    final_outcome = negative_outcome_map[event_type]
 
                 await cis_service.update_outreach_outcome(
                     activity_id=activity_id,

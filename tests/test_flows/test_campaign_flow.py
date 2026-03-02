@@ -85,7 +85,7 @@ async def test_validate_client_status_success(mock_client):
         "src.orchestration.flows.campaign_flow.get_db_session",
         mock_get_session
     ):
-        result = await validate_client_status_task(mock_client.id)
+        result = await validate_client_status_task.fn(mock_client.id)
 
         assert result["valid"] is True
         assert result["subscription_status"] == "active"
@@ -111,7 +111,7 @@ async def test_validate_client_status_no_credits(mock_client):
         mock_get_session
     ):
         with pytest.raises(ValueError, match="must have credits"):
-            await validate_client_status_task(mock_client.id)
+            await validate_client_status_task.fn(mock_client.id)
 
 
 @pytest.mark.asyncio
@@ -131,7 +131,7 @@ async def test_validate_client_status_not_found():
         mock_get_session
     ):
         with pytest.raises(ValueError, match="not found"):
-            await validate_client_status_task(uuid4())
+            await validate_client_status_task.fn(uuid4())
 
 
 # ============================================
@@ -155,7 +155,7 @@ async def test_validate_campaign_success(mock_campaign):
         "src.orchestration.flows.campaign_flow.get_db_session",
         mock_get_session
     ):
-        result = await validate_campaign_task(mock_campaign.id)
+        result = await validate_campaign_task.fn(mock_campaign.id)
 
         assert result["valid"] is True
         assert result["name"] == "Test Campaign"
@@ -178,7 +178,7 @@ async def test_validate_campaign_not_found():
         mock_get_session
     ):
         with pytest.raises(ValueError, match="not found"):
-            await validate_campaign_task(uuid4())
+            await validate_campaign_task.fn(uuid4())
 
 
 # ============================================
@@ -205,7 +205,7 @@ async def test_activate_campaign_success():
         "src.orchestration.flows.campaign_flow.get_db_session",
         mock_get_session
     ):
-        result = await activate_campaign_task(campaign_id)
+        result = await activate_campaign_task.fn(campaign_id)
 
         assert result["status"] == "active"
         assert str(campaign_id) in result["campaign_id"]
@@ -236,7 +236,7 @@ async def test_get_campaign_leads_success():
         "src.orchestration.flows.campaign_flow.get_db_session",
         mock_get_session
     ):
-        result = await get_campaign_leads_task(campaign_id)
+        result = await get_campaign_leads_task.fn(campaign_id)
 
         assert result["lead_count"] == 3
         assert len(result["lead_ids"]) == 3
@@ -267,7 +267,7 @@ async def test_trigger_enrichment_success():
         "src.orchestration.flows.campaign_flow.get_db_session",
         mock_get_session
     ):
-        result = await trigger_enrichment_task(lead_ids, campaign_id)
+        result = await trigger_enrichment_task.fn(lead_ids, campaign_id)
 
         assert result["queued_count"] == 2
         mock_db.commit.assert_called_once()
@@ -276,7 +276,7 @@ async def test_trigger_enrichment_success():
 @pytest.mark.asyncio
 async def test_trigger_enrichment_empty_list():
     """Test triggering enrichment with no leads."""
-    result = await trigger_enrichment_task([], str(uuid4()))
+    result = await trigger_enrichment_task.fn([], str(uuid4()))
 
     assert result["queued_count"] == 0
     assert "No leads" in result["message"]
@@ -341,7 +341,7 @@ async def test_campaign_activation_flow_success(mock_campaign, mock_client):
         "src.orchestration.flows.campaign_flow.trigger_enrichment_task",
         mock_trigger
     ):
-        result = await campaign_activation_flow(campaign_id)
+        result = await campaign_activation_flow.fn(campaign_id)
 
         assert result["status"] == "activated"
         assert result["leads_count"] == 5

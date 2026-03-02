@@ -421,7 +421,7 @@ async def optimize_client_weights_task(client_id: str) -> dict[str, Any]:
                     update(Client)
                     .where(Client.id == client_uuid)
                     .values(
-                        als_learned_weights=result["weights"],
+                        propensity_learned_weights=result["weights"],
                         als_weights_updated_at=now,
                         conversion_sample_count=result["sample_size"],
                         updated_at=now,
@@ -679,7 +679,7 @@ async def single_client_pattern_learning_flow(
 # [x] Archives expired patterns before creating new ones
 # [x] Runs all 5 detectors (WHO, WHAT, WHEN, HOW, FUNNEL)
 # [x] Weight optimization via scipy
-# [x] Updates client.als_learned_weights
+# [x] Updates client.propensity_learned_weights
 # [x] All functions have type hints
 # [x] All functions have docstrings
 # [x] Returns structured dict results

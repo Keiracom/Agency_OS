@@ -20,7 +20,7 @@ Tables fed:
   - cis_outreach_outcomes: tracks sent → delivered → opened → clicked → replied → meeting → converted
   - cis_reply_classifications: detailed intent analysis from reply_analyzer.py
   - cis_channel_performance: per-campaign channel metrics
-  - cis_als_tier_conversions: ALS tier → conversion correlation
+  - cis_als_tier_conversions: propensity tier → conversion correlation
   - cis_message_patterns: which hooks/templates work
   - cis_agency_learnings: monthly per-agency summary
 """
@@ -76,8 +76,8 @@ class CISService:
         campaign_id: UUID | str | None,
         channel: str,
         sequence_step: int | None = None,
-        als_score_at_send: int | None = None,
-        als_tier_at_send: str | None = None,
+        propensity_score_at_send: int | None = None,
+        propensity_tier_at_send: str | None = None,
         subject_line: str | None = None,
         hook_type: str | None = None,
         personalization_level: str = "basic",
@@ -96,8 +96,8 @@ class CISService:
             campaign_id: Campaign UUID (optional)
             channel: Channel type (email, linkedin, sms, voice)
             sequence_step: Which step in sequence (1, 2, 3, etc.)
-            als_score_at_send: Lead's ALS score at time of send
-            als_tier_at_send: Lead's ALS tier at time of send (hot/warm/cool/cold/dead)
+            propensity_score_at_send: Lead's propensity score at time of send
+            propensity_tier_at_send: Lead's propensity tier at time of send (hot/warm/cool/cold/dead)
             subject_line: Email subject for pattern matching
             hook_type: Content hook type (pain_point, social_proof, question, etc.)
             personalization_level: none, basic, deep, sdk_enhanced
@@ -117,8 +117,8 @@ class CISService:
                     campaign_id,
                     channel,
                     sequence_step,
-                    als_score_at_send,
-                    als_tier_at_send,
+                    propensity_score_at_send,
+                    propensity_tier_at_send,
                     subject_line,
                     hook_type,
                     personalization_level,
@@ -131,8 +131,8 @@ class CISService:
             campaign_id,
             channel,
             sequence_step,
-            als_score_at_send,
-            als_tier_at_send,
+            propensity_score_at_send,
+            propensity_tier_at_send,
             subject_line,
             hook_type,
             personalization_level,
@@ -147,8 +147,8 @@ class CISService:
         campaign_id: UUID | str | None,
         channel: str,
         sequence_step: int | None,
-        als_score_at_send: int | None,
-        als_tier_at_send: str | None,
+        propensity_score_at_send: int | None,
+        propensity_tier_at_send: str | None,
         subject_line: str | None,
         hook_type: str | None,
         personalization_level: str,
@@ -168,7 +168,7 @@ class CISService:
                     created_at, updated_at
                 ) VALUES (
                     :activity_id, :lead_id, :client_id, :campaign_id, :channel,
-                    :sequence_step, NOW(), :als_score, :als_tier,
+                    :sequence_step, NOW(), :propensity_score, :propensity_tier,
                     :subject_hash, :hook_type, :personalization_level,
                     NOW(), NOW()
                 )
@@ -184,8 +184,8 @@ class CISService:
                     "campaign_id": str(campaign_id) if campaign_id else None,
                     "channel": channel,
                     "sequence_step": sequence_step,
-                    "als_score": als_score_at_send,
-                    "als_tier": als_tier_at_send,
+                    "propensity_score": propensity_score_at_send,
+                    "propensity_tier": propensity_tier_at_send,
                     "subject_hash": subject_hash,
                     "hook_type": hook_type,
                     "personalization_level": personalization_level,
@@ -658,15 +658,15 @@ class CISService:
             return {"success": False, "error": str(e)}
 
     # =========================================================================
-    # D. ALS TIER CONVERSIONS - Track which tiers convert
+    # D. PROPENSITY TIER CONVERSIONS - Track which tiers convert
     # =========================================================================
 
-    async def record_als_conversion(
+    async def record_propensity_conversion(
         self,
         lead_id: UUID | str,
         client_id: UUID | str,
-        als_score: int,
-        als_tier: str,
+        propensity_score: int,
+        propensity_tier: str,
         channel_that_converted: str,
         sequence_step_that_converted: int | None = None,
         conversion_type: str = "meeting_booked",
@@ -676,13 +676,13 @@ class CISService:
         session: AsyncSession | None = None,
     ) -> dict[str, Any]:
         """
-        Record ALS tier conversion when a meeting is booked or deal closes.
+        Record propensity tier conversion when a meeting is booked or deal closes.
 
         Args:
             lead_id: Lead UUID
             client_id: Client UUID
-            als_score: Lead's ALS score at conversion
-            als_tier: Lead's ALS tier at conversion
+            propensity_score: Lead's propensity score at conversion
+            propensity_tier: Lead's propensity tier at conversion
             channel_that_converted: Channel that triggered conversion
             sequence_step_that_converted: Which step in sequence
             conversion_type: meeting_booked or deal_closed
@@ -697,12 +697,12 @@ class CISService:
         db = session or self._session
         if not db:
             async with get_db_session() as db:
-                return await self._record_als_conversion_impl(
+                return await self._record_propensity_conversion_impl(
                     db,
                     lead_id,
                     client_id,
-                    als_score,
-                    als_tier,
+                    propensity_score,
+                    propensity_tier,
                     channel_that_converted,
                     sequence_step_that_converted,
                     conversion_type,
@@ -710,12 +710,12 @@ class CISService:
                     touches_before_conversion,
                     days_in_sequence,
                 )
-        return await self._record_als_conversion_impl(
+        return await self._record_propensity_conversion_impl(
             db,
             lead_id,
             client_id,
-            als_score,
-            als_tier,
+            propensity_score,
+            propensity_tier,
             channel_that_converted,
             sequence_step_that_converted,
             conversion_type,
@@ -724,13 +724,13 @@ class CISService:
             days_in_sequence,
         )
 
-    async def _record_als_conversion_impl(
+    async def _record_propensity_conversion_impl(
         self,
         db: AsyncSession,
         lead_id: UUID | str,
         client_id: UUID | str,
-        als_score: int,
-        als_tier: str,
+        propensity_score: int,
+        propensity_tier: str,
         channel_that_converted: str,
         sequence_step_that_converted: int | None,
         conversion_type: str,
@@ -738,7 +738,7 @@ class CISService:
         touches_before_conversion: int | None,
         days_in_sequence: int | None,
     ) -> dict[str, Any]:
-        """Implementation of record_als_conversion."""
+        """Implementation of record_propensity_conversion."""
         try:
             query = text("""
                 INSERT INTO cis_als_tier_conversions (
@@ -748,8 +748,8 @@ class CISService:
                     touches_before_conversion, days_in_sequence,
                     converted_at, created_at
                 ) VALUES (
-                    :client_id, :campaign_id, :lead_id, :als_tier,
-                    :als_score, :channel, :sequence_step, :conversion_type,
+                    :client_id, :campaign_id, :lead_id, :propensity_tier,
+                    :propensity_score, :channel, :sequence_step, :conversion_type,
                     :touches, :days, NOW(), NOW()
                 )
                 RETURNING id
@@ -761,8 +761,8 @@ class CISService:
                     "client_id": str(client_id),
                     "campaign_id": str(campaign_id) if campaign_id else None,
                     "lead_id": str(lead_id),
-                    "als_tier": als_tier,
-                    "als_score": als_score,
+                    "propensity_tier": propensity_tier,
+                    "propensity_score": propensity_score,
                     "channel": channel_that_converted,
                     "sequence_step": sequence_step_that_converted,
                     "conversion_type": conversion_type,
@@ -775,8 +775,8 @@ class CISService:
 
             conversion_id = str(row.id) if row else None
             logger.info(
-                f"CIS: Recorded ALS conversion {conversion_id} for lead {lead_id} "
-                f"(tier={als_tier}, channel={channel_that_converted})"
+                f"CIS: Recorded propensity conversion {conversion_id} for lead {lead_id} "
+                f"(tier={propensity_tier}, channel={channel_that_converted})"
             )
 
             return {

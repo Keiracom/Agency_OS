@@ -92,14 +92,14 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     linkedin_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     domain: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
 
-    # === ALS Score Components (100 points max) ===
-    als_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    als_tier: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    als_data_quality: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Max 20
-    als_authority: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Max 25
-    als_company_fit: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Max 25
-    als_timing: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Max 15
-    als_risk: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Max 15
+    # === Propensity Score Components (100 points max) ===
+    propensity_score: Mapped[int | None] = mapped_column(Integer, nullable=True, name="als_score")
+    propensity_tier: Mapped[str | None] = mapped_column(String(20), nullable=True, name="als_tier")
+    propensity_data_quality: Mapped[int | None] = mapped_column(Integer, nullable=True, name="als_data_quality")  # Max 20
+    propensity_authority: Mapped[int | None] = mapped_column(Integer, nullable=True, name="als_authority")  # Max 25
+    propensity_company_fit: Mapped[int | None] = mapped_column(Integer, nullable=True, name="als_company_fit")  # Max 25
+    propensity_timing: Mapped[int | None] = mapped_column(Integer, nullable=True, name="als_timing")  # Max 15
+    propensity_risk: Mapped[int | None] = mapped_column(Integer, nullable=True, name="als_risk")  # Max 15
 
     # === Organization Data ===
     organization_industry: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -222,7 +222,7 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     __table_args__ = (UniqueConstraint("client_id", "email", name="unique_lead_per_client"),)
 
     def __repr__(self) -> str:
-        return f"<Lead(id={self.id}, email='{self.email}', als_score={self.als_score})>"
+        return f"<Lead(id={self.id}, email='{self.email}', propensity_score={self.propensity_score})>"
 
     @property
     def full_name(self) -> str:
@@ -256,21 +256,21 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
             and not (self.dncr_checked and self.dncr_result)
         )
 
-    def get_als_tier(self) -> str:
+    def get_propensity_tier(self) -> str:
         """
-        Get ALS tier based on score.
+        Get propensity tier based on score.
 
         Returns tier: hot (85+), warm (60-84), cool (35-59), cold (20-34), dead (<20)
         """
-        if self.als_score is None:
+        if self.propensity_score is None:
             return "unscored"
-        if self.als_score >= 85:
+        if self.propensity_score >= 85:
             return "hot"
-        if self.als_score >= 60:
+        if self.propensity_score >= 60:
             return "warm"
-        if self.als_score >= 35:
+        if self.propensity_score >= 35:
             return "cool"
-        if self.als_score >= 20:
+        if self.propensity_score >= 20:
             return "cold"
         return "dead"
 

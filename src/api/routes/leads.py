@@ -123,14 +123,14 @@ class LeadResponse(BaseModel):
     linkedin_url: str | None = None
     domain: str | None = None
 
-    # ALS Score
-    als_score: int | None = None
-    als_tier: str | None = None
-    als_data_quality: int | None = None
-    als_authority: int | None = None
-    als_company_fit: int | None = None
-    als_timing: int | None = None
-    als_risk: int | None = None
+    # Propensity Score
+    propensity_score: int | None = None
+    propensity_tier: str | None = None
+    propensity_data_quality: int | None = None
+    propensity_authority: int | None = None
+    propensity_company_fit: int | None = None
+    propensity_timing: int | None = None
+    propensity_risk: int | None = None
 
     # Status
     status: LeadStatus
@@ -212,8 +212,8 @@ class DeepResearchTriggerResponse(BaseModel):
     lead_id: UUID
     status: str = Field(..., description="Trigger status: queued, already_complete, not_eligible")
     message: str = Field(..., description="Status message")
-    als_score: int | None = Field(None, description="Lead's ALS score")
-    als_tier: str | None = Field(None, description="Lead's ALS tier")
+    propensity_score: int | None = Field(None, description="Lead's propensity score")
+    propensity_tier: str | None = Field(None, description="Lead's propensity tier")
 
 
 # ============================================
@@ -368,7 +368,7 @@ async def list_leads(
         stmt = stmt.where(Lead.campaign_id == campaign_id)
 
     if tier:
-        stmt = stmt.where(Lead.als_tier == tier.lower())
+        stmt = stmt.where(Lead.propensity_tier == tier.lower())
 
     if status_filter:
         stmt = stmt.where(Lead.status == status_filter)
@@ -927,8 +927,8 @@ async def trigger_lead_research(
             lead_id=lead_id,
             status="already_complete",
             message="Deep research already completed. Use force=true to re-run.",
-            als_score=lead.als_score,
-            als_tier=lead.als_tier,
+            propensity_score=lead.propensity_score,
+            propensity_tier=lead.propensity_tier,
         )
 
     # Check if lead has LinkedIn URL
@@ -937,8 +937,8 @@ async def trigger_lead_research(
             lead_id=lead_id,
             status="not_eligible",
             message="Lead does not have a LinkedIn URL. Deep research requires LinkedIn.",
-            als_score=lead.als_score,
-            als_tier=lead.als_tier,
+            propensity_score=lead.propensity_score,
+            propensity_tier=lead.propensity_tier,
         )
 
     # Queue deep research via Prefect
@@ -959,8 +959,8 @@ async def trigger_lead_research(
             lead_id=lead_id,
             status="queued",
             message="Deep research queued for processing.",
-            als_score=lead.als_score,
-            als_tier=lead.als_tier,
+            propensity_score=lead.propensity_score,
+            propensity_tier=lead.propensity_tier,
         )
     except Exception:
         # Fallback: run inline if Prefect deployment not available
@@ -974,16 +974,16 @@ async def trigger_lead_research(
                 lead_id=lead_id,
                 status="complete",
                 message="Deep research completed.",
-                als_score=lead.als_score,
-                als_tier=lead.als_tier,
+                propensity_score=lead.propensity_score,
+                propensity_tier=lead.propensity_tier,
             )
         else:
             return DeepResearchTriggerResponse(
                 lead_id=lead_id,
                 status="failed",
                 message=f"Deep research failed: {result.error}",
-                als_score=lead.als_score,
-                als_tier=lead.als_tier,
+                propensity_score=lead.propensity_score,
+                propensity_tier=lead.propensity_tier,
             )
 
 
@@ -1020,7 +1020,7 @@ async def score_lead(
     lead = await get_lead_or_404(lead_id, client_id, db)
     scorer = get_scorer_engine()
 
-    # Calculate ALS score
+    # Calculate propensity score
     result = await scorer.calculate_als(db=db, lead_id=lead_id)
 
     if not result.success:
@@ -1029,21 +1029,21 @@ async def score_lead(
             field="scoring",
         )
 
-    als_score = result.data.get("als_score", 0)
-    als_tier = result.data.get("als_tier", "dead")
+    propensity_score = result.data.get("propensity_score", 0)
+    propensity_tier = result.data.get("als_tier", "dead")
 
     response = {
         "lead_id": str(lead_id),
-        "als_score": als_score,
-        "als_tier": als_tier,
-        "als_breakdown": result.data.get("breakdown", {}),
+        "propensity_score": propensity_score,
+        "propensity_tier": propensity_tier,
+        "propensity_breakdown": result.data.get("breakdown", {}),
         "deep_research_triggered": False,
     }
 
     # Auto-trigger deep research for Hot leads
     if (
         auto_research
-        and als_score >= HOT_LEAD_THRESHOLD
+        and propensity_score >= HOT_LEAD_THRESHOLD
         and lead.linkedin_url
         and not lead.deep_research_run_at
     ):
@@ -1060,15 +1060,15 @@ async def score_lead(
             )
             response["deep_research_triggered"] = True
             response["message"] = (
-                f"Lead scored as {als_tier.upper()} ({als_score}). Deep research queued."
+                f"Lead scored as {propensity_tier.upper()} ({propensity_score}). Deep research queued."
             )
         except Exception:
             # Prefect not available - skip auto-trigger
             response["message"] = (
-                f"Lead scored as {als_tier.upper()} ({als_score}). Manual research trigger available."
+                f"Lead scored as {propensity_tier.upper()} ({propensity_score}). Manual research trigger available."
             )
     else:
-        response["message"] = f"Lead scored as {als_tier.upper()} ({als_score})."
+        response["message"] = f"Lead scored as {propensity_tier.upper()} ({propensity_score})."
 
     return response
 

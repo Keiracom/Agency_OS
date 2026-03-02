@@ -43,7 +43,7 @@ class CallContext:
     lead_title: str
     lead_company: str
     lead_phone: str
-    als_score: int | None
+    propensity_score: int | None
     enrichment_tier: str | None
 
     # Agency info
@@ -89,7 +89,7 @@ class CallContext:
             "lead_title": self.lead_title,
             "lead_company": self.lead_company,
             "lead_phone": self.lead_phone,
-            "als_score": self.als_score,
+            "propensity_score": self.propensity_score,
             "enrichment_tier": self.enrichment_tier,
             "agency_id": self.agency_id,
             "agency_name": self.agency_name,
@@ -124,7 +124,7 @@ async def _fetch_lead_data(db: AsyncSession, lead_id: str) -> dict[str, Any] | N
     query = text("""
         SELECT
             id, first_name, last_name, title, company_name, phone,
-            als_score, state, country, timezone,
+            als_score as propensity_score, state, country, timezone,
             enrichment_data
         FROM lead_pool
         WHERE id = :lead_id
@@ -516,7 +516,7 @@ async def _build_call_context_impl(
         lead_title=lead_data.get("title") or "professional",
         lead_company=lead_company,
         lead_phone=lead_data.get("phone") or "",
-        als_score=lead_data.get("als_score"),
+        propensity_score=lead_data.get("propensity_score"),
         enrichment_tier=lead_data.get("enrichment_data", {}).get("tier")
         if isinstance(lead_data.get("enrichment_data"), dict)
         else None,
@@ -559,7 +559,7 @@ async def _build_call_context_impl(
 # VERIFICATION CHECKLIST
 # ============================================
 # [x] Contract comment at top
-# [x] Fetches lead_pool data (name, title, company, phone, als_score)
+# [x] Fetches lead_pool data (name, title, company, phone, propensity_score)
 # [x] Fetches leads_enrichment or fallback to enrichment_data JSONB
 # [x] Fetches outreach_sequences for prior touchpoints
 # [x] Fetches agency_service_profile (or falls back to clients table)

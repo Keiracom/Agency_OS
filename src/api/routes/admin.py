@@ -1063,7 +1063,7 @@ async def get_all_leads(
     """Get all leads across all clients."""
     conditions = [Lead.deleted_at.is_(None)]
     if tier_filter:
-        conditions.append(Lead.als_tier == tier_filter)
+        conditions.append(Lead.propensity_tier == tier_filter)
 
     # Count total
     count_stmt = select(func.count(Lead.id)).where(and_(*conditions))
@@ -1089,8 +1089,8 @@ async def get_all_leads(
             "email": lead.email,
             "client_id": str(client.id),
             "client_name": client.name,
-            "als_score": lead.als_score,
-            "als_tier": lead.als_tier,
+            "propensity_score": lead.propensity_score,
+            "propensity_tier": lead.propensity_tier,
             "status": lead.status.value if hasattr(lead.status, "value") else lead.status,
             "created_at": lead.created_at.isoformat(),
         }
@@ -1120,7 +1120,7 @@ class PoolStats(BaseModel):
     bounced: int
     unsubscribed: int
     utilization_rate: float
-    avg_als_score: float | None = None
+    avg_propensity_score: float | None = None
 
 
 class PoolLeadItem(BaseModel):
@@ -1134,8 +1134,8 @@ class PoolLeadItem(BaseModel):
     title: str | None
     pool_status: str
     email_status: str | None
-    als_score: int | None
-    als_tier: str | None
+    propensity_score: int | None
+    propensity_tier: str | None
     created_at: datetime
 
 
@@ -1166,8 +1166,8 @@ class PoolLeadDetail(BaseModel):
     linkedin_url: str | None
     phone: str | None
     pool_status: str
-    als_score: int | None
-    als_tier: str | None
+    propensity_score: int | None
+    propensity_tier: str | None
     is_bounced: bool
     is_unsubscribed: bool
     created_at: datetime
@@ -1245,7 +1245,7 @@ async def get_pool_stats(
         bounced=stats.get("bounced", 0),
         unsubscribed=stats.get("unsubscribed", 0),
         utilization_rate=round(utilization_rate, 2),
-        avg_als_score=round(avg_score, 1) if avg_score else None,
+        avg_propensity_score=round(avg_score, 1) if avg_score else None,
     )
 
 
@@ -1300,8 +1300,8 @@ async def get_pool_leads(
             title=row.title,
             pool_status=row.pool_status,
             email_status=row.email_status,
-            als_score=None,  # ALS scores are on lead_assignments, not pool
-            als_tier=None,
+            propensity_score=None,  # Propensity scores are on lead_assignments, not pool
+            propensity_tier=None,
             created_at=row.created_at,
         )
         for row in rows
@@ -1381,8 +1381,8 @@ async def get_pool_lead_detail(
         linkedin_url=row.linkedin_url,
         phone=row.phone,
         pool_status=row.pool_status,
-        als_score=row.als_score,
-        als_tier=row.als_tier,
+        propensity_score=row.als_score,
+        propensity_tier=row.als_tier,
         is_bounced=row.is_bounced or False,
         is_unsubscribed=row.is_unsubscribed or False,
         created_at=row.created_at,

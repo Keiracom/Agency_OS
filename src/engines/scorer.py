@@ -1096,9 +1096,9 @@ class ScorerEngine(BaseEngine):
         client_id: UUID,
     ) -> dict[str, float] | None:
         """
-        Get learned ALS weights for a client.
+        Get learned propensity weights for a client.
 
-        Phase 16: Checks client's als_learned_weights first,
+        Phase 16: Checks client's propensity_learned_weights first,
         then falls back to WHO pattern's recommended weights.
 
         Args:
@@ -1113,8 +1113,8 @@ class ScorerEngine(BaseEngine):
         client_result = await db.execute(client_stmt)
         client = client_result.scalar_one_or_none()
 
-        if client and client.als_learned_weights:
-            return client.als_learned_weights
+        if client and client.propensity_learned_weights:
+            return client.propensity_learned_weights
 
         # Fall back to WHO pattern's recommended weights
         pattern_stmt = select(ConversionPattern).where(

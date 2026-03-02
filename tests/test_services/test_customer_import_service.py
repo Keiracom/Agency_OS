@@ -79,8 +79,6 @@ class TestCustomerImportService:
             domain="acme.com",
             contact_email="john@acme.com",
             deal_value=10000.0,
-            closed_at=datetime.now(),
-            source="csv_import",
         )
 
         # Mock the database response
@@ -91,14 +89,13 @@ class TestCustomerImportService:
         mock_db.execute.return_value = mock_result
 
         # Act
-        result = await customer_import_service.process_customer(
+        await customer_import_service.process_customer(
             client_id=client_id,
-            data=customer_data,
-            auto_suppress=True,
+            customer=customer_data,
+            source="csv_import",
         )
 
         # Assert
-        assert result is not None
         mock_db.execute.assert_called()
         mock_db.commit.assert_called()
 
@@ -107,7 +104,7 @@ class TestCustomerImportService:
     ):
         """Test that import_from_csv parses CSV content correctly."""
         # Arrange
-        csv_content = """domain,company_name,email
+        csv_content = b"""domain,company_name,email
 acme.com,Acme Corp,john@acme.com
 widget.io,Widget Inc,jane@widget.io
 """
@@ -127,9 +124,8 @@ widget.io,Widget Inc,jane@widget.io
         # Act
         result = await customer_import_service.import_from_csv(
             client_id=client_id,
-            csv_content=csv_content,
-            column_mapping=column_mapping,
-            source="csv_import",
+            file_content=csv_content,
+            mapping=column_mapping,
         )
 
         # Assert
@@ -141,7 +137,7 @@ widget.io,Widget Inc,jane@widget.io
     ):
         """Test that import_from_csv handles missing columns gracefully."""
         # Arrange
-        csv_content = """domain
+        csv_content = b"""domain
 acme.com
 widget.io
 """
@@ -160,9 +156,8 @@ widget.io
         # Act
         result = await customer_import_service.import_from_csv(
             client_id=client_id,
-            csv_content=csv_content,
-            column_mapping=column_mapping,
-            source="csv_import",
+            file_content=csv_content,
+            mapping=column_mapping,
         )
 
         # Assert - should still process rows with domain only
@@ -173,7 +168,7 @@ widget.io
     ):
         """Test that import_from_csv skips empty rows."""
         # Arrange
-        csv_content = """domain,company_name
+        csv_content = b"""domain,company_name
 acme.com,Acme Corp
 
 widget.io,Widget Inc
@@ -190,8 +185,8 @@ widget.io,Widget Inc
         # Act
         result = await customer_import_service.import_from_csv(
             client_id=client_id,
-            csv_content=csv_content,
-            column_mapping=column_mapping,
+            file_content=csv_content,
+            mapping=column_mapping,
         )
 
         # Assert
@@ -550,7 +545,7 @@ class TestSuppressionIntegration:
     ):
         """Test that customer import auto-suppresses the domain."""
         # Arrange
-        csv_content = """domain,company_name
+        csv_content = b"""domain,company_name
 acme.com,Acme Corp
 """
         column_mapping = ColumnMapping(domain="domain", company_name="company_name")
@@ -565,9 +560,8 @@ acme.com,Acme Corp
         # Act
         result = await customer_import_service.import_from_csv(
             client_id=client_id,
-            csv_content=csv_content,
-            column_mapping=column_mapping,
-            auto_suppress=True,
+            file_content=csv_content,
+            mapping=column_mapping,
         )
 
         # Assert

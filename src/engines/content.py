@@ -44,6 +44,7 @@ from src.engines.smart_prompts import (
     build_full_pool_lead_context,
     format_lead_context_for_prompt,
     format_proof_points_for_prompt,
+    format_social_posts_for_prompt,
     generate_priority_guidance,
 )
 from src.exceptions import AISpendLimitError, ValidationError
@@ -232,12 +233,17 @@ class ContentEngine(BaseEngine):
             # Generate priority guidance for the prompt
             priority_guidance_str = generate_priority_guidance(lead_context)
 
+            # Extract and format social posts
+            social_posts = lead_context.get("social_posts", {})
+            social_posts_str = format_social_posts_for_prompt(social_posts)
+
             # Use Smart Email Prompt
             prompt = SMART_EMAIL_PROMPT.format(
                 lead_context=lead_context_str,
                 proof_points=proof_points_str,
                 campaign_context=campaign_context,
                 priority_guidance=priority_guidance_str,
+                social_post_hooks=social_posts_str,
             )
 
             # System prompt for email generation (Item 41: Conservative instructions)
@@ -1154,12 +1160,17 @@ Return as JSON with: {{"opening": "...", "value_prop": "...", "cta": "..."}}"""
             # Generate priority guidance for the prompt
             priority_guidance_str = generate_priority_guidance(lead_context)
 
+            # Extract and format social posts
+            social_posts = lead_context.get("social_posts", {})
+            social_posts_str = format_social_posts_for_prompt(social_posts)
+
             # Use Smart Email Prompt
             prompt = SMART_EMAIL_PROMPT.format(
                 lead_context=lead_context_str,
                 proof_points=proof_points_str,
                 campaign_context=campaign_context,
                 priority_guidance=priority_guidance_str,
+                social_post_hooks=social_posts_str,
             )
 
             # System prompt (Item 41: Conservative instructions)

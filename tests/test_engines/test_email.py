@@ -295,7 +295,8 @@ class TestEmailEngine:
         # Mock validate_and_send directly with controlled responses
         send_count = 0
 
-        async def mock_validate_and_send(db, lead_id, campaign_id, content, **kwargs):
+        async def mock_validate_and_send(**kwargs):
+            # Handle all args as kwargs since send_batch passes duplicates
             nonlocal send_count
             send_count += 1
             if send_count <= 2:

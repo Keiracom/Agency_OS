@@ -411,7 +411,7 @@ async def test_handle_meeting_request_intent():
          patch("src.engines.closer.send_booking_reply", new_callable=AsyncMock), \
          patch.object(engine, '_update_thread_outcome', new_callable=AsyncMock), \
          patch.object(engine, '_flag_for_human_review', new_callable=AsyncMock), \
-         patch("src.engines.closer.get_cis_service") as mock_cis:
+         patch("src.services.cis_service.get_cis_service") as mock_cis:
         # Mock CIS service
         mock_cis_instance = AsyncMock()
         mock_cis_instance.record_als_conversion = AsyncMock()
@@ -471,7 +471,9 @@ async def test_handle_unsubscribe_intent():
     patches = get_standard_patches(engine, lead, campaign)
     with patches[0], patches[1], patches[2], patches[3], \
          patch("src.engines.closer.LeadPoolService", return_value=mock_pool_service), \
-         patch.object(engine, '_record_rejection', new_callable=AsyncMock):
+         patch.object(engine, '_record_rejection', new_callable=AsyncMock), \
+         patch.object(engine, '_update_thread_outcome', new_callable=AsyncMock), \
+         patch.object(engine, '_flag_for_human_review', new_callable=AsyncMock):
         result = await engine.process_reply(
             db=mock_db,
             lead_id=lead.id,
@@ -494,7 +496,9 @@ async def test_handle_not_interested_intent():
 
     patches = get_standard_patches(engine, lead, campaign)
     with patches[0], patches[1], patches[2], patches[3], \
-         patch.object(engine, '_record_rejection', new_callable=AsyncMock):
+         patch.object(engine, '_record_rejection', new_callable=AsyncMock), \
+         patch.object(engine, '_update_thread_outcome', new_callable=AsyncMock), \
+         patch.object(engine, '_flag_for_human_review', new_callable=AsyncMock):
         result = await engine.process_reply(
             db=mock_db,
             lead_id=lead.id,

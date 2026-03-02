@@ -133,8 +133,8 @@ class VoiceCall(Base, UUIDMixin):
         String(50), nullable=True
     )  # initiated, ringing, in-progress, completed, failed
 
-    # ===== METADATA =====
-    metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # ===== EXTRA DATA =====
+    extra_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # ===== TIMESTAMPS =====
     created_at: Mapped[datetime] = mapped_column(

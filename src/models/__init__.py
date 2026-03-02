@@ -48,6 +48,7 @@ from src.models.resource_pool import (
 from src.models.sdk_usage_log import SDKUsageLog
 from src.models.url_validation import URLValidationResult
 from src.models.user import User
+from src.models.voice_call import VoiceCall, VoiceCallContext, VoiceCallOutcome
 
 __all__ = [
     # Base
@@ -115,4 +116,8 @@ __all__ = [
     "IcpRefinementLog",
     # Digest (Phase H, Item 44)
     "DigestLog",
+    # Voice Calls (CIS Gap 1 Fix)
+    "VoiceCall",
+    "VoiceCallContext",
+    "VoiceCallOutcome",
 ]

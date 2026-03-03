@@ -390,6 +390,11 @@ async def test_send_linkedin_outreach_success():
         return_value=EngineResult.ok(data={})
     )
 
+    # Mock timing engine to bypass business hours check
+    mock_timing = MagicMock()
+    mock_timing.is_weekend.return_value = False
+    mock_timing.is_business_hours.return_value = True
+
     with patch(
         "src.orchestration.flows.outreach_flow.get_db_session",
         mock_get_session
@@ -402,6 +407,9 @@ async def test_send_linkedin_outreach_success():
     ), patch(
         "src.orchestration.flows.outreach_flow.get_allocator_engine",
         return_value=mock_allocator
+    ), patch(
+        "src.orchestration.flows.outreach_flow.get_timing_engine",
+        return_value=mock_timing
     ):
         result = await send_linkedin_outreach_task.fn(
             lead_id, campaign_id, resource, "autopilot"

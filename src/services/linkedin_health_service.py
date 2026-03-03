@@ -15,7 +15,7 @@ Health Thresholds:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -72,7 +72,7 @@ class LinkedInHealthService:
         Returns:
             Dict with accept rate stats
         """
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
 
         # Count total requests in period
         total_stmt = select(func.count(LinkedInConnection.id)).where(
@@ -328,7 +328,7 @@ class LinkedInHealthService:
         Returns:
             Dict with update count
         """
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
 
         stmt = (
             update(LinkedInConnection)
@@ -340,7 +340,7 @@ class LinkedInHealthService:
             )
             .values(
                 status="ignored",
-                responded_at=datetime.utcnow(),
+                responded_at=datetime.now(UTC),
             )
             .returning(LinkedInConnection.id)
         )
@@ -386,7 +386,7 @@ class LinkedInHealthService:
         """
         import asyncio
 
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
 
         # Get all stale pending connections with their seats
         stmt = (
@@ -515,7 +515,7 @@ class LinkedInHealthService:
         """
         # Find seats that haven't had successful sends in 3+ days
         # despite being in active/warmup status
-        cutoff = datetime.utcnow() - timedelta(days=3)
+        cutoff = datetime.now(UTC) - timedelta(days=3)
 
         # Get seats with no recent activity
         stmt = select(LinkedInSeat).where(

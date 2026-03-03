@@ -12,7 +12,7 @@ Environment Variables Required:
 import logging
 import os
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import StrEnum
 from typing import Any
 
@@ -226,7 +226,7 @@ async def activate_founding_member(
                     "status": "active",
                     "stripe_customer_id": stripe_customer_id,
                     "stripe_subscription_id": stripe_subscription_id,
-                    "activated_at": datetime.utcnow().isoformat(),
+                    "activated_at": datetime.now(UTC).isoformat(),
                 }
             )
             .eq("email", email)

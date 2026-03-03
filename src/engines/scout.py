@@ -42,7 +42,7 @@ FCO-002/FCO-003 DEPRECATION (2026-02-05):
 
 import json
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -617,7 +617,7 @@ class ScoutEngine(BaseEngine):
                 "cost_aud": cost_aud,
                 "error_message": error,
                 "metadata": metadata or {},
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
             }
 
             # Use raw SQL insert to avoid needing a session
@@ -779,11 +779,11 @@ class ScoutEngine(BaseEngine):
 
         # Store SDK data in dedicated fields (added in migration 035)
         update_values = {
-            "updated_at": datetime.utcnow(),
+            "updated_at": datetime.now(UTC),
             "sdk_enrichment": sdk_data,
             "sdk_signals": signals,
             "sdk_cost_aud": cost,
-            "sdk_enriched_at": datetime.utcnow(),
+            "sdk_enriched_at": datetime.now(UTC),
         }
 
         # Update enrichment source to indicate SDK enhancement
@@ -869,9 +869,9 @@ class ScoutEngine(BaseEngine):
             "enrichment_source": enrichment.get("source"),
             "enrichment_confidence": enrichment.get("confidence"),
             "enrichment_version": enrichment.get("_cache_version") if from_cache else "v1",
-            "enriched_at": datetime.utcnow(),
+            "enriched_at": datetime.now(UTC),
             "status": LeadStatus.ENRICHED,
-            "updated_at": datetime.utcnow(),
+            "updated_at": datetime.now(UTC),
         }
 
         # Handle employment start date
@@ -972,8 +972,8 @@ class ScoutEngine(BaseEngine):
             .where(Lead.id == lead_id)
             .values(
                 deep_research_data=deep_research_data,
-                deep_research_run_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                deep_research_run_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
             )
         )
         await db.execute(stmt)

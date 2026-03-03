@@ -24,7 +24,7 @@ FLOW DESCRIPTION:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -73,7 +73,7 @@ async def get_eligible_clients_task(min_conversions: int = MIN_CONVERSIONS) -> l
     """
     async with get_db_session() as db:
         # Count conversions per client in last 90 days
-        cutoff = datetime.utcnow() - timedelta(days=90)
+        cutoff = datetime.now(UTC) - timedelta(days=90)
 
         stmt = (
             select(
@@ -131,7 +131,7 @@ async def archive_expired_patterns_task() -> dict[str, Any]:
         Dict with archive counts
     """
     async with get_db_session() as db:
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         # Find expired patterns
         expired_stmt = select(ConversionPattern).where(ConversionPattern.valid_until < now)
@@ -416,7 +416,7 @@ async def optimize_client_weights_task(client_id: str) -> dict[str, Any]:
 
             if result.get("status") == "optimized":
                 # Update client's learned weights
-                now = datetime.utcnow()
+                now = datetime.now(UTC)
                 stmt = (
                     update(Client)
                     .where(Client.id == client_uuid)
@@ -608,7 +608,7 @@ async def weekly_pattern_learning_flow(
             }
             for r in detection_results
         ],
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
     logger.info(
@@ -659,7 +659,7 @@ async def single_client_pattern_learning_flow(
         "detectors_succeeded": detector_result["success_count"],
         "detectors_failed": detector_result["failure_count"],
         "weight_optimization": opt_result,
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
 

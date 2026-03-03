@@ -7,7 +7,7 @@ Consumers: services, engines, orchestration
 Spec: docs/architecture/distribution/LINKEDIN_DISTRIBUTION.md
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
@@ -144,7 +144,7 @@ class LinkedInConnection(Base, UUIDMixin):
         """Days since request was sent."""
         if not self.is_pending:
             return 0
-        delta = datetime.utcnow() - self.requested_at
+        delta = datetime.now(UTC) - self.requested_at
         return delta.days
 
     @property
@@ -156,34 +156,34 @@ class LinkedInConnection(Base, UUIDMixin):
             return False
         if self.follow_up_scheduled_for is None:
             return False
-        return datetime.utcnow() >= self.follow_up_scheduled_for
+        return datetime.now(UTC) >= self.follow_up_scheduled_for
 
     def mark_accepted(self, follow_up_days: int = 4) -> None:
         """Mark connection as accepted and schedule follow-up."""
         from datetime import timedelta
 
         self.status = LinkedInConnectionStatus.ACCEPTED
-        self.responded_at = datetime.utcnow()
-        self.follow_up_scheduled_for = datetime.utcnow() + timedelta(days=follow_up_days)
+        self.responded_at = datetime.now(UTC)
+        self.follow_up_scheduled_for = datetime.now(UTC) + timedelta(days=follow_up_days)
 
     def mark_ignored(self) -> None:
         """Mark connection as ignored (14 days no response)."""
         self.status = LinkedInConnectionStatus.IGNORED
-        self.responded_at = datetime.utcnow()
+        self.responded_at = datetime.now(UTC)
 
     def mark_declined(self) -> None:
         """Mark connection as declined."""
         self.status = LinkedInConnectionStatus.DECLINED
-        self.responded_at = datetime.utcnow()
+        self.responded_at = datetime.now(UTC)
 
     def mark_withdrawn(self) -> None:
         """Mark connection as withdrawn (we withdrew stale request)."""
         self.status = LinkedInConnectionStatus.WITHDRAWN
-        self.responded_at = datetime.utcnow()
+        self.responded_at = datetime.now(UTC)
 
     def mark_follow_up_sent(self) -> None:
         """Mark follow-up as sent."""
-        self.follow_up_sent_at = datetime.utcnow()
+        self.follow_up_sent_at = datetime.now(UTC)
 
 
 # ============================================

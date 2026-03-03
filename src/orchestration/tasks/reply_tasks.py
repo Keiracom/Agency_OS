@@ -19,7 +19,7 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -221,7 +221,7 @@ async def poll_email_replies_task(
             - replies: list[dict]
     """
     if since is None:
-        since = datetime.utcnow() - timedelta(hours=1)
+        since = datetime.now(UTC) - timedelta(hours=1)
 
     logger.info(f"Polling Postmark for email replies since {since}")
 
@@ -330,7 +330,7 @@ async def poll_sms_replies_task(
             - replies: list[dict]
     """
     if since is None:
-        since = datetime.utcnow() - timedelta(hours=1)
+        since = datetime.now(UTC) - timedelta(hours=1)
 
     logger.info(f"Polling Twilio for SMS replies since {since}")
 

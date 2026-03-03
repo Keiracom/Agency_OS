@@ -27,7 +27,7 @@ PHASE 16 CHANGES:
   - Tier-specific channel recommendations from HOW detector
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -481,7 +481,7 @@ class AllocatorEngine(BaseEngine):
             update_data["assigned_phone_resource"] = resource["resource_id"]
 
         if update_data:
-            update_data["updated_at"] = datetime.utcnow()
+            update_data["updated_at"] = datetime.now(UTC)
             stmt = update(Lead).where(Lead.id == lead.id).values(**update_data)
             await db.execute(stmt)
             await db.commit()
@@ -496,7 +496,7 @@ class AllocatorEngine(BaseEngine):
             update(CampaignResource)
             .where(CampaignResource.id == resource.id)
             .values(
-                last_used_at=datetime.utcnow(),
+                last_used_at=datetime.now(UTC),
                 usage_count=CampaignResource.usage_count + 1,
             )
         )
@@ -820,7 +820,7 @@ class AllocatorEngine(BaseEngine):
                 and_(
                     ConversionPattern.client_id == client_id,
                     ConversionPattern.pattern_type == pattern_type,
-                    ConversionPattern.valid_until > datetime.utcnow(),
+                    ConversionPattern.valid_until > datetime.now(UTC),
                 )
             )
             .order_by(ConversionPattern.computed_at.desc())

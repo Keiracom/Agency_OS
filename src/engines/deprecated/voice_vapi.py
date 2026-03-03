@@ -45,7 +45,7 @@ HYBRID LLM ARCHITECTURE (2026-01):
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -617,7 +617,7 @@ Use Australian English. Be empathetic but confident."""
             )
 
             # Update lead
-            lead.last_contacted_at = datetime.utcnow()
+            lead.last_contacted_at = datetime.now(UTC)
             await db.commit()
 
             return EngineResult.ok(
@@ -807,7 +807,7 @@ Use Australian English. Be empathetic but confident."""
                 # Update lead if meeting booked
                 if meeting_booked:
                     lead.status = LeadStatus.CONVERTED
-                    lead.last_replied_at = datetime.utcnow()
+                    lead.last_replied_at = datetime.now(UTC)
                     lead.reply_count += 1
 
                 # === VOICE RETRY SCHEDULING ===

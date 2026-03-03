@@ -31,7 +31,7 @@ import json
 import logging
 import os
 import tempfile
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, UTC
 from pathlib import Path
 from typing import Any
 
@@ -828,7 +828,7 @@ async def log_content_run_task(
             "linkedin_success": distribution_results.get("linkedin", {}).get("success"),
             "twitter_success": distribution_results.get("twitter", {}).get("success"),
             "youtube_success": distribution_results.get("youtube", {}).get("success"),
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
         }
 
         log.info(f"Content run logged: {json.dumps(summary, indent=2)}")

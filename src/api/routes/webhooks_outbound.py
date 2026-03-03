@@ -25,7 +25,7 @@ This module handles outbound webhook delivery to client endpoints:
 import hashlib
 import hmac
 import json
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -216,7 +216,7 @@ async def dispatch_webhook_delivery(
 
     Updates the delivery record with success/failure status.
     """
-    start_time = datetime.utcnow()
+    start_time = datetime.now(UTC)
 
     try:
         # Prepare headers
@@ -238,7 +238,7 @@ async def dispatch_webhook_delivery(
             )
 
         # Calculate response time
-        response_time_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+        response_time_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
 
         # Check if successful (2xx status code)
         if 200 <= response.status_code < 300:
@@ -333,7 +333,7 @@ async def create_and_dispatch_webhook(
     # Add event metadata to payload
     full_payload = {
         "event_type": event_type.value,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "client_id": str(client_id),
         "data": payload,
     }

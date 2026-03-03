@@ -6,7 +6,7 @@ Imports: base only
 Consumers: engines, orchestration
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
@@ -190,7 +190,7 @@ class ClientIntelligence(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         """Check if data is stale (older than 30 days)."""
         if not self.last_full_scrape_at:
             return True
-        days_since_scrape = (datetime.utcnow() - self.last_full_scrape_at).days
+        days_since_scrape = (datetime.now(UTC) - self.last_full_scrape_at).days
         return days_since_scrape > 30
 
     def get_proof_summary(self) -> dict[str, Any]:

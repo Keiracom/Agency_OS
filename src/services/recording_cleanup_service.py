@@ -12,7 +12,7 @@ Blueprint requirement (VOICE.md):
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from uuid import UUID
 
 from sqlalchemy import and_, select, update
@@ -80,7 +80,7 @@ class RecordingCleanupService:
                 - cutoff_date: Cutoff date used
                 - dry_run: Whether this was a dry run
         """
-        cutoff_date = datetime.utcnow() - timedelta(days=retention_days)
+        cutoff_date = datetime.now(UTC) - timedelta(days=retention_days)
 
         # Find voice activities with recordings older than cutoff
         old_recordings = await self._find_old_recordings(cutoff_date, batch_size)
@@ -253,7 +253,7 @@ class RecordingCleanupService:
         """
         extra_data = activity.extra_data or {}
         extra_data["recording_deleted"] = True
-        extra_data["recording_deleted_at"] = datetime.utcnow().isoformat()
+        extra_data["recording_deleted_at"] = datetime.now(UTC).isoformat()
         extra_data["recording_deleted_reason"] = "retention_policy"
 
         stmt = update(Activity).where(Activity.id == activity.id).values(extra_data=extra_data)
@@ -291,7 +291,7 @@ class RecordingCleanupService:
 
         extra_data = activity.extra_data or {}
         extra_data["flagged_for_retention"] = True
-        extra_data["flagged_at"] = datetime.utcnow().isoformat()
+        extra_data["flagged_at"] = datetime.now(UTC).isoformat()
         extra_data["flagged_reason"] = reason
 
         stmt = update(Activity).where(Activity.id == activity_id).values(extra_data=extra_data)
@@ -326,7 +326,7 @@ class RecordingCleanupService:
 
         extra_data = activity.extra_data or {}
         extra_data["flagged_for_retention"] = False
-        extra_data["unflagged_at"] = datetime.utcnow().isoformat()
+        extra_data["unflagged_at"] = datetime.now(UTC).isoformat()
 
         stmt = update(Activity).where(Activity.id == activity_id).values(extra_data=extra_data)
         await self.db.execute(stmt)

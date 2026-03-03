@@ -18,7 +18,7 @@ This service manages conversation threads between the platform
 and leads, tracking messages, sentiment, objections, and outcomes.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -243,7 +243,7 @@ class ThreadService:
                 "direction": direction,
                 "content": content,
                 "content_preview": content[:200] if len(content) > 200 else content,
-                "sent_at": sent_at or datetime.utcnow(),
+                "sent_at": sent_at or datetime.now(UTC),
                 "position": next_position,
                 "sentiment": sentiment,
                 "sentiment_score": sentiment_score,

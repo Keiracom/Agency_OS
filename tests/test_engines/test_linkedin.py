@@ -8,7 +8,7 @@ NOTE: Per Directive #155, tests requiring Redis connection have been deleted.
 Only unit tests with proper mocking are retained.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import uuid4
 
 import pytest
@@ -44,7 +44,7 @@ def mock_unipile_client():
                     "profile_url": "https://linkedin.com/in/test",
                     "name": "Test User",
                     "message": "Thanks for reaching out!",
-                    "received_at": datetime.utcnow().isoformat(),
+                    "received_at": datetime.now(UTC).isoformat(),
                 }
             ]
 

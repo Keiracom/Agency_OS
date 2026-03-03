@@ -41,7 +41,7 @@ FIX-E2E-006:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -493,7 +493,7 @@ class SMSEngine(OutreachEngine):
             provider_status=action,
             provider_response=provider_response,
             extra_data=metadata,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
 
         db.add(activity)

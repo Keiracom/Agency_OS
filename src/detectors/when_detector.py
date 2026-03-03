@@ -21,7 +21,7 @@ WHEN Pattern Outputs:
 """
 
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -87,7 +87,7 @@ class WhenDetector(BaseDetector):
         patterns = {
             "type": "when",
             "version": "2.0",  # Updated for Phase 24C
-            "computed_at": datetime.utcnow().isoformat(),
+            "computed_at": datetime.now(UTC).isoformat(),
             "sample_size": len(activities),
             "baseline_conversion_rate": round(baseline_rate, 4),
             "best_days": best_days,
@@ -112,7 +112,7 @@ class WhenDetector(BaseDetector):
         client_id: UUID,
     ) -> list[Activity]:
         """Get outbound activities with timing data."""
-        cutoff = datetime.utcnow() - timedelta(days=90)
+        cutoff = datetime.now(UTC) - timedelta(days=90)
 
         stmt = (
             select(Activity)
@@ -431,7 +431,7 @@ class WhenDetector(BaseDetector):
         return {
             "type": "when",
             "version": "2.0",
-            "computed_at": datetime.utcnow().isoformat(),
+            "computed_at": datetime.now(UTC).isoformat(),
             "sample_size": 0,
             "best_days": [],
             "best_hours": [],

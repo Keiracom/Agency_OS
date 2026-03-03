@@ -14,7 +14,7 @@ RULES APPLIED:
   - Multi-tenancy via client_id enforcement
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Annotated
 from uuid import UUID
 
@@ -289,7 +289,7 @@ async def mark_reply_handled(
         raise ResourceNotFoundError(resource_type="Reply", resource_id=str(reply_id))
 
     # Update processed_at
-    activity.processed_at = datetime.utcnow() if data.handled else None
+    activity.processed_at = datetime.now(UTC) if data.handled else None
     await db.flush()
     await db.refresh(activity)
 

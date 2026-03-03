@@ -18,7 +18,7 @@ import hmac
 import logging
 import os
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID
@@ -310,7 +310,7 @@ async def handle_calendly_booking_confirmed(
             {
                 "lead_id": str(lead_id),
                 "booking_info": {
-                    "booking_confirmed_at": datetime.utcnow().isoformat(),
+                    "booking_confirmed_at": datetime.now(UTC).isoformat(),
                     "booking_id": event.booking_id,
                     "scheduled_time": event.scheduled_time.isoformat(),
                     "meeting_url": event.meeting_url,
@@ -481,7 +481,7 @@ def parse_calendly_webhook(payload: dict[str, Any]) -> BookingEvent:
         attendee_name=invitee.get("name"),
         scheduled_time=datetime.fromisoformat(start_time.replace("Z", "+00:00"))
         if start_time
-        else datetime.utcnow(),
+        else datetime.now(UTC),
         duration_minutes=duration,
         meeting_url=scheduled.get("location", {}).get("join_url"),
         location=scheduled.get("location", {}).get("location"),
@@ -520,7 +520,7 @@ async def handle_booking_created(event: BookingEvent) -> None:
                 {
                     "status": "converted",
                     "metadata": {
-                        "booking_confirmed_at": datetime.utcnow().isoformat(),
+                        "booking_confirmed_at": datetime.now(UTC).isoformat(),
                         "booking_id": event.booking_id,
                         "scheduled_time": event.scheduled_time.isoformat(),
                         "meeting_url": event.meeting_url,
@@ -632,7 +632,7 @@ async def handle_booking_cancelled(event: BookingEvent) -> None:
                 {
                     "stage": "contacted",  # Revert to contacted
                     "next_action": "Follow up on cancelled demo",
-                    "notes": f"Demo cancelled at {datetime.utcnow().isoformat()}",
+                    "notes": f"Demo cancelled at {datetime.now(UTC).isoformat()}",
                 }
             ).eq("lead_id", lead_result.data["id"]).execute()
 

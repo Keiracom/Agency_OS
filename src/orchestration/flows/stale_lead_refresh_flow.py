@@ -24,7 +24,7 @@ DEPRECATION NOTE (FCO-003):
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 
 from prefect import flow, task
@@ -68,7 +68,7 @@ async def get_stale_leads_for_outreach_task(
     Returns:
         List of stale lead dicts with id, linkedin_url, company_linkedin_url
     """
-    stale_cutoff = datetime.utcnow() - timedelta(days=stale_days)
+    stale_cutoff = datetime.now(UTC) - timedelta(days=stale_days)
 
     async with get_db_session() as db:
         # Build query for stale leads in lead_pool
@@ -327,7 +327,7 @@ async def refresh_stale_leads_flow(
         "skipped": batch_result.get("skipped", 0),
         "total_cost": batch_result["total_cost"],
         "stale_threshold_days": stale_days,
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
         "note": "FCO-003: LinkedIn scraping disabled, leads marked as processed",
     }
 
@@ -379,7 +379,7 @@ async def daily_outreach_prep_flow(
         "stale_leads_skipped": refresh_result.get("skipped", 0),
         "refresh_cost": refresh_result["total_cost"],
         "ready_for_outreach": True,
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
     logger.info(f"Daily outreach prep complete: {summary}")

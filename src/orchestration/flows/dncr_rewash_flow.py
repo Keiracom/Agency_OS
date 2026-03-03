@@ -23,7 +23,7 @@ Schedule: 1st of January, April, July, October (quarterly)
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -60,7 +60,7 @@ async def get_leads_needing_dncr_rewash_task(
         Dict with lead info for re-washing
     """
     async with get_db_session() as db:
-        datetime.utcnow() - timedelta(days=stale_days)
+        datetime.now(UTC) - timedelta(days=stale_days)
 
         # Query leads with Australian phones that have stale DNCR checks
         # We check both Lead and LeadPool tables
@@ -114,7 +114,7 @@ async def get_pool_leads_needing_dncr_rewash_task(
         Dict with pool lead info for re-washing
     """
     async with get_db_session() as db:
-        stale_cutoff = datetime.utcnow() - timedelta(days=stale_days)
+        stale_cutoff = datetime.now(UTC) - timedelta(days=stale_days)
 
         stmt = (
             select(LeadPool.id, LeadPool.phone)
@@ -185,7 +185,7 @@ async def dncr_rewash_batch_task(
         dncr_results = await dncr_client.check_numbers_batch(phones)
 
         # Track changes
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         changed_count = 0
         newly_blocked = []
         newly_unblocked = []
@@ -328,7 +328,7 @@ async def dncr_quarterly_rewash_flow(
         "leads_checked": sum(r["checked"] for r in lead_results),
         "pool_leads_checked": sum(r["checked"] for r in pool_results),
         "stale_days": stale_days,
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
     logger.info(

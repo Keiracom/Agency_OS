@@ -16,7 +16,7 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -193,13 +193,13 @@ async def update_lead_research_status_task(
         lead_uuid = UUID(lead_id)
 
         update_data = {
-            "updated_at": datetime.utcnow(),
+            "updated_at": datetime.now(UTC),
         }
 
         if status == "failed" and error:
             # Store error in deep_research_data
             update_data["deep_research_data"] = {"error": error, "status": "failed"}
-            update_data["deep_research_run_at"] = datetime.utcnow()
+            update_data["deep_research_run_at"] = datetime.now(UTC)
 
         stmt = update(Lead).where(Lead.id == lead_uuid).values(**update_data)
         await db.execute(stmt)
@@ -314,7 +314,7 @@ async def intelligence_research_flow(
             }
             for r in failed
         ],
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
     logger.info(

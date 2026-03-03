@@ -16,7 +16,7 @@ Called after every SDK agent execution to track:
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -109,7 +109,7 @@ async def log_sdk_usage(
             "tool_calls": str(tool_calls_json).replace("'", '"'),  # Convert to JSON string
             "success": success,
             "error_message": error_message,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(UTC),
         },
     )
 

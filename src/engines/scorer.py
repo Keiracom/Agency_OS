@@ -52,7 +52,7 @@ PHASE 24A+ CHANGES (LinkedIn Enrichment):
 """
 
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -1123,7 +1123,7 @@ class ScorerEngine(BaseEngine):
             and_(
                 ConversionPattern.client_id == client_id,
                 ConversionPattern.pattern_type == "who",
-                ConversionPattern.valid_until > datetime.utcnow(),
+                ConversionPattern.valid_until > datetime.now(UTC),
             )
         )
         pattern_result = await db.execute(pattern_stmt)
@@ -1338,7 +1338,7 @@ class ScorerEngine(BaseEngine):
                                 post_dt = datetime.fromisoformat(post_date[:10])
                             else:
                                 post_dt = post_date
-                            days_ago = (datetime.utcnow() - post_dt).days
+                            days_ago = (datetime.now(UTC) - post_dt).days
                             if days_ago <= 30:
                                 boost_points += LINKEDIN_RECENT_ACTIVITY_BOOST
                                 signals.append("Posted in last 30 days")
@@ -1414,7 +1414,7 @@ class ScorerEngine(BaseEngine):
                 and_(
                     ConversionPattern.client_id == client_id,
                     ConversionPattern.pattern_type == "funnel",
-                    ConversionPattern.valid_until > datetime.utcnow(),
+                    ConversionPattern.valid_until > datetime.now(UTC),
                     ConversionPattern.deleted_at.is_(None),
                 )
             )
@@ -1721,7 +1721,7 @@ class ScorerEngine(BaseEngine):
         Phase 16: Now stores als_components, als_weights_used, and scored_at
         for Conversion Intelligence learning.
         """
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         stmt = (
             update(Lead)

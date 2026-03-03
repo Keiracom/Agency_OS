@@ -19,7 +19,7 @@ MARGIN IMPACT: Maintains 65.6% → 70.1% target achievable
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import UUID
 
 from prefect import flow, task
@@ -337,7 +337,7 @@ async def infra_provisioning_flow(
     """
     logger.info(f"Starting infrastructure provisioning for client {client_id}")
 
-    start_time = datetime.utcnow()
+    start_time = datetime.now(UTC)
 
     # Step 1: Find available domains
     available_domains = await check_domain_availability_task(
@@ -388,7 +388,7 @@ async def infra_provisioning_flow(
     # Calculate totals
     total_cost_month = purchase_result["cost_aud_month"] + mailbox_result["cost_aud_month"]
 
-    duration = (datetime.utcnow() - start_time).total_seconds()
+    duration = (datetime.now(UTC) - start_time).total_seconds()
 
     result = {
         "success": True,

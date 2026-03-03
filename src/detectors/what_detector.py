@@ -28,7 +28,7 @@ Phase 24B Additions:
 
 import re
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -118,7 +118,7 @@ class WhatDetector(BaseDetector):
         patterns = {
             "type": "what",
             "version": "2.0",  # Updated for Phase 24B
-            "computed_at": datetime.utcnow().isoformat(),
+            "computed_at": datetime.now(UTC).isoformat(),
             "sample_size": len(activities),
             "baseline_conversion_rate": round(baseline_rate, 4),
             "subject_patterns": subject_patterns,
@@ -148,7 +148,7 @@ class WhatDetector(BaseDetector):
         client_id: UUID,
     ) -> list[Activity]:
         """Get outbound activities with content snapshots."""
-        cutoff = datetime.utcnow() - timedelta(days=90)
+        cutoff = datetime.now(UTC) - timedelta(days=90)
 
         stmt = select(Activity).where(
             and_(
@@ -615,7 +615,7 @@ class WhatDetector(BaseDetector):
         return {
             "type": "what",
             "version": "2.0",
-            "computed_at": datetime.utcnow().isoformat(),
+            "computed_at": datetime.now(UTC).isoformat(),
             "sample_size": 0,
             "subject_patterns": {"winning": []},
             "pain_points": {"effective": [], "ineffective": []},

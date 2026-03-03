@@ -24,7 +24,7 @@ NOTE: Requires `holidays` package for Australian public holiday detection.
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -216,7 +216,7 @@ async def _check_dncr(
 
         # Check if cache is still valid (within 30 days)
         if dncr_checked and dncr_checked_at:
-            cache_age = datetime.utcnow() - dncr_checked_at.replace(tzinfo=None)
+            cache_age = datetime.now(UTC) - dncr_checked_at.replace(tzinfo=None)
             if cache_age.days < DNCR_CACHE_VALIDITY_DAYS:
                 # Cache is valid
                 if dncr_result:
@@ -235,7 +235,7 @@ async def _check_dncr(
 
     try:
         on_dncr = await dncr_client.check_number(phone)
-        checked_at = datetime.utcnow()
+        checked_at = datetime.now(UTC)
 
         # Update cache in lead_pool
         update_query = text("""
@@ -314,7 +314,7 @@ async def _check_calling_hours(
             tz = ZoneInfo("Australia/Sydney")
             local_time = datetime.now(tz)
         except Exception:
-            local_time = datetime.utcnow()
+            local_time = datetime.now(UTC)
 
     weekday = local_time.weekday()
     hour = local_time.hour

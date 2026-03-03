@@ -22,7 +22,7 @@ DEPRECATION NOTES:
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -90,9 +90,9 @@ async def update_job_status_task(
         if error_message is not None:
             updates["error_message"] = error_message
         if status == "running" and "started_at" not in updates:
-            updates["started_at"] = datetime.utcnow()
+            updates["started_at"] = datetime.now(UTC)
         if status in ("completed", "failed"):
-            updates["completed_at"] = datetime.utcnow()
+            updates["completed_at"] = datetime.now(UTC)
 
         set_clauses = ", ".join([f"{k} = :{k}" for k in updates])
         await db.execute(
@@ -235,7 +235,7 @@ async def save_extraction_result_task(
                 """),
                 {
                     "job_id": str(job_id),
-                    "now": datetime.utcnow(),
+                    "now": datetime.now(UTC),
                     "icp": json.dumps(result.get("profile", {}), cls=DateTimeEncoder),
                 },
             )
@@ -254,7 +254,7 @@ async def save_extraction_result_task(
                 """),
                 {
                     "job_id": str(job_id),
-                    "now": datetime.utcnow(),
+                    "now": datetime.now(UTC),
                     "error": result.get("error", "Unknown error"),
                 },
             )
@@ -319,7 +319,7 @@ async def apply_icp_to_client_task(
                 "titles": profile.get("icp_titles", []),
                 "pain_points": profile.get("icp_pain_points", []),
                 "als_weights": json.dumps(profile.get("als_weights", {})),
-                "now": datetime.utcnow(),
+                "now": datetime.now(UTC),
                 "job_id": str(job_id),
             },
         )
@@ -621,7 +621,7 @@ async def icp_reextract_flow(
                 "id": str(job_id),
                 "client_id": str(client_id),
                 "url": website_url,
-                "now": datetime.utcnow(),
+                "now": datetime.now(UTC),
             },
         )
         await db.commit()

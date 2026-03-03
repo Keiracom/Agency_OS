@@ -9,7 +9,7 @@ import asyncio
 import os
 import uuid
 from collections.abc import AsyncGenerator, Generator
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -138,7 +138,7 @@ def mock_user() -> dict:
         "id": str(uuid.uuid4()),
         "email": "test@example.com",
         "full_name": "Test User",
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -151,10 +151,10 @@ def mock_client() -> dict:
         "tier": "velocity",
         "subscription_status": "active",
         "credits_remaining": 5000,
-        "credits_reset_at": (datetime.utcnow() + timedelta(days=30)).isoformat(),
+        "credits_reset_at": (datetime.now(UTC) + timedelta(days=30)).isoformat(),
         "default_permission_mode": "co_pilot",
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
         "deleted_at": None,
     }
 
@@ -167,8 +167,8 @@ def mock_membership(mock_user: dict, mock_client: dict) -> dict:
         "user_id": mock_user["id"],
         "client_id": mock_client["id"],
         "role": "admin",
-        "accepted_at": datetime.utcnow().isoformat(),
-        "created_at": datetime.utcnow().isoformat(),
+        "accepted_at": datetime.now(UTC).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -208,8 +208,8 @@ def mock_campaign(mock_client: dict) -> dict:
             "company_sizes": ["10-50", "51-200"],
             "locations": ["Sydney", "Melbourne"],
         },
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
         "deleted_at": None,
     }
 
@@ -249,8 +249,8 @@ def mock_lead(mock_client: dict, mock_campaign: dict) -> dict:
         },
         "sequence_step": 1,
         "last_contacted_at": None,
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
         "deleted_at": None,
     }
 
@@ -305,7 +305,7 @@ def mock_activity(mock_lead: dict) -> dict:
             "template_id": "intro_email_v2",
             "personalization_score": 0.85,
         },
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -321,7 +321,7 @@ def mock_resend_client() -> MagicMock:
         "id": f"email_{uuid.uuid4().hex[:12]}",
         "from": "sender@agency.com",
         "to": ["recipient@example.com"],
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     })
     return client
 
@@ -333,7 +333,7 @@ def mock_twilio_client() -> MagicMock:
     message = MagicMock()
     message.sid = f"SM{uuid.uuid4().hex[:32]}"
     message.status = "queued"
-    message.date_created = datetime.utcnow()
+    message.date_created = datetime.now(UTC)
     client.messages.create = MagicMock(return_value=message)
     client.check_dncr = AsyncMock(return_value=False)  # Not on DNCR
     return client
@@ -478,7 +478,7 @@ def postmark_inbound_payload() -> dict:
         "Subject": "Re: Quick question about TechCompany",
         "TextBody": "Thanks for reaching out! I'd love to learn more. Can we schedule a call?",
         "HtmlBody": "<p>Thanks for reaching out! I'd love to learn more. Can we schedule a call?</p>",
-        "Date": datetime.utcnow().isoformat(),
+        "Date": datetime.now(UTC).isoformat(),
         "OriginalRecipient": "campaign@agency.com",
         "Tag": "campaign_123",
     }
@@ -505,7 +505,7 @@ def heyreach_inbound_payload() -> dict:
         "conversation_id": f"conv_{uuid.uuid4().hex[:12]}",
         "sender_linkedin_url": "https://linkedin.com/in/janesmith",
         "message_text": "Thanks for connecting! I'd be interested to learn more about your offering.",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 

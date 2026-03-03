@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
@@ -812,14 +812,14 @@ class ICPDiscoveryAgent(BaseAgent):
             result.profile = profile
             result.total_tokens = total_tokens
             result.total_cost_aud = total_cost
-            result.completed_at = datetime.utcnow()
+            result.completed_at = datetime.now(UTC)
             result.duration_seconds = (result.completed_at - result.started_at).total_seconds()
 
             return result
 
         except Exception as e:
             result.error = str(e)
-            result.completed_at = datetime.utcnow()
+            result.completed_at = datetime.now(UTC)
             result.duration_seconds = (result.completed_at - result.started_at).total_seconds()
             return result
 

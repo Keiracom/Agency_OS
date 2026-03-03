@@ -5,7 +5,7 @@ PHASE: 4 (Engines)
 TASK: ENG-012
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -89,7 +89,7 @@ def create_mock_activity(
     activity.channel = MagicMock()
     activity.channel.value = channel
     activity.action = action
-    activity.created_at = created_at or datetime.utcnow()
+    activity.created_at = created_at or datetime.now(UTC)
     activity.sequence_step = 1
     return activity
 
@@ -415,10 +415,10 @@ class TestLeadEngagement:
         """Test successful lead engagement retrieval."""
         with patch.object(reporter_engine, "get_lead_by_id", return_value=mock_lead):
             activities = [
-                create_mock_activity(uuid4(), mock_lead.id, uuid4(), "email", "sent", datetime.utcnow() - timedelta(days=2)),
-                create_mock_activity(uuid4(), mock_lead.id, uuid4(), "email", "opened", datetime.utcnow() - timedelta(days=1)),
-                create_mock_activity(uuid4(), mock_lead.id, uuid4(), "email", "clicked", datetime.utcnow() - timedelta(hours=12)),
-                create_mock_activity(uuid4(), mock_lead.id, uuid4(), "email", "replied", datetime.utcnow()),
+                create_mock_activity(uuid4(), mock_lead.id, uuid4(), "email", "sent", datetime.now(UTC) - timedelta(days=2)),
+                create_mock_activity(uuid4(), mock_lead.id, uuid4(), "email", "opened", datetime.now(UTC) - timedelta(days=1)),
+                create_mock_activity(uuid4(), mock_lead.id, uuid4(), "email", "clicked", datetime.now(UTC) - timedelta(hours=12)),
+                create_mock_activity(uuid4(), mock_lead.id, uuid4(), "email", "replied", datetime.now(UTC)),
             ]
 
             mock_result = MagicMock()
@@ -481,7 +481,7 @@ class TestDailyActivity:
         """Test successful daily activity retrieval."""
         with patch.object(reporter_engine, "validate_client_active", return_value=True):
             # Create activities at different hours
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             activities = [
                 create_mock_activity(uuid4(), uuid4(), mock_client.id, "email", "sent", now.replace(hour=9)),
                 create_mock_activity(uuid4(), uuid4(), mock_client.id, "email", "sent", now.replace(hour=9)),

@@ -31,7 +31,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID, uuid4
@@ -328,7 +328,7 @@ class VoiceAgentTelnyxEngine(BaseEngine):
                 voice_name=voice_config["name"],
                 system_prompt=system_prompt,
                 messages=[{"role": "system", "content": system_prompt}],
-                metrics=CallMetrics(call_id=call_id, start_time=datetime.utcnow()),
+                metrics=CallMetrics(call_id=call_id, start_time=datetime.now(UTC)),
             )
 
             # Store context
@@ -408,7 +408,7 @@ class VoiceAgentTelnyxEngine(BaseEngine):
 
         elif event_type == "call.hangup":
             context.state = CallState.ENDED
-            context.metrics.end_time = datetime.utcnow()
+            context.metrics.end_time = datetime.now(UTC)
             context.metrics.duration_seconds = int(
                 (context.metrics.end_time - context.metrics.start_time).total_seconds()
             )
@@ -455,12 +455,12 @@ class VoiceAgentTelnyxEngine(BaseEngine):
             return None
 
         # Track latency
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
 
         # 1. STT: Convert speech to text
-        stt_start = datetime.utcnow()
+        stt_start = datetime.now(UTC)
         transcript = await self._speech_to_text(audio_data)
-        stt_latency = (datetime.utcnow() - stt_start).total_seconds() * 1000
+        stt_latency = (datetime.now(UTC) - stt_start).total_seconds() * 1000
 
         if not transcript or len(transcript.strip()) < 2:
             return None  # Silence or noise
@@ -477,19 +477,19 @@ class VoiceAgentTelnyxEngine(BaseEngine):
         context.messages.append({"role": "user", "content": transcript})
 
         # 2. LLM: Generate response
-        llm_start = datetime.utcnow()
+        llm_start = datetime.now(UTC)
         response = await self._generate_response(context)
-        llm_latency = (datetime.utcnow() - llm_start).total_seconds() * 1000
+        llm_latency = (datetime.now(UTC) - llm_start).total_seconds() * 1000
 
         context.messages.append({"role": "assistant", "content": response})
 
         # 3. TTS: Convert response to speech
-        tts_start = datetime.utcnow()
+        tts_start = datetime.now(UTC)
         audio = await self._text_to_speech(response, context.voice_id)
-        tts_latency = (datetime.utcnow() - tts_start).total_seconds() * 1000
+        tts_latency = (datetime.now(UTC) - tts_start).total_seconds() * 1000
 
         # Track metrics
-        total_latency = (datetime.utcnow() - start_time).total_seconds() * 1000
+        total_latency = (datetime.now(UTC) - start_time).total_seconds() * 1000
         context.metrics.turns += 1
         context.metrics.avg_stt_latency_ms = int(
             (context.metrics.avg_stt_latency_ms * (context.metrics.turns - 1) + stt_latency)
@@ -550,7 +550,7 @@ class VoiceAgentTelnyxEngine(BaseEngine):
 
         # Log barge-in event
         barge_in = BargeInEvent(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             interrupted_text=context.messages[-1].get("content", "") if context.messages else "",
             user_utterance=user_utterance,
         )

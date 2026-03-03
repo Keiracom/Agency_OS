@@ -7,7 +7,7 @@ Consumers: services, orchestration
 Phase: Phase D - Item 18
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from enum import StrEnum
 from typing import Any
 from uuid import UUID
@@ -153,7 +153,7 @@ class CampaignSuggestion(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.utcnow() + timedelta(days=14),
+        default=lambda: datetime.now(UTC) + timedelta(days=14),
     )
 
     # Client feedback
@@ -196,7 +196,7 @@ class CampaignSuggestion(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     @property
     def is_expired(self) -> bool:
         """Check if suggestion has expired."""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     @property
     def is_actionable(self) -> bool:
@@ -210,7 +210,7 @@ class CampaignSuggestion(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     def approve(self, user_id: UUID, notes: str | None = None) -> None:
         """Approve this suggestion."""
         self.status = SuggestionStatus.APPROVED.value
-        self.reviewed_at = datetime.utcnow()
+        self.reviewed_at = datetime.now(UTC)
         self.reviewed_by = user_id
         if notes:
             self.client_notes = notes
@@ -218,7 +218,7 @@ class CampaignSuggestion(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     def reject(self, user_id: UUID, reason: str | None = None) -> None:
         """Reject this suggestion."""
         self.status = SuggestionStatus.REJECTED.value
-        self.reviewed_at = datetime.utcnow()
+        self.reviewed_at = datetime.now(UTC)
         self.reviewed_by = user_id
         if reason:
             self.rejection_reason = reason
@@ -226,7 +226,7 @@ class CampaignSuggestion(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     def mark_applied(self) -> None:
         """Mark suggestion as applied."""
         self.status = SuggestionStatus.APPLIED.value
-        self.applied_at = datetime.utcnow()
+        self.applied_at = datetime.now(UTC)
 
 
 class CampaignSuggestionHistory(Base, UUIDMixin):

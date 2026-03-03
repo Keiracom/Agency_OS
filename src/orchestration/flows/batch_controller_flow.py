@@ -25,7 +25,7 @@ DIRECTIVE 048 REQUIREMENTS:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -602,7 +602,7 @@ async def fire_quota_shortfall_alert_task(
                     "metadata": {
                         "shortfall": shortfall,
                         "discovery_loops_run": loops_run,
-                        "alert_time": datetime.utcnow().isoformat(),
+                        "alert_time": datetime.now(UTC).isoformat(),
                     },
                 },
             )

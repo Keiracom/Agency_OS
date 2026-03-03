@@ -25,7 +25,7 @@ REQUIREMENTS:
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -166,7 +166,7 @@ class DeliverabilityService:
                 )
 
             return {
-                "report_generated_at": datetime.utcnow().isoformat(),
+                "report_generated_at": datetime.now(UTC).isoformat(),
                 "total_domains": total_domains,
                 "healthy_domains": healthy_domains,
                 "warming_domains": warming_domains,
@@ -179,7 +179,7 @@ class DeliverabilityService:
             logger.error(f"Failed to get warmup status report: {e}")
             return {
                 "error": str(e),
-                "report_generated_at": datetime.utcnow().isoformat(),
+                "report_generated_at": datetime.now(UTC).isoformat(),
                 "domains": [],
             }
 
@@ -287,7 +287,7 @@ class DeliverabilityService:
                 "success": True,
                 "updated_domains": updated,
                 "errors": errors,
-                "synced_at": datetime.utcnow().isoformat(),
+                "synced_at": datetime.now(UTC).isoformat(),
             }
 
         except Exception as e:

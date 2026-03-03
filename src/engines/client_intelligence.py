@@ -8,7 +8,7 @@ Consumers: orchestration only
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -443,7 +443,7 @@ Return ONLY valid JSON, no markdown."""
             db.add(intel)
 
         # Update fields from scraped data
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         # Website data
         if "website" in result.data:

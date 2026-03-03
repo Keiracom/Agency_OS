@@ -25,7 +25,7 @@ FLOW DESCRIPTION:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -76,7 +76,7 @@ async def get_clients_needing_backfill_task(
         List of client dicts needing backfill
     """
     async with get_db_session() as db:
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         cutoff = now - timedelta(days=90)
 
         # Get clients with activity counts
@@ -159,7 +159,7 @@ async def backfill_led_to_booking_task(client_id: str) -> dict[str, Any]:
     """
     async with get_db_session() as db:
         client_uuid = UUID(client_id)
-        cutoff = datetime.utcnow() - timedelta(days=90)
+        cutoff = datetime.now(UTC) - timedelta(days=90)
 
         # Get converted leads
         leads_stmt = select(Lead).where(
@@ -290,7 +290,7 @@ async def optimize_weights_backfill_task(client_id: str) -> dict[str, Any]:
 
             if result.get("status") == "optimized":
                 # Update client's learned weights
-                now = datetime.utcnow()
+                now = datetime.now(UTC)
                 stmt = (
                     update(Client)
                     .where(Client.id == client_uuid)

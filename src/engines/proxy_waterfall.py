@@ -24,7 +24,7 @@ DESCRIPTION: Proxy waterfall saves ~$11 AUD/month at Ignition tier (1,250 leads)
 import logging
 import random
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from decimal import Decimal
 from enum import StrEnum
 
@@ -214,7 +214,7 @@ class ProxyWaterfallEngine(BaseEngine):
         """
         result = WaterfallResult(success=False)
         total_cost = Decimal("0.00")
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
 
         # Determine starting tier
         start_idx = 0
@@ -269,7 +269,7 @@ class ProxyWaterfallEngine(BaseEngine):
                         result.tier_used = tier
                         result.cost_aud = total_cost
                         result.latency_ms = int(
-                            (datetime.utcnow() - start_time).total_seconds() * 1000
+                            (datetime.now(UTC) - start_time).total_seconds() * 1000
                         )
 
                         logger.info(
@@ -314,7 +314,7 @@ class ProxyWaterfallEngine(BaseEngine):
         # All tiers exhausted
         result.cost_aud = total_cost
         result.error = "All proxy tiers exhausted"
-        result.latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+        result.latency_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
 
         logger.error(
             f"Waterfall failed: {url} (cost: ${total_cost} AUD, attempts: {result.total_attempts})"

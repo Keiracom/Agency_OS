@@ -32,7 +32,7 @@ UNIPILE MIGRATION:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -862,7 +862,6 @@ async def send_linkedin_outreach_task(
 
     # Sunday: No LinkedIn activity allowed
     if timing_engine.is_weekend(timezone):
-        from datetime import datetime
         from zoneinfo import ZoneInfo
 
         tz = ZoneInfo(timezone)
@@ -1387,7 +1386,7 @@ async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
         "sms_sent": sms_sent,
         "total_sent": emails_sent + linkedin_sent + sms_sent,
         "results": results,
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
     logger.info(

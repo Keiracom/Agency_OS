@@ -21,7 +21,7 @@ Also pushes meetings to client's CRM when booked (Phase 24E-CRM).
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -126,7 +126,7 @@ class MeetingService:
         first_touch = touches_row.first_touch if touches_row else None
         days_to_booking = None
         if first_touch:
-            days_to_booking = (datetime.utcnow() - first_touch).days
+            days_to_booking = (datetime.now(UTC) - first_touch).days
 
         query = text("""
             INSERT INTO meetings (

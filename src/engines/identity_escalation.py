@@ -33,7 +33,7 @@ CHANNEL MAPPING:
 import logging
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID, uuid4
@@ -755,7 +755,7 @@ class IdentityEscalationEngine(BaseEngine):
                     cost_aud=step.cost_aud,
                     success=step.success,
                     error_message=step.error_message,
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(UTC),
                 )
                 await db.execute(stmt)
 
@@ -774,7 +774,7 @@ class IdentityEscalationEngine(BaseEngine):
                     ],
                     cost_aud=result.total_cost_aud,
                     success=True,
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(UTC),
                 )
                 await db.execute(stmt)
                 logger.info(

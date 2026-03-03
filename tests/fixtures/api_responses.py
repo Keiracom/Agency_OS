@@ -6,7 +6,7 @@ TASK: TST-002
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 
 # ============================================================================
@@ -52,7 +52,7 @@ def clay_enrichment_pending() -> dict[str, Any]:
         "id": f"clay_{uuid.uuid4().hex[:12]}",
         "status": "pending",
         "data": None,
-        "estimated_completion": datetime.utcnow() + timedelta(seconds=30),
+        "estimated_completion": datetime.now(UTC) + timedelta(seconds=30),
     }
 
 
@@ -67,7 +67,7 @@ def resend_send_success() -> dict[str, Any]:
         "from": "outreach@agency.com",
         "to": ["jane.smith@techcompany.io"],
         "subject": "Quick question about TechCompany",
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -106,7 +106,7 @@ def twilio_sms_success() -> dict[str, Any]:
         "from_": "+61499999999",
         "body": "Hi Jane, quick question about TechCompany...",
         "status": "queued",
-        "date_created": datetime.utcnow().isoformat(),
+        "date_created": datetime.now(UTC).isoformat(),
         "direction": "outbound-api",
         "price": None,
         "error_code": None,
@@ -119,7 +119,7 @@ def twilio_sms_delivered() -> dict[str, Any]:
     return {
         "sid": f"SM{uuid.uuid4().hex[:32]}",
         "status": "delivered",
-        "date_sent": datetime.utcnow().isoformat(),
+        "date_sent": datetime.now(UTC).isoformat(),
         "error_code": None,
     }
 
@@ -164,7 +164,7 @@ def heyreach_connection_request_success() -> dict[str, Any]:
         "status": "pending",
         "linkedin_url": "https://linkedin.com/in/janesmith",
         "message": "Hi Jane, I'd love to connect and discuss AI trends in Sydney...",
-        "sent_at": datetime.utcnow().isoformat(),
+        "sent_at": datetime.now(UTC).isoformat(),
         "seat_id": "seat_001",
     }
 
@@ -177,7 +177,7 @@ def heyreach_message_success() -> dict[str, Any]:
         "conversation_id": f"conv_{uuid.uuid4().hex[:12]}",
         "linkedin_url": "https://linkedin.com/in/janesmith",
         "message": "Hi Jane, following up on our connection...",
-        "sent_at": datetime.utcnow().isoformat(),
+        "sent_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -189,7 +189,7 @@ def heyreach_rate_limited() -> dict[str, Any]:
         "seat_id": "seat_001",
         "limit": 17,
         "used": 17,
-        "reset_at": (datetime.utcnow() + timedelta(hours=24)).isoformat(),
+        "reset_at": (datetime.now(UTC) + timedelta(hours=24)).isoformat(),
     }
 
 
@@ -207,7 +207,7 @@ def heyreach_daily_usage() -> dict[str, Any]:
             "limit": 50,
             "remaining": 40,
         },
-        "reset_at": (datetime.utcnow().replace(hour=0, minute=0, second=0) + timedelta(days=1)).isoformat(),
+        "reset_at": (datetime.now(UTC).replace(hour=0, minute=0, second=0) + timedelta(days=1)).isoformat(),
     }
 
 
@@ -224,7 +224,7 @@ def synthflow_call_initiated() -> dict[str, Any]:
         "from": "+61488888888",
         "agent_id": "agent_sales_001",
         "script_id": "script_intro_001",
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -243,7 +243,7 @@ def synthflow_call_completed() -> dict[str, Any]:
         ],
         "summary": "Prospect expressed interest in learning more about the offering",
         "next_step": "schedule_meeting",
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -255,7 +255,7 @@ def synthflow_call_failed() -> dict[str, Any]:
         "failure_reason": "no_answer",
         "duration_seconds": 0,
         "retry_recommended": True,
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
 

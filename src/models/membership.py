@@ -12,7 +12,7 @@ RULES APPLIED:
   - Rule 12: No imports from engines/integrations/orchestration
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
@@ -137,7 +137,7 @@ class Membership(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
 
     def accept(self) -> None:
         """Accept the membership invitation."""
-        self.accepted_at = datetime.utcnow()
+        self.accepted_at = datetime.now(UTC)
 
     def has_role(self, *roles: MembershipRole) -> bool:
         """Check if membership has any of the specified roles."""

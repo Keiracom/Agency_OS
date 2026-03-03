@@ -20,7 +20,7 @@ RULES APPLIED:
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Generic, TypeVar
 from uuid import UUID
 
@@ -53,7 +53,7 @@ class EngineResult(Generic[T]):
         self.data = data
         self.error = error
         self.metadata = metadata or {}
-        self.timestamp = datetime.utcnow()
+        self.timestamp = datetime.now(UTC)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary."""
@@ -396,7 +396,7 @@ class BaseEngine(ABC):
         entry: dict[str, Any] = {
             "engine": self.name,
             "operation": operation,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         if client_id:

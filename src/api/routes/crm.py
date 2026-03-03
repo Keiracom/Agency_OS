@@ -26,7 +26,7 @@ ENDPOINTS:
 import json
 import logging
 import secrets
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -328,7 +328,7 @@ async def start_hubspot_oauth(
     await _store_oauth_state(state, {
         "client_id": str(client_id),
         "user_id": str(user.id),
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     })
 
     # Build OAuth URL
@@ -370,7 +370,7 @@ async def hubspot_oauth_callback(
 
         # Calculate token expiration
         expires_in = tokens.get("expires_in", 1800)  # Default 30 min
-        expires_at = datetime.utcnow()
+        expires_at = datetime.now(UTC)
         from datetime import timedelta
 
         expires_at = expires_at + timedelta(seconds=expires_in)
@@ -418,7 +418,7 @@ async def start_ghl_oauth(
         "client_id": str(client_id),
         "user_id": str(user.id),
         "crm_type": "gohighlevel",
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     })
 
     # Build OAuth URL
@@ -461,7 +461,7 @@ async def ghl_oauth_callback(
         # Calculate token expiration (GHL tokens expire in ~24 hours)
         expires_in = tokens.get("expires_in", 86400)
         from datetime import timedelta
-        expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+        expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
 
         # Save config
         config = CRMConfig(

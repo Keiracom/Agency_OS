@@ -6,7 +6,7 @@ PHASE: 4 (Engines)
 TASK: ENG-010
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
@@ -94,7 +94,7 @@ class MockLead:
         self.next_outreach_at = kwargs.get("next_outreach_at")
         self.deleted_at = None
         self.lead_metadata = kwargs.get("lead_metadata", {})
-        self.created_at = kwargs.get("created_at", datetime.utcnow())
+        self.created_at = kwargs.get("created_at", datetime.now(UTC))
         self.email_count = kwargs.get("email_count", 0)
         self.linkedin_count = kwargs.get("linkedin_count", 0)
         self.sequence_step = kwargs.get("sequence_step", 1)
@@ -123,7 +123,7 @@ class MockActivity:
         self.action = kwargs.get("action", "replied")
         self.intent = kwargs.get("intent", IntentType.INTERESTED)
         self.intent_confidence = kwargs.get("intent_confidence", 0.95)
-        self.created_at = kwargs.get("created_at", datetime.utcnow())
+        self.created_at = kwargs.get("created_at", datetime.now(UTC))
         self.metadata = kwargs.get("metadata", {})
 
 

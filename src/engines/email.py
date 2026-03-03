@@ -45,7 +45,7 @@ GAP FIX #21:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -634,7 +634,7 @@ class EmailEngine(OutreachEngine):
             provider="salesforge",
             provider_status="sent",
             provider_response=provider_response,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
 
         db.add(activity)

@@ -14,7 +14,7 @@ Key Changes from HeyReach:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import UUID
 
 from sqlalchemy import select
@@ -128,7 +128,7 @@ class LinkedInConnectionService:
             credential.connection_status = "failed"
             credential.last_error = str(e)
             credential.error_count = (credential.error_count or 0) + 1
-            credential.last_error_at = datetime.utcnow()
+            credential.last_error_at = datetime.now(UTC)
             await db.commit()
 
             logger.exception(f"Failed to generate Unipile auth URL for client {client_id}")
@@ -182,7 +182,7 @@ class LinkedInConnectionService:
                 credential.auth_method = "hosted"
                 credential.linkedin_profile_url = account_info.get("identifier")
                 credential.linkedin_profile_name = account_info.get("name")
-                credential.connected_at = datetime.utcnow()
+                credential.connected_at = datetime.now(UTC)
                 credential.last_error = None
                 credential.error_count = 0
 
@@ -201,7 +201,7 @@ class LinkedInConnectionService:
                 credential.connection_status = "connected"
                 credential.unipile_account_id = account_id
                 credential.auth_method = "hosted"
-                credential.connected_at = datetime.utcnow()
+                credential.connected_at = datetime.now(UTC)
                 await db.commit()
 
                 return {
@@ -215,7 +215,7 @@ class LinkedInConnectionService:
                 "failed" if status == "CREATION_FAILED" else "disconnected"
             )
             credential.last_error = payload.get("error") or payload.get("reason") or status
-            credential.last_error_at = datetime.utcnow()
+            credential.last_error_at = datetime.now(UTC)
             await db.commit()
 
             logger.warning(f"LinkedIn connection {status.lower()} for client {client_id}")
@@ -250,7 +250,7 @@ class LinkedInConnectionService:
         credential.linkedin_profile_name = result.get("profile_name") or result.get("name")
         credential.linkedin_headline = result.get("headline")
         credential.linkedin_connection_count = result.get("connection_count")
-        credential.connected_at = datetime.utcnow()
+        credential.connected_at = datetime.now(UTC)
         credential.last_error = None
         await db.commit()
 
@@ -314,7 +314,7 @@ class LinkedInConnectionService:
         credential.linkedin_profile_name = "Mock Test User"
         credential.linkedin_headline = "Test Account for E2E Testing"
         credential.linkedin_connection_count = 500
-        credential.connected_at = datetime.utcnow()
+        credential.connected_at = datetime.now(UTC)
         credential.error_count = 0
 
         await db.commit()
@@ -397,7 +397,7 @@ class LinkedInConnectionService:
 
         credential.connection_status = "disconnected"
         credential.unipile_account_id = None
-        credential.disconnected_at = datetime.utcnow()
+        credential.disconnected_at = datetime.now(UTC)
         await db.commit()
 
         logger.info(f"LinkedIn disconnected for client {client_id}")

@@ -12,7 +12,7 @@ RULES APPLIED:
   - Rule 14: Soft delete checks (deleted_at IS NULL)
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from decimal import Decimal
 from uuid import UUID
 
@@ -205,7 +205,7 @@ async def get_admin_stats(
     db: AsyncSession = Depends(get_db_session),
 ):
     """Get command center KPI statistics."""
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     yesterday_start = today_start - timedelta(days=1)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -339,7 +339,7 @@ async def get_system_alerts(
 ):
     """Get current system alerts."""
     alerts = []
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     # Check for clients with no activity in 48 hours
     stmt = select(Client).where(
@@ -411,9 +411,9 @@ async def get_system_status(
 
     # Check database
     try:
-        start = datetime.utcnow()
+        start = datetime.now(UTC)
         await db.execute(text("SELECT 1"))
-        latency = (datetime.utcnow() - start).total_seconds() * 1000
+        latency = (datetime.now(UTC) - start).total_seconds() * 1000
         services.append(
             ServiceStatus(
                 name="Database",
@@ -467,7 +467,7 @@ async def get_system_status(
     return SystemStatusResponse(
         overall_status=overall,
         services=services,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
     )
 
 
@@ -556,9 +556,9 @@ async def list_all_clients(
         health_score = 50  # Base
         if campaigns_count > 0:
             health_score += 20
-        if last_activity and last_activity > datetime.utcnow() - timedelta(hours=24):
+        if last_activity and last_activity > datetime.now(UTC) - timedelta(hours=24):
             health_score += 30
-        elif last_activity and last_activity > datetime.utcnow() - timedelta(hours=48):
+        elif last_activity and last_activity > datetime.now(UTC) - timedelta(hours=48):
             health_score += 15
         if client.subscription_status in ("active", "trialing"):
             health_score += 15
@@ -818,7 +818,7 @@ async def get_ai_spend(
     # TODO: Implement Redis historical tracking or ai_usage_logs table
     daily_trend = []
     for i in range(7, 0, -1):
-        date_str = (datetime.utcnow() - timedelta(days=i)).strftime("%Y-%m-%d")
+        date_str = (datetime.now(UTC) - timedelta(days=i)).strftime("%Y-%m-%d")
         if i == 1:
             # Yesterday - placeholder
             daily_trend.append({"date": date_str, "spend": float(today_spend) * 0.9})
@@ -829,13 +829,13 @@ async def get_ai_spend(
     # Add today
     daily_trend.append(
         {
-            "date": datetime.utcnow().strftime("%Y-%m-%d"),
+            "date": datetime.now(UTC).strftime("%Y-%m-%d"),
             "spend": float(today_spend),
         }
     )
 
     # Month to date (estimate based on today's spend)
-    day_of_month = datetime.utcnow().day
+    day_of_month = datetime.now(UTC).day
     mtd_spend = today_spend * Decimal(str(day_of_month))  # Rough estimate
     days_in_month = 30
     projected_mtd = (
@@ -881,7 +881,7 @@ async def get_suppression_list(
             source="Campaign: Tech Startups",
             added_by_email="system",
             notes=None,
-            created_at=datetime.utcnow() - timedelta(days=2),
+            created_at=datetime.now(UTC) - timedelta(days=2),
         ),
         SuppressionEntry(
             id=UUID("00000000-0000-0000-0000-000000000002"),
@@ -890,7 +890,7 @@ async def get_suppression_list(
             source="Campaign: SaaS Decision Makers",
             added_by_email="system",
             notes="Hard bounce - mailbox does not exist",
-            created_at=datetime.utcnow() - timedelta(days=5),
+            created_at=datetime.now(UTC) - timedelta(days=5),
         ),
     ]
 

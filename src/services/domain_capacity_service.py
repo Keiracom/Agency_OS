@@ -13,7 +13,7 @@ This service:
 4. Selects best domain for sending (round-robin with health awareness)
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import UUID
 
 from sqlalchemy import and_, func, select
@@ -137,7 +137,7 @@ class DomainCapacityService:
         domain: str,
     ) -> int:
         """Count emails sent today for a domain."""
-        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
         stmt = select(func.count(Activity.id)).where(
             and_(

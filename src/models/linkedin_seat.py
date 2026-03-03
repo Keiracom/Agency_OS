@@ -7,7 +7,7 @@ Consumers: services, engines, orchestration
 Spec: docs/architecture/distribution/LINKEDIN_DISTRIBUTION.md
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from decimal import Decimal
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
@@ -181,7 +181,7 @@ class LinkedInSeat(Base, UUIDMixin, TimestampMixin):
         """Days since activation."""
         if not self.activated_at:
             return 0
-        delta = datetime.utcnow() - self.activated_at
+        delta = datetime.now(UTC) - self.activated_at
         return delta.days + 1
 
     @property
@@ -234,13 +234,13 @@ class LinkedInSeat(Base, UUIDMixin, TimestampMixin):
         self.account_name = account_name
         self.profile_url = profile_url
         self.status = LinkedInSeatStatus.WARMUP
-        self.activated_at = datetime.utcnow()
+        self.activated_at = datetime.now(UTC)
         self.pending_connection_id = None
 
     def mark_restricted(self, reason: str) -> None:
         """Mark seat as restricted by LinkedIn."""
         self.status = LinkedInSeatStatus.RESTRICTED
-        self.restricted_at = datetime.utcnow()
+        self.restricted_at = datetime.now(UTC)
         self.restricted_reason = reason
         self.daily_limit_override = 0
 

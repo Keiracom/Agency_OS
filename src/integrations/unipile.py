@@ -13,7 +13,7 @@ Key differences from HeyReach:
 - SOC 2 compliant
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 
 import httpx
@@ -159,7 +159,7 @@ class UnipileClient:
             - object: "HostedAuthLink"
         """
         if expires_on is None:
-            expires_on = datetime.utcnow() + timedelta(hours=24)
+            expires_on = datetime.now(UTC) + timedelta(hours=24)
 
         data = {
             "type": "create",
@@ -642,7 +642,7 @@ class UnipileClient:
             - total: Combined activity count
         """
         # Get today's date range (UTC)
-        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
         # Fetch invitations with pagination to count all of today's activity
         all_invitations = []

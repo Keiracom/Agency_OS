@@ -137,8 +137,8 @@ def mock_lead_pool():
                 {"content": "Looking for marketing partners", "date": "2025-01-10"},
             ],
         },
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -163,7 +163,7 @@ def mock_agency():
                 "summary": "Rapid appointment setting for early-stage startup.",
             },
         ],
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -606,7 +606,7 @@ class VoiceAgentService:
                         "email": lead.get("email"),
                         "phone": lead.get("phone"),
                         "reason": "unsubscribe_request",
-                        "created_at": datetime.utcnow().isoformat(),
+                        "created_at": datetime.now(UTC).isoformat(),
                     }) \
                     .execute()
 

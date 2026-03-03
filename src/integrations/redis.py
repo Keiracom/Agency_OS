@@ -14,7 +14,7 @@ RULES APPLIED:
 """
 
 import json
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from typing import Any
 
 from redis.asyncio import ConnectionPool, Redis
@@ -259,7 +259,7 @@ class EnrichmentCache:
         key = build_enrichment_key(domain)
 
         # Add cache timestamp
-        data["_cached_at"] = datetime.utcnow().isoformat()
+        data["_cached_at"] = datetime.now(UTC).isoformat()
         data["_cache_version"] = settings.redis_cache_version
 
         await redis.set(key, json.dumps(data, default=str), ex=self.TTL)

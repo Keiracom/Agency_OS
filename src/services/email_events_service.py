@@ -23,7 +23,7 @@ Provider hierarchy:
 3. Postmark (transactional)
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -139,7 +139,7 @@ class EmailEventsService:
                 "lead_id": activity.lead_id,
                 "client_id": activity.client_id,
                 "event_type": event_type,
-                "event_at": event_at or datetime.utcnow(),
+                "event_at": event_at or datetime.now(UTC),
                 "clicked_url": clicked_url,
                 "device_type": device_type,
                 "email_client": email_client,

@@ -20,7 +20,7 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -541,7 +541,7 @@ class DigestService:
             metrics_snapshot=metrics_snapshot,
             content_summary=content_summary,
             status=status,
-            sent_at=datetime.utcnow() if status == "sent" else None,
+            sent_at=datetime.now(UTC) if status == "sent" else None,
             error_message=error_message,
         )
         self.db.add(log)

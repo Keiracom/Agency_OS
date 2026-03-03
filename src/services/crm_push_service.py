@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any, Literal
 from urllib.parse import urlencode
 from uuid import UUID
@@ -482,7 +482,7 @@ class CRMPushService:
             return config
 
         # Refresh if expiring in next 5 minutes
-        if config.oauth_expires_at > datetime.utcnow() + timedelta(minutes=5):
+        if config.oauth_expires_at > datetime.now(UTC) + timedelta(minutes=5):
             return config
 
         if not config.oauth_refresh_token:
@@ -505,7 +505,7 @@ class CRMPushService:
         # Update config with new tokens
         config.oauth_access_token = tokens["access_token"]
         config.oauth_refresh_token = tokens.get("refresh_token", config.oauth_refresh_token)
-        config.oauth_expires_at = datetime.utcnow() + timedelta(seconds=tokens["expires_in"])
+        config.oauth_expires_at = datetime.now(UTC) + timedelta(seconds=tokens["expires_in"])
 
         await self.save_config(config)
 
@@ -702,7 +702,7 @@ class CRMPushService:
             return config
 
         # Refresh if expiring in next 5 minutes
-        if config.oauth_expires_at > datetime.utcnow() + timedelta(minutes=5):
+        if config.oauth_expires_at > datetime.now(UTC) + timedelta(minutes=5):
             return config
 
         if not config.oauth_refresh_token:
@@ -730,7 +730,7 @@ class CRMPushService:
         # Note: GHL invalidates old refresh token and returns new one
         config.oauth_access_token = tokens["access_token"]
         config.oauth_refresh_token = tokens.get("refresh_token", config.oauth_refresh_token)
-        config.oauth_expires_at = datetime.utcnow() + timedelta(seconds=tokens["expires_in"])
+        config.oauth_expires_at = datetime.now(UTC) + timedelta(seconds=tokens["expires_in"])
 
         await self.save_config(config)
 

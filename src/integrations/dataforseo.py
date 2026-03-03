@@ -18,7 +18,7 @@ VERIFIED: January 4, 2026
 """
 
 import base64
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 import httpx
@@ -259,7 +259,7 @@ class DataForSEOClient:
             "referring_ips": backlinks_result.get("referring_ips"),
             "spam_score": backlinks_result.get("spam_score"),
             # Meta
-            "enriched_at": datetime.utcnow().isoformat(),
+            "enriched_at": datetime.now(UTC).isoformat(),
         }
 
     async def health_check(self) -> dict[str, Any]:
@@ -366,7 +366,7 @@ class DataForSEOClient:
             "organic_pos_2_3": organic.get("pos_2_3"),
             "organic_pos_4_10": organic.get("pos_4_10"),
             "estimated_paid_traffic_cost": organic.get("estimated_paid_traffic_cost"),
-            "enriched_at": datetime.utcnow().isoformat(),
+            "enriched_at": datetime.now(UTC).isoformat(),
         }
 
     def _parse_backlinks_response(self, response: dict) -> dict[str, Any]:
@@ -407,7 +407,7 @@ class DataForSEOClient:
             "referring_ips": result.get("referring_ips"),
             "referring_subnets": result.get("referring_subnets"),
             "spam_score": result.get("backlinks_spam_score"),
-            "enriched_at": datetime.utcnow().isoformat(),
+            "enriched_at": datetime.now(UTC).isoformat(),
         }
 
     def _empty_labs_result(self) -> dict[str, Any]:
@@ -419,7 +419,7 @@ class DataForSEOClient:
             "organic_pos_2_3": None,
             "organic_pos_4_10": None,
             "estimated_paid_traffic_cost": None,
-            "enriched_at": datetime.utcnow().isoformat(),
+            "enriched_at": datetime.now(UTC).isoformat(),
         }
 
     def _empty_backlinks_result(self) -> dict[str, Any]:
@@ -431,7 +431,7 @@ class DataForSEOClient:
             "referring_ips": None,
             "referring_subnets": None,
             "spam_score": None,
-            "enriched_at": datetime.utcnow().isoformat(),
+            "enriched_at": datetime.now(UTC).isoformat(),
         }
 
     # ============================================

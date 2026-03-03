@@ -20,7 +20,7 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Annotated
 from uuid import UUID
 
@@ -447,7 +447,7 @@ async def activate_subscription(
 
         # Update client
         client.stripe_subscription_id = subscription.id
-        client.subscription_activated_at = datetime.utcnow()
+        client.subscription_activated_at = datetime.now(UTC)
 
         await db.commit()
         await db.refresh(client)

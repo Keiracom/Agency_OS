@@ -24,7 +24,7 @@ Only use SDK when Google search results likely exist (press, podcasts, conferenc
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -202,7 +202,7 @@ def should_use_sdk_enrichment(lead_data: dict[str, Any]) -> tuple[bool, list[str
                 funding_date = None
         if funding_date:
             try:
-                days_since = (datetime.utcnow() - funding_date).days
+                days_since = (datetime.now(UTC) - funding_date).days
                 if 0 <= days_since <= 90:
                     signals.append(f"recent_funding_{days_since}d")
                     logger.debug(f"SDK trigger: recent funding ({days_since} days ago)")
@@ -211,7 +211,7 @@ def should_use_sdk_enrichment(lead_data: dict[str, Any]) -> tuple[bool, list[str
                 from datetime import date
 
                 if isinstance(funding_date, date):
-                    days_since = (datetime.utcnow().date() - funding_date).days
+                    days_since = (datetime.now(UTC).date() - funding_date).days
                     if 0 <= days_since <= 90:
                         signals.append(f"recent_funding_{days_since}d")
                         logger.debug(f"SDK trigger: recent funding ({days_since} days ago)")

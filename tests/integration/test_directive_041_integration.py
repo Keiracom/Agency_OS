@@ -19,7 +19,7 @@ Expected output per lead:
 import asyncio
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from decimal import Decimal
 from uuid import uuid4
 
@@ -291,7 +291,7 @@ async def run_integration_test():
     # Output JSON results
     output = {
         "directive": "041",
-        "test_date": datetime.utcnow().isoformat(),
+        "test_date": datetime.now(UTC).isoformat(),
         "summary": {
             "total_leads": len(results),
             "dm2_hit": dm2_hit,

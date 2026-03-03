@@ -16,7 +16,7 @@ RULES APPLIED:
   - ALS score and tier in responses
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Annotated
 from uuid import UUID
 
@@ -647,7 +647,7 @@ async def delete_lead(
     lead = await get_lead_or_404(lead_id, client_id, db)
 
     # Soft delete (Rule 14)
-    lead.deleted_at = datetime.utcnow()
+    lead.deleted_at = datetime.now(UTC)
     await db.flush()
 
 

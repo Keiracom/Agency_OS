@@ -17,7 +17,7 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -52,7 +52,7 @@ async def find_clients_needing_credit_reset_task() -> list[dict[str, Any]]:
         List of client dicts with id, name, tier, current credits, reset date
     """
     async with get_db_session() as db:
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         stmt = select(
             Client.id,
@@ -116,7 +116,7 @@ async def reset_client_credits_task(client_data: dict[str, Any]) -> dict[str, An
     new_credits = get_leads_for_tier(tier_name)
 
     # Calculate next reset date (1 month from now)
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     next_reset = now + timedelta(days=30)  # Approximate month
 
     async with get_db_session() as db:

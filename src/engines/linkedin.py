@@ -45,7 +45,7 @@ PROFILE VIEW DELAY (Gap #19):
 
 import logging
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -184,7 +184,7 @@ class LinkedInEngine(OutreachEngine):
         Returns:
             Effective daily limit based on current day of week
         """
-        today = datetime.utcnow().weekday()
+        today = datetime.now(UTC).weekday()
         base_limit = LINKEDIN_DAILY_LIMIT_PER_ACCOUNT
 
         if today == 6:  # Sunday
@@ -697,7 +697,7 @@ class LinkedInEngine(OutreachEngine):
 
         # Profile was viewed - check elapsed time
         profile_viewed_at = connection.profile_viewed_at
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         elapsed = now - profile_viewed_at
         minutes_elapsed = int(elapsed.total_seconds() / 60)
 
@@ -770,7 +770,7 @@ class LinkedInEngine(OutreachEngine):
             PROFILE_VIEW_DELAY_MIN_MINUTES,
             PROFILE_VIEW_DELAY_MAX_MINUTES,
         )
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         connect_at = now + timedelta(minutes=delay_minutes)
 
         # Create or update linkedin_connection record
@@ -857,7 +857,7 @@ class LinkedInEngine(OutreachEngine):
         Returns:
             List of connection records ready for connection request
         """
-        cutoff_time = datetime.utcnow() - timedelta(minutes=PROFILE_VIEW_DELAY_MIN_MINUTES)
+        cutoff_time = datetime.now(UTC) - timedelta(minutes=PROFILE_VIEW_DELAY_MIN_MINUTES)
 
         stmt = select(LinkedInConnection).where(
             LinkedInConnection.profile_viewed_at.isnot(None),
@@ -883,7 +883,7 @@ class LinkedInEngine(OutreachEngine):
                 "profile_viewed_at": conn.profile_viewed_at.isoformat(),
                 "message": conn.note_content,
                 "minutes_since_view": int(
-                    (datetime.utcnow() - conn.profile_viewed_at).total_seconds() / 60
+                    (datetime.now(UTC) - conn.profile_viewed_at).total_seconds() / 60
                 ),
             }
             for conn in connections
@@ -1032,7 +1032,7 @@ class LinkedInEngine(OutreachEngine):
                 pass  # Non-critical, continue without Unipile status
 
             # Determine weekend status
-            today = datetime.utcnow().weekday()
+            today = datetime.now(UTC).weekday()
             weekend_status = None
             if today == 6:
                 weekend_status = "sunday_blocked"
@@ -1182,7 +1182,7 @@ class LinkedInEngine(OutreachEngine):
             provider_status=action,
             provider_response=provider_response,
             extra_data=metadata,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
 
         db.add(activity)

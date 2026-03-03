@@ -12,7 +12,7 @@ Blueprint requirement:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -191,7 +191,7 @@ class VoiceRetryService:
         Returns:
             List of activities due for retry
         """
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         # Query for activities with pending voice retries
         conditions = [
@@ -252,7 +252,7 @@ class VoiceRetryService:
             existing_extra = activity.extra_data if isinstance(activity.extra_data, dict) else {}
             extra_data: dict[str, Any] = dict(existing_extra)
             extra_data["voice_retry_processed"] = True
-            extra_data["voice_retry_processed_at"] = datetime.utcnow().isoformat()
+            extra_data["voice_retry_processed_at"] = datetime.now(UTC).isoformat()
 
             update_stmt = (
                 update(Activity).where(Activity.id == activity_id).values(extra_data=extra_data)
@@ -298,7 +298,7 @@ class VoiceRetryService:
         Returns:
             datetime for when to retry
         """
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         if outcome == "busy":
             # Busy: Retry in 2 hours

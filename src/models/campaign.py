@@ -162,6 +162,21 @@ class Campaign(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         nullable=True,
     )
 
+    # Discovery config fields (Directive #163)
+    industry_slug: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+    state: Mapped[str | None] = mapped_column(
+        String(10),
+        nullable=True,
+    )  # Australian state: NSW, VIC, QLD, SA, WA, TAS, NT, ACT
+    lead_volume: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=1250,
+    )  # Target lead count for discovery (defaults to Ignition tier)
+
     # Channel allocation percentages (must sum to 100)
     allocation_email: Mapped[int] = mapped_column(
         Integer,

@@ -157,27 +157,27 @@ class CampaignDiscoveryTrigger:
 
     def _build_config(self, campaign: dict) -> CampaignConfig:
         """Convert campaign record to CampaignConfig."""
-        # Extract industry from target_industries (assuming first one)
-        industries = campaign.get("target_industries") or []
-        industry_slug = industries[0] if industries else "general"
+        # Lazy import to avoid circular dependency (Directive #163)
+        from src.services.campaign_config_builder import CampaignConfigBuilder
 
-        # Extract location from ICP config or default
-        icp = campaign.get("icp_config") or {}
-        location = icp.get("location") or icp.get("city") or "Melbourne"
-        state = icp.get("state") or self._infer_state(location)
+        # Build a minimal Campaign-like object for the builder
+        # Note: campaign is a raw dict from Supabase, not ORM
 
-        # Lead volume from campaign or default
-        # Cast to int to handle string "0" from DB (string "0" is truthy, int 0 is falsy)
-        lead_count = int(campaign.get("lead_count") or 0) or 100
+        class CampaignProxy:
+            """Proxy object to allow CampaignConfigBuilder to work with dict."""
 
-        return CampaignConfig(
-            campaign_id=campaign["id"],
-            industry_slug=industry_slug,
-            location=location,
-            state=state,
-            lead_volume=lead_count,
-            filters=icp.get("filters", {}),
-        )
+            def __init__(self, data: dict):
+                self.id = data.get("id")
+                self.industry_slug = data.get("industry_slug")
+                self.state = data.get("state")
+                self.lead_volume = data.get("lead_volume") or 1250
+                self.target_industries = data.get("target_industries") or []
+                self.target_locations = data.get("target_locations") or []
+                self.target_titles = data.get("target_titles") or []
+                self.target_company_sizes = data.get("target_company_sizes") or []
+
+        proxy = CampaignProxy(campaign)
+        return CampaignConfigBuilder.build(proxy)
 
     def _infer_state(self, location: str) -> str:
         """Infer state from location name."""

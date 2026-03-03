@@ -25,6 +25,7 @@ Consumers: Prefect scheduler
 from prefect import flow, task, get_run_logger
 from datetime import datetime
 import json
+import os
 
 from src.services.cis_outcome_service import (
     get_outcomes_since_last_run,
@@ -40,7 +41,7 @@ from src.integrations.supabase import get_db_session
 
 
 CEO_MEMORY_WEIGHTS_KEY = "ceo:propensity_weights_v3"
-MIN_OUTCOMES_THRESHOLD = 20
+MIN_OUTCOMES_THRESHOLD = int(os.environ.get("CIS_MIN_OUTCOMES_THRESHOLD", "20"))
 MAX_DELTA_PER_RUN = 5
 
 

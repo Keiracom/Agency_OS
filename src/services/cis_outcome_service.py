@@ -6,12 +6,15 @@ Imports: integrations
 Consumers: cis_learning_flow.py
 
 Directive #147: CIS Learning Engine data access layer.
+Directive #157 Gap 3: Timing Signal Extraction
 
 Provides data access functions for:
 - Querying outcomes since last CIS run
 - Counting meeting booked outcomes
 - Logging weight adjustments to cis_adjustment_log
 - Fetching/updating weights from ceo_memory
+- Extracting timing signals from activities (Gap 3)
+- Aggregating timing data to platform_timing_signals (Gap 3)
 """
 
 import logging
@@ -74,6 +77,7 @@ async def get_outcomes_since_last_run(
             customer_filter = "AND o.client_id = :customer_id"
             params["customer_id"] = customer_id
 
+        # Gap 2 fix (Directive #157): Include negative signal timestamps and outcomes
         query = text(f"""
             SELECT
                 o.id,
@@ -87,12 +91,23 @@ async def get_outcomes_since_last_run(
                 CASE
                     WHEN o.meeting_booked_at IS NOT NULL THEN 'booked'
                     WHEN o.replied_at IS NOT NULL THEN 'replied'
+                    -- Gap 2: Check negative signal outcomes BEFORE positive engagement
+                    WHEN o.final_outcome = 'data_quality_failure' THEN 'data_quality_failure'
+                    WHEN o.final_outcome = 'targeting_failure' THEN 'targeting_failure'
+                    WHEN o.final_outcome = 'soft_rejection' THEN 'soft_rejection'
+                    WHEN o.bounced_at IS NOT NULL THEN 'bounced'
+                    WHEN o.complained_at IS NOT NULL THEN 'complained'
+                    WHEN o.unsubscribed_at IS NOT NULL THEN 'unsubscribed'
                     WHEN o.opened_at IS NOT NULL THEN 'no_response'
-                    WHEN o.delivered_at IS NOT NULL THEN 'bounced'
+                    WHEN o.delivered_at IS NOT NULL THEN 'delivered_only'
                     ELSE 'unknown'
                 END as outcome_type,
                 o.sent_at,
                 o.created_at,
+                -- Negative signal timestamps (Gap 2)
+                o.bounced_at,
+                o.complained_at,
+                o.unsubscribed_at,
                 -- Get signals_active from leads table
                 l.signals_active
             FROM cis_outreach_outcomes o
@@ -120,6 +135,10 @@ async def get_outcomes_since_last_run(
                 "outcome_type": row.outcome_type,
                 "sent_at": row.sent_at.isoformat() if row.sent_at else None,
                 "signals_active": row.signals_active or [],
+                # Gap 2: Include negative signal timestamps
+                "bounced_at": row.bounced_at.isoformat() if row.bounced_at else None,
+                "complained_at": row.complained_at.isoformat() if row.complained_at else None,
+                "unsubscribed_at": row.unsubscribed_at.isoformat() if row.unsubscribed_at else None,
             })
 
         logger.info(f"CIS: Queried {len(outcomes)} outcomes since {since_date}")
@@ -483,3 +502,411 @@ async def log_cis_run_complete(
     except Exception as e:
         logger.error(f"CIS: Failed to log run completion: {e}")
         return {"success": False, "error": str(e)}
+
+
+# =========================================================================
+# TIMING SIGNAL EXTRACTION (Directive #157 - Gap 3)
+# =========================================================================
+
+
+def _convert_dow_to_iso(pg_dow: int | None) -> int:
+    """
+    Convert PostgreSQL day of week to ISO 8601.
+
+    PostgreSQL DOW: 0=Sunday, 6=Saturday
+    ISO 8601: 0=Monday, 6=Sunday
+
+    Args:
+        pg_dow: PostgreSQL day of week value
+
+    Returns:
+        ISO 8601 day of week (0=Monday)
+    """
+    if pg_dow is None:
+        return 1  # Default to Tuesday (common business day)
+    # PG: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+    # ISO: 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun
+    return (pg_dow - 1) % 7 if pg_dow > 0 else 6
+
+
+def _derive_company_size(employee_count: int | str | None) -> str:
+    """
+    Derive company size bucket from employee count.
+
+    Args:
+        employee_count: Number of employees or range string
+
+    Returns:
+        Size bucket: 'smb', 'mid_market', or 'enterprise'
+    """
+    if employee_count is None:
+        return "smb"  # Default to SMB
+
+    # Handle range strings like "11-50", "51-200"
+    if isinstance(employee_count, str):
+        if "-" in employee_count:
+            try:
+                employee_count = int(employee_count.split("-")[1])
+            except (ValueError, IndexError):
+                return "smb"
+        else:
+            try:
+                employee_count = int(employee_count.replace("+", ""))
+            except ValueError:
+                return "smb"
+
+    if employee_count < 50:
+        return "smb"
+    elif employee_count < 500:
+        return "mid_market"
+    else:
+        return "enterprise"
+
+
+async def extract_timing_from_activity(
+    db: AsyncSession,
+    activity_id: str,
+) -> dict[str, Any] | None:
+    """
+    Extract timing signals from an activity record.
+
+    Reads the activity's timing columns (lead_local_day_of_week,
+    lead_local_time, touch_number) which are set by DB trigger
+    on activity creation.
+
+    Args:
+        db: Database session
+        activity_id: ID of the activity to extract timing from
+
+    Returns:
+        Dict with day_of_week (0=Monday), hour_of_day (0-23), touch_number
+        or None if activity not found
+    """
+    try:
+        query = text("""
+            SELECT
+                a.id,
+                a.lead_id,
+                a.client_id,
+                a.channel,
+                a.lead_local_day_of_week,
+                a.lead_local_time,
+                a.touch_number,
+                a.created_at,
+                l.industry,
+                l.employee_count,
+                l.company_name
+            FROM activities a
+            LEFT JOIN leads l ON a.lead_id = l.id
+            WHERE a.id = :activity_id
+        """)
+
+        result = await db.execute(query, {"activity_id": activity_id})
+        row = result.fetchone()
+
+        if not row:
+            logger.warning(f"CIS Timing: Activity {activity_id} not found")
+            return None
+
+        # Convert PostgreSQL DOW (0=Sunday) to ISO 8601 (0=Monday)
+        day_of_week = _convert_dow_to_iso(row.lead_local_day_of_week)
+
+        # Extract hour from lead_local_time
+        hour_of_day = 10  # Default business hour
+        if row.lead_local_time is not None:
+            hour_of_day = row.lead_local_time.hour
+
+        # Touch number defaults to 1
+        touch_number = row.touch_number if row.touch_number else 1
+
+        # Derive company size
+        company_size = _derive_company_size(row.employee_count)
+
+        # Get channel value
+        channel = row.channel
+        if hasattr(channel, "value"):
+            channel = channel.value
+
+        timing_data = {
+            "activity_id": str(row.id),
+            "lead_id": str(row.lead_id) if row.lead_id else None,
+            "client_id": str(row.client_id) if row.client_id else None,
+            "day_of_week": day_of_week,  # 0=Monday, 6=Sunday (ISO 8601)
+            "hour_of_day": hour_of_day,  # 0-23
+            "touch_number": touch_number,
+            "channel": channel or "email",
+            "industry": row.industry or "unknown",
+            "company_size": company_size,
+            "company_name": row.company_name,
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+        }
+
+        logger.debug(
+            f"CIS Timing: Extracted from activity {activity_id}: "
+            f"day={day_of_week}, hour={hour_of_day}, touch={touch_number}"
+        )
+        return timing_data
+
+    except Exception as e:
+        logger.error(f"CIS Timing: Failed to extract from activity {activity_id}: {e}")
+        return None
+
+
+async def record_timing_signal(
+    db: AsyncSession,
+    industry: str,
+    channel: str,
+    company_size: str,
+    day_of_week: int,
+    hour_of_day: int,
+    touch_number: int,
+    is_conversion: bool,
+) -> dict[str, Any]:
+    """
+    Record a timing signal to platform_timing_signals.
+
+    Uses the update_platform_timing_signal database function
+    which handles upsert and aggregation.
+
+    Args:
+        db: Database session
+        industry: Lead's industry
+        channel: Outreach channel (email, linkedin, etc.)
+        company_size: Size bucket (smb, mid_market, enterprise)
+        day_of_week: 0=Monday, 6=Sunday (ISO 8601)
+        hour_of_day: 0-23 in lead's local time
+        touch_number: Which touch in sequence (1, 2, 3...)
+        is_conversion: Whether this activity resulted in conversion
+
+    Returns:
+        Dict with success status
+    """
+    try:
+        # Normalize inputs
+        industry = (industry or "unknown").lower().strip()
+        channel = (channel or "email").lower().strip()
+        company_size = company_size or "smb"
+
+        # Validate ranges
+        day_of_week = max(0, min(6, day_of_week))
+        hour_of_day = max(0, min(23, hour_of_day))
+        touch_number = max(1, min(10, touch_number))  # Cap at 10 touches
+
+        query = text("""
+            SELECT update_platform_timing_signal(
+                :industry,
+                :channel,
+                :company_size,
+                :day_of_week,
+                :hour_of_day,
+                :touch_number,
+                :is_conversion
+            )
+        """)
+
+        await db.execute(query, {
+            "industry": industry,
+            "channel": channel,
+            "company_size": company_size,
+            "day_of_week": day_of_week,
+            "hour_of_day": hour_of_day,
+            "touch_number": touch_number,
+            "is_conversion": is_conversion,
+        })
+
+        await db.commit()
+
+        action = "conversion" if is_conversion else "attempt"
+        logger.info(
+            f"CIS Timing: Recorded {action} for {industry}/{channel}/{company_size} "
+            f"(day={day_of_week}, hour={hour_of_day}, touch={touch_number})"
+        )
+
+        return {"success": True}
+
+    except Exception as e:
+        logger.error(f"CIS Timing: Failed to record signal: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def process_conversion_timing(
+    db: AsyncSession,
+    activity_id: str,
+) -> dict[str, Any]:
+    """
+    Process timing signals from a converting activity.
+
+    Called when a MEETING_BOOKED outcome is recorded.
+    Extracts timing data and records to platform_timing_signals.
+
+    Args:
+        db: Database session
+        activity_id: ID of the converting activity
+
+    Returns:
+        Dict with timing data extracted and success status
+    """
+    # Extract timing from activity
+    timing = await extract_timing_from_activity(db, activity_id)
+
+    if not timing:
+        return {
+            "success": False,
+            "error": "Could not extract timing from activity",
+        }
+
+    # Record the conversion timing signal
+    result = await record_timing_signal(
+        db=db,
+        industry=timing["industry"],
+        channel=timing["channel"],
+        company_size=timing["company_size"],
+        day_of_week=timing["day_of_week"],
+        hour_of_day=timing["hour_of_day"],
+        touch_number=timing["touch_number"],
+        is_conversion=True,
+    )
+
+    return {
+        "success": result.get("success", False),
+        "timing": timing,
+        "error": result.get("error"),
+    }
+
+
+async def get_timing_insights(
+    db: AsyncSession,
+    industry: str,
+    channel: str | None = None,
+    company_size: str | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Query timing insights for a segment.
+
+    Returns pre-computed timing patterns from platform_timing_signals.
+
+    Args:
+        db: Database session
+        industry: Industry to query
+        channel: Optional channel filter
+        company_size: Optional size filter
+
+    Returns:
+        List of timing insight dicts
+    """
+    try:
+        query = text("""
+            SELECT * FROM get_timing_insights(:industry, :channel, :company_size)
+        """)
+
+        result = await db.execute(query, {
+            "industry": industry.lower().strip(),
+            "channel": channel.lower().strip() if channel else None,
+            "company_size": company_size,
+        })
+
+        rows = result.fetchall()
+        insights = []
+
+        for row in rows:
+            insights.append({
+                "industry": row.industry,
+                "channel": row.channel,
+                "company_size": row.company_size,
+                "best_day": row.best_day,
+                "best_hour": row.best_hour,
+                "best_touchpoint": row.best_touchpoint,
+                "avg_touchpoint": float(row.avg_touchpoint) if row.avg_touchpoint else None,
+                "conversion_rate": float(row.conversion_rate) if row.conversion_rate else None,
+                "total_conversions": row.total_conversions,
+                "confidence": row.confidence,
+            })
+
+        logger.info(f"CIS Timing: Found {len(insights)} insights for {industry}")
+        return insights
+
+    except Exception as e:
+        logger.error(f"CIS Timing: Failed to get insights: {e}")
+        return []
+
+
+async def backfill_timing_signals_from_outcomes(
+    db: AsyncSession,
+    days_back: int = 90,
+    limit: int = 1000,
+) -> dict[str, Any]:
+    """
+    Backfill timing signals from historical conversion outcomes.
+
+    One-time migration helper to populate platform_timing_signals
+    from existing cis_outreach_outcomes with meeting_booked_at.
+
+    Args:
+        db: Database session
+        days_back: How many days back to look
+        limit: Max outcomes to process
+
+    Returns:
+        Dict with processed count and errors
+    """
+    try:
+        # Get converting outcomes with activity IDs
+        query = text("""
+            SELECT
+                o.id,
+                o.activity_id,
+                o.channel,
+                a.lead_local_day_of_week,
+                a.lead_local_time,
+                a.touch_number,
+                l.industry,
+                l.employee_count
+            FROM cis_outreach_outcomes o
+            JOIN activities a ON o.activity_id = a.id
+            LEFT JOIN leads l ON o.lead_id = l.id
+            WHERE o.meeting_booked_at IS NOT NULL
+            AND o.sent_at >= NOW() - :days_back * INTERVAL '1 day'
+            ORDER BY o.meeting_booked_at DESC
+            LIMIT :limit
+        """)
+
+        result = await db.execute(query, {"days_back": days_back, "limit": limit})
+        rows = result.fetchall()
+
+        processed = 0
+        errors = 0
+
+        for row in rows:
+            try:
+                # Convert timing data
+                day_of_week = _convert_dow_to_iso(row.lead_local_day_of_week)
+                hour_of_day = row.lead_local_time.hour if row.lead_local_time else 10
+                touch_number = row.touch_number or 1
+                company_size = _derive_company_size(row.employee_count)
+
+                channel = row.channel
+                if hasattr(channel, "value"):
+                    channel = channel.value
+
+                await record_timing_signal(
+                    db=db,
+                    industry=row.industry or "unknown",
+                    channel=channel or "email",
+                    company_size=company_size,
+                    day_of_week=day_of_week,
+                    hour_of_day=hour_of_day,
+                    touch_number=touch_number,
+                    is_conversion=True,
+                )
+                processed += 1
+
+            except Exception as e:
+                logger.warning(f"CIS Timing: Error backfilling outcome {row.id}: {e}")
+                errors += 1
+
+        logger.info(f"CIS Timing: Backfill complete - {processed} processed, {errors} errors")
+        return {"processed": processed, "errors": errors, "success": True}
+
+    except Exception as e:
+        logger.error(f"CIS Timing: Backfill failed: {e}")
+        return {"processed": 0, "errors": 1, "success": False, "error": str(e)}

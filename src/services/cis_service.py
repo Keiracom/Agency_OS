@@ -251,6 +251,10 @@ class CISService:
                 "replied": "replied_at",
                 "meeting_booked": "meeting_booked_at",
                 "converted": "converted_at",
+                # Negative signal event types (Gap 2 fix - Directive #157)
+                "bounced": "bounced_at",
+                "complained": "complained_at",
+                "unsubscribed": "unsubscribed_at",
             }
 
             column = event_column_map.get(event_type)

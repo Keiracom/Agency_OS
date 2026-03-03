@@ -297,6 +297,8 @@ async def log_context_task(context: dict[str, Any]) -> str | None:
     """
     Write context to voice_call_context table and create voice_calls record.
 
+    CIS Gap 1 Fix: Captures als_score_at_call at dispatch time for CIS learning.
+
     Args:
         context: Compiled context dict
 
@@ -311,25 +313,42 @@ async def log_context_task(context: dict[str, Any]) -> str | None:
             context_id = str(uuid4())
             now = datetime.utcnow()
 
-            # Create voice_calls record as INITIATED
+            # CIS Gap 1 Fix: Fetch current ALS score for the lead at dispatch time
+            als_score_result = await db.execute(
+                text("""
+                    SELECT als_score FROM lead_pool WHERE id = :lead_id
+                """),
+                {"lead_id": context["lead_id"]},
+            )
+            als_row = als_score_result.fetchone()
+            als_score_at_call = als_row.als_score if als_row else None
+
+            run_logger.info(
+                f"Captured als_score_at_call={als_score_at_call} for lead {context['lead_id']}"
+            )
+
+            # Create voice_calls record as INITIATED with als_score_at_call
             await db.execute(
                 text("""
                     INSERT INTO voice_calls (
-                        id, lead_id, campaign_id, agency_id, phone,
-                        status, initiated_at, created_at, updated_at
+                        id, lead_id, campaign_id, client_id, phone_number,
+                        outcome, als_score_at_call, hook_used,
+                        created_at, updated_at
                     ) VALUES (
-                        :id, :lead_id, :campaign_id, :agency_id, :phone,
-                        :status, :initiated_at, :created_at, :updated_at
+                        :id, :lead_id, :campaign_id, :client_id, :phone_number,
+                        :outcome, :als_score_at_call, :hook_used,
+                        :created_at, :updated_at
                     )
                 """),
                 {
                     "id": voice_call_id,
                     "lead_id": context["lead_id"],
                     "campaign_id": context["campaign_id"],
-                    "agency_id": context["agency_id"],
-                    "phone": context["phone"],
-                    "status": CALL_STATUS_INITIATED,
-                    "initiated_at": now,
+                    "client_id": context["agency_id"],  # client_id = agency_id in our model
+                    "phone_number": context["phone"],
+                    "outcome": CALL_STATUS_INITIATED,
+                    "als_score_at_call": als_score_at_call,  # CIS Gap 1 Fix
+                    "hook_used": context.get("hook_used"),
                     "created_at": now,
                     "updated_at": now,
                 },

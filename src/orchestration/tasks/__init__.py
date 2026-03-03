@@ -51,6 +51,12 @@ from src.orchestration.tasks.scoring_tasks import (
     score_batch_task,
     score_lead_task,
 )
+from src.orchestration.tasks.voice_sync_tasks import (
+    backfill_voice_activities_task,
+    sync_single_voice_call_task,
+    sync_voice_calls_to_activities_task,
+    voice_activities_sync_flow,
+)
 
 __all__ = [
     # Enrichment
@@ -74,4 +80,9 @@ __all__ = [
     "poll_email_replies_task",
     "poll_sms_replies_task",
     "poll_linkedin_replies_task",
+    # Voice Sync (CIS Gap 1 Fix)
+    "sync_voice_calls_to_activities_task",
+    "sync_single_voice_call_task",
+    "backfill_voice_activities_task",
+    "voice_activities_sync_flow",
 ]

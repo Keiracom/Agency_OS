@@ -32,7 +32,7 @@ flowchart TB
         M --> N[Tier 2: GMB & Ads Signals]
         N --> O[Tier 3: Email Finder]
         O --> P[Tier 5: Mobile Finder]
-        P --> Q[ALS Score calculated]
+        P --> Q[Dual scores calculated]
         Q --> R[Leads appear on scoreboard]
     end
 
@@ -139,9 +139,9 @@ The system accounts for a 28% waste ratio from filtering, so discovering 1,250 q
 
 ### What the User Experiences
 
-The Leads page presents an animated leaderboard titled "Lead Scoreboard" with a "LIVE" indicator. At the top, a Bloomberg Terminal-style counter bar displays four metrics—Total Leads, Enriched, Average ALS Score, and Meetings Booked—each animated with a split-flap mechanical display effect.
+The Leads page presents an animated leaderboard titled "Lead Scoreboard" with a "LIVE" indicator. At the top, a Bloomberg Terminal-style counter bar displays four metrics—Total Leads, Enriched, Average Propensity Score, and Meetings Booked—each animated with a split-flap mechanical display effect.
 
-As leads complete enrichment, they appear on the scoreboard with smooth animations. Each lead row shows their rank, ALS score with tier badge (Hot/Warm/Cool/Cold), company and contact name, and an enrichment depth progress bar.
+As leads complete enrichment, they appear on the scoreboard with smooth animations. Each lead row shows their rank, propensity score with tier badge (Hot/Warm/Cool/Cold), company and contact name, and an enrichment depth progress bar.
 
 Tier filter tabs allow viewing All, Hot, Warm, Cool, or Cold leads. A search bar filters by name, company, or email. Sort toggles switch between high-to-low and low-to-high scoring.
 
@@ -157,7 +157,7 @@ The daily enrichment flow processes leads in batches of 100 using Prefect's Conc
 
 **Tier 2: GMB & Ads Signals** — Bright Data's web scraper collects Google My Business data including ratings, review counts, photos, opening hours, and recent posts. Google Ads presence is detected as a buying signal.
 
-**Tier 3: Email Finder** — For leads with ALS ≥ 35, Leadmagic's email finder locates professional email addresses using the lead's name and company domain, returning confidence scores for verification.
+**Tier 3: Email Finder** — For leads with propensity_score ≥ 35, Leadmagic's email finder locates professional email addresses using the lead's name and company domain, returning confidence scores for verification.
 
 **Tier 4: LinkedIn Intelligence** — Bright Data handles all LinkedIn enrichment:
 - **T1.5**: Bright Data LinkedIn company profiles (industry, size, specialties)
@@ -166,9 +166,24 @@ The daily enrichment flow processes leads in batches of 100 using Prefect's Conc
 
 This powers decision-maker identification and authority scoring.
 
-**Tier 5: Mobile Finder** — For leads with ALS ≥ 85, Leadmagic's mobile finder locates direct mobile phone numbers.
+**Tier 5: Mobile Finder** — For leads with propensity_score ≥ 85, Leadmagic's mobile finder locates direct mobile phone numbers.
 
-After enrichment, the ALS (Adaptive Lead Score) is calculated based on data completeness, contact information availability, company fit, decision-maker authority, and engagement signals. Scores determine tier placement: Hot (85+), Warm (60-84), Cool (35-59), Cold (20-34), Dead (below 20).
+After enrichment, dual scoring is calculated and stored as separate columns in the leads table (Migration #080):
+
+**Reachability Score (0-100)** — Channel access scoring. Can we reach them? Based on:
+- Email deliverability and verification status
+- LinkedIn profile accessibility
+- Mobile number availability and DNCR status
+- Voice contact feasibility
+
+**Propensity Score (0-100)** — Fit + timing signals. Should we reach them? Composed of 5 sub-components:
+- **Data Quality** (max 20 points) — Completeness of enrichment data
+- **Authority** (max 25 points) — Decision-maker level and influence
+- **Company Fit** (max 25 points) — ICP alignment and firmographics
+- **Timing** (max 15 points) — Buying signals and engagement recency
+- **Risk** (max 15 points) — Negative signals, compliance flags
+
+Propensity scores determine tier placement: Hot (85+), Warm (60-84), Cool (35-59), Cold (20-34), Dead (below 20).
 
 Australian phone numbers are batch-checked against the Do Not Call Register. Numbers found on the DNCR are blocked from receiving SMS or calls.
 
@@ -179,10 +194,10 @@ Processing 1,250 leads takes approximately 45 minutes with 10 parallel workers.
 - **Siege Waterfall** — Five-tier enrichment orchestrator
 - **ABN Bulk Extract** — Australian government business data (free)
 - **Bright Data Web Scraper** — GMB signals, Google Ads detection, and all LinkedIn enrichment (company profiles, decision-maker profiles, posts)
-- **Leadmagic Email Finder** — Professional email discovery (ALS ≥ 35 gate)
-- **Leadmagic Mobile Finder** — Direct mobile number discovery (ALS ≥ 85 gate)
+- **Leadmagic Email Finder** — Professional email discovery (propensity ≥ 35 gate)
+- **Leadmagic Mobile Finder** — Direct mobile number discovery (propensity ≥ 85 gate)
 - **DNCR API** — Do Not Call Register compliance checking
-- **ALS Scorer** — Adaptive lead scoring engine
+- **Dual Scorer** — Reachability + propensity scoring engine
 
 ---
 
@@ -253,7 +268,7 @@ For positive replies indicating interest, the system may automatically schedule 
 
 When a meeting is booked, a special event appears on the timeline with an amber calendar icon, pulsing glow animation, and "🎉 Booked" badge. The event expands to show meeting details including date, time, duration, and agenda.
 
-The lead's ALS score and tier badge update in real-time as engagement increases. The "Why This Lead is Hot" badges refresh to reflect new buying signals like "5 email opens today" or "Engaged in last 2h".
+The lead's propensity score and tier badge update in real-time as engagement increases. The "Why This Lead is Hot" badges refresh to reflect new buying signals like "5 email opens today" or "Engaged in last 2h".
 
 On the main scoreboard, converted leads can be filtered, and the Meetings Booked counter increments with the same split-flap animation.
 
@@ -269,7 +284,24 @@ When a reply arrives via email webhook, LinkedIn message webhook, or SMS inbound
 
 **Question Extraction** — Any questions asked are extracted for follow-up response generation.
 
-Results are stored on the reply record and fed into the Campaign Intelligence Service for pattern learning. The Reply Recovery Flow can automatically generate appropriate follow-up responses based on detected intent and objection type.
+Results are stored on the reply record and fed into the Campaign Intelligence Service (CIS) for pattern learning. The Reply Recovery Flow can automatically generate appropriate follow-up responses based on detected intent and objection type.
+
+**CIS Learning Engine** — Deployed to Railway, the CIS continuously captures signals and adjusts propensity weights:
+
+- **Activation threshold**: Minimum 20 conversions required before weight adjustment begins (configurable via `CIS_MIN_OUTCOMES_THRESHOLD` env var — Directive #157)
+- **Learning cycle**: Weekly propensity weight adjustment (Sundays 3 AM UTC)
+- **Signal types captured**:
+  - Email: opens, clicks, replies, bounces, spam flags, unsubscribes
+  - LinkedIn: connection accepts, message replies
+  - Voice: call outcomes via ElevenAgents webhook
+  - Timing: day of week, hour of day, touchpoint position
+  - Meetings: booking confirmations
+
+**Signal Capture Gaps Fixed (Directive #157, PR #140):**
+1. Voice outcomes now captured via ElevenAgents webhook integration
+2. Negative signals (bounce/spam/unsub) now feed learning engine
+3. Timing signals (day/hour/touchpoint) now extracted for pattern analysis
+4. Threshold configurable via env var for per-customer tuning
 
 When a meeting is booked:
 - Lead status updates to converted or meeting_scheduled
@@ -278,16 +310,16 @@ When a meeting is booked:
 - Co-pilot mode notifications alert human operators
 - CIS records the successful outcome, linking it to the outreach messages, channels, sequence steps, and personalization strategies that led to conversion
 
-This data feeds back into the pattern learning system, continuously improving future campaign performance.
+This data feeds back into the CIS Learning Engine, continuously improving propensity weights and future campaign performance. This is the moat.
 
 ### Tools Involved
 
 - **Reply Analyzer** — AI + rules-based intent classification
 - **Claude AI** — Sentiment and intent analysis
 - **Campaign Intelligence Service** — Pattern learning and optimization
+- **CIS Learning Engine (Railway)** — Weekly propensity weight adjustment, requires 20 conversions to activate
 - **Reply Recovery Flow** — Automated objection handling
 - **Calendar Integration** — Meeting detection and scheduling
-- **CIS Feedback Loop** — Conversion attribution and learning
 
 ---
 

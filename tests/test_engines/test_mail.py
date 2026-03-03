@@ -244,26 +244,6 @@ def test_singleton():
 
 
 # ============================================
-# ADDRESS VERIFICATION TESTS (REMOVED)
-# ============================================
-# verify_address method removed from MailEngine
-# Address verification now handled by ClickSend at send time
-
-@pytest.mark.skip(reason="verify_address method removed from MailEngine")
-@pytest.mark.asyncio
-async def test_verify_address_success():
-    """Test successful address verification - DEPRECATED."""
-    pass
-
-
-@pytest.mark.skip(reason="verify_address method removed from MailEngine")
-@pytest.mark.asyncio
-async def test_verify_address_invalid():
-    """Test address verification with invalid address - DEPRECATED."""
-    pass
-
-
-# ============================================
 # SEND LETTER TESTS
 # ============================================
 
@@ -539,23 +519,6 @@ async def test_send_mail_missing_from_address(valid_to_address):
 
         assert not result.success
         assert "from_address is required" in result.error.lower()
-
-
-# ============================================
-# GET MAIL STATUS TESTS (REMOVED)
-# ============================================
-# get_mail_status method removed; use get_letter_history instead
-
-@pytest.mark.skip(reason="get_mail_status method removed from MailEngine")
-@pytest.mark.asyncio
-async def test_get_mail_status(mock_db):
-    """Test getting mail status - DEPRECATED."""
-    pass
-
-    assert result.success
-    assert result.data["id"] == "ltr_123"
-    assert result.data["tracking_number"] == "TRACK123"
-    assert result.data["expected_delivery_date"] == "2025-12-25"
 
 
 # ============================================

@@ -60,21 +60,6 @@ class TestCampaignConfig:
         assert config.filters["rating_min"] == 4.0
 
 
-@pytest.mark.skip(reason="ABN_FIRST deprecated per Waterfall v3 Decision #1 (2026-03-01)")
-class TestABNFirstDiscovery:
-    """Test Mode A: ABN-First discovery - DEPRECATED"""
-
-    @pytest.mark.asyncio
-    async def test_filters_inactive_abns(self):
-        """ABNFirstDiscovery class removed - skip test"""
-        pass
-
-    @pytest.mark.asyncio
-    async def test_filters_no_gst(self):
-        """ABNFirstDiscovery class removed - skip test"""
-        pass
-
-
 class TestMapsFirstDiscovery:
     """Test Mode B: Maps-First discovery"""
 

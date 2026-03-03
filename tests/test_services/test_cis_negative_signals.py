@@ -90,7 +90,7 @@ class TestEmailEventsServiceNegativeSignals:
         # Mock _get_activity to return our mock activity
         with patch.object(service, '_get_activity', return_value=mock_activity):
             with patch.object(service, '_check_duplicate', return_value=None):
-                with patch('src.services.email_events_service.get_cis_service') as mock_get_cis:
+                with patch('src.services.cis_service.get_cis_service') as mock_get_cis:
                     mock_cis = AsyncMock()
                     mock_get_cis.return_value = mock_cis
                     
@@ -121,7 +121,7 @@ class TestEmailEventsServiceNegativeSignals:
         
         with patch.object(service, '_get_activity', return_value=mock_activity):
             with patch.object(service, '_check_duplicate', return_value=None):
-                with patch('src.services.email_events_service.get_cis_service') as mock_get_cis:
+                with patch('src.services.cis_service.get_cis_service') as mock_get_cis:
                     mock_cis = AsyncMock()
                     mock_get_cis.return_value = mock_cis
                     
@@ -150,7 +150,7 @@ class TestEmailEventsServiceNegativeSignals:
         
         with patch.object(service, '_get_activity', return_value=mock_activity):
             with patch.object(service, '_check_duplicate', return_value=None):
-                with patch('src.services.email_events_service.get_cis_service') as mock_get_cis:
+                with patch('src.services.cis_service.get_cis_service') as mock_get_cis:
                     mock_cis = AsyncMock()
                     mock_get_cis.return_value = mock_cis
                     

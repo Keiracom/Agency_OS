@@ -595,17 +595,23 @@ class TestDailyActivity:
 class TestReportsAuthorization:
     """Test authorization for reports endpoints."""
 
-    @pytest.mark.skip(reason="Auth dependency not yet implemented")
-    async def test_campaign_metrics_unauthorized(self, client, mock_campaign_id):
-        """Test campaign metrics without authentication."""
-        # Will be implemented when auth dependency is added
-        pass
+    def test_campaign_metrics_unauthorized(self, mock_campaign_id):
+        """Test campaign metrics without authentication returns 401."""
+        # Use TestClient without auth override
+        with TestClient(app) as unauthenticated_client:
+            response = unauthenticated_client.get(
+                f"/api/v1/reports/campaigns/{mock_campaign_id}"
+            )
+        assert response.status_code == 401
 
-    @pytest.mark.skip(reason="Auth dependency not yet implemented")
-    async def test_client_metrics_unauthorized(self, client, mock_client_id):
-        """Test client metrics without authentication."""
-        # Will be implemented when auth dependency is added
-        pass
+    def test_client_metrics_unauthorized(self, mock_client_id):
+        """Test client metrics without authentication returns 401."""
+        # Use TestClient without auth override
+        with TestClient(app) as unauthenticated_client:
+            response = unauthenticated_client.get(
+                f"/api/v1/reports/clients/{mock_client_id}"
+            )
+        assert response.status_code == 401
 
 
 # ============================================

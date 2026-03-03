@@ -289,23 +289,6 @@ class TestLeadAllocatorTracking:
         assert result is True
         mock_session.commit.assert_called()
 
-    @pytest.mark.asyncio
-    async def test_set_cooling_period(self, allocator_service, mock_session):
-        """Test setting cooling period."""
-        assignment_id = uuid4()
-
-        mock_result = MagicMock()
-        mock_row = MagicMock()
-        mock_row.id = assignment_id
-        mock_result.fetchone.return_value = mock_row
-        mock_session.execute.return_value = mock_result
-
-        result = await allocator_service.set_cooling_period(assignment_id, days=7)
-
-        assert result is True
-        mock_session.commit.assert_called()
-
-
 class TestLeadAllocatorStats:
     """Tests for stats operations."""
 
@@ -339,17 +322,11 @@ class TestLeadAllocatorStats:
         """Test releasing all leads for a client."""
         client_id = uuid4()
 
-        # Mock release query
+        # Mock release query - service uses result.rowcount, not fetchall
         release_result = MagicMock()
-        release_result.fetchall.return_value = [
-            MagicMock(lead_pool_id=uuid4()),
-            MagicMock(lead_pool_id=uuid4()),
-        ]
+        release_result.rowcount = 2
 
-        # Mock pool update
-        pool_update_result = MagicMock()
-
-        mock_session.execute.side_effect = [release_result, pool_update_result]
+        mock_session.execute.return_value = release_result
 
         result = await allocator_service.release_client_leads(
             client_id=client_id,

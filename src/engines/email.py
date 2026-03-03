@@ -446,12 +446,17 @@ class EmailEngine(OutreachEngine):
                 )
                 continue
 
+            # Filter out already-extracted keys to avoid duplicate kwargs
+            extra_kwargs = {
+                k: v for k, v in email_config.items()
+                if k not in ("lead_id", "campaign_id", "content")
+            }
             result = await self.validate_and_send(
                 db=db,
                 lead_id=lead_id,
                 campaign_id=campaign_id,
                 content=content,
-                **email_config,
+                **extra_kwargs,
             )
 
             if result.success:

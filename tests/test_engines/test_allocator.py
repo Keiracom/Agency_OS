@@ -323,14 +323,15 @@ class TestResourceSelection:
         with patch("src.engines.allocator.rate_limiter") as mock_limiter:
             mock_limiter.get_remaining = AsyncMock(return_value=45)
 
-            result = await allocator_engine.get_next_resource(
-                db=mock_db_session,
-                campaign_id=uuid4(),
-                channel=ChannelType.EMAIL,
-            )
+            with patch.object(allocator_engine, "_mark_resource_used", new_callable=AsyncMock):
+                result = await allocator_engine.get_next_resource(
+                    db=mock_db_session,
+                    campaign_id=uuid4(),
+                    channel=ChannelType.EMAIL,
+                )
 
-            assert result.success is True
-            assert result.data["remaining_quota"] == 45
+                assert result.success is True
+                assert result.data["remaining_quota"] == 45
 
     @pytest.mark.asyncio
     async def test_get_next_resource_skips_exhausted(
@@ -363,14 +364,15 @@ class TestResourceSelection:
             # First resource exhausted, second has quota
             mock_limiter.get_remaining = AsyncMock(side_effect=[0, 30])
 
-            result = await allocator_engine.get_next_resource(
-                db=mock_db_session,
-                campaign_id=uuid4(),
-                channel=ChannelType.EMAIL,
-            )
+            with patch.object(allocator_engine, "_mark_resource_used", new_callable=AsyncMock):
+                result = await allocator_engine.get_next_resource(
+                    db=mock_db_session,
+                    campaign_id=uuid4(),
+                    channel=ChannelType.EMAIL,
+                )
 
-            assert result.success is True
-            assert result.data["remaining_quota"] == 30
+                assert result.success is True
+                assert result.data["remaining_quota"] == 30
 
 
 # ============================================

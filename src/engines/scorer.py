@@ -78,19 +78,21 @@ SCORE_LINKEDIN = 4
 SCORE_PERSONAL_EMAIL = 2
 
 # Authority (25 points max)
+# NOTE: Order matters for substring matching - longer/more specific terms first
+# to avoid "president" matching before "vice president"
 AUTHORITY_SCORES = {
+    "co-founder": 25,  # Check before "founder"
+    "founder": 25,
     "owner": 25,
     "ceo": 25,
-    "founder": 25,
-    "co-founder": 25,
     "chief": 22,  # CTO, CFO, CMO, etc.
     "c-suite": 22,
+    "vice president": 18,  # Check before "president"
     "president": 22,
-    "vice president": 18,
     "vp": 18,
+    "senior manager": 10,  # Check before "manager"
     "director": 15,
     "head": 15,
-    "senior manager": 10,
     "manager": 7,
     "lead": 7,
 }

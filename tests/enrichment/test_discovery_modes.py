@@ -15,10 +15,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../src'))
 class TestDiscoveryModeEnum:
     """Test DiscoveryMode enum"""
 
-    def test_mode_a_value(self):
-        from enrichment.discovery_modes import DiscoveryMode
-        assert DiscoveryMode.ABN_FIRST.value == "mode_a"
-
     def test_mode_b_value(self):
         from enrichment.discovery_modes import DiscoveryMode
         assert DiscoveryMode.MAPS_FIRST.value == "mode_b"
@@ -26,6 +22,11 @@ class TestDiscoveryModeEnum:
     def test_mode_c_value(self):
         from enrichment.discovery_modes import DiscoveryMode
         assert DiscoveryMode.PARALLEL.value == "mode_c"
+
+    def test_abn_first_deprecated(self):
+        """ABN_FIRST was deprecated per Waterfall v3 Decision #1 (2026-03-01)"""
+        from enrichment.discovery_modes import DiscoveryMode
+        assert not hasattr(DiscoveryMode, 'ABN_FIRST')
 
 
 class TestCampaignConfig:
@@ -35,12 +36,12 @@ class TestCampaignConfig:
         from enrichment.discovery_modes import CampaignConfig, DiscoveryMode
 
         config = CampaignConfig(
-            mode=DiscoveryMode.ABN_FIRST,
+            mode=DiscoveryMode.MAPS_FIRST,
             industry="Advertising",
             location="Melbourne"
         )
 
-        assert config.mode == DiscoveryMode.ABN_FIRST
+        assert config.mode == DiscoveryMode.MAPS_FIRST
         assert config.industry == "Advertising"
         assert config.location == "Melbourne"
 
@@ -57,40 +58,6 @@ class TestCampaignConfig:
 
         assert config.state == "NSW"
         assert config.filters["rating_min"] == 4.0
-
-
-class TestABNFirstDiscovery:
-    """Test Mode A: ABN-First discovery"""
-
-    @pytest.mark.asyncio
-    async def test_filters_inactive_abns(self):
-        from enrichment.discovery_modes import ABNFirstDiscovery, CampaignConfig, DiscoveryMode
-
-        ABNFirstDiscovery()
-        CampaignConfig(
-            mode=DiscoveryMode.ABN_FIRST,
-            industry="Creative Agency",
-            location="Victoria"
-        )
-
-        # Mock ABN API response with mixed statuses
-
-        # Discovery should filter out cancelled and trusts
-        # (implementation will do this)
-
-    @pytest.mark.asyncio
-    async def test_filters_no_gst(self):
-        from enrichment.discovery_modes import ABNFirstDiscovery, CampaignConfig, DiscoveryMode
-
-        ABNFirstDiscovery()
-        CampaignConfig(
-            mode=DiscoveryMode.ABN_FIRST,
-            industry="Services",
-            location="NSW"
-        )
-
-        # Businesses without GST should be filtered
-        # This indicates they may not be legitimate B2B targets
 
 
 class TestMapsFirstDiscovery:

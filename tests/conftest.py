@@ -20,6 +20,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 # Set test environment before importing app modules
 os.environ["ENVIRONMENT"] = "development"  # Use development for tests (Settings model requires development/staging/production)
 os.environ["DATABASE_URL"] = "postgresql+asyncpg://test:test@localhost:5432/test_db"
+# Disable Prefect ephemeral server to avoid timeouts in tests
+os.environ["PREFECT_SERVER_ALLOW_EPHEMERAL_MODE"] = "false"
 os.environ["REDIS_URL"] = "redis://localhost:6379/1"
 os.environ["SUPABASE_URL"] = "https://test.supabase.co"
 os.environ["SUPABASE_KEY"] = "test-key"

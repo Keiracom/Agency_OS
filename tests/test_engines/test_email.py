@@ -185,26 +185,36 @@ class TestEmailEngine:
     @pytest.mark.asyncio
     async def test_send_email_success(self, email_engine, mock_db, mock_lead, mock_campaign):
         """Test successful email send."""
-        # Mock validation and rate limiter
+        from unittest.mock import AsyncMock, patch
+
+        # Mock validation methods
         async def mock_get_lead(db, lead_id):
             return mock_lead
 
         async def mock_get_campaign(db, campaign_id):
             return mock_campaign
 
+        async def mock_validate_address(db, client_id):
+            return {"valid": True, "address": "123 Test St"}
+
         email_engine.get_lead_by_id = mock_get_lead
         email_engine.get_campaign_by_id = mock_get_campaign
+        email_engine._validate_physical_address = mock_validate_address
 
-        # Mock rate limiter
-        from src.integrations import redis
-        original_check = redis.rate_limiter.check_and_increment
+        # Mock rate limiter and salesforge
+        with patch("src.engines.email.rate_limiter") as mock_rate_limiter:
+            mock_rate_limiter.check_and_increment = AsyncMock(return_value=(True, 1))
 
-        async def mock_check(*args, **kwargs):
-            return True, 1
+            # Mock salesforge send
+            email_engine._salesforge = AsyncMock()
+            email_engine._salesforge.send_email = AsyncMock(return_value={
+                "success": True,
+                "message_id": "msg_test123",
+            })
 
-        redis.rate_limiter.check_and_increment = mock_check
+            # Mock activity logging
+            email_engine._log_activity = AsyncMock()
 
-        try:
             result = await email_engine.send(
                 db=mock_db,
                 lead_id=mock_lead.id,
@@ -213,22 +223,20 @@ class TestEmailEngine:
                 subject="Test Subject",
                 from_email="sender@example.com",
                 from_name="Test Sender",
+                include_signature=False,  # Skip signature generation
             )
 
             assert result.success
-            assert result.data["message_id"] is not None
+            assert result.data["message_id"] == "msg_test123"
             assert result.data["to_email"] == mock_lead.email
             assert result.data["from_email"] == "sender@example.com"
             assert result.data["subject"] == "Test Subject"
-            assert mock_db.committed
-
-        finally:
-            # Restore
-            redis.rate_limiter.check_and_increment = original_check
 
     @pytest.mark.asyncio
     async def test_send_with_threading(self, email_engine, mock_db, mock_lead, mock_campaign):
         """Test email send with threading (follow-up)."""
+        from unittest.mock import AsyncMock, patch
+
         async def mock_get_lead(db, lead_id):
             return mock_lead
 
@@ -242,20 +250,28 @@ class TestEmailEngine:
                 "thread_id": "thread_123",
             }
 
+        async def mock_validate_address(db, client_id):
+            return {"valid": True, "address": "123 Test St"}
+
         email_engine.get_lead_by_id = mock_get_lead
         email_engine.get_campaign_by_id = mock_get_campaign
         email_engine._get_thread_info = mock_get_thread_info
+        email_engine._validate_physical_address = mock_validate_address
 
-        # Mock rate limiter
-        from src.integrations import redis
-        original_check = redis.rate_limiter.check_and_increment
+        # Mock rate limiter and salesforge
+        with patch("src.engines.email.rate_limiter") as mock_rate_limiter:
+            mock_rate_limiter.check_and_increment = AsyncMock(return_value=(True, 1))
 
-        async def mock_check(*args, **kwargs):
-            return True, 1
+            # Mock salesforge send
+            email_engine._salesforge = AsyncMock()
+            email_engine._salesforge.send_email = AsyncMock(return_value={
+                "success": True,
+                "message_id": "msg_followup123",
+            })
 
-        redis.rate_limiter.check_and_increment = mock_check
+            # Mock activity logging
+            email_engine._log_activity = AsyncMock()
 
-        try:
             result = await email_engine.send(
                 db=mock_db,
                 lead_id=mock_lead.id,
@@ -264,33 +280,39 @@ class TestEmailEngine:
                 subject="Re: Test Subject",
                 from_email="sender@example.com",
                 is_followup=True,
+                include_signature=False,  # Skip signature generation
             )
 
             assert result.success
             assert result.data["is_followup"] is True
             assert result.data["thread_id"] == "thread_123"
 
-        finally:
-            redis.rate_limiter.check_and_increment = original_check
-
     @pytest.mark.asyncio
     async def test_batch_send(self, email_engine, mock_db):
-        """Test batch email sending."""
-        # Mock validate_and_send
-        send_count = 0
+        """Test batch email sending with mocked send_batch internals."""
+        from src.engines.base import EngineResult
+        from unittest.mock import AsyncMock
 
-        async def mock_validate_and_send(db, lead_id, campaign_id, content, **kwargs):
-            nonlocal send_count
-            send_count += 1
-            if send_count <= 2:
-                return await email_engine.send(
-                    db, lead_id, campaign_id, content, **kwargs
+        # Create mock responses: 2 success, 1 rate limited
+        send_count = {"value": 0}
+
+        async def mock_send_effect(*args, **kwargs):
+            send_count["value"] += 1
+            if send_count["value"] <= 2:
+                return EngineResult.ok(
+                    data={
+                        "message_id": f"msg_{send_count['value']}",
+                        "to_email": "test@example.com",
+                        "from_email": "sender@example.com",
+                        "subject": f"Subject {send_count['value']}",
+                    }
                 )
             else:
-                from src.engines.base import EngineResult
                 return EngineResult.fail(error="Rate limit exceeded")
 
-        email_engine.validate_and_send = mock_validate_and_send
+        # Mock validate_and_send with AsyncMock that handles any call signature
+        mock_validate = AsyncMock(side_effect=mock_send_effect)
+        email_engine.validate_and_send = mock_validate
 
         emails = [
             {

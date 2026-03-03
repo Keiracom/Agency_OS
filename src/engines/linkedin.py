@@ -384,6 +384,13 @@ class LinkedInEngine(OutreachEngine):
         lead = await self.get_lead_by_id(db, lead_id)
         await self.get_campaign_by_id(db, campaign_id)
 
+        # Validate LinkedIn URL BEFORE window check - don't schedule leads with no URL
+        if not lead.linkedin_url:
+            return EngineResult.fail(
+                error="Lead has no LinkedIn URL",
+                metadata={"lead_id": str(lead_id)},
+            )
+
         # P0 FIX: Enforce optimal send windows (9-11 AM or 1-2 PM in lead's local timezone)
         # LinkedIn sends must ONLY occur during optimal engagement windows
         skip_window_check = kwargs.get("skip_window_check", False)
@@ -418,13 +425,6 @@ class LinkedInEngine(OutreachEngine):
                         "campaign_id": str(campaign_id),
                     },
                 )
-
-        # Validate LinkedIn URL
-        if not lead.linkedin_url:
-            return EngineResult.fail(
-                error="Lead has no LinkedIn URL",
-                metadata={"lead_id": str(lead_id)},
-            )
 
         # TEST_MODE: Redirect LinkedIn to test recipient
         original_linkedin = lead.linkedin_url

@@ -458,20 +458,24 @@ class TestContentValidation:
         assert "access denied" in BLOCKED_INDICATORS
 
     def test_content_length_threshold(self):
-        """Test minimum content length threshold."""
+        """Test minimum content length threshold (500 chars)."""
+        # <html> (6) + content + </html> (7) = 13 chars wrapper
+        # Need total < 500 for first case: 486 + 13 = 499 < 500
         result = ScrapeResult(
             url="https://example.com",
-            raw_html="<html>" + "x" * 499 + "</html>",
+            raw_html="<html>" + "x" * 486 + "</html>",
             tier_used=1,
         )
-        # 499 chars + HTML tags is still under threshold
+        assert len(result.raw_html) == 499  # Verify under threshold
         assert result.has_valid_content() is False
 
+        # Need total >= 500 for second case: 487 + 13 = 500
         result2 = ScrapeResult(
             url="https://example.com",
-            raw_html="<html>" + "x" * 500 + "</html>",
+            raw_html="<html>" + "x" * 487 + "</html>",
             tier_used=1,
         )
+        assert len(result2.raw_html) == 500  # Verify at threshold
         assert result2.has_valid_content() is True
 
 

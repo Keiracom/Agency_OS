@@ -8,7 +8,7 @@ Spec: docs/architecture/distribution/RESOURCE_POOL.md
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import UUID
 
 from sqlalchemy import and_, func, select
@@ -97,7 +97,7 @@ async def assign_resources_to_client(
             client_resource = ClientResource(
                 client_id=client_id,
                 resource_pool_id=resource.id,
-                assigned_at=datetime.utcnow(),
+                assigned_at=datetime.now(UTC),
             )
             db.add(client_resource)
 
@@ -194,7 +194,7 @@ async def release_client_resources(
     release_count = 0
     for cr in client_resources:
         # Mark as released
-        cr.released_at = datetime.utcnow()
+        cr.released_at = datetime.now(UTC)
 
         # Decrement pool count
         resource = await db.get(ResourcePool, cr.resource_pool_id)
@@ -454,8 +454,8 @@ async def add_resource_to_pool(
         max_clients=max_clients,
         current_clients=0,
         reputation_score=reputation_score,
-        warmup_started_at=datetime.utcnow() if warmup_completed else None,
-        warmup_completed_at=datetime.utcnow() if warmup_completed else None,
+        warmup_started_at=datetime.now(UTC) if warmup_completed else None,
+        warmup_completed_at=datetime.now(UTC) if warmup_completed else None,
     )
 
     db.add(resource)
@@ -496,7 +496,7 @@ async def retire_resource(
         if resource.provider_metadata is None:
             resource.provider_metadata = {}
         resource.provider_metadata["retired_reason"] = reason
-        resource.provider_metadata["retired_at"] = datetime.utcnow().isoformat()
+        resource.provider_metadata["retired_at"] = datetime.now(UTC).isoformat()
 
     await db.commit()
 
@@ -554,7 +554,7 @@ async def start_warmup(
         return False
 
     resource.status = ResourceStatus.WARMING
-    resource.warmup_started_at = datetime.utcnow()
+    resource.warmup_started_at = datetime.now(UTC)
     await db.commit()
 
     logger.info(f"Started warmup for resource {resource_id}: {resource.resource_value}")
@@ -582,7 +582,7 @@ async def complete_warmup(
         return False
 
     resource.status = ResourceStatus.AVAILABLE
-    resource.warmup_completed_at = datetime.utcnow()
+    resource.warmup_completed_at = datetime.now(UTC)
     resource.reputation_score = reputation_score
     await db.commit()
 
@@ -627,7 +627,7 @@ async def record_resource_usage(
         return False
 
     client_resource.total_sends += 1
-    client_resource.last_used_at = datetime.utcnow()
+    client_resource.last_used_at = datetime.now(UTC)
     await db.commit()
 
     return True

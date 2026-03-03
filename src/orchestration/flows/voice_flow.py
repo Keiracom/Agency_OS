@@ -33,7 +33,7 @@ SCHEDULE:
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import uuid4
 
@@ -311,7 +311,7 @@ async def log_context_task(context: dict[str, Any]) -> str | None:
         async with get_db_session() as db:
             voice_call_id = str(uuid4())
             context_id = str(uuid4())
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
 
             # CIS Gap 1 Fix: Fetch current ALS score for the lead at dispatch time
             als_score_result = await db.execute(
@@ -436,7 +436,7 @@ async def initiate_call_task(
                         {
                             "call_sid": call_sid,
                             "voice_call_id": voice_call_id,
-                            "updated_at": datetime.utcnow(),
+                            "updated_at": datetime.now(UTC),
                         },
                     )
                     await db.commit()
@@ -478,12 +478,12 @@ async def monitor_outcomes_task(
     if not call_sids:
         return {"monitored": 0, "completed": 0, "failed": 0}
 
-    start_time = datetime.utcnow()
+    start_time = datetime.now(UTC)
     completed_calls = set()
     failed_calls = set()
 
     while True:
-        elapsed = (datetime.utcnow() - start_time).total_seconds()
+        elapsed = (datetime.now(UTC) - start_time).total_seconds()
 
         if elapsed >= timeout_seconds:
             run_logger.warning(
@@ -558,7 +558,7 @@ async def _handle_dial_failure(
 
         if retry_count < MAX_RETRY_ATTEMPTS - 1:
             # Schedule retry
-            next_retry = datetime.utcnow() + timedelta(minutes=RETRY_DELAY_MINUTES)
+            next_retry = datetime.now(UTC) + timedelta(minutes=RETRY_DELAY_MINUTES)
             await db.execute(
                 text("""
                     UPDATE voice_calls
@@ -573,7 +573,7 @@ async def _handle_dial_failure(
                     "status": CALL_STATUS_DIAL_FAILED,
                     "next_retry": next_retry,
                     "reason": reason,
-                    "updated_at": datetime.utcnow(),
+                    "updated_at": datetime.now(UTC),
                     "voice_call_id": voice_call_id,
                 },
             )
@@ -591,7 +591,7 @@ async def _handle_dial_failure(
                 {
                     "status": CALL_STATUS_FAILED,
                     "reason": f"Max retries exceeded: {reason}",
-                    "updated_at": datetime.utcnow(),
+                    "updated_at": datetime.now(UTC),
                     "voice_call_id": voice_call_id,
                 },
             )
@@ -610,7 +610,7 @@ async def _handle_dial_failure(
                     "id": str(uuid4()),
                     "entity_id": voice_call_id,
                     "details": f'{{"lead_id": "{lead_id}", "reason": "{reason}"}}',
-                    "created_at": datetime.utcnow(),
+                    "created_at": datetime.now(UTC),
                 },
             )
             logger.warning(f"Max retries exceeded for voice_call {voice_call_id}")
@@ -672,7 +672,7 @@ async def voice_outreach_flow(agency_id: str | None = None) -> dict[str, Any]:
         Flow execution summary
     """
     run_logger = get_run_logger()
-    flow_start = datetime.utcnow()
+    flow_start = datetime.now(UTC)
 
     # Pre-check: Verify we're within calling hours
     if not _is_within_calling_hours():
@@ -765,7 +765,7 @@ async def voice_outreach_flow(agency_id: str | None = None) -> dict[str, Any]:
             outcomes = await monitor_outcomes_task(call_sids)
             results["call_outcomes"] = outcomes
 
-        results["flow_end"] = datetime.utcnow().isoformat()
+        results["flow_end"] = datetime.now(UTC).isoformat()
         run_logger.info(f"Voice outreach flow completed: {results}")
 
         return results

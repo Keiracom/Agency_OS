@@ -27,7 +27,7 @@ optimal campaign segments. Each suggestion includes:
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -197,7 +197,7 @@ class CampaignSuggesterEngine(BaseEngine):
             "ai_campaign_slots": ai_slots,
             "custom_campaign_slots": custom_slots,
             "suggestions": [self._suggestion_to_dict(s) for s in suggestions],
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
         }
 
         logger.info(f"Generated {len(suggestions)} campaign suggestions for client {client_id}")

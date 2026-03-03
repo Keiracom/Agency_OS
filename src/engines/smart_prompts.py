@@ -19,7 +19,7 @@ The key insight: We already paid to enrich this data. Use it.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from enum import IntEnum
 from typing import Any
 from uuid import UUID
@@ -766,7 +766,7 @@ def _calculate_tenure_months(start_date) -> int:
         elif hasattr(start_date, "year"):  # date object
             start_date = datetime(start_date.year, start_date.month, start_date.day)
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         months = (now.year - start_date.year) * 12 + (now.month - start_date.month)
         return max(0, months)
     except Exception:
@@ -783,7 +783,7 @@ def _is_recently_funded(funding_date) -> bool:
         elif hasattr(funding_date, "year"):  # date object
             funding_date = datetime(funding_date.year, funding_date.month, funding_date.day)
 
-        cutoff = datetime.utcnow() - timedelta(days=90)
+        cutoff = datetime.now(UTC) - timedelta(days=90)
         return funding_date >= cutoff
     except Exception:
         return False
@@ -820,7 +820,7 @@ def _build_social_posts_context(social_rows: list) -> dict[str, Any]:
     company_x_posts: list[dict[str, Any]] = []
     best_hook: str | None = None
 
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    thirty_days_ago = datetime.now(UTC) - timedelta(days=30)
 
     for row in social_rows:
         post_data = {

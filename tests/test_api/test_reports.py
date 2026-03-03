@@ -5,7 +5,7 @@ PHASE: 7 (API Routes)
 TASK: API-008
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -178,13 +178,13 @@ def mock_lead_engagement(mock_lead_id):
         "status": "in_sequence",
         "timeline": [
             {
-                "date": datetime.utcnow().isoformat(),
+                "date": datetime.now(UTC).isoformat(),
                 "channel": "email",
                 "action": "sent",
                 "sequence_step": 1,
             },
             {
-                "date": (datetime.utcnow() - timedelta(hours=2)).isoformat(),
+                "date": (datetime.now(UTC) - timedelta(hours=2)).isoformat(),
                 "channel": "email",
                 "action": "opened",
                 "sequence_step": 1,
@@ -193,7 +193,7 @@ def mock_lead_engagement(mock_lead_id):
         "engagement_summary": {
             "total_touches": 2,
             "channels_used": ["email"],
-            "last_contacted": datetime.utcnow().isoformat(),
+            "last_contacted": datetime.now(UTC).isoformat(),
             "last_replied": None,
             "reply_count": 0,
             "open_count": 1,

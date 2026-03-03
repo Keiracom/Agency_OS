@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field
@@ -338,14 +338,14 @@ class CampaignGenerationAgent(BaseAgent):
             result.campaigns = generated_campaigns
             result.total_tokens = total_tokens
             result.total_cost_aud = total_cost
-            result.completed_at = datetime.utcnow()
+            result.completed_at = datetime.now(UTC)
             result.duration_seconds = (result.completed_at - result.started_at).total_seconds()
 
             return result
 
         except Exception as e:
             result.error = str(e)
-            result.completed_at = datetime.utcnow()
+            result.completed_at = datetime.now(UTC)
             result.duration_seconds = (result.completed_at - result.started_at).total_seconds()
             return result
 

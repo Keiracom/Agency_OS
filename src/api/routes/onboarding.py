@@ -20,7 +20,7 @@ ENDPOINTS:
 - PUT /api/v1/clients/{id}/icp - Update client ICP profile
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -392,7 +392,7 @@ async def analyze_website(
                 "id": str(job_id),
                 "client_id": str(client_id),
                 "url": url,
-                "now": datetime.utcnow(),
+                "now": datetime.now(UTC),
             },
         )
         await db.commit()
@@ -452,7 +452,7 @@ async def run_extraction_background(
                 SET status = 'running', started_at = :now
                 WHERE id = :job_id
                 """),
-                {"job_id": str(job_id), "now": datetime.utcnow()},
+                {"job_id": str(job_id), "now": datetime.now(UTC)},
             )
             await db.commit()
 
@@ -473,7 +473,7 @@ async def run_extraction_background(
                     """),
                     {
                         "job_id": str(job_id),
-                        "now": datetime.utcnow(),
+                        "now": datetime.now(UTC),
                         "icp": result.profile.model_dump_json(),
                     },
                 )
@@ -489,7 +489,7 @@ async def run_extraction_background(
                     """),
                     {
                         "job_id": str(job_id),
-                        "now": datetime.utcnow(),
+                        "now": datetime.now(UTC),
                         "error": result.error or "Unknown error",
                     },
                 )
@@ -512,7 +512,7 @@ async def run_extraction_background(
                     """),
                     {
                         "job_id": str(job_id),
-                        "now": datetime.utcnow(),
+                        "now": datetime.now(UTC),
                         "error": str(e),
                     },
                 )
@@ -741,11 +741,11 @@ async def confirm_icp(
         "icp_titles": icp_data.get("icp_titles", []),  # TEXT[]
         "icp_pain_points": icp_data.get("icp_pain_points", []),  # TEXT[]
         "als_weights": json.dumps(icp_data.get("als_weights", {})),  # JSONB - needs JSON string
-        "icp_extracted_at": datetime.utcnow(),
+        "icp_extracted_at": datetime.now(UTC),
         "icp_extraction_source": "ai_extraction",
-        "icp_confirmed_at": datetime.utcnow(),
+        "icp_confirmed_at": datetime.now(UTC),
         "icp_extraction_job_id": str(request.job_id),
-        "updated_at": datetime.utcnow(),
+        "updated_at": datetime.now(UTC),
     }
 
     # Only als_weights is JSONB, needs explicit cast
@@ -904,7 +904,7 @@ async def update_client_icp(
         if field in updates and isinstance(updates[field], (list, dict)):
             updates[field] = json_module.dumps(updates[field])
 
-    updates["updated_at"] = datetime.utcnow()
+    updates["updated_at"] = datetime.now(UTC)
 
     # Build SQL update
     set_clauses = ", ".join([f"{k} = :{k}" for k in updates])

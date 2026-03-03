@@ -524,7 +524,7 @@ class BrightDataClient:
         Returns:
             List of posts from the last N days
         """
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, UTC
 
         results = await self._scraper_request(
             DATASET_IDS["linkedin_people"],
@@ -536,7 +536,7 @@ class BrightDataClient:
             posts = profile.get("posts", []) or profile.get("updates", [])
 
             # Filter to last N days
-            cutoff = datetime.utcnow() - timedelta(days=days)
+            cutoff = datetime.now(UTC) - timedelta(days=days)
             filtered_posts = []
 
             for post in posts:
@@ -580,7 +580,7 @@ class BrightDataClient:
         Returns:
             List of tweets/posts from the last N days
         """
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, UTC
 
         # Normalize handle
         handle = x_handle.lstrip("@")
@@ -593,7 +593,7 @@ class BrightDataClient:
 
         if results:
             # Filter to last N days
-            cutoff = datetime.utcnow() - timedelta(days=days)
+            cutoff = datetime.now(UTC) - timedelta(days=days)
             filtered_posts = []
 
             for post in results:

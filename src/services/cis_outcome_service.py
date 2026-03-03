@@ -18,7 +18,7 @@ Provides data access functions for:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -67,7 +67,7 @@ async def get_outcomes_since_last_run(
         if last_run_row and last_run_row.last_run:
             since_date = last_run_row.last_run
         else:
-            since_date = datetime.utcnow() - timedelta(days=days_back)
+            since_date = datetime.now(UTC) - timedelta(days=days_back)
 
         # Build the outcomes query
         params: dict[str, Any] = {"since_date": since_date}
@@ -166,7 +166,7 @@ async def count_meeting_booked_outcomes(
         Count of meeting_booked outcomes
     """
     try:
-        since_date = datetime.utcnow() - timedelta(days=days_back)
+        since_date = datetime.now(UTC) - timedelta(days=days_back)
         params: dict[str, Any] = {"since_date": since_date}
 
         customer_filter = ""

@@ -17,7 +17,7 @@ RULES APPLIED:
   - Rule 12: No imports from engines/integrations/orchestration
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
@@ -112,7 +112,7 @@ class ConversionPattern(Base, UUIDMixin, TimestampMixin):
     @property
     def is_valid(self) -> bool:
         """Check if the pattern is still valid (not expired)."""
-        return datetime.utcnow() < self.valid_until
+        return datetime.now(UTC) < self.valid_until
 
     @property
     def is_high_confidence(self) -> bool:
@@ -143,7 +143,7 @@ class ConversionPattern(Base, UUIDMixin, TimestampMixin):
         Returns:
             New ConversionPattern instance
         """
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         return cls(
             client_id=client_id,
             pattern_type=pattern_type,

@@ -16,7 +16,7 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -128,7 +128,7 @@ async def calculate_daily_pacing_task(client_data: dict[str, Any]) -> dict[str, 
 
     # Calculate day in billing cycle
     today = date.today()
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     if credits_reset_at:
         # Days since last reset (start of billing cycle)
@@ -398,7 +398,7 @@ async def daily_pacing_check_flow(
             "fast_threshold_pct": fast_threshold * 100,
             "slow_threshold_pct": slow_threshold * 100,
         },
-        "checked_at": datetime.utcnow().isoformat(),
+        "checked_at": datetime.now(UTC).isoformat(),
     }
 
 

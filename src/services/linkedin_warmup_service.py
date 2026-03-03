@@ -16,7 +16,7 @@ After day 12, seat transitions from WARMUP to ACTIVE status.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -98,7 +98,7 @@ class LinkedInWarmupService:
         # Check if warmup complete (day 12+)
         if days_active >= WARMUP_COMPLETE_DAY:
             seat.status = LinkedInSeatStatus.ACTIVE
-            seat.warmup_completed_at = datetime.utcnow()
+            seat.warmup_completed_at = datetime.now(UTC)
             await db.commit()
 
             logger.info(
@@ -245,7 +245,7 @@ class LinkedInWarmupService:
 
         old_status = seat.status
         seat.status = LinkedInSeatStatus.WARMUP
-        seat.activated_at = datetime.utcnow()
+        seat.activated_at = datetime.now(UTC)
         seat.warmup_completed_at = None
         seat.restricted_at = None
         seat.restricted_reason = None

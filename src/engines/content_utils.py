@@ -17,7 +17,7 @@ RULES APPLIED:
 """
 
 import re
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 from src.models.lead import Lead
@@ -294,7 +294,7 @@ def build_content_snapshot(
     Returns:
         Dict containing all content features for learning
     """
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     # Extract features
     pain_points = extract_pain_points(body)

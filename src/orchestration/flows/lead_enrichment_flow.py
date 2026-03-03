@@ -22,7 +22,7 @@ ENRICHMENT WATERFALL:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -523,7 +523,7 @@ async def lead_enrichment_flow(
         else None,
         "propensity_score": scoring_result.get("propensity_score") if scoring_result.get("success") else None,
         "als_tier": scoring_result.get("als_tier") if scoring_result.get("success") else None,
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
     logger.info(
@@ -586,7 +586,7 @@ async def batch_lead_enrichment_flow(
         "average_score": sum(r.get("propensity_score", 0) for r in successful) / len(successful)
         if successful
         else 0,
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
     logger.info(

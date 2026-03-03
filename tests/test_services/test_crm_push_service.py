@@ -5,7 +5,7 @@ PHASE: 24E - CRM Push
 TASK: CRM-010
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -61,7 +61,7 @@ def mock_meeting():
     """Create mock meeting data."""
     return MeetingData(
         id=uuid4(),
-        scheduled_at=datetime.utcnow() + timedelta(days=3),
+        scheduled_at=datetime.now(UTC) + timedelta(days=3),
         duration_minutes=30,
         meeting_link="https://meet.google.com/abc-def-ghi",
         notes="Discovery call to discuss their marketing needs",
@@ -77,7 +77,7 @@ def hubspot_config():
         crm_type="hubspot",
         oauth_access_token="test-access-token",
         oauth_refresh_token="test-refresh-token",
-        oauth_expires_at=datetime.utcnow() + timedelta(hours=1),
+        oauth_expires_at=datetime.now(UTC) + timedelta(hours=1),
         hubspot_portal_id="12345678",
         pipeline_id="default",
         stage_id="appointmentscheduled",
@@ -223,7 +223,7 @@ async def test_hubspot_create_deal(crm_service, hubspot_config, mock_lead, mock_
 async def test_hubspot_token_refresh(crm_service, hubspot_config, db_session):
     """Test HubSpot OAuth token refresh when expired."""
     # Set token to expire soon
-    hubspot_config.oauth_expires_at = datetime.utcnow() + timedelta(minutes=2)
+    hubspot_config.oauth_expires_at = datetime.now(UTC) + timedelta(minutes=2)
 
     # Mock token refresh response
     mock_response = MagicMock()

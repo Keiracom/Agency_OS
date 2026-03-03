@@ -25,7 +25,7 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -216,7 +216,7 @@ class CloserEngine(BaseEngine):
                 thread_id=thread["id"],
                 direction="inbound",
                 content=message,
-                sent_at=datetime.utcnow(),
+                sent_at=datetime.now(UTC),
                 reply_id=reply_id,
                 sentiment=reply_analysis.get("sentiment"),
                 sentiment_score=reply_analysis.get("sentiment_score"),
@@ -462,7 +462,7 @@ class CloserEngine(BaseEngine):
         actions = []
 
         # Update reply tracking
-        lead.last_replied_at = datetime.utcnow()
+        lead.last_replied_at = datetime.now(UTC)
         lead.reply_count += 1
 
         # Handle intent-specific logic
@@ -498,7 +498,7 @@ class CloserEngine(BaseEngine):
                     )
                     days_in_sequence = None
                     if lead.created_at:
-                        days_in_sequence = (datetime.utcnow() - lead.created_at).days
+                        days_in_sequence = (datetime.now(UTC) - lead.created_at).days
 
                     await cis_service.record_als_conversion(
                         lead_id=lead.id,
@@ -526,7 +526,7 @@ class CloserEngine(BaseEngine):
             lead.status = LeadStatus.IN_SEQUENCE  # Keep in sequence until booking confirmed
             if not lead.lead_metadata:
                 lead.lead_metadata = {}
-            lead.lead_metadata["meeting_requested_at"] = datetime.utcnow().isoformat()
+            lead.lead_metadata["meeting_requested_at"] = datetime.now(UTC).isoformat()
             lead.lead_metadata["awaiting_booking_confirmation"] = True
             actions.append("awaiting_booking_confirmation")
 
@@ -576,7 +576,7 @@ class CloserEngine(BaseEngine):
 
         elif intent == IntentType.OUT_OF_OFFICE:
             # Schedule follow-up for later (e.g., 2 weeks)
-            lead.next_outreach_at = datetime.utcnow() + timedelta(days=14)
+            lead.next_outreach_at = datetime.now(UTC) + timedelta(days=14)
             actions.append("scheduled_follow_up_2_weeks")
 
         elif intent == IntentType.AUTO_REPLY:
@@ -594,7 +594,7 @@ class CloserEngine(BaseEngine):
             if not lead.lead_metadata:
                 lead.lead_metadata = {}
             lead.lead_metadata["has_referral"] = True
-            lead.lead_metadata["referral_received_at"] = datetime.utcnow().isoformat()
+            lead.lead_metadata["referral_received_at"] = datetime.now(UTC).isoformat()
 
             # Auto-create new lead from referral
             try:
@@ -621,7 +621,7 @@ class CloserEngine(BaseEngine):
             if not lead.lead_metadata:
                 lead.lead_metadata = {}
             lead.lead_metadata["invalid_reason"] = "wrong_person"
-            lead.lead_metadata["invalid_at"] = datetime.utcnow().isoformat()
+            lead.lead_metadata["invalid_at"] = datetime.now(UTC).isoformat()
 
         elif intent == IntentType.ANGRY_COMPLAINT:
             # Stop sequence, set admin_review_required, log alert
@@ -638,7 +638,7 @@ class CloserEngine(BaseEngine):
                 lead.lead_metadata = {}
             lead.lead_metadata["admin_review_required"] = True
             lead.lead_metadata["admin_review_reason"] = "angry_or_complaint"
-            lead.lead_metadata["admin_review_flagged_at"] = datetime.utcnow().isoformat()
+            lead.lead_metadata["admin_review_flagged_at"] = datetime.now(UTC).isoformat()
 
             # Directive 048: Fire admin notification via Supabase immediately
             try:
@@ -798,7 +798,7 @@ class CloserEngine(BaseEngine):
                     "referral_source_email": source_lead.email,
                     "referral_source_company": source_lead.company,
                     "referral_context": referral_info.get("context"),
-                    "referral_received_at": datetime.utcnow().isoformat(),
+                    "referral_received_at": datetime.now(UTC).isoformat(),
                 }
             )
 
@@ -806,7 +806,7 @@ class CloserEngine(BaseEngine):
                 query,
                 {
                     "email": referral_info.get(
-                        "email", f"referral_{datetime.utcnow().timestamp()}@pending.local"
+                        "email", f"referral_{datetime.now(UTC).timestamp()}@pending.local"
                     ),
                     "first_name": first_name,
                     "last_name": last_name,

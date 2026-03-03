@@ -12,8 +12,7 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import datetime
-
+from datetime import datetime, UTC
 from prefect import flow, get_run_logger, task
 from prefect.runtime import flow_run
 from sqlalchemy import select
@@ -146,7 +145,7 @@ async def update_domain_status_task(
         # Update status
         resource.status = ResourceStatus.AVAILABLE
         resource.reputation_score = heat_score
-        resource.warmup_completed_at = datetime.utcnow()
+        resource.warmup_completed_at = datetime.now(UTC)
 
         await db.commit()
 

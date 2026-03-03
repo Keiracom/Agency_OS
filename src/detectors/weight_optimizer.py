@@ -15,7 +15,7 @@ Uses scipy.optimize.minimize with constraints to find weights that maximize
 correlation between ALS score and conversion probability.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -137,7 +137,7 @@ class WeightOptimizer:
         lookback_days: int,
     ) -> list[Lead]:
         """Get leads with ALS components and definitive outcomes."""
-        cutoff = datetime.utcnow() - timedelta(days=lookback_days)
+        cutoff = datetime.now(UTC) - timedelta(days=lookback_days)
 
         # Use individual ALS component fields instead of als_components JSONB
         stmt = select(Lead).where(

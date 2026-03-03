@@ -22,7 +22,7 @@ Phase 37 Changes:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -498,7 +498,7 @@ async def pool_campaign_assignment_flow(
         "tier_distribution": scoring_result.get("tier_distribution", {}),
         "average_propensity_score": scoring_result.get("average_score", 0),
         "enrichment_triggered": enrichment_triggered.get("triggered", 0),
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
     logger.info(
@@ -591,7 +591,7 @@ async def pool_daily_allocation_flow(
         "total_leads_allocated": total_allocated,
         "pool_available": pool_stats.get("available_leads", 0),
         "allocation_results": allocation_results,
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
     logger.info(

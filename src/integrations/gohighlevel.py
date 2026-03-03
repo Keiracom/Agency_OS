@@ -23,7 +23,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 
 import httpx
@@ -452,14 +452,14 @@ class GoHighLevelClient:
 
 def calculate_token_expiry(expires_in: int) -> datetime:
     """Calculate token expiration datetime from expires_in seconds."""
-    return datetime.utcnow() + timedelta(seconds=expires_in)
+    return datetime.now(UTC) + timedelta(seconds=expires_in)
 
 
 def is_token_expired(expires_at: datetime | None, buffer_minutes: int = 5) -> bool:
     """Check if token is expired or expiring soon."""
     if not expires_at:
         return True
-    return datetime.utcnow() + timedelta(minutes=buffer_minutes) >= expires_at
+    return datetime.now(UTC) + timedelta(minutes=buffer_minutes) >= expires_at
 
 
 # ============================================================================

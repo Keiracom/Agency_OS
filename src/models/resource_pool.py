@@ -11,7 +11,7 @@ Phase D additions:
 - Health-based daily limit override
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from decimal import Decimal
 from enum import StrEnum
 from typing import TYPE_CHECKING
@@ -309,7 +309,7 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
             return 5
 
         # Warmup in progress
-        days_warming = (datetime.utcnow() - self.warmup_started_at).days
+        days_warming = (datetime.now(UTC) - self.warmup_started_at).days
 
         if days_warming < 4:
             return 5
@@ -375,7 +375,7 @@ class ResourcePool(Base, UUIDMixin, TimestampMixin):
             self.health_status = HealthStatus.GOOD.value
             self.daily_limit_override = None  # Use default
 
-        self.health_checked_at = datetime.utcnow()
+        self.health_checked_at = datetime.now(UTC)
 
 
 class ClientResource(Base, UUIDMixin, TimestampMixin):
@@ -459,11 +459,11 @@ class ClientResource(Base, UUIDMixin, TimestampMixin):
     def record_usage(self) -> None:
         """Record a usage of this resource."""
         self.total_sends += 1
-        self.last_used_at = datetime.utcnow()
+        self.last_used_at = datetime.now(UTC)
 
     def release(self) -> None:
         """Release this resource assignment."""
-        self.released_at = datetime.utcnow()
+        self.released_at = datetime.now(UTC)
 
 
 # ============================================

@@ -26,7 +26,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from enum import StrEnum
 from typing import Any
 from uuid import UUID
@@ -1424,7 +1424,7 @@ Return JSON classification only."""
 
     def _next_business_day(self) -> datetime:
         """Get next business day at 9 AM."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         next_day = now + timedelta(days=1)
 
         # Skip weekends

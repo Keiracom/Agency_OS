@@ -16,7 +16,7 @@ RULES APPLIED:
   - All endpoints require authentication
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -939,7 +939,7 @@ async def get_best_of_showcase(
         )
 
     # Calculate date cutoff
-    cutoff_date = datetime.utcnow() - timedelta(days=period_days)
+    cutoff_date = datetime.now(UTC) - timedelta(days=period_days)
 
     # Find activities that are "sent" and have engagement
     # We need to find the original "sent" activity and check if there was engagement
@@ -1541,7 +1541,7 @@ async def get_dashboard_metrics(
         )
 
     # Current period
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     _, days_in_month = monthrange(now.year, now.month)
     days_elapsed = now.day

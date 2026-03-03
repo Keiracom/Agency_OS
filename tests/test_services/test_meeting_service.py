@@ -5,7 +5,7 @@ PHASE: 24E (Downstream Outcomes)
 TASK: OUTCOME-003, OUTCOME-007
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -34,14 +34,14 @@ def sample_meeting():
         "id": uuid4(),
         "client_id": uuid4(),
         "lead_id": uuid4(),
-        "scheduled_at": datetime.utcnow() + timedelta(days=1),
+        "scheduled_at": datetime.now(UTC) + timedelta(days=1),
         "duration_minutes": 30,
         "meeting_type": "discovery",
         "booked_by": "ai",
         "confirmed": False,
         "showed_up": None,
         "meeting_outcome": None,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(UTC),
     }
 
 
@@ -53,13 +53,13 @@ class TestMeetingServiceCreate:
         """Test creating a new meeting."""
         client_id = uuid4()
         lead_id = uuid4()
-        scheduled_at = datetime.utcnow() + timedelta(days=1)
+        scheduled_at = datetime.now(UTC) + timedelta(days=1)
 
         # Mock touches query
         touches_result = MagicMock()
         touches_row = MagicMock()
         touches_row.count = 5
-        touches_row.first_touch = datetime.utcnow() - timedelta(days=3)
+        touches_row.first_touch = datetime.now(UTC) - timedelta(days=3)
         touches_result.fetchone.return_value = touches_row
 
         # Mock insert result
@@ -97,7 +97,7 @@ class TestMeetingServiceCreate:
             await meeting_service.create(
                 client_id=uuid4(),
                 lead_id=uuid4(),
-                scheduled_at=datetime.utcnow() + timedelta(days=1),
+                scheduled_at=datetime.now(UTC) + timedelta(days=1),
                 meeting_type="invalid_type",
             )
 
@@ -117,7 +117,7 @@ class TestMeetingServiceConfirmation:
         # Mock update result
         update_result = MagicMock()
         update_row = MagicMock()
-        update_row._mapping = {**sample_meeting, "confirmed": True, "confirmed_at": datetime.utcnow()}
+        update_row._mapping = {**sample_meeting, "confirmed": True, "confirmed_at": datetime.now(UTC)}
         update_result.fetchone.return_value = update_row
 
         mock_session.execute.side_effect = [get_result, update_result]
@@ -158,7 +158,7 @@ class TestMeetingServiceShowTracking:
         update_row._mapping = {
             **sample_meeting,
             "showed_up": True,
-            "showed_up_confirmed_at": datetime.utcnow(),
+            "showed_up_confirmed_at": datetime.now(UTC),
         }
         update_result.fetchone.return_value = update_row
 
@@ -288,7 +288,7 @@ class TestMeetingServiceReschedule:
     @pytest.mark.asyncio
     async def test_reschedule(self, meeting_service, mock_session, sample_meeting):
         """Test rescheduling a meeting."""
-        new_time = datetime.utcnow() + timedelta(days=3)
+        new_time = datetime.now(UTC) + timedelta(days=3)
 
         # Mock get_by_id
         get_result = MagicMock()

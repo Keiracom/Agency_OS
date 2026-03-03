@@ -17,7 +17,7 @@ RULES APPLIED:
   - Rule 11: Session passed as argument
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -55,7 +55,7 @@ class SendLimiter:
         if not settings.TEST_MODE:
             return True, 0  # No limit in production
 
-        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
         stmt = (
             select(func.count(Activity.id))

@@ -23,7 +23,7 @@ Generates JWT tokens for email unsubscribe links with:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -97,7 +97,7 @@ class UnsubscribeTokenService:
             validity_days = 30
             logger.warning("Validity days increased to 30 (Spam Act requirement)")
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         expiry = now + timedelta(days=validity_days)
 
         payload = {

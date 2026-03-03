@@ -28,7 +28,7 @@ Key Design Decisions:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -201,7 +201,7 @@ class WhoRefinementService:
                 and_(
                     ConversionPattern.client_id == client_id,
                     ConversionPattern.pattern_type == "who",
-                    ConversionPattern.valid_until > datetime.utcnow(),
+                    ConversionPattern.valid_until > datetime.now(UTC),
                 )
             )
             .order_by(ConversionPattern.computed_at.desc())

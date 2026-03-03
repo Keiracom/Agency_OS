@@ -17,7 +17,7 @@ CONSUMERS: JIT Validator, Scout Engine, API routes
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -445,7 +445,7 @@ class SuppressionService:
         if bounce_type == "soft":
             from datetime import timedelta
 
-            expires_at = datetime.utcnow() + timedelta(days=7)
+            expires_at = datetime.now(UTC) + timedelta(days=7)
 
         return await self.add_suppression(
             client_id=client_id,

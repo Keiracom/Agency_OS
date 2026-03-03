@@ -17,7 +17,7 @@ and lead status is 'converted', or from extra_data containing meeting info.
 """
 
 import contextlib
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Annotated
 from uuid import UUID
 
@@ -92,7 +92,7 @@ async def list_meetings(
     1. Activities with intent='meeting_request' that have meeting info in extra_data
     2. Activities with action='meeting_booked'
     """
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     # Query for meeting-related activities
     stmt = (

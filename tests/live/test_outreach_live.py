@@ -14,7 +14,7 @@ Tests outreach functionality with real sends:
 Only run when you're ready to receive test messages.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import uuid4
 
 import httpx
@@ -75,11 +75,11 @@ class TestLiveEmailOutreach:
                 json={
                     "from": "Agency OS Test <test@yourdomain.com>",
                     "to": [config.test_lead_email],
-                    "subject": f"[LIVE TEST] Agency OS Email Test - {datetime.utcnow().strftime('%H:%M:%S')}",
+                    "subject": f"[LIVE TEST] Agency OS Email Test - {datetime.now(UTC).strftime('%H:%M:%S')}",
                     "html": f"""
                         <h1>Agency OS Live Test Email</h1>
                         <p>This is a test email sent during live UX testing.</p>
-                        <p><strong>Timestamp:</strong> {datetime.utcnow().isoformat()}</p>
+                        <p><strong>Timestamp:</strong> {datetime.now(UTC).isoformat()}</p>
                         <p><strong>Test ID:</strong> {uuid4()}</p>
                         <hr>
                         <p>If you received this email, the email integration is working! ✅</p>
@@ -163,7 +163,7 @@ class TestLiveSMSOutreach:
                 data={
                     "From": "+1234567890",  # Your Twilio number
                     "To": config.test_lead_phone,
-                    "Body": f"[LIVE TEST] Agency OS SMS Test - {datetime.utcnow().strftime('%H:%M:%S')}",
+                    "Body": f"[LIVE TEST] Agency OS SMS Test - {datetime.now(UTC).strftime('%H:%M:%S')}",
                 },
             )
 
@@ -225,7 +225,7 @@ class TestActivityLogging:
                 "subject": "Test Email",
                 "recipient": "test@example.com",
             },
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         }
 
         required_fields = ["id", "client_id", "campaign_id", "lead_id", "channel", "action"]

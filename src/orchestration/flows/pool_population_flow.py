@@ -25,7 +25,7 @@ WATERFALL STRATEGY:
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -592,7 +592,7 @@ async def pool_population_flow(
             "locations": client_data["icp_locations"],
         },
         "enrichment_source": "siege_waterfall",
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
     if total_added > 0:
@@ -660,7 +660,7 @@ async def pool_population_batch_flow(
         "total_leads_added": total_added,
         "enrichment_source": "siege_waterfall",
         "results": results,
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
 

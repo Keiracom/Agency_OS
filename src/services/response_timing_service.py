@@ -18,7 +18,7 @@ RULES APPLIED:
 
 import logging
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
@@ -97,7 +97,7 @@ def calculate_send_time(timezone: str = DEFAULT_TIMEZONE) -> datetime:
         UTC datetime for scheduled send
     """
     delay_seconds = calculate_response_delay(timezone)
-    send_at = datetime.utcnow() + timedelta(seconds=delay_seconds)
+    send_at = datetime.now(UTC) + timedelta(seconds=delay_seconds)
 
     logger.info(f"Response scheduled for {send_at.isoformat()} (delay: {delay_seconds}s)")
     return send_at
@@ -134,7 +134,7 @@ class ResponseTimingService:
         """
         timezone = lead_timezone or DEFAULT_TIMEZONE
         delay_seconds = calculate_response_delay(timezone)
-        scheduled_for = datetime.utcnow() + timedelta(seconds=delay_seconds)
+        scheduled_for = datetime.now(UTC) + timedelta(seconds=delay_seconds)
 
         # Note: Actual insertion into lead_replies table would happen here
         # For now, just return the scheduling info
@@ -169,7 +169,7 @@ class ResponseTimingService:
         """
         from sqlalchemy import text
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         # Query lead_replies for pending scheduled responses
         # Uses raw SQL to handle table that may not have ORM model yet

@@ -15,7 +15,7 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from math import ceil
 
 from prefect import flow, get_run_logger, task
@@ -195,7 +195,7 @@ async def persona_buffer_flow() -> dict:
         "provisioned": provisioned,
         "errors": errors if errors else None,
         "buffer_status": buffer_status,
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
 

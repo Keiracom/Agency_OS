@@ -6,7 +6,7 @@ TASK: TST-002
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 
 # ============================================================================
@@ -27,12 +27,12 @@ def create_test_client(
         "tier": tier,
         "subscription_status": subscription_status,
         "credits_remaining": credits,
-        "credits_reset_at": (datetime.utcnow() + timedelta(days=30)).isoformat(),
+        "credits_reset_at": (datetime.now(UTC) + timedelta(days=30)).isoformat(),
         "default_permission_mode": permission_mode,
         "stripe_customer_id": f"cus_{uuid.uuid4().hex[:14]}",
         "stripe_subscription_id": f"sub_{uuid.uuid4().hex[:14]}",
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
         "deleted_at": None,
     }
 
@@ -84,8 +84,8 @@ def create_test_user(
         "id": str(uuid.uuid4()),
         "email": email,
         "full_name": full_name,
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -106,8 +106,8 @@ def create_test_membership(
         "client_id": client_id,
         "role": role,
         "invited_by": None,
-        "accepted_at": datetime.utcnow().isoformat() if accepted else None,
-        "created_at": datetime.utcnow().isoformat(),
+        "accepted_at": datetime.now(UTC).isoformat() if accepted else None,
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -149,8 +149,8 @@ def create_test_campaign(
             "company_sizes": ["10-50", "51-200"],
             "locations": ["Sydney", "Melbourne", "Brisbane"],
         },
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
         "deleted_at": None,
     }
 
@@ -225,8 +225,8 @@ def create_test_lead(
         },
         "sequence_step": 1,
         "last_contacted_at": None,
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
         "deleted_at": None,
     }
 
@@ -334,7 +334,7 @@ def create_in_sequence_lead(client_id: str, campaign_id: str, step: int = 2) -> 
         status="in_sequence",
     )
     lead["sequence_step"] = step
-    lead["last_contacted_at"] = (datetime.utcnow() - timedelta(days=3)).isoformat()
+    lead["last_contacted_at"] = (datetime.now(UTC) - timedelta(days=3)).isoformat()
     return lead
 
 
@@ -387,7 +387,7 @@ def create_test_activity(
             "personalization_score": 0.85,
             "sequence_step": 1,
         },
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -454,7 +454,7 @@ def create_email_resource(client_id: str) -> dict[str, Any]:
             "domain": "agency.com",
             "warmup_complete": True,
         },
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -473,7 +473,7 @@ def create_phone_resource(client_id: str) -> dict[str, Any]:
             "provider": "twilio",
             "capabilities": ["sms", "voice"],
         },
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -492,7 +492,7 @@ def create_linkedin_resource(client_id: str) -> dict[str, Any]:
             "provider": "heyreach",
             "profile_url": "https://linkedin.com/in/agencyprofile",
         },
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
 

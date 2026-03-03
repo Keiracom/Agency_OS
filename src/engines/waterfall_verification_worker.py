@@ -28,7 +28,7 @@ import asyncio
 import logging
 import os
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
@@ -420,11 +420,11 @@ class WaterfallVerificationWorker(BaseEngine):
         try:
             # ========== TIER 1: ABN SEED ==========
             step_number += 1
-            start_time = datetime.utcnow()
+            start_time = datetime.now(UTC)
 
             abn_result = await self._tier1_abn_seed(company_name, postcode, state)
 
-            latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            latency_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
             step = LineageStep(
                 step_number=step_number,
                 step_type="source",
@@ -450,14 +450,14 @@ class WaterfallVerificationWorker(BaseEngine):
 
             if abn_result and abn_result.acn:
                 step_number += 1
-                start_time = datetime.utcnow()
+                start_time = datetime.now(UTC)
 
                 asic_result = await self._tier1_25_asic_verify(
                     acn=abn_result.acn,
                     abn=abn_result.abn,
                 )
 
-                latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                latency_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
                 asic_success = asic_result is not None
 
                 step = LineageStep(
@@ -489,14 +489,14 @@ class WaterfallVerificationWorker(BaseEngine):
             dm_search_name = gmb_search_name  # Use ASIC registered_name if available
 
             step_number += 1
-            start_time = datetime.utcnow()
+            start_time = datetime.now(UTC)
 
             dm_candidate = await self._tier_dm0_linkedin_discovery(
                 registered_name=dm_search_name,
                 state=state,
             )
 
-            latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            latency_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
             dm0_success = dm_candidate is not None
 
             # Calculate actual cost (SERP + profiles scraped)
@@ -536,14 +536,14 @@ class WaterfallVerificationWorker(BaseEngine):
 
             if should_get_social and result.dm_linkedin_url:
                 step_number += 1
-                start_time = datetime.utcnow()
+                start_time = datetime.now(UTC)
 
                 linkedin_posts = await self._tier_dm2_linkedin_posts(
                     dm_linkedin_url=result.dm_linkedin_url,
                     max_posts=5,
                 )
 
-                latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                latency_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
                 dm2_success = len(linkedin_posts) > 0
 
                 step = LineageStep(
@@ -572,7 +572,7 @@ class WaterfallVerificationWorker(BaseEngine):
             # Only run for ALS ≥70 leads — discover X handle first
             if should_get_social:
                 step_number += 1
-                start_time = datetime.utcnow()
+                start_time = datetime.now(UTC)
 
                 # Discover X handle from website or SERP
                 x_handle = await self._discover_x_handle(
@@ -589,7 +589,7 @@ class WaterfallVerificationWorker(BaseEngine):
                         max_posts=5,
                     )
 
-                latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                latency_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
                 dm3_success = len(x_posts) > 0
 
                 step = LineageStep(
@@ -617,12 +617,12 @@ class WaterfallVerificationWorker(BaseEngine):
 
             # ========== TIER 2: GMB SCRAPER ==========
             step_number += 1
-            start_time = datetime.utcnow()
+            start_time = datetime.now(UTC)
 
             # Use ASIC registered_name if available, otherwise original company_name
             gmb_result = await self._tier2_gmb_scraper(gmb_search_name, postcode, state)
 
-            latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            latency_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
 
             # Handle ABN ↔ GMB matching with error handling
             match_confidence = MatchConfidence.NO_MATCH
@@ -696,12 +696,12 @@ class WaterfallVerificationWorker(BaseEngine):
 
             if should_verify_email and result.website:
                 step_number += 1
-                start_time = datetime.utcnow()
+                start_time = datetime.now(UTC)
 
                 domain = self._extract_domain(result.website)
                 leadmagic_result = await self._tier3_leadmagic_email(domain, company_name)
 
-                latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                latency_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
                 leadmagic_success = False
                 data_added = []
                 needs_escalation = False
@@ -722,11 +722,11 @@ class WaterfallVerificationWorker(BaseEngine):
 
                     if needs_escalation:
                         step_number += 1
-                        start_time = datetime.utcnow()
+                        start_time = datetime.now(UTC)
 
                         zb_result = await self._tier4_zerobounce(leadmagic_result.email)
 
-                        latency_ms_zb = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                        latency_ms_zb = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
                         zb_success = False
 
                         if zb_result:
@@ -1336,7 +1336,7 @@ class WaterfallVerificationWorker(BaseEngine):
 
                 # ========== Step 4: Parse posts with 90-day local filter ==========
                 # CEO Directive #043: Date filter not supported in API, filter locally
-                cutoff_date = datetime.utcnow() - timedelta(days=90)
+                cutoff_date = datetime.now(UTC) - timedelta(days=90)
 
                 posts = []
                 for post_data in results:
@@ -1600,7 +1600,7 @@ class WaterfallVerificationWorker(BaseEngine):
 
                 # ========== Step 4: Parse posts with 90-day local filter ==========
                 # CEO Directive #043: Date filter not supported in API, filter locally
-                cutoff_date = datetime.utcnow() - timedelta(days=90)
+                cutoff_date = datetime.now(UTC) - timedelta(days=90)
 
                 posts = []
                 for post_data in results:
@@ -1982,7 +1982,7 @@ class WaterfallVerificationWorker(BaseEngine):
                     latency_ms=step.latency_ms,
                     success=step.success,
                     error_message=step.error_message,
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(UTC),
                 )
                 await db.execute(stmt)
 

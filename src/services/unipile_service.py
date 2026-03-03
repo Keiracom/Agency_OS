@@ -310,7 +310,7 @@ class UnipileAccountService:
         Returns:
             Processing result
         """
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, UTC
 
         from sqlalchemy import select
 
@@ -368,8 +368,8 @@ class UnipileAccountService:
         # 15-minute delay for humanization
         FOLLOW_UP_DELAY_MINUTES = 15
         connection.status = LinkedInConnectionStatus.ACCEPTED
-        connection.responded_at = datetime.utcnow()
-        connection.follow_up_scheduled_for = datetime.utcnow() + timedelta(
+        connection.responded_at = datetime.now(UTC)
+        connection.follow_up_scheduled_for = datetime.now(UTC) + timedelta(
             minutes=FOLLOW_UP_DELAY_MINUTES
         )
 

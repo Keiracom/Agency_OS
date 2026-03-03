@@ -6,7 +6,7 @@ PHASE: 4 (Engines)
 TASK: ENG-009
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
@@ -156,7 +156,7 @@ class MockActivity:
         self.channel = kwargs.get("channel", ChannelType.MAIL)
         self.action = kwargs.get("action", "sent")
         self.provider_message_id = kwargs.get("provider_message_id", "ltr_123")
-        self.created_at = kwargs.get("created_at", datetime.utcnow())
+        self.created_at = kwargs.get("created_at", datetime.now(UTC))
         self.metadata = kwargs.get("metadata", {})
 
 

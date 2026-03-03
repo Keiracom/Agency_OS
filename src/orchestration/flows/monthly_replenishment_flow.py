@@ -16,7 +16,7 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -400,7 +400,7 @@ async def monthly_replenishment_flow(
             "leads_assigned": 0,
             "reason": "Pipeline full - no leads needed",
             "gap_calculation": gap_result,
-            "completed_at": datetime.utcnow().isoformat(),
+            "completed_at": datetime.now(UTC).isoformat(),
         }
 
     # Step 2: Get active campaigns
@@ -435,7 +435,7 @@ async def monthly_replenishment_flow(
         "source_result": source_result,
         "assign_result": assign_result,
         "active_campaigns": len(campaigns),
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
     if source_result.get("success"):

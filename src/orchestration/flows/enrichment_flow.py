@@ -21,7 +21,7 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -224,7 +224,7 @@ async def dncr_batch_check_task(lead_ids: list[str]) -> dict[str, Any]:
         # Update lead records
         on_dncr_count = 0
         clean_count = 0
-        datetime.utcnow()
+        datetime.now(UTC)
 
         for phone, is_on_dncr in dncr_results.items():
             if phone in phone_to_lead:
@@ -408,7 +408,7 @@ async def deduct_client_credits_task(client_id: str, credits_to_deduct: int) -> 
             )
             .values(
                 credits_remaining=Client.credits_remaining - credits_to_deduct,
-                updated_at=datetime.utcnow(),
+                updated_at=datetime.now(UTC),
             )
             .returning(Client.credits_remaining)
         )
@@ -563,7 +563,7 @@ async def daily_enrichment_flow(
         "dncr_checked": dncr_result.get("total", 0),
         "dncr_blocked": dncr_result.get("on_dncr", 0),
         "enrichment_results": enrichment_results,
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
     logger.info(

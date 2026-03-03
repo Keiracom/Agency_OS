@@ -15,7 +15,7 @@ These negative signals should DECREASE confidence scores, not increase them.
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, UTC
 
 from src.services.email_events_service import EmailEventsService
 
@@ -97,7 +97,7 @@ class TestEmailEventsServiceNegativeSignals:
                     result = await service.record_bounce(
                         activity_id=mock_activity.id,
                         bounce_type="hard",
-                        event_at=datetime.utcnow(),
+                        event_at=datetime.now(UTC),
                         provider="postmark",
                     )
                     
@@ -127,7 +127,7 @@ class TestEmailEventsServiceNegativeSignals:
                     
                     result = await service.record_complaint(
                         activity_id=mock_activity.id,
-                        event_at=datetime.utcnow(),
+                        event_at=datetime.now(UTC),
                         provider="postmark",
                     )
                     
@@ -156,7 +156,7 @@ class TestEmailEventsServiceNegativeSignals:
                     
                     result = await service.record_unsubscribe(
                         activity_id=mock_activity.id,
-                        event_at=datetime.utcnow(),
+                        event_at=datetime.now(UTC),
                         provider="postmark",
                     )
                     

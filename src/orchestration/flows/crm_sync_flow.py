@@ -18,7 +18,7 @@ for blind conversions.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -127,7 +127,7 @@ async def poll_hubspot_deals(
 
     try:
         # Calculate timestamp for filtering
-        since_timestamp = int((datetime.utcnow() - timedelta(hours=since_hours)).timestamp() * 1000)
+        since_timestamp = int((datetime.now(UTC) - timedelta(hours=since_hours)).timestamp() * 1000)
 
         # HubSpot deals API
         async with httpx.AsyncClient() as client:
@@ -250,7 +250,7 @@ async def poll_pipedrive_deals(
 
     try:
         # Calculate timestamp for filtering
-        (datetime.utcnow() - timedelta(hours=since_hours)).isoformat()
+        (datetime.now(UTC) - timedelta(hours=since_hours)).isoformat()
 
         # Pipedrive deals API
         async with httpx.AsyncClient() as client:
@@ -273,7 +273,7 @@ async def poll_pipedrive_deals(
             deals = data.get("data", []) or []
 
             # Filter by update time (client-side since API might not support it)
-            since_dt = datetime.utcnow() - timedelta(hours=since_hours)
+            since_dt = datetime.now(UTC) - timedelta(hours=since_hours)
             recent_deals = []
             for deal in deals:
                 update_time = deal.get("update_time")
@@ -408,7 +408,7 @@ async def poll_close_opportunities(
             opportunities = data.get("data", []) or []
 
             # Filter by update time
-            since_dt = datetime.utcnow() - timedelta(hours=since_hours)
+            since_dt = datetime.now(UTC) - timedelta(hours=since_hours)
             recent_opps = []
             for opp in opportunities:
                 update_time = opp.get("date_updated")
@@ -556,7 +556,7 @@ async def poll_ghl_opportunities(
             opportunities = data.get("opportunities", [])
 
             # Filter by update time (client-side)
-            since_dt = datetime.utcnow() - timedelta(hours=since_hours)
+            since_dt = datetime.now(UTC) - timedelta(hours=since_hours)
             recent_opps = []
             for opp in opportunities:
                 update_time = opp.get("updatedAt") or opp.get("dateUpdated")

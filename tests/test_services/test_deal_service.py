@@ -5,7 +5,7 @@ PHASE: 24E (Downstream Outcomes)
 TASK: OUTCOME-002
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -40,7 +40,7 @@ def sample_deal():
         "currency": "AUD",
         "stage": "qualification",
         "probability": 20,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(UTC),
     }
 
 
@@ -171,7 +171,7 @@ class TestDealServiceStage:
             "stage": "closed_won",
             "won": True,
             "probability": 100,
-            "closed_at": datetime.utcnow(),
+            "closed_at": datetime.now(UTC),
         }
         update_result.fetchone.return_value = update_row
 
@@ -209,7 +209,7 @@ class TestDealServiceStage:
             "won": False,
             "probability": 0,
             "lost_reason": "price_too_high",
-            "closed_at": datetime.utcnow(),
+            "closed_at": datetime.now(UTC),
         }
         update_result.fetchone.return_value = update_row
 

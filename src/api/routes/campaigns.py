@@ -16,7 +16,7 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import date, datetime, time
+from datetime import date, datetime, time, UTC
 from typing import Annotated
 
 from prefect.deployments import run_deployment
@@ -718,7 +718,7 @@ async def delete_campaign(
     campaign = await get_campaign_or_404(campaign_id, client_id, db)
 
     # Soft delete (Rule 14)
-    campaign.deleted_at = datetime.utcnow()
+    campaign.deleted_at = datetime.now(UTC)
     await db.flush()
 
 
@@ -1078,7 +1078,7 @@ async def pause_campaign(
 
     # G1 Fix: Set pause tracking fields
     campaign.status = CampaignStatus.PAUSED
-    campaign.paused_at = datetime.utcnow()
+    campaign.paused_at = datetime.now(UTC)
     campaign.paused_by_user_id = ctx.user_id
 
     await db.flush()
@@ -1160,7 +1160,7 @@ async def emergency_pause_all(
         )
 
     # Set emergency pause
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     client.paused_at = now
     client.pause_reason = request.reason
     client.paused_by_user_id = ctx.user_id
@@ -1465,7 +1465,7 @@ async def delete_sequence(
         )
 
     # FIXED by fixer-agent: converted to soft delete (Rule 14)
-    sequence.deleted_at = datetime.utcnow()
+    sequence.deleted_at = datetime.now(UTC)
     await db.flush()
 
 
@@ -1627,7 +1627,7 @@ async def delete_resource(
         )
 
     # FIXED by fixer-agent: converted to soft delete (Rule 14)
-    resource.deleted_at = datetime.utcnow()
+    resource.deleted_at = datetime.now(UTC)
     await db.flush()
 
 

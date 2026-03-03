@@ -46,7 +46,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 from uuid import UUID
@@ -1278,7 +1278,7 @@ Respond in JSON format only:
                 status=status,
                 extracted_icp=extracted_icp,
                 error_message=error_message,
-                completed_at=datetime.utcnow(),
+                completed_at=datetime.now(UTC),
             )
         )
         await db.execute(stmt)

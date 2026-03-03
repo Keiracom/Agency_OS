@@ -23,7 +23,7 @@ API Endpoints:
   POST /patterns/trigger - Trigger pattern learning (admin)
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -146,7 +146,7 @@ async def list_patterns(
     ),
 ) -> PatternListResponse:
     """List all conversion patterns for the client."""
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     # Build query
     conditions = [ConversionPattern.client_id == client.client_id]
@@ -196,7 +196,7 @@ async def get_pattern(
             detail=f"Invalid pattern type: {pattern_type}. Must be one of: who, what, when, how",
         )
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     stmt = (
         select(ConversionPattern)
@@ -427,7 +427,7 @@ async def trigger_pattern_learning(
 
     # Check if patterns already exist and are valid
     if not request.force:
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         stmt = (
             select(ConversionPattern)
             .where(

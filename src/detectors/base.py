@@ -14,7 +14,7 @@ RULES APPLIED:
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, TypeVar
 from uuid import UUID
 
@@ -80,7 +80,7 @@ class BaseDetector(ABC):
         stmt = select(ConversionPattern).where(
             ConversionPattern.client_id == client_id,
             ConversionPattern.pattern_type == self.pattern_type,
-            ConversionPattern.valid_until > datetime.utcnow(),
+            ConversionPattern.valid_until > datetime.now(UTC),
         )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()

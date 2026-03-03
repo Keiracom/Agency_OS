@@ -27,7 +27,7 @@ Tables fed:
 
 import hashlib
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -586,7 +586,7 @@ class CISService:
     ) -> dict[str, Any]:
         """Implementation of update_channel_performance."""
         try:
-            target_date = date or datetime.utcnow()
+            target_date = date or datetime.now(UTC)
 
             # Calculate rates
             delivery_rate = 1.0 if messages_sent > 0 else 0  # Assume all delivered for now

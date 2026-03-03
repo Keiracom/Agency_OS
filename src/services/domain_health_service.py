@@ -13,7 +13,7 @@ This service:
 4. Provides health check for individual domains
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from uuid import UUID
 
 from sqlalchemy import and_, func, select
@@ -95,7 +95,7 @@ class DomainHealthService:
         Returns:
             DomainHealthResult with metrics and recommended action
         """
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        thirty_days_ago = datetime.now(UTC) - timedelta(days=30)
 
         # Get send count
         sends_stmt = select(func.count(Activity.id)).where(

@@ -17,7 +17,7 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -161,7 +161,7 @@ async def activate_campaign_task(campaign_id: UUID) -> dict[str, Any]:
     """
     async with get_db_session() as db:
         # Update campaign status to active
-        activation_time = datetime.utcnow()
+        activation_time = datetime.now(UTC)
         stmt = (
             update(Campaign)
             .where(
@@ -260,7 +260,7 @@ async def trigger_enrichment_task(lead_ids: list[str], campaign_id: str) -> dict
             )
             .values(
                 status=LeadStatus.NEW,
-                updated_at=datetime.utcnow(),
+                updated_at=datetime.now(UTC),
             )
         )
         result = await db.execute(stmt)

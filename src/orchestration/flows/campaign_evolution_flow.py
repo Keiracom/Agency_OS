@@ -18,7 +18,7 @@ Suggestions are NEVER auto-applied to campaigns.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -98,7 +98,7 @@ async def check_evolution_eligibility_task(client_id: UUID) -> dict[str, Any]:
 
         # Check account age (need 2+ months of data)
         if client.created_at:
-            account_age_days = (datetime.utcnow() - client.created_at).days
+            account_age_days = (datetime.now(UTC) - client.created_at).days
             if account_age_days < 60:
                 return {
                     "eligible": False,
@@ -112,7 +112,7 @@ async def check_evolution_eligibility_task(client_id: UUID) -> dict[str, Any]:
             select(ConversionPattern).where(
                 and_(
                     ConversionPattern.client_id == client_id,
-                    ConversionPattern.valid_until > datetime.utcnow(),
+                    ConversionPattern.valid_until > datetime.now(UTC),
                     ConversionPattern.confidence >= MIN_PATTERN_CONFIDENCE,
                 )
             )
@@ -165,7 +165,7 @@ async def fetch_cis_patterns_task(client_id: UUID) -> dict[str, dict[str, Any]]:
             select(ConversionPattern).where(
                 and_(
                     ConversionPattern.client_id == client_id,
-                    ConversionPattern.valid_until > datetime.utcnow(),
+                    ConversionPattern.valid_until > datetime.now(UTC),
                 )
             )
         )
@@ -264,7 +264,7 @@ async def fetch_client_context_task(client_id: UUID) -> dict[str, Any]:
         # Calculate active months
         active_months = 1
         if client.created_at:
-            active_months = max(1, (datetime.utcnow() - client.created_at).days // 30)
+            active_months = max(1, (datetime.now(UTC) - client.created_at).days // 30)
 
         # Get tier config
         from src.config.tiers import get_leads_for_tier
@@ -535,7 +535,7 @@ async def store_suggestions_task(
                         for pt, p in patterns.items()
                     },
                     projected_improvement=suggestion.get("projected_improvement", {}),
-                    expires_at=datetime.utcnow() + timedelta(days=14),
+                    expires_at=datetime.now(UTC) + timedelta(days=14),
                 )
 
                 db.add(db_suggestion)
@@ -660,7 +660,7 @@ async def campaign_evolution_flow(
         "executive_summary": orchestrator_output.get("executive_summary"),
         "campaign_health_score": orchestrator_output.get("campaign_health_score"),
         "total_cost_aud": orchestrator_output.get("total_analysis_cost_aud", 0),
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
 

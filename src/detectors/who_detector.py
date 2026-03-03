@@ -22,7 +22,7 @@ WHO Pattern Outputs:
 """
 
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -95,7 +95,7 @@ class WhoDetector(BaseDetector):
         patterns = {
             "type": "who",
             "version": "2.0",  # Updated for Phase 24D
-            "computed_at": datetime.utcnow().isoformat(),
+            "computed_at": datetime.now(UTC).isoformat(),
             "sample_size": len(leads),
             "baseline_conversion_rate": round(baseline_rate, 4),
             "title_rankings": title_rankings,
@@ -122,7 +122,7 @@ class WhoDetector(BaseDetector):
     ) -> list[Lead]:
         """Get all leads with definitive outcomes (converted or failed)."""
         # Look back 90 days for outcome data
-        cutoff = datetime.utcnow() - timedelta(days=90)
+        cutoff = datetime.now(UTC) - timedelta(days=90)
 
         stmt = select(Lead).where(
             and_(
@@ -477,7 +477,7 @@ class WhoDetector(BaseDetector):
         return {
             "type": "who",
             "version": "2.0",
-            "computed_at": datetime.utcnow().isoformat(),
+            "computed_at": datetime.now(UTC).isoformat(),
             "sample_size": 0,
             "baseline_conversion_rate": 0.0,
             "title_rankings": [],

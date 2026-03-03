@@ -21,7 +21,7 @@ HOW Pattern Outputs:
 """
 
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -90,7 +90,7 @@ class HowDetector(BaseDetector):
         patterns = {
             "type": "how",
             "version": "2.1",  # Updated for Phase 24C
-            "computed_at": datetime.utcnow().isoformat(),
+            "computed_at": datetime.now(UTC).isoformat(),
             "sample_size": len(leads_data),
             "baseline_conversion_rate": round(baseline_rate, 4),
             "channel_effectiveness": channel_effectiveness,
@@ -115,7 +115,7 @@ class HowDetector(BaseDetector):
         client_id: UUID,
     ) -> list[dict[str, Any]]:
         """Get leads with their channel usage data."""
-        cutoff = datetime.utcnow() - timedelta(days=90)
+        cutoff = datetime.now(UTC) - timedelta(days=90)
 
         # Get leads with outcomes
         leads_stmt = select(Lead).where(
@@ -564,7 +564,7 @@ class HowDetector(BaseDetector):
         return {
             "type": "how",
             "version": "2.1",
-            "computed_at": datetime.utcnow().isoformat(),
+            "computed_at": datetime.now(UTC).isoformat(),
             "sample_size": 0,
             "channel_effectiveness": [],
             "sequence_patterns": {"winning_sequences": []},

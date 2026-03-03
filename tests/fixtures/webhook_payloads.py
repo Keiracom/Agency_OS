@@ -9,7 +9,7 @@ import base64
 import hashlib
 import hmac
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 # ============================================================================
@@ -46,7 +46,7 @@ def postmark_inbound_email(
         "OriginalRecipient": to_email,
         "ReplyTo": from_email,
         "Subject": subject,
-        "Date": datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S %z"),
+        "Date": datetime.now(UTC).strftime("%a, %d %b %Y %H:%M:%S %z"),
         "MailboxHash": "",
         "TextBody": body,
         "HtmlBody": f"<html><body><p>{body}</p></body></html>",
@@ -79,7 +79,7 @@ def postmark_bounce_webhook(
         "Details": "smtp;550 5.1.1 The email account does not exist",
         "Email": email,
         "From": "outreach@agency.com",
-        "BouncedAt": datetime.utcnow().isoformat() + "Z",
+        "BouncedAt": datetime.now(UTC).isoformat() + "Z",
         "DumpAvailable": True,
         "Inactive": True,
         "CanActivate": False,
@@ -104,7 +104,7 @@ def postmark_spam_complaint_webhook(
         "Description": "The subscriber marked a message as spam",
         "Email": email,
         "From": "outreach@agency.com",
-        "BouncedAt": datetime.utcnow().isoformat() + "Z",
+        "BouncedAt": datetime.now(UTC).isoformat() + "Z",
         "Subject": "Quick question",
     }
 
@@ -120,7 +120,7 @@ def postmark_delivery_webhook(
         "MessageID": f"{uuid.uuid4().hex[:8]}-{uuid.uuid4().hex[:4]}-{uuid.uuid4().hex[:4]}-{uuid.uuid4().hex[:4]}-{uuid.uuid4().hex[:12]}",
         "Recipient": email,
         "Tag": "campaign_123",
-        "DeliveredAt": datetime.utcnow().isoformat() + "Z",
+        "DeliveredAt": datetime.now(UTC).isoformat() + "Z",
         "Details": "Test delivery",
     }
 
@@ -153,7 +153,7 @@ def postmark_open_webhook(
         },
         "MessageID": f"{uuid.uuid4().hex[:8]}-{uuid.uuid4().hex[:4]}-{uuid.uuid4().hex[:4]}-{uuid.uuid4().hex[:4]}-{uuid.uuid4().hex[:12]}",
         "MessageStream": "outbound",
-        "ReceivedAt": datetime.utcnow().isoformat() + "Z",
+        "ReceivedAt": datetime.now(UTC).isoformat() + "Z",
         "Tag": "campaign_123",
         "Recipient": email,
     }
@@ -244,7 +244,7 @@ def heyreach_message_received(
     """Create a HeyReach message received webhook payload."""
     return {
         "event_type": "message_received",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(UTC).isoformat() + "Z",
         "data": {
             "message_id": f"msg_{uuid.uuid4().hex[:12]}",
             "conversation_id": conversation_id or f"conv_{uuid.uuid4().hex[:12]}",
@@ -255,7 +255,7 @@ def heyreach_message_received(
             },
             "message": {
                 "text": message,
-                "sent_at": datetime.utcnow().isoformat() + "Z",
+                "sent_at": datetime.now(UTC).isoformat() + "Z",
             },
             "seat_id": "seat_001",
         },
@@ -268,7 +268,7 @@ def heyreach_connection_accepted(
     """Create a HeyReach connection accepted webhook payload."""
     return {
         "event_type": "connection_accepted",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(UTC).isoformat() + "Z",
         "data": {
             "connection_id": f"conn_{uuid.uuid4().hex[:12]}",
             "profile": {
@@ -279,7 +279,7 @@ def heyreach_connection_accepted(
                 "location": "Sydney, Australia",
             },
             "seat_id": "seat_001",
-            "accepted_at": datetime.utcnow().isoformat() + "Z",
+            "accepted_at": datetime.now(UTC).isoformat() + "Z",
         },
     }
 
@@ -290,7 +290,7 @@ def heyreach_connection_request_sent(
     """Create a HeyReach connection request sent webhook payload."""
     return {
         "event_type": "connection_request_sent",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(UTC).isoformat() + "Z",
         "data": {
             "request_id": f"req_{uuid.uuid4().hex[:12]}",
             "profile": {
@@ -299,7 +299,7 @@ def heyreach_connection_request_sent(
             },
             "message": "Hi Jane, I'd love to connect and discuss AI trends in Sydney...",
             "seat_id": "seat_001",
-            "sent_at": datetime.utcnow().isoformat() + "Z",
+            "sent_at": datetime.now(UTC).isoformat() + "Z",
         },
     }
 
@@ -316,7 +316,7 @@ def synthflow_call_completed(
     """Create a Synthflow call completed webhook payload."""
     return {
         "event_type": "call_completed",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(UTC).isoformat() + "Z",
         "data": {
             "call_id": call_id or f"call_{uuid.uuid4().hex[:12]}",
             "status": "completed",
@@ -345,7 +345,7 @@ def synthflow_call_failed(
     """Create a Synthflow call failed webhook payload."""
     return {
         "event_type": "call_failed",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(UTC).isoformat() + "Z",
         "data": {
             "call_id": call_id or f"call_{uuid.uuid4().hex[:12]}",
             "status": "failed",
@@ -370,7 +370,7 @@ def stripe_subscription_created(
         "id": f"evt_{uuid.uuid4().hex[:24]}",
         "object": "event",
         "api_version": "2023-10-16",
-        "created": int(datetime.utcnow().timestamp()),
+        "created": int(datetime.now(UTC).timestamp()),
         "type": "customer.subscription.created",
         "data": {
             "object": {
@@ -378,8 +378,8 @@ def stripe_subscription_created(
                 "object": "subscription",
                 "customer": customer_id or f"cus_{uuid.uuid4().hex[:14]}",
                 "status": "active",
-                "current_period_start": int(datetime.utcnow().timestamp()),
-                "current_period_end": int((datetime.utcnow().timestamp()) + 2592000),  # 30 days
+                "current_period_start": int(datetime.now(UTC).timestamp()),
+                "current_period_end": int((datetime.now(UTC).timestamp()) + 2592000),  # 30 days
                 "items": {
                     "data": [
                         {
@@ -441,7 +441,7 @@ def stripe_subscription_cancelled(
                 "object": "subscription",
                 "customer": customer_id or f"cus_{uuid.uuid4().hex[:14]}",
                 "status": "canceled",
-                "canceled_at": int(datetime.utcnow().timestamp()),
+                "canceled_at": int(datetime.now(UTC).timestamp()),
             }
         },
     }

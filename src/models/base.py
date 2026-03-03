@@ -17,7 +17,7 @@ RULES APPLIED:
   - Rule 12: Models can only import from exceptions
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import UUID
 
 from sqlalchemy import DateTime, func
@@ -84,7 +84,7 @@ class SoftDeleteMixin:
 
     def soft_delete(self) -> None:
         """Mark the record as deleted."""
-        self.deleted_at = datetime.utcnow()
+        self.deleted_at = datetime.now(UTC)
 
     def restore(self) -> None:
         """Restore a soft-deleted record."""

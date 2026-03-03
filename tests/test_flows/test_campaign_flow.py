@@ -6,7 +6,7 @@ TASK: ORC-002
 """
 
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -307,7 +307,7 @@ async def test_campaign_activation_flow_success(mock_campaign, mock_client):
     mock_activate = AsyncMock(return_value={
         "campaign_id": str(campaign_id),
         "status": "active",
-        "activated_at": datetime.utcnow().isoformat(),
+        "activated_at": datetime.now(UTC).isoformat(),
     })
     mock_discovery = AsyncMock(return_value={
         "discovered": 10,

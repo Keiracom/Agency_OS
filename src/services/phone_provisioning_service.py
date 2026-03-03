@@ -19,7 +19,7 @@ Handles:
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import UUID
 
 from sqlalchemy import and_, select
@@ -61,7 +61,7 @@ def get_voice_daily_limit(number_created_at: datetime) -> int:
     Returns:
         Daily call limit (20-50)
     """
-    days_active = (datetime.utcnow() - number_created_at).days
+    days_active = (datetime.now(UTC) - number_created_at).days
     for start, end, limit in VOICE_WARMUP_SCHEDULE:
         if start <= days_active <= end:
             return limit
@@ -232,12 +232,12 @@ class PhoneProvisioningService:
                     },
                     "voice_webhook": voice_webhook,
                     "sms_webhook": sms_webhook,
-                    "purchased_at": datetime.utcnow().isoformat(),
+                    "purchased_at": datetime.now(UTC).isoformat(),
                 },
                 status=ResourceStatus.WARMING,  # New numbers start in warmup
                 max_clients=1,  # Phone numbers are exclusive
                 current_clients=0,
-                warmup_started_at=datetime.utcnow(),
+                warmup_started_at=datetime.now(UTC),
                 reputation_score=50,  # Neutral starting score
             )
 
@@ -334,7 +334,7 @@ class PhoneProvisioningService:
                         "provisioned": False,
                         "source": "existing_pool",
                         "daily_limit": get_voice_daily_limit(
-                            cr.resource.warmup_started_at or datetime.utcnow()
+                            cr.resource.warmup_started_at or datetime.now(UTC)
                         ),
                     }
 
@@ -383,7 +383,7 @@ class PhoneProvisioningService:
             "client_resource_id": str(client_resource.id),
             "provisioned": True,
             "source": "newly_provisioned",
-            "daily_limit": get_voice_daily_limit(datetime.utcnow()),
+            "daily_limit": get_voice_daily_limit(datetime.now(UTC)),
             "warmup_days_remaining": 7,
         }
 
@@ -424,7 +424,7 @@ class PhoneProvisioningService:
         client_resources = list(result.scalars().all())
 
         for cr in client_resources:
-            cr.released_at = datetime.utcnow()
+            cr.released_at = datetime.now(UTC)
             resource.current_clients = max(0, resource.current_clients - 1)
 
         # Update resource status
@@ -494,7 +494,7 @@ class PhoneProvisioningService:
 
         # Calculate total daily capacity
         total_capacity = sum(
-            get_voice_daily_limit(cr.resource.warmup_started_at or datetime.utcnow())
+            get_voice_daily_limit(cr.resource.warmup_started_at or datetime.now(UTC))
             for cr in active_resources
         )
 
@@ -587,7 +587,7 @@ class PhoneProvisioningService:
         if not resource:
             return False
 
-        resource.warmup_completed_at = datetime.utcnow()
+        resource.warmup_completed_at = datetime.now(UTC)
         resource.status = ResourceStatus.AVAILABLE
         resource.reputation_score = 80  # Good starting reputation
 
@@ -614,7 +614,7 @@ class PhoneProvisioningService:
         client_resource = ClientResource(
             client_id=client_id,
             resource_pool_id=resource_pool_id,
-            assigned_at=datetime.utcnow(),
+            assigned_at=datetime.now(UTC),
         )
         db.add(client_resource)
 
@@ -636,7 +636,7 @@ class PhoneProvisioningService:
         """Assign client resource to a specific campaign."""
         resource = client_resource.resource
 
-        daily_limit = get_voice_daily_limit(resource.warmup_started_at or datetime.utcnow())
+        daily_limit = get_voice_daily_limit(resource.warmup_started_at or datetime.now(UTC))
 
         campaign_resource = CampaignResource(
             campaign_id=campaign_id,

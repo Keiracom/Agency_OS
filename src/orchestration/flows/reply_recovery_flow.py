@@ -19,7 +19,7 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -60,7 +60,7 @@ async def poll_email_replies_task(since_hours: int = 6) -> dict[str, Any]:
 
     try:
         # Poll inbound messages from Postmark
-        since_time = datetime.utcnow() - timedelta(hours=since_hours)
+        since_time = datetime.now(UTC) - timedelta(hours=since_hours)
 
         replies = await postmark_client.get_inbound_messages(
             count=100,
@@ -124,7 +124,7 @@ async def poll_sms_replies_task(since_hours: int = 6) -> dict[str, Any]:
 
     try:
         # Poll inbound messages from Twilio
-        since_time = datetime.utcnow() - timedelta(hours=since_hours)
+        since_time = datetime.now(UTC) - timedelta(hours=since_hours)
 
         replies = await twilio_client.get_inbound_messages(
             date_sent_after=since_time,
@@ -182,7 +182,7 @@ async def poll_linkedin_replies_task(since_hours: int = 6) -> dict[str, Any]:
         accounts = await unipile_client.get_accounts()
 
         # Filter to recent messages
-        since_time = datetime.utcnow() - timedelta(hours=since_hours)
+        since_time = datetime.now(UTC) - timedelta(hours=since_hours)
         recent_replies = []
 
         for account in accounts:
@@ -556,7 +556,7 @@ async def reply_recovery_flow(since_hours: int = 6) -> dict[str, Any]:
         "sms_processed": sms_processed,
         "linkedin_found": linkedin_replies["replies_found"],
         "linkedin_processed": linkedin_processed,
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
     logger.info(

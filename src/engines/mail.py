@@ -25,7 +25,7 @@ RULES APPLIED:
 Updated Jan 2026: Switched from Lob (US) to ClickSend (Australian native).
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -212,7 +212,7 @@ class MailEngine(OutreachEngine):
             )
 
             # Update lead
-            lead.last_contacted_at = datetime.utcnow()
+            lead.last_contacted_at = datetime.now(UTC)
             await db.commit()
 
             return EngineResult.ok(

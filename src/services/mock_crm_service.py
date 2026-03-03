@@ -14,7 +14,7 @@ Data seeded:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from decimal import Decimal
 from uuid import UUID, uuid4
 
@@ -227,7 +227,7 @@ class MockCRMService:
         - 2 closed_lost (with lost_reason populated)
         - 2 open/active
         """
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         deals = [
             # 2 Closed Won
@@ -339,7 +339,7 @@ class MockCRMService:
         - 1 confirmed, showed_up=false (no show)
         - 1 scheduled, not yet confirmed
         """
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         meetings = [
             # 1 Confirmed + Showed Up (positive outcome)

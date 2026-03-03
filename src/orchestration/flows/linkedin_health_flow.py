@@ -27,7 +27,7 @@ Schedule: Daily at 6 AM AEST
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -242,7 +242,7 @@ async def linkedin_daily_health_flow(
         "restrictions": {
             "suspicious_count": restriction_result["suspicious_count"],
         },
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
 
     # Overall status

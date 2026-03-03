@@ -15,7 +15,7 @@ IMPORTANT: This creates REAL data. Use cleanup functions when done.
 
 import asyncio
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from uuid import uuid4
 
 from tests.live.config import get_config, require_valid_config
@@ -31,11 +31,11 @@ async def create_test_client(supabase_client) -> dict:
         "tier": config.test_client_tier,
         "subscription_status": "active",
         "credits_remaining": 10000,
-        "credits_reset_at": (datetime.utcnow() + timedelta(days=30)).isoformat(),
+        "credits_reset_at": (datetime.now(UTC) + timedelta(days=30)).isoformat(),
         "default_permission_mode": "co_pilot",
         "website_url": config.test_client_website,
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
     }
 
     result = supabase_client.table("clients").insert(client_data).execute()
@@ -59,8 +59,8 @@ async def create_test_user(supabase_client, client_id: str) -> dict:
         "id": user_id,
         "email": config.test_user_email,
         "full_name": config.test_user_name,
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
     }
 
     # Create user
@@ -74,8 +74,8 @@ async def create_test_user(supabase_client, client_id: str) -> dict:
         "user_id": user_id,
         "client_id": client_id,
         "role": "owner",
-        "accepted_at": datetime.utcnow().isoformat(),
-        "created_at": datetime.utcnow().isoformat(),
+        "accepted_at": datetime.now(UTC).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
     result = supabase_client.table("memberships").insert(membership_data).execute()
@@ -103,8 +103,8 @@ async def create_test_lead(supabase_client, client_id: str, campaign_id: str) ->
         "title": config.test_lead_title,
         "domain": config.test_lead_email.split("@")[1] if "@" in config.test_lead_email else None,
         "status": "new",
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
     }
 
     result = supabase_client.table("leads").insert(lead_data).execute()
@@ -131,8 +131,8 @@ async def create_test_campaign(supabase_client, client_id: str) -> dict:
         "allocation_linkedin": 10,
         "allocation_voice": 0,
         "allocation_mail": 0,
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
     }
 
     result = supabase_client.table("campaigns").insert(campaign_data).execute()
@@ -265,7 +265,7 @@ async def cleanup_test_data(client_id: str) -> None:
     config = get_config()
     supabase = create_client(config.supabase_url, config.supabase_key)
 
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
 
     # Soft delete in reverse order
     print(f"\n🧹 Cleaning up test data for client {client_id}...")

@@ -19,7 +19,7 @@ channel activities for learning and pattern detection.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -129,7 +129,7 @@ async def sync_voice_calls_to_activities_task(
     try:
         async with get_db_session() as db:
             # Fetch voice_calls that need syncing
-            cutoff_time = datetime.utcnow() - timedelta(hours=since_hours)
+            cutoff_time = datetime.now(UTC) - timedelta(hours=since_hours)
 
             query = text("""
                 SELECT
@@ -243,7 +243,7 @@ async def sync_voice_calls_to_activities_task(
                             else None,
                             "extra_data": str(metadata).replace("'", '"'),  # JSON format
                             "created_at": row.created_at,
-                            "processed_at": datetime.utcnow(),
+                            "processed_at": datetime.now(UTC),
                         },
                     )
 
@@ -396,7 +396,7 @@ async def sync_single_voice_call_task(voice_call_id: str) -> dict[str, Any]:
                     else None,
                     "extra_data": json.dumps(metadata),
                     "created_at": row.created_at,
-                    "processed_at": datetime.utcnow(),
+                    "processed_at": datetime.now(UTC),
                 },
             )
 
@@ -443,7 +443,7 @@ async def backfill_voice_activities_task(
         "batches": 0,
     }
 
-    cutoff_time = datetime.utcnow() - timedelta(days=days_back)
+    cutoff_time = datetime.now(UTC) - timedelta(days=days_back)
     offset = 0
 
     while True:

@@ -233,6 +233,11 @@ class TestSMSEngine:
 
         redis.rate_limiter.check_and_increment = mock_check
 
+        # Ensure TEST_MODE is off so phone isn't redirected before DNCR check
+        from src.config import settings
+        original_test_mode = settings.TEST_MODE
+        settings.TEST_MODE = False
+
         try:
             result = await sms_engine.send(
                 db=mock_db,
@@ -249,6 +254,7 @@ class TestSMSEngine:
 
         finally:
             redis.rate_limiter.check_and_increment = original_check
+            settings.TEST_MODE = original_test_mode
 
     @pytest.mark.asyncio
     async def test_send_skip_dncr(self, sms_engine, mock_db, mock_lead, mock_campaign, mock_clicksend_client):

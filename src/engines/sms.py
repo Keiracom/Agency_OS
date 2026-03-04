@@ -499,6 +499,28 @@ class SMSEngine(OutreachEngine):
         db.add(activity)
         await db.commit()
 
+        # CIS: Record outreach outcome for learning (Directive #166)
+        if action == "sent":
+            try:
+                from src.services.cis_service import get_cis_service
+                cis_service = get_cis_service(db)
+                await cis_service.record_outreach_outcome(
+                    activity_id=activity.id,
+                    lead_id=lead.id,
+                    client_id=lead.client_id,
+                    campaign_id=campaign_id,
+                    channel="sms",
+                    sequence_step=sequence_step,
+                    propensity_score_at_send=lead.propensity_score,
+                    propensity_tier_at_send=lead.propensity_tier,
+                    subject_line=None,
+                    hook_type=snapshot.get("hook_type") if snapshot else None,
+                    personalization_level="basic",
+                    session=db,
+                )
+            except Exception as cis_error:
+                logger.warning(f"CIS recording failed (non-blocking): {cis_error}")
+
 
 # Singleton instance
 _sms_engine: SMSEngine | None = None

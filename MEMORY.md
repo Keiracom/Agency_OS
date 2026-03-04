@@ -54,3 +54,21 @@ The `tools/` directory (autonomous_browser.py, proxy_manager.py) is **no longer 
 ---
 
 *Last Updated: 2026-02-17*
+
+## 2026-03-05 — business_universe Architecture Session
+
+### Long-term vision
+Agency OS is the Trojan Horse. business_universe is the long-term product.
+See ceo_memory key: business_universe_long_term_vision
+
+### New tables required (NOT BUILT YET)
+- lead_outreach_history
+- lead_agency_suppression
+- lead_signal_changes
+See ceo_memory key: business_universe_new_tables_required
+
+### Open questions (DO NOT BUILD UNTIL RESOLVED)
+See ceo_memory key: business_universe_open_questions
+
+### Next directive: #172
+Schema design and open question resolution. No code until all open questions answered.

@@ -477,7 +477,7 @@ async def main():
                 sys.exit(1)
             
             logger.info("Connecting to database...")
-            pool = await asyncpg.create_pool(database_url, min_size=2, max_size=10)
+            pool = await asyncpg.create_pool(database_url, min_size=2, max_size=10, statement_cache_size=0)
             logger.info("Database connected")
         
         try:

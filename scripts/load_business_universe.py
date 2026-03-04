@@ -22,7 +22,7 @@ import sys
 import time
 import zipfile
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import AsyncGenerator, Iterator
 
@@ -124,7 +124,7 @@ class BusinessRecord:
     gst_registered: bool
     status: str
     abn_status_code: str
-    registration_date: str | None
+    registration_date: date | None
 
 
 async def download_file(url: str, dest: Path) -> None:
@@ -312,8 +312,12 @@ def parse_abn_xml_streaming(xml_path: Path, stats: LoadStats) -> Iterator[Busine
         reg_date = None
         if reg_date_raw and len(reg_date_raw) == 8:
             try:
-                reg_date = f"{reg_date_raw[:4]}-{reg_date_raw[4:6]}-{reg_date_raw[6:8]}"
-            except Exception:
+                reg_date = date(
+                    int(reg_date_raw[:4]),
+                    int(reg_date_raw[4:6]),
+                    int(reg_date_raw[6:8])
+                )
+            except (ValueError, TypeError):
                 reg_date = None
         
         # Clean up to free memory

@@ -152,11 +152,17 @@ async def download_file(url: str, dest: Path) -> None:
     logger.info(f"Downloaded: {dest} ({dest.stat().st_size / 1024 / 1024:.1f} MB)")
 
 
-async def download_and_extract(skip_download: bool = False) -> list[Path]:
+async def download_and_extract(skip_download: bool = False, skip_extract: bool = False) -> list[Path]:
     """Download ZIP files and extract XML contents."""
     EXTRACT_DIR.mkdir(parents=True, exist_ok=True)
     
     xml_files = []
+    
+    if skip_extract:
+        logger.info("Skipping extraction (--skip-extract)")
+        # Just find existing XML files
+        xml_files = list(EXTRACT_DIR.glob("*.xml"))
+        return sorted(xml_files)
     
     for i, url in enumerate(ZIP_URLS, 1):
         zip_path = EXTRACT_DIR / f"abn_split_{i}.zip"
@@ -454,19 +460,25 @@ async def main():
         action="store_true",
         help="Skip download if files already exist in /tmp/abn_extract/",
     )
+    parser.add_argument(
+        "--skip-extract",
+        action="store_true",
+        help="Skip zip extraction if XMLs already exist",
+    )
     args = parser.parse_args()
     
     logger.info("=" * 60)
     logger.info("ABN BULK EXTRACT LOADER")
     logger.info(f"dry_run: {args.dry_run}")
     logger.info(f"skip_download: {args.skip_download}")
+    logger.info(f"skip_extract: {args.skip_extract}")
     logger.info("=" * 60)
     
     stats = LoadStats()
     
     try:
         # Download and extract
-        xml_files = await download_and_extract(skip_download=args.skip_download)
+        xml_files = await download_and_extract(skip_download=args.skip_download, skip_extract=args.skip_extract)
         logger.info(f"Found {len(xml_files)} XML files to process")
         
         # Connect to database (unless dry run)
@@ -476,6 +488,9 @@ async def main():
             if not database_url:
                 logger.error("DATABASE_URL not set")
                 sys.exit(1)
+            
+            # Strip SQLAlchemy dialect suffix for asyncpg compatibility
+            database_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
             
             logger.info("Connecting to database...")
             pool = await asyncpg.create_pool(database_url, min_size=2, max_size=10, statement_cache_size=0)

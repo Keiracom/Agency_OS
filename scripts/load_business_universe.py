@@ -51,10 +51,11 @@ ZIP_URLS = [
 ]
 
 # Entity type codes to EXCLUDE
-EXCLUDE_INDIVIDUAL = {"IND"}
-EXCLUDE_GOVERNMENT = {"GVT", "LGV", "STG", "CGV", "GCO"}
-EXCLUDE_SUPER = {"SUP", "ADF"}
-EXCLUDE_CHARITY_NFP = {"DIT", "NPF", "NPB", "NPE"}
+EXCLUDE_INDIVIDUAL = {"IND", "SIF", "SAI"}
+EXCLUDE_SUPER = {"SMF", "SAF", "ADF", "SUP", "PST", "SSS"}
+EXCLUDE_TRUST = {"TRT", "FPT", "STR", "LPT", "PTT", "CSF", "CCN", "LCR", "LCN", "CSS", "CSA", "CSP", "SCB", "SCN", "SCR", "SCC", "SCO", "POF"}
+EXCLUDE_GOVERNMENT = {"SGE", "LGE", "CGE", "TGE", "SGA", "LGA", "TGA", "CGA", "SGC", "LGC", "SGP", "TGE"}
+EXCLUDE_CHARITY_NFP = {"DIT", "NPF", "NPB", "NPE", "NRF"}
 
 BATCH_SIZE = 1000
 PROGRESS_LOG_INTERVAL = 100_000
@@ -230,7 +231,7 @@ def parse_abn_xml_streaming(xml_path: Path, stats: LoadStats) -> Iterator[Busine
             continue
         
         # FILTER 3: Trusts
-        if "TRU" in entity_type_code or "Trust" in (entity_type_name or ""):
+        if entity_type_code in EXCLUDE_TRUST:
             stats.filter_breakdown.trusts += 1
             stats.total_filtered += 1
             elem.clear()

@@ -307,8 +307,14 @@ def parse_abn_xml_streaming(xml_path: Path, stats: LoadStats) -> Iterator[Busine
         gst_elem = elem.find(".//GST")
         gst_registered = gst_elem is not None and gst_elem.get("status", "") == "ACT"
         
-        # Registration date (ABNStatusFromDate attribute on ABN element)
-        reg_date = abn_elem.get("ABNStatusFromDate", None)
+        # Registration date (ABNStatusFromDate attribute on ABN element, format YYYYMMDD)
+        reg_date_raw = abn_elem.get("ABNStatusFromDate", None)
+        reg_date = None
+        if reg_date_raw and len(reg_date_raw) == 8:
+            try:
+                reg_date = f"{reg_date_raw[:4]}-{reg_date_raw[4:6]}-{reg_date_raw[6:8]}"
+            except Exception:
+                reg_date = None
         
         # Clean up to free memory
         elem.clear()

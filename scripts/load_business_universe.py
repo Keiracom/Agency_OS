@@ -465,6 +465,12 @@ async def main():
         action="store_true",
         help="Skip zip extraction if XMLs already exist",
     )
+    parser.add_argument(
+        "--start-file",
+        type=str,
+        default=None,
+        help="Skip XML files before this filename",
+    )
     args = parser.parse_args()
     
     logger.info("=" * 60)
@@ -479,7 +485,13 @@ async def main():
     try:
         # Download and extract
         xml_files = await download_and_extract(skip_download=args.skip_download, skip_extract=args.skip_extract)
-        logger.info(f"Found {len(xml_files)} XML files to process")
+        
+        # Filter to start from specific file if requested
+        if args.start_file:
+            xml_files = [f for f in xml_files if f.name >= args.start_file]
+            logger.info(f"Resuming from: {args.start_file}")
+        
+        logger.info(f"Files to process: {len(xml_files)}")
         
         # Connect to database (unless dry run)
         pool = None

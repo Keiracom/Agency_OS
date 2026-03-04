@@ -205,9 +205,8 @@ def parse_abn_xml_streaming(xml_path: Path, stats: LoadStats) -> Iterator[Busine
             elem.clear()
             continue
         
-        # Get entity status
-        status_elem = elem.find(".//EntityStatus/EntityStatusCode")
-        status_code = status_elem.text if status_elem is not None else ""
+        # Get entity status (status is an attribute on ABN element)
+        status_code = abn_elem.get("status", "")
         
         # FILTER 1: Inactive
         if status_code != "ACT":
@@ -216,13 +215,11 @@ def parse_abn_xml_streaming(xml_path: Path, stats: LoadStats) -> Iterator[Busine
             elem.clear()
             continue
         
-        # Get entity type
-        entity_type_elem = elem.find(".//EntityType/EntityTypeCode")
+        # Get entity type (EntityTypeInd contains code like PUB/PRV, EntityTypeText contains description)
+        entity_type_elem = elem.find(".//EntityType/EntityTypeInd")
         entity_type_code = entity_type_elem.text if entity_type_elem is not None else ""
         
-        entity_type_name_elem = elem.find(".//EntityType/EntityTypeInd")
-        if entity_type_name_elem is None:
-            entity_type_name_elem = elem.find(".//EntityType/EntityDescription")
+        entity_type_name_elem = elem.find(".//EntityType/EntityTypeText")
         entity_type_name = entity_type_name_elem.text if entity_type_name_elem is not None else ""
         
         # FILTER 2: Individuals/sole traders
@@ -289,29 +286,29 @@ def parse_abn_xml_streaming(xml_path: Path, stats: LoadStats) -> Iterator[Busine
         if not legal_name:
             legal_name = f"ABN {abn}"  # Fallback
         
-        # Trading name (business name)
+        # Trading name (from OtherEntity with type="TRD")
         trading_name = None
-        bn_elem = elem.find(".//BusinessName/OrganisationName")
-        if bn_elem is not None:
-            trading_name = bn_elem.text
+        for other_entity in elem.findall(".//OtherEntity/NonIndividualName[@type='TRD']/NonIndividualNameText"):
+            if other_entity is not None and other_entity.text:
+                trading_name = other_entity.text
+                break
         
-        # Address info
+        # Address info (in BusinessAddress/AddressDetails)
         state = None
         postcode = None
-        addr_elem = elem.find(".//MainBusinessPhysicalAddress/StateCode")
-        if addr_elem is not None:
-            state = addr_elem.text
-        pc_elem = elem.find(".//MainBusinessPhysicalAddress/Postcode")
+        state_elem = elem.find(".//BusinessAddress/AddressDetails/State")
+        if state_elem is not None:
+            state = state_elem.text
+        pc_elem = elem.find(".//BusinessAddress/AddressDetails/Postcode")
         if pc_elem is not None:
             postcode = pc_elem.text
         
-        # GST registration
-        gst_elem = elem.find(".//GoodsAndServicesTax/GSTStatus")
-        gst_registered = gst_elem is not None and gst_elem.text == "Registered"
+        # GST registration (status is an attribute on GST element)
+        gst_elem = elem.find(".//GST")
+        gst_registered = gst_elem is not None and gst_elem.get("status", "") == "ACT"
         
-        # Registration date
-        reg_date_elem = elem.find(".//ABN/ReplacedFrom") or elem.find(".//EntityStatus/EffectiveFrom")
-        reg_date = reg_date_elem.text if reg_date_elem is not None else None
+        # Registration date (ABNStatusFromDate attribute on ABN element)
+        reg_date = abn_elem.get("ABNStatusFromDate", None)
         
         # Clean up to free memory
         elem.clear()

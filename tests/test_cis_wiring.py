@@ -42,8 +42,13 @@ def mock_lead():
 
 @pytest.fixture
 def mock_db():
-    """Create a mock async database session."""
-    db = AsyncMock()
+    """Create a mock async database session.
+    
+    Uses MagicMock base with async commit() to avoid RuntimeWarnings
+    from sync methods like db.add() returning unawaited coroutines.
+    """
+    db = MagicMock()
+    db.commit = AsyncMock()  # Only commit is async in SQLAlchemy
     return db
 
 

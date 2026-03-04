@@ -414,6 +414,64 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
 
         return trading_name if trading_name else None
 
+    def _validate_au_nz_headquarters(self, headquarters: str | None) -> tuple[bool, str]:
+        """
+        Validate that headquarters location is in Australia or New Zealand.
+        
+        Returns:
+            tuple[bool, str]: (is_valid, reason)
+            - is_valid: True if AU/NZ location or empty (allow through)
+            - reason: Description of validation result
+        """
+        if not headquarters:
+            return True, "empty_headquarters"
+        
+        hq_lower = headquarters.lower()
+        
+        # AU indicators (case-insensitive)
+        au_indicators = [
+            # Country
+            "australia",
+            # States (check as word boundaries to avoid false matches)
+            " nsw", ",nsw", " vic", ",vic", " qld", ",qld",
+            " wa,", " wa ", ",wa,", " sa,", " sa ", ",sa,",
+            " tas", ",tas", " act", ",act", " nt,", " nt ", ",nt,",
+            "new south wales", "victoria", "queensland",
+            "western australia", "south australia", "tasmania",
+            "australian capital territory", "northern territory",
+            # Major cities
+            "sydney", "melbourne", "brisbane", "perth", "adelaide",
+            "canberra", "darwin", "hobart", "gold coast", "newcastle",
+            "wollongong", "geelong", "townsville", "cairns",
+        ]
+        
+        # NZ indicators
+        nz_indicators = [
+            "new zealand", "auckland", "wellington", "christchurch",
+            "hamilton", "tauranga", "dunedin",
+        ]
+        
+        # Check AU indicators
+        for indicator in au_indicators:
+            if indicator in hq_lower:
+                return True, f"au_match:{indicator}"
+        
+        # Check for standalone "AU" (word boundary)
+        import re
+        if re.search(r'\bau\b', hq_lower):
+            return True, "au_match:AU"
+        
+        # Check NZ indicators  
+        for indicator in nz_indicators:
+            if indicator in hq_lower:
+                return True, f"nz_match:{indicator}"
+        
+        # Check for standalone "NZ" (word boundary)
+        if re.search(r'\bnz\b', hq_lower):
+            return True, "nz_match:NZ"
+        
+        return False, f"no_au_nz_match:{headquarters}"
+
     async def enrich_tier_1_5a(self, lead: LeadRecord) -> LeadRecord:
         """Tier 1.5a: SERP Google Maps - $0.0015 - If missing phone/website"""
         if "tier_1_5a" in lead.enrichment_tiers_completed:
@@ -536,7 +594,23 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
             # Scrape LinkedIn company page
             linkedin_data = await self.bd.scrape_linkedin_company(lead.linkedin_company_url)
 
+            # Geo-validation: Ensure company is in AU/NZ (CEO Directive #168)
+            geo_validated = False
+            returned_location = None
             if linkedin_data:
+                returned_location = linkedin_data.get("headquarters")
+                geo_valid, geo_reason = self._validate_au_nz_headquarters(returned_location)
+                
+                if not returned_location:
+                    logger.warning(f"Tier 2 geo-validation: empty headquarters for {lead.id}, allowing through")
+                    geo_validated = True  # Allow empty through
+                elif geo_valid:
+                    geo_validated = True
+                else:
+                    logger.warning(f"Tier 2 geo-validation failed for {lead.id}: expected AU/NZ, got headquarters={returned_location}")
+                    geo_validated = False
+
+            if linkedin_data and geo_validated:
                 lead.linkedin_data = linkedin_data
 
                 # Update business_name from LinkedIn company name if available
@@ -561,9 +635,10 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
                 if employees:
                     lead.employees = employees[:5]  # Store top 5 for T2.5 to filter
 
+            # Always mark tier complete and add cost (we paid for the API call)
             lead.enrichment_tiers_completed.append("tier_2")
             lead.cost_aud += self.COSTS["linkedin_company"]
-            logger.debug(f"Tier 2 completed for {lead.id}")
+            logger.debug(f"Tier 2 completed for {lead.id}, geo_validated={geo_validated}, returned_location={returned_location}")
 
         except Exception as e:
             error = {"tier": "tier_2", "error": str(e), "timestamp": datetime.now(UTC).isoformat()}

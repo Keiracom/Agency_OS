@@ -72,3 +72,30 @@ See ceo_memory key: business_universe_open_questions
 
 ### Next directive: #172
 Schema design and open question resolution. No code until all open questions answered.
+
+## 2026-03-05 — Resolved decisions and build sequence
+
+### Resolved open questions
+- lead_claiming: locked at campaign submission
+- angle_definition: hook category + proof point category, service-profile aware
+- cis_cross_agency: anonymised aggregate learning approved
+- reactivation_approval: automatic + Manual/Autopilot toggle
+- saturated_markets: surface before subscription
+- global_cooling_off: 30 days, queue delay not hard block
+- one_off_detection: bidirectional CRM required, signal-based inference
+- poaching_detection: parked
+- tier_flexibility: post-launch research
+- spam_act: legal review with T&Cs
+
+### Build sequence ratified
+1. Bidirectional HubSpot CRM
+2. business_universe new status fields
+3. New tables (lead_outreach_history etc)
+4. QueryTranslator rebuild
+5. Campaign submission lead locking
+
+### CRM audit findings
+Push-only confirmed. crm.objects.deals.read scope exists unused.
+Full spec in ceo_memory: business_universe_crm_bidirectional_spec
+
+See ceo_memory: business_universe_build_sequence

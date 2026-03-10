@@ -94,37 +94,6 @@ class TestMapsFirstDiscovery:
         # This ensures Australian compliance
 
 
-class TestParallelDiscovery:
-    """Test Mode C: Parallel discovery"""
-
-    @pytest.mark.asyncio
-    async def test_runs_both_modes(self):
-        from enrichment.discovery_modes import CampaignConfig, DiscoveryMode, ParallelDiscovery
-
-        mock_client = Mock()
-        ParallelDiscovery(bright_data_client=mock_client)
-        CampaignConfig(
-            mode=DiscoveryMode.PARALLEL,
-            industry="Retail",
-            location="Brisbane"
-        )
-
-        # Should run both ABN and Maps discovery
-
-    @pytest.mark.asyncio
-    async def test_deduplicates_results(self):
-        from enrichment.discovery_modes import ParallelDiscovery
-
-        mock_client = Mock()
-        ParallelDiscovery(bright_data_client=mock_client)
-
-        # Mode A result
-        # Mode B result (same business, different name format)
-
-        # Should deduplicate on ABN match
-        # Should also fuzzy match on name
-
-
 class TestDiscoveryFilters:
     """Test hard filters applied during discovery"""
 

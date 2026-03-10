@@ -23,7 +23,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -47,7 +47,9 @@ GHL_RATE_LIMIT_WINDOW = 10  # seconds
 class GoHighLevelRateLimiter:
     """Rate limiter for GoHighLevel API calls."""
 
-    def __init__(self, max_requests: int = GHL_RATE_LIMIT_REQUESTS, window: int = GHL_RATE_LIMIT_WINDOW):
+    def __init__(
+        self, max_requests: int = GHL_RATE_LIMIT_REQUESTS, window: int = GHL_RATE_LIMIT_WINDOW
+    ):
         self.max_requests = max_requests
         self.window = window
         self.requests: list[float] = []

@@ -42,15 +42,12 @@ Skills for the 5-tier enrichment waterfall. Created CEO Directive #031 (Feb 2026
 | **ABN Lookup** | `skills/enrichment/abn-lookup/` | Tier 1: Australian Business Register | ✅ Working |
 | **Bright Data LinkedIn** | `skills/enrichment/brightdata-linkedin/` | Tier 1.5: LinkedIn company enrichment | ✅ Working |
 | **Bright Data GMB** | `skills/enrichment/brightdata-gmb/` | Tier 2: Google Maps SERP (replaces DIY scraper) | ✅ Working |
-| **Hunter Verify** | `skills/enrichment/hunter-verify/` | Tier 3: Email discovery & verification | ✅ Working |
-
 **Quick test all:**
 ```bash
 cd /home/elliotbot/clawd && source .venv/bin/activate
 python skills/enrichment/abn-lookup/test.py
 python skills/enrichment/brightdata-linkedin/test.py
 python skills/enrichment/brightdata-gmb/test.py
-python skills/enrichment/hunter-verify/test.py
 ```
 
 ---

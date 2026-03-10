@@ -27,7 +27,7 @@ PHASE 16 CHANGES:
   - Tier-specific channel recommendations from HOW detector
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 

@@ -244,7 +244,9 @@ class LeadPool(Base, UUIDMixin, TimestampMixin):
     reachability_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     propensity_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     propensity_tier: Mapped[str | None] = mapped_column(String(20), nullable=True, name="als_tier")
-    propensity_components: Mapped[dict | None] = mapped_column(JSONB, nullable=True, name="als_components")
+    propensity_components: Mapped[dict | None] = mapped_column(
+        JSONB, nullable=True, name="als_components"
+    )
     scored_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     # ===== OUTREACH TRACKING (Phase 37) =====

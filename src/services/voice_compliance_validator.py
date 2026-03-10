@@ -24,7 +24,7 @@ NOTE: Requires `holidays` package for Australian public holiday detection.
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 

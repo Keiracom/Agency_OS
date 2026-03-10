@@ -17,7 +17,7 @@ RULES APPLIED:
   - Rule 12: Models can only import from exceptions
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import DateTime, func

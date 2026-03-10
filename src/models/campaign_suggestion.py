@@ -7,7 +7,7 @@ Consumers: services, orchestration
 Phase: Phase D - Item 18
 """
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Any
 from uuid import UUID

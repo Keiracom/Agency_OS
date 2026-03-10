@@ -7,7 +7,7 @@ Consumers: services, engines, orchestration
 Spec: docs/architecture/distribution/LINKEDIN_DISTRIBUTION.md
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID

@@ -19,7 +19,7 @@ The key insight: We already paid to enrich this data. Use it.
 """
 
 import logging
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from enum import IntEnum
 from typing import Any
 from uuid import UUID

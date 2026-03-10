@@ -42,7 +42,7 @@ FCO-002/FCO-003 DEPRECATION (2026-02-05):
 
 import json
 import logging
-from datetime import date, datetime, UTC
+from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID
 
@@ -406,7 +406,7 @@ class ScoutEngine(BaseEngine):
         - Tier 1: ABN Bulk (FREE)
         - Tier 2: GMB/Ads Signals ($0.006)
         - Tier 3: Hunter.io ($0.012)
-        - Tier 4: Proxycurl ($0.024)
+        - Tier 4: LinkedIn Intelligence (PENDING — Proxycurl deprecated FCO-003, Unipile replacement not yet activated)
         - Tier 5: Kaspr (ALS >= 85 only)
 
         For non-AU businesses, uses Apollo + Apify.

@@ -32,7 +32,7 @@ UNIPILE MIGRATION:
 """
 
 import logging
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -753,7 +753,9 @@ async def send_email_outreach_task(
                 campaign_id=campaign_uuid,
                 tone="professional",
             )
-            logger.info(f"SDK email generated for Hot lead {lead_id} (ALS: {lead.propensity_score})")
+            logger.info(
+                f"SDK email generated for Hot lead {lead_id} (ALS: {lead.propensity_score})"
+            )
         else:
             # Standard Haiku-based generation
             content_result = await content_engine.generate_email(

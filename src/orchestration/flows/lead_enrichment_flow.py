@@ -22,7 +22,7 @@ ENRICHMENT WATERFALL:
 """
 
 import logging
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -521,7 +521,9 @@ async def lead_enrichment_flow(
         "best_channel": analysis_result.get("best_channel")
         if analysis_result.get("success")
         else None,
-        "propensity_score": scoring_result.get("propensity_score") if scoring_result.get("success") else None,
+        "propensity_score": scoring_result.get("propensity_score")
+        if scoring_result.get("success")
+        else None,
         "als_tier": scoring_result.get("als_tier") if scoring_result.get("success") else None,
         "completed_at": datetime.now(UTC).isoformat(),
     }

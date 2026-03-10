@@ -1,18 +1,18 @@
 """
 Contract: src/engines/sms.py
-Purpose: SMS engine using ClickSend integration with DNCR compliance
+Purpose: SMS engine with DNCR compliance (SMS provider removed per Directive #167 — rewire to Telnyx P3)
 Layer: 3 - engines
 Imports: models, integrations
 Consumers: orchestration only
 
 FILE: src/engines/sms.py
-PURPOSE: SMS engine using ClickSend integration with DNCR compliance
+PURPOSE: SMS engine with DNCR compliance (SMS provider removed per Directive #167 — rewire to Telnyx P3)
 PHASE: 4 (Engines), modified Phase 16/24B for Conversion Intelligence, E2E Testing
 TASK: ENG-006, 16E-003, CONTENT-003
 DEPENDENCIES:
   - src/engines/base.py
   - src/engines/content_utils.py (Phase 16)
-  - src/integrations/clicksend.py (PRIMARY SMS for Australia)
+  - TODO: wire to Telnyx for SMS (Directive #167 removed the SMS provider)
   - src/integrations/redis.py
   - src/models/lead.py
   - src/models/activity.py
@@ -24,7 +24,7 @@ RULES APPLIED:
   - Rule 17: Resource-level rate limits (100/day/number)
   - DNCR compliance for Australian numbers
 
-NOTE: ClickSend is the primary SMS provider for Australia.
+NOTE: SMS provider removed (Directive #167). Rewire to Telnyx (P3 post-launch).
       Twilio is used for VOICE CALLS only (via Vapi).
 
 PHASE 16 CHANGES:
@@ -36,12 +36,12 @@ PHASE 24B CHANGES:
   - Track ab_test_id and ab_variant for A/B testing
   - Store links_included and personalization_fields_used
   - Track ai_model_used and prompt_version
-FIX-E2E-006:
-  - Changed from Twilio to ClickSend for SMS
+DIRECTIVE-167:
+  - SMS provider removed entirely. SMS to be rewired to Telnyx (P3).
 """
 
 import logging
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -53,7 +53,9 @@ from src.engines.base import EngineResult, OutreachEngine
 logger = logging.getLogger(__name__)
 from src.engines.content_utils import build_sms_snapshot
 from src.exceptions import DNCRError, ResourceRateLimitError
-from src.integrations.clicksend import ClickSendClient, get_clicksend_client
+
+# SMS provider removed per Directive #167. SMS to be rewired to Telnyx (P3).
+# SMS provider removed per Directive #167. Rewire to Telnyx (P3).
 from src.integrations.redis import rate_limiter
 from src.models.activity import Activity
 from src.models.base import ChannelType
@@ -65,27 +67,26 @@ SMS_DAILY_LIMIT_PER_NUMBER = 100
 
 class SMSEngine(OutreachEngine):
     """
-    SMS engine for sending text messages via ClickSend.
+    SMS engine stub — SMS provider removed per Directive #167.
 
-    ClickSend is an Australian company (Perth) - primary SMS provider for AU market.
-    Twilio is used for VOICE CALLS only (via Vapi).
+    TODO (P3 post-launch): rewire to Telnyx for SMS sending.
+    DNCR checks remain available via dncr.py directly.
 
     Features:
     - DNCR compliance check for Australian numbers
     - Resource-level rate limiting (100/day/number - Rule 17)
     - Activity logging
     - ALS >= 60 requirement (Hot + Warm tiers, enforced by allocator)
-    - Native Australian phone number support
     """
 
-    def __init__(self, clicksend_client: ClickSendClient | None = None):
+    def __init__(self, sms_client: None = None):
         """
         Initialize SMS engine.
 
         Args:
-            clicksend_client: Optional ClickSend client (uses singleton if not provided)
+            sms_client: Reserved for future Telnyx client
         """
-        self._clicksend = clicksend_client
+        self._sms_client = sms_client
 
     @property
     def name(self) -> str:
@@ -94,12 +95,6 @@ class SMSEngine(OutreachEngine):
     @property
     def channel(self) -> ChannelType:
         return ChannelType.SMS
-
-    @property
-    def clicksend(self) -> ClickSendClient:
-        if self._clicksend is None:
-            self._clicksend = get_clicksend_client()
-        return self._clicksend
 
     async def send(
         self,
@@ -204,13 +199,12 @@ class SMSEngine(OutreachEngine):
                 logger.debug(f"Lead {lead_id} DNCR already checked (clean), skipping API call")
 
         try:
-            result = await self.clicksend.send_sms(
-                to_number=lead.phone,
-                message=content,
-                from_number=from_number,
-                check_dncr=not skip_dncr,
+            # TODO (P3): replace stub with Telnyx SMS send once wired
+            raise NotImplementedError(
+                "SMS provider not configured. SMS provider removed per Directive #167. "
+                "Rewire to Telnyx (P3)."
             )
-
+            result: dict[str, Any] = {}  # unreachable; satisfies type checker
             message_sid = result.get("message_sid")
 
             # Log activity with content snapshot (Phase 16) and template tracking (Phase 24B)
@@ -324,7 +318,8 @@ class SMSEngine(OutreachEngine):
 
             # Filter out already-extracted keys to avoid duplicate kwargs
             extra_config = {
-                k: v for k, v in message_config.items()
+                k: v
+                for k, v in message_config.items()
                 if k not in ("lead_id", "campaign_id", "content")
             }
             result = await self.validate_and_send(
@@ -395,7 +390,10 @@ class SMSEngine(OutreachEngine):
             EngineResult with DNCR status
         """
         try:
-            is_on_dncr = await self.clicksend.check_dncr(phone_number)
+            from src.integrations.dncr import get_dncr_client
+
+            dncr_client = get_dncr_client()
+            is_on_dncr = await dncr_client.check_number(phone_number)
 
             return EngineResult.ok(
                 data={
@@ -489,7 +487,7 @@ class SMSEngine(OutreachEngine):
             personalization_fields_used=personalization_fields_used,
             ai_model_used=ai_model_used,
             prompt_version=prompt_version,
-            provider="clicksend",
+            provider="sms",
             provider_status=action,
             provider_response=provider_response,
             extra_data=metadata,
@@ -503,6 +501,7 @@ class SMSEngine(OutreachEngine):
         if action == "sent":
             try:
                 from src.services.cis_service import get_cis_service
+
                 cis_service = get_cis_service(db)
                 await cis_service.record_outreach_outcome(
                     activity_id=activity.id,
@@ -560,4 +559,4 @@ def get_sms_engine() -> SMSEngine:
 # [x] Phase 24B: links_included extracted from SMS
 # [x] Phase 24B: personalization_fields_used tracked
 # [x] Phase 24B: ai_model_used and prompt_version stored
-# [x] FIX-E2E-006: Changed from Twilio to ClickSend for SMS (AU market)
+# [x] Directive #167: SMS provider removed. Stub pending Telnyx wiring (P3).

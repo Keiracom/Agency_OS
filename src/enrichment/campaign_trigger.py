@@ -108,7 +108,7 @@ class CampaignDiscoveryTrigger:
 
         # 6. Run waterfall enrichment on passed results
         enriched_leads = []
-        logger.info("waterfall_start", leads_to_process=len(passed_results[:config.lead_volume]))
+        logger.info("waterfall_start", leads_to_process=len(passed_results[: config.lead_volume]))
         for result in passed_results[: config.lead_volume]:  # Limit to target volume
             try:
                 lead_record = self._convert_to_lead_record(result)
@@ -240,12 +240,10 @@ class CampaignDiscoveryTrigger:
             business_name=discovery_result.business_name or raw.get("title"),
             legal_name=discovery_result.trading_name,
             discovery_source=discovery_result.source,
-
             # ABN Registry fields (from ABN API raw_data)
             state=raw.get("state"),
             gst_registered=raw.get("gst_registered", False),
             entity_type=raw.get("entity_type"),
-
             # GMB fields (from Maps SERP raw_data)
             phone=raw.get("phone"),
             website=raw.get("link") or raw.get("website"),
@@ -254,7 +252,6 @@ class CampaignDiscoveryTrigger:
             reviews_count=reviews_count,
             category=category,
             gmb_place_id=raw.get("map_id") or raw.get("fid"),
-
             # Credit discovery tiers based on source
             # This ensures ALS data_quality component reflects work already done
             enrichment_tiers_completed=self._get_discovery_tiers(discovery_result.source),
@@ -277,39 +274,59 @@ class CampaignDiscoveryTrigger:
         lead = await self.waterfall.enrich_tier_1_5b(lead)
 
         # Audit: T1.5b complete
-        await self._write_audit_log(supabase, campaign_id, "tier_1_5b_complete", {
-            "linkedin_url_found": bool(lead.linkedin_company_url),
-            "business_name": lead.business_name,
-        })
+        await self._write_audit_log(
+            supabase,
+            campaign_id,
+            "tier_1_5b_complete",
+            {
+                "linkedin_url_found": bool(lead.linkedin_company_url),
+                "business_name": lead.business_name,
+            },
+        )
 
         # Tier 2: LinkedIn Company (if URL found)
         if lead.linkedin_company_url:
             lead = await self.waterfall.enrich_tier_2(lead)
             # Audit: T2 complete
-            await self._write_audit_log(supabase, campaign_id, "tier_2_complete", {
-                "business_name": lead.business_name,
-                "industry": getattr(lead, "industry", None),
-                "company_size": getattr(lead, "company_size", None),
-            })
+            await self._write_audit_log(
+                supabase,
+                campaign_id,
+                "tier_2_complete",
+                {
+                    "business_name": lead.business_name,
+                    "industry": getattr(lead, "industry", None),
+                    "company_size": getattr(lead, "company_size", None),
+                },
+            )
         else:
             # Audit: T2 skipped
-            await self._write_audit_log(supabase, campaign_id, "tier_2_skipped", {
-                "business_name": lead.business_name,
-                "reason": "no_linkedin_url",
-            })
+            await self._write_audit_log(
+                supabase,
+                campaign_id,
+                "tier_2_skipped",
+                {
+                    "business_name": lead.business_name,
+                    "reason": "no_linkedin_url",
+                },
+            )
 
         # Calculate propensity score
         lead.propensity_score = self.waterfall.calculate_als(lead)
         gate_passed = lead.propensity_score >= self.waterfall.PRE_ALS_GATE
 
         # Audit: propensity calculated
-        await self._write_audit_log(supabase, campaign_id, "propensity_calculated", {
-            "business_name": lead.business_name,
-            "score": lead.propensity_score,
-            "breakdown": lead.propensity_components,
-            "gate_passed": gate_passed,
-            "gate_threshold": self.waterfall.PRE_ALS_GATE,
-        })
+        await self._write_audit_log(
+            supabase,
+            campaign_id,
+            "propensity_calculated",
+            {
+                "business_name": lead.business_name,
+                "score": lead.propensity_score,
+                "breakdown": lead.propensity_components,
+                "gate_passed": gate_passed,
+                "gate_threshold": self.waterfall.PRE_ALS_GATE,
+            },
+        )
 
         # Gate check for further enrichment
         if gate_passed:
@@ -341,14 +358,20 @@ class CampaignDiscoveryTrigger:
     async def _write_audit_log(self, supabase, campaign_id: str, operation: str, details: dict):
         """Write enrichment audit log entry."""
         try:
-            await supabase.table("audit_logs").insert({
-                "action": "create",
-                "resource_type": "lead",
-                "operation": operation,
-                "campaign_id": campaign_id,
-                "success": True,
-                "metadata": details,
-            }).execute()
+            await (
+                supabase.table("audit_logs")
+                .insert(
+                    {
+                        "action": "create",
+                        "resource_type": "lead",
+                        "operation": operation,
+                        "campaign_id": campaign_id,
+                        "success": True,
+                        "metadata": details,
+                    }
+                )
+                .execute()
+            )
         except Exception as e:
             logger.warning(f"audit_log_write_failed: {operation} - {e}")
 
@@ -395,14 +418,19 @@ class CampaignDiscoveryTrigger:
                     logger.info(
                         "lead_skipped_no_email",
                         business=lead.business_name,
-                        reason="email required but not discovered during enrichment"
+                        reason="email required but not discovered during enrichment",
                     )
                     # Audit: lead skipped
-                    await self._write_audit_log(supabase, campaign_id, "lead_skipped", {
-                        "business_name": lead.business_name,
-                        "reason": "no_email",
-                        "propensity_score": lead.propensity_score,
-                    })
+                    await self._write_audit_log(
+                        supabase,
+                        campaign_id,
+                        "lead_skipped",
+                        {
+                            "business_name": lead.business_name,
+                            "reason": "no_email",
+                            "propensity_score": lead.propensity_score,
+                        },
+                    )
                     skipped += 1
                     continue
 

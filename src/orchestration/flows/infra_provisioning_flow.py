@@ -19,7 +19,7 @@ MARGIN IMPACT: Maintains 65.6% → 70.1% target achievable
 """
 
 import logging
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from uuid import UUID
 
 from prefect import flow, task

@@ -22,7 +22,6 @@ Created: 2026-02-16 by subagent (CEO Directive #023)
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
@@ -254,7 +253,7 @@ class MapsFirstDiscovery:
 
 class ParallelDiscovery:
     """Mode C: Enhanced GMB discovery with deduplication.
-    
+
     Note: ABN_FIRST discovery deprecated per Waterfall v3 Decision #1 (2026-03-01).
     ParallelDiscovery now delegates to MapsFirstDiscovery (GMB primary, ABN verification).
     """

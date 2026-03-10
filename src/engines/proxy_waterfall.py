@@ -24,7 +24,7 @@ DESCRIPTION: Proxy waterfall saves ~$11 AUD/month at Ignition tier (1,250 leads)
 import logging
 import random
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
 

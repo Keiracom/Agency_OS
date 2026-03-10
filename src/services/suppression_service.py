@@ -17,7 +17,7 @@ CONSUMERS: JIT Validator, Scout Engine, API routes
 from __future__ import annotations
 
 import logging
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from uuid import UUID
 
 from pydantic import BaseModel

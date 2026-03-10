@@ -405,9 +405,7 @@ class BrightDataClient:
 
         return results[:limit]
 
-    async def scrape_gmb_reviews(
-        self, place_id: str, limit: int = 20
-    ) -> list[dict]:
+    async def scrape_gmb_reviews(self, place_id: str, limit: int = 20) -> list[dict]:
         """
         T2.5 GMB Reviews via Bright Data Web Scraper API.
 
@@ -440,9 +438,7 @@ class BrightDataClient:
 
         return []
 
-    async def scrape_linkedin_company_enriched(
-        self, linkedin_url: str
-    ) -> dict:
+    async def scrape_linkedin_company_enriched(self, linkedin_url: str) -> dict:
         """
         T1.5 LinkedIn Company enrichment via Bright Data.
 
@@ -475,9 +471,7 @@ class BrightDataClient:
 
         return {}
 
-    async def scrape_linkedin_profile_enriched(
-        self, linkedin_url: str
-    ) -> dict:
+    async def scrape_linkedin_profile_enriched(self, linkedin_url: str) -> dict:
         """
         T-DM1 LinkedIn Profile enrichment via Bright Data.
 
@@ -507,9 +501,7 @@ class BrightDataClient:
 
         return {}
 
-    async def scrape_linkedin_posts_90d(
-        self, linkedin_url: str, days: int = 90
-    ) -> list[dict]:
+    async def scrape_linkedin_posts_90d(self, linkedin_url: str, days: int = 90) -> list[dict]:
         """
         T-DM2 LinkedIn Posts (90 days) via Bright Data.
 
@@ -524,7 +516,7 @@ class BrightDataClient:
         Returns:
             List of posts from the last N days
         """
-        from datetime import datetime, timedelta, UTC
+        from datetime import UTC, datetime, timedelta
 
         results = await self._scraper_request(
             DATASET_IDS["linkedin_people"],
@@ -563,9 +555,7 @@ class BrightDataClient:
 
         return []
 
-    async def scrape_x_posts_90d(
-        self, x_handle: str, days: int = 90
-    ) -> list[dict]:
+    async def scrape_x_posts_90d(self, x_handle: str, days: int = 90) -> list[dict]:
         """
         T-DM3 X/Twitter Posts (90 days) via Bright Data.
 
@@ -580,7 +570,7 @@ class BrightDataClient:
         Returns:
             List of tweets/posts from the last N days
         """
-        from datetime import datetime, timedelta, UTC
+        from datetime import UTC, datetime, timedelta
 
         # Normalize handle
         handle = x_handle.lstrip("@")

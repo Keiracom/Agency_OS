@@ -160,6 +160,7 @@ from src.services.who_refinement_service import (
     WhoRefinementService,
     get_who_refined_criteria,
 )
+
 # Note: CampaignConfigBuilder not exported here to avoid circular import with enrichment module
 # Import directly: from src.services.campaign_config_builder import CampaignConfigBuilder
 

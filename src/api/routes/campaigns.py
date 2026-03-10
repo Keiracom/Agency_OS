@@ -16,13 +16,12 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import date, datetime, time, UTC
+from datetime import UTC, date, datetime, time
 from typing import Annotated
-
-from prefect.deployments import run_deployment
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from prefect.deployments import run_deployment
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import and_, desc, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -76,8 +75,6 @@ class CampaignCreate(BaseModel):
     allocation_sms: int = Field(0, ge=0, le=100, description="SMS allocation %")
     allocation_linkedin: int = Field(0, ge=0, le=100, description="LinkedIn allocation %")
     allocation_voice: int = Field(0, ge=0, le=100, description="Voice allocation %")
-    allocation_mail: int = Field(0, ge=0, le=100, description="Direct mail allocation %")
-
     # Scheduling
     start_date: date | None = Field(None, description="Campaign start date")
     end_date: date | None = Field(None, description="Campaign end date")
@@ -101,7 +98,6 @@ class CampaignCreate(BaseModel):
             + self.allocation_sms
             + self.allocation_linkedin
             + self.allocation_voice
-            + self.allocation_mail
         )
         if total != 100:
             raise ValueError(f"Channel allocations must sum to 100, got {total}")
@@ -602,7 +598,6 @@ async def create_campaign(
         allocation_sms=campaign_data.allocation_sms,
         allocation_linkedin=campaign_data.allocation_linkedin,
         allocation_voice=campaign_data.allocation_voice,
-        allocation_mail=campaign_data.allocation_mail,
         start_date=campaign_data.start_date,
         end_date=campaign_data.end_date,
         daily_limit=campaign_data.daily_limit,

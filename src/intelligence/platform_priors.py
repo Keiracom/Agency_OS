@@ -107,7 +107,6 @@ PLATFORM_PRIORS: dict[str, Any] = {
         "linkedin_touch_lift": 1.35,  # 35% lift when included
         "voice_touch_lift": 1.85,  # 85% lift (use selectively)
         "sms_touch_lift": 1.25,  # 25% lift (permission required)
-        "direct_mail_touch_lift": 1.40,  # 40% lift (expensive)
         "optimal_touches_before_convert": 4,  # Average touches to conversion
         "max_touches_recommended": 8,  # Diminishing returns after
         "days_between_touches": {

@@ -25,7 +25,7 @@ This module handles outbound webhook delivery to client endpoints:
 import hashlib
 import hmac
 import json
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 

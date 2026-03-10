@@ -14,7 +14,7 @@ Data seeded:
 """
 
 import logging
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID, uuid4
 
@@ -443,9 +443,7 @@ class MockCRMService:
 
         await db.commit()
 
-        logger.info(
-            f"Cleared mock CRM data: {exclusion_deleted} exclusions, {leads_deleted} leads"
-        )
+        logger.info(f"Cleared mock CRM data: {exclusion_deleted} exclusions, {leads_deleted} leads")
 
         return {
             "status": "cleared",

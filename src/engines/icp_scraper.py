@@ -46,7 +46,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 from uuid import UUID
@@ -751,7 +751,7 @@ Respond in JSON format only:
                     siege_data,
                     skip_tiers=[
                         EnrichmentTier.HUNTER,  # Skip email (no person data)
-                        EnrichmentTier.PROXYCURL,  # Skip LinkedIn (no person data)
+                        # EnrichmentTier.PROXYCURL removed — Proxycurl deprecated FCO-003 (July 2025)
                         EnrichmentTier.IDENTITY,  # Skip Kaspr (expensive)
                     ],
                 )

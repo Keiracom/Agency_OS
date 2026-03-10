@@ -12,7 +12,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config.settings import settings
 from src.integrations.supabase import get_db_session

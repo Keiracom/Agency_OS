@@ -23,10 +23,10 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.pool import NullPool
-from supabase import AsyncClient, Client, create_async_client, create_client
 
 from src.config.settings import settings
 from src.exceptions import IntegrationError
+from supabase import AsyncClient, Client, create_async_client, create_client
 
 # ============================================
 # SQLAlchemy Async Engine (for ORM operations)

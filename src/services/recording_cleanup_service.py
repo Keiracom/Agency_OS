@@ -12,7 +12,7 @@ Blueprint requirement (VOICE.md):
 """
 
 import logging
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import and_, select, update

@@ -52,7 +52,7 @@ PHASE 24A+ CHANGES (LinkedIn Enrichment):
 """
 
 import logging
-from datetime import date, datetime, UTC
+from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID
 
@@ -249,7 +249,7 @@ class ScorerEngine(BaseEngine):
     - Risk: 15 points (deductions)
 
     Tier Assignment:
-    - Hot (85-100): Email, SMS, LinkedIn, Voice, Direct Mail
+    - Hot (85-100): Email, SMS, LinkedIn, Voice
     - Warm (60-84): Email, LinkedIn, Voice
     - Cool (35-59): Email, LinkedIn
     - Cold (20-34): Email only
@@ -717,7 +717,7 @@ class ScorerEngine(BaseEngine):
         """
         Get available channels for a tier.
 
-        - Hot: Email, SMS, LinkedIn, Voice, Direct Mail
+        - Hot: Email, SMS, LinkedIn, Voice
         - Warm: Email, LinkedIn, Voice
         - Cool: Email, LinkedIn
         - Cold: Email only
@@ -779,6 +779,7 @@ class ScorerEngine(BaseEngine):
                 weights = row.value
                 if isinstance(weights, str):
                     import json
+
                     weights = json.loads(weights)
                 logger.info(f"Loaded weights from ceo_memory: {CEO_MEMORY_WEIGHTS_KEY}")
                 return weights
@@ -837,7 +838,10 @@ class ScorerEngine(BaseEngine):
             score += reach_weights.get("verified_email", 35)
 
         # DM confirmed (LinkedIn InMail/connection confirmed)
-        if lead_data.get("dm_confirmed") or lead_data.get("linkedin_connection_status") == "connected":
+        if (
+            lead_data.get("dm_confirmed")
+            or lead_data.get("linkedin_connection_status") == "connected"
+        ):
             score += reach_weights.get("dm_confirmed", 30)
 
         # Direct mobile number

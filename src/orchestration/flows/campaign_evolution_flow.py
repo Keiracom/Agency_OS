@@ -18,7 +18,7 @@ Suggestions are NEVER auto-applied to campaigns.
 """
 
 import logging
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 

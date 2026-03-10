@@ -16,7 +16,7 @@ RULES APPLIED:
   - All endpoints require authentication
 """
 
-from datetime import date, datetime, timedelta, UTC
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from uuid import UUID
 

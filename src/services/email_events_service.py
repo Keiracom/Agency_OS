@@ -23,7 +23,7 @@ Provider hierarchy:
 3. Postmark (transactional)
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -182,9 +182,9 @@ class EmailEventsService:
             # Map negative event types to CIS final_outcome values
             # These signal what NOT to do and should DECREASE confidence scores
             negative_outcome_map = {
-                "bounced": "data_quality_failure",      # Bad enrichment data, not bad targeting
-                "complained": "targeting_failure",       # Wrong ICP or wrong message (spam)
-                "unsubscribed": "soft_rejection",        # Low fit, not hard rejection
+                "bounced": "data_quality_failure",  # Bad enrichment data, not bad targeting
+                "complained": "targeting_failure",  # Wrong ICP or wrong message (spam)
+                "unsubscribed": "soft_rejection",  # Low fit, not hard rejection
             }
 
             cis_event = cis_event_map.get(event_type)

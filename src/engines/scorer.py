@@ -249,7 +249,7 @@ class ScorerEngine(BaseEngine):
     - Risk: 15 points (deductions)
 
     Tier Assignment:
-    - Hot (85-100): Email, SMS, LinkedIn, Voice, Direct Mail
+    - Hot (85-100): Email, SMS, LinkedIn, Voice
     - Warm (60-84): Email, LinkedIn, Voice
     - Cool (35-59): Email, LinkedIn
     - Cold (20-34): Email only
@@ -717,7 +717,7 @@ class ScorerEngine(BaseEngine):
         """
         Get available channels for a tier.
 
-        - Hot: Email, SMS, LinkedIn, Voice, Direct Mail
+        - Hot: Email, SMS, LinkedIn, Voice
         - Warm: Email, LinkedIn, Voice
         - Cool: Email, LinkedIn
         - Cold: Email only

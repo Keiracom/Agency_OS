@@ -339,6 +339,5 @@ def anthropic_budget_exceeded() -> dict[str, Any]:
 # [x] Twilio responses (success, delivered, failed, DNCR checks)
 # [x] HeyReach responses (connection, message, rate_limited, usage)
 # [x] Synthflow responses (initiated, completed, failed)
-# [x] Lob responses (letter, address verification)
 # [x] Anthropic responses (message, classification, rate_limited, budget)
 # [x] All responses include realistic UUIDs and timestamps

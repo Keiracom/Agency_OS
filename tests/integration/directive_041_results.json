@@ -37,7 +37,7 @@
       ],
       "tiers_skipped": [
         "T4_ZEROBOUNCE",
-        "T5_KASPR"
+        "T5_LEADMAGIC"
       ],
       "total_cost_aud": "0.0336",
       "errors": []
@@ -70,7 +70,7 @@
       ],
       "tiers_skipped": [
         "T4_ZEROBOUNCE",
-        "T5_KASPR"
+        "T5_LEADMAGIC"
       ],
       "total_cost_aud": "0.0336",
       "errors": []
@@ -103,7 +103,7 @@
       ],
       "tiers_skipped": [
         "T4_ZEROBOUNCE",
-        "T5_KASPR"
+        "T5_LEADMAGIC"
       ],
       "total_cost_aud": "0.0336",
       "errors": []
@@ -136,7 +136,7 @@
       ],
       "tiers_skipped": [
         "T4_ZEROBOUNCE",
-        "T5_KASPR"
+        "T5_LEADMAGIC"
       ],
       "total_cost_aud": "0.0336",
       "errors": []
@@ -169,7 +169,7 @@
       ],
       "tiers_skipped": [
         "T4_ZEROBOUNCE",
-        "T5_KASPR"
+        "T5_LEADMAGIC"
       ],
       "total_cost_aud": "0.0336",
       "errors": []
@@ -202,7 +202,7 @@
       ],
       "tiers_skipped": [
         "T4_ZEROBOUNCE",
-        "T5_KASPR"
+        "T5_LEADMAGIC"
       ],
       "total_cost_aud": "0.0336",
       "errors": []
@@ -235,7 +235,7 @@
       ],
       "tiers_skipped": [
         "T4_ZEROBOUNCE",
-        "T5_KASPR"
+        "T5_LEADMAGIC"
       ],
       "total_cost_aud": "0.0336",
       "errors": []
@@ -268,7 +268,7 @@
       ],
       "tiers_skipped": [
         "T4_ZEROBOUNCE",
-        "T5_KASPR"
+        "T5_LEADMAGIC"
       ],
       "total_cost_aud": "0.0336",
       "errors": []
@@ -301,7 +301,7 @@
         "T_DM2_LINKEDIN_POSTS",
         "T_DM3_X_POSTS",
         "T4_ZEROBOUNCE",
-        "T5_KASPR"
+        "T5_LEADMAGIC"
       ],
       "total_cost_aud": "0.0291",
       "errors": []
@@ -334,7 +334,7 @@
         "T_DM2_LINKEDIN_POSTS",
         "T_DM3_X_POSTS",
         "T4_ZEROBOUNCE",
-        "T5_KASPR"
+        "T5_LEADMAGIC"
       ],
       "total_cost_aud": "0.0291",
       "errors": []

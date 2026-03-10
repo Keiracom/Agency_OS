@@ -1,6 +1,6 @@
 ---
 name: mcp-bridge
-description: Bridge to MCP servers - call any tool from our 12 custom MCP servers (prefect, railway, prospeo, hunter, dataforseo, vercel, salesforge, vapi, telnyx, unipile, resend, memory). Use for enrichment, infrastructure, outreach, and memory operations.
+description: Bridge to MCP servers - call any tool from our 11 custom MCP servers (prefect, railway, prospeo, dataforseo, vercel, salesforge, vapi, telnyx, unipile, resend, memory). Use for enrichment, infrastructure, outreach, and memory operations.
 ---
 
 # MCP Bridge
@@ -28,7 +28,6 @@ node scripts/mcp-bridge.js call <server> <tool> [args_json]
 | `railway` | Infrastructure | Deployment platform - projects, services, logs |
 | `vercel` | Infrastructure | Frontend deployments - projects, domains |
 | `prospeo` | Enrichment | Email finder and verification |
-| `hunter` | Enrichment | Domain search, email verification |
 | `dataforseo` | Enrichment | SERP, keywords, backlinks |
 | `salesforge` | Outreach | Email campaigns and sequences |
 | `vapi` | Outreach | Voice AI - assistants, calls |

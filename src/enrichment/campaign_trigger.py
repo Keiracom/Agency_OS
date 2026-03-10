@@ -266,6 +266,9 @@ class CampaignDiscoveryTrigger:
         if not lead.abn:
             lead = await self.waterfall.enrich_tier_1(lead)
 
+        # Tier 1.25: ABR Entity Lookup (trading name for ABN-sourced leads)
+        lead = await self.waterfall.enrich_tier_1_25(lead)
+
         # Tier 1.5a: SERP Maps (if missing phone/website)
         if not lead.phone or not lead.website:
             lead = await self.waterfall.enrich_tier_1_5a(lead)

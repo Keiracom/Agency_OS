@@ -325,39 +325,7 @@ class WaterfallV2:
                     f"legal_name='{lead.legal_name}' for ABN {lead.abn}"
                 )
 
-                # SDK disambiguation: if trading_name == legal_name AND looks like company name
-                if (
-                    lead.trading_name == lead.legal_name
-                    and lead.legal_name
-                    and any(
-                        lead.legal_name.upper().endswith(suffix)
-                        for suffix in ("PTY LTD", "PTY LIMITED", "PTY. LTD.", "PTY. LIMITED")
-                    )
-                ):
-                    # Try SDK disambiguation
-                    try:
-                        sdk_trading = await self._sdk_disambiguate_trading_name(lead)
-                        if sdk_trading and sdk_trading != lead.legal_name:
-                            lead.trading_name = sdk_trading
-                            logger.info(f"Tier 1.25: SDK disambiguated to '{sdk_trading}'")
-                    except Exception as sdk_err:
-                        logger.warning(f"SDK disambiguation failed: {sdk_err}")
-
             lead.enrichment_tiers_completed.append("tier_1_25")
-
-            # Write audit log
-            if self.supabase:
-                await self._log_enrichment(
-                    lead,
-                    "tier_1_25_complete",
-                    {
-                        "abn": lead.abn,
-                        "trading_name": lead.trading_name,
-                        "legal_name": lead.legal_name,
-                        "business_name": lead.business_name,
-                        "source": lead.discovery_source,
-                    },
-                )
 
             logger.debug(f"Tier 1.25 completed for {lead.id}")
 
@@ -1078,84 +1046,6 @@ class WaterfallV2:
             logger.warning(f"Tier 5 failed for {lead.id}: {str(e)}")
 
         return lead
-
-    # FULL PIPELINE ORCHESTRATION
-
-    async def run_full_pipeline(self, config: CampaignConfig) -> list[LeadRecord]:
-        """Execute complete Phase 1 → 2 → 3 pipeline"""
-        logger.info(
-            f"Starting full Waterfall v2 pipeline for {config.industry} in {config.location}"
-        )
-
-        try:
-            # Phase 1: Discovery
-            leads = await self.run_discovery(config)
-            logger.info(f"Phase 1 completed: {len(leads)} leads discovered")
-
-            if not leads:
-                return []
-
-            enriched = []
-
-            for lead in leads:
-                logger.debug(f"Processing lead: {lead.business_name} ({lead.id})")
-
-                # Phase 2: Core Enrichment (Always run)
-                # v2.2 Order: T1 → T1.25(ABR) → T1.5b(LinkedIn) → T1.5a(GMB) → T2
-                lead = await self.enrich_tier_1(lead)
-                lead = await self.enrich_tier_1_25(lead)  # ABR trading name lookup
-                lead = await self.enrich_tier_1_5b(
-                    lead
-                )  # LinkedIn first (confirms business exists)
-                lead = await self.enrich_tier_1_5a(
-                    lead
-                )  # GMB second (cross-reference with trading name)
-                lead = await self.enrich_tier_2(lead)
-
-                # Phase 3: Initial Propensity Scoring
-                lead.propensity_score = self.calculate_als(lead)
-                logger.debug(f"Initial propensity score for {lead.id}: {lead.propensity_score}")
-
-                # Quality Gate Check - Continue enrichment only if score >= PRE_ALS_GATE
-                if lead.propensity_score >= self.PRE_ALS_GATE:
-                    logger.debug(
-                        f"Lead {lead.id} passed propensity gate ({lead.propensity_score} >= {self.PRE_ALS_GATE})"
-                    )
-
-                    # Phase 2 continued: Premium Enrichment
-                    lead = await self.enrich_tier_2_5(lead)
-                    lead = await self.enrich_tier_3(lead)
-                    lead = await self.enrich_tier_5(lead)
-
-                    # Phase 3: Final Propensity Scoring
-                    lead.propensity_score = self.calculate_als(lead)
-                    logger.debug(f"Final propensity score for {lead.id}: {lead.propensity_score}")
-                else:
-                    logger.debug(
-                        f"Lead {lead.id} did not pass propensity gate ({lead.propensity_score} < {self.PRE_ALS_GATE})"
-                    )
-
-                # Update final metadata
-                lead.updated_at = datetime.now(UTC).isoformat()
-                enriched.append(lead)
-
-            # Pipeline summary
-            total_cost = sum(lead.cost_aud for lead in enriched)
-            high_quality_leads = len(
-                [lead for lead in enriched if lead.propensity_score >= self.HOT_THRESHOLD]
-            )
-
-            logger.info(
-                f"Waterfall v2 pipeline completed: {len(enriched)} leads processed, "
-                f"{high_quality_leads} high-quality leads (ALS >= {self.HOT_THRESHOLD}), "
-                f"Total cost: ${total_cost:.4f} AUD"
-            )
-
-            return enriched
-
-        except Exception as e:
-            logger.error(f"Full pipeline failed: {str(e)}")
-            raise  # Re-raise to surface Leadmagic credit errors
 
     # UTILITY METHODS
 

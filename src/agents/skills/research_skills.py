@@ -266,7 +266,7 @@ class PersonalizationAnalysisSkill(BaseSkill):
     name: ClassVar[str] = "personalization_analysis"
     description: ClassVar[str] = (
         "Analyze LinkedIn data to generate pain points, personalization angles, "
-        "and icebreaker hooks for Email, SMS, LinkedIn, Voice, and Direct Mail."
+        "and icebreaker hooks for Email, SMS, LinkedIn, and Voice."
     )
 
     class Input(BaseModel):
@@ -313,7 +313,7 @@ class PersonalizationAnalysisSkill(BaseSkill):
         )
         icebreaker_hooks: dict[str, str] = Field(
             default_factory=dict,
-            description="Per-channel hooks: email, linkedin, sms, voice, direct_mail",
+            description="Per-channel hooks: email, linkedin, sms, voice",
         )
         topics_to_avoid: list[str] = Field(
             default_factory=list,
@@ -359,7 +359,6 @@ Your task is to analyze LinkedIn data to create hyper-personalized outreach for 
 - **LinkedIn**: Short (300 char limit for connection requests)
 - **SMS**: Very brief, casual tone, <100 chars
 - **Voice**: Conversational opener for phone call
-- **Direct Mail**: Headline that would grab attention
 
 ### Topics to Avoid
 - Competitors mentioned positively

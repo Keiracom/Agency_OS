@@ -151,7 +151,7 @@ class Settings(BaseSettings):
     postmark_server_token: str = Field(default="", description="Postmark server token")
 
     # === Twilio (Voice Calls ONLY via Vapi) ===
-    # NOT used for SMS. ClickSend is the SMS provider for Australia.
+    # NOT used for SMS. SMS provider to be wired per Directive #167 (P3 post-launch).
     twilio_account_sid: str = Field(default="", description="Twilio account SID (voice only)")
     twilio_auth_token: str = Field(default="", description="Twilio auth token (voice only)")
     twilio_phone_number: str = Field(default="", description="Twilio phone number (voice only)")
@@ -192,11 +192,6 @@ class Settings(BaseSettings):
     linkedin_business_hours_start: int = Field(default=8, description="Business hours start (24h)")
     linkedin_business_hours_end: int = Field(default=18, description="Business hours end (24h)")
     linkedin_weekend_reduction: float = Field(default=0.5, description="Weekend volume multiplier")
-
-    # === ClickSend (Australian SMS + Direct Mail) ===
-    # Primary SMS provider for Australian market. Twilio is used for voice calls ONLY.
-    clicksend_username: str = Field(default="", description="ClickSend username/email")
-    clicksend_api_key: str = Field(default="", description="ClickSend API key")
 
     # === DataForSEO (SEO Metrics Enrichment) ===
     dataforseo_login: str = Field(default="", description="DataForSEO login email")

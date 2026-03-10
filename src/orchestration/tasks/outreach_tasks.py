@@ -1,6 +1,6 @@
 """
 FILE: src/orchestration/tasks/outreach_tasks.py
-PURPOSE: Prefect tasks for outreach via Email, SMS, LinkedIn, Voice, Mail engines
+PURPOSE: Prefect tasks for outreach via Email, SMS, LinkedIn, Voice engines
 PHASE: 5 (Orchestration)
 TASK: ORC-008
 DEPENDENCIES:
@@ -8,7 +8,6 @@ DEPENDENCIES:
   - src/engines/sms.py
   - src/engines/linkedin.py
   - src/engines/voice.py
-  - src/engines/mail.py
   - src/engines/content.py
   - src/models/lead.py
   - src/models/client.py
@@ -35,7 +34,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.engines.content import ContentEngine
 from src.engines.email import EmailEngine
 from src.engines.linkedin import LinkedInEngine
-from src.engines.mail import MailEngine
 from src.engines.sms import SMSEngine
 from src.engines.timing import get_timing_engine
 
@@ -477,82 +475,6 @@ async def send_voice_task(
     )
 
     # Original Vapi implementation archived to: src/engines/deprecated/voice_vapi.py
-
-
-@task(
-    name="send_mail",
-    description="Send direct mail via Mail engine",
-    retries=2,
-    retry_delay_seconds=[120, 600],
-    tags=["outreach", "mail"],
-)
-async def send_mail_task(
-    lead_id: UUID,
-    template_id: str,
-    merge_variables: dict[str, Any],
-) -> dict[str, Any]:
-    """
-    Send direct mail to a lead with JIT validation.
-
-    Rule 13: JIT validation before sending.
-    Requires ALS >= 85 (Hot only).
-
-    Args:
-        lead_id: Lead UUID
-        template_id: Optional[str] = None  # ClickSend direct mail TBD
-        merge_variables: Template merge variables
-
-    Returns:
-        Send result with mail_id
-
-    Raises:
-        ValidationError: If JIT validation fails or ALS too low
-    """
-    async with get_db_session() as db:
-        # === JIT VALIDATION (Rule 13) ===
-        lead, client, campaign = await _validate_outreach_jit(
-            db=db,
-            lead_id=lead_id,
-            channel=ChannelType.MAIL,
-        )
-
-        # Direct mail requires reachability >= 85 (Hot tier only)
-        if not lead.propensity_score or lead.propensity_score < 85:
-            raise ValidationError(
-                message=f"Direct mail requires reachability >= 85. Lead {lead_id} has reachability {lead.propensity_score}",
-                field="reachability_score",
-            )
-
-        # === SEND DIRECT MAIL ===
-        logger.info(f"Sending direct mail to lead {lead_id} (campaign {campaign.id})")
-
-        mail_engine = MailEngine()
-        send_result = await mail_engine.send(
-            db=db,
-            lead_id=lead_id,
-            campaign_id=campaign.id,
-            content="",  # Content from template
-            template_id=template_id,
-            merge_variables=merge_variables,
-        )
-
-        if not send_result.success:
-            raise ValidationError(
-                message=f"Direct mail send failed: {send_result.error}",
-                field="mail_send",
-            )
-
-        logger.info(
-            f"Successfully sent direct mail to lead {lead_id}. "
-            f"Mail ID: {send_result.data.get('mail_id')}"
-        )
-
-        return {
-            "success": True,
-            "lead_id": str(lead_id),
-            "channel": "mail",
-            "mail_id": send_result.data.get("mail_id"),
-        }
 
 
 @task(

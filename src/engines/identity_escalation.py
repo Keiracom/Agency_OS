@@ -26,7 +26,6 @@ DESCRIPTION: Bypassing "info@" receptionist layer to reach decision makers direc
 CHANNEL MAPPING:
   - SMS/Voice AI -> mobile_number_verified
   - Email -> work_email_verified
-  - Direct Mail -> registered_office_address
   - LinkedIn -> linkedin_profile_url
 """
 
@@ -207,7 +206,6 @@ class IdentityEscalationEngine(BaseEngine):
     Channel Mapping:
     - SMS/Voice AI → mobile_number_verified
     - Email → work_email_verified
-    - Direct Mail → registered_office_address
     - LinkedIn → linkedin_profile_url
 
     COGS Governance:
@@ -453,7 +451,7 @@ class IdentityEscalationEngine(BaseEngine):
             if reachability_score > ALS_MOBILE_THRESHOLD and decision_makers:
                 step_number += 1
 
-                # Try Lusha first, then Kaspr
+                # Enrich mobile via Leadmagic (T5, $0.077/rec)
                 mobile_result = await self._enrich_mobile_number(decision_makers[0], company_domain)
 
                 if mobile_result:
@@ -634,35 +632,11 @@ class IdentityEscalationEngine(BaseEngine):
         self, contact: DecisionMaker, company_domain: str
     ) -> DecisionMaker | None:
         """
-        Tier 4/5: Enrich contact with verified mobile number via Lusha/Kaspr.
+        Tier 5: Enrich contact with verified mobile number via Leadmagic ($0.077/rec).
 
         Prioritizes mobile over landline for Voice AI channel.
         """
-        # Try Lusha first (better Australian coverage based on research)
-        if self._lusha:
-            try:
-                lusha_result = await self._lusha.enrich_person(
-                    first_name=contact.first_name,
-                    last_name=contact.last_name,
-                    company_domain=company_domain,
-                    linkedin_url=contact.linkedin_url,
-                )
-
-                if lusha_result:
-                    phones = lusha_result.get("phones", [])
-                    mobile = self.prioritize_mobile(phones)
-
-                    if mobile:
-                        contact.mobile_number = mobile
-                        contact.phone_type = PhoneType.MOBILE
-                        contact.work_email = lusha_result.get("email")
-                        contact.source = "lusha"
-                        contact.confidence = 90
-                        return contact
-            except Exception as e:
-                logger.warning(f"Lusha enrichment failed: {e}")
-
-        # Fallback to Leadmagic mobile finder
+        # Leadmagic mobile finder (T5 SSOT — Kaspr/Lusha deprecated)
         if self._leadmagic:
             try:
                 leadmagic_result = await self._leadmagic.find_mobile(
@@ -820,7 +794,7 @@ def get_identity_escalation_engine(
 # [x] Director Hunt via ASIC
 # [x] LinkedIn employee search
 # [x] Team page scraping
-# [x] Lusha/Kaspr mobile enrichment
+# [x] Leadmagic mobile enrichment (T5)
 # [x] All costs in AUD
 # [x] Identity Gold logging
 # [x] Decision maker ranking

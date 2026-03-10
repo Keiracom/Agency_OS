@@ -21,12 +21,11 @@ RULES APPLIED:
 ALERT TYPES:
 1. Angry complaint → immediate notification + email
 2. Bright Data API timeout/error after 2 retries
-3. Hunter rate limit hit (with estimated recovery time)
-4. LinkedIn daily rate limit per seat
-5. Email warmup health score below threshold
-6. Hot+Warm ratio drops below 20% in active campaign
-7. Batch quota shortfall after 3 replacement loops
-8. Reply confidence <60% → human review queue (not alert)
+3. LinkedIn daily rate limit per seat
+4. Email warmup health score below threshold
+5. Hot+Warm ratio drops below 20% in active campaign
+6. Batch quota shortfall after 3 replacement loops
+7. Reply confidence <60% → human review queue (not alert)
 """
 
 import json
@@ -64,7 +63,6 @@ class AlertType:
 ALERT_SEVERITY = {
     AlertType.ANGRY_COMPLAINT: "high",
     AlertType.BRIGHT_DATA_ERROR: "high",
-    AlertType.HUNTER_RATE_LIMIT: "medium",
     AlertType.LINKEDIN_RATE_LIMIT: "medium",
     AlertType.WARMUP_HEALTH_LOW: "high",
     AlertType.HOT_WARM_RATIO_LOW: "medium",

@@ -49,7 +49,30 @@ The `tools/` directory (autonomous_browser.py, proxy_manager.py) is **no longer 
 | abn-lookup | 1 | FREE | ✅ |
 | brightdata-linkedin | 1.5 | ~$0.01 | ✅ |
 | brightdata-gmb | 2 | $0.0015 | ✅ |
-| hunter-verify | 3 | $0.15 | ✅ |
+| hunter-verify | 3 | $0.15 | ❌ DEPRECATED |
+| leadmagic-email | 3 | $0.015 | ✅ |
+| leadmagic-mobile | 5 | $0.077 | ✅ |
+
+---
+
+## Waterfall v3 Architecture (Active as of 2026-03-01)
+
+**Decision:** CEO Directive #142, 2026-03-01
+**Discovery method:** GMB-first (`MapsFirstDiscovery`). `ABNFirstDiscovery` deprecated per Waterfall v3 Decision #1.
+**Providers:** Leadmagic (T3 email $0.015, T5 mobile $0.077). Hunter and Kaspr deprecated.
+**ALS gates:** `PRE_ALS_GATE = 20` (was 30). `HOT_THRESHOLD = 85`.
+
+**Active enrichment path (campaign_trigger.py `_enrich_lead`):**
+T0 GMB → T1 ABN → T1.5a SERP Maps → T1.5b SERP LinkedIn → T2 LinkedIn Company → ALS gate (≥20) → T2.5 LinkedIn People → T3 Leadmagic Email → T5 Leadmagic Mobile
+
+**Decision-maker path:**
+T-DM0 DataForSEO ($0.0465, ICP pass) → T-DM1 BD Profile ($0.0015, ICP pass) → T-DM2/2b/3/4 (Propensity ≥70)
+
+**Orphaned code (not wired into active campaign trigger — scheduled for deletion in Step 3):**
+- `run_full_pipeline()` — exists in waterfall_v2.py but not called by campaign trigger
+- `ParallelDiscovery` — thin wrapper, redundant since v3 Decision #1
+- `_extract_decision_makers()` — dead method, never called
+- `_sdk_disambiguate_trading_name()` — broken (self.supabase unset), unreachable in live path
 
 ---
 

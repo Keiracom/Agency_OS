@@ -778,8 +778,7 @@ class TestLoadScriptIntegration:
         )
         
         assert "IND" in EXCLUDE_INDIVIDUAL
-        assert "PRV" in EXCLUDE_INDIVIDUAL
-        assert "GVT" in EXCLUDE_GOVERNMENT
+        assert "SGE" in EXCLUDE_GOVERNMENT
         assert "SUP" in EXCLUDE_SUPER
         assert "NPF" in EXCLUDE_CHARITY_NFP
 

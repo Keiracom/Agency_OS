@@ -48,7 +48,6 @@ from src.enrichment.discovery_modes import (
     DiscoveryMode,
     DiscoveryRecord,
     MapsFirstDiscovery,
-    ParallelDiscovery,
 )
 from src.integrations.leadmagic import (
     LeadmagicCreditExhaustedError,
@@ -68,7 +67,6 @@ class LeadRecord:
     business_name: str = None
     legal_name: str = None
     trading_name: str = None
-    discovery_source: str = None
 
     # ABN Registry fields (Tier 1)
     gst_registered: bool = False
@@ -104,7 +102,7 @@ class LeadRecord:
 
     # Leadmagic Premium fields (Tier 5)
     leadmagic_data: dict = field(default_factory=dict)
-    verified_contacts: list[dict] = field(default_factory=dict)
+    verified_contacts: list[dict] = field(default_factory=list)
 
     # Scoring and quality
     propensity_score: int = 0
@@ -176,9 +174,7 @@ class WaterfallV2:
         self.maps_discovery = MapsFirstDiscovery(
             bright_data_client=bright_data_client, abn_client=abn_client
         )
-        self.parallel_discovery = ParallelDiscovery(
-            abn_client=abn_client, bright_data_client=bright_data_client
-        )
+        # ParallelDiscovery removed — Directive #170; PARALLEL mode routes to maps_discovery
 
     # PHASE 1: DISCOVERY
 
@@ -192,7 +188,8 @@ class WaterfallV2:
             if config.mode == DiscoveryMode.MAPS_FIRST:
                 discovery_records = await self.maps_discovery.discover(config)
             elif config.mode == DiscoveryMode.PARALLEL:
-                discovery_records = await self.parallel_discovery.discover(config)
+                # ParallelDiscovery deleted (Directive #170); routes to MapsFirstDiscovery directly
+                discovery_records = await self.maps_discovery.discover(config)
             else:
                 raise ValueError(f"Unknown discovery mode: {config.mode}")
 
@@ -374,47 +371,6 @@ class WaterfallV2:
             logger.warning(f"Tier 1.25 failed for {lead.id}: {str(e)}")
 
         return lead
-
-    async def _sdk_disambiguate_trading_name(self, lead: LeadRecord) -> str | None:
-        """
-        Use SDK to disambiguate trading name when ABR returns only legal name.
-
-        Cost: ~$0.01 per call (Haiku)
-        Returns: Trading name string or None
-        """
-        from src.integrations.sdk_brain import get_simple_client
-
-        client = get_simple_client("classification")
-
-        prompt = f"""What is the likely trading name for this Australian business?
-
-Legal Name: {lead.legal_name}
-State: {lead.state or "Unknown"}
-Industry: {lead.category or lead.industry or "Unknown"}
-
-Return ONLY the trading name, no explanation.
-If the trading name is likely the same as the legal name (minus Pty Ltd suffix), return just the company name without the suffix.
-If truly unknown, return the legal name without the Pty Ltd suffix."""
-
-        result = await client.complete(
-            prompt=prompt,
-            system="You are a business name expert. Return only the trading name, nothing else.",
-            max_tokens=50,
-            temperature=0.3,
-        )
-
-        trading_name = result.get("content", "").strip()
-        cost = result.get("cost_aud", 0)
-
-        # Log SDK usage
-        if self.supabase and cost > 0:
-            await self._log_enrichment(
-                lead,
-                "tier_1_25_sdk_used",
-                {"cost_aud": cost, "result": trading_name},
-            )
-
-        return trading_name if trading_name else None
 
     def _validate_au_nz_headquarters(self, headquarters: str | None) -> tuple[bool, str]:
         """
@@ -692,32 +648,6 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
             logger.warning(f"Tier 2 failed for {lead.id}: {str(e)}")
 
         return lead
-
-    def _extract_decision_makers(self, employees: list[dict]) -> list[dict]:
-        """Extract decision makers from employee list"""
-        decision_makers = []
-        decision_keywords = [
-            "ceo",
-            "cto",
-            "cfo",
-            "cmo",
-            "coo",
-            "chief",
-            "president",
-            "founder",
-            "vp",
-            "vice president",
-            "director",
-            "head of",
-            "manager",
-        ]
-
-        for employee in employees:
-            title = (employee.get("title") or "").lower()
-            if any(keyword in title for keyword in decision_keywords):
-                decision_makers.append(employee)
-
-        return decision_makers[:5]  # Limit to top 5
 
     # PHASE 3: SCORING AND QUALITY GATES
 

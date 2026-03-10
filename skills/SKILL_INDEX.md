@@ -42,6 +42,9 @@ Skills for the 5-tier enrichment waterfall. Created CEO Directive #031 (Feb 2026
 | **ABN Lookup** | `skills/enrichment/abn-lookup/` | Tier 1: Australian Business Register | ✅ Working |
 | **Bright Data LinkedIn** | `skills/enrichment/brightdata-linkedin/` | Tier 1.5: LinkedIn company enrichment | ✅ Working |
 | **Bright Data GMB** | `skills/enrichment/brightdata-gmb/` | Tier 2: Google Maps SERP (replaces DIY scraper) | ✅ Working |
+| **Leadmagic Email** | `skills/enrichment/leadmagic-email/` | Tier 3: Email lookup @ $0.015/lead (replaces Hunter) | 🔧 Pending |
+| **Leadmagic Mobile** | `skills/enrichment/leadmagic-mobile/` | Tier 5: Mobile lookup @ $0.077/lead (replaces Kaspr) | 🔧 Pending |
+| **DataForSEO** | `skills/enrichment/dataforseo/` | T-DM0: Ad-spend signal @ $0.0465 combined with BD LinkedIn | 🔧 Pending |
 **Quick test all:**
 ```bash
 cd /home/elliotbot/clawd && source .venv/bin/activate

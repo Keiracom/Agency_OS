@@ -17,7 +17,7 @@ RULES APPLIED:
   - Rule 11: Session passed as argument
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func, select

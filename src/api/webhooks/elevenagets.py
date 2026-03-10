@@ -29,7 +29,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
-from sqlalchemy import select, update
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import get_db
@@ -663,8 +663,8 @@ async def _trigger_post_call_processor(
     )
 
     try:
-        from src.services.voice_post_call_processor import VoicePostCallProcessor
         from src.db.session import async_session_maker
+        from src.services.voice_post_call_processor import VoicePostCallProcessor
 
         async with async_session_maker() as session:
             processor = VoicePostCallProcessor(session)

@@ -16,6 +16,7 @@ Key components:
 - campaign_trigger: Auto-triggers discovery on campaign activation
 """
 
+from .campaign_trigger import CampaignDiscoveryTrigger
 from .discovery_filters import DiscoveryFilters
 from .discovery_modes import (
     CampaignConfig,
@@ -28,7 +29,6 @@ from .waterfall_v2 import (
     LeadRecord,
     WaterfallV2,
 )
-from .campaign_trigger import CampaignDiscoveryTrigger
 
 __all__ = [
     # Discovery filters

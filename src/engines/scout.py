@@ -42,7 +42,7 @@ FCO-002/FCO-003 DEPRECATION (2026-02-05):
 
 import json
 import logging
-from datetime import date, datetime, UTC
+from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID
 

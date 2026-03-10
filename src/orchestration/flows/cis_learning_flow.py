@@ -22,23 +22,22 @@ Imports: services, integrations
 Consumers: Prefect scheduler
 """
 
-from prefect import flow, task, get_run_logger
-from datetime import datetime
 import json
 import os
 
-from src.services.cis_outcome_service import (
-    get_outcomes_since_last_run,
-    count_meeting_booked_outcomes,
-    log_weight_adjustment,
-    get_propensity_weights,
-    save_propensity_weights,
-    log_cis_run_start,
-    log_cis_run_complete,
-)
+from prefect import flow, get_run_logger, task
+
 from src.integrations.sdk_brain import SiegeSDKIntelligence
 from src.integrations.supabase import get_db_session
-
+from src.services.cis_outcome_service import (
+    count_meeting_booked_outcomes,
+    get_outcomes_since_last_run,
+    get_propensity_weights,
+    log_cis_run_complete,
+    log_cis_run_start,
+    log_weight_adjustment,
+    save_propensity_weights,
+)
 
 CEO_MEMORY_WEIGHTS_KEY = "ceo:propensity_weights_v3"
 MIN_OUTCOMES_THRESHOLD = int(os.environ.get("CIS_MIN_OUTCOMES_THRESHOLD", "20"))

@@ -138,7 +138,7 @@ async def check_onboarding_gates(
     # Check LinkedIn seats - need at least one active connection
     linkedin_result = await db.execute(
         text("""
-            SELECT 
+            SELECT
                 COUNT(*) as seat_count,
                 MIN(created_at) as first_connected_at
             FROM linkedin_seats
@@ -156,7 +156,7 @@ async def check_onboarding_gates(
     # Check CRM configuration - need at least one active config
     crm_result = await db.execute(
         text("""
-            SELECT 
+            SELECT
                 crm_type,
                 created_at as connected_at
             FROM client_crm_configs

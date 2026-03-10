@@ -20,12 +20,12 @@ from uuid import UUID
 from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.base import Base, UUIDMixin
 
 if TYPE_CHECKING:
-    from src.models.lead_pool import LeadPool
+    pass
 
 
 class VoiceCallOutcome(StrEnum):

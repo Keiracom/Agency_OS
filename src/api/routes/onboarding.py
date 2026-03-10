@@ -20,7 +20,7 @@ ENDPOINTS:
 - PUT /api/v1/clients/{id}/icp - Update client ICP profile
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -207,6 +207,8 @@ async def check_onboarding_gates(
     """
     from src.services.onboarding_gate_service import (
         GATE_MESSAGES,
+    )
+    from src.services.onboarding_gate_service import (
         check_onboarding_gates as check_gates,
     )
 
@@ -264,9 +266,9 @@ async def enforce_onboarding_gates_endpoint(
     CRM: "Required — protects your existing clients from outreach and tracks booked meetings"
     """
     from src.services.onboarding_gate_service import (
-        CRMConnectionRequired,
         GATE_MESSAGES,
-        LinkedInConnectionRequired,
+    )
+    from src.services.onboarding_gate_service import (
         check_onboarding_gates as check_gates,
     )
 

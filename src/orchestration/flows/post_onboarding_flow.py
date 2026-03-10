@@ -412,7 +412,7 @@ async def post_onboarding_setup_flow(
         # Step 0: MANDATORY GATE CHECK - LinkedIn and CRM connections required
         async with get_db_session() as db:
             try:
-                gate_status = await enforce_onboarding_gates(db, client_id)
+                await enforce_onboarding_gates(db, client_id)
                 logger.info(f"Onboarding gates passed for client {client_id}")
             except LinkedInConnectionRequired as e:
                 logger.error(f"Post-onboarding blocked: {e.message}")

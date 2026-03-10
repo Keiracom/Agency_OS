@@ -278,7 +278,7 @@ class WaterfallV2:
     async def enrich_tier_1_25(self, lead: LeadRecord) -> LeadRecord:
         """
         Tier 1.25: ABR Entity Lookup - FREE - Get trading name for ABN-sourced leads.
-        
+
         Only runs for ABN-sourced leads. Maps SERP leads already have real names.
         SDK disambiguation used when ABR returns no trading name and legal name
         ends with "Pty Ltd" (indicates company, not trading name).
@@ -376,7 +376,7 @@ class WaterfallV2:
     async def _sdk_disambiguate_trading_name(self, lead: LeadRecord) -> str | None:
         """
         Use SDK to disambiguate trading name when ABR returns only legal name.
-        
+
         Cost: ~$0.01 per call (Haiku)
         Returns: Trading name string or None
         """
@@ -390,7 +390,7 @@ Legal Name: {lead.legal_name}
 State: {lead.state or 'Unknown'}
 Industry: {lead.category or lead.industry or 'Unknown'}
 
-Return ONLY the trading name, no explanation. 
+Return ONLY the trading name, no explanation.
 If the trading name is likely the same as the legal name (minus Pty Ltd suffix), return just the company name without the suffix.
 If truly unknown, return the legal name without the Pty Ltd suffix."""
 
@@ -417,7 +417,7 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
     def _validate_au_nz_headquarters(self, headquarters: str | None) -> tuple[bool, str]:
         """
         Validate that headquarters location is in Australia or New Zealand.
-        
+
         Returns:
             tuple[bool, str]: (is_valid, reason)
             - is_valid: True if AU/NZ location or empty (allow through)
@@ -425,9 +425,9 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
         """
         if not headquarters:
             return True, "empty_headquarters"
-        
+
         hq_lower = headquarters.lower()
-        
+
         # AU indicators (case-insensitive)
         au_indicators = [
             # Country
@@ -444,32 +444,32 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
             "canberra", "darwin", "hobart", "gold coast", "newcastle",
             "wollongong", "geelong", "townsville", "cairns",
         ]
-        
+
         # NZ indicators
         nz_indicators = [
             "new zealand", "auckland", "wellington", "christchurch",
             "hamilton", "tauranga", "dunedin",
         ]
-        
+
         # Check AU indicators
         for indicator in au_indicators:
             if indicator in hq_lower:
                 return True, f"au_match:{indicator}"
-        
+
         # Check for standalone "AU" (word boundary)
         import re
         if re.search(r'\bau\b', hq_lower):
             return True, "au_match:AU"
-        
-        # Check NZ indicators  
+
+        # Check NZ indicators
         for indicator in nz_indicators:
             if indicator in hq_lower:
                 return True, f"nz_match:{indicator}"
-        
+
         # Check for standalone "NZ" (word boundary)
         if re.search(r'\bnz\b', hq_lower):
             return True, "nz_match:NZ"
-        
+
         return False, f"no_au_nz_match:{headquarters}"
 
     async def enrich_tier_1_5a(self, lead: LeadRecord) -> LeadRecord:
@@ -600,7 +600,7 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
             if linkedin_data:
                 returned_location = linkedin_data.get("headquarters")
                 geo_valid, geo_reason = self._validate_au_nz_headquarters(returned_location)
-                
+
                 if not returned_location:
                     logger.warning(f"Tier 2 geo-validation: empty headquarters for {lead.id}, allowing through")
                     geo_validated = True  # Allow empty through
@@ -754,7 +754,7 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
     async def enrich_tier_2_5(self, lead: LeadRecord) -> LeadRecord:
         """
         Tier 2.5: LinkedIn People Profile - $0.0015 per profile - Only if ALS >= gate
-        
+
         Scrapes employee profiles from T2 to get real job titles, then filters for decision makers.
         BD company scraper returns employee NAME in 'title' field, not job title.
         This tier scrapes each profile to extract actual title for DM filtering.
@@ -793,7 +793,7 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
                 profile_url = emp.get("link")
                 if profile_url:
                     profile_data = await self.bd.scrape_linkedin_profile(profile_url)
-                    
+
                     # FIX B: Defensive check - BD sometimes returns string errors
                     if not isinstance(profile_data, dict):
                         logger.warning(
@@ -802,7 +802,7 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
                             value=str(profile_data)[:100]
                         )
                         continue
-                    
+
                     if profile_data:
                         # FIX A: Extract job title - BD returns "position" as STRING
                         # Defensive chain tries all likely field names
@@ -812,18 +812,18 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
                             or profile_data.get("title")  # Fallback: title
                             or profile_data.get("occupation")  # Fallback: occupation
                         )
-                        
+
                         # If position is a list (legacy/edge case), extract from first item
                         if isinstance(job_title, list) and job_title:
                             first_pos = job_title[0]
                             job_title = first_pos.get("title") if isinstance(first_pos, dict) else None
-                        
+
                         # Last resort: parse from about/summary
                         if not job_title:
                             about = profile_data.get("about") or profile_data.get("summary") or ""
                             if about:
                                 job_title = about.split("\n")[0][:100]  # First line, truncated
-                        
+
                         # FIX C: Debug log showing extracted title
                         logger.debug(
                             "tier_2_5_title_extracted",
@@ -831,7 +831,7 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
                             job_title=job_title,
                             source_field="position" if profile_data.get("position") else "fallback"
                         )
-                        
+
                         profile_info = {
                             "first_name": profile_data.get("first_name"),
                             "last_name": profile_data.get("last_name"),
@@ -841,14 +841,14 @@ If truly unknown, return the legal name without the Pty Ltd suffix."""
                             "about": profile_data.get("about"),
                             "position": profile_data.get("position"),  # Keep original for reference
                         }
-                        
+
                         scraped_profiles.append(profile_info)
-                        
+
                         # Check if decision maker
                         title = (profile_info.get("title") or "").lower()
                         if any(kw in title for kw in dm_keywords):
                             decision_makers.append(profile_info)
-                        
+
                         lead.cost_aud += self.COSTS["linkedin_people"]
 
             # Store decision makers, or best profile if none found

@@ -41,7 +41,7 @@ DIRECTIVE-167:
 """
 
 import logging
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -53,6 +53,7 @@ from src.engines.base import EngineResult, OutreachEngine
 logger = logging.getLogger(__name__)
 from src.engines.content_utils import build_sms_snapshot
 from src.exceptions import DNCRError, ResourceRateLimitError
+
 # SMS provider removed per Directive #167. SMS to be rewired to Telnyx (P3).
 # SMS provider removed per Directive #167. Rewire to Telnyx (P3).
 from src.integrations.redis import rate_limiter

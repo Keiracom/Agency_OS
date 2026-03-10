@@ -26,7 +26,7 @@ ENDPOINTS:
 import json
 import logging
 import secrets
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status

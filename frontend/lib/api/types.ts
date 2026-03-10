@@ -169,6 +169,7 @@ export interface Lead {
   // ALS Score
   propensity_score: number | null;
   propensity_tier: ALSTier | null;
+  als_tier?: ALSTier | null;
   als_data_quality: number | null;
   als_authority: number | null;
   als_company_fit: number | null;

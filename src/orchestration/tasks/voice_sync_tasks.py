@@ -19,15 +19,13 @@ channel activities for learning and pattern detection.
 """
 
 import logging
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Any
-from uuid import UUID
 
 from prefect import flow, get_run_logger, task
 from sqlalchemy import text
 
 from src.integrations.supabase import get_db_session
-from src.models.base import ChannelType
 
 logger = logging.getLogger(__name__)
 
@@ -443,8 +441,7 @@ async def backfill_voice_activities_task(
         "batches": 0,
     }
 
-    cutoff_time = datetime.now(UTC) - timedelta(days=days_back)
-    offset = 0
+    datetime.now(UTC) - timedelta(days=days_back)
 
     while True:
         batch_results = await sync_voice_calls_to_activities_task.fn(

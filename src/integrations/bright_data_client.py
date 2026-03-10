@@ -524,7 +524,7 @@ class BrightDataClient:
         Returns:
             List of posts from the last N days
         """
-        from datetime import datetime, timedelta, UTC
+        from datetime import UTC, datetime, timedelta
 
         results = await self._scraper_request(
             DATASET_IDS["linkedin_people"],
@@ -580,7 +580,7 @@ class BrightDataClient:
         Returns:
             List of tweets/posts from the last N days
         """
-        from datetime import datetime, timedelta, UTC
+        from datetime import UTC, datetime, timedelta
 
         # Normalize handle
         handle = x_handle.lstrip("@")

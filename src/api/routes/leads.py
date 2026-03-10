@@ -16,7 +16,7 @@ RULES APPLIED:
   - ALS score and tier in responses
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 

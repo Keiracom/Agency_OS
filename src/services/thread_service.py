@@ -18,7 +18,7 @@ This service manages conversation threads between the platform
 and leads, tracking messages, sentiment, objections, and outcomes.
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 

@@ -17,6 +17,7 @@ RULES APPLIED:
 """
 
 from src.orchestration.flows.campaign_flow import campaign_activation_flow
+from src.orchestration.flows.cis_learning_flow import cis_learning_flow
 from src.orchestration.flows.daily_digest_flow import (
     daily_digest_flow,
     send_client_digest_flow,
@@ -47,7 +48,6 @@ from src.orchestration.flows.stale_lead_refresh_flow import (
 )
 from src.orchestration.flows.voice_flow import voice_outreach_flow
 from src.orchestration.flows.warmup_monitor_flow import warmup_monitor_flow
-from src.orchestration.flows.cis_learning_flow import cis_learning_flow
 
 __all__ = [
     # Core flows

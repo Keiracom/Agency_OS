@@ -16,7 +16,6 @@ from prefect.server.schemas.schedules import CronSchedule
 
 from src.orchestration.flows.cis_learning_flow import cis_learning_flow
 
-
 # Weekly deployment - runs every Sunday at 3 AM UTC
 cis_weekly_deployment = Deployment.build_from_flow(
     flow=cis_learning_flow,

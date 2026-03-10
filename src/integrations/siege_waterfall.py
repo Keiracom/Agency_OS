@@ -694,7 +694,7 @@ class SiegeWaterfall:
         field_conflicts: list[dict[str, Any]] = []
 
         # Current propensity score (may be passed in or calculated)
-        current_propensity = lead.get("propensity_score", 0)
+        lead.get("propensity_score", 0)
 
         # ===== TIER 1: ABN Bulk =====
         if EnrichmentTier.ABN not in skip_tiers:
@@ -2264,7 +2264,7 @@ class SiegeWaterfall:
             TierResult with mobile/identity data
         """
         tier = EnrichmentTier.IDENTITY
-        cost = TIER_COSTS_AUD[tier]
+        TIER_COSTS_AUD[tier]
 
         # Gate: Only if mobile channel is needed for outreach
         if not needs_mobile_channel:
@@ -2691,10 +2691,7 @@ class SiegeWaterfall:
         # Check constraints
         if min_size is not None and upper_bound < min_size:
             return False
-        if max_size is not None and upper_bound > max_size:
-            return False
-
-        return True
+        return not (max_size is not None and upper_bound > max_size)
 
     def _calculate_als(self, lead: dict[str, Any]) -> int:
         """

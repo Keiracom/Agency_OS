@@ -1100,13 +1100,13 @@ Return ONLY the category name. Nothing else."""
         # Segment outcomes by type
         meeting_outcomes = [o for o in outcomes if o.get("outcome_type") == "booked"]
         non_converting = [o for o in outcomes if o.get("outcome_type") in ("no_response", "bounced")]
-        
+
         # Gap 2 fix (Directive #157): Include negative signals for CIS learning
         # These indicate what NOT to do and should inform weight DECREASES
         data_quality_failures = [o for o in outcomes if o.get("final_outcome") == "data_quality_failure"]
         targeting_failures = [o for o in outcomes if o.get("final_outcome") == "targeting_failure"]
         soft_rejections = [o for o in outcomes if o.get("final_outcome") == "soft_rejection"]
-        
+
         # Total negative signals for analysis
         total_negative = len(data_quality_failures) + len(targeting_failures) + len(soft_rejections)
 

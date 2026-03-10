@@ -16,13 +16,12 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import date, datetime, time, UTC
+from datetime import UTC, date, datetime, time
 from typing import Annotated
-
-from prefect.deployments import run_deployment
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from prefect.deployments import run_deployment
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import and_, desc, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession

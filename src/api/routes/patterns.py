@@ -23,7 +23,7 @@ API Endpoints:
   POST /patterns/trigger - Trigger pattern learning (admin)
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Annotated, Any
 from uuid import UUID
 

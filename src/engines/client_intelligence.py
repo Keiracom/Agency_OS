@@ -8,7 +8,7 @@ Consumers: orchestration only
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID

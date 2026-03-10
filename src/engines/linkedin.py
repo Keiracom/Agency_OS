@@ -45,7 +45,7 @@ PROFILE VIEW DELAY (Gap #19):
 
 import logging
 import random
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 

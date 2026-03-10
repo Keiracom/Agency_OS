@@ -17,7 +17,7 @@ and lead status is 'converted', or from extra_data containing meeting info.
 """
 
 import contextlib
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 

@@ -18,14 +18,11 @@ Provides data access functions for:
 """
 
 import logging
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Any
-from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from src.integrations.supabase import get_db_session
 
 logger = logging.getLogger(__name__)
 
@@ -382,13 +379,13 @@ async def save_propensity_weights(
             RETURNING key
         """)
 
-        result = await db.execute(query, {
+        await db.execute(query, {
             "value": json.dumps(weights),
         })
 
         await db.commit()
 
-        logger.info(f"CIS: Saved updated propensity weights")
+        logger.info("CIS: Saved updated propensity weights")
         return {"success": True}
 
     except Exception as e:

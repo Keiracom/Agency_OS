@@ -12,7 +12,7 @@ RULES APPLIED:
   - Rule 12: No imports from engines/integrations/orchestration
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 

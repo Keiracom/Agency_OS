@@ -21,7 +21,7 @@ Also pushes meetings to client's CRM when booked (Phase 24E-CRM).
 """
 
 import logging
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 

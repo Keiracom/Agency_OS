@@ -443,9 +443,7 @@ class MockCRMService:
 
         await db.commit()
 
-        logger.info(
-            f"Cleared mock CRM data: {exclusion_deleted} exclusions, {leads_deleted} leads"
-        )
+        logger.info(f"Cleared mock CRM data: {exclusion_deleted} exclusions, {leads_deleted} leads")
 
         return {
             "status": "cleared",

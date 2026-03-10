@@ -151,9 +151,7 @@ async def apply_weight_deltas(
             # Cap delta at ±5
             capped_delta = max(-MAX_DELTA_PER_RUN, min(MAX_DELTA_PER_RUN, delta))
             if capped_delta != delta:
-                logger.info(
-                    f"Capped {signal_name} delta: {delta} → {capped_delta}"
-                )
+                logger.info(f"Capped {signal_name} delta: {delta} → {capped_delta}")
 
             # Calculate new weight
             weight_after = weight_before + capped_delta
@@ -303,8 +301,10 @@ async def cis_learning_flow(
 
     # Step 3: Get current weights
     current_weights = await get_current_weights()
-    logger.info(f"✓ Loaded current weights: {len(current_weights.get('weights', {}))} positive, "
-                f"{len(current_weights.get('negative', {}))} negative signals")
+    logger.info(
+        f"✓ Loaded current weights: {len(current_weights.get('weights', {}))} positive, "
+        f"{len(current_weights.get('negative', {}))} negative signals"
+    )
 
     # Step 4: Claude analysis
     logger.info("🔍 Running Claude analysis...")
@@ -343,8 +343,7 @@ async def cis_learning_flow(
 
         # Count applied adjustments (those that passed confidence threshold)
         adjustments_applied = sum(
-            1 for adj in adjustments.values()
-            if adj.get("confidence", 0) >= 0.7
+            1 for adj in adjustments.values() if adj.get("confidence", 0) >= 0.7
         )
 
         # Step 6: Save updated weights
@@ -414,4 +413,5 @@ async def run_cis_manually(customer_id: str | None = None):
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(run_cis_manually())

@@ -500,9 +500,7 @@ async def handle_call_failed(
     parsed = client.parse_webhook(payload)
 
     error_reason = payload.get("error", "unknown")
-    logger.warning(
-        f"ElevenAgents call failed: call_id={parsed.call_id}, reason={error_reason}"
-    )
+    logger.warning(f"ElevenAgents call failed: call_id={parsed.call_id}, reason={error_reason}")
 
     if not parsed.call_id:
         raise HTTPException(status_code=400, detail="Missing call_id")

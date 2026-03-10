@@ -162,7 +162,9 @@ class OnboardingGateResponse(BaseModel):
     linkedin_seat_count: int = Field(0, description="Number of active LinkedIn seats")
     crm_connected: bool = Field(description="Whether CRM is connected")
     crm_connected_at: datetime | None = Field(None, description="When CRM was connected")
-    crm_type: str | None = Field(None, description="Type of CRM connected (hubspot, pipedrive, close)")
+    crm_type: str | None = Field(
+        None, description="Type of CRM connected (hubspot, pipedrive, close)"
+    )
     can_proceed: bool = Field(description="Whether both gates pass and onboarding can proceed")
     missing_gates: list[str] = Field(default_factory=list, description="List of missing gates")
     gate_messages: dict[str, dict[str, str]] = Field(

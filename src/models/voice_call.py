@@ -120,9 +120,7 @@ class VoiceCall(Base, UUIDMixin):
     # ===== COMPLIANCE =====
     compliance_dncr_checked_at: Mapped[datetime | None] = mapped_column(nullable=True)
     compliance_hours_valid: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-    recording_disclosure_delivered: Mapped[bool | None] = mapped_column(
-        Boolean, nullable=True
-    )
+    recording_disclosure_delivered: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
     # ===== WEBHOOK EVENT TRACKING (CIS Gap 1) =====
     event_type: Mapped[str | None] = mapped_column(
@@ -152,7 +150,9 @@ class VoiceCall(Base, UUIDMixin):
     # lead: Mapped["LeadPool"] = relationship(back_populates="voice_calls")
 
     def __repr__(self) -> str:
-        return f"<VoiceCall(id={self.id}, outcome={self.outcome}, duration={self.duration_seconds}s)>"
+        return (
+            f"<VoiceCall(id={self.id}, outcome={self.outcome}, duration={self.duration_seconds}s)>"
+        )
 
     @property
     def is_positive_outcome(self) -> bool:

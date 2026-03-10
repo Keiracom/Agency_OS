@@ -448,7 +448,8 @@ class EmailEngine(OutreachEngine):
 
             # Filter out already-extracted keys to avoid duplicate kwargs
             extra_kwargs = {
-                k: v for k, v in email_config.items()
+                k: v
+                for k, v in email_config.items()
                 if k not in ("lead_id", "campaign_id", "content")
             }
             result = await self.validate_and_send(
@@ -644,6 +645,7 @@ class EmailEngine(OutreachEngine):
         if action == "sent":
             try:
                 from src.services.cis_service import get_cis_service
+
                 cis_service = get_cis_service(db)
                 await cis_service.record_outreach_outcome(
                     activity_id=activity.id,

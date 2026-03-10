@@ -248,9 +248,7 @@ async def sync_voice_calls_to_activities_task(
                     results["synced"] += 1
 
                 except Exception as e:
-                    run_logger.error(
-                        f"Error syncing voice_call {row.voice_call_id}: {e}"
-                    )
+                    run_logger.error(f"Error syncing voice_call {row.voice_call_id}: {e}")
                     results["errors"] += 1
 
             await db.commit()

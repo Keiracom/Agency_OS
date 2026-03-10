@@ -325,11 +325,14 @@ async def start_hubspot_oauth(
 
     # Generate state for CSRF protection
     state = secrets.token_urlsafe(32)
-    await _store_oauth_state(state, {
-        "client_id": str(client_id),
-        "user_id": str(user.id),
-        "created_at": datetime.now(UTC).isoformat(),
-    })
+    await _store_oauth_state(
+        state,
+        {
+            "client_id": str(client_id),
+            "user_id": str(user.id),
+            "created_at": datetime.now(UTC).isoformat(),
+        },
+    )
 
     # Build OAuth URL
     crm_service = CRMPushService(db)
@@ -414,12 +417,15 @@ async def start_ghl_oauth(
 
     # Generate state for CSRF protection
     state = secrets.token_urlsafe(32)
-    await _store_oauth_state(state, {
-        "client_id": str(client_id),
-        "user_id": str(user.id),
-        "crm_type": "gohighlevel",
-        "created_at": datetime.now(UTC).isoformat(),
-    })
+    await _store_oauth_state(
+        state,
+        {
+            "client_id": str(client_id),
+            "user_id": str(user.id),
+            "crm_type": "gohighlevel",
+            "created_at": datetime.now(UTC).isoformat(),
+        },
+    )
 
     # Build OAuth URL
     crm_service = CRMPushService(db)
@@ -461,6 +467,7 @@ async def ghl_oauth_callback(
         # Calculate token expiration (GHL tokens expire in ~24 hours)
         expires_in = tokens.get("expires_in", 86400)
         from datetime import timedelta
+
         expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
 
         # Save config

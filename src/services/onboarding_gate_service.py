@@ -151,7 +151,9 @@ async def check_onboarding_gates(
     linkedin_row = linkedin_result.fetchone()
     linkedin_seat_count = linkedin_row.seat_count if linkedin_row else 0
     linkedin_connected = linkedin_seat_count > 0
-    linkedin_connected_at = linkedin_row.first_connected_at if linkedin_row and linkedin_connected else None
+    linkedin_connected_at = (
+        linkedin_row.first_connected_at if linkedin_row and linkedin_connected else None
+    )
 
     # Check CRM configuration - need at least one active config
     crm_result = await db.execute(

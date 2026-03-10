@@ -142,7 +142,9 @@ class EnrichmentTier(StrEnum):
     # Decision Maker tiers
     DM_DATAFORSEO = "tier_dm0_dataforseo"  # T-DM0: DataForSEO 5 endpoints ($0.0465)
     DM_LINKEDIN_PROFILE = "tier_dm1_linkedin_profile"  # T-DM1: BD LinkedIn Profile ($0.0015)
-    DM_LINKEDIN_POSTS = "tier_dm2_linkedin_posts"  # T-DM2: BD LinkedIn Posts 90d ($0.0015, Prop ≥70)
+    DM_LINKEDIN_POSTS = (
+        "tier_dm2_linkedin_posts"  # T-DM2: BD LinkedIn Posts 90d ($0.0015, Prop ≥70)
+    )
     DM_COMPANY_POSTS = "tier_dm2b_company_posts"  # T-DM2b: Company LI posts (FREE from T1.5)
     DM_X_POSTS = "tier_dm3_x_posts"  # T-DM3: BD X Posts 90d ($0.0025, Prop ≥70)
 
@@ -616,6 +618,7 @@ class SiegeWaterfall:
         else:
             try:
                 from src.integrations.bright_data_client import get_bright_data_client
+
                 self.bright_data_client = get_bright_data_client()
             except Exception as e:
                 logger.warning(f"[Siege] Bright Data client unavailable: {e}")
@@ -702,8 +705,7 @@ class SiegeWaterfall:
             tier_results.append(result)
             if result.success:
                 enriched_data = self._merge_data(
-                    enriched_data, result.data,
-                    source=result.tier.value, conflicts=field_conflicts
+                    enriched_data, result.data, source=result.tier.value, conflicts=field_conflicts
                 )
                 total_cost_aud += result.cost_aud
         else:
@@ -724,8 +726,10 @@ class SiegeWaterfall:
             url_result = await self.resolve_linkedin_url(enriched_data)
             if url_result.success:
                 enriched_data = self._merge_data(
-                    enriched_data, url_result.data,
-                    source="linkedin_url_resolution", conflicts=field_conflicts
+                    enriched_data,
+                    url_result.data,
+                    source="linkedin_url_resolution",
+                    conflicts=field_conflicts,
                 )
                 total_cost_aud += url_result.cost_aud
             elif url_result.data.get("linkedin_url_unknown"):
@@ -739,8 +743,7 @@ class SiegeWaterfall:
             tier_results.append(result)
             if result.success:
                 enriched_data = self._merge_data(
-                    enriched_data, result.data,
-                    source=result.tier.value, conflicts=field_conflicts
+                    enriched_data, result.data, source=result.tier.value, conflicts=field_conflicts
                 )
                 total_cost_aud += result.cost_aud
         else:
@@ -767,9 +770,7 @@ class SiegeWaterfall:
         if enriched_data.get("linkedin_url_unknown"):
             enriched_data["size_gate_skipped"] = True
             enriched_data["size_gate_skip_reason"] = "LinkedIn URL not found via SERP"
-            logger.info(
-                "[SIZE_GATE] Skipping size gate - LinkedIn URL not found (Directive #148)"
-            )
+            logger.info("[SIZE_GATE] Skipping size gate - LinkedIn URL not found (Directive #148)")
             # Continue to other tiers without employee count filtering
         elif not employee_count:
             # HELD: T1.5 ran (we had LinkedIn URL) but no size data
@@ -828,13 +829,17 @@ class SiegeWaterfall:
                     )
                 )
                 enriched_data["status"] = "HELD"
-                enriched_data["hold_reason"] = f"Company size {employee_count} outside campaign range"
-                logger.info(f"[SIZE_GATE] Lead HELD - size {employee_count} outside {icp_size_min}-{icp_size_max}")
+                enriched_data["hold_reason"] = (
+                    f"Company size {employee_count} outside campaign range"
+                )
+                logger.info(
+                    f"[SIZE_GATE] Lead HELD - size {employee_count} outside {icp_size_min}-{icp_size_max}"
+                )
                 # Return early - do not fire deeper tiers
                 # CEO Directive #149: Include field conflicts in early return lineage
                 size_gate_lineage = [
                     {
-                        "tier": r.tier.value if hasattr(r.tier, 'value') else str(r.tier),
+                        "tier": r.tier.value if hasattr(r.tier, "value") else str(r.tier),
                         "success": r.success,
                         "skipped": r.skipped,
                         "skip_reason": r.skip_reason,
@@ -864,15 +869,17 @@ class SiegeWaterfall:
         # CEO Directive: T0/T2 GMB Merge - Skip T2 if T0 discovery already has GMB data
         # In Siege Waterfall v3, GMB-first discovery (T0) returns all GMB fields.
         # T2 enrichment is redundant — saves $0.001/lead with zero data loss.
-        has_gmb_from_t0 = any([
-            enriched_data.get("gmb_rating"),
-            enriched_data.get("gmb_review_count"),
-            enriched_data.get("gmb_category"),
-            enriched_data.get("gmb_address"),
-            enriched_data.get("gmb_phone"),
-            enriched_data.get("gmb_website"),
-            enriched_data.get("gmb_data"),  # Alternative: nested GMB object from T0
-        ])
+        has_gmb_from_t0 = any(
+            [
+                enriched_data.get("gmb_rating"),
+                enriched_data.get("gmb_review_count"),
+                enriched_data.get("gmb_category"),
+                enriched_data.get("gmb_address"),
+                enriched_data.get("gmb_phone"),
+                enriched_data.get("gmb_website"),
+                enriched_data.get("gmb_data"),  # Alternative: nested GMB object from T0
+            ]
+        )
 
         if EnrichmentTier.GMB not in skip_tiers:
             if has_gmb_from_t0:
@@ -892,8 +899,10 @@ class SiegeWaterfall:
                 tier_results.append(result)
                 if result.success:
                     enriched_data = self._merge_data(
-                        enriched_data, result.data,
-                        source=result.tier.value, conflicts=field_conflicts
+                        enriched_data,
+                        result.data,
+                        source=result.tier.value,
+                        conflicts=field_conflicts,
                     )
                     total_cost_aud += result.cost_aud
         else:
@@ -916,8 +925,10 @@ class SiegeWaterfall:
                 tier_results.append(result)
                 if result.success:
                     enriched_data = self._merge_data(
-                        enriched_data, result.data,
-                        source=result.tier.value, conflicts=field_conflicts
+                        enriched_data,
+                        result.data,
+                        source=result.tier.value,
+                        conflicts=field_conflicts,
                     )
                     total_cost_aud += result.cost_aud
             else:
@@ -949,8 +960,10 @@ class SiegeWaterfall:
                 tier_results.append(result)
                 if result.success:
                     enriched_data = self._merge_data(
-                        enriched_data, result.data,
-                        source=result.tier.value, conflicts=field_conflicts
+                        enriched_data,
+                        result.data,
+                        source=result.tier.value,
+                        conflicts=field_conflicts,
                     )
                     total_cost_aud += result.cost_aud
             else:
@@ -982,7 +995,9 @@ class SiegeWaterfall:
             final_propensity = self._calculate_als(enriched_data) + als_bonus_amount
             enriched_data["propensity_score"] = min(final_propensity, 100)  # Cap at 100
             enriched_data["als_bonus_sources"] = sources_used
-            logger.info(f"[Siege] +{als_bonus_amount} propensity bonus applied ({sources_used} sources)")
+            logger.info(
+                f"[Siege] +{als_bonus_amount} propensity bonus applied ({sources_used} sources)"
+            )
 
         # ===== Build Lineage =====
         enrichment_lineage = [
@@ -1164,7 +1179,10 @@ class SiegeWaterfall:
 
         if not self.bright_data_client:
             return TierResult(
-                tier=tier, success=False, skipped=True, skip_reason="Bright Data client not configured"
+                tier=tier,
+                success=False,
+                skipped=True,
+                skip_reason="Bright Data client not configured",
             )
 
         try:
@@ -1924,7 +1942,9 @@ class SiegeWaterfall:
                     data={
                         "gmb_reviews": reviews,
                         "gmb_reviews_count": len(reviews),
-                        "gmb_avg_rating": sum(r.get("rating", 0) for r in reviews) / len(reviews) if reviews else 0,
+                        "gmb_avg_rating": sum(r.get("rating", 0) for r in reviews) / len(reviews)
+                        if reviews
+                        else 0,
                     },
                     cost_aud=cost,
                 )
@@ -2352,7 +2372,9 @@ class SiegeWaterfall:
             )
 
             if enriched.get("found"):
-                logger.info(f"[Siege] Tier 5 Identity Gold success for reachability={reachability_score} lead")
+                logger.info(
+                    f"[Siege] Tier 5 Identity Gold success for reachability={reachability_score} lead"
+                )
                 # CEO Directive #057: LinkedIn is the primary source for Leadmagic mobile
                 identity_source_url = linkedin_url or enriched.get("linkedin_url")
 
@@ -2602,15 +2624,17 @@ class SiegeWaterfall:
                 if values_differ:
                     # Log conflict to enrichment_lineage
                     if conflicts is not None:
-                        conflicts.append({
-                            "type": "field_conflict",
-                            "field": key,
-                            "existing_value": existing_raw,
-                            "existing_source": existing_source,
-                            "new_value": raw_value,
-                            "new_source": value_source,
-                            "resolution": "last_write_wins",
-                        })
+                        conflicts.append(
+                            {
+                                "type": "field_conflict",
+                                "field": key,
+                                "existing_value": existing_raw,
+                                "existing_source": existing_source,
+                                "new_value": raw_value,
+                                "new_source": value_source,
+                                "resolution": "last_write_wins",
+                            }
+                        )
                     logger.debug(
                         f"[Siege] Field conflict on '{key}': "
                         f"'{existing_source}' -> '{value_source}' (last-write-wins)"

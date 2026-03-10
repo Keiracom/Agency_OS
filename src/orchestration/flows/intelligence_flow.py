@@ -98,7 +98,15 @@ async def get_hot_leads_needing_research_task(
         rows = result.all()
 
         leads_data = []
-        for lead_id, client_id_val, propensity_score, first_name, last_name, linkedin_url, credits in rows:
+        for (
+            lead_id,
+            client_id_val,
+            propensity_score,
+            first_name,
+            last_name,
+            linkedin_url,
+            credits,
+        ) in rows:
             leads_data.append(
                 {
                     "lead_id": str(lead_id),

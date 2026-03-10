@@ -120,23 +120,27 @@ async def get_outcomes_since_last_run(
 
         outcomes = []
         for row in rows:
-            outcomes.append({
-                "id": str(row.id),
-                "activity_id": str(row.activity_id) if row.activity_id else None,
-                "lead_id": str(row.lead_id) if row.lead_id else None,
-                "client_id": str(row.client_id) if row.client_id else None,
-                "channel": row.channel,
-                "propensity_at_send": row.propensity_at_send,
-                "tier_at_send": row.tier_at_send,
-                "final_outcome": row.final_outcome,
-                "outcome_type": row.outcome_type,
-                "sent_at": row.sent_at.isoformat() if row.sent_at else None,
-                "signals_active": row.signals_active or [],
-                # Gap 2: Include negative signal timestamps
-                "bounced_at": row.bounced_at.isoformat() if row.bounced_at else None,
-                "complained_at": row.complained_at.isoformat() if row.complained_at else None,
-                "unsubscribed_at": row.unsubscribed_at.isoformat() if row.unsubscribed_at else None,
-            })
+            outcomes.append(
+                {
+                    "id": str(row.id),
+                    "activity_id": str(row.activity_id) if row.activity_id else None,
+                    "lead_id": str(row.lead_id) if row.lead_id else None,
+                    "client_id": str(row.client_id) if row.client_id else None,
+                    "channel": row.channel,
+                    "propensity_at_send": row.propensity_at_send,
+                    "tier_at_send": row.tier_at_send,
+                    "final_outcome": row.final_outcome,
+                    "outcome_type": row.outcome_type,
+                    "sent_at": row.sent_at.isoformat() if row.sent_at else None,
+                    "signals_active": row.signals_active or [],
+                    # Gap 2: Include negative signal timestamps
+                    "bounced_at": row.bounced_at.isoformat() if row.bounced_at else None,
+                    "complained_at": row.complained_at.isoformat() if row.complained_at else None,
+                    "unsubscribed_at": row.unsubscribed_at.isoformat()
+                    if row.unsubscribed_at
+                    else None,
+                }
+            )
 
         logger.info(f"CIS: Queried {len(outcomes)} outcomes since {since_date}")
         return outcomes
@@ -261,18 +265,21 @@ async def log_weight_adjustment(
             RETURNING id
         """)
 
-        result = await db.execute(query, {
-            "customer_id": customer_id,
-            "signal_name": signal_name,
-            "weight_before": weight_before,
-            "delta_applied": delta_applied,
-            "weight_after": weight_after,
-            "confidence_score": confidence_score,
-            "outcome_sample_size": outcome_sample_size,
-            "skipped": skipped,
-            "skip_reason": skip_reason,
-            "run_id": run_id,
-        })
+        result = await db.execute(
+            query,
+            {
+                "customer_id": customer_id,
+                "signal_name": signal_name,
+                "weight_before": weight_before,
+                "delta_applied": delta_applied,
+                "weight_after": weight_after,
+                "confidence_score": confidence_score,
+                "outcome_sample_size": outcome_sample_size,
+                "skipped": skipped,
+                "skip_reason": skip_reason,
+                "run_id": run_id,
+            },
+        )
 
         row = result.fetchone()
         await db.commit()
@@ -280,8 +287,7 @@ async def log_weight_adjustment(
         log_id = str(row.id) if row else None
         action = "skipped" if skipped else "applied"
         logger.info(
-            f"CIS: Logged adjustment for {signal_name}: "
-            f"{weight_before} → {weight_after} ({action})"
+            f"CIS: Logged adjustment for {signal_name}: {weight_before} → {weight_after} ({action})"
         )
 
         return {"success": True, "log_id": log_id}
@@ -320,8 +326,11 @@ async def get_propensity_weights(db: AsyncSession) -> dict:
 
         if row and row.value:
             import json
+
             weights = json.loads(row.value) if isinstance(row.value, str) else row.value
-            logger.info(f"CIS: Loaded propensity weights: {len(weights.get('weights', {}))} signals")
+            logger.info(
+                f"CIS: Loaded propensity weights: {len(weights.get('weights', {}))} signals"
+            )
             return weights
 
         # Return default weights if not found
@@ -379,9 +388,12 @@ async def save_propensity_weights(
             RETURNING key
         """)
 
-        await db.execute(query, {
-            "value": json.dumps(weights),
-        })
+        await db.execute(
+            query,
+            {
+                "value": json.dumps(weights),
+            },
+        )
 
         await db.commit()
 
@@ -432,10 +444,13 @@ async def log_cis_run_start(
             RETURNING id
         """)
 
-        result = await db.execute(query, {
-            "run_type": run_type,
-            "customer_id": customer_id,
-        })
+        result = await db.execute(
+            query,
+            {
+                "run_type": run_type,
+                "customer_id": customer_id,
+            },
+        )
 
         row = result.fetchone()
         await db.commit()
@@ -483,13 +498,16 @@ async def log_cis_run_complete(
             WHERE id = :run_id
         """)
 
-        await db.execute(query, {
-            "run_id": run_id,
-            "status": status,
-            "outcomes_analyzed": outcomes_analyzed,
-            "adjustments_applied": adjustments_applied,
-            "summary": summary,
-        })
+        await db.execute(
+            query,
+            {
+                "run_id": run_id,
+                "status": status,
+                "outcomes_analyzed": outcomes_analyzed,
+                "adjustments_applied": adjustments_applied,
+                "summary": summary,
+            },
+        )
 
         await db.commit()
 
@@ -701,15 +719,18 @@ async def record_timing_signal(
             )
         """)
 
-        await db.execute(query, {
-            "industry": industry,
-            "channel": channel,
-            "company_size": company_size,
-            "day_of_week": day_of_week,
-            "hour_of_day": hour_of_day,
-            "touch_number": touch_number,
-            "is_conversion": is_conversion,
-        })
+        await db.execute(
+            query,
+            {
+                "industry": industry,
+                "channel": channel,
+                "company_size": company_size,
+                "day_of_week": day_of_week,
+                "hour_of_day": hour_of_day,
+                "touch_number": touch_number,
+                "is_conversion": is_conversion,
+            },
+        )
 
         await db.commit()
 
@@ -796,28 +817,33 @@ async def get_timing_insights(
             SELECT * FROM get_timing_insights(:industry, :channel, :company_size)
         """)
 
-        result = await db.execute(query, {
-            "industry": industry.lower().strip(),
-            "channel": channel.lower().strip() if channel else None,
-            "company_size": company_size,
-        })
+        result = await db.execute(
+            query,
+            {
+                "industry": industry.lower().strip(),
+                "channel": channel.lower().strip() if channel else None,
+                "company_size": company_size,
+            },
+        )
 
         rows = result.fetchall()
         insights = []
 
         for row in rows:
-            insights.append({
-                "industry": row.industry,
-                "channel": row.channel,
-                "company_size": row.company_size,
-                "best_day": row.best_day,
-                "best_hour": row.best_hour,
-                "best_touchpoint": row.best_touchpoint,
-                "avg_touchpoint": float(row.avg_touchpoint) if row.avg_touchpoint else None,
-                "conversion_rate": float(row.conversion_rate) if row.conversion_rate else None,
-                "total_conversions": row.total_conversions,
-                "confidence": row.confidence,
-            })
+            insights.append(
+                {
+                    "industry": row.industry,
+                    "channel": row.channel,
+                    "company_size": row.company_size,
+                    "best_day": row.best_day,
+                    "best_hour": row.best_hour,
+                    "best_touchpoint": row.best_touchpoint,
+                    "avg_touchpoint": float(row.avg_touchpoint) if row.avg_touchpoint else None,
+                    "conversion_rate": float(row.conversion_rate) if row.conversion_rate else None,
+                    "total_conversions": row.total_conversions,
+                    "confidence": row.confidence,
+                }
+            )
 
         logger.info(f"CIS Timing: Found {len(insights)} insights for {industry}")
         return insights

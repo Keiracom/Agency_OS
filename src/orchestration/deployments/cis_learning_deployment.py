@@ -69,4 +69,6 @@ if __name__ == "__main__":
     print("\nDeployment commands:")
     print("  Run weekly:  prefect deployment run 'cis-learning-engine/cis-weekly'")
     print("  Run manual:  prefect deployment run 'cis-learning-engine/cis-manual'")
-    print("  With customer: prefect deployment run 'cis-learning-engine/cis-manual' -p customer_id=<uuid>")
+    print(
+        "  With customer: prefect deployment run 'cis-learning-engine/cis-manual' -p customer_id=<uuid>"
+    )

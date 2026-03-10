@@ -509,7 +509,8 @@ async def trigger_replacement_discovery_task(
             # Build discovery config from ICP
             discovery_config = CampaignConfig(
                 mode=DiscoveryMode.GMB_FIRST,
-                industry=icp_config.get("industry") or icp_config.get("search_queries", ["business"])[0],
+                industry=icp_config.get("industry")
+                or icp_config.get("search_queries", ["business"])[0],
                 location=icp_config.get("location", "Australia"),
                 state=icp_config.get("state"),
                 max_results=count_needed * 2,  # Get 2x to account for filtering

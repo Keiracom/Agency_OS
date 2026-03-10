@@ -1192,6 +1192,7 @@ class LinkedInEngine(OutreachEngine):
         if action == "sent":
             try:
                 from src.services.cis_service import get_cis_service
+
                 cis_service = get_cis_service(db)
                 await cis_service.record_outreach_outcome(
                     activity_id=activity.id,

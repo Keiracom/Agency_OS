@@ -754,7 +754,9 @@ class SiegeSDKIntelligence:
         if not gmb_results:
             return ""
 
-        brain = SDKBrain(config=self._sonnet_config, api_key=self._api_key, spend_tracker=self._spend_tracker)
+        brain = SDKBrain(
+            config=self._sonnet_config, api_key=self._api_key, spend_tracker=self._spend_tracker
+        )
 
         prompt = f"""You are matching Australian business names between the ABN registry and Google Maps Business.
 
@@ -807,7 +809,9 @@ Do not explain. Just the place_id or "NO_MATCH"."""
         Returns:
             True if lead passes ICP, False otherwise
         """
-        brain = SDKBrain(config=self._sonnet_config, api_key=self._api_key, spend_tracker=self._spend_tracker)
+        brain = SDKBrain(
+            config=self._sonnet_config, api_key=self._api_key, spend_tracker=self._spend_tracker
+        )
 
         prompt = f"""You are an ICP (Ideal Customer Profile) classifier for B2B lead qualification.
 
@@ -871,13 +875,17 @@ Return ONLY "PASS" or "FAIL". Do not explain."""
             if posts:
                 streams_text += f"\n{source.upper()}:\n"
                 for i, post in enumerate(posts[:5]):  # Max 5 per stream
-                    content = post.get("text") or post.get("content") or post.get("review_text", "")[:200]
-                    streams_text += f"  {i+1}. {content[:200]}...\n"
+                    content = (
+                        post.get("text") or post.get("content") or post.get("review_text", "")[:200]
+                    )
+                    streams_text += f"  {i + 1}. {content[:200]}...\n"
 
         if not streams_text.strip():
             return "", "none"
 
-        brain = SDKBrain(config=self._sonnet_config, api_key=self._api_key, spend_tracker=self._spend_tracker)
+        brain = SDKBrain(
+            config=self._sonnet_config, api_key=self._api_key, spend_tracker=self._spend_tracker
+        )
 
         prompt = f"""You are a sales hook generator for personalized B2B outreach.
 
@@ -950,10 +958,20 @@ SOURCE: <dm_linkedin_posts|company_linkedin_posts|gmb_reviews|x_posts>"""
             tier = lead.get("als_tier") or lead.get("tier") or "cold"
             tier_counts[tier] = tier_counts.get(tier, 0) + 1
 
-        avg_reachability = sum(l.get("reachability", 0) for l in batch_leads) / len(batch_leads) if batch_leads else 0
-        avg_propensity = sum(l.get("propensity", 0) for l in batch_leads) / len(batch_leads) if batch_leads else 0
+        avg_reachability = (
+            sum(l.get("reachability", 0) for l in batch_leads) / len(batch_leads)
+            if batch_leads
+            else 0
+        )
+        avg_propensity = (
+            sum(l.get("propensity", 0) for l in batch_leads) / len(batch_leads)
+            if batch_leads
+            else 0
+        )
 
-        brain = SDKBrain(config=self._sonnet_config, api_key=self._api_key, spend_tracker=self._spend_tracker)
+        brain = SDKBrain(
+            config=self._sonnet_config, api_key=self._api_key, spend_tracker=self._spend_tracker
+        )
 
         prompt = f"""You are evaluating a batch of leads for agency guarantee compliance.
 
@@ -1099,11 +1117,15 @@ Return ONLY the category name. Nothing else."""
         """
         # Segment outcomes by type
         meeting_outcomes = [o for o in outcomes if o.get("outcome_type") == "booked"]
-        non_converting = [o for o in outcomes if o.get("outcome_type") in ("no_response", "bounced")]
+        non_converting = [
+            o for o in outcomes if o.get("outcome_type") in ("no_response", "bounced")
+        ]
 
         # Gap 2 fix (Directive #157): Include negative signals for CIS learning
         # These indicate what NOT to do and should inform weight DECREASES
-        data_quality_failures = [o for o in outcomes if o.get("final_outcome") == "data_quality_failure"]
+        data_quality_failures = [
+            o for o in outcomes if o.get("final_outcome") == "data_quality_failure"
+        ]
         targeting_failures = [o for o in outcomes if o.get("final_outcome") == "targeting_failure"]
         soft_rejections = [o for o in outcomes if o.get("final_outcome") == "soft_rejection"]
 
@@ -1270,10 +1292,9 @@ Respond with JSON only, no markdown."""
 
         # Calculate and track cost
         pricing = MODEL_PRICING.get(model, MODEL_PRICING["claude-sonnet-4-20250514"])
-        cost = (
-            (response.usage.input_tokens / 1_000_000) * pricing["input"]
-            + (response.usage.output_tokens / 1_000_000) * pricing["output"]
-        )
+        cost = (response.usage.input_tokens / 1_000_000) * pricing["input"] + (
+            response.usage.output_tokens / 1_000_000
+        ) * pricing["output"]
 
         if self._spend_tracker:
             await self._spend_tracker.add_spend(cost)

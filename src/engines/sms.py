@@ -318,7 +318,8 @@ class SMSEngine(OutreachEngine):
 
             # Filter out already-extracted keys to avoid duplicate kwargs
             extra_config = {
-                k: v for k, v in message_config.items()
+                k: v
+                for k, v in message_config.items()
                 if k not in ("lead_id", "campaign_id", "content")
             }
             result = await self.validate_and_send(
@@ -390,6 +391,7 @@ class SMSEngine(OutreachEngine):
         """
         try:
             from src.integrations.dncr import get_dncr_client
+
             dncr_client = get_dncr_client()
             is_on_dncr = await dncr_client.check_number(phone_number)
 
@@ -499,6 +501,7 @@ class SMSEngine(OutreachEngine):
         if action == "sent":
             try:
                 from src.services.cis_service import get_cis_service
+
                 cis_service = get_cis_service(db)
                 await cis_service.record_outreach_outcome(
                     activity_id=activity.id,

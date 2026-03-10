@@ -1,6 +1,6 @@
 ---
 name: mcp-bridge
-description: Bridge to MCP servers - call any tool from our 13 custom MCP servers (prefect, railway, apollo, prospeo, hunter, dataforseo, vercel, salesforge, vapi, telnyx, unipile, resend, memory). Use for enrichment, infrastructure, outreach, and memory operations.
+description: Bridge to MCP servers - call any tool from our 12 custom MCP servers (prefect, railway, prospeo, hunter, dataforseo, vercel, salesforge, vapi, telnyx, unipile, resend, memory). Use for enrichment, infrastructure, outreach, and memory operations.
 ---
 
 # MCP Bridge
@@ -27,7 +27,6 @@ node scripts/mcp-bridge.js call <server> <tool> [args_json]
 | `prefect` | Infrastructure | Workflow orchestration - flows, runs, deployments |
 | `railway` | Infrastructure | Deployment platform - projects, services, logs |
 | `vercel` | Infrastructure | Frontend deployments - projects, domains |
-| `apollo` | Enrichment | People/company search and enrichment |
 | `prospeo` | Enrichment | Email finder and verification |
 | `hunter` | Enrichment | Domain search, email verification |
 | `dataforseo` | Enrichment | SERP, keywords, backlinks |
@@ -46,9 +45,6 @@ node scripts/mcp-bridge.js call prefect list_flows
 
 # Get recent flow runs
 node scripts/mcp-bridge.js call prefect get_flow_runs '{"limit": 5}'
-
-# Search Apollo for people
-node scripts/mcp-bridge.js call apollo search_people '{"query": "CTO fintech Sydney"}'
 
 # Railway projects
 node scripts/mcp-bridge.js call railway list_projects

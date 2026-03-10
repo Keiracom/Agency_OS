@@ -99,7 +99,6 @@ class CampaignCreate(BaseModel):
             + self.allocation_sms
             + self.allocation_linkedin
             + self.allocation_voice
-            + self.allocation_mail
         )
         if total != 100:
             raise ValueError(f"Channel allocations must sum to 100, got {total}")
@@ -600,7 +599,6 @@ async def create_campaign(
         allocation_sms=campaign_data.allocation_sms,
         allocation_linkedin=campaign_data.allocation_linkedin,
         allocation_voice=campaign_data.allocation_voice,
-        allocation_mail=campaign_data.allocation_mail,
         start_date=campaign_data.start_date,
         end_date=campaign_data.end_date,
         daily_limit=campaign_data.daily_limit,

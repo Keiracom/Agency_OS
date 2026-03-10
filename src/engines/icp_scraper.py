@@ -751,7 +751,7 @@ Respond in JSON format only:
                     siege_data,
                     skip_tiers=[
                         EnrichmentTier.HUNTER,  # Skip email (no person data)
-                        EnrichmentTier.PROXYCURL,  # Skip LinkedIn (no person data)
+                        # EnrichmentTier.PROXYCURL removed — Proxycurl deprecated FCO-003 (July 2025)
                         EnrichmentTier.IDENTITY,  # Skip Kaspr (expensive)
                     ],
                 )

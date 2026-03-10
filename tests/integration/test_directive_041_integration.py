@@ -239,7 +239,7 @@ async def run_waterfall_on_lead(lead: dict) -> IntegrationTestResult:
 
         # T4/T5 parked
         result.tiers_skipped.append("T4_ZEROBOUNCE")
-        result.tiers_skipped.append("T5_KASPR")
+        result.tiers_skipped.append("T5_LEADMAGIC")
 
     except Exception as e:
         result.errors.append(f"Waterfall failed: {str(e)}")

@@ -13,7 +13,7 @@ Branch: `feature/siege-waterfall-v3`
 ```
 
 ### Known Deprecated Test
-- `tests/enrichment/test_waterfall_v2.py::TestHotThreshold::test_hot_score_gets_kaspr` — references Kaspr (deprecated provider)
+- `tests/enrichment/test_waterfall_v2.py::TestHotThreshold::test_hot_score_gets_leadmagic_mobile` — references Leadmagic mobile (T5)
 
 ### Next Action
 **Run pytest against main branch** to establish baseline failure count before #144 changes:

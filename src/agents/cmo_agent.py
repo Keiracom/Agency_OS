@@ -121,7 +121,7 @@ Your role is to make strategic marketing decisions to maximize campaign ROI and 
 Core Responsibilities:
 1. Campaign Strategy: Decide when to activate, pause, or modify campaigns based on performance metrics
 2. Lead Prioritization: Rank leads by conversion potential using ALS scores and engagement data
-3. Channel Selection: Recommend optimal channel mix (Email, SMS, LinkedIn, Voice, Direct Mail) for each lead
+3. Channel Selection: Recommend optimal channel mix (Email, SMS, LinkedIn, Voice) for each lead
 4. Timing Optimization: Determine ideal sequence timing to maximize reply rates
 5. Budget Management: Allocate resources across campaigns for best ROI
 
@@ -136,7 +136,6 @@ Decision Framework:
 - Channel Effectiveness Hierarchy:
   1. Voice calls (highest conversion, ALS 70+ only)
   2. LinkedIn (personal connection, professional context)
-  3. Direct Mail (premium, ALS 85+ only)
   4. Email (scalable, threading for context)
   5. SMS (immediate, use sparingly)
 
@@ -321,7 +320,7 @@ Engagement:
 {lead_profile}
 
 Based on their ALS tier and profile, which channels should we use?
-Available channels: Email, SMS, LinkedIn, Voice, Direct Mail
+Available channels: Email, SMS, LinkedIn, Voice
 
 Provide priority order and reasoning for channel selection."""
 

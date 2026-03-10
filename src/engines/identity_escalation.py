@@ -26,7 +26,6 @@ DESCRIPTION: Bypassing "info@" receptionist layer to reach decision makers direc
 CHANNEL MAPPING:
   - SMS/Voice AI -> mobile_number_verified
   - Email -> work_email_verified
-  - Direct Mail -> registered_office_address
   - LinkedIn -> linkedin_profile_url
 """
 
@@ -207,7 +206,6 @@ class IdentityEscalationEngine(BaseEngine):
     Channel Mapping:
     - SMS/Voice AI → mobile_number_verified
     - Email → work_email_verified
-    - Direct Mail → registered_office_address
     - LinkedIn → linkedin_profile_url
 
     COGS Governance:

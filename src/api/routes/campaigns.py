@@ -76,8 +76,6 @@ class CampaignCreate(BaseModel):
     allocation_sms: int = Field(0, ge=0, le=100, description="SMS allocation %")
     allocation_linkedin: int = Field(0, ge=0, le=100, description="LinkedIn allocation %")
     allocation_voice: int = Field(0, ge=0, le=100, description="Voice allocation %")
-    allocation_mail: int = Field(0, ge=0, le=100, description="Direct mail allocation %")
-
     # Scheduling
     start_date: date | None = Field(None, description="Campaign start date")
     end_date: date | None = Field(None, description="Campaign end date")

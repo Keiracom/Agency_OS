@@ -35,29 +35,29 @@ The SIEGE Waterfall replaces Apollo as the single source of truth for lead enric
 └─────────────────────────┬───────────────────────────────────────┘
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  TIER 3: Hunter.io Email Verification                           │
+│  TIER 3: Leadmagic Email                                        │
 │  ─────────────────────────────────────────────────────────────  │
 │  • Email discovery and verification                             │
 │  • Domain email patterns                                        │
-│  • Cost: $0.012 AUD/lead                                        │
+│  • Cost: $0.015 AUD/lead | ALS ≥ 35                             │
 │  • Success: ~70% for company domains                            │
 └─────────────────────────┬───────────────────────────────────────┘
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  TIER 4: LinkedIn Pulse (Proxycurl)                             │
+│  TIER 4: ZeroBounce (Parked)                                    │
 │  ─────────────────────────────────────────────────────────────  │
-│  • LinkedIn company + employee profiles                         │
-│  • Decision-maker identification                                │
-│  • Cost: $0.024 AUD/lead                                        │
-│  • Success: ~85% for companies with LinkedIn presence           │
+│  • Email validation and deliverability scoring                  │
+│  • Status: PARKED                                               │
+│  • Cost: $0.010 AUD/lead                                        │
+│  • Success: N/A (parked)                                        │
 └─────────────────────────┬───────────────────────────────────────┘
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  TIER 5: Identity Gold (Kaspr)                                  │
+│  TIER 5: Leadmagic Mobile                                       │
 │  ─────────────────────────────────────────────────────────────  │
 │  • Verified mobile numbers for Voice AI/SMS                     │
 │  • Personal email fallback                                      │
-│  • Cost: $0.45 AUD/lead                                         │
+│  • Cost: $0.077 AUD/lead                                        │
 │  • GATED: Only for ALS >= 85 (HOT leads)                        │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -72,9 +72,9 @@ Internal orchestration - no external endpoints. Calls child integrations:
 |------|-------------|--------|
 | 1 | ABN Lookup | `src/integrations/abn_client.py` |
 | 2 | GMB Scraper | `src/integrations/gmb_scraper.py` |
-| 3 | Hunter.io | `src/integrations/hunter.py` |
-| 4 | Proxycurl | `src/integrations/proxycurl.py` |
-| 5 | Kaspr | `src/integrations/kaspr.py` |
+| 3 | Leadmagic Email | `src/integrations/leadmagic_email.py` |
+| 4 | ZeroBounce (parked) | `src/integrations/zerobounce.py` |
+| 5 | Leadmagic Mobile | `src/integrations/leadmagic_mobile.py` |
 
 ---
 
@@ -84,9 +84,9 @@ Internal orchestration - no external endpoints. Calls child integrations:
 |------|------|-------|
 | Tier 1 (ABN) | $0.00 | FREE - data.gov.au |
 | Tier 2 (GMB) | $0.006 | Proxy cost only |
-| Tier 3 (Hunter) | $0.012 | Per email verified |
-| Tier 4 (Proxycurl) | $0.024 | Per LinkedIn profile |
-| Tier 5 (Kaspr) | $0.45 | Only for ALS ≥ 85 |
+| Tier 3 (Leadmagic Email) | $0.015 | Per email verified, ALS ≥ 35 |
+| Tier 4 (ZeroBounce) | $0.010 | Parked |
+| Tier 5 (Leadmagic Mobile) | $0.077 | Only for ALS ≥ 85 |
 | **Weighted Avg** | **~$0.105** | vs Apollo $0.50+ |
 
 ---
@@ -99,9 +99,9 @@ Rate limits are inherited from each tier's provider:
 |------|------------|
 | ABN | Reasonable use policy (no hard limit) |
 | GMB | 3 concurrent requests, 2-5s delay |
-| Hunter | 15 requests/second (paid plans) |
-| Proxycurl | 100 requests/minute |
-| Kaspr | 30 requests/minute (Starter plan) |
+| Leadmagic Email | 15 requests/second |
+| ZeroBounce | 100 requests/minute (parked) |
+| Leadmagic Mobile | 30 requests/minute |
 
 ---
 

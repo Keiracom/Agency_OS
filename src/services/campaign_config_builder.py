@@ -11,7 +11,7 @@ from src.models.campaign import Campaign
 class CampaignConfigBuilder:
     """
     Translates Campaign ORM to CampaignConfig for QueryTranslator.run().
-    
+
     Handles fallback logic when optional fields are not populated:
     - industry_slug: falls back to target_industries[0] or "general"
     - location: falls back to target_locations[0] or "Melbourne"
@@ -23,10 +23,10 @@ class CampaignConfigBuilder:
     def build(campaign: Campaign) -> CampaignConfig:
         """
         Build CampaignConfig from Campaign ORM.
-        
+
         Args:
             campaign: Campaign ORM instance
-            
+
         Returns:
             CampaignConfig ready for QueryTranslator.run()
         """

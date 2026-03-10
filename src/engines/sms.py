@@ -41,7 +41,7 @@ DIRECTIVE-167:
 """
 
 import logging
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -53,6 +53,7 @@ from src.engines.base import EngineResult, OutreachEngine
 logger = logging.getLogger(__name__)
 from src.engines.content_utils import build_sms_snapshot
 from src.exceptions import DNCRError, ResourceRateLimitError
+
 # SMS provider removed per Directive #167. SMS to be rewired to Telnyx (P3).
 # SMS provider removed per Directive #167. Rewire to Telnyx (P3).
 from src.integrations.redis import rate_limiter
@@ -317,7 +318,8 @@ class SMSEngine(OutreachEngine):
 
             # Filter out already-extracted keys to avoid duplicate kwargs
             extra_config = {
-                k: v for k, v in message_config.items()
+                k: v
+                for k, v in message_config.items()
                 if k not in ("lead_id", "campaign_id", "content")
             }
             result = await self.validate_and_send(
@@ -389,6 +391,7 @@ class SMSEngine(OutreachEngine):
         """
         try:
             from src.integrations.dncr import get_dncr_client
+
             dncr_client = get_dncr_client()
             is_on_dncr = await dncr_client.check_number(phone_number)
 
@@ -498,6 +501,7 @@ class SMSEngine(OutreachEngine):
         if action == "sent":
             try:
                 from src.services.cis_service import get_cis_service
+
                 cis_service = get_cis_service(db)
                 await cis_service.record_outreach_outcome(
                     activity_id=activity.id,

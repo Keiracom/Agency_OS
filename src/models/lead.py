@@ -98,11 +98,21 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     reachability_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     propensity_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     propensity_tier: Mapped[str | None] = mapped_column(String(20), nullable=True, name="als_tier")
-    propensity_data_quality: Mapped[int | None] = mapped_column(Integer, nullable=True, name="als_data_quality")  # Max 20
-    propensity_authority: Mapped[int | None] = mapped_column(Integer, nullable=True, name="als_authority")  # Max 25
-    propensity_company_fit: Mapped[int | None] = mapped_column(Integer, nullable=True, name="als_company_fit")  # Max 25
-    propensity_timing: Mapped[int | None] = mapped_column(Integer, nullable=True, name="als_timing")  # Max 15
-    propensity_risk: Mapped[int | None] = mapped_column(Integer, nullable=True, name="als_risk")  # Max 15
+    propensity_data_quality: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, name="als_data_quality"
+    )  # Max 20
+    propensity_authority: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, name="als_authority"
+    )  # Max 25
+    propensity_company_fit: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, name="als_company_fit"
+    )  # Max 25
+    propensity_timing: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, name="als_timing"
+    )  # Max 15
+    propensity_risk: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, name="als_risk"
+    )  # Max 15
 
     # === Organization Data ===
     organization_industry: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -225,7 +235,9 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     __table_args__ = (UniqueConstraint("client_id", "email", name="unique_lead_per_client"),)
 
     def __repr__(self) -> str:
-        return f"<Lead(id={self.id}, email='{self.email}', propensity_score={self.propensity_score})>"
+        return (
+            f"<Lead(id={self.id}, email='{self.email}', propensity_score={self.propensity_score})>"
+        )
 
     @property
     def full_name(self) -> str:

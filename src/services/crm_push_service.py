@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 from urllib.parse import urlencode
 from uuid import UUID
@@ -442,7 +442,9 @@ class CRMPushService:
             )
             return deal_id, None
         elif config.crm_type == "gohighlevel":
-            deal_id = await self._ghl_create_opportunity(config, lead, meeting, contact_id, deal_name)
+            deal_id = await self._ghl_create_opportunity(
+                config, lead, meeting, contact_id, deal_name
+            )
             return deal_id, None
         else:
             raise ValueError(f"Unsupported CRM type: {config.crm_type}")

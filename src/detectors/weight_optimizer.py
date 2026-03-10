@@ -15,7 +15,7 @@ Uses scipy.optimize.minimize with constraints to find weights that maximize
 correlation between ALS score and conversion probability.
 """
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 

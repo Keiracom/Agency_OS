@@ -310,7 +310,7 @@ class UnipileAccountService:
         Returns:
             Processing result
         """
-        from datetime import datetime, timedelta, UTC
+        from datetime import UTC, datetime, timedelta
 
         from sqlalchemy import select
 

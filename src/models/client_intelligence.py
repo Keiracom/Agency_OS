@@ -6,7 +6,7 @@ Imports: base only
 Consumers: engines, orchestration
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 

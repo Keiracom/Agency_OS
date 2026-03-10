@@ -10,7 +10,6 @@ These tokens bypass normal authentication for E2E test flows.
 
 import logging
 import time
-from typing import Optional
 from uuid import UUID
 
 import jwt
@@ -91,7 +90,7 @@ async def _ensure_test_user_exists(client_id: UUID) -> UUID:
 
 async def generate_test_token(
     client_id: UUID,
-    user_id: Optional[UUID] = None,
+    user_id: UUID | None = None,
     role: str = "admin",
     expires_in: int = 3600,
 ) -> str:

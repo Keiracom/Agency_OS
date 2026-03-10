@@ -52,7 +52,7 @@ PHASE 24A+ CHANGES (LinkedIn Enrichment):
 """
 
 import logging
-from datetime import date, datetime, UTC
+from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID
 
@@ -779,6 +779,7 @@ class ScorerEngine(BaseEngine):
                 weights = row.value
                 if isinstance(weights, str):
                     import json
+
                     weights = json.loads(weights)
                 logger.info(f"Loaded weights from ceo_memory: {CEO_MEMORY_WEIGHTS_KEY}")
                 return weights
@@ -837,7 +838,10 @@ class ScorerEngine(BaseEngine):
             score += reach_weights.get("verified_email", 35)
 
         # DM confirmed (LinkedIn InMail/connection confirmed)
-        if lead_data.get("dm_confirmed") or lead_data.get("linkedin_connection_status") == "connected":
+        if (
+            lead_data.get("dm_confirmed")
+            or lead_data.get("linkedin_connection_status") == "connected"
+        ):
             score += reach_weights.get("dm_confirmed", 30)
 
         # Direct mobile number

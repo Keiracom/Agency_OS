@@ -177,7 +177,9 @@ async def score_batch_task(
             )
             failed += 1
 
-    logger.info(f"Scored {successful}/{len(lead_ids)} leads (propensity). Distribution: {tier_counts}")
+    logger.info(
+        f"Scored {successful}/{len(lead_ids)} leads (propensity). Distribution: {tier_counts}"
+    )
 
     return {
         "total": len(lead_ids),

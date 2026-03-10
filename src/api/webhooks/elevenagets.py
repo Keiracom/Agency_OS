@@ -29,7 +29,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
-from sqlalchemy import select, update
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import get_db
@@ -500,9 +500,7 @@ async def handle_call_failed(
     parsed = client.parse_webhook(payload)
 
     error_reason = payload.get("error", "unknown")
-    logger.warning(
-        f"ElevenAgents call failed: call_id={parsed.call_id}, reason={error_reason}"
-    )
+    logger.warning(f"ElevenAgents call failed: call_id={parsed.call_id}, reason={error_reason}")
 
     if not parsed.call_id:
         raise HTTPException(status_code=400, detail="Missing call_id")
@@ -663,8 +661,8 @@ async def _trigger_post_call_processor(
     )
 
     try:
-        from src.services.voice_post_call_processor import VoicePostCallProcessor
         from src.db.session import async_session_maker
+        from src.services.voice_post_call_processor import VoicePostCallProcessor
 
         async with async_session_maker() as session:
             processor = VoicePostCallProcessor(session)

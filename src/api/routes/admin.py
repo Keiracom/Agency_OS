@@ -12,7 +12,7 @@ RULES APPLIED:
   - Rule 14: Soft delete checks (deleted_at IS NULL)
 """
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 

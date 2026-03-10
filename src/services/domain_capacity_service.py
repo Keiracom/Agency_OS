@@ -13,7 +13,7 @@ This service:
 4. Selects best domain for sending (round-robin with health awareness)
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import and_, func, select

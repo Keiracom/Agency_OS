@@ -12,7 +12,8 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import datetime, UTC
+from datetime import UTC, datetime
+
 from prefect import flow, get_run_logger, task
 from prefect.runtime import flow_run
 from sqlalchemy import select

@@ -18,7 +18,7 @@ VERIFIED: January 4, 2026
 """
 
 import base64
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx

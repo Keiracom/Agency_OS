@@ -15,7 +15,7 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from math import ceil
 
 from prefect import flow, get_run_logger, task

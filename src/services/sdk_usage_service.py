@@ -16,7 +16,7 @@ Called after every SDK agent execution to track:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 

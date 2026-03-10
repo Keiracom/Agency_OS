@@ -16,7 +16,6 @@ from prefect.server.schemas.schedules import CronSchedule
 
 from src.orchestration.flows.cis_learning_flow import cis_learning_flow
 
-
 # Weekly deployment - runs every Sunday at 3 AM UTC
 cis_weekly_deployment = Deployment.build_from_flow(
     flow=cis_learning_flow,
@@ -70,4 +69,6 @@ if __name__ == "__main__":
     print("\nDeployment commands:")
     print("  Run weekly:  prefect deployment run 'cis-learning-engine/cis-weekly'")
     print("  Run manual:  prefect deployment run 'cis-learning-engine/cis-manual'")
-    print("  With customer: prefect deployment run 'cis-learning-engine/cis-manual' -p customer_id=<uuid>")
+    print(
+        "  With customer: prefect deployment run 'cis-learning-engine/cis-manual' -p customer_id=<uuid>"
+    )

@@ -29,8 +29,8 @@ The SIEGE Waterfall replaces Apollo as the single source of truth for lead enric
 │  TIER 2: GMB/Ads Signals (Google Maps scraping)                 │
 │  ─────────────────────────────────────────────────────────────  │
 │  • Phone, address, website, hours, reviews                      │
-│  • Uses Autonomous Stealth Browser + Webshare proxies           │
-│  • Cost: $0.006 AUD/lead (proxy cost only)                      │
+│  • Uses Bright Data GMB Web Scraper (gd_m8ebnr0q2qlklc02fz)     │
+│  • Cost: $0.001/request                                         │
 │  • Success: ~80% for businesses with GMB presence               │
 └─────────────────────────┬───────────────────────────────────────┘
                           ▼
@@ -39,17 +39,9 @@ The SIEGE Waterfall replaces Apollo as the single source of truth for lead enric
 │  ─────────────────────────────────────────────────────────────  │
 │  • Email discovery and verification                             │
 │  • Domain email patterns                                        │
-│  • Cost: $0.015 AUD/lead | ALS ≥ 35                             │
+│  • Cost: $0.015 AUD/lead | PRE_ALS_GATE ≥ 20                    │
+│  • Dual-score: Propensity + Reachability (max 100 each)         │
 │  • Success: ~70% for company domains                            │
-└─────────────────────────┬───────────────────────────────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  TIER 4: ZeroBounce (Parked)                                    │
-│  ─────────────────────────────────────────────────────────────  │
-│  • Email validation and deliverability scoring                  │
-│  • Status: PARKED                                               │
-│  • Cost: $0.010 AUD/lead                                        │
-│  • Success: N/A (parked)                                        │
 └─────────────────────────┬───────────────────────────────────────┘
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
@@ -59,6 +51,12 @@ The SIEGE Waterfall replaces Apollo as the single source of truth for lead enric
 │  • Personal email fallback                                      │
 │  • Cost: $0.077 AUD/lead                                        │
 │  • GATED: Only for ALS >= 85 (HOT leads)                        │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  DM TIERS: T-DM0 through T-DM4                                  │
+│  ─────────────────────────────────────────────────────────────  │
+│  See ceo_memory waterfall_v3_architecture for full DM tier stack│
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -71,9 +69,9 @@ Internal orchestration - no external endpoints. Calls child integrations:
 | Tier | Integration | Module |
 |------|-------------|--------|
 | 1 | ABN Lookup | `src/integrations/abn_client.py` |
+| 1.25 | ABR Trading Name | `src/integrations/abn_client.py` (trading name lookup) |
 | 2 | GMB Scraper | `src/integrations/gmb_scraper.py` |
 | 3 | Leadmagic Email | `src/integrations/leadmagic_email.py` |
-| 4 | ZeroBounce (parked) | `src/integrations/zerobounce.py` |
 | 5 | Leadmagic Mobile | `src/integrations/leadmagic_mobile.py` |
 
 ---
@@ -83,9 +81,8 @@ Internal orchestration - no external endpoints. Calls child integrations:
 | Tier | Cost | Notes |
 |------|------|-------|
 | Tier 1 (ABN) | $0.00 | FREE - data.gov.au |
-| Tier 2 (GMB) | $0.006 | Proxy cost only |
-| Tier 3 (Leadmagic Email) | $0.015 | Per email verified, ALS ≥ 35 |
-| Tier 4 (ZeroBounce) | $0.010 | Parked |
+| Tier 2 (GMB) | $0.001 | Bright Data GMB Web Scraper per request |
+| Tier 3 (Leadmagic Email) | $0.015 | Per email verified, PRE_ALS_GATE ≥ 20 |
 | Tier 5 (Leadmagic Mobile) | $0.077 | Only for ALS ≥ 85 |
 | **Weighted Avg** | **~$0.105** | vs Apollo $0.50+ |
 
@@ -100,7 +97,6 @@ Rate limits are inherited from each tier's provider:
 | ABN | Reasonable use policy (no hard limit) |
 | GMB | 3 concurrent requests, 2-5s delay |
 | Leadmagic Email | 15 requests/second |
-| ZeroBounce | 100 requests/minute (parked) |
 | Leadmagic Mobile | 30 requests/minute |
 
 ---

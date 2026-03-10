@@ -67,6 +67,7 @@ class UnipileEnrichmentAdapter:
     
     Note: Proxycurl deprecated July 2025 (LinkedIn lawsuit).
     Unipile approved as replacement but not yet activated.
+    v3 uses BD LinkedIn Profile (gd_l1viktl72bvl7bjuj0) for DM tiers (not Unipile).
     
     When activated, will provide:
     - Profile data via get_profile()

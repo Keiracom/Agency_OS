@@ -257,9 +257,9 @@ Default communication mode is TERSE:
 
 | Dead Reference | Replacement |
 |---------------|-------------|
-| Proxycurl | DEAD (LinkedIn lawsuit, July 2025). Use Unipile. |
+| Proxycurl | DEAD (LinkedIn lawsuit, July 2025). Use BD LinkedIn Profile (gd_l1viktl72bvl7bjuj0). |
 | Apollo (enrichment) | Siege Waterfall Tiers 1-5 |
-| Apify (scraping) | DIY GMB scraper |
+| Apify (scraping) | Bright Data GMB Web Scraper (gd_m8ebnr0q2qlklc02fz) |
 | SDK agents (enrichment/email/voice_kb) | Smart Prompts + sdk_brain.py |
 | MEMORY.md (for new writes) | Supabase `elliot_internal.memories` |
 | HANDOFF.md (for new writes) | Supabase `elliot_internal.memories` |

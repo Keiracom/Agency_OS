@@ -517,11 +517,6 @@ class LeadmagicEmailAdapter:
         return []
 
 
-# Backwards compatibility aliases (deprecated services)
-HunterClientAdapter = LeadmagicEmailAdapter
-HunterClientStub = LeadmagicEmailAdapter
-
-
 # Import Leadmagic client for Tier 3 email and Tier 5 mobile enrichment
 # Replaces Kaspr - CEO Directive: Kaspr deprecated
 try:

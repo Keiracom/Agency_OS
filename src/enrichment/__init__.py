@@ -23,7 +23,6 @@ from .discovery_modes import (
     DiscoveryMode,
     DiscoveryRecord,
     MapsFirstDiscovery,
-    ParallelDiscovery,
 )
 from .waterfall_v2 import (
     LeadRecord,
@@ -38,8 +37,8 @@ __all__ = [
     "CampaignConfig",
     "DiscoveryRecord",
     # ABNFirstDiscovery removed per Waterfall v3 Decision #1
+    # ParallelDiscovery removed per Directive #170 Step 3
     "MapsFirstDiscovery",
-    "ParallelDiscovery",
     # Waterfall pipeline
     "LeadRecord",
     "WaterfallV2",

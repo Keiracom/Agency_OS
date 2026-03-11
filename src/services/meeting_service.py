@@ -204,6 +204,46 @@ class MeetingService:
             logger.error(f"CRM push failed for meeting {row.id}: {e}")
             meeting_data["crm_push_error"] = str(e)
 
+        # Directive #177: CIS bridge — wire meeting booking into CIS learning (non-blocking)
+        try:
+            from src.services.cis_outcome_service import process_conversion_timing
+            from src.services.cis_service import CISService
+
+            # Fetch lead propensity data for CIS tier conversion record
+            prop_result = await self.session.execute(
+                text("SELECT als_score, als_tier FROM leads WHERE id = :lead_id"),
+                {"lead_id": lead_id},
+            )
+            prop_row = prop_result.fetchone()
+
+            cis = CISService(self.session)
+
+            # 1. Mark the converting activity as meeting_booked in cis_outreach_outcomes
+            if converting_activity_id:
+                await cis.update_outreach_outcome(
+                    activity_id=converting_activity_id,
+                    event_type="meeting_booked",
+                )
+                # 2. Extract and record timing signals for this conversion
+                await process_conversion_timing(self.session, str(converting_activity_id))
+
+            # 3. Record propensity tier conversion for CIS learning
+            if prop_row and prop_row.als_score is not None:
+                await cis.record_propensity_conversion(
+                    lead_id=lead_id,
+                    client_id=client_id,
+                    propensity_score=prop_row.als_score,
+                    propensity_tier=prop_row.als_tier or "cold",
+                    channel_that_converted=converting_channel or "unknown",
+                    campaign_id=campaign_id,
+                    touches_before_conversion=touches_before,
+                    days_in_sequence=days_to_booking,
+                )
+
+            logger.info(f"CIS bridge: recorded meeting_booked for meeting {row.id}")
+        except Exception as e:
+            logger.warning(f"CIS bridge failed (non-blocking): {e}")
+
         return meeting_data
 
     async def create_blind_meeting(

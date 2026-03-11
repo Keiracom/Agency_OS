@@ -29,7 +29,7 @@ The SIEGE Waterfall replaces Apollo as the single source of truth for lead enric
 │  TIER 2: GMB/Ads Signals (Google Maps scraping)                 │
 │  ─────────────────────────────────────────────────────────────  │
 │  • Phone, address, website, hours, reviews                      │
-│  • Uses Bright Data GMB Web Scraper (gd_m8ebnr0q2qlklc02fz)     │
+│  • Uses Bright Data Google Maps SERP (gd_m8ebnr0q2qlklc02fz)   │
 │  • Cost: $0.001/request                                         │
 │  • Success: ~80% for businesses with GMB presence               │
 └─────────────────────────┬───────────────────────────────────────┘
@@ -54,9 +54,14 @@ The SIEGE Waterfall replaces Apollo as the single source of truth for lead enric
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
-│  DM TIERS: T-DM0 through T-DM4                                  │
+│  DM TIERS: T-DM0 through T-DM4 (Decision-Maker Enrichment)      │
 │  ─────────────────────────────────────────────────────────────  │
-│  See ceo_memory waterfall_v3_architecture for full DM tier stack│
+│  T-DM0: DataForSEO People Search — $0.0465/lead (ICP pass req.) │
+│  T-DM1: Bright Data LinkedIn Profile — $0.0015 (ICP pass req.)  │
+│  T-DM2: Bright Data LinkedIn People Search                      │
+│  T-DM2b: Bright Data SERP LinkedIn                              │
+│  T-DM3: Leadmagic LinkedIn Email                                │
+│  T-DM4: Leadmagic Mobile — propensity ≥70 required              │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -81,7 +86,7 @@ Internal orchestration - no external endpoints. Calls child integrations:
 | Tier | Cost | Notes |
 |------|------|-------|
 | Tier 1 (ABN) | $0.00 | FREE - data.gov.au |
-| Tier 2 (GMB) | $0.001 | Bright Data GMB Web Scraper per request |
+| Tier 2 (GMB) | $0.001 | Bright Data Google Maps SERP per request |
 | Tier 3 (Leadmagic Email) | $0.015 | Per email verified, PRE_ALS_GATE ≥ 20 |
 | Tier 5 (Leadmagic Mobile) | $0.077 | Only for ALS ≥ 85 |
 | **Weighted Avg** | **~$0.105** | vs Apollo $0.50+ |

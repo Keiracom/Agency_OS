@@ -61,15 +61,14 @@ Proxycurl shut down July 2025 (LinkedIn lawsuit). Integration is dead but still 
 Replace `ProxycurlClientAdapter` in siege_waterfall.py with:
 
 ```python
-class UnipileEnrichmentAdapter:
+class BDLinkedInEnrichmentAdapter:
     """
-    Tier 4: LinkedIn Intelligence via Unipile (PENDING ACTIVATION)
+    Tier 4: LinkedIn Intelligence via Bright Data LinkedIn Profile
     
     Note: Proxycurl deprecated July 2025 (LinkedIn lawsuit).
-    Unipile approved as replacement but not yet activated.
-    v3 uses BD LinkedIn Profile (gd_l1viktl72bvl7bjuj0) for DM tiers (not Unipile).
+    v3 uses BD LinkedIn Profile (gd_l1viktl72bvl7bjuj0) for DM tiers.
     
-    When activated, will provide:
+    Will provide:
     - Profile data via get_profile()
     - Recent posts via get_user_posts()
     """
@@ -79,21 +78,21 @@ class UnipileEnrichmentAdapter:
         linkedin_url: str | None = None,
         **kwargs,
     ) -> dict[str, Any]:
-        """Skip Tier 4 until Unipile activated."""
+        """Skip Tier 4 until BD LinkedIn activated."""
         logger.info(
-            "[Tier4] LinkedIn enrichment pending — Unipile not activated. "
+            "[Tier4] LinkedIn enrichment pending — BD LinkedIn not activated. "
             "Skipping gracefully."
         )
         return {
             "found": False,
             "source": "tier4_pending",
-            "reason": "Unipile LinkedIn enrichment not yet activated",
+            "reason": "BD LinkedIn enrichment not yet activated",
         }
 ```
 
 ### Governance Trace
 ```
-[Rule: CEO Directive #003] → [Action: Graceful skip] → [Rationale: Proxycurl dead, Unipile pending]
+[Rule: CEO Directive #003] → [Action: Graceful skip] → [Rationale: Proxycurl dead, BD LinkedIn pending]
 ```
 
 ---
@@ -175,7 +174,7 @@ After implementation:
 - [ ] `pytest tests/test_engines/test_scraper_waterfall.py` passes
 - [ ] `python -c "from src.engines.scout import ScoutEngine"` succeeds
 - [ ] `python -c "from src.engines.icp_scraper import ICPScraperEngine"` succeeds
-- [ ] Tier 4 logs "pending — Unipile not activated" and returns found=False
+- [ ] Tier 4 logs "pending — BD LinkedIn not activated" and returns found=False
 - [ ] Smart Prompts with empty LinkedIn data produces valid output
 
 ---

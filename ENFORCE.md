@@ -286,5 +286,31 @@ If a verification agent summarises instead of pasting raw output, the verificati
 
 ---
 
+---
+
+## §18 — LAW XV: Manual Currency (HARD BLOCK)
+
+The Agency OS Manual in Google Drive (Doc ID: `1p9FAQGowy9SgwglIxtkGsMuvLsR70MJBQrCSY6Ie9ho`) is the CEO's SSOT.
+
+**Save triggers (mandatory update):**
+- Architecture decisions
+- Enrichment stack changes (provider added/removed/repriced)
+- Strategic decisions (pricing, verticals, feature direction)
+- Infrastructure changes (servers, services, auth, process managers)
+- Test baseline changes
+- Directive milestones (phase complete, major feature shipped)
+
+**No update needed for:** bug fixes, lint cleanup, routine PRs, debug sessions that change nothing.
+
+**Update protocol:**
+a) Update the relevant section via `skills/drive-manual/write_manual.py`
+b) Update the Last Updated date and directive number
+c) A save-trigger directive is NOT COMPLETE until the Manual is updated
+d) Violation: reporting complete without Manual update = LAW XV violation, log governance debt with type `LAW_XV_VIOLATION`
+
+*Ratified: 2026-03-11, CEO Directive #169*
+
+---
+
 *Signed and Ratified: 2026-02-12, CEO Directive*
-*Governance Version: 2.1*
+*Governance Version: 2.2*

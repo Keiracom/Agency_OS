@@ -1169,6 +1169,54 @@ Return JSON classification only."""
             # Non-critical - log and continue
             logger.warning(f"Failed to write CIS feed: {e}")
 
+        # Directive #177: Wire voice call outcomes into cis_outreach_outcomes (non-blocking)
+        # voice_sync_tasks creates activity records with provider_message_id = voice_call.id
+        try:
+            from src.services.cis_service import CISService
+
+            # Map voice outcomes to CIS event types
+            _cis_event_map = {
+                CallOutcome.BOOKED: "meeting_booked",
+                CallOutcome.UNSUBSCRIBE: "unsubscribed",
+                CallOutcome.ANGRY: "complained",
+            }
+            cis_event = _cis_event_map.get(outcome)
+
+            if cis_event:
+                # Find the activity created by voice_sync_tasks for this call
+                act_result = await self.session.execute(
+                    text("""
+                        SELECT a.id
+                        FROM activities a
+                        JOIN voice_calls vc ON a.provider_message_id = vc.id::text
+                        WHERE vc.call_sid = :call_sid
+                          AND a.channel = 'voice'
+                        ORDER BY a.created_at DESC
+                        LIMIT 1
+                    """),
+                    {"call_sid": call_sid},
+                )
+                act_row = act_result.fetchone()
+
+                if act_row:
+                    cis = CISService(self.session)
+                    await cis.update_outreach_outcome(
+                        activity_id=act_row.id,
+                        event_type=cis_event,
+                    )
+                    logger.info(
+                        f"CIS voice bridge: recorded {cis_event} for call {call_sid} "
+                        f"(activity {act_row.id})"
+                    )
+                else:
+                    logger.debug(
+                        f"CIS voice bridge: no activity found yet for call {call_sid} "
+                        f"(voice_sync_tasks may not have run yet)"
+                    )
+        except Exception as e:
+            # CIS failure must NOT block voice operations
+            logger.warning(f"CIS voice bridge failed (non-blocking): {e}")
+
     # =========================================================================
     # HELPER METHODS
     # =========================================================================

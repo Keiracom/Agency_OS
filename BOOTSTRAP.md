@@ -34,6 +34,10 @@ cd /home/elliotbot/clawd/skills/mcp-bridge && node scripts/mcp-bridge.js call su
 - `ceo:system_state_*` — Current state of all systems
 - `ceo:blockers_*` — Active blockers
 
+### Step 2b: Agency OS Manual (LAW XV)
+
+Read the Agency OS Manual doc ID from env (`GOOGLE_MANUAL_DOC_ID`). This is the CEO's SSOT for project state, architecture decisions, and strategic direction. If you update architecture, stack, strategy, infra, baselines, or milestones during this session, you MUST update the Manual before reporting complete (LAW XV). Manual skill: `skills/drive-manual/write_manual.py`.
+
 ### Step 3: Query Operational Memory
 For day-to-day context:
 ```sql

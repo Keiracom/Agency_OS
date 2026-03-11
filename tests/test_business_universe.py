@@ -769,14 +769,18 @@ class TestLoadScriptIntegration:
         assert record.registration_date == "2020-01-01"
 
     def test_exclude_constants_defined(self):
-        """Test exclusion constant sets are defined correctly."""
+        """Test exclusion constant sets are defined with correct ABR codes.
+
+        Codes match the actual ABN bulk extract entity type codes.
+        Verified in Directive #174 (pre-resolved in Directive #167 / PR #153).
+        """
         from load_business_universe import (
             EXCLUDE_INDIVIDUAL,
             EXCLUDE_GOVERNMENT,
             EXCLUDE_SUPER,
             EXCLUDE_CHARITY_NFP,
         )
-        
+
         assert "IND" in EXCLUDE_INDIVIDUAL
         assert "SGE" in EXCLUDE_GOVERNMENT
         assert "SUP" in EXCLUDE_SUPER

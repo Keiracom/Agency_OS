@@ -156,7 +156,7 @@ class WaterfallV2:
         "leadmagic_mobile": 0.077,  # T5: Leadmagic mobile finder (replaces Kaspr $0.45)
     }
 
-    def __init__(self, bright_data_client=None, abn_client=None, leadmagic_client=None):
+    def __init__(self, bright_data_client=None, abn_client=None, leadmagic_client=None, supabase_client=None):
         """
         Initialize waterfall with all integration clients.
 
@@ -164,10 +164,12 @@ class WaterfallV2:
             bright_data_client: Bright Data client for SERP and LinkedIn scraping
             abn_client: ABN Lookup client for Tier 1
             leadmagic_client: Leadmagic client for T3 email + T5 mobile enrichment
+            supabase_client: Supabase client for audit logging
         """
         self.bd = bright_data_client
         self.abn_client = abn_client
         self.leadmagic = leadmagic_client
+        self.supabase = supabase_client
 
         # Initialize discovery engines
         # ABNFirstDiscovery deprecated per Waterfall v3 Decision #1 (2026-03-01)

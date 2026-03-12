@@ -178,6 +178,20 @@ class ConfirmICPRequest(BaseModel):
 
     job_id: UUID = Field(description="Extraction job ID to confirm")
     adjustments: ICPUpdateRequest | None = Field(None, description="Optional adjustments to apply")
+    bypass_gates: bool = Field(
+        False,
+        description=(
+            "Skip LinkedIn/CRM gate enforcement. Use when client has no integrations yet — "
+            "domain-only discovery still works. Connect for better results."
+        ),
+    )
+    demo_mode: bool = Field(
+        False,
+        description=(
+            "Use fixture leads instead of real discovery. Injects Brisbane construction "
+            "companies. Zero API credits burned. Ideal for demos and sandboxing."
+        ),
+    )
 
 
 # ============================================
@@ -793,10 +807,15 @@ async def confirm_icp(
             "auto_create_campaigns": True,
             "auto_source_leads": True,
             "auto_activate_campaigns": False,  # Keep as drafts for review
+            "bypass_gates": request.bypass_gates,
+            "demo_mode": request.demo_mode,
         },
         timeout=0,  # Don't wait for completion
     )
-    logger.info(f"Triggered Prefect post-onboarding setup flow for client {client.client_id}")
+    logger.info(
+        f"Triggered Prefect post-onboarding setup flow for client {client.client_id} "
+        f"[bypass_gates={request.bypass_gates}, demo_mode={request.demo_mode}]"
+    )
 
     return {
         "success": True,

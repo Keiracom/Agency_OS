@@ -32,7 +32,9 @@ RULES APPLIED:
 WATERFALL ARCHITECTURE (Phase 19 - Post FCO-002/FCO-003):
   Tier 0: URL Validation (url_validator.py)
   Tier 1: Camoufox anti-detection browser (primary scraper)
-  Tier 2: Manual fallback UI
+  Tier 2: Jina AI Reader (free JS rendering fallback)
+  Tier 3: Bright Data Web Unlocker (anti-bot bypass, ~$0.001/req)
+  Tier 4: Manual fallback UI
 
 DEPRECATION NOTES (FCO-002, FCO-003):
   - Apollo integration REMOVED (CEO Directive #003)
@@ -408,12 +410,14 @@ class ICPScraperEngine(BaseEngine):
         max_pages: int = 15,
     ) -> EngineResult[ScrapedWebsite]:
         """
-        Scrape a website using Camoufox anti-detection browser.
+        Scrape a website using a multi-tier waterfall strategy.
 
         Waterfall tiers (Post FCO-002 deprecation):
         - Tier 0: URL validation (check format, DNS, parked domains)
         - Tier 1: Camoufox anti-detection browser (primary)
-        - Tier 2: Manual fallback UI
+        - Tier 2: Jina AI Reader (free JS rendering fallback)
+        - Tier 3: Bright Data Web Unlocker (anti-bot bypass, ~$0.001/req)
+        - Tier 4: Manual fallback UI
 
         Note: Apify tiers removed (FCO-002 cost optimization)
 
@@ -527,9 +531,143 @@ class ICPScraperEngine(BaseEngine):
         else:
             logger.warning("Tier 1 (Camoufox) not available - needs to be enabled")
 
-        # ===== TIER 2: Manual Fallback =====
+        # ===== TIER 2: Jina AI Reader (JS rendering fallback) =====
+        # Free, no API key needed. Handles React/Next.js/Vue sites.
+        # Returns clean markdown of the rendered page.
+        jina_url = f"https://r.jina.ai/{canonical_url}"
+        logger.info(f"Tier 2: Attempting Jina AI Reader for {canonical_url}")
+        try:
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as jina_client:
+                jina_response = await jina_client.get(
+                    jina_url,
+                    headers={
+                        "Accept": "text/markdown",
+                        "X-No-Cache": "true",
+                    },
+                )
+            if jina_response.status_code == 200 and len(jina_response.text) >= 200:
+                markdown_content = jina_response.text
+                logger.info(
+                    f"Tier 2 (Jina) success for {url}: {len(markdown_content):,} chars"
+                )
+                # Wrap markdown in minimal HTML for pipeline compatibility
+                jina_html = (
+                    f"<html><body>"
+                    f"<!-- Jina AI Reader rendered content -->"
+                    f"<pre>{markdown_content}</pre>"
+                    f"</body></html>"
+                )
+                social_links = self._extract_social_links(jina_html)
+                jina_page = ScrapedPage(
+                    url=canonical_url,
+                    title="",
+                    html=jina_html,
+                    text=markdown_content,
+                    links=[],
+                    images=[],
+                )
+                scraped = ScrapedWebsite(
+                    url=url,
+                    domain=domain,
+                    pages=[jina_page],
+                    raw_html=jina_html,
+                    page_count=1,
+                    tier_used=2,
+                    needs_fallback=False,
+                    canonical_url=canonical_url,
+                    social_links=social_links,
+                )
+                return EngineResult.ok(
+                    data=scraped,
+                    metadata={
+                        "domain": domain,
+                        "pages_scraped": 1,
+                        "tier_used": 2,
+                        "redirected": validation.redirected,
+                        "canonical_url": canonical_url,
+                        "jina_used": True,
+                    },
+                )
+            else:
+                logger.warning(
+                    f"Tier 2 (Jina) insufficient content for {url}: "
+                    f"status={jina_response.status_code}, "
+                    f"len={len(jina_response.text)}"
+                )
+        except Exception as jina_error:
+            logger.warning(f"Tier 2 (Jina) exception for {url}: {jina_error}")
+
+        # ===== TIER 3: Bright Data Web Unlocker =====
+        # Anti-bot bypass using existing BRIGHTDATA_API_KEY. ~$0.001/request.
+        import os
+
+        brightdata_api_key = os.getenv("BRIGHTDATA_API_KEY")
+        if brightdata_api_key:
+            logger.info(f"Tier 3: Attempting Bright Data Web Unlocker for {canonical_url}")
+            try:
+                async with httpx.AsyncClient(timeout=60.0) as bd_client:
+                    bd_response = await bd_client.post(
+                        "https://api.brightdata.com/request",
+                        headers={
+                            "Authorization": f"Bearer {brightdata_api_key}",
+                            "Content-Type": "application/json",
+                        },
+                        json={
+                            "url": canonical_url,
+                            "zone": "web_unlocker1",
+                            "format": "raw",
+                        },
+                    )
+                if bd_response.status_code == 200 and len(bd_response.text) >= 500:
+                    bd_html = bd_response.text
+                    logger.info(
+                        f"Tier 3 (Bright Data) success for {url}: {len(bd_html):,} chars"
+                    )
+                    social_links = self._extract_social_links(bd_html)
+                    bd_page = ScrapedPage(
+                        url=canonical_url,
+                        title="",
+                        html=bd_html,
+                        text="",
+                        links=[],
+                        images=[],
+                    )
+                    scraped = ScrapedWebsite(
+                        url=url,
+                        domain=domain,
+                        pages=[bd_page],
+                        raw_html=bd_html,
+                        page_count=1,
+                        tier_used=3,
+                        needs_fallback=False,
+                        canonical_url=canonical_url,
+                        social_links=social_links,
+                    )
+                    return EngineResult.ok(
+                        data=scraped,
+                        metadata={
+                            "domain": domain,
+                            "pages_scraped": 1,
+                            "tier_used": 3,
+                            "redirected": validation.redirected,
+                            "canonical_url": canonical_url,
+                            "brightdata_used": True,
+                        },
+                    )
+                else:
+                    logger.warning(
+                        f"Tier 3 (Bright Data) insufficient content for {url}: "
+                        f"status={bd_response.status_code}, "
+                        f"len={len(bd_response.text)}"
+                    )
+            except Exception as bd_error:
+                logger.warning(f"Tier 3 (Bright Data) exception for {url}: {bd_error}")
+        else:
+            logger.warning("Tier 3 (Bright Data) skipped — BRIGHTDATA_API_KEY not set")
+
+        # ===== TIER 4: Manual Fallback =====
         # All automated tiers failed, return with manual fallback flag
-        logger.warning(f"All tiers failed for {url}, needs manual fallback")
+        logger.warning(f"All automated tiers failed for {url}, needs manual fallback")
         return EngineResult.ok(
             data=ScrapedWebsite(
                 url=url,
@@ -537,15 +675,15 @@ class ICPScraperEngine(BaseEngine):
                 pages=[],
                 raw_html="",
                 page_count=0,
-                tier_used=1,
+                tier_used=4,
                 needs_fallback=True,
-                failure_reason="Camoufox scraping failed or not available",
+                failure_reason="All scraping tiers failed (Camoufox, Jina, Bright Data)",
                 manual_fallback_url=f"/onboarding/manual-entry?url={url}",
                 canonical_url=canonical_url,
             ),
             metadata={
                 "domain": domain,
-                "tier_used": 1,
+                "tier_used": 4,
                 "needs_fallback": True,
                 "camoufox_attempted": self.camoufox_enabled,
             },

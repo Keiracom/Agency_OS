@@ -26,18 +26,15 @@ import {
   TrendingUp,
   ArrowUpRight,
 } from "lucide-react";
-import {
-  mockChannelOrchestration,
-  mockStatsGrid,
-  mockHotProspects,
-  mockVoiceStats,
-  mockRecentCalls,
-  mockInsights,
-  mockActivityFeed,
-  mockWeekAhead,
-  mockWarmReplies,
-} from "@/data/mock-dashboard";
-import { useMeetings } from "@/hooks/use-meetings";
+// TODO: wire channel-orchestration when API exposes per-channel touch counts
+import { mockChannelOrchestration } from "@/data/mock-dashboard";
+// TODO: wire smart-calling when voice AI call data API is available
+import { mockVoiceStats, mockRecentCalls } from "@/data/mock-dashboard";
+// TODO: wire what's-working insights (who-converts + best-channel-mix) when segment analytics API is available
+import { mockInsights } from "@/data/mock-dashboard";
+// TODO: wire activity-feed when activity stream API is available
+import { mockActivityFeed } from "@/data/mock-dashboard";
+import { useDashboardV4 } from "@/hooks/use-dashboard-v4";
 import Link from "next/link";
 
 // Channel icon component
@@ -53,10 +50,25 @@ const ChannelIcon = ({ type }: { type: string }) => {
 };
 
 export default function DashboardPage() {
-  // Fetch real meetings data
-  const { data: meetingsData } = useMeetings({ limit: 50 });
-  const meetingsBooked = meetingsData?.total ?? 0;
-  const meetingsTarget = 10; // TODO: Make configurable per client
+  // Fetch real dashboard data (meetings goal, stats, hot prospects, week ahead, warm replies)
+  const { data: dashboardData, isLoading: dashboardLoading } = useDashboardV4();
+
+  const meetingsBooked = dashboardData?.meetingsGoal.current ?? 0;
+  const meetingsTarget = dashboardData?.meetingsGoal.target ?? 10;
+
+  // Map quickStats changeDirection → positive flag used by the card
+  const statsGrid = dashboardData?.quickStats.map((s, i) => ({
+    id: `stat-${i}`,
+    value: s.value,
+    label: s.label,
+    change: s.change,
+    positive:
+      s.changeDirection === "up"
+        ? true
+        : s.changeDirection === "down"
+        ? false
+        : null,
+  })) ?? [];
 
   return (
     <AppShell>
@@ -96,12 +108,12 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center gap-2 mt-4 pt-4 border-t border-amber/20 text-sm">
                 <ArrowUpRight className="w-4 h-4 text-amber" strokeWidth={1.5} />
-                <span className="text-amber font-mono">{Math.round((meetingsBooked / meetingsTarget) * 100)}%</span>
+                <span className="text-amber font-mono">{Math.round((meetingsBooked / Math.max(meetingsTarget, 1)) * 100)}%</span>
                 <span className="text-text-secondary">of target</span>
               </div>
             </HeroMetricCard>
 
-            {/* Channel Orchestration */}
+            {/* Channel Orchestration — TODO: wire to real per-channel touch counts */}
             <GlassCard className="p-8">
               <div className="text-[11px] font-mono font-semibold uppercase tracking-wider text-text-muted mb-4 text-center">
                 5-Channel Orchestration
@@ -160,7 +172,7 @@ export default function DashboardPage() {
 
           {/* ROW 2: Stats Grid - 4 column */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {mockStatsGrid.map((stat) => (
+            {statsGrid.map((stat) => (
               <GlassCard key={stat.id} glow className="p-6">
                 <div className="text-3xl font-extrabold font-mono text-text-primary">{stat.value}</div>
                 <div className="text-xs font-mono text-text-muted uppercase tracking-wider mt-2">
@@ -178,19 +190,19 @@ export default function DashboardPage() {
 
           {/* ROW 3: Main Grid - 3 column */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {/* Hot Prospects */}
+            {/* Hot Prospects — wired to useDashboardV4 */}
             <GlassCard className="p-0 overflow-hidden">
               <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
                 <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
                   <Flame className="w-5 h-5 text-amber" strokeWidth={1.5} />
                   Hot Right Now
                 </div>
-                <Link href="/leads" className="text-sm text-amber hover:underline">
+                <Link href="/dashboard/leads" className="text-sm text-amber hover:underline">
                   See All →
                 </Link>
               </div>
               <div className="px-6 py-4">
-                {mockHotProspects.map((prospect) => (
+                {(dashboardData?.hotProspects ?? []).map((prospect) => (
                   <div 
                     key={prospect.id}
                     className="flex items-center gap-4 py-4 border-b border-border-subtle last:border-0 cursor-pointer hover:bg-bg-elevated hover:-mx-6 hover:px-6 transition-all"
@@ -204,14 +216,14 @@ export default function DashboardPage() {
                         {prospect.company} • {prospect.title}
                       </div>
                       <div className="flex gap-1.5 mt-1.5">
-                        {prospect.badges.map((badge, i) => (
-                          <span 
-                            key={i}
-                            className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded uppercase tracking-wide bg-amber-glow text-amber"
-                          >
-                            {badge.label}
+                        <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded uppercase tracking-wide bg-amber-glow text-amber">
+                          {prospect.signal}
+                        </span>
+                        {prospect.isVeryHot && (
+                          <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded uppercase tracking-wide bg-amber-glow text-amber">
+                            Very Hot
                           </span>
-                        ))}
+                        )}
                       </div>
                     </div>
                     <div className="text-right">
@@ -222,10 +234,15 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 ))}
+                {!dashboardLoading && (dashboardData?.hotProspects ?? []).length === 0 && (
+                  <div className="py-8 text-center text-text-muted text-sm">
+                    No hot prospects yet
+                  </div>
+                )}
               </div>
             </GlassCard>
 
-            {/* Smart Calling */}
+            {/* Smart Calling — TODO: wire smart-calling when voice AI call data API is available */}
             <GlassCard className="p-0 overflow-hidden">
               <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
                 <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
@@ -291,7 +308,7 @@ export default function DashboardPage() {
               </div>
             </GlassCard>
 
-            {/* What's Working */}
+            {/* What's Working — TODO: wire who-converts + best-channel-mix when segment analytics API is available */}
             <GlassCard className="p-0 overflow-hidden">
               <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
                 <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
@@ -307,7 +324,7 @@ export default function DashboardPage() {
                     <div className="text-[11px] font-mono font-semibold uppercase tracking-wider text-text-muted mb-3">
                       Who Converts
                     </div>
-                    {mockInsights.whoConverts.map((item, i) => (
+                    {mockInsights.whoConverts.map((item: { label: string; value: string }, i: number) => (
                       <div key={i} className="flex justify-between items-center py-2">
                         <span className="text-sm text-text-secondary">{item.label}</span>
                         <span className="text-sm font-semibold font-mono text-amber">{item.value}</span>
@@ -318,7 +335,7 @@ export default function DashboardPage() {
                     <div className="text-[11px] font-mono font-semibold uppercase tracking-wider text-text-muted mb-3">
                       Best Channel Mix
                     </div>
-                    {mockInsights.bestChannelMix.map((item, i) => (
+                    {mockInsights.bestChannelMix.map((item: { label: string; value: string }, i: number) => (
                       <div key={i} className="flex justify-between items-center py-2">
                         <span className="text-sm text-text-secondary">{item.label}</span>
                         <span className="text-sm font-semibold font-mono text-amber">{item.value}</span>
@@ -327,14 +344,14 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Discovery Banner */}
+                {/* Discovery Banner — wired to useDashboardV4 insight */}
                 <div className="p-4 rounded-lg bg-amber-glow border border-amber/30">
                   <div className="flex items-center gap-1.5 text-[11px] font-mono font-semibold uppercase tracking-wider text-amber mb-2">
                     <Flame className="w-4 h-4" strokeWidth={1.5} />
                     This Week's Discovery
                   </div>
                   <div className="text-sm text-text-primary leading-relaxed">
-                    {mockInsights.discovery}
+                    {dashboardData?.insight.detail ?? mockInsights.discovery}
                   </div>
                 </div>
               </div>
@@ -343,7 +360,7 @@ export default function DashboardPage() {
 
           {/* ROW 4: Bottom Grid - 3 column */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Recent Activity */}
+            {/* Recent Activity — TODO: wire activity-feed when activity stream API is available */}
             <GlassCard className="p-0 overflow-hidden">
               <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
                 <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
@@ -369,7 +386,7 @@ export default function DashboardPage() {
               </div>
             </GlassCard>
 
-            {/* Week Ahead */}
+            {/* Week Ahead — wired to useDashboardV4 weekAhead */}
             <GlassCard className="p-0 overflow-hidden">
               <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
                 <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
@@ -381,22 +398,35 @@ export default function DashboardPage() {
                 </Link>
               </div>
               <div className="px-6 py-4">
-                {mockWeekAhead.map((meeting) => (
+                {(dashboardData?.weekAhead ?? []).map((meeting) => (
                   <div key={meeting.id} className="flex items-center gap-4 py-3.5 border-b border-border-subtle last:border-0">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-semibold text-text-primary">{meeting.type}</div>
-                      <div className="text-sm text-text-secondary mt-0.5">{meeting.contact} • {meeting.company}</div>
+                      <div className="text-sm text-text-secondary mt-0.5">
+                        {meeting.name} • {meeting.company}
+                      </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm text-amber font-mono">{meeting.datetime}</div>
-                      {meeting.dealValue && <div className="text-xs text-text-muted font-mono">{meeting.dealValue}</div>}
+                      <div className="text-sm text-amber font-mono">
+                        {meeting.dayLabel} {meeting.time}
+                      </div>
+                      {meeting.potentialValue > 0 && (
+                        <div className="text-xs text-text-muted font-mono">
+                          ${meeting.potentialValue.toLocaleString()}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
+                {!dashboardLoading && (dashboardData?.weekAhead ?? []).length === 0 && (
+                  <div className="py-8 text-center text-text-muted text-sm">
+                    No upcoming meetings
+                  </div>
+                )}
               </div>
             </GlassCard>
 
-            {/* Warm Replies */}
+            {/* Warm Replies — wired to useDashboardV4 warmReplies */}
             <GlassCard className="p-0 overflow-hidden">
               <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
                 <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
@@ -408,25 +438,27 @@ export default function DashboardPage() {
                 </Link>
               </div>
               <div className="px-6 py-4">
-                {mockWarmReplies.map((reply) => (
+                {(dashboardData?.warmReplies ?? []).map((reply) => (
                   <div key={reply.id} className="py-3.5 border-b border-border-subtle last:border-0">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber to-amber-light flex items-center justify-center text-bg-void text-xs font-semibold">
-                          {reply.contact.split(' ').map(n => n[0]).join('')}
+                          {reply.initials}
                         </div>
                         <div>
-                          <div className="text-sm font-semibold text-text-primary">{reply.contact}</div>
+                          <div className="text-sm font-semibold text-text-primary">{reply.name}</div>
                           <div className="text-xs text-text-muted">{reply.company}</div>
                         </div>
                       </div>
-                      <span className="text-xs font-mono text-text-muted">
-                        {reply.time}
-                      </span>
                     </div>
-                    <p className="text-sm text-text-secondary line-clamp-2 italic">{reply.quote}</p>
+                    <p className="text-sm text-text-secondary line-clamp-2 italic">{reply.preview}</p>
                   </div>
                 ))}
+                {!dashboardLoading && (dashboardData?.warmReplies ?? []).length === 0 && (
+                  <div className="py-8 text-center text-text-muted text-sm">
+                    No warm replies yet
+                  </div>
+                )}
               </div>
             </GlassCard>
           </div>

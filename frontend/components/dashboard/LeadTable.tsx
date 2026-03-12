@@ -134,13 +134,11 @@ export function LeadTable({
   };
 
   // Fetch leads with filters
-  const { data: leadsResponse, isLoading, error } = useLeads({
+  const { leads, isLoading, error } = useLeads({
     campaign_id: campaignId,
     tier: selectedTier ?? undefined,
     search: searchQuery || undefined,
   });
-
-  const leads = leadsResponse?.items ?? [];
 
   // Calculate tier counts
   const tierCounts = useMemo(() => {

@@ -68,7 +68,7 @@ async def verify_icp_ready_task(client_id: UUID) -> dict[str, Any]:
             text("""
             SELECT
                 c.id,
-                c.company_name,
+                c.name,
                 c.tier,
                 c.icp_industries,
                 c.icp_titles,
@@ -104,7 +104,7 @@ async def verify_icp_ready_task(client_id: UUID) -> dict[str, Any]:
     return {
         "ready": True,
         "client_id": str(client_id),
-        "company_name": row.company_name,
+        "company_name": row.name,
         "tier": str(row.tier) if row.tier else "ignition",
         "icp": {
             "industries": row.icp_industries or [],

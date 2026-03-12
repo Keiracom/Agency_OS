@@ -254,6 +254,14 @@ function StatusBadge({ status }: { status: CampaignStatus }) {
       label: "Completed",
       className: "text-text-secondary",
     },
+    pending_approval: {
+      label: "Pending Approval",
+      className: "text-yellow-400",
+    },
+    approved: {
+      label: "Approved",
+      className: "text-green-400",
+    },
   };
 
   const config = statusConfig[status] || statusConfig.draft;

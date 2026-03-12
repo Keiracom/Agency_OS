@@ -24,6 +24,8 @@ import {
   updateSequenceStep,
   deleteSequenceStep,
   allocateCampaigns,
+  approveCampaign,
+  rejectCampaign,
   type CampaignAllocation,
 } from "@/lib/api/campaigns";
 import type {
@@ -265,6 +267,39 @@ export function useDeleteCampaign() {
       queryClient.removeQueries({ queryKey: ["campaign", clientId, campaignId] });
       queryClient.invalidateQueries({ queryKey: ["campaigns", clientId] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats", clientId] });
+    },
+  });
+}
+
+/**
+ * Hook to approve a campaign (admin only)
+ */
+export function useApproveCampaign() {
+  const { clientId } = useClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (campaignId: string) => approveCampaign(clientId!, campaignId),
+    onSuccess: (data, campaignId) => {
+      queryClient.setQueryData(["campaign", clientId, campaignId], data);
+      queryClient.invalidateQueries({ queryKey: ["campaigns", clientId] });
+    },
+  });
+}
+
+/**
+ * Hook to reject a campaign (admin only)
+ */
+export function useRejectCampaign() {
+  const { clientId } = useClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ campaignId, reason }: { campaignId: string; reason: string }) =>
+      rejectCampaign(clientId!, campaignId, reason),
+    onSuccess: (data, { campaignId }) => {
+      queryClient.setQueryData(["campaign", clientId, campaignId], data);
+      queryClient.invalidateQueries({ queryKey: ["campaigns", clientId] });
     },
   });
 }

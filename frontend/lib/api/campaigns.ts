@@ -264,6 +264,32 @@ export interface AllocateCampaignsResponse {
 }
 
 /**
+ * Approve a campaign (admin only — PENDING_APPROVAL → APPROVED)
+ */
+export async function approveCampaign(
+  clientId: string,
+  campaignId: string
+): Promise<Campaign> {
+  return api.post<Campaign>(
+    `/api/v1/clients/${clientId}/campaigns/${campaignId}/approve`
+  );
+}
+
+/**
+ * Reject a campaign (admin only — PENDING_APPROVAL → DRAFT)
+ */
+export async function rejectCampaign(
+  clientId: string,
+  campaignId: string,
+  reason: string
+): Promise<Campaign> {
+  return api.post<Campaign>(
+    `/api/v1/clients/${clientId}/campaigns/${campaignId}/reject`,
+    { reason }
+  );
+}
+
+/**
  * Allocate priority percentages across campaigns
  *
  * Updates lead_allocation_pct on each campaign and triggers

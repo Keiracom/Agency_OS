@@ -310,6 +310,8 @@ d) Violation: reporting complete without Manual update = LAW XV violation, log g
 
 *Ratified: 2026-03-11, CEO Directive #169*
 
+Directive metrics (mandatory alongside LAW XV): After completing any directive, write execution metrics to cis_directive_metrics (execution_rounds, scope_creep, verification_first_pass, agents_used, save_completed). A directive is not complete until its metrics are logged. Use the MCP bridge to INSERT directly.
+
 ---
 
 *Signed and Ratified: 2026-02-12, CEO Directive*

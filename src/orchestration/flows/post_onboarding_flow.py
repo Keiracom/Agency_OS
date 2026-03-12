@@ -557,6 +557,100 @@ async def update_onboarding_status_task(
     return True
 
 
+@task(name="score_promoted_leads", retries=1, retry_delay_seconds=5)
+async def score_promoted_leads_task(client_id: UUID) -> dict[str, Any]:
+    """
+    Score newly promoted leads in the leads table.
+
+    Directive #187 Fix (G7/G8): After promote_pool_leads_to_leads_task, leads
+    sit in the leads table with als_score=0, propensity_score=NULL, enriched_at=NULL.
+    This task calculates ALS scores for all unscored leads and populates:
+      - als_score / als_tier (via ScorerEngine.score_lead)
+      - propensity_score (mirrored from als_score)
+      - enrichment_source = 'als_onboarding'
+      - enriched_at = NOW()
+
+    Args:
+        client_id: Client UUID
+
+    Returns:
+        Dict with scoring summary
+    """
+    from src.engines.scorer import ScorerEngine
+
+    scorer = ScorerEngine()
+    scored = 0
+    failed = 0
+    errors: list[dict[str, Any]] = []
+
+    async with get_db_session() as db:
+        # Fetch all unscored leads for this client (scored_at IS NULL = just promoted)
+        result = await db.execute(
+            text("""
+            SELECT id
+            FROM leads
+            WHERE client_id = :client_id
+              AND scored_at IS NULL
+              AND deleted_at IS NULL
+            """),
+            {"client_id": str(client_id)},
+        )
+        lead_ids = [row[0] for row in result.fetchall()]
+
+    if not lead_ids:
+        logger.info(f"[score_promoted_leads] No unscored leads found for client {client_id}")
+        return {"success": True, "scored": 0, "failed": 0}
+
+    logger.info(
+        f"[score_promoted_leads] Scoring {len(lead_ids)} promoted leads for client {client_id}"
+    )
+
+    async with get_db_session() as db:
+        for lead_id in lead_ids:
+            try:
+                result = await scorer.score_lead(db=db, lead_id=lead_id)
+                if result.success:
+                    als_score = result.data.get("propensity_score", 0)
+                    # Mirror als_score → propensity_score and mark enriched
+                    await db.execute(
+                        text("""
+                        UPDATE leads
+                        SET propensity_score = :score,
+                            enrichment_source = 'als_onboarding',
+                            enriched_at = NOW(),
+                            updated_at = NOW()
+                        WHERE id = :lead_id
+                        """),
+                        {"score": als_score, "lead_id": str(lead_id)},
+                    )
+                    await db.commit()
+                    scored += 1
+                else:
+                    logger.warning(
+                        f"[score_promoted_leads] Scoring failed for lead {lead_id}: {result.error}"
+                    )
+                    failed += 1
+                    errors.append({"lead_id": str(lead_id), "error": result.error})
+            except Exception as e:
+                logger.warning(
+                    f"[score_promoted_leads] Exception scoring lead {lead_id}: {e}"
+                )
+                failed += 1
+                errors.append({"lead_id": str(lead_id), "error": str(e)})
+
+    logger.info(
+        f"[score_promoted_leads] Complete for client {client_id}: "
+        f"{scored} scored, {failed} failed"
+    )
+
+    return {
+        "success": True,
+        "scored": scored,
+        "failed": failed,
+        "errors": errors,
+    }
+
+
 # ============================================
 # DEMO MODE HELPER (Directive #184 Fix 3)
 # ============================================
@@ -748,11 +842,12 @@ async def post_onboarding_setup_flow(
         icp_status = await verify_icp_ready_task(client_id)
 
         if not icp_status["ready"]:
-            logger.error(f"ICP not ready: {icp_status.get('error')}")
+            logger.error(f"Post-onboarding failed at verify_icp_ready_task: {icp_status.get('error')}")
             return {
                 "success": False,
                 "client_id": str(client_id),
                 "error": icp_status.get("error", "ICP not ready"),
+                "failed_at": "verify_icp_ready_task",
             }
 
         tier = icp_status["tier"]
@@ -762,10 +857,12 @@ async def post_onboarding_setup_flow(
         suggestions_result = await generate_campaign_suggestions_task(client_id)
 
         if not suggestions_result["success"]:
+            logger.error(f"Post-onboarding failed at generate_campaign_suggestions_task")
             return {
                 "success": False,
                 "client_id": str(client_id),
                 "error": suggestions_result.get("error", "Campaign suggestion failed"),
+                "failed_at": "generate_campaign_suggestions_task",
             }
 
         suggestions = suggestions_result["suggestions"]
@@ -840,6 +937,25 @@ async def post_onboarding_setup_flow(
                 f"Promotion had {len(promotion_result['errors'])} errors for client {client_id}"
             )
 
+        # Step 7b: Score promoted leads (Directive #187 Fix G7/G8)
+        # Non-blocking: flow completes even if scoring fails.
+        # Populates propensity_score, enrichment_source, enriched_at on leads table.
+        leads_scored = 0
+        if leads_promoted > 0:
+            try:
+                scoring_result = await score_promoted_leads_task(client_id=client_id)
+                leads_scored = scoring_result.get("scored", 0)
+                if scoring_result.get("failed", 0) > 0:
+                    logger.warning(
+                        f"[post_onboarding] {scoring_result['failed']} leads failed scoring "
+                        f"for client {client_id}"
+                    )
+            except Exception as score_exc:
+                logger.warning(
+                    f"[post_onboarding] Post-promotion scoring failed for client {client_id} "
+                    f"(non-fatal): {score_exc}"
+                )
+
         # Step 8: Update onboarding status
         await update_onboarding_status_task(
             client_id=client_id,
@@ -862,6 +978,7 @@ async def post_onboarding_setup_flow(
             "leads_sourced": leads_sourced,
             "leads_assigned": sum(a["leads_assigned"] for a in assignments) if assignments else leads_sourced,
             "leads_promoted": leads_promoted,
+            "leads_scored": leads_scored,
             "assignments": assignments,
             "sourcing_cost_aud": sourcing_cost,
             "demo_mode": demo_mode,
@@ -875,6 +992,7 @@ async def post_onboarding_setup_flow(
             "success": False,
             "client_id": str(client_id),
             "error": str(e),
+            "failed_at": "post_onboarding_setup_flow",
         }
 
 

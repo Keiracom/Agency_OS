@@ -18,6 +18,9 @@ import {
   type TimelineEvent 
 } from "@/components/leads/CommunicationTimeline";
 import { getALSTier, getALSColour } from "@/components/leads/LeadScoreboardRow";
+import { useLeadDetail } from "@/hooks/use-lead-detail";
+import { useClient } from "@/hooks/use-client";
+import type { Lead, SDKEnrichmentData } from "@/lib/api/types";
 import {
   ArrowLeft,
   Mail,
@@ -32,200 +35,6 @@ import {
   Moon,
   Snowflake,
 } from "lucide-react";
-
-// Mock lead data by ID
-const MOCK_LEADS: Record<string, {
-  id: string;
-  name: string;
-  title: string;
-  company: string;
-  location: string;
-  email: string;
-  phone: string;
-  linkedinUrl: string;
-  alsScore: number;
-  enrichmentDepth: number;
-  companyDetails: {
-    abn: string;
-    industry: string;
-    employees: string;
-    revenue: string;
-    website: string;
-  };
-  whyHot: { label: string; type: string }[];
-  alsBreakdown: { label: string; score: number; max: number }[];
-  timeline: TimelineEvent[];
-}> = {
-  "1": {
-    id: "1",
-    name: "Sarah Chen",
-    title: "Marketing Director",
-    company: "Bloom Digital",
-    location: "Melbourne, VIC",
-    email: "sarah@bloomdigital.com.au",
-    phone: "+61 412 345 678",
-    linkedinUrl: "linkedin.com/in/sarahchen",
-    alsScore: 94,
-    enrichmentDepth: 95,
-    companyDetails: {
-      abn: "12 345 678 901",
-      industry: "Digital Marketing",
-      employees: "15-25",
-      revenue: "$2-5M",
-      website: "bloomdigital.com.au",
-    },
-    whyHot: [
-      { label: "Marketing Director", type: "executive" },
-      { label: "5 email opens today", type: "active" },
-      { label: "Known Agency Buyer", type: "buyer" },
-      { label: "LinkedIn Active", type: "linkedin" },
-      { label: "Engaged in last 2h", type: "timing" },
-    ],
-    alsBreakdown: [
-      { label: "Data Quality", score: 18, max: 20 },
-      { label: "Authority (Title)", score: 23, max: 25 },
-      { label: "Company Fit", score: 23, max: 25 },
-      { label: "Timing", score: 10, max: 10 },
-      { label: "Engagement", score: 20, max: 20 },
-    ],
-    timeline: [
-      {
-        id: "evt-1",
-        type: "meeting_booked",
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-        title: "Discovery Call Booked",
-        preview: "Thursday 10:00 AM AEDT — 30 min discovery call",
-        fullContent: "Meeting Details:\n- Date: Thursday, Feb 13, 2026\n- Time: 10:00 AM AEDT\n- Duration: 30 minutes\n- Type: Discovery Call\n- Attendees: Sarah Chen, Your Team\n\nAgenda:\n1. Introduction and company overview\n2. Current marketing challenges\n3. Discuss potential solutions\n4. Next steps",
-        metadata: { "Booked via": "Voice AI", "Duration": "30 min" }
-      },
-      {
-        id: "evt-2",
-        type: "email_replied",
-        timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3 hours ago
-        title: "Sarah replied to your email",
-        preview: "\"Yes, I'd love to learn more. Can we schedule a call?\"",
-        fullContent: "Hi there,\n\nYes, I'd love to learn more. Can we schedule a call?\n\nI'm particularly interested in how you've helped other digital agencies scale their lead generation. Our current process is quite manual and we're looking to automate.\n\nI'm available Thursday or Friday morning if that works?\n\nBest,\nSarah",
-        metadata: { "Sentiment": "Positive", "Response time": "2h 15m" }
-      },
-      {
-        id: "evt-3",
-        type: "email_opened",
-        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
-        title: "Email opened (5th time)",
-        preview: "Subject: \"Quick question about Bloom Digital\"",
-      },
-      {
-        id: "evt-4",
-        type: "call_made",
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // Yesterday
-        title: "Voice AI Call Completed",
-        preview: "3 min 24 sec call — AI detected buying interest",
-        fullContent: "Call Summary:\n\nDuration: 3 minutes 24 seconds\nOutcome: Positive - expressed interest in demo\n\nKey Points Discussed:\n- Current lead gen process (manual, time-consuming)\n- Pain points with existing tools\n- Interest in AI-powered automation\n- Requested follow-up email with case studies\n\nSentiment: Highly engaged, asked multiple questions\nNext Action: Discovery call scheduled",
-        metadata: { "Duration": "3:24", "Outcome": "Meeting Booked" }
-      },
-      {
-        id: "evt-5",
-        type: "linkedin_connected",
-        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-        title: "LinkedIn Connection Accepted",
-        preview: "Sarah accepted your connection request",
-      },
-      {
-        id: "evt-6",
-        type: "email_sent",
-        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 - 60 * 60 * 1000), // 2 days + 1 hour ago
-        title: "Initial Outreach Email Sent",
-        preview: "Personalized outreach: Case study + value proposition",
-        fullContent: "Subject: Quick question about Bloom Digital\n\nHi Sarah,\n\nI noticed Bloom Digital has been growing rapidly in the Melbourne market — congrats on the recent wins!\n\nI'm reaching out because we've helped agencies similar to yours increase their qualified lead pipeline by 3x using AI-powered prospecting.\n\nWould you be open to a quick 15-minute chat to see if there's a fit?\n\nI've attached a case study from another digital agency that saw results within 30 days.\n\nBest,\n[Your name]",
-        metadata: { "Template": "Agency_Intro_v2", "Personalization": "High" }
-      },
-    ],
-  },
-  "2": {
-    id: "2",
-    name: "Marcus Johnson",
-    title: "Owner",
-    company: "TradeFlow Plumbing",
-    location: "Melbourne, VIC",
-    email: "marcus@tradeflow.com.au",
-    phone: "+61 432 111 222",
-    linkedinUrl: "linkedin.com/in/marcusjohnson",
-    alsScore: 91,
-    enrichmentDepth: 88,
-    companyDetails: {
-      abn: "23 456 789 012",
-      industry: "Trade Services",
-      employees: "10-20",
-      revenue: "$1-2M",
-      website: "tradeflowplumbing.com.au",
-    },
-    whyHot: [
-      { label: "Business Owner", type: "executive" },
-      { label: "Hiring on SEEK", type: "buyer" },
-      { label: "Recent website visit", type: "active" },
-    ],
-    alsBreakdown: [
-      { label: "Data Quality", score: 17, max: 20 },
-      { label: "Authority (Title)", score: 25, max: 25 },
-      { label: "Company Fit", score: 22, max: 25 },
-      { label: "Timing", score: 9, max: 10 },
-      { label: "Engagement", score: 18, max: 20 },
-    ],
-    timeline: [
-      {
-        id: "evt-1",
-        type: "sms_sent",
-        timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000),
-        title: "SMS Follow-up Sent",
-        preview: "Quick follow-up about our call yesterday...",
-      },
-      {
-        id: "evt-2",
-        type: "email_opened",
-        timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000),
-        title: "Email opened (2nd time)",
-        preview: "Subject: \"Growing TradeFlow? Here's how we can help\"",
-      },
-      {
-        id: "evt-3",
-        type: "email_sent",
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        title: "Initial Outreach Email Sent",
-        preview: "Personalized outreach for trade business owners",
-      },
-    ],
-  },
-};
-
-// Default lead for unknown IDs (empty timeline)
-const DEFAULT_LEAD = {
-  id: "unknown",
-  name: "New Lead",
-  title: "Contact",
-  company: "Unknown Company",
-  location: "Australia",
-  email: "contact@example.com",
-  phone: "+61 400 000 000",
-  linkedinUrl: "",
-  alsScore: 50,
-  enrichmentDepth: 10,
-  companyDetails: {
-    abn: "00 000 000 000",
-    industry: "Unknown",
-    employees: "Unknown",
-    revenue: "Unknown",
-    website: "",
-  },
-  whyHot: [],
-  alsBreakdown: [
-    { label: "Data Quality", score: 5, max: 20 },
-    { label: "Authority (Title)", score: 10, max: 25 },
-    { label: "Company Fit", score: 15, max: 25 },
-    { label: "Timing", score: 5, max: 10 },
-    { label: "Engagement", score: 15, max: 20 },
-  ],
-  timeline: [], // Empty timeline triggers the empty state
-};
 
 // Why Hot badge colors
 function getWhyHotStyle(type: string) {
@@ -255,17 +64,175 @@ function getTierIcon(tier: ReturnType<typeof getALSTier>) {
   }
 }
 
+/**
+ * Derive whyHot badges from real lead data
+ */
+function deriveWhyHot(lead: Lead): { label: string; type: string }[] {
+  const badges: { label: string; type: string }[] = [];
+
+  // Executive title signals
+  const executiveTitles = ["ceo", "cto", "coo", "cmo", "founder", "owner", "director", "vp", "president", "managing"];
+  if (lead.title && executiveTitles.some(t => lead.title!.toLowerCase().includes(t))) {
+    badges.push({ label: lead.title, type: "executive" });
+  }
+
+  // SDK signals from enrichment
+  if (lead.sdk_signals && lead.sdk_signals.length > 0) {
+    lead.sdk_signals.slice(0, 3).forEach(signal => {
+      badges.push({ label: signal, type: "active" });
+    });
+  }
+
+  // LinkedIn presence
+  if (lead.linkedin_url) {
+    badges.push({ label: "LinkedIn Active", type: "linkedin" });
+  }
+
+  // Hot propensity tier
+  if (lead.propensity_tier === "hot") {
+    badges.push({ label: "High Propensity", type: "buyer" });
+  }
+
+  return badges;
+}
+
+/**
+ * Derive ALS breakdown from als_* fields on the lead
+ */
+function deriveALSBreakdown(lead: Lead): { label: string; score: number; max: number }[] {
+  // Only show breakdown if at least some ALS fields are populated
+  if (
+    lead.als_data_quality === null &&
+    lead.als_authority === null &&
+    lead.als_company_fit === null &&
+    lead.als_timing === null &&
+    lead.als_risk === null
+  ) {
+    return [];
+  }
+
+  return [
+    { label: "Data Quality", score: lead.als_data_quality ?? 0, max: 20 },
+    { label: "Authority (Title)", score: lead.als_authority ?? 0, max: 25 },
+    { label: "Company Fit", score: lead.als_company_fit ?? 0, max: 25 },
+    { label: "Timing", score: lead.als_timing ?? 0, max: 10 },
+    { label: "Engagement", score: lead.als_risk ?? 0, max: 20 },
+  ];
+}
+
+/**
+ * Compute enrichment depth 0–100 from field population + sdk_enrichment presence
+ */
+function getEnrichmentDepth(lead: Lead): number {
+  const fields = [
+    lead.first_name,
+    lead.last_name,
+    lead.title,
+    lead.company,
+    lead.phone,
+    lead.linkedin_url,
+    lead.domain,
+    lead.organization_industry,
+    lead.organization_employee_count,
+    lead.organization_country,
+  ];
+  const filled = fields.filter((f) => f !== null && f !== undefined).length;
+  const base = Math.round((filled / fields.length) * 70);
+  const sdkBonus = lead.sdk_enrichment ? 30 : 0;
+  return Math.min(100, base + sdkBonus);
+}
+
 export default function LeadDetailPage() {
   const params = useParams();
   const leadId = params.id as string;
-  
-  // Get lead data or fall back to default (empty timeline)
-  const lead = MOCK_LEADS[leadId] || { ...DEFAULT_LEAD, id: leadId };
-  const tier = getALSTier(lead.alsScore);
+  const { clientId } = useClient();
+
+  const { lead, isLoading, error } = useLeadDetail(clientId, leadId);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <AppShell pageTitle="Loading...">
+        <div className="space-y-6">
+          <Link
+            href="/dashboard/leads"
+            className="inline-flex items-center gap-2 text-sm text-text-muted hover:text-accent-primary transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Scoreboard
+          </Link>
+          <div className="glass-surface rounded-2xl p-8 text-center">
+            <motion.div
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ repeat: Infinity, duration: 1.5 }}
+              className="text-text-muted font-mono"
+            >
+              Loading lead data...
+            </motion.div>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  // Error / not found state
+  if (error || !lead) {
+    return (
+      <AppShell pageTitle="Lead Not Found">
+        <div className="space-y-6">
+          <Link
+            href="/dashboard/leads"
+            className="inline-flex items-center gap-2 text-sm text-text-muted hover:text-accent-primary transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Scoreboard
+          </Link>
+          <div className="glass-surface rounded-2xl p-8 text-center">
+            <p className="text-text-muted">Lead not found or failed to load.</p>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  // Derived display values
+  const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ") || lead.email;
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase();
+
+  const alsScore = lead.propensity_score ?? 0;
+  const tier = getALSTier(alsScore);
   const tierColours = getALSColour(tier);
+  const enrichmentDepth = getEnrichmentDepth(lead);
+  const whyHot = deriveWhyHot(lead);
+  const alsBreakdown = deriveALSBreakdown(lead);
+
+  const sdk = lead.sdk_enrichment as SDKEnrichmentData | null;
+
+  // Company details from real data
+  const companyDetails = {
+    industry: lead.organization_industry ?? "—",
+    employees: lead.organization_employee_count
+      ? lead.organization_employee_count.toLocaleString()
+      : "—",
+    revenue: sdk?.company_revenue ?? "—",
+    website: sdk?.company_website ?? lead.domain ?? "",
+  };
+
+  // Location from real data
+  const location = lead.organization_country ?? "—";
+
+  // Timeline: empty until activities endpoint is wired
+  // TODO: wire timeline when getLeadActivities() is integrated into this page
+  const timeline: TimelineEvent[] = [];
 
   return (
-    <AppShell pageTitle={lead.name}>
+    <AppShell pageTitle={name}>
       <div className="space-y-6">
         {/* Back Navigation */}
         <Link
@@ -300,14 +267,14 @@ export default function LeadDetailPage() {
                   boxShadow: tierColours.glow
                 }}
               >
-                {lead.name.split(" ").map(n => n[0]).join("")}
+                {initials}
               </div>
 
               {/* Info */}
               <div>
-                <h1 className="text-2xl font-serif font-semibold text-text-primary">{lead.name}</h1>
+                <h1 className="text-2xl font-serif font-semibold text-text-primary">{name}</h1>
                 <p className="text-base text-text-secondary mt-1">
-                  {lead.title} at {lead.company}
+                  {lead.title ? `${lead.title}${lead.company ? ` at ${lead.company}` : ""}` : lead.company ?? ""}
                 </p>
 
                 {/* Meta items */}
@@ -316,14 +283,16 @@ export default function LeadDetailPage() {
                     <Mail className="w-4 h-4 text-text-muted" />
                     {lead.email}
                   </a>
-                  <span className="flex items-center gap-2 text-sm text-text-secondary">
-                    <Phone className="w-4 h-4 text-text-muted" />
-                    {lead.phone}
-                  </span>
-                  {lead.linkedinUrl && (
-                    <a href={`https://${lead.linkedinUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-accent-primary hover:underline">
+                  {lead.phone && (
+                    <span className="flex items-center gap-2 text-sm text-text-secondary">
+                      <Phone className="w-4 h-4 text-text-muted" />
+                      {lead.phone}
+                    </span>
+                  )}
+                  {lead.linkedin_url && (
+                    <a href={`https://${lead.linkedin_url.replace(/^https?:\/\//, "")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-accent-primary hover:underline">
                       <Linkedin className="w-4 h-4" />
-                      {lead.linkedinUrl}
+                      LinkedIn
                     </a>
                   )}
                 </div>
@@ -347,7 +316,7 @@ export default function LeadDetailPage() {
                   className="text-5xl font-bold font-mono leading-none"
                   style={{ color: tierColours.text }}
                 >
-                  {lead.alsScore}
+                  {alsScore}
                 </p>
                 <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mt-1">ALS Score</p>
               </motion.div>
@@ -366,14 +335,14 @@ export default function LeadDetailPage() {
           </div>
 
           {/* Why Hot Section */}
-          {lead.whyHot.length > 0 && (
+          {whyHot.length > 0 && (
             <div className="mt-6 pt-6 border-t border-border-subtle">
               <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4" />
                 Why This Lead is {tier === "hot" ? "Hot" : tier === "warm" ? "Warm" : "Ranked"}
               </p>
               <div className="flex flex-wrap gap-2">
-                {lead.whyHot.map((item, idx) => {
+                {whyHot.map((item, idx) => {
                   const style = getWhyHotStyle(item.type);
                   return (
                     <span
@@ -435,7 +404,8 @@ export default function LeadDetailPage() {
                 <p className="text-xs text-text-muted">Chronological activity history</p>
               </div>
               <div className="p-5">
-                <CommunicationTimeline events={lead.timeline} showEmptyState={true} />
+                {/* TODO: wire timeline with getLeadActivities() when integrated */}
+                <CommunicationTimeline events={timeline} showEmptyState={true} />
               </div>
             </motion.div>
           </div>
@@ -461,10 +431,10 @@ export default function LeadDetailPage() {
                     <Building2 className="w-6 h-6 text-text-muted" />
                   </div>
                   <div>
-                    <p className="font-semibold text-text-primary">{lead.company}</p>
-                    {lead.companyDetails.website && (
-                      <a href={`https://${lead.companyDetails.website}`} target="_blank" rel="noopener noreferrer" className="text-sm text-accent-primary hover:underline">
-                        {lead.companyDetails.website}
+                    <p className="font-semibold text-text-primary">{lead.company ?? "Unknown Company"}</p>
+                    {companyDetails.website && (
+                      <a href={`https://${companyDetails.website.replace(/^https?:\/\//, "")}`} target="_blank" rel="noopener noreferrer" className="text-sm text-accent-primary hover:underline">
+                        {companyDetails.website}
                       </a>
                     )}
                   </div>
@@ -472,11 +442,11 @@ export default function LeadDetailPage() {
 
                 <div className="grid grid-cols-2 gap-3 mb-5">
                   <div className="p-3 rounded-xl bg-bg-elevated text-center">
-                    <p className="text-lg font-bold font-mono text-text-primary">{lead.companyDetails.employees}</p>
+                    <p className="text-lg font-bold font-mono text-text-primary">{companyDetails.employees}</p>
                     <p className="text-[10px] text-text-muted uppercase">Employees</p>
                   </div>
                   <div className="p-3 rounded-xl bg-bg-elevated text-center">
-                    <p className="text-lg font-bold font-mono text-text-primary">{lead.companyDetails.revenue}</p>
+                    <p className="text-lg font-bold font-mono text-text-primary">{companyDetails.revenue}</p>
                     <p className="text-[10px] text-text-muted uppercase">Revenue</p>
                   </div>
                 </div>
@@ -486,15 +456,15 @@ export default function LeadDetailPage() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-text-muted">Industry</span>
-                      <span className="text-text-primary">{lead.companyDetails.industry}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-muted">ABN</span>
-                      <span className="text-text-primary font-mono">{lead.companyDetails.abn}</span>
+                      <span className="text-text-primary">{companyDetails.industry}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-text-muted">Location</span>
-                      <span className="text-text-primary">{lead.location}</span>
+                      <span className="text-text-primary">{location}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-text-muted">Status</span>
+                      <span className="text-text-primary capitalize">{lead.status.replace(/_/g, " ")}</span>
                     </div>
                   </div>
                 </div>
@@ -513,40 +483,48 @@ export default function LeadDetailPage() {
                 <p className="text-xs text-text-muted mt-1">Adaptive Lead Scoring components</p>
               </div>
               <div className="p-5 space-y-4">
-                {lead.alsBreakdown.map((item, idx) => {
-                  const percent = (item.score / item.max) * 100;
-                  return (
-                    <div key={idx}>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-text-secondary">{item.label}</span>
-                        <span className="font-mono font-medium text-text-primary">{item.score}/{item.max}</span>
-                      </div>
-                      <div className="h-2 rounded-full bg-bg-elevated overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${percent}%` }}
-                          transition={{ duration: 0.8, delay: 0.6 + idx * 0.1 }}
-                          className="h-full rounded-full"
-                          style={{
-                            backgroundColor: percent >= 80 ? "#10B981" : percent >= 60 ? "#F59E0B" : "#3B82F6",
-                          }}
-                        />
+                {alsBreakdown.length > 0 ? (
+                  <>
+                    {alsBreakdown.map((item, idx) => {
+                      const percent = item.max > 0 ? (item.score / item.max) * 100 : 0;
+                      return (
+                        <div key={idx}>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="text-text-secondary">{item.label}</span>
+                            <span className="font-mono font-medium text-text-primary">{item.score}/{item.max}</span>
+                          </div>
+                          <div className="h-2 rounded-full bg-bg-elevated overflow-hidden">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${percent}%` }}
+                              transition={{ duration: 0.8, delay: 0.6 + idx * 0.1 }}
+                              className="h-full rounded-full"
+                              style={{
+                                backgroundColor: percent >= 80 ? "#10B981" : percent >= 60 ? "#F59E0B" : "#3B82F6",
+                              }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div className="pt-4 border-t border-border-subtle">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-text-primary">Total Score</span>
+                        <span 
+                          className="text-2xl font-bold font-mono"
+                          style={{ color: tierColours.text }}
+                        >
+                          {alsScore}
+                        </span>
                       </div>
                     </div>
-                  );
-                })}
-
-                <div className="pt-4 border-t border-border-subtle">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-text-primary">Total Score</span>
-                    <span 
-                      className="text-2xl font-bold font-mono"
-                      style={{ color: tierColours.text }}
-                    >
-                      {lead.alsScore}
-                    </span>
+                  </>
+                ) : (
+                  <div className="py-4 text-center text-text-muted text-sm">
+                    <p>Score breakdown unavailable</p>
+                    <p className="text-xs mt-1 font-mono">Run lead scoring to see details</p>
                   </div>
-                </div>
+                )}
               </div>
             </motion.div>
 
@@ -561,26 +539,26 @@ export default function LeadDetailPage() {
                 <span className="text-sm font-medium text-text-secondary">Enrichment Depth</span>
                 <span 
                   className="font-mono font-bold"
-                  style={{ color: lead.enrichmentDepth >= 80 ? "#D4956A" : lead.enrichmentDepth >= 50 ? "#EAB308" : "#6B7280" }}
+                  style={{ color: enrichmentDepth >= 80 ? "#D4956A" : enrichmentDepth >= 50 ? "#EAB308" : "#6B7280" }}
                 >
-                  {lead.enrichmentDepth}%
+                  {enrichmentDepth}%
                 </span>
               </div>
               <div className="h-3 rounded-full bg-bg-elevated overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${lead.enrichmentDepth}%` }}
+                  animate={{ width: `${enrichmentDepth}%` }}
                   transition={{ duration: 1, delay: 0.7 }}
                   className="h-full rounded-full"
                   style={{ 
-                    backgroundColor: lead.enrichmentDepth >= 80 ? "#D4956A" : lead.enrichmentDepth >= 50 ? "#EAB308" : "#6B7280"
+                    backgroundColor: enrichmentDepth >= 80 ? "#D4956A" : enrichmentDepth >= 50 ? "#EAB308" : "#6B7280"
                   }}
                 />
               </div>
               <p className="text-xs text-text-muted mt-2">
-                {lead.enrichmentDepth >= 80 
+                {enrichmentDepth >= 80 
                   ? "Fully enriched — all data points captured" 
-                  : lead.enrichmentDepth >= 50 
+                  : enrichmentDepth >= 50 
                   ? "Partially enriched — gathering more intel" 
                   : "Enrichment in progress..."}
               </p>

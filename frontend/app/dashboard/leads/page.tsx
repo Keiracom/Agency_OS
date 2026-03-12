@@ -14,6 +14,8 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { SplitFlapCounterBar } from "@/components/leads/SplitFlapCounter";
 import { LeadScoreboardRow, getALSTier } from "@/components/leads/LeadScoreboardRow";
+import { useLeads } from "@/hooks/use-leads";
+import type { Lead } from "@/lib/api/types";
 import {
   Search,
   Filter,
@@ -30,154 +32,37 @@ import {
 // Tier filter type
 type TierFilter = "all" | "hot" | "warm" | "cool" | "cold";
 
-// Australian mock data - Melbourne digital agency prospects (tradies + dentists)
-const MOCK_LEADS = [
-  {
-    id: "1",
-    name: "Sarah Chen",
-    title: "Marketing Director",
-    company: "Bloom Digital",
-    email: "sarah@bloomdigital.com.au",
-    alsScore: 94,
-    enrichmentDepth: 95,
-    isNew: false,
-    meetingBooked: true,
-  },
-  {
-    id: "2",
-    name: "Marcus Johnson",
-    title: "Owner",
-    company: "TradeFlow Plumbing",
-    email: "marcus@tradeflow.com.au",
-    alsScore: 91,
-    enrichmentDepth: 88,
-    isNew: true,
-    meetingBooked: false,
-  },
-  {
-    id: "3",
-    name: "David Park",
-    title: "Founder & CEO",
-    company: "Momentum Media",
-    email: "david@momentummedia.co",
-    alsScore: 88,
-    enrichmentDepth: 92,
-    isNew: false,
-    meetingBooked: true,
-  },
-  {
-    id: "4",
-    name: "Lisa Wong",
-    title: "Practice Manager",
-    company: "Smile Dental Fitzroy",
-    email: "lisa@smiledentalfitzroy.com.au",
-    alsScore: 82,
-    enrichmentDepth: 78,
-    isNew: false,
-    meetingBooked: false,
-  },
-  {
-    id: "5",
-    name: "James Cooper",
-    title: "Managing Director",
-    company: "Cooper Electrical",
-    email: "james@cooperelectrical.com.au",
-    alsScore: 76,
-    enrichmentDepth: 65,
-    isNew: false,
-    meetingBooked: false,
-  },
-  {
-    id: "6",
-    name: "Emma Wilson",
-    title: "Head of Marketing",
-    company: "Coastal Electrical",
-    email: "emma@coastalelectrical.com.au",
-    alsScore: 71,
-    enrichmentDepth: 72,
-    isNew: true,
-    meetingBooked: false,
-  },
-  {
-    id: "7",
-    name: "Rachel Nguyen",
-    title: "Practice Owner",
-    company: "Growth Dental Kew",
-    email: "rachel@growthdentalkew.com.au",
-    alsScore: 68,
-    enrichmentDepth: 45,
-    isNew: false,
-    meetingBooked: false,
-  },
-  {
-    id: "8",
-    name: "Tom Brown",
-    title: "Director",
-    company: "Scale Trades",
-    email: "tom@scaletrades.com.au",
-    alsScore: 58,
-    enrichmentDepth: 82,
-    isNew: false,
-    meetingBooked: false,
-  },
-  {
-    id: "9",
-    name: "Sophie Martinez",
-    title: "Marketing Manager",
-    company: "Digital Edge Agency",
-    email: "sophie@digitaledge.com.au",
-    alsScore: 45,
-    enrichmentDepth: 35,
-    isNew: false,
-    meetingBooked: false,
-  },
-  {
-    id: "10",
-    name: "Michael Chen",
-    title: "Operations Manager",
-    company: "Elite Plumbing Services",
-    email: "michael@eliteplumbing.com.au",
-    alsScore: 52,
-    enrichmentDepth: 28,
-    isNew: false,
-    meetingBooked: false,
-  },
-  {
-    id: "11",
-    name: "Amanda White",
-    title: "Dental Hygienist",
-    company: "Bright Smile Clinic",
-    email: "amanda@brightsmileclinic.com.au",
-    alsScore: 32,
-    enrichmentDepth: 42,
-    isNew: false,
-    meetingBooked: false,
-  },
-  {
-    id: "12",
-    name: "Daniel Lee",
-    title: "Junior Marketing",
-    company: "Spark Creative",
-    email: "daniel@sparkcreative.com.au",
-    alsScore: 28,
-    enrichmentDepth: 15,
-    isNew: false,
-    meetingBooked: false,
-  },
-];
+/**
+ * Derive a 0–100 enrichment depth from available Lead fields.
+ * - Basic fields (10 total) contribute up to 70 points.
+ * - sdk_enrichment presence adds 30 points.
+ */
+function getEnrichmentDepth(lead: Lead): number {
+  const fields = [
+    lead.first_name,
+    lead.last_name,
+    lead.title,
+    lead.company,
+    lead.phone,
+    lead.linkedin_url,
+    lead.domain,
+    lead.organization_industry,
+    lead.organization_employee_count,
+    lead.organization_country,
+  ];
+  const filled = fields.filter((f) => f !== null && f !== undefined).length;
+  const base = Math.round((filled / fields.length) * 70);
+  const sdkBonus = lead.sdk_enrichment ? 30 : 0;
+  return Math.min(100, base + sdkBonus);
+}
 
-// Calculate stats from leads
-function calculateStats(leads: typeof MOCK_LEADS) {
-  return {
-    total: leads.length,
-    enriched: leads.filter(l => l.enrichmentDepth >= 50).length,
-    avgALS: Math.round(leads.reduce((acc, l) => acc + l.alsScore, 0) / leads.length),
-    meetingsBooked: leads.filter(l => l.meetingBooked).length,
-    hot: leads.filter(l => getALSTier(l.alsScore) === "hot").length,
-    warm: leads.filter(l => getALSTier(l.alsScore) === "warm").length,
-    cool: leads.filter(l => getALSTier(l.alsScore) === "cool").length,
-    cold: leads.filter(l => getALSTier(l.alsScore) === "cold").length,
-  };
+/** Map propensity_tier (or derive from score) to the TierFilter type */
+function getLeadTierFilter(lead: Lead): TierFilter {
+  if (lead.propensity_tier === "dead") return "cold";
+  if (lead.propensity_tier) return lead.propensity_tier as TierFilter;
+  // Fall back to score-based tier
+  const score = lead.propensity_score ?? 0;
+  return getALSTier(score) as TierFilter;
 }
 
 export default function LeadsScoreboardPage() {
@@ -185,30 +70,61 @@ export default function LeadsScoreboardPage() {
   const [selectedTier, setSelectedTier] = useState<TierFilter>("all");
   const [sortAscending, setSortAscending] = useState(false);
 
-  // Calculate stats
-  const stats = useMemo(() => calculateStats(MOCK_LEADS), []);
+  // Fetch real leads data
+  const { leads, total, isLoading, error } = useLeads({ page_size: 100 });
+
+  // Calculate stats from real data
+  const stats = useMemo(() => {
+    return {
+      total,
+      enriched: leads.filter(
+        (l) =>
+          l.status === "enriched" ||
+          l.status === "scored" ||
+          l.sdk_enrichment !== null
+      ).length,
+      avgALS:
+        leads.length > 0
+          ? Math.round(
+              leads.reduce((acc, l) => acc + (l.propensity_score ?? 0), 0) /
+                leads.length
+            )
+          : 0,
+      // TODO: wire meetingsBooked per lead when available
+      meetingsBooked: 0,
+      hot: leads.filter((l) => getLeadTierFilter(l) === "hot").length,
+      warm: leads.filter((l) => getLeadTierFilter(l) === "warm").length,
+      cool: leads.filter((l) => getLeadTierFilter(l) === "cool").length,
+      cold: leads.filter((l) => getLeadTierFilter(l) === "cold").length,
+    };
+  }, [leads, total]);
 
   // Filter and sort leads
   const sortedLeads = useMemo(() => {
-    let filtered = MOCK_LEADS.filter(lead => {
+    const filtered = leads.filter((lead) => {
+      const name = [lead.first_name, lead.last_name]
+        .filter(Boolean)
+        .join(" ");
       const matchesSearch =
-        lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        lead.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (lead.company ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         lead.email.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const tier = getALSTier(lead.alsScore);
+
+      const tier = getLeadTierFilter(lead);
       const matchesTier = selectedTier === "all" || tier === selectedTier;
-      
+
       return matchesSearch && matchesTier;
     });
 
     // Sort by ALS score (descending by default = leaderboard style)
-    filtered.sort((a, b) => 
-      sortAscending ? a.alsScore - b.alsScore : b.alsScore - a.alsScore
-    );
+    filtered.sort((a, b) => {
+      const aScore = a.propensity_score ?? 0;
+      const bScore = b.propensity_score ?? 0;
+      return sortAscending ? aScore - bScore : bScore - aScore;
+    });
 
     return filtered;
-  }, [searchQuery, selectedTier, sortAscending]);
+  }, [leads, searchQuery, selectedTier, sortAscending]);
 
   return (
     <AppShell pageTitle="Lead Scoreboard">
@@ -335,37 +251,66 @@ export default function LeadsScoreboardPage() {
             <span className="w-12"></span>
           </div>
 
+          {/* Loading State */}
+          {isLoading && (
+            <div className="text-center py-12">
+              <motion.div
+                animate={{ opacity: [0.4, 1, 0.4] }}
+                transition={{ repeat: Infinity, duration: 1.5 }}
+                className="text-text-muted font-mono text-sm"
+              >
+                Loading leads...
+              </motion.div>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && !isLoading && (
+            <div className="text-center py-12">
+              <p className="text-text-muted text-sm">
+                Failed to load leads. Please try refreshing.
+              </p>
+            </div>
+          )}
+
           {/* Leaderboard Rows */}
-          <LayoutGroup>
-            <AnimatePresence mode="popLayout">
-              {sortedLeads.length > 0 ? (
-                <div className="space-y-2">
-                  {sortedLeads.map((lead, index) => (
-                    <LeadScoreboardRow
-                      key={lead.id}
-                      id={lead.id}
-                      rank={index + 1}
-                      alsScore={lead.alsScore}
-                      companyName={lead.company}
-                      decisionMaker={lead.name}
-                      title={lead.title}
-                      enrichmentDepth={lead.enrichmentDepth}
-                      isNew={lead.isNew}
-                      index={index}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center py-12"
-                >
-                  <p className="text-text-muted">No leads match your filters</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </LayoutGroup>
+          {!isLoading && !error && (
+            <LayoutGroup>
+              <AnimatePresence mode="popLayout">
+                {sortedLeads.length > 0 ? (
+                  <div className="space-y-2">
+                    {sortedLeads.map((lead, index) => {
+                      const name = [lead.first_name, lead.last_name]
+                        .filter(Boolean)
+                        .join(" ") || lead.email;
+                      return (
+                        <LeadScoreboardRow
+                          key={lead.id}
+                          id={lead.id}
+                          rank={index + 1}
+                          alsScore={lead.propensity_score ?? 0}
+                          companyName={lead.company ?? ""}
+                          decisionMaker={name}
+                          title={lead.title ?? ""}
+                          enrichmentDepth={getEnrichmentDepth(lead)}
+                          isNew={lead.status === "new"}
+                          index={index}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-center py-12"
+                  >
+                    <p className="text-text-muted">No leads match your filters</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </LayoutGroup>
+          )}
         </motion.div>
 
         {/* Footer Stats */}

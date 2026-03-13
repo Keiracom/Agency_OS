@@ -46,6 +46,22 @@ from src.integrations.supabase import get_db_session
 
 logger = logging.getLogger(__name__)
 
+# Fallback campaign used when AI suggestion fails (Anthropic unavailable/rate-limited/parse error).
+# Ensures downstream tasks (campaign creation, lead sourcing, enrichment) still run.
+FALLBACK_CAMPAIGN_SUGGESTIONS = [
+    {
+        "name": "Australian B2B Outreach",
+        "description": "Default campaign targeting Australian B2B decision-makers based on your ICP.",
+        "campaign_type": "ai_suggested",
+        "lead_allocation_pct": 100,
+        "target_industries": [],  # Will use client ICP industries
+        "target_titles": [],  # Will use client ICP titles
+        "target_locations": ["AU"],
+        "target_company_sizes": [],
+        "ai_reasoning": "Fallback campaign created when AI suggestion unavailable.",
+    }
+]
+
 
 # ============================================
 # TASKS
@@ -857,15 +873,13 @@ async def post_onboarding_setup_flow(
         suggestions_result = await generate_campaign_suggestions_task(client_id)
 
         if not suggestions_result["success"]:
-            logger.error(f"Post-onboarding failed at generate_campaign_suggestions_task")
-            return {
-                "success": False,
-                "client_id": str(client_id),
-                "error": suggestions_result.get("error", "Campaign suggestion failed"),
-                "failed_at": "generate_campaign_suggestions_task",
-            }
-
-        suggestions = suggestions_result["suggestions"]
+            logger.warning(
+                f"AI campaign suggestion failed for client {client_id}: "
+                f"{suggestions_result.get('error')}. Using fallback campaign."
+            )
+            suggestions = FALLBACK_CAMPAIGN_SUGGESTIONS
+        else:
+            suggestions = suggestions_result.get("suggestions", [])
         campaigns_created = []
 
         # Step 3: Create draft campaigns

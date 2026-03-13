@@ -426,98 +426,102 @@ async def populate_pool_from_icp_task(
         except Exception:
             return None
 
-    from src.integrations.bright_data_client import get_bright_data_client
+    from src.integrations.bright_data_client import DATASET_IDS, get_bright_data_client
+
+    MAX_ONBOARDING_COMBOS = 3
 
     industries: list[str] = icp_criteria.get("icp_industries", []) or []
     locations: list[str] = icp_criteria.get("icp_locations", []) or ["Australia"]
     if not industries:
         industries = ["marketing"]
 
-    combos = [(ind, loc) for ind in industries for loc in locations]
-    per_query = max(5, limit // max(len(combos), 1))
+    # Cap combos: top 2 industries × top 2 locations, max MAX_ONBOARDING_COMBOS
+    combos = [(ind, loc) for ind in industries[:2] for loc in locations[:2]]
+    combos = combos[:MAX_ONBOARDING_COMBOS]
 
     bd_client = get_bright_data_client()
     seen_keys: set[str] = set()
     added = 0
     skipped = 0
 
+    # Use first combo's industry as fallback label for DB insert
+    industry = combos[0][0] if combos else industries[0]
+
+    # Build all inputs at once and issue a single batched BD call
+    inputs = [
+        {"keyword": _map_industry_to_gmb_category(ind), "country": "AU"}
+        for ind, _loc in combos
+    ]
+    logger.info(
+        f"Tier 3 GMB batch discovery: {len(inputs)} combos, client={client_id}"
+    )
+    try:
+        records = await bd_client._scraper_request(
+            DATASET_IDS["gmb_business"],
+            inputs,
+            discover_by="location",
+        )
+    except Exception as e:
+        logger.warning(f"GMB batch discovery failed: {e}")
+        records = []
+
     async with get_db_session() as db:
-        for industry, location in combos:
+        for record in records:
             if added >= limit:
                 break
 
-            category = _map_industry_to_gmb_category(industry)
-            logger.info(
-                f"Tier 3 GMB discovery: category={category}, location={location}, "
-                f"per_query={per_query}, client={client_id}"
-            )
+            company_name = (record.get("name") or "").strip()
+            if not company_name:
+                skipped += 1
+                continue
+
+            phone = record.get("phone") or None
+            website = record.get("website") or ""
+            domain = _extract_domain(website)
+
+            city = None
+            address = record.get("address") or ""
+            if address:
+                parts = [p.strip() for p in address.split(",") if p.strip()]
+                if len(parts) >= 2:
+                    city = parts[-2]  # penultimate part is usually city
+
+            # Dedup key: prefer domain, fall back to phone, then name
+            dedup_key = domain or phone or company_name.lower()
+            if dedup_key in seen_keys:
+                skipped += 1
+                continue
+            seen_keys.add(dedup_key)
 
             try:
-                records = await bd_client.discover_gmb_by_category(
-                    category=category,
-                    location=location,
-                    limit=per_query,
+                await db.execute(
+                    text("""
+                        INSERT INTO lead_pool (
+                            id, client_id, company_name, company_domain, phone,
+                            company_industry, company_city, pool_status,
+                            enrichment_source, als_score, als_tier, created_at
+                        ) VALUES (
+                            gen_random_uuid(), :client_id, :company_name, :company_domain, :phone,
+                            :industry, :city, 'available',
+                            'gmb_discovery', 0, 'cold', NOW()
+                        )
+                        ON CONFLICT DO NOTHING
+                    """),
+                    {
+                        "client_id": str(client_id),
+                        "company_name": company_name,
+                        "company_domain": domain,
+                        "phone": phone,
+                        "industry": industry,
+                        "city": city,
+                    },
                 )
+                await db.commit()
+                added += 1
             except Exception as e:
-                logger.warning(f"GMB discovery failed for {category}/{location}: {e}")
-                records = []
-
-            for record in records:
-                if added >= limit:
-                    break
-
-                company_name = (record.get("name") or "").strip()
-                if not company_name:
-                    skipped += 1
-                    continue
-
-                phone = record.get("phone") or None
-                website = record.get("website") or ""
-                domain = _extract_domain(website)
-
-                city = None
-                address = record.get("address") or ""
-                if address:
-                    parts = [p.strip() for p in address.split(",") if p.strip()]
-                    if len(parts) >= 2:
-                        city = parts[-2]  # penultimate part is usually city
-
-                # Dedup key: prefer domain, fall back to phone, then name
-                dedup_key = domain or phone or company_name.lower()
-                if dedup_key in seen_keys:
-                    skipped += 1
-                    continue
-                seen_keys.add(dedup_key)
-
-                try:
-                    await db.execute(
-                        text("""
-                            INSERT INTO lead_pool (
-                                id, client_id, company_name, company_domain, phone,
-                                company_industry, company_city, pool_status,
-                                enrichment_source, als_score, als_tier, created_at
-                            ) VALUES (
-                                gen_random_uuid(), :client_id, :company_name, :company_domain, :phone,
-                                :industry, :city, 'available',
-                                'gmb_discovery', 0, 'cold', NOW()
-                            )
-                            ON CONFLICT DO NOTHING
-                        """),
-                        {
-                            "client_id": str(client_id),
-                            "company_name": company_name,
-                            "company_domain": domain,
-                            "phone": phone,
-                            "industry": industry,
-                            "city": city,
-                        },
-                    )
-                    await db.commit()
-                    added += 1
-                except Exception as e:
-                    logger.warning(f"Failed to insert lead '{company_name}': {e}")
-                    await db.rollback()
-                    skipped += 1
+                logger.warning(f"Failed to insert lead '{company_name}': {e}")
+                await db.rollback()
+                skipped += 1
 
     logger.info(f"Tier 3 GMB discovery complete: {added} added, {skipped} skipped")
     return {
@@ -538,6 +542,7 @@ async def populate_pool_from_icp_task(
     name="pool_population",
     description="Populate lead pool using waterfall strategy with Siege Waterfall enrichment",
     log_prints=True,
+    timeout_seconds=900,  # 15 minute timeout for batched BD job
 )
 async def pool_population_flow(
     client_id: str | UUID,

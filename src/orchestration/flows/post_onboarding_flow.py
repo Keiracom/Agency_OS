@@ -760,7 +760,7 @@ async def inject_demo_leads(client_id: UUID, campaign_id: UUID) -> int:
     description="Generate campaigns and source leads after onboarding",
     task_runner=ConcurrentTaskRunner(),
     retries=0,
-    timeout_seconds=600,  # 10 minute timeout
+    timeout_seconds=900,  # 15 minute timeout (increased for batched BD job)
 )
 async def post_onboarding_setup_flow(
     client_id: str | UUID,

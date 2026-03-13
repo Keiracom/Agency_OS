@@ -62,6 +62,17 @@ class AnthropicClient:
         self._client = AsyncAnthropic(api_key=self.api_key)
         self.daily_limit = settings.anthropic_daily_spend_limit
 
+    @property
+    def messages(self) -> Any:
+        """Expose the underlying AsyncAnthropic messages API directly.
+
+        Allows callers to use client.messages.create(...) directly on
+        this wrapper, delegating to the SDK's AsyncMessages resource.
+        SDK >= 0.8.0 uses client.messages.create() — this property
+        ensures the wrapper exposes that interface.
+        """
+        return self._client.messages
+
     async def _check_budget(self, estimated_cost: float) -> None:
         """
         Check if there's enough budget for the request.

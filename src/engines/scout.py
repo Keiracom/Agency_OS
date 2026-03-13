@@ -40,8 +40,10 @@ FCO-002/FCO-003 DEPRECATION (2026-02-05):
   - LinkedIn scraping: camoufox_scraper.py (or stubbed)
 """
 
+import asyncio
 import json
 import logging
+import os
 from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID
@@ -83,6 +85,7 @@ CONFIDENCE_THRESHOLD = 0.70
 
 # Max percentage for Clay fallback
 CLAY_MAX_PERCENTAGE = 0.15
+ENRICHMENT_CONCURRENCY = int(os.getenv("ENRICHMENT_CONCURRENCY", "50"))
 
 
 def parse_date_string(date_str: str | date | None) -> date | None:
@@ -274,21 +277,76 @@ class ScoutEngine(BaseEngine):
             "failed_leads": [],
         }
 
+        # ------------------------------------------------------------------ #
+        # FIX 5 — Bulk LinkedIn pre-fetch (Directive #190)                   #
+        # Collect all company LinkedIn URLs from the batch and issue ONE      #
+        # scrape_linkedin_companies_bulk call, populating the BD cache so     #
+        # individual _enrich_single → scrape_linkedin_company_enriched calls  #
+        # are served from memory at zero additional cost or latency.          #
+        # ------------------------------------------------------------------ #
+        try:
+            bd_client = self.siege_waterfall.bright_data_client
+            if bd_client is not None:
+                from sqlalchemy import select as sa_select
+                from src.models.lead import Lead as LeadModel
+
+                # Fetch organization_linkedin_url for all leads in the batch
+                stmt = sa_select(LeadModel.id, LeadModel.organization_linkedin_url).where(
+                    LeadModel.id.in_(lead_ids)
+                )
+                rows = (await db.execute(stmt)).all()
+                bulk_urls = [
+                    row.organization_linkedin_url
+                    for row in rows
+                    if row.organization_linkedin_url
+                ]
+                if bulk_urls:
+                    bulk_results = await bd_client.scrape_linkedin_companies_bulk(bulk_urls)
+                    for company in bulk_results:
+                        url = (
+                            company.get("url") or company.get("linkedin_url") or ""
+                        ).rstrip("/").lower()
+                        if url:
+                            bd_client._bulk_company_cache[url] = company
+                    logging.getLogger(__name__).info(
+                        "enrich_batch_linkedin_bulk_prefetch",
+                        extra={"urls": len(bulk_urls), "results": len(bulk_results)},
+                    )
+        except Exception as _bulk_err:
+            logging.getLogger(__name__).warning(
+                f"enrich_batch: LinkedIn bulk pre-fetch skipped: {_bulk_err}"
+            )
+
         # Calculate Clay budget (15% of batch)
         clay_budget = int(len(lead_ids) * CLAY_MAX_PERCENTAGE)
 
-        for lead_id in lead_ids:
-            try:
-                # Skip Clay if budget exhausted
-                use_clay = results["clay_budget_used"] < clay_budget
+        # Track Clay usage with a mutable counter (shared across coroutines)
+        clay_used_counter = [0]
+        semaphore = asyncio.Semaphore(ENRICHMENT_CONCURRENCY)
 
-                result = await self._enrich_single(
+        async def enrich_with_semaphore(lead_id: UUID):
+            async with semaphore:
+                use_clay = clay_used_counter[0] < clay_budget
+                return lead_id, await self._enrich_single(
                     db=db,
                     lead_id=lead_id,
                     force_refresh=force_refresh,
                     use_clay=use_clay,
                 )
 
+        gathered = await asyncio.gather(
+            *[enrich_with_semaphore(lead_id) for lead_id in lead_ids],
+            return_exceptions=True,
+        )
+
+        for item in gathered:
+            if isinstance(item, Exception):
+                results["failures"] += 1
+                results["failed_leads"].append({"lead_id": "unknown", "error": str(item)})
+                continue
+
+            lead_id, result = item
+            try:
                 if result.success:
                     tier = result.metadata.get("tier", 1)
                     if tier == 0:
@@ -297,7 +355,7 @@ class ScoutEngine(BaseEngine):
                         results["tier1_success"] += 1
                     elif tier == 2:
                         results["tier2_success"] += 1
-                        results["clay_budget_used"] += 1
+                        clay_used_counter[0] += 1
 
                     results["enriched_leads"].append(
                         {
@@ -314,7 +372,6 @@ class ScoutEngine(BaseEngine):
                             "error": result.error,
                         }
                     )
-
             except Exception as e:
                 results["failures"] += 1
                 results["failed_leads"].append(

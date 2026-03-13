@@ -546,7 +546,7 @@ async def populate_pool_from_icp_task(
 )
 async def pool_population_flow(
     client_id: str | UUID,
-    limit: int = 25,
+    limit: int = 100,
 ) -> dict[str, Any]:
     """
     Populate the lead pool for a client using waterfall strategy.
@@ -564,7 +564,8 @@ async def pool_population_flow(
 
     Args:
         client_id: Client UUID (string or UUID)
-        limit: Maximum leads to add to pool
+        limit: Maximum leads to add to pool (default 100 for onboarding;
+               pass tier leads_per_month for monthly replenishment)
 
     Returns:
         Dict with population summary including tier breakdown
@@ -697,7 +698,7 @@ async def pool_population_flow(
 )
 async def pool_population_batch_flow(
     client_ids: list[UUID],
-    limit_per_client: int = 25,
+    limit_per_client: int = 100,
 ) -> dict[str, Any]:
     """
     Populate pool for multiple clients.

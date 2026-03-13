@@ -806,6 +806,7 @@ async def post_onboarding_setup_flow(
     from src.services.onboarding_gate_service import (
         CRMConnectionRequired,
         LinkedInConnectionRequired,
+        check_onboarding_gates,
         enforce_onboarding_gates,
     )
 
@@ -825,7 +826,19 @@ async def post_onboarding_setup_flow(
     try:
         # Step 0: GATE CHECK — LinkedIn and CRM connections
         # Directive #184 Fix 2: bypass_gates=True skips hard enforcement
+        # Directive #192 Fix: Auto-bypass for domain-only clients (no LinkedIn AND no CRM)
         async with get_db_session() as db:
+            if not bypass_gates:
+                gate_status = await check_onboarding_gates(db, client_id)
+                if not gate_status.linkedin_connected and not gate_status.crm_connected:
+                    bypass_gates = True
+                    logger.info(
+                        "domain_only_client_bypass",
+                        extra={
+                            "client_id": str(client_id),
+                            "reason": "No LinkedIn or CRM connected — auto-bypassing gates (Directive #192)",
+                        },
+                    )
             if bypass_gates:
                 logger.warning(
                     f"[post_onboarding] Gates bypassed for client {client_id} — "

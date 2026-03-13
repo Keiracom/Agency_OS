@@ -233,16 +233,45 @@ class TestBypassGates:
 
     @pytest.mark.asyncio
     async def test_gates_enforced_when_bypass_false(self):
-        """bypass_gates=False (default) enforces gate check and returns gate error."""
-        from src.services.onboarding_gate_service import LinkedInConnectionRequired
+        """bypass_gates=False (default) enforces gate check and returns gate error.
+
+        Directive #192: check_onboarding_gates is now called first to detect domain-only
+        clients. Test mocks it to return partially-connected status (LinkedIn only) so
+        auto-bypass doesn't trigger, then enforce_onboarding_gates raises the error.
+        """
+        from src.services.onboarding_gate_service import (
+            LinkedInConnectionRequired,
+            OnboardingGateStatus,
+        )
         from src.orchestration.flows.post_onboarding_flow import post_onboarding_setup_flow
 
         client_id = str(uuid4())
+        client_uuid = UUID(client_id)
+
+        # Simulate: LinkedIn connected, CRM missing → auto-bypass does NOT trigger
+        # (auto-bypass only triggers when BOTH are disconnected)
+        partial_status = OnboardingGateStatus(
+            client_id=client_uuid,
+            linkedin_connected=True,
+            linkedin_connected_at=None,
+            linkedin_seat_count=1,
+            crm_connected=False,
+            crm_connected_at=None,
+            crm_type=None,
+            can_proceed=False,
+        )
+
+        async def mock_check_gates(db, cid):
+            return partial_status
 
         async def raise_linkedin(db, cid):
-            raise LinkedInConnectionRequired(UUID(client_id))
+            raise LinkedInConnectionRequired(client_uuid)
 
         with (
+            patch(
+                "src.services.onboarding_gate_service.check_onboarding_gates",
+                new=mock_check_gates,
+            ),
             patch(
                 "src.services.onboarding_gate_service.enforce_onboarding_gates",
                 new=raise_linkedin,
@@ -265,6 +294,68 @@ class TestBypassGates:
         assert result["success"] is False
         assert result["error_code"] == "LINKEDIN_CONNECTION_REQUIRED"
         assert result["gate"] == "linkedin"
+
+    @pytest.mark.asyncio
+    async def test_domain_only_client_auto_bypass(self):
+        """Directive #192: client with no LinkedIn AND no CRM auto-sets bypass_gates=True.
+
+        When both gates are disconnected, the flow should auto-bypass and continue
+        (not return success:False with a gate error).
+        """
+        from src.services.onboarding_gate_service import OnboardingGateStatus
+        from src.orchestration.flows.post_onboarding_flow import post_onboarding_setup_flow
+
+        client_id = str(uuid4())
+        client_uuid = UUID(client_id)
+
+        # Simulate: no LinkedIn, no CRM → auto-bypass should trigger
+        no_integrations_status = OnboardingGateStatus(
+            client_id=client_uuid,
+            linkedin_connected=False,
+            linkedin_connected_at=None,
+            linkedin_seat_count=0,
+            crm_connected=False,
+            crm_connected_at=None,
+            crm_type=None,
+            can_proceed=False,
+        )
+
+        async def mock_check_gates(db, cid):
+            return no_integrations_status
+
+        with (
+            patch(
+                "src.services.onboarding_gate_service.check_onboarding_gates",
+                new=mock_check_gates,
+            ),
+            patch(
+                "src.orchestration.flows.post_onboarding_flow.get_db_session"
+            ) as mock_db_ctx,
+            patch(
+                "src.orchestration.flows.post_onboarding_flow.verify_icp_ready_task"
+            ) as mock_icp,
+        ):
+            mock_db = AsyncMock()
+            mock_ctx = MagicMock()
+            mock_ctx.__aenter__ = AsyncMock(return_value=mock_db)
+            mock_ctx.__aexit__ = AsyncMock(return_value=False)
+            mock_db_ctx.return_value = mock_ctx
+
+            # ICP not ready → flow exits early but NOT at gate
+            mock_icp.return_value = {"ready": False, "error": "No ICP"}
+
+            result = await post_onboarding_setup_flow.fn(
+                client_id=client_id,
+                bypass_gates=False,  # default — should be auto-upgraded
+            )
+
+        # Gate error must NOT appear — flow bypassed gates automatically
+        assert result.get("error_code") not in (
+            "LINKEDIN_CONNECTION_REQUIRED",
+            "CRM_CONNECTION_REQUIRED",
+        ), f"Expected auto-bypass but got gate error: {result}"
+        # Flow should have exited past gates (success=False at ICP or later, not gate)
+        assert result["success"] is False
 
 
 # ============================================

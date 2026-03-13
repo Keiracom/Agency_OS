@@ -114,6 +114,8 @@ IMPORTANT:
 - Allocations MUST sum to exactly 100%
 - Return ONLY valid JSON, no markdown or explanation
 - Each campaign must be distinct (no overlapping segments)
+
+CRITICAL: Respond with ONLY a valid JSON array. No explanation. No preamble. No markdown fences. No commentary before or after the JSON. Your entire response must be parseable by json.loads(). If any ICP field says 'Not specified', use your best judgment based on the other fields provided. Do not mention that data is missing.
 """
 
 
@@ -219,20 +221,45 @@ class CampaignSuggesterEngine(BaseEngine):
 
     def _build_prompt(self, client: Client, max_campaigns: int) -> str:
         """Build the suggestion prompt with client ICP data."""
-        return CAMPAIGN_SUGGESTION_PROMPT.format(
+        # Count sparse fields to detect thin ICP
+        sparse_sentinel = "Not specified"
+        icp_fields = [
+            client.icp_industries,
+            client.services_offered,
+            client.value_proposition,
+            client.icp_titles,
+            client.icp_company_sizes,
+            client.icp_locations,
+            client.icp_pain_points,
+            client.icp_keywords,
+            client.icp_exclusions,
+        ]
+        sparse_count = sum(
+            1 for f in icp_fields
+            if not f or (isinstance(f, list) and len(f) == 0)
+        )
+        sparse_note = ""
+        if sparse_count >= 5:
+            sparse_note = (
+                "\nThe agency has limited ICP data. Generate broad but sensible campaign "
+                "suggestions based on their industry and location. Prioritise practical over specific."
+            )
+
+        prompt = CAMPAIGN_SUGGESTION_PROMPT.format(
             company_name=client.name,
-            client_industry=", ".join(client.icp_industries or ["Not specified"]),
-            services=", ".join(client.services_offered or ["Not specified"]),
-            value_prop=client.value_proposition or "Not specified",
+            client_industry=", ".join(client.icp_industries or [sparse_sentinel]),
+            services=", ".join(client.services_offered or [sparse_sentinel]),
+            value_prop=client.value_proposition or sparse_sentinel,
             icp_industries=", ".join(client.icp_industries or ["Any"]),
             icp_titles=", ".join(client.icp_titles or ["Decision makers"]),
             icp_company_sizes=", ".join(client.icp_company_sizes or ["Any"]),
             icp_locations=", ".join(client.icp_locations or ["Australia"]),
-            icp_pain_points=", ".join(client.icp_pain_points or ["Not specified"]),
-            icp_keywords=", ".join(client.icp_keywords or ["Not specified"]),
+            icp_pain_points=", ".join(client.icp_pain_points or [sparse_sentinel]),
+            icp_keywords=", ".join(client.icp_keywords or [sparse_sentinel]),
             icp_exclusions=", ".join(client.icp_exclusions or ["None"]),
             max_ai_campaigns=max_campaigns,
         )
+        return prompt + sparse_note
 
     async def _get_ai_suggestions(
         self,
@@ -261,8 +288,31 @@ class CampaignSuggesterEngine(BaseEngine):
             # Extract content
             content = response.content[0].text if response.content else ""
 
-            # Parse JSON
+            # Parse JSON — attempt 1
             suggestions = self._parse_suggestions(content, expected_count)
+            if suggestions is not None:
+                return suggestions
+
+            # Attempt 2: retry with explicit nudge (~$0.001 extra)
+            logger.warning(
+                f"AI suggestion parse failed on first attempt. Raw response: {content!r:.500}. Retrying."
+            )
+            retry_prompt = (
+                prompt
+                + "\n\nYour previous response could not be parsed as JSON. "
+                "Return ONLY a JSON array this time."
+            )
+            retry_response = await client.messages.create(
+                model="claude-3-5-haiku-latest",
+                max_tokens=2000,
+                messages=[{"role": "user", "content": retry_prompt}],
+            )
+            retry_content = retry_response.content[0].text if retry_response.content else ""
+            suggestions = self._parse_suggestions(retry_content, expected_count)
+            if suggestions is None:
+                logger.error(
+                    f"AI suggestion parse failed on retry. Raw response: {retry_content!r:.500}"
+                )
             return suggestions
 
         except Exception as e:
@@ -278,12 +328,31 @@ class CampaignSuggesterEngine(BaseEngine):
         try:
             # Extract JSON from response
             json_str = content.strip()
+
+            # Strip markdown fences
             if "```json" in json_str:
                 json_str = json_str.split("```json")[1].split("```")[0]
             elif "```" in json_str:
                 json_str = json_str.split("```")[1].split("```")[0]
 
-            data = json.loads(json_str.strip())
+            json_str = json_str.strip()
+
+            # FIX 4: If response doesn't start with '[', find the array boundaries.
+            # Handles Claude prepending explanatory text before the JSON array.
+            if json_str and json_str[0] != "[":
+                first_bracket = json_str.find("[")
+                last_bracket = json_str.rfind("]")
+                if first_bracket != -1 and last_bracket != -1 and last_bracket > first_bracket:
+                    logger.warning(
+                        "Claude response contained non-JSON preamble — extracted array. "
+                        "Prompt may not be working optimally."
+                    )
+                    json_str = json_str[first_bracket:last_bracket + 1]
+                else:
+                    logger.error("No JSON array found in Claude response")
+                    return None
+
+            data = json.loads(json_str)
 
             if not isinstance(data, list):
                 logger.error("Response is not a list")

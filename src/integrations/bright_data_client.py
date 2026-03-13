@@ -387,7 +387,7 @@ class BrightDataClient:
         """
         results = await self._scraper_request(
             DATASET_IDS["gmb_business"],
-            [{"keyword": category, "country": "AU", "location": location}],
+            [{"keyword": category, "country": "AU"}],
             discover_by="location",
         )
 

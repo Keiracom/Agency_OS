@@ -31,7 +31,9 @@ from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
-from sqlalchemy import text
+from sqlalchemy import UUID as SA_UUID
+from sqlalchemy import bindparam, text
+from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.exceptions import ValidationError
@@ -171,18 +173,20 @@ class LeadAllocatorService:
 
         # Directive #197 FIX 1: Bulk UPDATE replaces N sequential UPDATEs.
         # 440 leads: ~496s → ~2s. Single SQL round-trip via ANY(:ids::uuid[]).
-        lead_ids = [str(lead.id) for lead in leads_to_assign]
+        lead_ids = [lead.id for lead in leads_to_assign]
 
         bulk_update = text("""
             UPDATE lead_pool
             SET campaign_id = :campaign_id,
                 pool_status = 'assigned',
                 updated_at = NOW()
-            WHERE id = ANY(:lead_ids::uuid[])
+            WHERE id = ANY(:lead_ids)
               AND client_id = :client_id
               AND pool_status = 'available'
             RETURNING id, email, first_name, last_name, title, company_name
-        """)
+        """).bindparams(
+            bindparam("lead_ids", type_=PG_ARRAY(SA_UUID(as_uuid=True)))
+        )
 
         bulk_result = await self.session.execute(
             bulk_update,

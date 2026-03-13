@@ -60,9 +60,11 @@ class TestPromotePoolLeadsToLeads:
         mock_select_result = MagicMock()
         mock_select_result.fetchall.return_value = [mock_pool_lead]
 
+        _new_lead_uuid = uuid4()
         mock_insert_result = MagicMock()
         mock_insert_result.rowcount = 1
-        mock_insert_result.scalar.return_value = uuid4()  # RETURNING id → promoted
+        # Bulk INSERT SELECT uses fetchall() to collect RETURNING id rows
+        mock_insert_result.fetchall.return_value = [(_new_lead_uuid,)]
 
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(side_effect=[mock_select_result, mock_insert_result])
@@ -122,10 +124,10 @@ class TestPromotePoolLeadsToLeads:
         mock_select_result = MagicMock()
         mock_select_result.fetchall.return_value = [mock_pool_lead]
 
-        # ON CONFLICT DO NOTHING → RETURNING id returns nothing → scalar() = None
+        # ON CONFLICT DO NOTHING → RETURNING id returns nothing → fetchall() = []
         mock_insert_result = MagicMock()
         mock_insert_result.rowcount = 0
-        mock_insert_result.scalar.return_value = None  # RETURNING id → no row → skipped
+        mock_insert_result.fetchall.return_value = []  # Bulk INSERT: no rows → skipped
 
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(side_effect=[mock_select_result, mock_insert_result])

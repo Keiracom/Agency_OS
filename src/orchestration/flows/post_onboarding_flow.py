@@ -429,110 +429,84 @@ async def promote_pool_leads_to_leads_task(
 
         logger.info(f"Promoting {len(pool_leads)} pool leads to leads table for client {client_id}")
 
-        skipped = 0
-        for lead in pool_leads:
-            try:
-                insert_result = await db.execute(
-                    text("""
-                    INSERT INTO leads (
-                        id,
-                        client_id,
-                        campaign_id,
-                        email,
-                        first_name,
-                        last_name,
-                        title,
-                        phone,
-                        linkedin_url,
-                        seniority_level,
-                        personal_email,
-                        timezone,
-                        company,
-                        domain,
-                        organization_website,
-                        organization_linkedin_url,
-                        organization_industry,
-                        organization_employee_count,
-                        organization_country,
-                        organization_founded_year,
-                        organization_is_hiring,
-                        enrichment_source,
-                        enrichment_confidence,
-                        lead_pool_id,
-                        als_score,
-                        als_tier,
-                        status,
-                        created_at,
-                        updated_at
-                    ) VALUES (
-                        gen_random_uuid(),
-                        :client_id,
-                        :campaign_id,
-                        :email,
-                        :first_name,
-                        :last_name,
-                        :title,
-                        :phone,
-                        :linkedin_url,
-                        :seniority_level,
-                        :personal_email,
-                        :timezone,
-                        :company,
-                        :domain,
-                        :organization_website,
-                        :organization_linkedin_url,
-                        :organization_industry,
-                        :organization_employee_count,
-                        :organization_country,
-                        :organization_founded_year,
-                        :organization_is_hiring,
-                        :enrichment_source,
-                        :enrichment_confidence,
-                        :lead_pool_id,
-                        0,
-                        'cold',
-                        'new',
-                        NOW(),
-                        NOW()
-                    )
-                    ON CONFLICT ON CONSTRAINT unique_lead_per_client DO NOTHING
-                    RETURNING id
-                    """),
-                    {
-                        "client_id": str(lead.client_id),
-                        "campaign_id": str(lead.campaign_id),
-                        "email": lead.email,
-                        "first_name": lead.first_name,
-                        "last_name": lead.last_name,
-                        "title": lead.title,
-                        "phone": lead.phone,
-                        "linkedin_url": lead.linkedin_url,
-                        "seniority_level": lead.seniority,
-                        "personal_email": lead.personal_email,
-                        "timezone": lead.timezone,
-                        "company": lead.company_name,
-                        "domain": lead.company_domain,
-                        "organization_website": lead.company_website,
-                        "organization_linkedin_url": lead.company_linkedin_url,
-                        "organization_industry": lead.company_industry,
-                        "organization_employee_count": lead.company_employee_count,
-                        "organization_country": lead.company_country,
-                        "organization_founded_year": lead.company_founded_year,
-                        "organization_is_hiring": lead.company_is_hiring,
-                        "enrichment_source": lead.enrichment_source,
-                        "enrichment_confidence": lead.enrichment_confidence,
-                        "lead_pool_id": str(lead.id),
-                    },
-                )
-                new_id = insert_result.scalar()
-                if new_id:
-                    promoted += 1
-                    new_lead_ids.append(str(new_id))
-                else:
-                    skipped += 1  # ON CONFLICT DO NOTHING — already exists
-            except Exception as e:
-                logger.warning(f"Failed to promote pool lead {lead.id} ({lead.email}): {e}")
-                errors.append({"pool_lead_id": str(lead.id), "error": str(e)})
+        # FIX 2 (Directive #185): Single bulk INSERT SELECT instead of N sequential INSERTs.
+        # 374 leads × ~0.35s/insert = 130.8s → ~2s expected with bulk operation.
+        bulk_result = await db.execute(
+            text(f"""
+            INSERT INTO leads (
+                id,
+                client_id,
+                campaign_id,
+                email,
+                first_name,
+                last_name,
+                title,
+                phone,
+                linkedin_url,
+                seniority_level,
+                personal_email,
+                timezone,
+                company,
+                domain,
+                organization_website,
+                organization_linkedin_url,
+                organization_industry,
+                organization_employee_count,
+                organization_country,
+                organization_founded_year,
+                organization_is_hiring,
+                enrichment_source,
+                enrichment_confidence,
+                lead_pool_id,
+                als_score,
+                als_tier,
+                status,
+                created_at,
+                updated_at
+            )
+            SELECT
+                gen_random_uuid(),
+                lp.client_id,
+                lp.campaign_id,
+                lp.email,
+                lp.first_name,
+                lp.last_name,
+                lp.title,
+                lp.phone,
+                lp.linkedin_url,
+                lp.seniority,
+                lp.personal_email,
+                lp.timezone,
+                lp.company_name,
+                lp.company_domain,
+                lp.company_website,
+                lp.company_linkedin_url,
+                lp.company_industry,
+                lp.company_employee_count,
+                lp.company_country,
+                lp.company_founded_year,
+                lp.company_is_hiring,
+                lp.enrichment_source,
+                lp.enrichment_confidence,
+                lp.id,
+                0,
+                'cold',
+                'new',
+                NOW(),
+                NOW()
+            FROM lead_pool lp
+            WHERE lp.client_id = :client_id
+              AND lp.campaign_id IS NOT NULL
+              AND lp.pool_status NOT IN ('bounced', 'unsubscribed', 'invalid')
+              {email_filter}
+            ON CONFLICT ON CONSTRAINT unique_lead_per_client DO NOTHING
+            RETURNING id
+            """),
+            {"client_id": str(client_id)},
+        )
+        new_lead_ids = [str(row[0]) for row in bulk_result.fetchall()]
+        promoted = len(new_lead_ids)
+        skipped = len(pool_leads) - promoted  # ON CONFLICT DO NOTHING skips (duplicates)
 
         await db.commit()
 
@@ -1004,7 +978,7 @@ async def post_onboarding_setup_flow(
                     SELECT id FROM leads
                     WHERE client_id = :client_id
                       AND status = 'new'
-                      AND (enrichment_source IS NULL OR enrichment_source = '')
+                      AND enriched_at IS NULL
                     LIMIT 500
                 """), {"client_id": str(client_id)})
                 unenriched_ids = [str(row.id) for row in _unenriched_result.fetchall()]

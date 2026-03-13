@@ -898,7 +898,7 @@ async def post_onboarding_setup_flow(
 
         tier_lower = tier.lower()
         tier_config = TIER_CONFIG.get(tier_lower, TIER_CONFIG["ignition"])
-        tier_lead_count = tier_config["leads_per_month"]
+        tier_lead_count = tier_config.leads_per_month
 
         lead_count = lead_count_override or tier_lead_count
         logger.info(f"Lead count for {tier}: {lead_count}")

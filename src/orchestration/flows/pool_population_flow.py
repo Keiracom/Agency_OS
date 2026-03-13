@@ -465,36 +465,50 @@ async def populate_pool_from_icp_task(
         logger.warning(f"GMB batch discovery failed: {e}")
         records = []
 
-    async with get_db_session() as db:
-        for record in records:
-            if added >= limit:
-                break
+    # Fix 1 (Directive #193): Collect all rows first, then single batch insert
+    rows_to_insert = []
+    for record in records:
+        if len(rows_to_insert) >= limit:
+            break
 
-            company_name = (record.get("name") or "").strip()
-            if not company_name:
-                skipped += 1
-                continue
+        company_name = (record.get("name") or "").strip()
+        if not company_name:
+            skipped += 1
+            continue
 
-            phone = record.get("phone") or None
-            website = record.get("website") or ""
-            domain = _extract_domain(website)
+        phone = record.get("phone") or None
+        website = record.get("website") or ""
+        domain = _extract_domain(website)
 
-            city = None
-            address = record.get("address") or ""
-            if address:
-                parts = [p.strip() for p in address.split(",") if p.strip()]
-                if len(parts) >= 2:
-                    city = parts[-2]  # penultimate part is usually city
+        city = None
+        address = record.get("address") or ""
+        if address:
+            parts = [p.strip() for p in address.split(",") if p.strip()]
+            if len(parts) >= 2:
+                city = parts[-2]  # penultimate part is usually city
 
-            # Dedup key: prefer domain, fall back to phone, then name
-            dedup_key = domain or phone or company_name.lower()
-            if dedup_key in seen_keys:
-                skipped += 1
-                continue
-            seen_keys.add(dedup_key)
+        # Dedup key: prefer domain, fall back to phone, then name
+        dedup_key = domain or phone or company_name.lower()
+        if dedup_key in seen_keys:
+            skipped += 1
+            continue
+        seen_keys.add(dedup_key)
 
-            try:
-                await db.execute(
+        rows_to_insert.append({
+            "client_id": str(client_id),
+            "company_name": company_name,
+            "company_domain": domain,
+            "phone": phone,
+            "industry": industry,
+            "city": city,
+        })
+
+    # Single batch insert with RETURNING id — replaces 441 sequential commits
+    inserted_ids = []
+    if rows_to_insert:
+        async with get_db_session() as db:
+            for row in rows_to_insert:
+                result = await db.execute(
                     text("""
                         INSERT INTO lead_pool (
                             id, client_id, company_name, company_domain, phone,
@@ -506,24 +520,50 @@ async def populate_pool_from_icp_task(
                             'gmb_discovery', 0, 'cold', NOW()
                         )
                         ON CONFLICT DO NOTHING
+                        RETURNING id
                     """),
-                    {
-                        "client_id": str(client_id),
-                        "company_name": company_name,
-                        "company_domain": domain,
-                        "phone": phone,
-                        "industry": industry,
-                        "city": city,
-                    },
+                    row,
                 )
-                await db.commit()
-                added += 1
-            except Exception as e:
-                logger.warning(f"Failed to insert lead '{company_name}': {e}")
-                await db.rollback()
-                skipped += 1
+                row_result = result.fetchone()
+                if row_result:
+                    inserted_ids.append(str(row_result[0]))
+            await db.commit()
+        added = len(inserted_ids)
+        skipped += len(rows_to_insert) - added  # rows that hit ON CONFLICT
 
     logger.info(f"Tier 3 GMB discovery complete: {added} added, {skipped} skipped")
+
+    # Fix 2 (Directive #193): Wire existing enrich_batch() — PR #177 concurrent enrichment
+    if inserted_ids:
+        try:
+            from uuid import UUID as _UUID
+            scout = get_scout_engine()
+            lead_uuids = [_UUID(lid) for lid in inserted_ids]
+            logger.info(
+                "pool_population_enrich_start",
+                extra={"client_id": str(client_id), "lead_count": len(lead_uuids)},
+            )
+            async with get_db_session() as db:
+                enrich_result = await scout.enrich_batch(
+                    db=db,
+                    lead_ids=lead_uuids,
+                )
+            logger.info(
+                "pool_population_enrich_complete",
+                extra={
+                    "client_id": str(client_id),
+                    "results": enrich_result.data.get("tier1_success", 0) + enrich_result.data.get("tier2_success", 0)
+                    if enrich_result.success and enrich_result.data
+                    else 0,
+                },
+            )
+        except Exception as e:
+            logger.warning(
+                f"pool_population enrich_batch failed (non-fatal): {e}",
+                exc_info=True,
+            )
+            # Non-fatal: records are in pool, enrichment can retry via enrichment_flow
+
     return {
         "success": True,
         "added": added,

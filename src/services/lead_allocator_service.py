@@ -136,8 +136,8 @@ class LeadAllocatorService:
             conditions.append("lp.company_technologies && :technologies")
             params["technologies"] = techs
 
-        # Email quality filter (default to verified only)
-        email_status = icp_criteria.get("email_status", "verified")
+        # Email quality filter — None by default (GMB leads are unenriched at discovery)
+        email_status = icp_criteria.get("email_status")  # None by default — GMB leads are unenriched
         if email_status:
             conditions.append("lp.email_status = :email_status")
             params["email_status"] = email_status
@@ -145,8 +145,8 @@ class LeadAllocatorService:
         # Build the query
         where_clause = " AND ".join(conditions)
 
-        # Phase 37: Also filter for leads with no client assignment
-        where_clause += " AND lp.client_id IS NULL"
+        # Phase 37: Filter for leads owned by this client (GMB leads inserted with client_id set)
+        where_clause += " AND lp.client_id = :client_id"
 
         # First, find matching leads
         find_query = text(f"""
@@ -206,6 +206,18 @@ class LeadAllocatorService:
                 )
 
         await self.session.commit()
+
+        if len(assigned_leads) == 0:
+            logger.warning(
+                "allocate_leads_zero_results",
+                extra={
+                    "client_id": str(client_id),
+                    "count_requested": count,
+                    "filters_applied": conditions,
+                    "pool_check": "Run: SELECT COUNT(*) FROM lead_pool WHERE client_id = '<id>' AND pool_status = 'available'",
+                },
+            )
+
         return assigned_leads
 
     async def get_assignment(

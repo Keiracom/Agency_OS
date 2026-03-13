@@ -771,8 +771,9 @@ class LeadmagicClient:
 
         logger.info(f"[Leadmagic] Batch email finder for {len(prospects)} prospects")
 
-        results: list[EmailFinderResult] = []
-        semaphore = asyncio.Semaphore(max_concurrent)
+        # Use Semaphore(50) for true parallel execution via asyncio.gather
+        concurrency = max(max_concurrent, 50)
+        semaphore = asyncio.Semaphore(concurrency)
 
         async def find_with_semaphore(prospect: dict) -> EmailFinderResult:
             async with semaphore:
@@ -795,19 +796,26 @@ class LeadmagicClient:
                     )
 
         try:
-            for i, prospect in enumerate(prospects):
-                result = await find_with_semaphore(prospect)
-                results.append(result)
-
-                if (i + 1) % 10 == 0:
-                    logger.info(
-                        f"[Leadmagic] Batch progress: {i + 1}/{len(prospects)} "
-                        f"(Total cost: ${self.total_cost_aud:.2f} AUD)"
-                    )
-
+            gathered = await asyncio.gather(
+                *[find_with_semaphore(p) for p in prospects],
+                return_exceptions=True,
+            )
         except LeadmagicCreditExhaustedError:
             logger.error("[Leadmagic] Credits exhausted during batch - stopping")
             raise
+
+        results: list[EmailFinderResult] = []
+        for item in gathered:
+            if isinstance(item, LeadmagicCreditExhaustedError):
+                logger.error("[Leadmagic] Credits exhausted during batch - stopping")
+                raise item
+            elif isinstance(item, Exception):
+                logger.warning(f"[Leadmagic] Batch item failed: {item}")
+                results.append(
+                    EmailFinderResult(found=False, domain="", first_name=None, last_name=None)
+                )
+            else:
+                results.append(item)
 
         successful = sum(1 for r in results if r.found)
         logger.info(

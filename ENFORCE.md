@@ -312,7 +312,23 @@ d) Violation: reporting complete without Manual update = LAW XV violation, log g
 
 Directive metrics (mandatory alongside LAW XV): After completing any directive, write execution metrics to cis_directive_metrics (execution_rounds, scope_creep, verification_first_pass, agents_used, save_completed). A directive is not complete until its metrics are logged. Use the MCP bridge to INSERT directly.
 
+**§18a — LAW XV AMENDMENT: Three-Store Completion Rule (HARD BLOCK)**
+*Ratified: 2026-03-13, CEO Directive #188*
+
+A directive is NOT complete until ALL THREE stores are confirmed written:
+
+1. **Google Drive Manual** — `skills/drive-manual/write_manual.py` (architecture, stack, milestones, baselines)
+2. **Supabase ceo_memory** — directive counter (`ceo:directives.last_number`), completion status, key state changes. Use MCP bridge → supabase → execute_sql to upsert into `ceo_memory`.
+3. **cis_directive_metrics** — execution metrics row (execution_rounds, scope_creep, verification_first_pass, agents_used, save_completed).
+
+**All three are mandatory. Partial completion is a violation.**
+
+Violation handling: Reporting complete with any store missing = LAW XV violation. Log governance debt with type `LAW_XV_VIOLATION` AND backfill the missing stores before proceeding.
+
+Backfill protocol: If a session ends before all three stores are written, the NEXT session must backfill before issuing any new directives.
+
 ---
 
 *Signed and Ratified: 2026-02-12, CEO Directive*
-*Governance Version: 2.2*
+*Amended: 2026-03-13, CEO Directive #188 (Three-Store Completion Rule)*
+*Governance Version: 2.3*

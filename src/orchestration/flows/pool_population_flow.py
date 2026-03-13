@@ -503,66 +503,45 @@ async def populate_pool_from_icp_task(
             "city": city,
         })
 
-    # Single batch insert with RETURNING id — replaces 441 sequential commits
+    # Directive #194 Fix 1: TRUE bulk INSERT — single VALUES clause = 1 network call
+    # Before: 443 sequential await db.execute() = 604s
+    # After: single SQL VALUES bulk insert = ~2s
     inserted_ids = []
     if rows_to_insert:
+        values_parts = []
+        params = {}
+        for i, row in enumerate(rows_to_insert):
+            values_parts.append(
+                f"(gen_random_uuid(), :client_id_{i}, :company_name_{i}, :company_domain_{i}, "
+                f":phone_{i}, :industry_{i}, :city_{i}, 'available', 'gmb_discovery', 0, 'cold', NOW())"
+            )
+            params[f"client_id_{i}"] = row["client_id"]
+            params[f"company_name_{i}"] = row["company_name"]
+            params[f"company_domain_{i}"] = row["company_domain"]
+            params[f"phone_{i}"] = row["phone"]
+            params[f"industry_{i}"] = row["industry"]
+            params[f"city_{i}"] = row["city"]
+
         async with get_db_session() as db:
-            for row in rows_to_insert:
-                result = await db.execute(
-                    text("""
-                        INSERT INTO lead_pool (
-                            id, client_id, company_name, company_domain, phone,
-                            company_industry, company_city, pool_status,
-                            enrichment_source, als_score, als_tier, created_at
-                        ) VALUES (
-                            gen_random_uuid(), :client_id, :company_name, :company_domain, :phone,
-                            :industry, :city, 'available',
-                            'gmb_discovery', 0, 'cold', NOW()
-                        )
-                        ON CONFLICT DO NOTHING
-                        RETURNING id
-                    """),
-                    row,
-                )
-                row_result = result.fetchone()
-                if row_result:
-                    inserted_ids.append(str(row_result[0]))
+            result = await db.execute(
+                text(
+                    "INSERT INTO lead_pool (id, client_id, company_name, company_domain, phone, "
+                    "company_industry, company_city, pool_status, enrichment_source, als_score, als_tier, created_at) "
+                    f"VALUES {', '.join(values_parts)} ON CONFLICT DO NOTHING RETURNING id"
+                ),
+                params,
+            )
+            inserted_ids = [str(row[0]) for row in result.fetchall()]
             await db.commit()
         added = len(inserted_ids)
         skipped += len(rows_to_insert) - added  # rows that hit ON CONFLICT
 
     logger.info(f"Tier 3 GMB discovery complete: {added} added, {skipped} skipped")
 
-    # Fix 2 (Directive #193): Wire existing enrich_batch() — PR #177 concurrent enrichment
-    if inserted_ids:
-        try:
-            from uuid import UUID as _UUID
-            scout = get_scout_engine()
-            lead_uuids = [_UUID(lid) for lid in inserted_ids]
-            logger.info(
-                "pool_population_enrich_start",
-                extra={"client_id": str(client_id), "lead_count": len(lead_uuids)},
-            )
-            async with get_db_session() as db:
-                enrich_result = await scout.enrich_batch(
-                    db=db,
-                    lead_ids=lead_uuids,
-                )
-            logger.info(
-                "pool_population_enrich_complete",
-                extra={
-                    "client_id": str(client_id),
-                    "results": enrich_result.data.get("tier1_success", 0) + enrich_result.data.get("tier2_success", 0)
-                    if enrich_result.success and enrich_result.data
-                    else 0,
-                },
-            )
-        except Exception as e:
-            logger.warning(
-                f"pool_population enrich_batch failed (non-fatal): {e}",
-                exc_info=True,
-            )
-            # Non-fatal: records are in pool, enrichment can retry via enrichment_flow
+    # NOTE: Directive #194 architecture — enrichment removed from pool_population.
+    # enrich_batch() queries the leads table, not lead_pool.
+    # Enrichment runs in post_onboarding_setup_flow after promotion:
+    # GMB → pool (bulk insert) → assign → promote ALL → enrich_batch(leads IDs) → score
 
     return {
         "success": True,

@@ -62,6 +62,7 @@ class TestPromotePoolLeadsToLeads:
 
         mock_insert_result = MagicMock()
         mock_insert_result.rowcount = 1
+        mock_insert_result.scalar.return_value = uuid4()  # RETURNING id → promoted
 
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(side_effect=[mock_select_result, mock_insert_result])
@@ -121,9 +122,10 @@ class TestPromotePoolLeadsToLeads:
         mock_select_result = MagicMock()
         mock_select_result.fetchall.return_value = [mock_pool_lead]
 
-        # ON CONFLICT DO NOTHING → rowcount = 0
+        # ON CONFLICT DO NOTHING → RETURNING id returns nothing → scalar() = None
         mock_insert_result = MagicMock()
         mock_insert_result.rowcount = 0
+        mock_insert_result.scalar.return_value = None  # RETURNING id → no row → skipped
 
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(side_effect=[mock_select_result, mock_insert_result])

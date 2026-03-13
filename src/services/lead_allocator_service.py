@@ -25,8 +25,11 @@ to individual clients. It ensures exclusive assignment (one lead = one client)
 and fair distribution based on ICP criteria.
 """
 
+import logging
 from typing import Any
 from uuid import UUID
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession

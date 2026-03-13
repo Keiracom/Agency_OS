@@ -340,7 +340,10 @@ async def assign_leads_to_campaigns_task(
 
 
 @task(name="promote_pool_leads_to_leads", retries=2, retry_delay_seconds=5)
-async def promote_pool_leads_to_leads_task(client_id: UUID) -> dict[str, Any]:
+async def promote_pool_leads_to_leads_task(
+    client_id: UUID,
+    bypass_als_gate: bool = False,
+) -> dict[str, Any]:
     """
     Promote validated lead_pool rows to the leads table for dashboard visibility.
 
@@ -366,17 +369,23 @@ async def promote_pool_leads_to_leads_task(client_id: UUID) -> dict[str, Any]:
 
     Args:
         client_id: Client UUID
+        bypass_als_gate: When True, promote ALL pool leads including those without
+            email (Directive #194). ALS gate makes no sense pre-enrichment — promote
+            everything, then enrich, then score.
 
     Returns:
-        Dict with promoted count and any errors
+        Dict with promoted count, any errors, and lead_ids (leads table IDs)
     """
     promoted = 0
     errors = []
+    new_lead_ids: list[str] = []
 
     async with get_db_session() as db:
         # Fetch assigned pool leads for this client that have a campaign assigned
+        # bypass_als_gate=True: include leads without email (GMB discovery leads)
+        email_filter = "" if bypass_als_gate else "AND lp.email IS NOT NULL"
         result = await db.execute(
-            text("""
+            text(f"""
             SELECT
                 lp.id,
                 lp.client_id,
@@ -408,7 +417,7 @@ async def promote_pool_leads_to_leads_task(client_id: UUID) -> dict[str, Any]:
             WHERE lp.client_id = :client_id
             AND lp.campaign_id IS NOT NULL
             AND lp.pool_status NOT IN ('bounced', 'unsubscribed', 'invalid')
-            AND lp.email IS NOT NULL
+            {email_filter}
             """),
             {"client_id": str(client_id)},
         )
@@ -487,6 +496,7 @@ async def promote_pool_leads_to_leads_task(client_id: UUID) -> dict[str, Any]:
                         NOW()
                     )
                     ON CONFLICT ON CONSTRAINT unique_lead_per_client DO NOTHING
+                    RETURNING id
                     """),
                     {
                         "client_id": str(lead.client_id),
@@ -514,9 +524,10 @@ async def promote_pool_leads_to_leads_task(client_id: UUID) -> dict[str, Any]:
                         "lead_pool_id": str(lead.id),
                     },
                 )
-                rows_affected = insert_result.rowcount
-                if rows_affected > 0:
+                new_id = insert_result.scalar()
+                if new_id:
                     promoted += 1
+                    new_lead_ids.append(str(new_id))
                 else:
                     skipped += 1  # ON CONFLICT DO NOTHING — already exists
             except Exception as e:
@@ -535,6 +546,7 @@ async def promote_pool_leads_to_leads_task(client_id: UUID) -> dict[str, Any]:
         "promoted": promoted,
         "skipped": skipped,
         "errors": errors,
+        "lead_ids": new_lead_ids,
     }
 
 
@@ -958,17 +970,64 @@ async def post_onboarding_setup_flow(
             if assign_result["success"]:
                 assignments = assign_result.get("assignments", [])
 
-        # Step 7: Promote lead_pool → leads (Directive #184 Fix 1)
-        # Run regardless of demo_mode — pool leads need to be in leads table for dashboard
-        promotion_result = await promote_pool_leads_to_leads_task(client_id=client_id)
+        # Step 7: Promote lead_pool → leads (Directive #194 — bypass ALS gate pre-enrichment)
+        # bypass_als_gate=True: promote ALL pool leads including those without email.
+        # ALS gate is chicken-and-egg pre-enrichment — promote first, then enrich, then score.
+        promotion_result = await promote_pool_leads_to_leads_task(
+            client_id=client_id,
+            bypass_als_gate=True,
+        )
         leads_promoted = promotion_result.get("promoted", 0)
+        promoted_lead_ids = promotion_result.get("lead_ids", [])
 
         if promotion_result.get("errors"):
             logger.warning(
                 f"Promotion had {len(promotion_result['errors'])} errors for client {client_id}"
             )
 
-        # Step 7b: Score promoted leads (Directive #187 Fix G7/G8)
+        # Step 7b: Enrich promoted leads (Directive #194 Fix 2)
+        # enrich_batch() queries the leads table — must pass leads table IDs (not pool IDs).
+        # This is the ONLY place enrich_batch is called for onboarding.
+        leads_enriched = 0
+        if promoted_lead_ids:
+            try:
+                from uuid import UUID as _UUID
+                from src.engines.scout import get_scout_engine
+                scout_engine = get_scout_engine()
+                lead_uuids = [_UUID(lid) for lid in promoted_lead_ids]
+                logger.info(
+                    f"[post_onboarding] Enriching {len(lead_uuids)} promoted leads "
+                    f"for client {client_id}"
+                )
+                async with get_db_session() as db:
+                    enrich_result = await scout_engine.enrich_batch(
+                        db=db,
+                        lead_ids=lead_uuids,
+                        force_refresh=False,
+                    )
+                if enrich_result.success and enrich_result.data:
+                    leads_enriched = (
+                        enrich_result.data.get("tier1_success", 0)
+                        + enrich_result.data.get("tier2_success", 0)
+                    )
+                    logger.info(
+                        f"[post_onboarding] Enriched {leads_enriched} of "
+                        f"{len(lead_uuids)} leads for client {client_id}"
+                    )
+                else:
+                    logger.warning(
+                        f"[post_onboarding] enrich_batch returned no data for client {client_id}: "
+                        f"{enrich_result.error}"
+                    )
+            except Exception as e:
+                import traceback
+                logger.error(
+                    f"[post_onboarding] pool enrich_batch FAILED: {e}\n"
+                    f"{traceback.format_exc()}"
+                )
+                raise  # Re-raise so Prefect marks task as Failed, not silently continues
+
+        # Step 7c: Score promoted leads (Directive #187 Fix G7/G8)
         # Non-blocking: flow completes even if scoring fails.
         # Populates propensity_score, enrichment_source, enriched_at on leads table.
         leads_scored = 0
@@ -1009,6 +1068,7 @@ async def post_onboarding_setup_flow(
             "leads_sourced": leads_sourced,
             "leads_assigned": sum(a["leads_assigned"] for a in assignments) if assignments else leads_sourced,
             "leads_promoted": leads_promoted,
+            "leads_enriched": leads_enriched,
             "leads_scored": leads_scored,
             "assignments": assignments,
             "sourcing_cost_aud": sourcing_cost,

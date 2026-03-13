@@ -182,7 +182,8 @@ class LeadAllocatorService:
                     pool_status = 'assigned',
                     updated_at = NOW()
                 WHERE id = :lead_pool_id
-                AND client_id IS NULL
+                AND client_id = :client_id
+                AND pool_status = 'available'
                 RETURNING id
             """)
 

@@ -308,7 +308,37 @@ class BrightDataClient:
     async def _scraper_request(
         self, dataset_id: str, inputs: list[dict], discover_by: str = None
     ) -> list[dict]:
-        """Execute Scraper API: trigger → poll → download."""
+        """Execute Scraper API: trigger → poll → download.
+
+        Directive #196: Retries once on snapshot timeout (transient BD issue).
+        Max 2 attempts total, 30s wait between attempts.
+        """
+        max_attempts = 2
+        retry_wait_seconds = 30
+
+        for attempt in range(1, max_attempts + 1):
+            try:
+                return await self._scraper_request_attempt(dataset_id, inputs, discover_by)
+            except BrightDataError as e:
+                if "timeout" in str(e).lower() and attempt < max_attempts:
+                    logger.warning(
+                        "bd_scraper_retry",
+                        attempt=attempt,
+                        dataset_id=dataset_id,
+                        error=str(e),
+                        retry_in_seconds=retry_wait_seconds,
+                    )
+                    await asyncio.sleep(retry_wait_seconds)
+                    continue
+                raise
+
+        # Should not be reached, but satisfy type checker
+        raise BrightDataError("_scraper_request: exhausted retries")  # pragma: no cover
+
+    async def _scraper_request_attempt(
+        self, dataset_id: str, inputs: list[dict], discover_by: str = None
+    ) -> list[dict]:
+        """Single attempt of Scraper API: trigger → poll → download."""
         base_url = "https://api.brightdata.com/datasets/v3"
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 

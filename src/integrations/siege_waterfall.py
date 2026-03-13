@@ -696,7 +696,12 @@ class SiegeWaterfall:
 
         # ===== TIER 1: ABN Bulk =====
         if EnrichmentTier.ABN not in skip_tiers:
-            result = await self.tier1_abn(enriched_data)
+            try:
+                result = await self.tier1_abn(enriched_data)
+            except Exception as e:
+                # Directive #196: per-tier graceful degradation — tier failure must not crash enrichment
+                logger.warning(f"[enrich_lead] Tier 1 ABN raised unexpectedly: {e}")
+                result = TierResult(tier=EnrichmentTier.ABN, success=False, error=str(e))
             tier_results.append(result)
             if result.success:
                 enriched_data = self._merge_data(
@@ -734,7 +739,12 @@ class SiegeWaterfall:
 
         # ===== TIER 1.5: BD LinkedIn Company =====
         if EnrichmentTier.LINKEDIN_COMPANY not in skip_tiers:
-            result = await self.tier1_5_linkedin_company(enriched_data, icp_passed=True)
+            try:
+                result = await self.tier1_5_linkedin_company(enriched_data, icp_passed=True)
+            except Exception as e:
+                # Directive #196: per-tier graceful degradation
+                logger.warning(f"[enrich_lead] Tier 1.5 LinkedIn raised unexpectedly: {e}")
+                result = TierResult(tier=EnrichmentTier.LINKEDIN_COMPANY, success=False, error=str(e))
             tier_results.append(result)
             if result.success:
                 enriched_data = self._merge_data(
@@ -890,7 +900,12 @@ class SiegeWaterfall:
                 logger.info("[T2] Skipping GMB enrichment — T0 already has data")
             else:
                 # Fallback: T0 didn't provide GMB data (shouldn't happen in GMB-first mode)
-                result = await self.tier2_gmb(enriched_data)
+                try:
+                    result = await self.tier2_gmb(enriched_data)
+                except Exception as e:
+                    # Directive #196: per-tier graceful degradation
+                    logger.warning(f"[enrich_lead] Tier 2 GMB raised unexpectedly: {e}")
+                    result = TierResult(tier=EnrichmentTier.GMB, success=False, error=str(e))
                 tier_results.append(result)
                 if result.success:
                     enriched_data = self._merge_data(
@@ -916,7 +931,12 @@ class SiegeWaterfall:
             current_als = self._calculate_als(enriched_data)
 
             if current_als >= 35:
-                result = await self.tier3_leadmagic_email(enriched_data)
+                try:
+                    result = await self.tier3_leadmagic_email(enriched_data)
+                except Exception as e:
+                    # Directive #196: per-tier graceful degradation
+                    logger.warning(f"[enrich_lead] Tier 3 Leadmagic email raised unexpectedly: {e}")
+                    result = TierResult(tier=EnrichmentTier.LEADMAGIC_EMAIL, success=False, error=str(e))
                 tier_results.append(result)
                 if result.success:
                     enriched_data = self._merge_data(
@@ -951,7 +971,12 @@ class SiegeWaterfall:
             current_als = self._calculate_als(enriched_data)
 
             if current_als >= 85 or force_tier5:
-                result = await self.tier5_identity(enriched_data, current_als, force=force_tier5)
+                try:
+                    result = await self.tier5_identity(enriched_data, current_als, force=force_tier5)
+                except Exception as e:
+                    # Directive #196: per-tier graceful degradation
+                    logger.warning(f"[enrich_lead] Tier 5 Identity raised unexpectedly: {e}")
+                    result = TierResult(tier=EnrichmentTier.IDENTITY, success=False, error=str(e))
                 tier_results.append(result)
                 if result.success:
                     enriched_data = self._merge_data(

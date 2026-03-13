@@ -465,6 +465,38 @@ async def populate_pool_from_icp_task(
         logger.warning(f"GMB batch discovery failed: {e}")
         records = []
 
+    # Directive #196 FIX 5: GMB fallback — retry with single keyword if 0 records
+    if not records:
+        fallback_industry = industries[0] if industries else "marketing"
+        fallback_keyword = _map_industry_to_gmb_category(fallback_industry)
+        logger.warning(
+            f"GMB discovery returned 0 records, retrying with single keyword: {fallback_keyword!r}"
+        )
+        try:
+            records = await bd_client._scraper_request(
+                DATASET_IDS["gmb_business"],
+                [{"keyword": fallback_keyword, "country": "AU"}],
+                discover_by="location",
+            )
+            logger.info(f"GMB fallback query returned {len(records)} records")
+        except Exception as e:
+            logger.warning(f"GMB fallback discovery also failed: {e}")
+            records = []
+
+    if not records:
+        logger.warning(
+            f"GMB discovery returned 0 records after fallback for client={client_id}. "
+            "Returning graceful success — pipeline continues."
+        )
+        return {
+            "success": True,
+            "added": 0,
+            "skipped": 0,
+            "suppressed": 0,
+            "total": 0,
+            "fallback": "no_gmb_records",
+        }
+
     # Fix 1 (Directive #193): Collect all rows first, then single batch insert
     rows_to_insert = []
     for record in records:

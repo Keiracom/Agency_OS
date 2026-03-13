@@ -512,6 +512,20 @@ class ScoutEngine(BaseEngine):
                     result["source"] = f"siege_waterfall_{siege_result.sources_used}sources"
                     result["enrichment_cost_aud"] = siege_result.total_cost_aud
 
+                    # Directive #196: Partial enrichment tracking — tiers succeeded/failed
+                    tiers_attempted = [
+                        tr.tier.value for tr in siege_result.tier_results if not tr.skipped
+                    ]
+                    tiers_failed = [
+                        tr.tier.value
+                        for tr in siege_result.tier_results
+                        if not tr.success and not tr.skipped
+                    ]
+                    enrichment_status = "fully_enriched" if not tiers_failed else "partially_enriched"
+                    result["_enrichment_tier_results"] = tiers_attempted
+                    result["_enrichment_tiers_failed"] = tiers_failed
+                    result["_enrichment_status"] = enrichment_status
+
                     # Log successful SIEGE enrichment
                     await self._log_enrichment_audit(
                         operation="siege_waterfall",
@@ -942,6 +956,23 @@ class ScoutEngine(BaseEngine):
                     )
             except (ValueError, TypeError):
                 pass
+
+        # Directive #196: Partial enrichment status — write tier results to metadata JSONB
+        tiers_attempted = enrichment.get("_enrichment_tier_results")
+        tiers_failed = enrichment.get("_enrichment_tiers_failed")
+        enrichment_status = enrichment.get("_enrichment_status")
+        if tiers_attempted is not None:
+            partial_tracking = {
+                "tiers_attempted": tiers_attempted,
+                "tiers_failed": tiers_failed or [],
+                "status": enrichment_status or "discovery_only",
+            }
+            # Merge into existing metadata (don't overwrite other keys)
+            # Note: Lead.metadata DB column is mapped as Lead.lead_metadata to avoid
+            # name conflict with SQLAlchemy's declarative MetaData attribute.
+            existing_metadata = getattr(lead, "lead_metadata", None) or {}
+            merged_metadata = {**existing_metadata, "enrichment_tracking": partial_tracking}
+            update_data["lead_metadata"] = merged_metadata
 
         # Remove None values
         update_data = {k: v for k, v in update_data.items() if v is not None}

@@ -400,61 +400,133 @@ async def populate_pool_from_icp_task(
     Returns:
         Dict with population results
     """
+    # Industry → GMB search category mapping (Directive #188)
+    INDUSTRY_TO_GMB_CATEGORY = {
+        "ecommerce": "ecommerce agency",
+        "retail": "retail marketing agency",
+        "direct_to_consumer": "digital marketing agency",
+        "marketing": "marketing agency",
+        "saas": "software marketing agency",
+        "b2b": "b2b marketing agency",
+        "finance": "financial services marketing",
+        "health": "healthcare marketing agency",
+    }
+
+    def _map_industry_to_gmb_category(industry: str) -> str:
+        return INDUSTRY_TO_GMB_CATEGORY.get(industry.lower(), f"{industry} marketing agency")
+
+    def _extract_domain(website: str) -> str | None:
+        from urllib.parse import urlparse
+        if not website:
+            return None
+        try:
+            parsed = urlparse(website if "://" in website else f"https://{website}")
+            host = parsed.netloc or parsed.path
+            return host.lstrip("www.").lower() or None
+        except Exception:
+            return None
+
+    from src.integrations.bright_data_client import get_bright_data_client
+
+    industries: list[str] = icp_criteria.get("icp_industries", []) or []
+    locations: list[str] = icp_criteria.get("icp_locations", []) or ["Australia"]
+    if not industries:
+        industries = ["marketing"]
+
+    combos = [(ind, loc) for ind in industries for loc in locations]
+    per_query = max(5, limit // max(len(combos), 1))
+
+    bd_client = get_bright_data_client()
+    seen_keys: set[str] = set()
+    added = 0
+    skipped = 0
+
     async with get_db_session() as db:
-        scout = get_scout_engine()
+        for industry, location in combos:
+            if added >= limit:
+                break
 
-        # Build search criteria
-        base_criteria = {
-            "titles": icp_criteria.get("icp_titles", []),
-            "industries": icp_criteria.get("icp_industries", []),
-            "countries": icp_criteria.get("icp_locations", []),
-            "employee_min": icp_criteria.get("employee_min"),
-            "employee_max": icp_criteria.get("employee_max"),
-            # seniorities can be inferred from titles or set defaults
-            "seniorities": ["director", "vp", "c_suite", "owner", "founder"],
-        }
-
-        # Apply WHO refinement to improve targeting based on conversion patterns
-        refined_criteria = await get_who_refined_criteria(db, client_id, base_criteria)
-        logger.info("Tier 3: Applied WHO refinement to search criteria")
-
-        logger.info(
-            f"Populating pool for client {client_id} with criteria: "
-            f"industries={refined_criteria.get('industries', [])}, "
-            f"titles={refined_criteria.get('titles', [])}, "
-            f"limit={limit}"
-        )
-
-        result = await scout.search_and_populate_pool(
-            db=db,
-            icp_criteria=refined_criteria,
-            limit=limit,
-            client_id=client_id,
-        )
-
-        if result.success:
+            category = _map_industry_to_gmb_category(industry)
             logger.info(
-                f"Pool population complete: {result.data['added']} added, "
-                f"{result.data['skipped']} skipped, "
-                f"{result.data['suppressed']} suppressed"
+                f"Tier 3 GMB discovery: category={category}, location={location}, "
+                f"per_query={per_query}, client={client_id}"
             )
-            return {
-                "success": True,
-                "added": result.data["added"],
-                "skipped": result.data["skipped"],
-                "suppressed": result.data["suppressed"],
-                "total": result.data["total"],
-            }
-        else:
-            logger.error(f"Pool population failed: {result.error}")
-            return {
-                "success": False,
-                "error": result.error,
-                "added": 0,
-                "skipped": 0,
-                "suppressed": 0,
-                "total": 0,
-            }
+
+            try:
+                records = await bd_client.discover_gmb_by_category(
+                    category=category,
+                    location=location,
+                    limit=per_query,
+                )
+            except Exception as e:
+                logger.warning(f"GMB discovery failed for {category}/{location}: {e}")
+                records = []
+
+            for record in records:
+                if added >= limit:
+                    break
+
+                company_name = (record.get("name") or "").strip()
+                if not company_name:
+                    skipped += 1
+                    continue
+
+                phone = record.get("phone") or None
+                website = record.get("website") or ""
+                domain = _extract_domain(website)
+
+                city = None
+                address = record.get("address") or ""
+                if address:
+                    parts = [p.strip() for p in address.split(",") if p.strip()]
+                    if len(parts) >= 2:
+                        city = parts[-2]  # penultimate part is usually city
+
+                # Dedup key: prefer domain, fall back to phone, then name
+                dedup_key = domain or phone or company_name.lower()
+                if dedup_key in seen_keys:
+                    skipped += 1
+                    continue
+                seen_keys.add(dedup_key)
+
+                try:
+                    await db.execute(
+                        text("""
+                            INSERT INTO lead_pool (
+                                id, client_id, company_name, company_domain, phone,
+                                company_industry, company_city, pool_status,
+                                enrichment_source, als_score, als_tier, created_at
+                            ) VALUES (
+                                gen_random_uuid(), :client_id, :company_name, :company_domain, :phone,
+                                :industry, :city, 'available',
+                                'gmb_discovery', 0, 'cold', NOW()
+                            )
+                            ON CONFLICT DO NOTHING
+                        """),
+                        {
+                            "client_id": str(client_id),
+                            "company_name": company_name,
+                            "company_domain": domain,
+                            "phone": phone,
+                            "industry": industry,
+                            "city": city,
+                        },
+                    )
+                    await db.commit()
+                    added += 1
+                except Exception as e:
+                    logger.warning(f"Failed to insert lead '{company_name}': {e}")
+                    await db.rollback()
+                    skipped += 1
+
+    logger.info(f"Tier 3 GMB discovery complete: {added} added, {skipped} skipped")
+    return {
+        "success": True,
+        "added": added,
+        "skipped": skipped,
+        "suppressed": 0,
+        "total": added + skipped,
+    }
 
 
 # ============================================

@@ -254,3 +254,6 @@ class MapsFirstDiscovery:
 # ParallelDiscovery deleted — Directive #170 Step 3 (2026-03-10)
 # Was a thin wrapper around MapsFirstDiscovery with no additional logic.
 # DiscoveryMode.PARALLEL enum value retained; waterfall_v2 now routes PARALLEL → MapsFirstDiscovery directly.
+
+# Backward-compatibility alias — Directive #188 (2026-03-13)
+GMBFirstDiscovery = MapsFirstDiscovery

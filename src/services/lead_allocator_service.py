@@ -169,47 +169,43 @@ class LeadAllocatorService:
         if not leads_to_assign:
             return []
 
-        # Phase 37: Assign leads directly by setting client_id on lead_pool
-        assigned_leads = []
-        for lead in leads_to_assign:
-            lead_pool_id = lead.id
+        # Directive #197 FIX 1: Bulk UPDATE replaces N sequential UPDATEs.
+        # 440 leads: ~496s → ~2s. Single SQL round-trip via ANY(:ids::uuid[]).
+        lead_ids = [str(lead.id) for lead in leads_to_assign]
 
-            # Update lead_pool directly with client/campaign ownership
-            assign_query = text("""
-                UPDATE lead_pool
-                SET client_id = :client_id,
-                    campaign_id = :campaign_id,
-                    pool_status = 'assigned',
-                    updated_at = NOW()
-                WHERE id = :lead_pool_id
-                AND client_id = :client_id
-                AND pool_status = 'available'
-                RETURNING id
-            """)
+        bulk_update = text("""
+            UPDATE lead_pool
+            SET campaign_id = :campaign_id,
+                pool_status = 'assigned',
+                updated_at = NOW()
+            WHERE id = ANY(:lead_ids::uuid[])
+              AND client_id = :client_id
+              AND pool_status = 'available'
+            RETURNING id, email, first_name, last_name, title, company_name
+        """)
 
-            assign_result = await self.session.execute(
-                assign_query,
-                {
-                    "lead_pool_id": str(lead_pool_id),
-                    "client_id": str(client_id),
-                    "campaign_id": str(campaign_id) if campaign_id else None,
-                },
-            )
-            updated = assign_result.fetchone()
-
-            if updated:
-                assigned_leads.append(
-                    {
-                        "lead_pool_id": str(lead_pool_id),
-                        "email": lead.email,
-                        "first_name": lead.first_name,
-                        "last_name": lead.last_name,
-                        "title": lead.title,
-                        "company_name": lead.company_name,
-                    }
-                )
-
+        bulk_result = await self.session.execute(
+            bulk_update,
+            {
+                "lead_ids": lead_ids,
+                "client_id": str(client_id),
+                "campaign_id": str(campaign_id) if campaign_id else None,
+            },
+        )
+        updated_rows = bulk_result.fetchall()
         await self.session.commit()
+
+        assigned_leads = [
+            {
+                "lead_pool_id": str(row.id),
+                "email": row.email,
+                "first_name": row.first_name,
+                "last_name": row.last_name,
+                "title": row.title,
+                "company_name": row.company_name,
+            }
+            for row in updated_rows
+        ]
 
         if len(assigned_leads) == 0:
             logger.warning(

@@ -49,30 +49,32 @@ class TestLeadAllocatorAllocate:
         campaign_id = uuid4()
         pool_id = uuid4()
 
-        # Mock find query result
+        # Mock find query result (SELECT with FOR UPDATE SKIP LOCKED)
         find_result = MagicMock()
-        find_result.fetchall.return_value = [
-            MagicMock(
-                id=pool_id,
-                email="lead@example.com",
-                first_name="John",
-                last_name="Doe",
-                title="CEO",
-                company_name="Acme Inc",
-                enrichment_confidence=0.95,
-            ),
-        ]
+        lead_row = MagicMock(
+            id=pool_id,
+            email="lead@example.com",
+            first_name="John",
+            last_name="Doe",
+            title="CEO",
+            company_name="Acme Inc",
+            enrichment_confidence=0.95,
+        )
+        find_result.fetchall.return_value = [lead_row]
 
-        # Mock assignment result
-        assign_result = MagicMock()
-        assign_row = MagicMock()
-        assign_row.id = uuid4()
-        assign_result.fetchone.return_value = assign_row
+        # Directive #197 FIX 1: bulk UPDATE RETURNING — uses fetchall, not fetchone
+        bulk_result = MagicMock()
+        bulk_row = MagicMock(
+            id=pool_id,
+            email="lead@example.com",
+            first_name="John",
+            last_name="Doe",
+            title="CEO",
+            company_name="Acme Inc",
+        )
+        bulk_result.fetchall.return_value = [bulk_row]
 
-        # Mock update result (for pool status update)
-        update_result = MagicMock()
-
-        mock_session.execute.side_effect = [find_result, assign_result, update_result]
+        mock_session.execute.side_effect = [find_result, bulk_result]
 
         result = await allocator_service.allocate_leads(
             client_id=client_id,

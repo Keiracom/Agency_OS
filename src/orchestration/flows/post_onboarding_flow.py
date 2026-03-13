@@ -772,7 +772,7 @@ async def inject_demo_leads(client_id: UUID, campaign_id: UUID) -> int:
     description="Generate campaigns and source leads after onboarding",
     task_runner=ConcurrentTaskRunner(),
     retries=0,
-    timeout_seconds=900,  # 15 minute timeout (increased for batched BD job)
+    timeout_seconds=1800,  # Directive #197: raised from 900s → 1800s (Flow A now ~5 min, headroom for retries)
 )
 async def post_onboarding_setup_flow(
     client_id: str | UUID,
@@ -985,66 +985,70 @@ async def post_onboarding_setup_flow(
                 f"Promotion had {len(promotion_result['errors'])} errors for client {client_id}"
             )
 
-        # Step 7b: Enrich promoted leads (Directive #194 Fix 2)
-        # enrich_batch() queries the leads table — must pass leads table IDs (not pool IDs).
-        # This is the ONLY place enrich_batch is called for onboarding.
-        leads_enriched = 0
-        if promoted_lead_ids:
-            try:
-                from uuid import UUID as _UUID
-                from src.engines.scout import get_scout_engine
-                scout_engine = get_scout_engine()
-                lead_uuids = [_UUID(lid) for lid in promoted_lead_ids]
-                logger.info(
-                    f"[post_onboarding] Enriching {len(lead_uuids)} promoted leads "
-                    f"for client {client_id}"
-                )
-                async with get_db_session() as db:
-                    enrich_result = await scout_engine.enrich_batch(
-                        db=db,
-                        lead_ids=lead_uuids,
-                        force_refresh=False,
-                    )
-                if enrich_result.success and enrich_result.data:
-                    leads_enriched = (
-                        enrich_result.data.get("tier1_success", 0)
-                        + enrich_result.data.get("tier2_success", 0)
-                    )
-                    logger.info(
-                        f"[post_onboarding] Enriched {leads_enriched} of "
-                        f"{len(lead_uuids)} leads for client {client_id}"
-                    )
-                else:
-                    logger.warning(
-                        f"[post_onboarding] enrich_batch returned no data for client {client_id}: "
-                        f"{enrich_result.error}"
-                    )
-            except Exception as e:
-                import traceback
-                logger.error(
-                    f"[post_onboarding] pool enrich_batch FAILED: {e}\n"
-                    f"{traceback.format_exc()}"
-                )
-                raise  # Re-raise so Prefect marks task as Failed, not silently continues
+        # Step 7b: Directive #197 FIX 3 — Two-flow architecture.
+        # Flow A (onboarding) fires-and-forgets enrichment to Flow B (daily_enrichment_flow).
+        # Flow A returns immediately after promotion — customer sees leads in dashboard ~5 min.
+        # Flow B (enrichment) runs async in background — enrichment data fills in over ~10 min.
+        #
+        # Query unenriched leads directly — works on FIRST RUN and RE-RUNS.
+        # Old approach: rely on promoted_lead_ids [] from re-runs → silent skip (bug).
+        import time as _time
+        import httpx as _httpx
 
-        # Step 7c: Score promoted leads (Directive #187 Fix G7/G8)
-        # Non-blocking: flow completes even if scoring fails.
-        # Populates propensity_score, enrichment_source, enriched_at on leads table.
-        leads_scored = 0
-        if leads_promoted > 0:
-            try:
-                scoring_result = await score_promoted_leads_task(client_id=client_id)
-                leads_scored = scoring_result.get("scored", 0)
-                if scoring_result.get("failed", 0) > 0:
-                    logger.warning(
-                        f"[post_onboarding] {scoring_result['failed']} leads failed scoring "
-                        f"for client {client_id}"
+        leads_enriched = 0  # enrichment now async — Flow B tracks its own count
+        leads_scored = 0    # scoring happens inside Flow B after enrichment
+
+        try:
+            async with get_db_session() as _db:
+                _unenriched_result = await _db.execute(text("""
+                    SELECT id FROM leads
+                    WHERE client_id = :client_id
+                      AND status = 'new'
+                      AND (enrichment_source IS NULL OR enrichment_source = '')
+                    LIMIT 500
+                """), {"client_id": str(client_id)})
+                unenriched_ids = [str(row.id) for row in _unenriched_result.fetchall()]
+
+            unenriched_count = len(unenriched_ids)
+            logger.info(
+                f"[post_onboarding] enrichment_trigger: client={client_id} "
+                f"unenriched_leads={unenriched_count}"
+            )
+
+            if unenriched_count > 0:
+                # Fire-and-forget: POST to enrichment-flow Prefect deployment (ID: 23f36d60).
+                # Flow A does NOT wait — returns success immediately after posting.
+                try:
+                    async with _httpx.AsyncClient(timeout=10) as _http:
+                        _resp = await _http.post(
+                            "https://prefect-server-production-f9b1.up.railway.app"
+                            "/api/deployments/23f36d60/create_flow_run",
+                            json={
+                                "parameters": {"client_id": str(client_id)},
+                                "name": f"enrichment-{str(client_id)[:8]}-{int(_time.time())}",
+                            },
+                        )
+                    enrichment_run_id = _resp.json().get("id", "unknown")
+                    logger.info(
+                        f"[post_onboarding] enrichment_flow_triggered: "
+                        f"run_id={enrichment_run_id} leads={unenriched_count}"
                     )
-            except Exception as score_exc:
-                logger.warning(
-                    f"[post_onboarding] Post-promotion scoring failed for client {client_id} "
-                    f"(non-fatal): {score_exc}"
+                except Exception as _trig_exc:
+                    # Non-fatal — leads exist in dashboard; enrichment can be retried manually.
+                    logger.warning(
+                        f"[post_onboarding] enrichment_trigger_failed (non-fatal): {_trig_exc}"
+                    )
+            else:
+                logger.info(
+                    f"[post_onboarding] No unenriched leads for client {client_id} — "
+                    "skipping enrichment trigger"
                 )
+
+        except Exception as _enrich_exc:
+            # Non-fatal: leads are promoted and visible; enrichment can be retried.
+            logger.warning(
+                f"[post_onboarding] enrichment trigger block failed (non-fatal): {_enrich_exc}"
+            )
 
         # Step 8: Update onboarding status
         await update_onboarding_status_task(

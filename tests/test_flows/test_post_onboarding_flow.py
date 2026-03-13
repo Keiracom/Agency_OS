@@ -266,15 +266,14 @@ async def test_score_promoted_leads_task_handles_scorer_exception():
 @pytest.mark.asyncio
 async def test_post_onboarding_flow_calls_scoring_after_promotion():
     """
-    G7/G8: post_onboarding_setup_flow must invoke score_promoted_leads_task
-    after promote_pool_leads_to_leads_task when leads_promoted > 0.
-    Result dict must include leads_scored key.
+    Directive #197 FIX 3: post_onboarding_setup_flow now uses two-flow architecture.
+    After promotion, Flow A fires-and-forgets enrichment to Flow B (daily_enrichment_flow).
+    score_promoted_leads_task is NO LONGER called inline — scoring happens inside Flow B.
+    Result dict must include leads_scored=0 (async) and leads_enriched=0 (async).
     """
     from src.orchestration.flows.post_onboarding_flow import post_onboarding_setup_flow
 
     client_id = str(uuid4())
-
-    mock_score = AsyncMock(return_value={"success": True, "scored": 5, "failed": 0})
 
     # TierConfig is a dataclass (not subscriptable). Mock the lookup to return a plain dict.
     mock_tier_config = {"leads_per_month": 100}
@@ -290,9 +289,6 @@ async def test_post_onboarding_flow_calls_scoring_after_promotion():
         "src.orchestration.flows.post_onboarding_flow.promote_pool_leads_to_leads_task",
         new=AsyncMock(return_value={"success": True, "promoted": 5, "skipped": 0, "errors": []}),
     ), patch(
-        "src.orchestration.flows.post_onboarding_flow.score_promoted_leads_task",
-        new=mock_score,
-    ), patch(
         "src.orchestration.flows.post_onboarding_flow.update_onboarding_status_task",
         new=AsyncMock(return_value=True),
     ), patch(
@@ -303,6 +299,8 @@ async def test_post_onboarding_flow_calls_scoring_after_promotion():
     ) as mock_session:
 
         mock_db = AsyncMock()
+        # Mock DB to return unenriched leads (simulates real DB query)
+        mock_db.execute.return_value.fetchall.return_value = []
 
         @asynccontextmanager
         async def _session():
@@ -317,13 +315,17 @@ async def test_post_onboarding_flow_calls_scoring_after_promotion():
             bypass_gates=True,
         )
 
-    # score_promoted_leads_task MUST have been called
-    mock_score.assert_called_once()
-
-    # result must include leads_scored
-    assert result.get("leads_scored") == 5, (
-        f"Expected leads_scored=5 in result but got: {result.get('leads_scored')}"
+    # Directive #197: enrichment is now async (Flow B) — leads_scored and leads_enriched
+    # are 0 in Flow A result. Actual enrichment happens in daily_enrichment_flow.
+    assert result.get("leads_scored") == 0, (
+        f"Expected leads_scored=0 (enrichment decoupled to Flow B) but got: {result.get('leads_scored')}"
     )
+    assert result.get("leads_enriched") == 0, (
+        f"Expected leads_enriched=0 (enrichment decoupled to Flow B) but got: {result.get('leads_enriched')}"
+    )
+    # Flow A must still report success after promotion
+    assert result.get("success") is True, f"Expected success=True but got: {result.get('success')}"
+    assert result.get("leads_promoted") == 5, f"Expected leads_promoted=5 but got: {result.get('leads_promoted')}"
 
 
 # ============================================

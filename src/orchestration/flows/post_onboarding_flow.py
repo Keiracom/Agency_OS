@@ -959,6 +959,18 @@ async def post_onboarding_setup_flow(
                 f"Promotion had {len(promotion_result['errors'])} errors for client {client_id}"
             )
 
+        # Step 7b-pre: Activate draft campaigns so enrichment flow can find leads.
+        # enrichment_flow.get_leads_needing_enrichment_task requires Campaign.status == ACTIVE.
+        # Onboarding creates campaigns in 'draft' status — activate them now, before Flow B fires.
+        async with get_db_session() as _db:
+            await _db.execute(text("""
+                UPDATE campaigns
+                SET status = 'active', updated_at = NOW()
+                WHERE client_id = :client_id AND status = 'draft'
+            """), {"client_id": str(client_id)})
+            await _db.commit()
+        logger.info(f"[post_onboarding] campaigns activated for client {client_id}")
+
         # Step 7b: Directive #197 FIX 3 — Two-flow architecture.
         # Flow A (onboarding) fires-and-forgets enrichment to Flow B (daily_enrichment_flow).
         # Flow A returns immediately after promotion — customer sees leads in dashboard ~5 min.
@@ -990,13 +1002,13 @@ async def post_onboarding_setup_flow(
             )
 
             if unenriched_count > 0:
-                # Fire-and-forget: POST to enrichment-flow Prefect deployment (ID: 23f36d60).
+                # Fire-and-forget: POST to enrichment-flow Prefect deployment (ID: 23f36d60-8a30-408d-9c46-0cbbd4d97585).
                 # Flow A does NOT wait — returns success immediately after posting.
                 try:
                     async with _httpx.AsyncClient(timeout=10) as _http:
                         _resp = await _http.post(
                             "https://prefect-server-production-f9b1.up.railway.app"
-                            "/api/deployments/23f36d60/create_flow_run",
+                            "/api/deployments/23f36d60-8a30-408d-9c46-0cbbd4d97585/create_flow_run",
                             json={
                                 "parameters": {"client_id": str(client_id)},
                                 "name": f"enrichment-{str(client_id)[:8]}-{int(_time.time())}",
@@ -1009,7 +1021,7 @@ async def post_onboarding_setup_flow(
                     )
                 except Exception as _trig_exc:
                     # Non-fatal — leads exist in dashboard; enrichment can be retried manually.
-                    logger.warning(
+                    logger.error(
                         f"[post_onboarding] enrichment_trigger_failed (non-fatal): {_trig_exc}"
                     )
             else:

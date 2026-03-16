@@ -509,13 +509,28 @@ class ScoutEngine(BaseEngine):
                     skip_tiers=[EnrichmentTier.IDENTITY],  # Skip expensive Tier 5
                 )
 
-                if siege_result.sources_used > 0:
+                # Directive #200: GMB leads already carry company-level data in
+                # enriched_data (domain, phone, gmb_rating, etc.) even when no new
+                # API tier fires (sources_used=0). Don't discard that data.
+                # Mark as company-level enriched if we have company identity.
+                _ed = siege_result.enriched_data
+                _has_company_data = bool(
+                    (_ed.get("company_name") or _ed.get("company"))
+                    and (_ed.get("domain") or _ed.get("phone") or _ed.get("gmb_place_id"))
+                )
+                if siege_result.sources_used > 0 or _has_company_data:
                     result = siege_result.enriched_data
                     result["found"] = True
-                    result["confidence"] = 0.75 + (
-                        siege_result.sources_used * 0.05
-                    )  # Higher confidence with more sources
-                    result["source"] = f"siege_waterfall_{siege_result.sources_used}sources"
+                    result["confidence"] = (
+                        0.75 + (siege_result.sources_used * 0.05)
+                        if siege_result.sources_used > 0
+                        else 0.70  # minimum threshold for company-level GMB data
+                    )
+                    result["source"] = (
+                        f"siege_waterfall_{siege_result.sources_used}sources"
+                        if siege_result.sources_used > 0
+                        else "gmb_passthrough"
+                    )
                     result["enrichment_cost_aud"] = siege_result.total_cost_aud
 
                     # Directive #196: Partial enrichment tracking — tiers succeeded/failed

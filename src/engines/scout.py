@@ -493,8 +493,11 @@ class ScoutEngine(BaseEngine):
                     "abn": getattr(lead, "abn", None),
                     "title": lead.title,
                     "city": getattr(lead, "city", None),
-                    "state": getattr(lead, "state", None),
+                    "state": getattr(lead, "company_state", None),  # Directive #198: fix key
                     "country": primary_country,
+                    "gmb_place_id": getattr(lead, "gmb_place_id", None),  # Directive #198: unlocks T2.5
+                    "gmb_rating": getattr(lead, "gmb_rating", None),
+                    "gmb_review_count": getattr(lead, "gmb_review_count", None),
                 }
 
                 # Run Siege Waterfall (skip Tier 5 unless already high ALS)

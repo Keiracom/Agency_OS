@@ -25,6 +25,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    Numeric,
     String,
     Text,
 )
@@ -132,6 +133,14 @@ class LeadPool(Base, UUIDMixin, TimestampMixin):
     company_city: Mapped[str | None] = mapped_column(Text, nullable=True)
     company_state: Mapped[str | None] = mapped_column(Text, nullable=True)
     company_postal_code: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # ===== GMB DISCOVERY SIGNALS (Directive #198) =====
+    gmb_rating: Mapped[float | None] = mapped_column(Numeric(3, 1), nullable=True)
+    gmb_review_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    gmb_place_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    gmb_category: Mapped[str | None] = mapped_column(Text, nullable=True)
+    gmb_maps_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    abn: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Company Signals
     company_is_hiring: Mapped[bool | None] = mapped_column(Boolean, nullable=True)

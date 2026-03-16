@@ -35,6 +35,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -216,6 +217,13 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     assigned_email_resource: Mapped[str | None] = mapped_column(Text, nullable=True)
     assigned_linkedin_seat: Mapped[str | None] = mapped_column(Text, nullable=True)
     assigned_phone_resource: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # === GMB Signals (Directive #198) ===
+    gmb_rating: Mapped[float | None] = mapped_column(Numeric(3, 1), nullable=True)
+    gmb_review_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    gmb_place_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    company_state: Mapped[str | None] = mapped_column(Text, nullable=True)
+    abn: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
     client: Mapped["Client"] = relationship("Client", back_populates="leads")

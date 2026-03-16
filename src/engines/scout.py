@@ -971,7 +971,9 @@ class ScoutEngine(BaseEngine):
             "enrichment_source": enrichment.get("source"),
             "enrichment_confidence": enrichment.get("confidence"),
             "enrichment_version": enrichment.get("_cache_version") if from_cache else "v1",
-            "enriched_at": datetime.now(UTC),
+            # Directive #201: enriched_at is TIMESTAMP WITHOUT TIME ZONE in DB schema.
+            # asyncpg rejects timezone-aware datetimes for tz-naive columns → use naive UTC.
+            "enriched_at": datetime.now(UTC).replace(tzinfo=None),
             "status": LeadStatus.ENRICHED,
             "updated_at": datetime.now(UTC),
         }

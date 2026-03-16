@@ -25,6 +25,7 @@ WATERFALL STRATEGY:
 
 import json
 import logging
+import re
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -508,16 +509,31 @@ async def populate_pool_from_icp_task(
             skipped += 1
             continue
 
-        phone = record.get("phone") or None
-        website = record.get("website") or ""
+        # Directive #198: Fix key names — GMB API uses phone_number + open_website
+        phone = record.get("phone_number") or record.get("phone") or None
+        website = record.get("open_website") or record.get("website") or ""
         domain = _extract_domain(website)
 
-        city = None
         address = record.get("address") or ""
+        # Parse city and state from AU address: "71 Macquarie St, Sydney NSW 2000, Australia"
+        city = None
+        state_code = None
         if address:
-            parts = [p.strip() for p in address.split(",") if p.strip()]
-            if len(parts) >= 2:
-                city = parts[-2]  # penultimate part is usually city
+            state_match = re.search(r"\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b", address)
+            if state_match:
+                state_code = state_match.group(1)
+                before_state = address[: state_match.start()].strip().rstrip(",").strip()
+                city_parts = [p.strip() for p in before_state.split(",") if p.strip()]
+                city = city_parts[-1] if city_parts else None
+
+        # Directive #198: Capture all GMB signal fields
+        gmb_rating = record.get("rating") or None
+        gmb_review_count = (
+            record.get("reviews_count") if record.get("reviews_count") is not None else None
+        )
+        gmb_place_id = record.get("place_id") or None
+        gmb_category = record.get("category") or None
+        gmb_maps_url = record.get("url") or None
 
         # Dedup key: prefer domain, fall back to phone, then name
         dedup_key = domain or phone or company_name.lower()
@@ -530,9 +546,17 @@ async def populate_pool_from_icp_task(
             "client_id": str(client_id),
             "company_name": company_name,
             "company_domain": domain,
+            "company_website": website,
+            "company_state": state_code,
+            "company_country": record.get("country_code") or "AU",
             "phone": phone,
             "industry": industry,
             "city": city,
+            "gmb_rating": gmb_rating,
+            "gmb_review_count": gmb_review_count,
+            "gmb_place_id": gmb_place_id,
+            "gmb_category": gmb_category,
+            "gmb_maps_url": gmb_maps_url,
         })
 
     # Directive #194 Fix 1: TRUE bulk INSERT — single VALUES clause = 1 network call
@@ -545,20 +569,37 @@ async def populate_pool_from_icp_task(
         for i, row in enumerate(rows_to_insert):
             values_parts.append(
                 f"(gen_random_uuid(), :client_id_{i}, :company_name_{i}, :company_domain_{i}, "
-                f":phone_{i}, :industry_{i}, :city_{i}, 'available', 'gmb_discovery', 0, 'cold', NOW())"
+                f":company_website_{i}, :company_state_{i}, :company_country_{i}, "
+                f":phone_{i}, :industry_{i}, :city_{i}, "
+                f":gmb_rating_{i}, :gmb_review_count_{i}, :gmb_place_id_{i}, "
+                f":gmb_category_{i}, :gmb_maps_url_{i}, "
+                f"'available', 'gmb_discovery', 0, 'cold', NOW())"
             )
             params[f"client_id_{i}"] = row["client_id"]
             params[f"company_name_{i}"] = row["company_name"]
             params[f"company_domain_{i}"] = row["company_domain"]
+            params[f"company_website_{i}"] = row["company_website"]
+            params[f"company_state_{i}"] = row["company_state"]
+            params[f"company_country_{i}"] = row["company_country"]
             params[f"phone_{i}"] = row["phone"]
             params[f"industry_{i}"] = row["industry"]
             params[f"city_{i}"] = row["city"]
+            params[f"gmb_rating_{i}"] = row["gmb_rating"]
+            params[f"gmb_review_count_{i}"] = row["gmb_review_count"]
+            params[f"gmb_place_id_{i}"] = row["gmb_place_id"]
+            params[f"gmb_category_{i}"] = row["gmb_category"]
+            params[f"gmb_maps_url_{i}"] = row["gmb_maps_url"]
 
         async with get_db_session() as db:
             result = await db.execute(
                 text(
-                    "INSERT INTO lead_pool (id, client_id, company_name, company_domain, phone, "
-                    "company_industry, company_city, pool_status, enrichment_source, als_score, als_tier, created_at) "
+                    "INSERT INTO lead_pool ("
+                    "id, client_id, company_name, company_domain, "
+                    "company_website, company_state, company_country, "
+                    "phone, company_industry, company_city, "
+                    "gmb_rating, gmb_review_count, gmb_place_id, gmb_category, gmb_maps_url, "
+                    "pool_status, enrichment_source, als_score, als_tier, created_at"
+                    ") "
                     f"VALUES {', '.join(values_parts)} ON CONFLICT DO NOTHING RETURNING id"
                 ),
                 params,
@@ -567,6 +608,33 @@ async def populate_pool_from_icp_task(
             await db.commit()
         added = len(inserted_ids)
         skipped += len(rows_to_insert) - added  # rows that hit ON CONFLICT
+
+        # Directive #198 STEP 5: Match against business_universe by name+state for free ABN lookup
+        try:
+            async with get_db_session() as _db:
+                bu_result = await _db.execute(
+                    text("""
+                        UPDATE lead_pool lp
+                        SET abn = bu.abn,
+                            updated_at = NOW()
+                        FROM business_universe bu
+                        WHERE (
+                            LOWER(bu.trading_name) = LOWER(lp.company_name)
+                            OR LOWER(bu.legal_name) = LOWER(lp.company_name)
+                        )
+                        AND bu.state = lp.company_state
+                        AND bu.status = 'Active'
+                        AND lp.abn IS NULL
+                        AND lp.client_id = :client_id
+                        RETURNING lp.id
+                    """),
+                    {"client_id": str(client_id)},
+                )
+                await _db.commit()
+                matched = len(bu_result.fetchall())
+            logger.info(f"[pool_population] BU match: {matched}/{added} leads matched ABN")
+        except Exception as _bu_err:
+            logger.warning(f"[pool_population] BU match failed (non-blocking): {_bu_err}")
 
     logger.info(f"Tier 3 GMB discovery complete: {added} added, {skipped} skipped")
 

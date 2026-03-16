@@ -774,6 +774,30 @@ class SiegeWaterfall:
                 skip_reason="Tier skipped by request",
             ))
 
+        # ===== TIER 2.5: GMB Reviews (Directive #198 — wired) =====
+        # Fires when gmb_place_id is available (populated by pool_population_flow).
+        # Low cost ($0.001), no ALS gate — runs unconditionally if place_id present.
+        if EnrichmentTier.GMB_REVIEWS not in skip_tiers:
+            try:
+                t25_result = await self.tier2_5_gmb_reviews(enriched_data)
+            except Exception as _e:
+                logger.warning(f"[enrich_lead] Tier 2.5 GMB Reviews raised unexpectedly: {_e}")
+                t25_result = TierResult(
+                    tier=EnrichmentTier.GMB_REVIEWS, success=False, error=str(_e)
+                )
+            tier_results.append(t25_result)
+            if t25_result.success:
+                enriched_data = self._merge_data(
+                    enriched_data, t25_result.data,
+                    source=t25_result.tier.value, conflicts=field_conflicts,
+                )
+                total_cost_aud += t25_result.cost_aud
+        else:
+            tier_results.append(TierResult(
+                tier=EnrichmentTier.GMB_REVIEWS, success=False, skipped=True,
+                skip_reason="Tier skipped by request",
+            ))
+
         # ===== LINKEDIN URL RESOLUTION =====
         # Directive #148: Resolve LinkedIn URL before T1.5
         if not enriched_data.get("company_linkedin_url") and not enriched_data.get(
@@ -2783,6 +2807,25 @@ class SiegeWaterfall:
             score += 10
         if lead.get("company_employee_count") or lead.get("company_industry"):
             score += 5
+
+        # Directive #198: GMB signals (free, from pool_population_flow)
+        gmb_rating = lead.get("gmb_rating")
+        gmb_reviews = lead.get("gmb_review_count")
+        if gmb_rating is not None and gmb_reviews is not None:
+            try:
+                rating_f = float(gmb_rating)
+                reviews_i = int(gmb_reviews)
+                # High reviews + low rating = reputation pain = buying signal
+                if rating_f < 3.5 and reviews_i > 20:
+                    score += 10
+                # High reviews + high rating = established, targetable business
+                elif rating_f > 4.0 and reviews_i > 50:
+                    score += 5
+            except (TypeError, ValueError):
+                pass
+        # Has domain = enrichable
+        if lead.get("domain"):
+            score += 3
 
         return min(score, 100)
 

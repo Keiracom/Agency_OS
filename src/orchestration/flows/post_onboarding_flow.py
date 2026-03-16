@@ -461,6 +461,11 @@ async def promote_pool_leads_to_leads_task(
                 als_score,
                 als_tier,
                 status,
+                gmb_rating,
+                gmb_review_count,
+                gmb_place_id,
+                company_state,
+                abn,
                 created_at,
                 updated_at
             )
@@ -492,6 +497,11 @@ async def promote_pool_leads_to_leads_task(
                 0,
                 'cold',
                 'new',
+                lp.gmb_rating,
+                lp.gmb_review_count,
+                lp.gmb_place_id,
+                lp.company_state,
+                lp.abn,
                 NOW(),
                 NOW()
             FROM lead_pool lp

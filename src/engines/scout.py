@@ -79,6 +79,8 @@ except ImportError:
 
 # Minimum required fields for valid enrichment
 REQUIRED_FIELDS = ["email", "first_name", "last_name", "company"]
+# Company-level validation: only needs company identity (GMB/B2B leads)
+COMPANY_REQUIRED_FIELDS: list[str] = []  # company_name or domain checked separately
 
 # Confidence threshold (Rule 4)
 CONFIDENCE_THRESHOLD = 0.70
@@ -414,7 +416,7 @@ class ScoutEngine(BaseEngine):
 
         # Tier 1: Apollo + Apify
         tier1_result = await self._enrich_tier1(lead, domain)
-        if tier1_result and self._validate_enrichment(tier1_result):
+        if tier1_result and self._validate_enrichment(tier1_result, company_level=True):  # Directive #199: GMB leads pass with company identity
             if domain:
                 await enrichment_cache.set(domain, tier1_result)
             await self._update_lead_from_enrichment(db, lead, tier1_result)
@@ -426,7 +428,7 @@ class ScoutEngine(BaseEngine):
         # Tier 2: Clay (if allowed)
         if use_clay:
             tier2_result = await self._enrich_tier2(lead, domain)
-            if tier2_result and self._validate_enrichment(tier2_result):
+            if tier2_result and self._validate_enrichment(tier2_result, company_level=True):  # Directive #199: consistent company-level gate
                 if domain:
                     await enrichment_cache.set(domain, tier2_result)
                 await self._update_lead_from_enrichment(db, lead, tier2_result)
@@ -488,6 +490,7 @@ class ScoutEngine(BaseEngine):
                     "first_name": lead.first_name,
                     "last_name": lead.last_name,
                     "company_name": lead.company,
+                    "company": lead.company,  # Directive #199: _validate_enrichment checks "company"
                     "linkedin_url": lead.linkedin_url,
                     "domain": domain,
                     "abn": getattr(lead, "abn", None),
@@ -869,12 +872,16 @@ class ScoutEngine(BaseEngine):
         await db.execute(stmt)
         await db.commit()
 
-    def _validate_enrichment(self, data: dict[str, Any]) -> bool:
+    def _validate_enrichment(self, data: dict[str, Any], company_level: bool = False) -> bool:
         """
         Validate enrichment result meets minimum requirements.
 
+        company_level=True: used for GMB/business leads where person data is not yet
+        available. Requires only found=True + confidence>=0.70 + company identity.
+        company_level=False (default): full person-level validation requiring all 4
+        fields: email, first_name, last_name, company.
+
         Rule 4: Confidence threshold is 0.70.
-        Required fields: email, first_name, last_name, company.
         """
         if not data.get("found"):
             return False
@@ -884,7 +891,13 @@ class ScoutEngine(BaseEngine):
         if confidence < CONFIDENCE_THRESHOLD:
             return False
 
-        # Check required fields
+        if company_level:
+            # Company-level: needs company identity (name or domain)
+            return bool(
+                data.get("company") or data.get("company_name") or data.get("domain")
+            )
+
+        # Person-level: full required fields check
         return all(data.get(field) for field in REQUIRED_FIELDS)
 
     def _merge_enrichment(
@@ -976,6 +989,18 @@ class ScoutEngine(BaseEngine):
             existing_metadata = getattr(lead, "lead_metadata", None) or {}
             merged_metadata = {**existing_metadata, "enrichment_tracking": partial_tracking}
             update_data["lead_metadata"] = merged_metadata
+
+        # Directive #199: Calculate ALS score from enrichment data so GMB leads get scored
+        # siege_waterfall._calculate_als already accounts for GMB signals (+10/+5), domain (+3), phone (+20)
+        try:
+            als_score = self.siege_waterfall._calculate_als(enrichment)
+            if als_score > 0:
+                update_data["propensity_score"] = als_score
+                update_data["propensity_tier"] = (
+                    "hot" if als_score >= 85 else "warm" if als_score >= 50 else "cold"
+                )
+        except Exception:
+            pass  # non-blocking — scoring failure must not block enrichment write
 
         # Remove None values
         update_data = {k: v for k, v in update_data.items() if v is not None}

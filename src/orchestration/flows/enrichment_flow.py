@@ -271,7 +271,8 @@ async def score_lead_task(lead_id: str) -> dict[str, Any]:
         lead_uuid = UUID(lead_id)
 
         # Calculate ALS score
-        result = await scorer_engine.calculate_als(db=db, lead_id=lead_uuid)
+        # Directive #202: ScorerEngine.calculate_als() never existed — correct method is score_lead()
+        result = await scorer_engine.score_lead(db=db, lead_id=lead_uuid)
 
         if result.success:
             propensity_score = result.data["propensity_score"]

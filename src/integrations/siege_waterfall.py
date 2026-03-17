@@ -372,9 +372,10 @@ class GMBScraperAdapter:
                 results = data.json()
 
                 if results and len(results) > 0:
-                    # Find best match
+                    # Find best match — guard against non-dict items in results list
+                    candidates = [r for r in results if isinstance(r, dict) and "error" not in r]
                     best = max(
-                        [r for r in results if "error" not in r],
+                        candidates,
                         key=lambda r: fuzz.ratio(business_name.lower(), r.get("name", "").lower()),
                         default=None,
                     )
@@ -1346,8 +1347,8 @@ class SiegeWaterfall:
             }
             await supabase.table("tier2_gmb_match_log").insert(log_entry).execute()
         except Exception as e:
-            # Don't fail enrichment if logging fails
-            logger.warning(f"[Siege] Failed to log Tier 2 GMB match: {e}")
+            # Don't fail enrichment if logging fails — table may not exist yet
+            logger.debug(f"[Siege] tier2_gmb_match_log unavailable: {e}")
 
     @retry(
         stop=stop_after_attempt(3),
@@ -1871,6 +1872,10 @@ class SiegeWaterfall:
             )
 
         linkedin_url = lead.get("company_linkedin_url") or lead.get("linkedin_company_url")
+        # Bright Data sometimes returns the URL field as a dict — extract string safely
+        if isinstance(linkedin_url, dict):
+            linkedin_url = linkedin_url.get("url") or linkedin_url.get("linkedin_url") or ""
+        linkedin_url = str(linkedin_url or "").strip()
         if not linkedin_url:
             return TierResult(
                 tier=tier,
@@ -2508,17 +2513,18 @@ class SiegeWaterfall:
             supabase = await get_async_supabase_client()
 
             log_entry = {
-                "operation_type": "enrichment",
-                "tier": tier.value,
                 "operation": operation,
-                "service": f"siege_{tier.value}",
                 "success": success,
                 "cost_aud": cost_aud,
                 "error_message": error,
-                "lead_email": lead_data.get("email"),
-                "lead_domain": lead_data.get("domain") or lead_data.get("company_domain"),
+                "domain": lead_data.get("domain") or lead_data.get("company_domain"),
                 "lead_company": lead_data.get("company_name"),
-                "metadata": metadata or {},
+                "metadata": {
+                    **(metadata or {}),
+                    "tier": tier.value,
+                    "service": f"siege_{tier.value}",
+                    "operation_type": "enrichment",
+                },
                 "created_at": datetime.now(UTC).isoformat(),
             }
 

@@ -1127,7 +1127,7 @@ class ScorerEngine(BaseEngine):
             and_(
                 ConversionPattern.client_id == client_id,
                 ConversionPattern.pattern_type == "who",
-                ConversionPattern.valid_until > datetime.now(UTC),
+                ConversionPattern.valid_until > datetime.now(UTC).replace(tzinfo=None),  # asyncpg: naive UTC for mapped Mapped[datetime] column
             )
         )
         pattern_result = await db.execute(pattern_stmt)
@@ -1418,7 +1418,7 @@ class ScorerEngine(BaseEngine):
                 and_(
                     ConversionPattern.client_id == client_id,
                     ConversionPattern.pattern_type == "funnel",
-                    ConversionPattern.valid_until > datetime.now(UTC),
+                    ConversionPattern.valid_until > datetime.now(UTC).replace(tzinfo=None),  # asyncpg: naive UTC for mapped Mapped[datetime] column
                     # ConversionPattern uses TimestampMixin (not SoftDeleteMixin) — no deleted_at
                 )
             )

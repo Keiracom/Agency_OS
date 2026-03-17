@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 
 @task(name="get_leads_needing_enrichment", retries=2, retry_delay_seconds=5)
 async def get_leads_needing_enrichment_task(
-    limit: int = 100, client_id: UUID | None = None
+    limit: int = 500, client_id: UUID | None = None
 ) -> dict[str, Any]:
     """
     Get leads that need enrichment.
@@ -448,7 +448,7 @@ async def deduct_client_credits_task(client_id: str, credits_to_deduct: int) -> 
     task_runner=ConcurrentTaskRunner(max_workers=10),
 )
 async def daily_enrichment_flow(
-    batch_size: int = 100, client_id: str | UUID | None = None
+    batch_size: int = 500, client_id: str | UUID | None = None
 ) -> dict[str, Any]:
     """
     Daily enrichment flow.

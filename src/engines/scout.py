@@ -652,15 +652,17 @@ class ScoutEngine(BaseEngine):
 
             log_entry = {
                 "engine": self.name,
-                "operation_type": "enrichment",
                 "operation": operation,
                 "lead_id": lead_id,
-                "lead_email": lead_email,
                 "domain": domain,
                 "success": success,
                 "cost_aud": cost_aud,
                 "error_message": error,
-                "metadata": metadata or {},
+                "metadata": {
+                    **(metadata or {}),
+                    "operation_type": "enrichment",
+                    "lead_email": lead_email,
+                },
                 "created_at": datetime.now(UTC).isoformat(),
             }
 

@@ -305,7 +305,7 @@ class ScoutEngine(BaseEngine):
                 if bulk_urls:
                     bulk_results = await bd_client.scrape_linkedin_companies_bulk(bulk_urls)
                     for company in bulk_results:
-                        url = (
+                        url = str(
                             company.get("url") or company.get("linkedin_url") or ""
                         ).rstrip("/").lower()
                         if url:
@@ -1013,6 +1013,7 @@ class ScoutEngine(BaseEngine):
             als_score = self.siege_waterfall._calculate_als(enrichment)
             if als_score > 0:
                 update_data["propensity_score"] = als_score
+                update_data["als_score"] = als_score
                 update_data["propensity_tier"] = (
                     "hot" if als_score >= 85 else "warm" if als_score >= 50 else "cold"
                 )

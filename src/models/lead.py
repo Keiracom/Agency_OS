@@ -98,6 +98,7 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     # propensity_score: purchase likelihood (0-100)
     reachability_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     propensity_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    als_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     propensity_tier: Mapped[str | None] = mapped_column(String(20), nullable=True, name="als_tier")
     propensity_data_quality: Mapped[int | None] = mapped_column(
         Integer, nullable=True, name="als_data_quality"

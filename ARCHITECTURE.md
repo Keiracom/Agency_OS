@@ -239,12 +239,26 @@ T-DM2b: Company LinkedIn posts
   No additional API call required
   Returns: company announcements, activity signals
 
-T-DM3: Bright Data X (Twitter) Profiles API
+T-DM3: Bright Data X (Twitter)
   Env var: BRIGHTDATA_API_KEY
-  Cost: $0.0025 per record
   Gate: Propensity >= 70
-  Returns: DM + company X posts (90d), engagement
-  Validation: 4-criterion layer rejects false positives
+  Legal: cleared for build (Mar 17 2026)
+  Two separate endpoints — both required:
+
+  Profiles API:
+    Dataset: gd_lwxmeb2u1cniijd7t4
+    Returns: DM + company X handle, profile metadata
+    Cost: $0.0015 per record
+
+  Posts API:
+    Dataset: gd_lwxkxvnf1cynvib9co
+    Returns: X posts 90d, engagement, topics
+    Cost: $0.0015 per record
+
+  Validation: 4-criterion layer rejects false positive
+    handles before scoring.
+  Purpose: DM public activity, frustrations, industry
+    views — feeds propensity scoring + personalisation.
 
 T-DM4: Bright Data Facebook page posts
   Env var: BRIGHTDATA_API_KEY
@@ -380,17 +394,18 @@ These are documented issues, not active blockers.
 Do not fix without an explicit CEO directive.
 Report if you encounter them. Do not route around them.
 
-1. Silent exception swallowing: _enrich_tier1 except
-   block returns None without logging. Fix: #212.
-2. Clay references in scout.py: CLAY_MAX_PERCENTAGE,
-   clay_budget, _enrich_tier2. Remove in #212.
-3. Stale docstrings: _enrich_tier1 still references
-   Hunter, Kaspr, Proxycurl. Clean in #212.
-4. batch_size = 100: raise to 500 in #212.
+1. ✅ RESOLVED PR #200: Silent exception swallowing in
+   scout.py — logger.error added to all silent blocks.
+2. ✅ RESOLVED PR #200: Clay removed from scout.py —
+   CLAY_MAX_PERCENTAGE, clay_budget, _enrich_tier2 gone.
+3. ✅ RESOLVED PR #200: Stale _enrich_tier1 docstring
+   updated to reference ARCHITECTURE.md Section 5.
+4. ✅ RESOLVED PR #200: batch_size raised to 500 in
+   enrichment_flow.py (source of the 100-lead cap).
 5. business_universe match rate 0%: name format
    mismatch. Fuzzy matching needed. Separate directive.
 6. Stage 2 person discovery: not yet built.
 7. Stage 2.5 social presence: not yet built.
 8. Message generation: untested with real data.
-9. LEADMAGIC_API_KEY: absent from local env.
-   Dave to verify Railway.
+9. ✅ RESOLVED 2026-03-17: LEADMAGIC_API_KEY set on
+   Railway via GraphQL upsert.

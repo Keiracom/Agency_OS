@@ -85,8 +85,6 @@ COMPANY_REQUIRED_FIELDS: list[str] = []  # company_name or domain checked separa
 # Confidence threshold (Rule 4)
 CONFIDENCE_THRESHOLD = 0.70
 
-# Max percentage for Clay fallback
-CLAY_MAX_PERCENTAGE = 0.15
 ENRICHMENT_CONCURRENCY = int(os.getenv("ENRICHMENT_CONCURRENCY", "50"))
 
 
@@ -212,7 +210,7 @@ class ScoutEngine(BaseEngine):
                     metadata={"source": "cache", "tier": 0},
                 )
 
-        # Tier 1: Apollo + Apify (or Siege for AU)
+        # Tier 1: Siege Waterfall
         tier1_result = await self._enrich_tier1(lead, domain, icp_config)
         if tier1_result and self._validate_enrichment(tier1_result):
             # Cache the result
@@ -225,19 +223,6 @@ class ScoutEngine(BaseEngine):
                 metadata={"source": tier1_result.get("source", "siege_waterfall"), "tier": 1},
             )
 
-        # Tier 2: Clay fallback
-        tier2_result = await self._enrich_tier2(lead, domain)
-        if tier2_result and self._validate_enrichment(tier2_result):
-            # Cache the result
-            if domain:
-                await enrichment_cache.set(domain, tier2_result)
-            # Update lead
-            await self._update_lead_from_enrichment(db, lead, tier2_result)
-            return EngineResult.ok(
-                data=tier2_result,
-                metadata={"source": "clay", "tier": 2},
-            )
-
         # All tiers failed
         return EngineResult.fail(
             error="Enrichment failed: no tier returned valid data",
@@ -245,7 +230,6 @@ class ScoutEngine(BaseEngine):
                 "lead_id": str(lead_id),
                 "domain": domain,
                 "tier1_result": bool(tier1_result),
-                "tier2_result": bool(tier2_result),
             },
         )
 
@@ -274,7 +258,6 @@ class ScoutEngine(BaseEngine):
             "tier1_success": 0,
             "tier2_success": 0,
             "failures": 0,
-            "clay_budget_used": 0,
             "enriched_leads": [],
             "failed_leads": [],
         }
@@ -319,21 +302,14 @@ class ScoutEngine(BaseEngine):
                 f"enrich_batch: LinkedIn bulk pre-fetch skipped: {_bulk_err}"
             )
 
-        # Calculate Clay budget (15% of batch)
-        clay_budget = int(len(lead_ids) * CLAY_MAX_PERCENTAGE)
-
-        # Track Clay usage with a mutable counter (shared across coroutines)
-        clay_used_counter = [0]
         semaphore = asyncio.Semaphore(ENRICHMENT_CONCURRENCY)
 
         async def enrich_with_semaphore(lead_id: UUID):
             async with semaphore:
-                use_clay = clay_used_counter[0] < clay_budget
                 return lead_id, await self._enrich_single(
                     db=db,
                     lead_id=lead_id,
                     force_refresh=force_refresh,
-                    use_clay=use_clay,
                 )
 
         gathered = await asyncio.gather(
@@ -357,7 +333,6 @@ class ScoutEngine(BaseEngine):
                         results["tier1_success"] += 1
                     elif tier == 2:
                         results["tier2_success"] += 1
-                        clay_used_counter[0] += 1
 
                     results["enriched_leads"].append(
                         {
@@ -398,9 +373,8 @@ class ScoutEngine(BaseEngine):
         db: AsyncSession,
         lead_id: UUID,
         force_refresh: bool = False,
-        use_clay: bool = True,
     ) -> EngineResult[dict[str, Any]]:
-        """Enrich a single lead with optional Clay usage."""
+        """Enrich a single lead via Siege Waterfall (Tier 1 only)."""
         lead = await self.get_lead_by_id(db, lead_id)
         domain = lead.domain or self._extract_domain(lead.email)
 
@@ -414,7 +388,7 @@ class ScoutEngine(BaseEngine):
                     metadata={"source": "cache", "tier": 0},
                 )
 
-        # Tier 1: Apollo + Apify
+        # Tier 1: Siege Waterfall
         tier1_result = await self._enrich_tier1(lead, domain)
         if tier1_result and self._validate_enrichment(tier1_result, company_level=True):  # Directive #199: GMB leads pass with company identity
             if domain:
@@ -425,18 +399,6 @@ class ScoutEngine(BaseEngine):
                 metadata={"source": tier1_result.get("source", "siege_waterfall"), "tier": 1},
             )
 
-        # Tier 2: Clay (if allowed)
-        if use_clay:
-            tier2_result = await self._enrich_tier2(lead, domain)
-            if tier2_result and self._validate_enrichment(tier2_result, company_level=True):  # Directive #199: consistent company-level gate
-                if domain:
-                    await enrichment_cache.set(domain, tier2_result)
-                await self._update_lead_from_enrichment(db, lead, tier2_result)
-                return EngineResult.ok(
-                    data=tier2_result,
-                    metadata={"source": "clay", "tier": 2},
-                )
-
         return EngineResult.fail(
             error="All enrichment tiers failed",
             metadata={"lead_id": str(lead_id)},
@@ -446,7 +408,8 @@ class ScoutEngine(BaseEngine):
         """Check enrichment cache for domain."""
         try:
             return await enrichment_cache.get(domain)
-        except Exception:
+        except Exception as e:
+            logger.error("[Scout] _check_cache exception", extra={"domain": domain, "error": str(e)}, exc_info=True)
             return None
 
     async def _enrich_tier1(
@@ -456,22 +419,11 @@ class ScoutEngine(BaseEngine):
         icp_config: dict | None = None,
     ) -> dict[str, Any] | None:
         """
-        Tier 1 enrichment using Siege Waterfall (for AU) or Apollo + Apify (fallback).
-
-        Phase Dynamic ICP: Now uses icp_config.countries for country targeting.
-
-        For Australian businesses (detected by .au domain or AU country),
-        uses the 5-tier Siege Waterfall for cost-efficient enrichment:
-        - Tier 1: ABN Bulk (FREE)
-        - Tier 2: GMB/Ads Signals ($0.006)
-        - Tier 3: Hunter.io ($0.012)
-        - Tier 4: LinkedIn Intelligence (PENDING — Proxycurl deprecated FCO-003, Unipile replacement not yet activated)
-        - Tier 5: Kaspr (ALS >= 85 only)
-
-        For non-AU businesses, uses Apollo + Apify.
-
-        NOTE: AU leads do NOT fall back to Apollo - SIEGE is the SSOT for AU.
-        This saves costs and ensures data sovereignty.
+        Stage 1 enrichment via Siege Waterfall.
+        Tiers: T1 business_universe JOIN, T1.25 ABR,
+        T1.5 Bright Data LinkedIn, T2 GMB,
+        T3 Leadmagic email, T-DM0 DataForSEO.
+        See ARCHITECTURE.md Section 5 for full spec.
         """
         result = None
 
@@ -750,27 +702,7 @@ class ScoutEngine(BaseEngine):
         phone = getattr(lead, "phone", None)
         return bool(phone and (phone.startswith("+61") or phone.startswith("61")))
 
-    async def _enrich_tier2(
-        self,
-        lead: Lead,
-        domain: str | None,
-    ) -> dict[str, Any] | None:
-        """Tier 2 enrichment using Clay (premium fallback)."""
-        try:
-            clay_result = await self.clay.enrich_person(
-                email=lead.email,
-                linkedin_url=lead.linkedin_url,
-                first_name=lead.first_name,
-                last_name=lead.last_name,
-                company=lead.company,
-            )
 
-            if clay_result.get("found"):
-                return clay_result
-        except Exception:
-            pass
-
-        return None
 
     # ============================================
     # SDK ENRICHMENT (Hot Leads with Signals)
@@ -1017,7 +949,8 @@ class ScoutEngine(BaseEngine):
                 update_data["propensity_tier"] = (
                     "hot" if als_score >= 85 else "warm" if als_score >= 50 else "cold"
                 )
-        except Exception:
+        except Exception as e:
+            logger.error("[Scout] _update_lead_from_enrichment scoring exception", extra={"error": str(e)}, exc_info=True)
             pass  # non-blocking — scoring failure must not block enrichment write
 
         # Remove None values

@@ -271,56 +271,22 @@ class TestWaterfallTiers:
                 assert "siege_waterfall" in result.metadata["source"]
 
     @pytest.mark.asyncio
-    async def test_tier2_clay_fallback(
-        self, scout_engine, mock_db_session, mock_lead, valid_enrichment_data
-    ):
-        """Test Tier 2 Clay fallback when Tier 1 fails."""
-        from unittest.mock import MagicMock
-
-        with patch.object(scout_engine, "get_lead_by_id", return_value=mock_lead):
-            with patch("src.engines.scout.enrichment_cache") as mock_cache:
-                mock_cache.get = AsyncMock(return_value=None)
-                mock_cache.set = AsyncMock()
-                # Siege fails (no sources found)
-                scout_engine.siege_waterfall.enrich_lead.return_value = MagicMock(
-                    sources_used=0,
-                    enriched_data={},
-                    total_cost_aud=0.0,
-                    tier_results=[],
-                )
-                # Clay succeeds
-                clay_data = valid_enrichment_data.copy()
-                clay_data["source"] = "clay"
-                scout_engine.clay.enrich_person.return_value = clay_data
-
-                with patch.object(scout_engine, "_log_enrichment_audit", new_callable=AsyncMock):
-                    result = await scout_engine.enrich_lead(
-                        db=mock_db_session,
-                        lead_id=mock_lead.id,
-                    )
-
-                assert result.success is True
-                assert result.metadata["tier"] == 2
-                assert result.metadata["source"] == "clay"
-
-    @pytest.mark.asyncio
     async def test_all_tiers_fail(
         self, scout_engine, mock_db_session, mock_lead
     ):
-        """Test failure when all tiers fail."""
+        """Test failure when Siege Waterfall returns no data."""
         from unittest.mock import MagicMock
 
         with patch.object(scout_engine, "get_lead_by_id", return_value=mock_lead):
             with patch("src.engines.scout.enrichment_cache") as mock_cache:
                 mock_cache.get = AsyncMock(return_value=None)
-                # All APIs fail
+                # Siege fails
                 scout_engine.siege_waterfall.enrich_lead.return_value = MagicMock(
                     sources_used=0,
                     enriched_data={},
                     total_cost_aud=0.0,
                     tier_results=[],
                 )
-                scout_engine.clay.enrich_person.return_value = {"found": False}
 
                 with patch.object(scout_engine, "_log_enrichment_audit", new_callable=AsyncMock):
                     result = await scout_engine.enrich_lead(
@@ -339,32 +305,6 @@ class TestWaterfallTiers:
 
 class TestBatchEnrichment:
     """Test batch enrichment functionality."""
-
-    @pytest.mark.asyncio
-    async def test_batch_enrichment_clay_limit(
-        self, scout_engine, mock_db_session, mock_lead, valid_enrichment_data
-    ):
-        """Test Clay usage is limited to 15% of batch."""
-        lead_ids = [uuid4() for _ in range(10)]  # 10 leads
-
-        with patch.object(scout_engine, "_enrich_single") as mock_enrich:
-            # Simulate all needing Clay (tier 2)
-            async def enrich_result(db, lead_id, force_refresh, use_clay):
-                if use_clay:
-                    return EngineResult.ok(data={}, metadata={"tier": 2, "source": "clay"})
-                else:
-                    return EngineResult.fail(error="Clay not allowed")
-
-            mock_enrich.side_effect = enrich_result
-
-            result = await scout_engine.enrich_batch(
-                db=mock_db_session,
-                lead_ids=lead_ids,
-            )
-
-            assert result.success is True
-            # 15% of 10 = 1 Clay call allowed
-            assert result.data["clay_budget_used"] <= 1
 
     @pytest.mark.asyncio
     async def test_batch_enrichment_summary(

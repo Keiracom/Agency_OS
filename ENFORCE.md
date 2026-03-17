@@ -29,22 +29,21 @@ If a tool exists in TOOLS.md, you use it. No lazy placeholders. No "you could ru
 - Before the first use of any tool or skill in a session, you MUST `read_file` the corresponding documentation in `/skills/` or the relevant README.md.
 - No hallucinated tools: If a tool is not in TOOLS.md, it does not exist.
 
-### LAW I-A: SSOT Mandate (Single Source of Truth)
+### LAW I-A: ARCHITECTURE FIRST
 
-**HARD BLOCK:** Before answering ANY question matching these patterns, you MUST query the SSOT:
-
-- "How do we..."
-- "What is the status of..."
-- "What did we decide about..."
-- "What is our..."
-
-**SSOT Query Protocol:**
-1. Query `elliot_internal.memories` via MCP Bridge for semantic match
-2. Cross-reference with governance files in repo
-3. If conflict → Supabase wins (it's more recent)
-4. If no match → State: "No SSOT record found. Answering from general knowledge."
-
-**Failure of Role:** Answering from training data when SSOT contains the answer is a governance violation.
+At the start of every session and before any architectural
+decision, code change, or sub-agent task brief:
+  1. cat ARCHITECTURE.md from repo root verbatim
+     (head -10 at minimum, full file when relevant)
+  2. Query ceo_memory — SKILLS/SKILL_supabase_query.md
+     Step 1
+  3. cat actual source files with sed -n line ranges
+     Never summarise. Never answer from training data.
+If ARCHITECTURE.md is missing at repo root:
+  Stop immediately. Report to Dave. Do not recreate it.
+  Do not infer its contents. Wait for instruction.
+Violation: answering any architectural question without
+first catting ARCHITECTURE.md is a LAW I-A violation.
 
 ---
 
@@ -329,6 +328,67 @@ Backfill protocol: If a session ends before all three stores are written, the NE
 
 ---
 
+## §19 — LAW XV-A: SKILLS ARE MANDATORY
+
+Before any task matching a skill in SKILLS/ directory:
+  1. cat the matching skill file verbatim
+  2. Follow every step exactly as written
+  3. Pass the full skill file content to sub-agents
+     in their task brief — not a summary, the file
+Matching rules:
+  Enrichment audit → SKILLS/SKILL_enrich_audit.md
+  PR creation/verify → SKILLS/SKILL_pr_verify.md
+  Deprecated check → SKILLS/SKILL_deprecated_check.md
+  Supabase read/write → SKILLS/SKILL_supabase_query.md
+If no skill matches: execute normally and flag to CEO
+that a new skill should be created for this task type.
+Violation: executing a matching task without following
+the skill file is a LAW XV-A violation.
+
+---
+
+## §20 — LAW XV-B: DEFINITION OF DONE IS MANDATORY
+
+Before reporting any directive complete:
+  1. cat DEFINITION_OF_DONE.md
+  2. Complete every checklist item with evidence
+  3. Paste the completed checklist in the report
+Elliottbot does not decide what done means.
+DEFINITION_OF_DONE.md decides.
+A report without the full completed checklist is an
+interim status update, not a completion.
+CEO will reject it and require the full checklist.
+Violation: reporting complete without the checklist
+is a LAW XV-B violation regardless of build quality.
+
+---
+
+## §21 — LAW XV-C: GOVERNANCE DOCUMENTS ARE IMMUTABLE
+
+These files are governance documents:
+  ARCHITECTURE.md
+  DEFINITION_OF_DONE.md
+  SKILLS/SKILL_enrich_audit.md
+  SKILLS/SKILL_pr_verify.md
+  SKILLS/SKILL_deprecated_check.md
+  SKILLS/SKILL_supabase_query.md
+Elliottbot must never:
+  Recreate any governance document if it appears missing
+  Modify any governance document without an explicit CEO
+  directive naming the file and specifying the exact change
+  Ignore any governance document because a directive
+  did not explicitly reference it
+If any governance document cannot be found at its path:
+  Stop. Report the exact missing path to Dave. Wait.
+These documents apply to every session and every directive
+without exception.
+Violation: modification, recreation, or deliberate
+omission of any governance document is a LAW XV-C
+violation regardless of intent.
+
+---
+
 *Signed and Ratified: 2026-02-12, CEO Directive*
 *Amended: 2026-03-13, CEO Directive #188 (Three-Store Completion Rule)*
-*Governance Version: 2.3*
+*Amended: 2026-03-17, CEO Directive #211 (Architecture First + Skills Mandatory + DoD + Immutable Governance)*
+*Governance Version: 2.4*

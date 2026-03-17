@@ -1419,7 +1419,7 @@ class ScorerEngine(BaseEngine):
                     ConversionPattern.client_id == client_id,
                     ConversionPattern.pattern_type == "funnel",
                     ConversionPattern.valid_until > datetime.now(UTC),
-                    ConversionPattern.deleted_at.is_(None),
+                    # ConversionPattern uses TimestampMixin (not SoftDeleteMixin) — no deleted_at
                 )
             )
             result = await db.execute(stmt)

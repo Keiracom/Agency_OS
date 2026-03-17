@@ -32,6 +32,7 @@ from uuid import UUID
 from sqlalchemy import (
     Boolean,
     Date,
+    DateTime,
     Float,
     ForeignKey,
     Integer,
@@ -115,6 +116,12 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     propensity_risk: Mapped[int | None] = mapped_column(
         Integer, nullable=True, name="als_risk"
     )  # Max 15
+    # Phase 16: Conversion Intelligence learning columns
+    als_components: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    als_weights_used: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    scored_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # === Organization Data ===
     organization_industry: Mapped[str | None] = mapped_column(Text, nullable=True)

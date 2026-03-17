@@ -1021,7 +1021,7 @@ async def score_lead(
     scorer = get_scorer_engine()
 
     # Calculate propensity score
-    result = await scorer.calculate_als(db=db, lead_id=lead_id)
+    result = await scorer.score_lead(db=db, lead_id=lead_id)
 
     if not result.success:
         raise AgencyValidationError(

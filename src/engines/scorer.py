@@ -1731,13 +1731,15 @@ class ScorerEngine(BaseEngine):
             update(Lead)
             .where(Lead.id == lead.id)
             .values(
+                # Use Python attribute names (not DB column names) for ORM sync correctness.
+                # propensity_* attrs use name="als_*" in Lead model — must use attr name here.
                 als_score=score_data["propensity_score"],
-                als_tier=score_data["als_tier"],
-                als_data_quality=score_data["als_data_quality"],
-                als_authority=score_data["als_authority"],
-                als_company_fit=score_data["als_company_fit"],
-                als_timing=score_data["als_timing"],
-                als_risk=score_data["als_risk"],
+                propensity_tier=score_data["als_tier"],
+                propensity_data_quality=score_data["als_data_quality"],
+                propensity_authority=score_data["als_authority"],
+                propensity_company_fit=score_data["als_company_fit"],
+                propensity_timing=score_data["als_timing"],
+                propensity_risk=score_data["als_risk"],
                 # Phase 16: Store for learning
                 als_components=score_data.get("als_components"),
                 als_weights_used=score_data.get("als_weights_used"),

@@ -109,6 +109,72 @@ def parse_employee_range(company_sizes: list[str]) -> tuple[int | None, int | No
 
 
 # ============================================
+# DISCOVERY LOCATION HELPERS (Directive #217)
+# ============================================
+
+
+async def get_next_unswept_location(
+    campaign_id: str,
+    candidate_locations: list[str],
+    state: str = "NSW",
+) -> str | None:
+    """
+    Get the next location not yet swept for this campaign.
+    Checks campaign_discovery_log for previously swept locations.
+    Returns None if all locations exhausted.
+    Directive #217.
+    """
+    async with get_db_session() as session:
+        swept_result = await session.execute(
+            text(
+                "SELECT location FROM campaign_discovery_log "
+                "WHERE campaign_id = :campaign_id AND state = :state"
+            ),
+            {"campaign_id": campaign_id, "state": state},
+        )
+        swept_locations = {row[0] for row in swept_result.fetchall()}
+
+    for loc in candidate_locations:
+        if loc not in swept_locations:
+            return loc
+    return None  # All locations exhausted
+
+
+async def log_location_sweep(
+    campaign_id: str,
+    location: str,
+    state: str,
+    leads_found: int = 0,
+    leads_qualified: int = 0,
+) -> None:
+    """
+    Record a location sweep in campaign_discovery_log.
+    Directive #217.
+    """
+    async with get_db_session() as session:
+        await session.execute(
+            text(
+                "INSERT INTO campaign_discovery_log "
+                "(campaign_id, location, state, leads_found, leads_qualified) "
+                "VALUES (:campaign_id, :location, :state, :leads_found, :leads_qualified) "
+                "ON CONFLICT DO NOTHING"
+            ),
+            {
+                "campaign_id": campaign_id,
+                "location": location,
+                "state": state,
+                "leads_found": leads_found,
+                "leads_qualified": leads_qualified,
+            },
+        )
+        await session.commit()
+    logger.info(
+        f"[Discovery] Sweeping {location} for campaign {campaign_id} — "
+        f"{leads_found} leads found"
+    )
+
+
+# ============================================
 # TASKS
 # ============================================
 

@@ -260,6 +260,39 @@ class ScoutEngine(BaseEngine):
                 await db.commit()
             except Exception as e:
                 logger.warning(f"[Scout] opportunity score write-back failed: {e}")
+            # --- Stage 2: Person discovery (Directive #218) ---
+            _company_linkedin_url = (
+                tier1_result.get("linkedin_url")
+                or tier1_result.get("linkedin_company_url")
+                or getattr(lead, "linkedin_url", None)
+            )
+            if _company_linkedin_url and not getattr(lead, "first_name", None):
+                _dm = await self._discover_decision_maker(_company_linkedin_url, domain)
+                if _dm:
+                    logger.info(
+                        f"[Stage2] DM found: {_dm.get('title')} at {domain} "
+                        f"— {_dm.get('first_name')} {_dm.get('last_name')}"
+                    )
+                    try:
+                        await db.execute(
+                            text(
+                                "UPDATE leads SET first_name=:fn, last_name=:ln, "
+                                "title=:title, linkedin_url=:li "
+                                "WHERE id=:lid"
+                            ),
+                            {
+                                "fn": _dm.get("first_name"),
+                                "ln": _dm.get("last_name"),
+                                "title": _dm.get("title"),
+                                "li": _dm.get("linkedin_url"),
+                                "lid": str(lead_id),
+                            },
+                        )
+                        await db.commit()
+                    except Exception as e:
+                        logger.warning(f"[Stage2] DM write failed for {domain}: {e}")
+                else:
+                    logger.info(f"[Stage2] No DM found for {domain} — proceeding without person data")
             return EngineResult.ok(
                 data=tier1_result,
                 metadata={"source": tier1_result.get("source", "siege_waterfall"), "tier": 1},
@@ -497,6 +530,39 @@ class ScoutEngine(BaseEngine):
                 await db.commit()
             except Exception as e:
                 logger.warning(f"[Scout] opportunity score write-back failed: {e}")
+            # --- Stage 2: Person discovery (Directive #218) ---
+            _company_linkedin_url = (
+                tier1_result.get("linkedin_url")
+                or tier1_result.get("linkedin_company_url")
+                or getattr(lead, "linkedin_url", None)
+            )
+            if _company_linkedin_url and not getattr(lead, "first_name", None):
+                _dm = await self._discover_decision_maker(_company_linkedin_url, domain)
+                if _dm:
+                    logger.info(
+                        f"[Stage2] DM found: {_dm.get('title')} at {domain} "
+                        f"— {_dm.get('first_name')} {_dm.get('last_name')}"
+                    )
+                    try:
+                        await db.execute(
+                            text(
+                                "UPDATE leads SET first_name=:fn, last_name=:ln, "
+                                "title=:title, linkedin_url=:li "
+                                "WHERE id=:lid"
+                            ),
+                            {
+                                "fn": _dm.get("first_name"),
+                                "ln": _dm.get("last_name"),
+                                "title": _dm.get("title"),
+                                "li": _dm.get("linkedin_url"),
+                                "lid": str(lead_id),
+                            },
+                        )
+                        await db.commit()
+                    except Exception as e:
+                        logger.warning(f"[Stage2] DM write failed for {domain}: {e}")
+                else:
+                    logger.info(f"[Stage2] No DM found for {domain} — proceeding without person data")
             return EngineResult.ok(
                 data=tier1_result,
                 metadata={"source": tier1_result.get("source", "siege_waterfall"), "tier": 1},
@@ -506,6 +572,38 @@ class ScoutEngine(BaseEngine):
             error="All enrichment tiers failed",
             metadata={"lead_id": str(lead_id)},
         )
+
+    async def _discover_decision_maker(
+        self, company_linkedin_url: str, domain: str
+    ) -> dict | None:
+        """
+        Stage 2: Find decision maker via LinkedIn People Search.
+        Targets: Owner, Founder, Director, CEO, MD (priority order).
+        Uses Bright Data T-DM1 (see ARCHITECTURE.md).
+        Returns {first_name, last_name, title, linkedin_url} or None.
+        Directive #218.
+        """
+        TARGET_TITLES = ["Owner", "Founder", "Director", "CEO", "Managing Director", "MD"]
+        try:
+            # T-DM1: Bright Data LinkedIn People Search
+            # Check if bright_data_client supports people search
+            if hasattr(self.siege_waterfall, 'bright_data_client'):
+                bd = self.siege_waterfall.bright_data_client
+                if hasattr(bd, 'search_linkedin_people'):
+                    result = await bd.search_linkedin_people(
+                        company_url=company_linkedin_url,
+                        titles=TARGET_TITLES,
+                    )
+                    if result:
+                        return result[0]  # Return highest-priority match
+            logger.info(
+                f"[Stage2] T-DM1 LinkedIn People Search not yet available — "
+                f"stage 2 stub for {domain}"
+            )
+            return None
+        except Exception as e:
+            logger.warning(f"[Stage2] DM discovery failed for {domain}: {e}")
+            return None
 
     async def _bu_write_backs(
         self,

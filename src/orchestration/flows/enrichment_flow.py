@@ -26,6 +26,7 @@ from typing import Any
 from uuid import UUID
 
 from prefect import flow, task
+from prefect.deployments import run_deployment
 from prefect.task_runners import ConcurrentTaskRunner
 from sqlalchemy import and_, select, text, update
 
@@ -45,6 +46,13 @@ from src.models.client import Client
 from src.models.lead import Lead
 
 logger = logging.getLogger(__name__)
+
+# Default suburb rotation for quota loop — NSW (Directive #218)
+AUSTRALIAN_SUBURBS_NSW = [
+    "Sydney", "Parramatta", "Penrith", "Liverpool",
+    "Blacktown", "Newcastle", "Wollongong",
+    "Central Coast", "Campbelltown", "Gosford",
+]
 
 
 # ============================================
@@ -527,6 +535,34 @@ async def mark_market_exhausted_task(
 # ============================================
 
 
+async def trigger_flow_a_for_quota(
+    campaign_id: str,
+    gap: int,
+    next_location: str,
+) -> None:
+    """
+    Trigger Flow A (pool_population_flow) to fill quota gap.
+    Directive #218 — replaces stub from #217.
+    """
+    try:
+        await run_deployment(
+            name="pool_population/pool-population-flow",
+            parameters={
+                "campaign_id": campaign_id,
+                "target_count": gap,
+                "location_override": next_location,
+                "quota_fill_mode": True,
+            },
+            timeout=0,  # Fire and forget — don't wait
+        )
+        logger.info(
+            f"[Quota] Flow A triggered for campaign {campaign_id}: "
+            f"target {gap} leads in {next_location}"
+        )
+    except Exception as e:
+        logger.warning(f"[Quota] Flow A trigger failed for campaign {campaign_id}: {e}")
+
+
 @flow(
     name="daily_enrichment",
     description="Daily enrichment flow with billing checks, scoring, and allocation",
@@ -647,10 +683,26 @@ async def daily_enrichment_flow(
                     quota_result = await check_campaign_quota_task(campaign_id=cid)
                     quota_results.append(quota_result)
                     if not quota_result["quota_filled"] and quota_result["monthly_quota"] > 0:
-                        logger.info(
-                            f"[Quota] Campaign {cid} needs {quota_result['gap']} more leads "
-                            f"— Flow A trigger will be wired in a future directive."
+                        gap = quota_result["gap"]
+                        # Get next unswept location for this campaign
+                        from src.orchestration.flows.pool_population_flow import get_next_unswept_location
+                        next_loc = await get_next_unswept_location(
+                            campaign_id=cid,
+                            candidate_locations=AUSTRALIAN_SUBURBS_NSW,
+                            state="NSW",
                         )
+                        if next_loc:
+                            await trigger_flow_a_for_quota(cid, gap, next_loc)
+                        else:
+                            logger.warning(
+                                f"[Quota] Market exhausted for campaign {cid}: "
+                                f"no unswept locations remain"
+                            )
+                            await mark_market_exhausted_task(
+                                campaign_id=cid,
+                                enriched_count=quota_result["enriched_count"],
+                                monthly_quota=quota_result["monthly_quota"],
+                            )
 
     # Compile summary
     total_enriched = len(enriched_lead_ids)

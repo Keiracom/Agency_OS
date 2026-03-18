@@ -54,7 +54,8 @@ from src.integrations.anthropic import AnthropicClient, get_anthropic_client
 
 from src.integrations.camoufox_scraper import CamoufoxScraper
 from src.integrations.redis import enrichment_cache
-from src.engines.confidence_scorer import score_business_confidence  # Directive #215
+from src.engines.confidence_scorer import score_business_confidence, meets_enrichment_threshold  # Directive #215
+from src.engines.opportunity_scorer import score_business_opportunity, get_opportunity_reason, is_priority_opportunity  # Directive #217
 from src.integrations.siege_waterfall import EnrichmentTier, SiegeWaterfall, get_siege_waterfall
 from src.models.base import LeadStatus
 from src.models.lead import Lead
@@ -190,13 +191,74 @@ class ScoutEngine(BaseEngine):
         # Tier 1: Siege Waterfall
         tier1_result = await self._enrich_tier1(lead, domain, icp_config)
         if tier1_result and self._validate_enrichment(tier1_result):
+            # --- Confidence gate (Directive #217) ---
+            _conf_signals = {
+                "gst_registered": tier1_result.get("gst_registered"),
+                "dfs_paid_traffic_cost": tier1_result.get("dfs_paid_traffic_cost") or tier1_result.get("estimated_paid_traffic_cost"),
+                "dfs_organic_traffic": tier1_result.get("dfs_organic_traffic") or tier1_result.get("organic_etv"),
+                "job_listings_active": tier1_result.get("job_listings_active"),
+                "gmb_review_count": tier1_result.get("gmb_review_count") or getattr(lead, "gmb_review_count", None),
+                "linkedin_employee_count": (
+                    tier1_result.get("linkedin_company_size")
+                    or tier1_result.get("linkedin_employee_count")
+                    or getattr(lead, "linkedin_employee_count", None)
+                ),
+                "domain_age_years": tier1_result.get("domain_age_years"),
+            }
+            _conf_score = score_business_confidence(_conf_signals)
+            if not meets_enrichment_threshold(_conf_signals):
+                logger.info(
+                    f"[Scout] Confidence gate: {domain} scored {_conf_score}/100 — "
+                    f"below threshold, skipping Leadmagic"
+                )
+                await self._bu_write_backs(db, domain, tier1_result, lead)
+                return EngineResult.fail(
+                    error="Confidence gate: below threshold",
+                    metadata={"lead_id": str(lead_id), "confidence_score": _conf_score},
+                )
+
+            # Opportunity score (Directive #217 — runs when confidence passes)
+            _opp_signals = {
+                "gmb_review_count": tier1_result.get("gmb_review_count") or getattr(lead, "gmb_review_count", None),
+                "abr_age_years": tier1_result.get("abr_age_years"),
+                "multiple_gmb_locations": tier1_result.get("multiple_gmb_locations"),
+                "hiring_signals_detected": tier1_result.get("hiring_signals_detected"),
+                "gmb_category": tier1_result.get("gmb_category"),
+                "dfs_paid_traffic_cost": tier1_result.get("dfs_paid_traffic_cost") or tier1_result.get("estimated_paid_traffic_cost"),
+                "dfs_organic_traffic": tier1_result.get("dfs_organic_traffic") or tier1_result.get("organic_etv"),
+            }
+            _opp_score = score_business_opportunity(_opp_signals)
+            _opp_reason = get_opportunity_reason(_opp_signals)
+            _is_priority = is_priority_opportunity(_opp_signals)
+            logger.info(
+                f"[Scout] Opportunity score: {domain} → {_opp_score}/100 — {_opp_reason}"
+                + (" [PRIORITY]" if _is_priority else "")
+            )
+
             # Cache the result
             if domain:
                 await enrichment_cache.set(domain, tier1_result)
             # Update lead
             await self._update_lead_from_enrichment(db, lead, tier1_result)
-            # [BU] Write-backs: LinkedIn, DataForSEO, confidence score (Directive #215)
-            await self._bu_write_backs(db, domain, tier1_result, lead)
+            # [BU] Write-backs: LinkedIn, DataForSEO, confidence score (Directive #215), opportunity score (Directive #217)
+            await self._bu_write_backs(db, domain, tier1_result, lead, opp_score=_opp_score, opp_reason=_opp_reason)
+            # Write opportunity scores to lead record (Directive #217)
+            try:
+                await db.execute(
+                    text(
+                        "UPDATE leads SET opportunity_score = :opp_score, "
+                        "opportunity_reason = :opp_reason "
+                        "WHERE id = :lead_id"
+                    ),
+                    {
+                        "opp_score": _opp_score,
+                        "opp_reason": _opp_reason,
+                        "lead_id": str(lead_id),
+                    },
+                )
+                await db.commit()
+            except Exception as e:
+                logger.warning(f"[Scout] opportunity score write-back failed: {e}")
             return EngineResult.ok(
                 data=tier1_result,
                 metadata={"source": tier1_result.get("source", "siege_waterfall"), "tier": 1},
@@ -351,7 +413,7 @@ class ScoutEngine(BaseEngine):
         lead_id: UUID,
         force_refresh: bool = False,
     ) -> EngineResult[dict[str, Any]]:
-        """Enrich a single lead via Siege Waterfall (Tier 1 only)."""
+        """Enrich a single lead via Siege Waterfall. Applies confidence gate (Directive #217)."""
         lead = await self.get_lead_by_id(db, lead_id)
         domain = lead.domain or self._extract_domain(lead.email)
 
@@ -368,11 +430,72 @@ class ScoutEngine(BaseEngine):
         # Tier 1: Siege Waterfall
         tier1_result = await self._enrich_tier1(lead, domain)
         if tier1_result and self._validate_enrichment(tier1_result, company_level=True):  # Directive #199: GMB leads pass with company identity
+            # --- Confidence gate (Directive #217) ---
+            _conf_signals = {
+                "gst_registered": tier1_result.get("gst_registered"),
+                "dfs_paid_traffic_cost": tier1_result.get("dfs_paid_traffic_cost") or tier1_result.get("estimated_paid_traffic_cost"),
+                "dfs_organic_traffic": tier1_result.get("dfs_organic_traffic") or tier1_result.get("organic_etv"),
+                "job_listings_active": tier1_result.get("job_listings_active"),
+                "gmb_review_count": tier1_result.get("gmb_review_count") or getattr(lead, "gmb_review_count", None),
+                "linkedin_employee_count": (
+                    tier1_result.get("linkedin_company_size")
+                    or tier1_result.get("linkedin_employee_count")
+                    or getattr(lead, "linkedin_employee_count", None)
+                ),
+                "domain_age_years": tier1_result.get("domain_age_years"),
+            }
+            _conf_score = score_business_confidence(_conf_signals)
+            if not meets_enrichment_threshold(_conf_signals):
+                logger.info(
+                    f"[Scout] Confidence gate: {domain} scored {_conf_score}/100 — "
+                    f"below threshold, skipping Leadmagic"
+                )
+                await self._bu_write_backs(db, domain, tier1_result, lead)
+                return EngineResult.fail(
+                    error="Confidence gate: below threshold",
+                    metadata={"lead_id": str(lead_id), "confidence_score": _conf_score},
+                )
+
+            # Opportunity score (Directive #217 — runs when confidence passes)
+            _opp_signals = {
+                "gmb_review_count": tier1_result.get("gmb_review_count") or getattr(lead, "gmb_review_count", None),
+                "abr_age_years": tier1_result.get("abr_age_years"),
+                "multiple_gmb_locations": tier1_result.get("multiple_gmb_locations"),
+                "hiring_signals_detected": tier1_result.get("hiring_signals_detected"),
+                "gmb_category": tier1_result.get("gmb_category"),
+                "dfs_paid_traffic_cost": tier1_result.get("dfs_paid_traffic_cost") or tier1_result.get("estimated_paid_traffic_cost"),
+                "dfs_organic_traffic": tier1_result.get("dfs_organic_traffic") or tier1_result.get("organic_etv"),
+            }
+            _opp_score = score_business_opportunity(_opp_signals)
+            _opp_reason = get_opportunity_reason(_opp_signals)
+            _is_priority = is_priority_opportunity(_opp_signals)
+            logger.info(
+                f"[Scout] Opportunity score: {domain} → {_opp_score}/100 — {_opp_reason}"
+                + (" [PRIORITY]" if _is_priority else "")
+            )
+
             if domain:
                 await enrichment_cache.set(domain, tier1_result)
             await self._update_lead_from_enrichment(db, lead, tier1_result)
-            # [BU] Write-backs: LinkedIn, DataForSEO, confidence score (Directive #215)
-            await self._bu_write_backs(db, domain, tier1_result, lead)
+            # [BU] Write-backs: LinkedIn, DataForSEO, confidence score (Directive #215), opportunity score (Directive #217)
+            await self._bu_write_backs(db, domain, tier1_result, lead, opp_score=_opp_score, opp_reason=_opp_reason)
+            # Write opportunity scores to lead record (Directive #217)
+            try:
+                await db.execute(
+                    text(
+                        "UPDATE leads SET opportunity_score = :opp_score, "
+                        "opportunity_reason = :opp_reason "
+                        "WHERE id = :lead_id"
+                    ),
+                    {
+                        "opp_score": _opp_score,
+                        "opp_reason": _opp_reason,
+                        "lead_id": str(lead_id),
+                    },
+                )
+                await db.commit()
+            except Exception as e:
+                logger.warning(f"[Scout] opportunity score write-back failed: {e}")
             return EngineResult.ok(
                 data=tier1_result,
                 metadata={"source": tier1_result.get("source", "siege_waterfall"), "tier": 1},
@@ -389,10 +512,13 @@ class ScoutEngine(BaseEngine):
         domain: str | None,
         tier1_result: dict[str, Any],
         lead: Any,
+        opp_score: int | None = None,
+        opp_reason: str | None = None,
     ) -> None:
         """
         Write enriched signals back to business_universe.
         Directive #215: LinkedIn, DataForSEO, and confidence score write-backs.
+        Directive #217: Opportunity score write-back.
         Architectural note: siege_waterfall.py is a pure data layer (no db access).
         All BU write-backs are performed here in scout.py where the db session lives.
         """
@@ -497,6 +623,24 @@ class ScoutEngine(BaseEngine):
             logger.info(f"[BU] Confidence score: {domain} → {_conf_score}/100")
         except Exception as _bu_conf_err:
             logger.warning(f"[BU] Confidence score write-back failed: {domain} — {_bu_conf_err}")
+
+        # --- WRITE-BACK 4: Opportunity score (Directive #217) ---
+        if opp_score is not None:
+            try:
+                await db.execute(
+                    text("""
+                        UPDATE business_universe
+                        SET opportunity_score = COALESCE(:opp_score, opportunity_score),
+                            opportunity_reason = COALESCE(:opp_reason, opportunity_reason),
+                            updated_at = NOW()
+                        WHERE gmb_domain = :domain
+                    """),
+                    {"opp_score": opp_score, "opp_reason": opp_reason, "domain": domain}
+                )
+                await db.commit()
+                logger.info(f"[BU] Opportunity score: {domain} → {opp_score}/100")
+            except Exception as e:
+                logger.warning(f"[Scout] BU opportunity score write-back failed for {domain}: {e}")
 
     async def _check_cache(self, domain: str) -> dict[str, Any] | None:
         """Check enrichment cache for domain."""

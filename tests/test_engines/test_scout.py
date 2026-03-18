@@ -70,7 +70,10 @@ def mock_lead():
 
 @pytest.fixture
 def valid_enrichment_data():
-    """Create valid enrichment data that passes validation."""
+    """Create valid enrichment data that passes validation.
+    Includes confidence signals sufficient to pass CONFIDENCE_FLOOR_TO_ENRICH=50 (Directive #217).
+    gst_registered=True (+25) + dfs_paid_traffic_cost=500 (+25) + dfs_organic_traffic=2000 (+15) = 65.
+    """
     return {
         "found": True,
         "confidence": 0.85,
@@ -86,6 +89,10 @@ def valid_enrichment_data():
         "organization_industry": "Technology",
         "organization_employee_count": 50,
         "organization_country": "Australia",
+        # Confidence gate signals (Directive #217) — must score >= 50 to pass gate
+        "gst_registered": True,            # +25
+        "dfs_paid_traffic_cost": 500.0,    # +25
+        "dfs_organic_traffic": 2000,       # +15 (total: 65 — passes threshold)
     }
 
 

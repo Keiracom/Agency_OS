@@ -589,16 +589,20 @@ class ScoutEngine(BaseEngine):
             # Check if bright_data_client supports people search
             if hasattr(self.siege_waterfall, 'bright_data_client'):
                 bd = self.siege_waterfall.bright_data_client
-                if hasattr(bd, 'search_linkedin_people'):
-                    result = await bd.search_linkedin_people(
-                        company_url=company_linkedin_url,
-                        titles=TARGET_TITLES,
+                dm = await bd.search_linkedin_people(
+                    company_linkedin_url=company_linkedin_url,
+                    target_titles=TARGET_TITLES,
+                )
+                if dm:
+                    logger.info(
+                        f"[Stage2] DM found via LinkedIn People Search: "
+                        f"{dm.get('first_name')} {dm.get('last_name')} "
+                        f"({dm.get('title')}) for {domain}"
                     )
-                    if result:
-                        return result[0]  # Return highest-priority match
+                    return dm
             logger.info(
-                f"[Stage2] T-DM1 LinkedIn People Search not yet available — "
-                f"stage 2 stub for {domain}"
+                f"[Stage2] bright_data_client unavailable — "
+                f"no DM for {domain}"
             )
             return None
         except Exception as e:

@@ -34,3 +34,9 @@ CREATE INDEX IF NOT EXISTS idx_trading_names_state
 -- Resume-safe: reruns are idempotent
 ALTER TABLE trading_names ADD CONSTRAINT trading_names_unique
     UNIQUE (abn, name, name_type);
+
+-- USAGE: Use % operator (not similarity() function) to activate GIN index
+-- SET pg_trgm.similarity_threshold = 0.4;
+-- SELECT * FROM trading_names WHERE name % 'search term' LIMIT 10;
+-- For matching with score: WHERE lower(name) % lower('search term')
+-- The similarity() function without % does NOT use the GIN index and will seq-scan.

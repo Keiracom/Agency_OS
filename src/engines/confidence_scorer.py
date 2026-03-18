@@ -9,7 +9,7 @@ See ARCHITECTURE.md Section 5 for signal definitions.
 from typing import Any
 
 
-CONFIDENCE_FLOOR_TO_ENRICH = 50
+CONFIDENCE_FLOOR_TO_ENRICH = 35
 
 
 def score_business_confidence(signals: dict[str, Any]) -> int:
@@ -22,10 +22,11 @@ def score_business_confidence(signals: dict[str, Any]) -> int:
       gst_registered = True            +25
       dfs_paid_traffic_cost > 0        +25
       dfs_organic_traffic >= 1000      +15
-      gmb_review_count >= 10           +10
-      gmb_review_count >= 20           +5 (bonus)
+      gmb_review_count >= 5            +15
+      gmb_review_count >= 15           +10 (bonus)
+      gmb_review_count >= 30           +10 (bonus)
       linkedin_employee_count >= 5     +10
-      Max: 90 — capped at 100.
+      Max: 110 — capped at 100.
 
     Removed signals (Directive #218):
       job_listings_active — not populated by any data source
@@ -47,10 +48,12 @@ def score_business_confidence(signals: dict[str, Any]) -> int:
     # job_listings_active removed - not populated by any data source (Directive #218)
 
     reviews = signals.get("gmb_review_count", 0)
-    if reviews and int(reviews) >= 10:
+    if reviews and int(reviews) >= 5:
+        score += 15
+    if reviews and int(reviews) >= 15:
         score += 10
-    if reviews and int(reviews) >= 20:
-        score += 5
+    if reviews and int(reviews) >= 30:
+        score += 10
 
     employees = signals.get("linkedin_employee_count")
     if employees and int(employees) >= 5:
@@ -65,6 +68,6 @@ def meets_enrichment_threshold(signals: dict[str, Any]) -> bool:
     """
     Returns True if business should proceed to
     Leadmagic email/mobile enrichment.
-    Threshold: CONFIDENCE_FLOOR_TO_ENRICH = 50
+    Threshold: CONFIDENCE_FLOOR_TO_ENRICH = 35
     """
     return score_business_confidence(signals) >= CONFIDENCE_FLOOR_TO_ENRICH

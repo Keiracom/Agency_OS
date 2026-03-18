@@ -3,6 +3,7 @@ confidence_scorer.py
 Revenue confidence scoring for business_universe.
 Pure function — no DB calls, no side effects.
 Ratified: March 17 2026 | Directive #215
+Amended: March 18 2026 | Directive #218 — removed ghost signals
 See ARCHITECTURE.md Section 5 for signal definitions.
 """
 from typing import Any
@@ -21,12 +22,14 @@ def score_business_confidence(signals: dict[str, Any]) -> int:
       gst_registered = True            +25
       dfs_paid_traffic_cost > 0        +25
       dfs_organic_traffic >= 1000      +15
-      job_listings_active > 0          +15
       gmb_review_count >= 10           +10
       gmb_review_count >= 20           +5 (bonus)
       linkedin_employee_count >= 5     +10
-      domain_age_years >= 2            +10
-      Max: 115 — capped at 100.
+      Max: 90 — capped at 100.
+
+    Removed signals (Directive #218):
+      job_listings_active — not populated by any data source
+      domain_age_years — not available from DataForSEO
     """
     score = 0
 
@@ -41,9 +44,7 @@ def score_business_confidence(signals: dict[str, Any]) -> int:
     if organic and float(organic) >= 1000:
         score += 15
 
-    jobs = signals.get("job_listings_active", 0)
-    if jobs and int(jobs) > 0:
-        score += 15
+    # job_listings_active removed - not populated by any data source (Directive #218)
 
     reviews = signals.get("gmb_review_count", 0)
     if reviews and int(reviews) >= 10:
@@ -55,9 +56,7 @@ def score_business_confidence(signals: dict[str, Any]) -> int:
     if employees and int(employees) >= 5:
         score += 10
 
-    domain_age = signals.get("domain_age_years", 0)
-    if domain_age and float(domain_age) >= 2:
-        score += 10
+    # domain_age_years removed - not available from DataForSEO (Directive #218)
 
     return min(score, 100)
 

@@ -885,6 +885,26 @@ class ScoutEngine(BaseEngine):
                 logger.warning(f"[Scout] Siege Waterfall failed for AU lead: {e}")
                 result = None
 
+            # Directive #218 fix: DataForSEO pre-gate must run for AU leads too.
+            # Original placement was after the AU early return — bug fix.
+            if domain and result is not None:
+                try:
+                    dfs_client = get_dataforseo_client()
+                    dfs_metrics = await dfs_client.get_full_domain_metrics(domain)
+                    result["estimated_paid_traffic_cost"] = dfs_metrics.get("estimated_paid_traffic_cost")
+                    result["organic_etv"] = dfs_metrics.get("organic_etv")
+                    result["domain_rank"] = dfs_metrics.get("domain_rank")
+                    result["backlinks"] = dfs_metrics.get("backlinks")
+                    result["referring_domains"] = dfs_metrics.get("referring_domains")
+                    result["spam_score"] = dfs_metrics.get("spam_score")
+                    logger.info(
+                        f"[Scout] DataForSEO pre-gate (AU): {domain} "
+                        f"paid_cost={result['estimated_paid_traffic_cost']} "
+                        f"organic_etv={result['organic_etv']}"
+                    )
+                except Exception as e:
+                    logger.warning(f"[Scout] DataForSEO pre-gate failed for AU lead {domain}: {e}")
+
             return result
 
         # Non-AU leads: Use Siege Waterfall for enrichment

@@ -639,6 +639,107 @@ class BrightDataClient:
 
         return []
 
+    async def search_linkedin_people(
+        self, company_linkedin_url: str, target_titles: list[str] = None
+    ) -> dict | None:
+        """
+        T-DM1 LinkedIn People Search by company URL via Bright Data.
+
+        Discovers decision makers at a company by searching LinkedIn People
+        filtered by company URL. Returns highest-priority title match.
+
+        Dataset: gd_l1viktl72bvl7bjuj0 (linkedin_people)
+        Discover-by: company_url
+        Cost: $0.0015/record
+
+        Args:
+            company_linkedin_url: LinkedIn company page URL
+            target_titles: Priority-ordered list of titles to match.
+                           Defaults to canonical DM priority titles.
+
+        Returns:
+            {first_name, last_name, title, linkedin_url} or None
+        """
+        DEFAULT_PRIORITY = [
+            "owner", "founder", "director", "ceo",
+            "managing director", "md", "head of", "general manager",
+        ]
+        priority_titles = [t.lower() for t in (target_titles or DEFAULT_PRIORITY)]
+
+        try:
+            results = await self._scraper_request(
+                DATASET_IDS["linkedin_people"],
+                [{"company_url": company_linkedin_url}],
+                discover_by="company_url",
+            )
+        except BrightDataError as e:
+            logger.warning(
+                "search_linkedin_people_failed",
+                company_url=company_linkedin_url,
+                error=str(e),
+            )
+            return None
+
+        if not results:
+            logger.info("search_linkedin_people_no_results", company_url=company_linkedin_url)
+            return None
+
+        # Score each person by title priority (lower index = higher priority)
+        best: dict | None = None
+        best_priority = len(priority_titles)  # worst possible sentinel
+
+        for person in results:
+            raw_title = (
+                person.get("current_job_title")
+                or person.get("headline")
+                or person.get("title")
+                or ""
+            ).lower()
+
+            for idx, pt in enumerate(priority_titles):
+                if pt in raw_title and idx < best_priority:
+                    best = person
+                    best_priority = idx
+                    break  # matched this person; check next person
+
+        if best is None:
+            # No priority-title match — fall back to first result
+            best = results[0]
+
+        # Normalise field names across Bright Data response variants
+        full_name = best.get("name") or ""
+        name_parts = full_name.split(" ", 1) if full_name else []
+        first_name = best.get("first_name") or (name_parts[0] if name_parts else "")
+        last_name = best.get("last_name") or (name_parts[1] if len(name_parts) > 1 else "")
+        title = (
+            best.get("current_job_title")
+            or best.get("headline")
+            or best.get("title")
+            or ""
+        )
+        linkedin_url = (
+            best.get("url")
+            or best.get("linkedin_url")
+            or best.get("profile_url")
+            or ""
+        )
+
+        logger.info(
+            "search_linkedin_people_found",
+            company_url=company_linkedin_url,
+            first_name=first_name,
+            last_name=last_name,
+            title=title,
+            cost_aud=COSTS_AUD["linkedin_profile"],
+        )
+
+        return {
+            "first_name": first_name,
+            "last_name": last_name,
+            "title": title,
+            "linkedin_url": linkedin_url,
+        }
+
     async def scrape_x_posts_90d(self, x_handle: str, days: int = 90) -> list[dict]:
         """
         T-DM3 X/Twitter Posts (90 days) via Bright Data.

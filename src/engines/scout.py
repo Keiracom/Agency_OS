@@ -56,6 +56,7 @@ from src.integrations.camoufox_scraper import CamoufoxScraper
 from src.integrations.redis import enrichment_cache
 from src.engines.confidence_scorer import score_business_confidence, meets_enrichment_threshold  # Directive #215
 from src.engines.opportunity_scorer import score_business_opportunity, get_opportunity_reason, is_priority_opportunity  # Directive #217
+from src.integrations.dataforseo import get_dataforseo_client  # Directive #218: pre-gate DataForSEO
 from src.integrations.siege_waterfall import EnrichmentTier, SiegeWaterfall, get_siege_waterfall
 from src.models.base import LeadStatus
 from src.models.lead import Lead
@@ -196,14 +197,14 @@ class ScoutEngine(BaseEngine):
                 "gst_registered": tier1_result.get("gst_registered"),
                 "dfs_paid_traffic_cost": tier1_result.get("dfs_paid_traffic_cost") or tier1_result.get("estimated_paid_traffic_cost"),
                 "dfs_organic_traffic": tier1_result.get("dfs_organic_traffic") or tier1_result.get("organic_etv"),
-                "job_listings_active": tier1_result.get("job_listings_active"),
+                # job_listings_active removed - not populated by any data source (Directive #218)
                 "gmb_review_count": tier1_result.get("gmb_review_count") or getattr(lead, "gmb_review_count", None),
                 "linkedin_employee_count": (
                     tier1_result.get("linkedin_company_size")
                     or tier1_result.get("linkedin_employee_count")
                     or getattr(lead, "linkedin_employee_count", None)
                 ),
-                "domain_age_years": tier1_result.get("domain_age_years"),
+                # domain_age_years removed - not available from DataForSEO (Directive #218)
             }
             _conf_score = score_business_confidence(_conf_signals)
             if not meets_enrichment_threshold(_conf_signals):
@@ -223,7 +224,7 @@ class ScoutEngine(BaseEngine):
                 "abr_age_years": tier1_result.get("abr_age_years"),
                 "multiple_gmb_locations": tier1_result.get("multiple_gmb_locations"),
                 "hiring_signals_detected": tier1_result.get("hiring_signals_detected"),
-                "gmb_category": tier1_result.get("gmb_category"),
+                "gmb_category": tier1_result.get("gmb_category") or getattr(lead, "gmb_category", None),
                 "dfs_paid_traffic_cost": tier1_result.get("dfs_paid_traffic_cost") or tier1_result.get("estimated_paid_traffic_cost"),
                 "dfs_organic_traffic": tier1_result.get("dfs_organic_traffic") or tier1_result.get("organic_etv"),
             }
@@ -435,14 +436,14 @@ class ScoutEngine(BaseEngine):
                 "gst_registered": tier1_result.get("gst_registered"),
                 "dfs_paid_traffic_cost": tier1_result.get("dfs_paid_traffic_cost") or tier1_result.get("estimated_paid_traffic_cost"),
                 "dfs_organic_traffic": tier1_result.get("dfs_organic_traffic") or tier1_result.get("organic_etv"),
-                "job_listings_active": tier1_result.get("job_listings_active"),
+                # job_listings_active removed - not populated by any data source (Directive #218)
                 "gmb_review_count": tier1_result.get("gmb_review_count") or getattr(lead, "gmb_review_count", None),
                 "linkedin_employee_count": (
                     tier1_result.get("linkedin_company_size")
                     or tier1_result.get("linkedin_employee_count")
                     or getattr(lead, "linkedin_employee_count", None)
                 ),
-                "domain_age_years": tier1_result.get("domain_age_years"),
+                # domain_age_years removed - not available from DataForSEO (Directive #218)
             }
             _conf_score = score_business_confidence(_conf_signals)
             if not meets_enrichment_threshold(_conf_signals):
@@ -462,7 +463,7 @@ class ScoutEngine(BaseEngine):
                 "abr_age_years": tier1_result.get("abr_age_years"),
                 "multiple_gmb_locations": tier1_result.get("multiple_gmb_locations"),
                 "hiring_signals_detected": tier1_result.get("hiring_signals_detected"),
-                "gmb_category": tier1_result.get("gmb_category"),
+                "gmb_category": tier1_result.get("gmb_category") or getattr(lead, "gmb_category", None),
                 "dfs_paid_traffic_cost": tier1_result.get("dfs_paid_traffic_cost") or tier1_result.get("estimated_paid_traffic_cost"),
                 "dfs_organic_traffic": tier1_result.get("dfs_organic_traffic") or tier1_result.get("organic_etv"),
             }
@@ -605,8 +606,8 @@ class ScoutEngine(BaseEngine):
                 ),
                 "dfs_paid_traffic_cost": tier1_result.get("estimated_paid_traffic_cost") or tier1_result.get("dfs_paid_traffic_cost"),
                 "dfs_organic_traffic": tier1_result.get("organic_etv") or tier1_result.get("dfs_organic_traffic"),
-                "job_listings_active": tier1_result.get("job_listings_active"),
-                "domain_age_years": tier1_result.get("domain_age_years"),
+                # job_listings_active removed - not populated by any data source (Directive #218)
+                # domain_age_years removed - not available from DataForSEO (Directive #218)
             }
             _conf_score = score_business_confidence(_signals)
             await db.execute(
@@ -847,6 +848,28 @@ class ScoutEngine(BaseEngine):
                 metadata={"is_australian": False},
             )
             logger.warning(f"[Scout] Siege Waterfall failed for non-AU lead: {e}")
+
+        # Directive #218: Call DataForSEO BEFORE returning, so dfs signals are available
+        # for the confidence gate in enrich_lead / _enrich_single.
+        # This resolves the circular dependency: confidence needs DFS, DFS was after confidence.
+        if domain and result is not None:
+            try:
+                dfs_client = get_dataforseo_client()
+                dfs_metrics = await dfs_client.get_full_domain_metrics(domain)
+                # Merge DataForSEO fields into result so confidence gate can read them
+                result["estimated_paid_traffic_cost"] = dfs_metrics.get("estimated_paid_traffic_cost")
+                result["organic_etv"] = dfs_metrics.get("organic_etv")
+                result["domain_rank"] = dfs_metrics.get("domain_rank")
+                result["backlinks"] = dfs_metrics.get("backlinks")
+                result["referring_domains"] = dfs_metrics.get("referring_domains")
+                result["spam_score"] = dfs_metrics.get("spam_score")
+                logger.info(
+                    f"[Scout] DataForSEO pre-gate: {domain} "
+                    f"paid_cost={result['estimated_paid_traffic_cost']} "
+                    f"organic_etv={result['organic_etv']}"
+                )
+            except Exception as e:
+                logger.warning(f"[Scout] DataForSEO pre-gate failed for {domain}: {e}")
 
         return result
 

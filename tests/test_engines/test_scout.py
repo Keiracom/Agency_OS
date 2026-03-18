@@ -33,14 +33,6 @@ def mock_siege_waterfall():
 
 
 @pytest.fixture
-def mock_clay_client():
-    """Create mock Clay client."""
-    client = AsyncMock()
-    client.enrich_person = AsyncMock()
-    return client
-
-
-@pytest.fixture
 def mock_camoufox_scraper():
     """Create mock Camoufox scraper."""
     scraper = AsyncMock()
@@ -98,11 +90,10 @@ def valid_enrichment_data():
 
 
 @pytest.fixture
-def scout_engine(mock_siege_waterfall, mock_clay_client, mock_camoufox_scraper):
+def scout_engine(mock_siege_waterfall, mock_camoufox_scraper):
     """Create Scout engine with mock clients."""
     return ScoutEngine(
         siege_waterfall=mock_siege_waterfall,
-        clay_client=mock_clay_client,
         camoufox_scraper=mock_camoufox_scraper,
     )
 

@@ -1,19 +1,18 @@
 """
 Contract: src/engines/scout.py
-Purpose: Enrich leads via Cache → Siege Waterfall → Clay waterfall
+Purpose: Enrich leads via Cache → Siege Waterfall
 Layer: 3 - engines
 Imports: models, integrations, agents.sdk_agents, services
 Consumers: orchestration only
 
 FILE: src/engines/scout.py
-PURPOSE: Enrich leads via Cache → Siege Waterfall → Clay waterfall
+PURPOSE: Enrich leads via Cache → Siege Waterfall
 PHASE: 4 (Engines), updated Phase 24A (Lead Pool), Phase 24F (Suppression)
 TASK: ENG-002, POOL-008, CUST-010
 DEPENDENCIES:
   - src/engines/base.py
   - src/integrations/redis.py
   - src/integrations/camoufox_scraper.py (LinkedIn scraping)
-  - src/integrations/clay.py
   - src/integrations/siege_waterfall.py (SSOT for AU enrichment)
   - src/models/lead.py
 RULES APPLIED:
@@ -27,17 +26,11 @@ PHASE 24A CHANGES:
   - Added enrich_to_pool method for pool-first enrichment
   - Added search_and_populate_pool for bulk pool population
   - Modified enrich_lead to optionally write to pool
-  - Enrichment now uses Siege Waterfall (Apollo removed CEO Directive #003)
+  - Enrichment SSOT: siege_waterfall.py
 
 PHASE 24F CHANGES:
   - Added filter_suppressed_leads method for client-specific filtering
   - Uses is_suppressed database function (no service import needed)
-
-FCO-002/FCO-003 DEPRECATION (2026-02-05):
-  - Apollo integration removed (CEO Directive #003)
-  - Apify integration removed (cost savings)
-  - Enrichment SSOT: siege_waterfall.py
-  - LinkedIn scraping: camoufox_scraper.py (or stubbed)
 """
 
 import asyncio
@@ -59,10 +52,9 @@ from src.agents.skills.research_skills import DeepResearchSkill
 from src.engines.base import BaseEngine, EngineResult
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
 
-# REMOVED: from src.integrations.apify import ApifyClient, get_apify_client (FCO-003 deprecation)
 from src.integrations.camoufox_scraper import CamoufoxScraper
-from src.integrations.clay import ClayClient, get_clay_client
 from src.integrations.redis import enrichment_cache
+from src.engines.confidence_scorer import score_business_confidence  # Directive #215
 from src.integrations.siege_waterfall import EnrichmentTier, SiegeWaterfall, get_siege_waterfall
 from src.models.base import LeadStatus
 from src.models.lead import Lead
@@ -117,12 +109,6 @@ class ScoutEngine(BaseEngine):
     Uses a waterfall approach:
     - Tier 0: Check cache (versioned key with soft validation)
     - Tier 1: Siege Waterfall (SSOT for all enrichment)
-    - Tier 2: Clay fallback (max 15% of batch)
-
-    DEPRECATION NOTES (FCO-002/FCO-003):
-    - Apollo integration removed (CEO Directive #003)
-    - Apify integration removed (cost savings)
-    - LinkedIn scraping now uses CamoufoxScraper
 
     Rule 4: Validation threshold is 0.70 for confidence.
     Rule 16: Cache keys use version prefix.
@@ -130,7 +116,6 @@ class ScoutEngine(BaseEngine):
 
     def __init__(
         self,
-        clay_client: ClayClient | None = None,
         siege_waterfall: SiegeWaterfall | None = None,
         camoufox_scraper: CamoufoxScraper | None = None,
     ):
@@ -138,11 +123,9 @@ class ScoutEngine(BaseEngine):
         Initialize Scout engine with integration clients.
 
         Args:
-            clay_client: Optional Clay client (uses singleton if not provided)
             siege_waterfall: Optional SiegeWaterfall (uses singleton if not provided)
             camoufox_scraper: Optional CamoufoxScraper for LinkedIn (lazy init if not provided)
         """
-        self._clay = clay_client
         self._siege_waterfall = siege_waterfall
         self._camoufox = camoufox_scraper
 
@@ -156,12 +139,6 @@ class ScoutEngine(BaseEngine):
         if self._camoufox is None:
             self._camoufox = CamoufoxScraper()
         return self._camoufox
-
-    @property
-    def clay(self) -> ClayClient:
-        if self._clay is None:
-            self._clay = get_clay_client()
-        return self._clay
 
     @property
     def siege_waterfall(self) -> SiegeWaterfall:
@@ -218,6 +195,8 @@ class ScoutEngine(BaseEngine):
                 await enrichment_cache.set(domain, tier1_result)
             # Update lead
             await self._update_lead_from_enrichment(db, lead, tier1_result)
+            # [BU] Write-backs: LinkedIn, DataForSEO, confidence score (Directive #215)
+            await self._bu_write_backs(db, domain, tier1_result, lead)
             return EngineResult.ok(
                 data=tier1_result,
                 metadata={"source": tier1_result.get("source", "siege_waterfall"), "tier": 1},
@@ -241,8 +220,6 @@ class ScoutEngine(BaseEngine):
     ) -> EngineResult[dict[str, Any]]:
         """
         Enrich a batch of leads using the waterfall approach.
-
-        Clay is limited to 15% of the batch (Rule).
 
         Args:
             db: Database session (passed by caller)
@@ -394,6 +371,8 @@ class ScoutEngine(BaseEngine):
             if domain:
                 await enrichment_cache.set(domain, tier1_result)
             await self._update_lead_from_enrichment(db, lead, tier1_result)
+            # [BU] Write-backs: LinkedIn, DataForSEO, confidence score (Directive #215)
+            await self._bu_write_backs(db, domain, tier1_result, lead)
             return EngineResult.ok(
                 data=tier1_result,
                 metadata={"source": tier1_result.get("source", "siege_waterfall"), "tier": 1},
@@ -403,6 +382,121 @@ class ScoutEngine(BaseEngine):
             error="All enrichment tiers failed",
             metadata={"lead_id": str(lead_id)},
         )
+
+    async def _bu_write_backs(
+        self,
+        db: AsyncSession,
+        domain: str | None,
+        tier1_result: dict[str, Any],
+        lead: Any,
+    ) -> None:
+        """
+        Write enriched signals back to business_universe.
+        Directive #215: LinkedIn, DataForSEO, and confidence score write-backs.
+        Architectural note: siege_waterfall.py is a pure data layer (no db access).
+        All BU write-backs are performed here in scout.py where the db session lives.
+        """
+        if not domain:
+            return
+
+        # --- WRITE-BACK 1: LinkedIn Company (Directive #215) ---
+        try:
+            linkedin_url = tier1_result.get("linkedin_company_url") or tier1_result.get("company_linkedin_url")
+            employee_count = tier1_result.get("linkedin_company_size") or tier1_result.get("linkedin_employee_count")
+            industry = tier1_result.get("linkedin_company_industry")
+            if linkedin_url or employee_count or industry:
+                await db.execute(
+                    text("""
+                        UPDATE business_universe SET
+                            linkedin_company_url = COALESCE(:linkedin_url, linkedin_company_url),
+                            linkedin_employee_count = COALESCE(:employee_count, linkedin_employee_count),
+                            linkedin_industry = COALESCE(:industry, linkedin_industry),
+                            linkedin_enriched_at = NOW(),
+                            updated_at = NOW()
+                        WHERE gmb_domain = :domain
+                    """),
+                    {
+                        "linkedin_url": linkedin_url,
+                        "employee_count": employee_count,
+                        "industry": industry,
+                        "domain": domain,
+                    }
+                )
+                await db.commit()
+                logger.info(f"[BU] LinkedIn write-back: {domain}")
+        except Exception as _bu_linkedin_err:
+            logger.warning(f"[BU] LinkedIn write-back failed: {domain} — {_bu_linkedin_err}")
+
+        # --- WRITE-BACK 2: DataForSEO (Directive #215) ---
+        try:
+            organic_etv = tier1_result.get("organic_etv")
+            organic_count = tier1_result.get("organic_count")
+            paid_cost = tier1_result.get("estimated_paid_traffic_cost")
+            domain_rank = tier1_result.get("domain_rank")
+            backlinks = tier1_result.get("backlinks")
+            referring_domains = tier1_result.get("referring_domains")
+            spam_score = tier1_result.get("spam_score")
+            if any(v is not None for v in [organic_etv, organic_count, paid_cost, domain_rank]):
+                await db.execute(
+                    text("""
+                        UPDATE business_universe SET
+                            dfs_organic_traffic = COALESCE(:organic_etv, dfs_organic_traffic),
+                            dfs_organic_keywords = COALESCE(:organic_count, dfs_organic_keywords),
+                            dfs_paid_traffic_cost = COALESCE(:paid_cost, dfs_paid_traffic_cost),
+                            dfs_domain_rank = COALESCE(:domain_rank, dfs_domain_rank),
+                            dfs_backlinks = COALESCE(:backlinks, dfs_backlinks),
+                            dfs_referring_domains = COALESCE(:referring_domains, dfs_referring_domains),
+                            dfs_spam_score = COALESCE(:spam_score, dfs_spam_score),
+                            dfs_enriched_at = NOW(),
+                            updated_at = NOW()
+                        WHERE gmb_domain = :domain
+                    """),
+                    {
+                        "organic_etv": organic_etv,
+                        "organic_count": organic_count,
+                        "paid_cost": paid_cost,
+                        "domain_rank": domain_rank,
+                        "backlinks": backlinks,
+                        "referring_domains": referring_domains,
+                        "spam_score": spam_score,
+                        "domain": domain,
+                    }
+                )
+                await db.commit()
+                logger.info(f"[BU] DataForSEO write-back: {domain}, paid_traffic={paid_cost}")
+        except Exception as _bu_dfs_err:
+            logger.warning(f"[BU] DataForSEO write-back failed: {domain} — {_bu_dfs_err}")
+
+        # --- WRITE-BACK 3: Confidence score (Directive #215) ---
+        try:
+            _signals = {
+                "gst_registered": tier1_result.get("gst_registered"),
+                "gmb_review_count": tier1_result.get("gmb_review_count") or getattr(lead, "gmb_review_count", None),
+                "linkedin_employee_count": (
+                    tier1_result.get("linkedin_company_size")
+                    or tier1_result.get("linkedin_employee_count")
+                    or getattr(lead, "linkedin_employee_count", None)
+                ),
+                "dfs_paid_traffic_cost": tier1_result.get("estimated_paid_traffic_cost") or tier1_result.get("dfs_paid_traffic_cost"),
+                "dfs_organic_traffic": tier1_result.get("organic_etv") or tier1_result.get("dfs_organic_traffic"),
+                "job_listings_active": tier1_result.get("job_listings_active"),
+                "domain_age_years": tier1_result.get("domain_age_years"),
+            }
+            _conf_score = score_business_confidence(_signals)
+            await db.execute(
+                text("""
+                    UPDATE business_universe SET
+                        revenue_confidence_score = :score,
+                        revenue_confidence_updated = NOW(),
+                        updated_at = NOW()
+                    WHERE gmb_domain = :domain
+                """),
+                {"score": _conf_score, "domain": domain}
+            )
+            await db.commit()
+            logger.info(f"[BU] Confidence score: {domain} → {_conf_score}/100")
+        except Exception as _bu_conf_err:
+            logger.warning(f"[BU] Confidence score write-back failed: {domain} — {_bu_conf_err}")
 
     async def _check_cache(self, domain: str) -> dict[str, Any] | None:
         """Check enrichment cache for domain."""
@@ -435,7 +529,6 @@ class ScoutEngine(BaseEngine):
         is_australian = self._is_australian_lead(lead, domain)
 
         if is_australian:
-            # Use Siege Waterfall for AU leads - NO APOLLO FALLBACK
             try:
                 lead_data = {
                     "email": lead.email,
@@ -519,10 +612,9 @@ class ScoutEngine(BaseEngine):
 
                     logger.info(
                         f"[Scout] Siege Waterfall enriched AU lead with {siege_result.sources_used} sources, "
-                        f"cost: ${siege_result.total_cost_aud:.3f} AUD (no Apollo fallback)"
+                        f"cost: ${siege_result.total_cost_aud:.3f} AUD"
                     )
                 else:
-                    # SIEGE found nothing - still don't fall back to Apollo for AU
                     await self._log_enrichment_audit(
                         operation="siege_waterfall",
                         lead_id=str(lead.id) if hasattr(lead, "id") else None,
@@ -533,16 +625,11 @@ class ScoutEngine(BaseEngine):
                         metadata={
                             "sources_used": 0,
                             "is_australian": True,
-                            "note": "No Apollo fallback for AU leads",
                         },
                     )
-                    logger.info(
-                        "[Scout] Siege Waterfall found no data for AU lead, "
-                        "NOT falling back to Apollo (SIEGE is SSOT for AU)"
-                    )
+                    logger.info("[Scout] Siege Waterfall found no data for AU lead")
 
             except Exception as e:
-                # Log SIEGE failure for AU lead
                 await self._log_enrichment_audit(
                     operation="siege_waterfall",
                     lead_id=str(lead.id) if hasattr(lead, "id") else None,
@@ -550,15 +637,14 @@ class ScoutEngine(BaseEngine):
                     domain=domain,
                     success=False,
                     error=str(e),
-                    metadata={"is_australian": True, "note": "SIEGE failed, no Apollo fallback"},
+                    metadata={"is_australian": True},
                 )
                 logger.warning(f"[Scout] Siege Waterfall failed for AU lead: {e}")
                 result = None
 
-            # Return here for AU leads - no Apollo fallback
             return result
 
-        # Non-AU leads: Use Siege Waterfall for enrichment (Apollo/Apify removed)
+        # Non-AU leads: Use Siege Waterfall for enrichment
         # LinkedIn scraping via Camoufox if URL available
         try:
             lead_data = {
@@ -727,7 +813,7 @@ class ScoutEngine(BaseEngine):
 
         Args:
             lead: Lead model instance
-            enrichment_data: Standard enrichment data (from Apollo/Clay)
+            enrichment_data: Standard enrichment data
             signals: Priority signals that triggered SDK eligibility
 
         Returns:
@@ -1001,8 +1087,6 @@ class ScoutEngine(BaseEngine):
         # Get Anthropic client
         anthropic = anthropic_client or get_anthropic_client()
 
-        # Initialize skill (Apify removed - deep research now uses camoufox or stubs)
-        # NOTE: DeepResearchSkill may need updating to use camoufox_scraper
         skill = DeepResearchSkill()
 
         # Execute deep research
@@ -1103,9 +1187,6 @@ class ScoutEngine(BaseEngine):
         """
         Enrich a person and write directly to lead_pool.
 
-        NOTE: Apollo integration removed (CEO Directive #003).
-        Use Siege Waterfall via enrich_lead() for AU leads.
-
         Args:
             db: Database session
             email: Email address
@@ -1132,9 +1213,8 @@ class ScoutEngine(BaseEngine):
                     metadata={"source": "pool_cache", "already_exists": True},
                 )
 
-        # Apollo removed (CEO Directive #003) - use Siege Waterfall via enrich_lead()
         return EngineResult.fail(
-            error="Direct pool enrichment unavailable - Apollo removed. Use enrich_lead() with Siege Waterfall.",
+            error="Direct pool enrichment unavailable. Use enrich_lead() with Siege Waterfall.",
             metadata={"email": email, "linkedin_url": linkedin_url},
         )
 
@@ -1148,7 +1228,6 @@ class ScoutEngine(BaseEngine):
         """
         Search for leads matching ICP and populate the pool.
 
-        NOTE: Apollo integration removed (CEO Directive #003).
         This method now returns empty results. Use pool_population_flow
         which uses ScoutEngine.enrich_lead() with Siege Waterfall.
 
@@ -1163,12 +1242,10 @@ class ScoutEngine(BaseEngine):
                        and apply WHO refinements (Phase 19)
 
         Returns:
-            EngineResult with population summary (empty - Apollo removed)
+            EngineResult with population summary (stub — use pool_population_flow)
         """
-        # Apollo removed (CEO Directive #003)
         logger.warning(
-            "search_and_populate_pool called but Apollo removed. "
-            "Use pool_population_flow with Siege Waterfall instead."
+            "search_and_populate_pool is a stub. Use pool_population_flow with Siege Waterfall."
         )
 
         return EngineResult.ok(
@@ -1181,7 +1258,7 @@ class ScoutEngine(BaseEngine):
             },
             metadata={
                 "criteria": icp_criteria,
-                "note": "Apollo removed (CEO Directive #003). Use Siege Waterfall.",
+                "note": "Use pool_population_flow with Siege Waterfall.",
             },
         )
 
@@ -1366,7 +1443,6 @@ class ScoutEngine(BaseEngine):
         """)
 
         params = {
-            # apollo_id removed - column dropped in migration 064
             "email": lead_data.get("email", "").lower().strip(),
             "linkedin_url": lead_data.get("linkedin_url"),
             "first_name": lead_data.get("first_name"),
@@ -1528,9 +1604,7 @@ class ScoutEngine(BaseEngine):
     async def _scrape_person_linkedin(self, linkedin_url: str) -> dict[str, Any]:
         """
         Scrape full LinkedIn person profile with posts.
-
-        NOTE: Apify removed (FCO-003). Now uses CamoufoxScraper for raw HTML,
-        then parses. LinkedIn scraping is limited without dedicated API.
+        Uses CamoufoxScraper for raw HTML. LinkedIn scraping is limited without dedicated API.
 
         Returns:
             Dict with profile data, about, experience, and last 5 posts
@@ -1585,9 +1659,7 @@ class ScoutEngine(BaseEngine):
     async def _scrape_company_linkedin(self, linkedin_url: str) -> dict[str, Any]:
         """
         Scrape full LinkedIn company profile with posts.
-
-        NOTE: Apify removed (FCO-003). Now uses CamoufoxScraper for raw HTML.
-        LinkedIn company scraping is limited without dedicated API.
+        Uses CamoufoxScraper for raw HTML. LinkedIn company scraping is limited without dedicated API.
 
         Returns:
             Dict with company data, description, and last 5 posts
@@ -1662,8 +1734,7 @@ def get_scout_engine() -> ScoutEngine:
 # [x] Soft delete check inherited from BaseEngine
 # [x] Cache versioning via enrichment_cache (Rule 16)
 # [x] Validation threshold 0.70 (Rule 4)
-# [x] Waterfall: Cache → Siege Waterfall → Clay (Apollo/Apify removed FCO-002/003)
-# [x] Clay limited to 15% of batch
+# [x] Waterfall: Cache → Siege Waterfall (SSOT)
 # [x] Minimum fields validation
 # [x] Lead update from enrichment
 # [x] Batch enrichment support
@@ -1671,7 +1742,7 @@ def get_scout_engine() -> ScoutEngine:
 # [x] All functions have type hints
 # [x] All functions have docstrings
 # [x] perform_deep_research method (Phase 21)
-# [x] DeepResearchSkill integration (Apify client removed)
+# [x] DeepResearchSkill integration (CamoufoxScraper)
 # [x] LeadSocialPost audit trail
 # [x] filter_suppressed_leads method (Phase 24F)
 # [x] _get_suppressed_emails batch helper (Phase 24F)
@@ -1680,8 +1751,5 @@ def get_scout_engine() -> ScoutEngine:
 # [x] _scrape_person_linkedin helper (Phase 24A+ - uses CamoufoxScraper)
 # [x] _scrape_company_linkedin helper (Phase 24A+ - uses CamoufoxScraper)
 #
-# FCO-002/FCO-003 DEPRECATION APPLIED (2026-02-05):
-# [x] Apollo integration removed
-# [x] Apify integration removed
-# [x] Siege Waterfall is now SSOT for enrichment
+# [x] Siege Waterfall is SSOT for enrichment
 # [x] CamoufoxScraper used for LinkedIn scraping

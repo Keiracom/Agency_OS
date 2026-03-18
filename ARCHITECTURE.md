@@ -1,6 +1,6 @@
 # ARCHITECTURE.md
 # Agency OS — Locked System Architecture
-# Ratified: March 17 2026 | Authority: CEO (Claude)
+# Ratified: March 17 2026 | Authority: CEO (Claude) | Amended: March 18 2026 | Directive #217
 # DO NOT MODIFY without an explicit CEO directive that
 # names this file and specifies the exact change.
 #
@@ -324,6 +324,28 @@ Gate thresholds:
   T-DM2/2b/3/4 Social: Propensity >= 70
   T5 Mobile: Propensity >= 85
 
+OPPORTUNITY SCORE (100 points max)
+Identifies businesses with real scale but low digital presence — untapped potential.
+Built by: src/engines/opportunity_scorer.py
+Priority threshold: 60 points. Ratified: March 18 2026 | Directive #217.
+
+Scoring signals:
+  gmb_review_count >= 20:     +20
+  gmb_review_count >= 40:     +10 bonus
+  abr_age_years >= 5:         +20
+  multiple_gmb_locations:     +15
+  hiring_signals_detected:    +20
+  structural_gap_industry:    +15
+  no_ad_spend_detected:       +10
+  low_organic_traffic (<500): +10
+
+Lead classification:
+  High Confidence (>=50) + High Opportunity (>=60) = Priority lead
+  High Confidence (>=50) + Low Opportunity (<60)  = Standard lead
+  Low Confidence (<50) regardless of opportunity  = Not enriched
+
+Dashboard shows plain English reason only. Weights never exposed to agency customer.
+
 ---
 
 ## SECTION 7 — OUTREACH STACK
@@ -367,6 +389,17 @@ Confidence calculation:
   1 source used: 0.80
   2 sources used: 0.85
   Formula: 0.75 + (sources_used × 0.05), floor 0.70
+
+Pre-qualification gate (Directive #217):
+  Confidence Score >= 50: proceed to Leadmagic enrichment
+  Confidence Score < 50: store signals, skip Leadmagic, no contact data purchased
+  Employee count feeds Confidence Score as one signal — never a hard gate
+
+Quota loop (Directive #217):
+  Flow B checks enriched count after each batch vs campaign monthly_quota
+  If enriched < monthly_quota: trigger Flow A with next unswept location
+  Loop continues until quota filled or market exhausted
+  Market exhausted: log + notify agency owner, do NOT pad with disqualified leads
 
 ---
 

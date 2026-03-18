@@ -26,11 +26,10 @@ RULES APPLIED:
 
 COST PROFILE:
   - Tier 2 of Siege Waterfall: ~$0.006/lead (proxy cost only)
-  - Replaces Apify google-maps-scraper (~$0.02/lead)
-  - Savings: ~70% cost reduction
+  - ~70% cost reduction vs previous solution
 
 GOVERNANCE EVENT: FIXED_COST_OPTIMIZATION_PHASE_1
-DESCRIPTION: DIY GMB scraper replaces Apify dependency for Google Maps data
+DESCRIPTION: DIY GMB scraper for Google Maps data
 """
 
 # =============================================================================
@@ -40,7 +39,7 @@ DESCRIPTION: DIY GMB scraper replaces Apify dependency for Google Maps data
 # located at /home/elliotbot/clawd/tools/ (OUTSIDE this repo).
 #
 # CRITICAL: proxy_manager.py must use AU-geolocated proxies.
-# Webshare URL must have country_code = "AU" (not "-" for global).
+# Proxy URL must have country_code = "AU" (not "-" for global).
 # Global proxies route through EU and hit Google GDPR consent wall.
 #
 # Reference: Commit 6c61b66 on Clawdbot local repo (fix/gmb-au-proxy)
@@ -169,7 +168,7 @@ class GMBResult:
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary matching Apify output format."""
+        """Convert to dictionary."""
         return {
             "found": self.found,
             "source": self.source,
@@ -500,7 +499,6 @@ class GMBScraper:
     Google Maps Business scraper using Autonomous Stealth Browser.
 
     Tier 2 of Siege Waterfall - $0.006/lead (proxy cost only).
-    Replaces Apify google-maps-scraper (~$0.02/lead).
 
     Features:
     - Stealth browser with proxy rotation
@@ -591,7 +589,7 @@ class GMBScraper:
             location: Location (city, state, country)
 
         Returns:
-            dict with business data matching Apify output format:
+            dict with business data:
             - found: bool
             - source: "gmb_scraper"
             - name, phone, address, website
@@ -657,7 +655,7 @@ class GMBScraper:
             place_url: Full Google Maps URL for the place
 
         Returns:
-            dict with business data matching Apify output format
+            dict with business data
         """
         logger.info(f"Scraping details from: {place_url[:60]}...")
 
@@ -857,7 +855,7 @@ def get_gmb_scraper() -> GMBScraper:
 
 
 # ============================================
-# CONVENIENCE FUNCTIONS (Match Apify API)
+# CONVENIENCE FUNCTIONS
 # ============================================
 
 
@@ -868,14 +866,12 @@ async def scrape_google_business(
     """
     Scrape Google Business data.
 
-    Drop-in replacement for Apify (deprecated FCO-003)().
-
     Args:
         business_name: Name of the business to search
         location: Location to search in (default: Australia)
 
     Returns:
-        Business data dict matching Apify output format
+        Business data dict
     """
     scraper = get_gmb_scraper()
     return await scraper.search_business(business_name, location)
@@ -954,7 +950,7 @@ if __name__ == "__main__":
 # [x] Retry logic with tenacity
 # [x] Rate limiting
 # [x] Cost tracking (~$0.006/request)
-# [x] Output format matches Apify
+# [x] Output format defined
 # [x] Error handling with custom exceptions
 # [x] All functions have type hints
 # [x] All functions have docstrings

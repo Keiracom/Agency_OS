@@ -11,7 +11,6 @@ PHASE: FIXED_COST_OPTIMIZATION_PHASE_1
 TASK: ~60% scraping cost reduction via intelligent proxy tiering
 DEPENDENCIES:
   - src/engines/base.py
-  - src/integrations/webshare.py (existing)
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 11: Session passed as argument

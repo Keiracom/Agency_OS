@@ -343,7 +343,6 @@ SCHEDULE_REGISTRY: dict[str, Any] = {
         "tags": ["enrichment", "daily", "safety-net"],
         "parameters": {
             "batch_size": 100,
-            "max_clay_percentage": 0.15,
         },
     },
     "outreach": {

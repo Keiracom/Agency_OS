@@ -1,6 +1,6 @@
 """
 Contract: src/agents/skills/portfolio_fallback.py
-Purpose: Extract client names from Apollo descriptions and Google search results
+Purpose: Extract client names from company descriptions and Google search results
 Layer: 4 - agents/skills
 Imports: agents.skills.base_skill, integrations
 Consumers: ICP discovery agent
@@ -8,7 +8,7 @@ Consumers: ICP discovery agent
 FILE: src/agents/skills/portfolio_fallback.py
 TASK: ICP-FALLBACK-002
 PHASE: 21 (Portfolio Fallback Discovery)
-PURPOSE: Extract client names from Apollo descriptions and Google search results
+PURPOSE: Extract client names from company descriptions and Google search results
 
 DEPENDENCIES:
 - src/agents/skills/base_skill.py
@@ -21,7 +21,7 @@ EXPORTS:
 WHEN USED:
 - Triggered when website scrape returns empty portfolio_companies
 - Part of Portfolio Fallback Discovery pipeline (Tier F1 + F3)
-- Uses Claude to extract client mentions from Apollo data and Google search snippets
+- Uses Claude to extract client mentions from company data and Google search snippets
 """
 
 from __future__ import annotations
@@ -54,10 +54,10 @@ class PortfolioFallbackSkill(
     BaseSkill["PortfolioFallbackSkill.Input", "PortfolioFallbackSkill.Output"]
 ):
     """
-    Extract client names from Apollo descriptions and Google search results.
+    Extract client names from company descriptions and Google search results.
 
     This skill:
-    1. Parses Apollo company description for client mentions
+    1. Parses company description for client mentions
     2. Parses Google search snippets for client mentions
     3. Uses Claude to intelligently extract company names
     4. Deduplicates against existing portfolio
@@ -66,16 +66,16 @@ class PortfolioFallbackSkill(
     """
 
     name = "portfolio_fallback"
-    description = "Extract client names from Apollo/Google when website has no portfolio"
+    description = "Extract client names from company descriptions/Google when website has no portfolio"
 
     class Input(BaseModel):
         """Input for portfolio fallback extraction."""
 
         company_name: str = Field(description="Agency name (to exclude from results)")
         legacy_description: str | None = Field(
-            default=None, description="Apollo company description (may mention clients)"
+            default=None, description="Company description (may mention clients)"
         )
-        legacy_keywords: list[str] = Field(default_factory=list, description="Apollo keywords/tags")
+        legacy_keywords: list[str] = Field(default_factory=list, description="Company keywords/tags")
         linkedin_description: str | None = Field(
             default=None, description="LinkedIn company description (may mention clients)"
         )
@@ -112,7 +112,7 @@ TASK: Find company names that are CLIENTS of the agency, NOT:
 
 EXTRACTION GUIDELINES:
 
-1. FROM APOLLO/LINKEDIN DESCRIPTIONS:
+1. FROM COMPANY/LINKEDIN DESCRIPTIONS:
    - Look for: "worked with X", "clients include Y", "helped Z achieve", "proud to partner with"
    - Extract specific company names mentioned
    - Example: "We've helped brands like Nike, Coca-Cola..." → Extract: Nike, Coca-Cola
@@ -158,12 +158,12 @@ Return empty array [] if no specific clients found."""
 
         if input_data.legacy_description:
             sections.append(f"""
-=== APOLLO DESCRIPTION ===
+=== COMPANY DESCRIPTION ===
 {input_data.legacy_description}
 """)
 
         if input_data.legacy_keywords:
-            sections.append(f"APOLLO KEYWORDS: {', '.join(input_data.legacy_keywords)}")
+            sections.append(f"KEYWORDS: {', '.join(input_data.legacy_keywords)}")
 
         if input_data.linkedin_description:
             sections.append(f"""
@@ -245,7 +245,7 @@ Return empty array [] if no specific clients found."""
         Execute portfolio fallback extraction.
 
         Args:
-            input_data: Validated input with Apollo/Google data
+            input_data: Validated input with company/Google data
             anthropic: Anthropic client for AI calls
 
         Returns:

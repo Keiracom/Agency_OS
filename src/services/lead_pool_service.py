@@ -11,7 +11,7 @@ PHASE: 24A (Lead Pool Architecture)
 TASK: POOL-005
 DEPENDENCIES:
   - src/models/database.py
-  - siege_waterfall (Apollo deprecated)
+  - siege_waterfall
 LAYER: 3 (services)
 CONSUMERS: orchestration, API routes
 
@@ -65,7 +65,7 @@ class LeadPoolService:
         Non-ICP leads are rejected with ValidationError.
 
         Args:
-            lead_data: Lead data from enrichment (Apollo format)
+            lead_data: Lead data from enrichment
             skip_icp_check: Only set True for migrations/admin (default False)
 
         Returns:
@@ -308,7 +308,7 @@ class LeadPoolService:
         row = result.fetchone()
         return self._row_to_dict(row) if row else None
 
-    # get_by_apollo_id removed - Apollo deprecated, column dropped in migration 064
+    # legacy id column dropped in migration 064
 
     async def search_available(
         self,
@@ -518,7 +518,7 @@ class LeadPoolService:
             email_status = "unknown"
 
         return {
-            # apollo_id removed - column dropped in migration 064
+            # legacy id column dropped in migration 064
             "email": lead_data.get("email"),
             "linkedin_url": lead_data.get("linkedin_url"),
             "first_name": lead_data.get("first_name"),

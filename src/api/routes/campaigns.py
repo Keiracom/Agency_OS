@@ -1664,7 +1664,7 @@ async def enrich_campaign_leads(
     Trigger lead enrichment for a campaign.
 
     This runs asynchronously and:
-    1. Populates the lead pool from Apollo based on client ICP
+    1. Populates the lead pool based on client ICP
     2. Assigns leads from the pool to the campaign
     3. Scores assigned leads with ALS
     4. Triggers deep research for hot leads (ALS >= 85)
@@ -1715,7 +1715,7 @@ async def _run_campaign_enrichment(client_id: UUID, campaign_id: UUID, count: in
     Execute full campaign enrichment pipeline.
 
     Runs in background:
-    1. Populate pool from Apollo
+    1. Populate pool from ICP criteria
     2. Assign leads to campaign
     3. Score assigned leads
     """
@@ -1725,7 +1725,7 @@ async def _run_campaign_enrichment(client_id: UUID, campaign_id: UUID, count: in
     logger = logging.getLogger(__name__)
 
     try:
-        # 1. Populate pool from Apollo
+        # 1. Populate pool from ICP criteria
         logger.info(f"[BACKGROUND] Starting pool population for client {client_id}, count={count}")
         from src.orchestration.flows.pool_population_flow import pool_population_flow
 

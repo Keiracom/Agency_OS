@@ -12,7 +12,7 @@ TASK: SKILL-021
 DEPENDENCIES:
   - src/agents/skills/base_skill.py
   - src/integrations/anthropic.py
-NOTE: Apify deprecated (FCO-003). LinkedIn scraping stubbed pending Camoufox.
+NOTE: LinkedIn scraping stubbed pending Camoufox implementation.
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 12: No imports from engines
@@ -33,7 +33,7 @@ class DeepResearchSkill(BaseSkill):
     """
     Deep Research skill for Hot Leads (ALS > 85).
 
-    Uses Apify to scrape LinkedIn posts and Claude to generate
+    Uses Camoufox (pending) to scrape LinkedIn posts and Claude to generate
     personalized icebreaker hooks for outreach.
     """
 
@@ -140,8 +140,7 @@ Return JSON with this structure:
         posts: list[dict[str, Any]] = []
         profile_data: dict[str, Any] = {}
 
-        # Step 1: LinkedIn profile scraping
-        # FCO-003: Apify deprecated. LinkedIn scraping stubbed pending Camoufox integration.
+        # Step 1: LinkedIn profile scraping (stubbed pending Camoufox integration)
         logger.info(
             f"[STUB] LinkedIn scraping disabled (FCO-003). "
             f"Would have scraped: {input_data.linkedin_url}"
@@ -514,7 +513,7 @@ SkillRegistry.register(PersonalizationAnalysisSkill())
 # [x] Contract comment at top
 # [x] Follows BaseSkill pattern
 # [x] Input/Output Pydantic models
-# [x] LinkedIn scraping stubbed (FCO-003: Apify deprecated)
+# [x] LinkedIn scraping stubbed (pending Camoufox implementation)
 # [x] Uses AnthropicIntegration for icebreaker generation
 # [x] Handles missing posts gracefully
 # [x] Returns SkillResult with confidence and cost

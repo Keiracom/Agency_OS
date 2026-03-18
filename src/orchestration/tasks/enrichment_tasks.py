@@ -169,23 +169,18 @@ async def enrich_lead_task(
 )
 async def enrich_batch_task(
     lead_ids: list[UUID],
-    max_clay_percentage: float = 0.15,
 ) -> dict[str, Any]:
     """
-    Enrich a batch of leads with Clay fallback limit.
-
-    Enforces Rule 4: Max 15% of batch can use Clay fallback.
+    Enrich a batch of leads.
 
     Args:
         lead_ids: List of lead UUIDs to enrich
-        max_clay_percentage: Max percentage that can use Clay (default 0.15)
 
     Returns:
         Batch result with:
             - total: int
             - successful: int
             - failed: int
-            - clay_count: int
             - results: list[dict]
 
     Raises:
@@ -193,7 +188,6 @@ async def enrich_batch_task(
     """
     async with get_db_session():
         results = []
-        clay_count = 0
         successful = 0
         failed = 0
 
@@ -201,9 +195,6 @@ async def enrich_batch_task(
             try:
                 result = await enrich_lead_task(lead_id)
                 results.append(result)
-
-                if result.get("enrichment_source") == "clay":
-                    clay_count += 1
 
                 successful += 1
 
@@ -218,20 +209,11 @@ async def enrich_batch_task(
                 )
                 failed += 1
 
-        # Calculate Clay usage percentage
-        clay_percentage = clay_count / len(lead_ids) if lead_ids else 0
-
-        if clay_percentage > max_clay_percentage:
-            logger.warning(
-                f"Clay usage ({clay_percentage:.1%}) exceeded limit ({max_clay_percentage:.1%})"
-            )
 
         return {
             "total": len(lead_ids),
             "successful": successful,
             "failed": failed,
-            "clay_count": clay_count,
-            "clay_percentage": clay_percentage,
             "results": results,
         }
 
@@ -502,6 +484,5 @@ async def _pause_campaign_for_reconnect(
 # [x] All functions have type hints
 # [x] All functions have docstrings
 # [x] Rule 16: Cache versioning (v1 prefix)
-# [x] Rule 4: Clay fallback max 15%
 # [x] Multi-tenant Unipile account resolution
 # [x] Campaign pause on account issues

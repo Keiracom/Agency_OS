@@ -792,7 +792,7 @@ async def confirm_icp(
     # This comprehensive flow handles:
     # 1. AI campaign suggestions
     # 2. Draft campaign creation
-    # 3. Lead sourcing from Apollo
+    # 3. Lead sourcing from ICP criteria
     # 4. Lead-to-campaign assignment
     import logging
 

@@ -344,7 +344,7 @@ class LeadPool(Base, UUIDMixin, TimestampMixin):
 # VERIFICATION CHECKLIST
 # ============================================
 # [x] Contract comment at top
-# [x] All 40+ Apollo fields from original lead_pool schema
+# [x] All lead_pool schema fields from original schema
 # [x] client_id for direct ownership (Phase 37)
 # [x] campaign_id for direct assignment (Phase 37)
 # [x] propensity_score, propensity_tier, propensity_components (Phase 37)

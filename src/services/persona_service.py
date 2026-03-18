@@ -118,7 +118,6 @@ LAST_NAMES = [
     "Cooper",
     "Richardson",
     "Walsh",
-    "Hunter",
     "Palmer",
     "Spencer",
     "Mason",

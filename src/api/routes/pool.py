@@ -108,9 +108,9 @@ async def populate_pool(
     user: CurrentUser = Depends(get_current_user_from_token),
 ) -> PoolPopulateResponse:
     """
-    Trigger pool population from Apollo for the current user's client.
+    Trigger pool population for the current user's client.
 
-    This searches Apollo for leads matching the client's ICP and adds
+    Searches for leads matching the client's ICP and adds
     them to the lead pool. Runs asynchronously in background.
 
     - **limit**: Maximum number of leads to add (1-100, default 25)
@@ -172,7 +172,7 @@ async def populate_pool_for_client(
     """
     Trigger pool population for a specific client (admin/agency use).
 
-    This searches Apollo for leads matching the client's ICP and adds
+    Searches for leads matching the client's ICP and adds
     them to the lead pool. Runs asynchronously in background.
 
     - **client_id**: Target client UUID

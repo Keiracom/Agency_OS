@@ -121,8 +121,6 @@ class Settings(BaseSettings):
         default=200.0, description="Daily SDK budget for Dominance tier (AUD)"
     )
 
-    clay_api_key: str = Field(default="", description="Clay API key")
-
     # === ABN Lookup (Tier 1 Siege Waterfall - FREE) ===
     # Australian Business Register lookup. Register for free at:
     # https://abr.business.gov.au/Tools/WebServices
@@ -133,7 +131,6 @@ class Settings(BaseSettings):
     )
 
     # === Leadmagic (Tier 3 Email + Tier 5 Mobile) ===
-    # Replaces Hunter (T3) and Kaspr (T5) - CEO Directive
     # Email finder: $0.015 AUD/lookup, Mobile finder: $0.077 AUD/lookup
     # WARNING: Plan unpurchased - do not call until credits available
     leadmagic_api_key: str = Field(
@@ -279,7 +276,7 @@ class Settings(BaseSettings):
     v0_api_key: str = Field(default="", description="v0.dev API key for UI generation")
 
     # === Residential Proxy (Tier 3 Scraper - Camoufox) ===
-    # Required for Cloudflare bypass. Recommended providers: WebShare, IPRoyal
+    # Required for Cloudflare bypass.
     residential_proxy_host: str = Field(default="", description="Residential proxy hostname")
     residential_proxy_port: int = Field(default=0, description="Residential proxy port")
     residential_proxy_username: str = Field(default="", description="Proxy auth username")
@@ -298,10 +295,6 @@ class Settings(BaseSettings):
     enrichment_confidence_threshold: float = Field(
         default=0.70, description="Minimum confidence score for enriched data"
     )
-    enrichment_clay_max_percentage: float = Field(
-        default=0.15, description="Maximum percentage of batch to send to Clay (fallback)"
-    )
-
     # === HMAC Signing ===
     webhook_hmac_secret: str = Field(default="", description="HMAC secret for outbound webhooks")
 

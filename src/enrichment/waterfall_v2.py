@@ -28,8 +28,7 @@ WATERFALL V2 PIPELINE:
     Tier 3: Leadmagic Email Finder - $0.015 (ALS >= 35)
     Tier 5: Leadmagic Mobile Finder - $0.077 (ALS >= 85)
 
-  NOTE: Leadmagic replaces Hunter (T3) and Kaspr (T5) per CEO decision.
-        If credits exhausted, raises LeadmagicCreditExhaustedError (hard fail).
+  NOTE: If credits exhausted, raises LeadmagicCreditExhaustedError (hard fail).
         Use LEADMAGIC_MOCK=true for testing without credits.
 
 Created: 2026-02-16 by subagent (CEO Directive #023)
@@ -152,8 +151,8 @@ class WaterfallV2:
         "serp_linkedin": 0.0015,
         "linkedin_company": 0.0015,
         "linkedin_people": 0.0015,
-        "leadmagic_email": 0.015,  # T3: Leadmagic email finder (replaces Hunter $0.012)
-        "leadmagic_mobile": 0.077,  # T5: Leadmagic mobile finder (replaces Kaspr $0.45)
+        "leadmagic_email": 0.015,  # T3: Leadmagic email finder
+        "leadmagic_mobile": 0.077,  # T5: Leadmagic mobile finder
     }
 
     def __init__(self, bright_data_client=None, abn_client=None, leadmagic_client=None, supabase_client=None):
@@ -844,7 +843,6 @@ class WaterfallV2:
         """
         Tier 3: Leadmagic Email Finder - $0.015 - Only if ALS >= 35
 
-        Replaces Hunter.io per CEO directive.
         Raises LeadmagicCreditExhaustedError if credits exhausted (hard fail).
         """
         if "tier_3" in lead.enrichment_tiers_completed:
@@ -963,7 +961,6 @@ class WaterfallV2:
         """
         Tier 5: Leadmagic Mobile Finder - $0.077 - Only if ALS >= 85
 
-        Replaces Kaspr per CEO directive.
         Raises LeadmagicCreditExhaustedError if credits exhausted (hard fail).
         """
         if "tier_5" in lead.enrichment_tiers_completed:

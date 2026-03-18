@@ -17,7 +17,7 @@ RULES APPLIED:
 
 DEPRECATION NOTES:
 - FCO-002: SDK agents deprecated (enhance_icp_with_sdk removed)
-- FCO-003: Apify deprecated (using icp_scraper engine)
+- ICP scraper engine handles all scraping
 """
 
 import json
@@ -1090,7 +1090,7 @@ def deploy_onboarding_flows():
 VERIFICATION CHECKLIST:
 - [x] Contract comment at top with FILE, TASK, PHASE, PURPOSE
 - [x] FCO-002: SDK agent enhancement removed
-- [x] FCO-003: Apify references removed (using icp_scraper engine)
+- [x] ICP scraper engine handles all scraping
 - [x] Follows import hierarchy (Rule 12)
 - [x] Session managed properly with get_db_session()
 - [x] Soft delete checks (deleted_at IS NULL)

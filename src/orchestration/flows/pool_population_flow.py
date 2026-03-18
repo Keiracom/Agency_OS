@@ -636,6 +636,67 @@ async def populate_pool_from_icp_task(
         except Exception as _bu_err:
             logger.warning(f"[pool_population] BU match failed (non-blocking): {_bu_err}")
 
+        # Directive #215: GMB write-back to business_universe
+        try:
+            bu_gmb_rows = [
+                {
+                    "abn": row["abn"],
+                    "gmb_place_id": row.get("gmb_place_id"),
+                    "gmb_cid": row.get("gmb_cid"),
+                    "gmb_category": row.get("gmb_category"),
+                    "gmb_rating": row.get("gmb_rating"),
+                    "gmb_review_count": row.get("gmb_review_count"),
+                    "gmb_phone": row.get("phone"),
+                    "gmb_website": row.get("company_website"),
+                    "gmb_domain": row.get("company_domain"),
+                    "gmb_address": row.get("address"),
+                    "gmb_city": row.get("city"),
+                    "gmb_latitude": row.get("latitude"),
+                    "gmb_longitude": row.get("longitude"),
+                }
+                for row in rows_to_insert
+                if row.get("abn") is not None
+            ]
+            if bu_gmb_rows:
+                async with get_db_session() as _bu_db:
+                    await _bu_db.execute(
+                        text("""
+                            INSERT INTO business_universe (
+                                abn, gmb_place_id, gmb_cid, gmb_category,
+                                gmb_rating, gmb_review_count, gmb_phone, gmb_website, gmb_domain,
+                                gmb_address, gmb_city, gmb_latitude, gmb_longitude,
+                                gmb_enriched_at, updated_at
+                            )
+                            VALUES (
+                                :abn, :gmb_place_id, :gmb_cid, :gmb_category,
+                                :gmb_rating, :gmb_review_count, :gmb_phone, :gmb_website, :gmb_domain,
+                                :gmb_address, :gmb_city, :gmb_latitude, :gmb_longitude,
+                                NOW(), NOW()
+                            )
+                            ON CONFLICT (abn) DO UPDATE SET
+                                gmb_place_id = EXCLUDED.gmb_place_id,
+                                gmb_cid = EXCLUDED.gmb_cid,
+                                gmb_category = EXCLUDED.gmb_category,
+                                gmb_rating = EXCLUDED.gmb_rating,
+                                gmb_review_count = EXCLUDED.gmb_review_count,
+                                gmb_phone = EXCLUDED.gmb_phone,
+                                gmb_website = EXCLUDED.gmb_website,
+                                gmb_domain = EXCLUDED.gmb_domain,
+                                gmb_address = EXCLUDED.gmb_address,
+                                gmb_city = EXCLUDED.gmb_city,
+                                gmb_latitude = EXCLUDED.gmb_latitude,
+                                gmb_longitude = EXCLUDED.gmb_longitude,
+                                gmb_enriched_at = NOW(),
+                                updated_at = NOW()
+                        """),
+                        bu_gmb_rows,
+                    )
+                    await _bu_db.commit()
+                n = len(bu_gmb_rows)
+                logger.info(f"[BU] GMB write-back: {n} records upserted")
+        except Exception as _gmb_wb_err:
+            logger.warning(f"[BU] GMB write-back failed (non-blocking): {_gmb_wb_err}")
+
     logger.info(f"Tier 3 GMB discovery complete: {added} added, {skipped} skipped")
 
     # NOTE: Directive #194 architecture — enrichment removed from pool_population.

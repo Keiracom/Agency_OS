@@ -15,8 +15,8 @@ RULES APPLIED:
 
 ENRICHMENT WATERFALL:
   Stage 1: Apollo data (already in pool from population)
-  Stage 2: Apify LinkedIn person scrape (profile + posts)
-  Stage 3: Apify LinkedIn company scrape (profile + posts)
+  Stage 2: LinkedIn person scrape (profile + posts, pending Camoufox)
+  Stage 3: LinkedIn company scrape (profile + posts, pending Camoufox)
   Stage 4: Claude analysis (pain points, personalization, hooks)
   Stage 5: ALS scoring with enhanced signals
 """

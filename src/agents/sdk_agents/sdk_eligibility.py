@@ -10,13 +10,12 @@ SDK Eligibility Rules (Phase 4 Tiered Enrichment):
 - SDK Voice KB: ALL Hot leads (ALS >= 85)
 
 Tiered SDK Enrichment Triggers:
-1. Data completeness < 50% (sparse data from Apollo/Apify)
+1. Data completeness < 50% (sparse data from enrichment)
 2. Enterprise company (500+ employees)
 3. Executive title (CEO, Founder, VP, Director)
 4. Recently funded (< 90 days)
 
 Cost Comparison:
-- Apify refresh: ~$0.02/lead
 - SDK refresh: ~$0.40/lead
 Only use SDK when Google search results likely exist (press, podcasts, conferences).
 """
@@ -151,7 +150,7 @@ def should_use_sdk_enrichment(lead_data: dict[str, Any]) -> tuple[bool, list[str
     Check if lead qualifies for SDK ENRICHMENT using tiered approach.
 
     Phase 4 Tiered Triggers (any ONE qualifies):
-    1. Data completeness < 50% (sparse data from Apollo/Apify)
+    1. Data completeness < 50% (sparse data from enrichment)
     2. Enterprise company (500+ employees)
     3. Executive title (CEO, Founder, VP, Director)
     4. Recently funded (< 90 days)

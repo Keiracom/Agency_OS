@@ -7,7 +7,7 @@ Consumers: sdk_brain.py, all sdk_agents
 Tools available:
 - web_search: Search the web using Serper API
 - web_fetch: Fetch and parse webpage content
-- linkedin_posts: Fetch LinkedIn posts via Apify
+- linkedin_posts: Fetch LinkedIn posts (stubbed, pending Camoufox)
 """
 
 from __future__ import annotations
@@ -91,7 +91,6 @@ ALL_TOOLS = [WEB_SEARCH_TOOL, WEB_FETCH_TOOL, LINKEDIN_POSTS_TOOL]
 # Tools for specific agent types
 ICP_TOOLS = [WEB_SEARCH_TOOL, WEB_FETCH_TOOL]  # ICP extraction uses search + fetch
 # NOTE: ENRICHMENT_TOOLS deprecated with enrichment_agent.py (FCO-002)
-# LINKEDIN_POSTS_TOOL removed - Apify deprecated (FCO-003)
 ENRICHMENT_TOOLS = [WEB_SEARCH_TOOL, WEB_FETCH_TOOL]  # Kept for backwards compat
 EMAIL_TOOLS = []  # Email agent doesn't need tools - uses enrichment data
 VOICE_KB_TOOLS = []  # Voice KB agent doesn't need tools - uses enrichment data
@@ -254,27 +253,24 @@ def _html_to_text(html: str) -> str:
 async def linkedin_posts(
     linkedin_url: str,
     max_posts: int = 5,
-    apify_token: str | None = None,
 ) -> str:
     """
-    Fetch LinkedIn posts via Apify.
+    Fetch LinkedIn posts.
 
-    NOTE: FCO-003 deprecated Apify. This function is stubbed.
-    LinkedIn post scraping disabled until Camoufox integration.
+    Stubbed pending Camoufox integration.
 
     Args:
         linkedin_url: LinkedIn profile URL
         max_posts: Maximum posts to return (unused)
-        apify_token: Apify API token (unused)
 
     Returns:
-        Error message indicating deprecation
+        Message indicating feature is pending implementation
     """
     logger.info(
         f"[STUB] linkedin_posts called for {linkedin_url} - "
-        f"Apify deprecated (FCO-003). Returning empty."
+        f"LinkedIn scraping pending Camoufox. Returning empty."
     )
-    return f"LinkedIn posts unavailable - Apify deprecated (FCO-003). URL: {linkedin_url}"
+    return f"LinkedIn posts unavailable - scraping pending Camoufox implementation. URL: {linkedin_url}"
 
 
 def _extract_linkedin_id(url: str) -> str | None:

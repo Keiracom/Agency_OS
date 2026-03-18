@@ -165,7 +165,7 @@ class ICPDiscoveryAgent(BaseAgent):
     2. Parse content (WebsiteParserSkill)
     3. Extract agency info (ServiceExtractor, ValuePropExtractor)
     4. Find portfolio (PortfolioExtractor)
-    5. Enrich portfolio companies (via Apollo)
+    5. Enrich portfolio companies
     6. Derive ICP pattern (ICPDeriver)
     7. Suggest ALS weights (ALSWeightSuggester)
     """
@@ -236,8 +236,7 @@ class ICPDiscoveryAgent(BaseAgent):
         """
         Scrape social media profiles from collected links.
 
-        NOTE: Social scraping stubbed pending Camoufox integration (FCO-003).
-        Previously used Apify which has been deprecated for cost savings.
+        NOTE: Social scraping stubbed pending Camoufox integration.
 
         Args:
             social_links: Dict of platform -> URL
@@ -250,7 +249,7 @@ class ICPDiscoveryAgent(BaseAgent):
 
         logger = logging.getLogger(__name__)
 
-        # FCO-003: Apify deprecated. Social scraping stubbed pending Camoufox integration.
+        # Social scraping stubbed pending Camoufox integration.
         # Log what we would have scraped for debugging purposes.
         if social_links:
             logger.info(
@@ -288,7 +287,7 @@ class ICPDiscoveryAgent(BaseAgent):
 
         Triggered when portfolio_companies is empty after website + social extraction.
 
-        Tier F1: Apollo agency lookup → extract clients from description
+        Tier F1: Description extraction → extract clients from company description
         Tier F2: Social profile discovery → find & scrape LinkedIn/Instagram/Facebook
         Tier F3: Google client search → search "[agency] clients case study"
 
@@ -319,7 +318,7 @@ class ICPDiscoveryAgent(BaseAgent):
         linkedin_specialties: list[str] = []
         google_results: list[dict] = []
 
-        # Tier F1: Apollo removed (Directive #144 Phase 0)
+        # Tier F1: Direct description lookup (Directive #144)
 
         # Tier F2: Social profile discovery (only if we don't have social links)
         if not collected_social_links or not social_profiles or not social_profiles.has_profiles:
@@ -362,8 +361,7 @@ class ICPDiscoveryAgent(BaseAgent):
             linkedin_description = updated_social_profiles.linkedin.description
             linkedin_specialties = updated_social_profiles.linkedin.specialties or []
 
-        # Tier F3: Google client search
-        # FCO-003: Apify deprecated. Google search stubbed pending Camoufox integration.
+        # Tier F3: Google client search (stubbed pending Camoufox integration)
         logger.info(
             f"[STUB] Tier F3: Google search disabled (FCO-003). "
             f"Would have searched for '{company_name}' client mentions."

@@ -13,7 +13,7 @@ PURPOSE: Extract additional portfolio companies from agency social media profile
 DEPENDENCIES:
 - src/agents/skills/base_skill.py
 - src/integrations/anthropic.py
-NOTE: Apify deprecated (FCO-003). Social scraping stubbed pending Camoufox.
+NOTE: Social scraping stubbed pending Camoufox implementation.
 
 EXPORTS:
 - SocialClientExtractorSkill
@@ -70,7 +70,7 @@ class SocialClientExtractorSkill(
     Extract portfolio company names from agency social media profiles.
 
     This skill:
-    1. Fetches social profile data (descriptions, bios) via Apify
+    1. Fetches social profile data (descriptions, bios) via Camoufox (pending)
     2. Uses Claude to identify company/client names mentioned
     3. Returns additional portfolio companies for Apollo enrichment
 
@@ -164,7 +164,7 @@ Be conservative - only extract names that clearly appear to be clients, not just
         """
         Execute social client extraction.
 
-        1. Use pre-scraped content if available, otherwise fetch from Apify
+        1. Use pre-scraped content if available, otherwise fetch via Camoufox (pending)
         2. Use Claude to extract client names from text content
         3. Return new companies not already in portfolio
         """
@@ -202,8 +202,7 @@ Be conservative - only extract names that clearly appear to be clients, not just
                 social_content.facebook_about = input_data.facebook_about
                 all_text_parts.append(f"FACEBOOK ABOUT:\n{input_data.facebook_about}")
         else:
-            # FCO-003: Apify deprecated. Social scraping stubbed pending Camoufox integration.
-            # URLs were provided but we can't fetch them without Apify.
+            # Social scraping stubbed pending Camoufox integration.
             urls_provided = []
             if input_data.linkedin_url:
                 urls_provided.append("linkedin")
@@ -217,7 +216,7 @@ Be conservative - only extract names that clearly appear to be clients, not just
                     f"[STUB] Social scraping disabled (FCO-003). "
                     f"Would have fetched: {urls_provided} for {input_data.company_name}"
                 )
-                errors.append("social_scraping_disabled: FCO-003 Apify deprecated")
+                errors.append("social_scraping_disabled: pending Camoufox implementation")
 
         # If no text content found, return empty result
         if not all_text_parts:
@@ -339,7 +338,7 @@ VERIFICATION CHECKLIST:
 - [x] No hardcoded secrets
 - [x] Extends BaseSkill with proper generics
 - [x] Input/Output Pydantic models defined
-- [x] Social scraping stubbed (FCO-003: Apify deprecated)
+- [x] Social scraping stubbed (pending Camoufox implementation)
 - [x] Uses Claude for intelligent extraction from pre-scraped content
 - [x] Deduplicates against existing portfolio
 - [x] Error handling for each platform

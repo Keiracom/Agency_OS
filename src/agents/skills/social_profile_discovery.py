@@ -12,7 +12,7 @@ PURPOSE: Search Google to find agency social profiles when not found on website
 
 DEPENDENCIES:
 - src/agents/skills/base_skill.py
-NOTE: Apify deprecated (FCO-003). Google search stubbed pending Camoufox.
+NOTE: Google search stubbed pending Camoufox implementation.
 
 EXPORTS:
 - SocialProfileDiscoverySkill
@@ -63,7 +63,7 @@ class SocialProfileDiscoverySkill(
     4. Parses results to extract profile URLs
     5. Returns discovered URLs for subsequent scraping
 
-    Cost: ~$0.02 (1 Apify Google search batch with 3 queries)
+    Cost: ~$0.02 (1 Google search batch with 3 queries)
     """
 
     name = "discover_social_profiles"
@@ -88,7 +88,7 @@ class SocialProfileDiscoverySkill(
             default_factory=list, description="Search queries executed"
         )
 
-    # No Claude call needed - this skill uses Apify Google search + regex parsing
+    # No Claude call needed - this skill uses Google search + regex parsing
     system_prompt = ""
     default_max_tokens = 0
     default_temperature = 0.0
@@ -109,7 +109,7 @@ class SocialProfileDiscoverySkill(
         """
         Execute social profile discovery via Google search.
 
-        NOTE: FCO-003 deprecated Apify. Google search stubbed pending Camoufox integration.
+        NOTE: Google search stubbed pending Camoufox integration.
         This skill will return empty results until Camoufox-based search is implemented.
 
         Args:
@@ -121,7 +121,7 @@ class SocialProfileDiscoverySkill(
         """
         company_name = input_data.company_name
 
-        # FCO-003: Apify deprecated. Google search stubbed pending Camoufox integration.
+        # Google search stubbed pending Camoufox integration.
         logger.info(
             f"[STUB] Social profile discovery disabled (FCO-003). "
             f"Would have searched Google for: {company_name}"
@@ -141,7 +141,7 @@ class SocialProfileDiscoverySkill(
             confidence=0.0,
             tokens_used=0,
             cost_aud=0.0,
-            metadata={"stub": True, "reason": "FCO-003 Apify deprecated"},
+            metadata={"stub": True, "reason": "Google search pending Camoufox"},
         )
 
     def _fuzzy_match(self, company_name: str, url: str) -> bool:
@@ -175,6 +175,6 @@ VERIFICATION CHECKLIST:
 - [x] Extends BaseSkill
 - [x] Registered with SkillRegistry
 - [x] Input/Output Pydantic models
-- [x] Google search stubbed (FCO-003: Apify deprecated)
+- [x] Google search stubbed (pending Camoufox implementation)
 - [x] Logging at appropriate levels
 """

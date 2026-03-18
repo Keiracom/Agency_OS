@@ -6,7 +6,7 @@ Imports: models, integrations
 Consumers: orchestration only
 
 FILE: src/engines/waterfall_verification_worker.py
-PURPOSE: Waterfall Verification Worker - ABN + GMB + Hunter + ZeroBounce
+PURPOSE: Waterfall Verification Worker - ABN + GMB + Leadmagic + ZeroBounce
 PHASE: WF-001 (Waterfall Enrichment Architecture)
 TASK: Nationwide Rollout
 DEPENDENCIES:
@@ -21,7 +21,7 @@ RULES APPLIED:
   - Cost tracking in $AUD only
 
 GOVERNANCE EVENT: Waterfall Reliability Shift
-DESCRIPTION: Moved from Apollo SPOF (deprecated) to ABN + GMB + Hunter.io + ZeroBounce waterfall
+DESCRIPTION: ABN + GMB + Leadmagic + ZeroBounce waterfall
 """
 
 import asyncio
@@ -77,7 +77,6 @@ class MatchConfidence(StrEnum):
 
 
 # Cost per operation in AUD (2026 pricing)
-# NOTE: HUNTER_IO now uses Leadmagic (Hunter deprecated - CEO Directive)
 COSTS_AUD = {
     VerificationTier.ABN_SEED: Decimal("0.00"),  # Free (data.gov.au)
     VerificationTier.ASIC_VERIFY: Decimal("0.00"),  # Free (ABR SearchByASIC) - CEO Directive #039
@@ -329,7 +328,7 @@ class WaterfallVerificationWorker(BaseEngine):
     Implements the "ABN + GMB Double-Wedge" strategy:
     - Tier 1: ABN Seed (Free public data)
     - Tier 2: GMB Scraper (Phone/Website enrichment)
-    - Tier 3: Hunter.io (Email finding/verification)
+    - Tier 3: Leadmagic (Email finding/verification)
     - Tier 4: ZeroBounce (Premium escalation for catch-all/low-confidence)
 
     Cost Governance:
@@ -688,7 +687,7 @@ class WaterfallVerificationWorker(BaseEngine):
             lineage.append(step)
             total_cost += step.cost_aud
 
-            # ========== TIER 3: HUNTER.IO (Conditional) ==========
+            # ========== TIER 3: LEADMAGIC EMAIL (Conditional) ==========
             # Only proceed if reachability >= 60 (Warm+) or forced
             should_verify_email = (
                 force_full_waterfall or current_reachability_score >= ALS_ESCALATION_THRESHOLD
@@ -1680,7 +1679,7 @@ class WaterfallVerificationWorker(BaseEngine):
         """
         Tier 2: Scrape Google Maps for business info via Bright Data.
 
-        CEO Directive #036: Replaced deprecated Apify with Bright Data Web Scraper API.
+        CEO Directive #036: Uses Bright Data Web Scraper API.
         Dataset: gd_m8ebnr0q2qlklc02fz (Google Maps Business Information)
         Method: discover_by=location
         """

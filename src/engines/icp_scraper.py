@@ -14,7 +14,6 @@ DEPENDENCIES:
 - src/engines/base.py
 - src/engines/url_validator.py
 - src/integrations/camoufox_scraper.py
-- src/integrations/clay.py
 - src/integrations/siege_waterfall.py
 - src/integrations/gmb_scraper.py
 - src/exceptions.py
@@ -36,11 +35,6 @@ WATERFALL ARCHITECTURE (Phase 19 - Post FCO-002/FCO-003):
   Tier 3: Bright Data Web Unlocker (anti-bot bypass, ~$0.001/req)
   Tier 4: Manual fallback UI
 
-DEPRECATION NOTES (FCO-002, FCO-003):
-  - Apollo integration REMOVED (CEO Directive #003)
-  - Apify integration REMOVED (FCO-002 cost optimization)
-  - Enrichment now via Siege Waterfall (siege_waterfall.py)
-  - Scraping now via Camoufox (camoufox_scraper.py)
 """
 
 from __future__ import annotations
@@ -65,7 +59,6 @@ from src.integrations.camoufox_scraper import (
     get_camoufox_scraper,
     is_camoufox_available,
 )
-from src.integrations.clay import get_clay_client
 from src.integrations.siege_waterfall import (
     EnrichmentTier,
     SiegeWaterfall,
@@ -83,7 +76,6 @@ PORTFOLIO_PATHS = [
 
 if TYPE_CHECKING:
     from src.integrations.anthropic import AnthropicClient
-    from src.integrations.clay import ClayClient
 
 logger = logging.getLogger(__name__)
 
@@ -171,12 +163,8 @@ class ICPScraperEngine(BaseEngine):
 
     This engine handles DATA FETCHING ONLY:
     - Website scraping via Camoufox (anti-detection browser)
-    - Company enrichment via Siege Waterfall (ABN, GMB, Hunter, etc.)
+    - Company enrichment via Siege Waterfall (ABN, GMB, etc.)
     - LinkedIn company data lookup (limited - uses Claude inference)
-
-    DEPRECATION (FCO-002, FCO-003):
-    - Apollo integration REMOVED (CEO Directive #003)
-    - Apify integration REMOVED (cost optimization)
 
     It does NOT do AI processing - that's the job of
     the ICP Discovery Agent and its skills.
@@ -184,7 +172,6 @@ class ICPScraperEngine(BaseEngine):
 
     def __init__(
         self,
-        clay_client: ClayClient | None = None,
         anthropic_client: AnthropicClient | None = None,
         url_validator: URLValidator | None = None,
         camoufox_scraper: CamoufoxScraper | None = None,
@@ -194,13 +181,11 @@ class ICPScraperEngine(BaseEngine):
         Initialize with optional client overrides for testing.
 
         Args:
-            clay_client: Optional Clay client override
             anthropic_client: Optional Anthropic client override
             url_validator: Optional URL validator override
             camoufox_scraper: Optional Camoufox scraper override
             siege_waterfall: Optional SiegeWaterfall override
         """
-        self._clay = clay_client
         self._anthropic = anthropic_client
         self._url_validator = url_validator
         self._camoufox = camoufox_scraper
@@ -210,13 +195,6 @@ class ICPScraperEngine(BaseEngine):
     def name(self) -> str:
         """Engine name."""
         return "icp_scraper"
-
-    @property
-    def clay(self) -> ClayClient:
-        """Get Clay client."""
-        if self._clay is None:
-            self._clay = get_clay_client()
-        return self._clay
 
     @property
     def anthropic(self) -> AnthropicClient:
@@ -419,8 +397,6 @@ class ICPScraperEngine(BaseEngine):
         - Tier 3: Bright Data Web Unlocker (anti-bot bypass, ~$0.001/req)
         - Tier 4: Manual fallback UI
 
-        Note: Apify tiers removed (FCO-002 cost optimization)
-
         Args:
             url: Website URL to scrape
             max_pages: Maximum pages to crawl (default 15, currently single-page)
@@ -467,7 +443,6 @@ class ICPScraperEngine(BaseEngine):
             domain = self._extract_domain(canonical_url)
 
         # ===== TIER 1: Camoufox Anti-Detection Browser =====
-        # Primary scraping tier after FCO-002 Apify deprecation
         if self.camoufox_enabled:
             try:
                 logger.info(f"Tier 1: Attempting Camoufox scrape for {canonical_url}")
@@ -697,7 +672,6 @@ class ICPScraperEngine(BaseEngine):
         """
         Get LinkedIn company data via Claude inference.
 
-        NOTE: Direct LinkedIn scraping removed (FCO-002 Apify deprecation).
         Now uses Claude inference to estimate company data from name/domain.
 
         Args:
@@ -822,13 +796,8 @@ Respond in JSON format only:
         NEW WATERFALL (Post FCO-002/FCO-003):
         Tier 0: Claude inference (always runs first to establish baseline)
         Tier 0.5: Siege Waterfall for AU businesses (ABN + GMB)
-        Tier 1: Clay enrichment (if domain available)
-        Tier 2: Google Business (excellent for local AU)
-        Tier 3: Keyword fallback
-
-        REMOVED (FCO-002, FCO-003):
-        - Apollo (CEO Directive #003)
-        - Apify LinkedIn/Google search (cost optimization)
+        Tier 1: Google Business (excellent for local AU)
+        Tier 2: Keyword fallback
 
         Args:
             company_name: Company name
@@ -889,8 +858,7 @@ Respond in JSON format only:
                     siege_data,
                     skip_tiers=[
                         EnrichmentTier.HUNTER,  # Skip email (no person data)
-                        # EnrichmentTier.PROXYCURL removed — Proxycurl deprecated FCO-003 (July 2025)
-                        EnrichmentTier.IDENTITY,  # Skip Kaspr (expensive)
+                        EnrichmentTier.IDENTITY,  # Skip mobile (no person data)
                     ],
                 )
 
@@ -923,40 +891,11 @@ Respond in JSON format only:
             except Exception as e:
                 logger.warning(f"Siege Waterfall failed for {company_name}: {e}")
 
-        # ============================================
-        # TIER 1: Clay enrichment (if we have domain but still missing data)
-        # ============================================
-        # Clay aggregates from multiple data providers (Clearbit, ZoomInfo, etc.)
-        if enriched.domain and (not enriched.industry or not enriched.employee_count):
-            try:
-                logger.info(f"Tier 1 (Clay): enrichment for {company_name} ({enriched.domain})")
-                clay_result = await self.clay.enrich_company(enriched.domain)
-
-                if clay_result.get("found"):
-                    if not enriched.industry:
-                        enriched.industry = clay_result.get("industry")
-                    if not enriched.employee_count:
-                        enriched.employee_count = clay_result.get("employee_count")
-                    if not enriched.employee_range:
-                        enriched.employee_range = clay_result.get("employee_range")
-                    if not enriched.location:
-                        enriched.location = clay_result.get("location")
-                    if not enriched.country:
-                        enriched.country = clay_result.get("country")
-                    if not enriched.founded_year:
-                        enriched.founded_year = clay_result.get("founded_year")
-                    if clay_result.get("industry") or clay_result.get("employee_count"):
-                        enrichment_source = "clay"
-                        logger.info(
-                            f"Clay filled gaps for {company_name}: industry={enriched.industry}, employees={enriched.employee_count}"
-                        )
-            except Exception as e:
-                logger.warning(f"Clay enrichment failed for {company_name}: {e}")
+        # Clay removed - Directive #216
 
         # ============================================
-        # TIER 2: Google Business (excellent for local Australian businesses)
+        # TIER 1: Google Business (excellent for local Australian businesses)
         # ============================================
-        # FCO-003: Uses GMB Scraper (~70% cost reduction vs Apify)
         if not enrichment_source:
             try:
                 logger.info(f"Tier 2 (GMB): Google Business search for {company_name}")
@@ -989,7 +928,7 @@ Respond in JSON format only:
                 logger.warning(f"Google Business enrichment failed for {company_name}: {e}")
 
         # ============================================
-        # TIER 3: Keyword Fallback (only if Claude AND all APIs failed)
+        # TIER 2: Keyword Fallback (only if Claude AND all APIs failed)
         # ============================================
         # This should rarely be needed since Claude inference runs first
         if not enriched.industry:
@@ -1459,8 +1398,8 @@ VERIFICATION CHECKLIST:
 - [x] No TODO/FIXME/pass statements
 - [x] No hardcoded secrets
 - [x] Extends BaseEngine
-- [x] Uses Camoufox for website scraping (Apify removed - FCO-002)
-- [x] Uses Siege Waterfall for enrichment (Apollo removed - CEO Directive #003)
+- [x] Uses Camoufox for website scraping
+- [x] Uses Siege Waterfall for enrichment
 - [x] No AI processing (data fetching only)
 - [x] ScrapedWebsite dataclass for result
 - [x] EnrichedPortfolioCompany model
@@ -1475,9 +1414,4 @@ WATERFALL ARCHITECTURE (Post FCO-002/FCO-003):
 - [x] Manual fallback URL generation (Tier 2)
 - [x] Canonical URL tracking after redirects
 
-DEPRECATION LOG:
-- [x] Apollo removed (CEO Directive #003)
-- [x] Apify removed (FCO-002 cost optimization)
-- [x] LinkedIn scraping replaced with Claude inference
-- [x] Google search replaced with GMB scraper
 """

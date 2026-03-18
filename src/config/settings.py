@@ -121,8 +121,6 @@ class Settings(BaseSettings):
         default=200.0, description="Daily SDK budget for Dominance tier (AUD)"
     )
 
-    clay_api_key: str = Field(default="", description="Clay API key")
-
     # === ABN Lookup (Tier 1 Siege Waterfall - FREE) ===
     # Australian Business Register lookup. Register for free at:
     # https://abr.business.gov.au/Tools/WebServices
@@ -298,10 +296,6 @@ class Settings(BaseSettings):
     enrichment_confidence_threshold: float = Field(
         default=0.70, description="Minimum confidence score for enriched data"
     )
-    enrichment_clay_max_percentage: float = Field(
-        default=0.15, description="Maximum percentage of batch to send to Clay (fallback)"
-    )
-
     # === HMAC Signing ===
     webhook_hmac_secret: str = Field(default="", description="HMAC secret for outbound webhooks")
 

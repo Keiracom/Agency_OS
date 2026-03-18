@@ -12,15 +12,10 @@ RULES APPLIED:
   - Rule 13: JIT validation before enrichment
 
 DATA FRESHNESS STRATEGY:
-  - Camoufox refresh: Browser-based scraping (FCO-003 deprecation)
+  - Camoufox refresh: Browser-based scraping
   - Refresh leads where enriched_at > 7 days
   - Run before daily batch send
   - Only refresh leads scheduled for outreach today
-
-DEPRECATION NOTE (FCO-003):
-  - Apify integration removed per governance decision
-  - LinkedIn scraping now stubbed with graceful skip
-  - Future: Implement Camoufox-based LinkedIn scraper
 """
 
 import logging
@@ -150,9 +145,8 @@ async def refresh_lead_linkedin_data_task(
     """
     Refresh a single lead's LinkedIn data.
 
-    NOTE (FCO-003): Apify integration deprecated. LinkedIn scraping is currently
-    stubbed. The enriched_at timestamp is updated to prevent repeated attempts.
-    Future implementation should use Camoufox-based scraper.
+    LinkedIn scraping is currently stubbed. The enriched_at timestamp is updated
+    to prevent repeated attempts. Future implementation uses Camoufox-based scraper.
 
     Args:
         lead_id: Lead pool UUID string
@@ -162,9 +156,8 @@ async def refresh_lead_linkedin_data_task(
     Returns:
         Dict with refresh result
     """
-    # FCO-003: Apify deprecated - graceful skip with timestamp update
-    # This prevents repeated attempts on the same leads while LinkedIn
-    # scraping is being reimplemented with Camoufox
+    # Graceful skip with timestamp update - prevents repeated attempts while
+    # LinkedIn scraping is being reimplemented with Camoufox
 
     if not linkedin_url and not company_linkedin_url:
         logger.warning(f"No LinkedIn URLs available for lead {lead_id}")
@@ -200,7 +193,7 @@ async def refresh_lead_linkedin_data_task(
             "company_refreshed": False,
             "refresh_cost": 0.0,
             "skipped": True,
-            "skip_reason": "FCO-003: Apify deprecated, awaiting Camoufox implementation",
+            "skip_reason": "LinkedIn scraping stubbed, awaiting Camoufox implementation",
         }
 
     except Exception as e:
@@ -282,8 +275,8 @@ async def refresh_stale_leads_flow(
     This flow should be called before the daily outreach batch to ensure
     leads have fresh data.
 
-    NOTE (FCO-003): LinkedIn scraping is currently disabled due to Apify
-    deprecation. Leads are marked as processed to prevent repeated attempts.
+    NOTE: LinkedIn scraping is currently stubbed. Leads are marked as processed
+    to prevent repeated attempts until Camoufox implementation is complete.
 
     Args:
         client_id: Optional filter by client
@@ -393,7 +386,7 @@ async def daily_outreach_prep_flow(
 # [x] Contract comment at top
 # [x] No hardcoded credentials
 # [x] Session passed via get_db_session() context manager
-# [x] FCO-003: Apify removed, graceful skip implemented
+# [x] LinkedIn scraping: graceful skip implemented, Camoufox pending
 # [x] Stale threshold configurable (default 7 days)
 # [x] Batch processing with cost tracking
 # [x] @flow and @task decorators from Prefect

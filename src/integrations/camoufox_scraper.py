@@ -67,8 +67,8 @@ class CamoufoxScraper:
     by mimicking real browser fingerprints. Combined with residential
     proxies, it can bypass Cloudflare and similar protections.
 
-    This is Tier 3 of the Scraper Waterfall - used when Apify
-    Cheerio and Playwright both fail.
+    This is Tier 3 of the Scraper Waterfall - used when Cheerio
+    and Playwright both fail.
     """
 
     def __init__(

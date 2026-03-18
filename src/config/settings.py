@@ -131,7 +131,6 @@ class Settings(BaseSettings):
     )
 
     # === Leadmagic (Tier 3 Email + Tier 5 Mobile) ===
-    # Replaces Hunter (T3) and Kaspr (T5) - CEO Directive
     # Email finder: $0.015 AUD/lookup, Mobile finder: $0.077 AUD/lookup
     # WARNING: Plan unpurchased - do not call until credits available
     leadmagic_api_key: str = Field(
@@ -277,7 +276,7 @@ class Settings(BaseSettings):
     v0_api_key: str = Field(default="", description="v0.dev API key for UI generation")
 
     # === Residential Proxy (Tier 3 Scraper - Camoufox) ===
-    # Required for Cloudflare bypass. Recommended providers: WebShare, IPRoyal
+    # Required for Cloudflare bypass.
     residential_proxy_host: str = Field(default="", description="Residential proxy hostname")
     residential_proxy_port: int = Field(default=0, description="Residential proxy port")
     residential_proxy_username: str = Field(default="", description="Proxy auth username")

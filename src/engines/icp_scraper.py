@@ -891,7 +891,6 @@ Respond in JSON format only:
             except Exception as e:
                 logger.warning(f"Siege Waterfall failed for {company_name}: {e}")
 
-        # Clay removed - Directive #216
 
         # ============================================
         # TIER 1: Google Business (excellent for local Australian businesses)

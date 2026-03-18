@@ -2,7 +2,6 @@
 FILE: src/integrations/leadmagic.py
 PURPOSE: Leadmagic API client for email finding and mobile enrichment
 PHASE: SIEGE (System Overhaul)
-TASK: Replace Hunter (T3) + Kaspr (T5)
 DEPENDENCIES:
   - src/config/settings.py
   - src/exceptions.py
@@ -12,7 +11,7 @@ RULES APPLIED:
   - LAW II: All costs in $AUD
 
 SIEGE CONTEXT:
-  Replaces Hunter (T3) and Kaspr (T5) in the Siege Waterfall.
+  Email (T3) and mobile (T5) enrichment for the Siege Waterfall.
 
   Costs (in AUD):
     - Email Finder (T3): $0.015 AUD per lookup
@@ -71,8 +70,8 @@ BASE_URL = "https://api.leadmagic.io"
 DEFAULT_TIMEOUT = 30.0
 
 # Cost per operation in $AUD (LAW II compliance)
-COST_EMAIL_FINDER_AUD = 0.015  # T3 replacement (was Hunter $0.019)
-COST_MOBILE_FINDER_AUD = 0.077  # T5 replacement (was Kaspr $0.45)
+COST_EMAIL_FINDER_AUD = 0.015  # T3 email enrichment
+COST_MOBILE_FINDER_AUD = 0.077  # T5 mobile enrichment
 
 # Rate limiting
 MAX_REQUESTS_PER_SECOND = 10
@@ -265,11 +264,9 @@ class LeadmagicClient:
     """
     Leadmagic API client for email finding and mobile enrichment.
 
-    Replaces Hunter (T3) and Kaspr (T5) in Siege Waterfall.
-
     Costs (AUD):
-        - Email Finder: $0.015 AUD/lookup (was Hunter $0.019)
-        - Mobile Finder: $0.077 AUD/lookup (was Kaspr $0.45)
+        - Email Finder (T3): $0.015 AUD/lookup
+        - Mobile Finder (T5): $0.077 AUD/lookup
         - Credit Check: FREE
 
     Usage:
@@ -470,8 +467,7 @@ class LeadmagicClient:
         """
         Find the most likely email for a person at a domain.
 
-        Replaces Hunter email_finder (T3).
-        Costs $0.015 AUD per lookup.
+        Costs $0.015 AUD per lookup (T3).
 
         Args:
             first_name: Person's first name
@@ -588,8 +584,7 @@ class LeadmagicClient:
         """
         Get mobile number from LinkedIn profile.
 
-        Replaces Kaspr enrich_mobile (T5).
-        Costs $0.077 AUD per lookup.
+        Costs $0.077 AUD per lookup (T5).
 
         Args:
             linkedin_url: LinkedIn profile URL
@@ -956,11 +951,11 @@ def get_leadmagic_client() -> LeadmagicClient:
 # [x] Docstrings on all methods
 # [x] Custom exceptions (LeadmagicError, LeadmagicRateLimitError, etc.)
 # [x] Cost tracking in $AUD (LAW II compliance)
-#     - Email Finder: $0.015 AUD (replaces Hunter $0.019)
-#     - Mobile Finder: $0.077 AUD (replaces Kaspr $0.45)
+#     - Email Finder: $0.015 AUD (T3)
+#     - Mobile Finder: $0.077 AUD (T5)
 # [x] Rate limiting (1s between requests)
-# [x] find_email() - replaces Hunter email_finder (T3)
-# [x] find_mobile() - replaces Kaspr enrich_mobile (T5)
+# [x] find_email() - T3 email enrichment
+# [x] find_mobile() - T5 mobile enrichment
 # [x] get_credits() - check credit balance
 # [x] batch_find_emails() for bulk email lookup
 # [x] batch_find_mobiles() for bulk mobile lookup

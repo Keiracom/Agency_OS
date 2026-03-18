@@ -209,7 +209,6 @@ async def enrich_batch_task(
                 )
                 failed += 1
 
-        # Clay removed - Directive #216
 
         return {
             "total": len(lead_ids),

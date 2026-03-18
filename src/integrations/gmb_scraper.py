@@ -39,7 +39,7 @@ DESCRIPTION: DIY GMB scraper for Google Maps data
 # located at /home/elliotbot/clawd/tools/ (OUTSIDE this repo).
 #
 # CRITICAL: proxy_manager.py must use AU-geolocated proxies.
-# Webshare URL must have country_code = "AU" (not "-" for global).
+# Proxy URL must have country_code = "AU" (not "-" for global).
 # Global proxies route through EU and hit Google GDPR consent wall.
 #
 # Reference: Commit 6c61b66 on Clawdbot local repo (fix/gmb-au-proxy)

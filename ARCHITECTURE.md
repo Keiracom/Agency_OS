@@ -1,6 +1,6 @@
 # ARCHITECTURE.md
 # Agency OS — Locked System Architecture
-# Ratified: March 17 2026 | Authority: CEO (Claude) | Amended: March 18 2026 | Directive #217
+# Ratified: March 17 2026 | Authority: CEO (Claude) | Amended: March 18 2026 | Directives #217, #218
 # DO NOT MODIFY without an explicit CEO directive that
 # names this file and specifies the exact change.
 #

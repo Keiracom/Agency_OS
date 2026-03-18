@@ -66,31 +66,30 @@ def test_gst_paid_reviews_25_bonus():
 
 
 def test_all_signals_capped_at_100():
+    # Directive #218: job_listings_active (+15) and domain_age_years (+10) removed as ghost signals.
+    # Max score is now 90 (25+25+15+10+5+10). Cap at 100 still applies but max is 90.
     signals = {
         "gst_registered": True,
         "dfs_paid_traffic_cost": 500.0,
         "dfs_organic_traffic": 2000.0,
-        "job_listings_active": 3,
         "gmb_review_count": 25,
         "linkedin_employee_count": 10,
-        "domain_age_years": 5,
     }
     result = score_business_confidence(signals)
-    assert result == 100
+    assert result == 90  # 25+25+15+10+5+10 = 90 (capped at 100; new max is 90)
 
 
 def test_no_gst_but_all_else():
+    # Directive #218: ghost signals removed. Without GST: 25+15+10+5+10 = 65
     signals = {
         "gst_registered": False,
         "dfs_paid_traffic_cost": 500.0,
         "dfs_organic_traffic": 2000.0,
-        "job_listings_active": 3,
         "gmb_review_count": 25,
         "linkedin_employee_count": 10,
-        "domain_age_years": 5,
     }
     result = score_business_confidence(signals)
-    assert result == 90  # 115 - 25 (no GST); all other signals = 25+15+15+10+5+10+10 = 90
+    assert result == 65  # 0(no GST)+25+15+10+5+10 = 65
 
 
 def test_none_values_no_exception():

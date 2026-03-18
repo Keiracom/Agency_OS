@@ -693,6 +693,79 @@ class LeadmagicClient:
             )
 
     # ========================================
+    # EMPLOYEE FINDER (Stage 2 DM discovery)
+    # ========================================
+
+    async def find_employees(
+        self,
+        company_domain: str,
+        limit: int = 10,
+    ) -> list[dict]:
+        """
+        Find employees at a company by domain.
+        Uses Leadmagic /v1/people/employee-finder.
+        Cost: 0.05 credits per employee returned.
+        Returns list of {first_name, last_name, title, linkedin_url} or empty list.
+        """
+        if not company_domain:
+            logger.warning("[Leadmagic] find_employees: company_domain is required")
+            return []
+
+        logger.info(f"[Leadmagic] employee-finder: {company_domain} (limit={limit})")
+
+        try:
+            response = await self._request(
+                method="POST",
+                endpoint="/v1/people/employee-finder",
+                data={"company_domain": company_domain, "limit": limit},
+            )
+            if isinstance(response, list):
+                return response
+            return response.get("data", response) if isinstance(response, dict) else []
+        except Exception as e:
+            logger.warning(
+                f"[Leadmagic] find_employees failed for {company_domain}: {e}"
+            )
+            return []
+
+    # ========================================
+    # ROLE FINDER (Stage 2 DM fallback)
+    # ========================================
+
+    async def find_by_role(
+        self,
+        company_domain: str,
+        job_title: str = "CEO",
+    ) -> dict | None:
+        """
+        Find a specific role at a company.
+        Uses Leadmagic /v1/people/role-finder.
+        Cost: 2 credits per call.
+        Returns {first_name, last_name, linkedin_url} or None.
+        Use as fallback when find_employees returns no target title matches.
+        """
+        if not company_domain:
+            logger.warning("[Leadmagic] find_by_role: company_domain is required")
+            return None
+
+        logger.info(f"[Leadmagic] role-finder: {job_title} at {company_domain}")
+
+        try:
+            response = await self._request(
+                method="POST",
+                endpoint="/v1/people/role-finder",
+                data={"job_title": job_title, "company_domain": company_domain},
+            )
+            if not response or not isinstance(response, dict):
+                return None
+            return response
+        except Exception as e:
+            logger.warning(
+                f"[Leadmagic] find_by_role failed for {company_domain}: {e}"
+            )
+            return None
+
+    # ========================================
     # CREDIT CHECK
     # ========================================
 

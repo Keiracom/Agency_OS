@@ -57,6 +57,7 @@ from src.integrations.redis import enrichment_cache
 from src.engines.confidence_scorer import score_business_confidence, meets_enrichment_threshold  # Directive #215
 from src.engines.opportunity_scorer import score_business_opportunity, get_opportunity_reason, is_priority_opportunity  # Directive #217
 from src.integrations.dataforseo import get_dataforseo_client  # Directive #218: pre-gate DataForSEO
+from src.integrations.leadmagic import get_leadmagic_client
 from src.integrations.siege_waterfall import EnrichmentTier, SiegeWaterfall, get_siege_waterfall
 from src.models.base import LeadStatus
 from src.models.lead import Lead
@@ -130,6 +131,7 @@ class ScoutEngine(BaseEngine):
         """
         self._siege_waterfall = siege_waterfall
         self._camoufox = camoufox_scraper
+        self.leadmagic = get_leadmagic_client()
 
     @property
     def name(self) -> str:
@@ -260,14 +262,9 @@ class ScoutEngine(BaseEngine):
                 await db.commit()
             except Exception as e:
                 logger.warning(f"[Scout] opportunity score write-back failed: {e}")
-            # --- Stage 2: Person discovery (Directive #218) ---
-            _company_linkedin_url = (
-                tier1_result.get("linkedin_url")
-                or tier1_result.get("linkedin_company_url")
-                or getattr(lead, "linkedin_url", None)
-            )
-            if _company_linkedin_url and not getattr(lead, "first_name", None):
-                _dm = await self._discover_decision_maker(_company_linkedin_url, domain)
+            # --- Stage 2: Person discovery (Directive #218, updated #223) ---
+            if domain and not getattr(lead, "first_name", None):
+                _dm = await self._discover_decision_maker(lead, domain)
                 if _dm:
                     logger.info(
                         f"[Stage2] DM found: {_dm.get('title')} at {domain} "
@@ -530,14 +527,9 @@ class ScoutEngine(BaseEngine):
                 await db.commit()
             except Exception as e:
                 logger.warning(f"[Scout] opportunity score write-back failed: {e}")
-            # --- Stage 2: Person discovery (Directive #218) ---
-            _company_linkedin_url = (
-                tier1_result.get("linkedin_url")
-                or tier1_result.get("linkedin_company_url")
-                or getattr(lead, "linkedin_url", None)
-            )
-            if _company_linkedin_url and not getattr(lead, "first_name", None):
-                _dm = await self._discover_decision_maker(_company_linkedin_url, domain)
+            # --- Stage 2: Person discovery (Directive #218, updated #223) ---
+            if domain and not getattr(lead, "first_name", None):
+                _dm = await self._discover_decision_maker(lead, domain)
                 if _dm:
                     logger.info(
                         f"[Stage2] DM found: {_dm.get('title')} at {domain} "
@@ -574,40 +566,86 @@ class ScoutEngine(BaseEngine):
         )
 
     async def _discover_decision_maker(
-        self, company_linkedin_url: str, domain: str
+        self,
+        lead,
+        domain: str
     ) -> dict | None:
         """
-        Stage 2: Find decision maker via LinkedIn People Search.
-        Targets: Owner, Founder, Director, CEO, MD (priority order).
-        Uses Bright Data T-DM1 (see ARCHITECTURE.md).
+        Stage 2: find decision maker at company.
+        Primary: Leadmagic employee-finder
+        Fallback: Leadmagic role-finder (CEO)
         Returns {first_name, last_name, title, linkedin_url} or None.
-        Directive #218.
         """
-        TARGET_TITLES = ["Owner", "Founder", "Director", "CEO", "Managing Director", "MD"]
-        try:
-            # T-DM1: Bright Data LinkedIn People Search
-            # Check if bright_data_client supports people search
-            if hasattr(self.siege_waterfall, 'bright_data_client'):
-                bd = self.siege_waterfall.bright_data_client
-                dm = await bd.search_linkedin_people(
-                    company_linkedin_url=company_linkedin_url,
-                    target_titles=TARGET_TITLES,
-                )
-                if dm:
-                    logger.info(
-                        f"[Stage2] DM found via LinkedIn People Search: "
-                        f"{dm.get('first_name')} {dm.get('last_name')} "
-                        f"({dm.get('title')}) for {domain}"
-                    )
-                    return dm
+        TARGET_TITLES = [
+            "owner", "founder", "co-founder",
+            "director", "ceo", "chief executive",
+            "managing director", "md",
+            "general manager", "head of",
+            "principal", "partner"
+        ]
+
+        if not domain:
             logger.info(
-                f"[Stage2] bright_data_client unavailable — "
-                f"no DM for {domain}"
+                f"[Stage2] No domain for "
+                f"{lead.company} — skipping"
             )
             return None
-        except Exception as e:
-            logger.warning(f"[Stage2] DM discovery failed for {domain}: {e}")
-            return None
+
+        # Primary: employee-finder
+        employees = await self.leadmagic\
+            .find_employees(
+                company_domain=domain,
+                limit=10
+            )
+
+        if employees:
+            # Find highest priority title match
+            for target in TARGET_TITLES:
+                for emp in employees:
+                    title = emp.get(
+                        "title", "").lower()
+                    if target in title:
+                        logger.info(
+                            f"[Stage2] DM found: "
+                            f"{emp.get('title')} "
+                            f"at {lead.company} — "
+                            f"{emp.get('first_name')}"
+                            f" {emp.get('last_name')}"
+                        )
+                        return emp
+            # No title match — take first employee
+            logger.info(
+                f"[Stage2] No title match at "
+                f"{lead.company} — using first "
+                f"employee"
+            )
+            return employees[0]
+
+        # Fallback: role-finder for CEO
+        logger.info(
+            f"[Stage2] No employees found for "
+            f"{domain} — trying role-finder"
+        )
+        person = await self.leadmagic\
+            .find_by_role(
+                company_domain=domain,
+                job_title="CEO"
+            )
+
+        if person:
+            logger.info(
+                f"[Stage2] Role-finder found: "
+                f"{person.get('first_name')} "
+                f"{person.get('last_name')} "
+                f"at {lead.company}"
+            )
+            return person
+
+        logger.info(
+            f"[Stage2] No DM found for "
+            f"{lead.company} ({domain})"
+        )
+        return None
 
     async def _bu_write_backs(
         self,

@@ -48,7 +48,7 @@ Not a summary. Not a tick. Verbatim output.
 [ ] C1. Pytest baseline holds
     Command: pytest tests/ -q 2>&1 | tail -5
     Paste verbatim.
-    Required: 796 passed, 0 failed, 23 skipped or better.
+    Required: 813 passed, 0 failed, 25 skipped or better.
     If any test fails: stop. Do not create PR.
     Report failing test name and traceback to CEO.
 

@@ -27,7 +27,7 @@ from uuid import UUID
 
 from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
-from sqlalchemy import and_, select, update
+from sqlalchemy import and_, select, text, update
 
 from src.agents.sdk_agents import should_use_sdk_enrichment
 from src.config.tiers import get_available_channels_enum
@@ -437,6 +437,92 @@ async def deduct_client_credits_task(client_id: str, credits_to_deduct: int) -> 
 
 
 # ============================================
+# QUOTA TASKS (Directive #217)
+# ============================================
+
+
+@task(name="check_campaign_quota", retries=1, retry_delay_seconds=5)
+async def check_campaign_quota_task(campaign_id: str) -> dict[str, Any]:
+    """
+    Check enriched lead count vs campaign monthly quota.
+    Returns: quota_filled (bool), enriched_count (int), quota (int), gap (int).
+    Directive #217.
+    """
+    async with get_db_session() as session:
+        # Get enriched count
+        enriched_result = await session.execute(
+            text(
+                "SELECT COUNT(*) FROM leads "
+                "WHERE campaign_id = :campaign_id "
+                "AND enriched_at IS NOT NULL "
+                "AND status != 'disqualified'"
+            ),
+            {"campaign_id": campaign_id},
+        )
+        enriched_count = enriched_result.scalar() or 0
+
+        # Get monthly quota
+        quota_result = await session.execute(
+            text("SELECT monthly_quota FROM campaigns WHERE id = :campaign_id"),
+            {"campaign_id": campaign_id},
+        )
+        row = quota_result.fetchone()
+        monthly_quota = row[0] if row and row[0] else 0
+
+    gap = max(0, monthly_quota - enriched_count)
+    quota_filled = enriched_count >= monthly_quota if monthly_quota > 0 else False
+
+    if quota_filled:
+        logger.info(
+            f"[Quota] Campaign {campaign_id} quota filled: "
+            f"{enriched_count}/{monthly_quota}"
+        )
+    else:
+        logger.info(
+            f"[Quota] Gap remaining: {gap} leads needed for campaign {campaign_id} "
+            f"({enriched_count}/{monthly_quota})"
+        )
+
+    return {
+        "campaign_id": campaign_id,
+        "enriched_count": enriched_count,
+        "monthly_quota": monthly_quota,
+        "gap": gap,
+        "quota_filled": quota_filled,
+    }
+
+
+@task(name="mark_market_exhausted", retries=1, retry_delay_seconds=5)
+async def mark_market_exhausted_task(
+    campaign_id: str, enriched_count: int, monthly_quota: int
+) -> dict[str, Any]:
+    """
+    Mark campaign as market-exhausted when all locations swept but quota not filled.
+    Directive #217 — never pad with low-quality leads to hit quota.
+    """
+    logger.warning(
+        f"[Quota] Market exhausted: {enriched_count}/{monthly_quota} "
+        f"for campaign {campaign_id}. All locations swept."
+    )
+    async with get_db_session() as session:
+        await session.execute(
+            text(
+                "UPDATE campaigns SET "
+                "market_exhausted_at = NOW(), "
+                "final_enriched_count = :enriched_count "
+                "WHERE id = :campaign_id"
+            ),
+            {"enriched_count": enriched_count, "campaign_id": campaign_id},
+        )
+        await session.commit()
+    return {
+        "campaign_id": campaign_id,
+        "market_exhausted": True,
+        "enriched_count": enriched_count,
+    }
+
+
+# ============================================
 # FLOW
 # ============================================
 
@@ -548,6 +634,24 @@ async def daily_enrichment_flow(
             )
             credit_results.append(result)
 
+    # Step 6: Check quota per campaign (Directive #217)
+    # Get unique campaign_ids from leads processed
+    campaign_ids_checked: set[str] = set()
+    quota_results: list[dict[str, Any]] = []
+    for result in enrichment_results:
+        if result["success"] and result["data"]:
+            for lead_info in result["data"].get("enriched_leads", []):
+                cid = lead_info.get("campaign_id")
+                if cid and cid not in campaign_ids_checked:
+                    campaign_ids_checked.add(cid)
+                    quota_result = await check_campaign_quota_task(campaign_id=cid)
+                    quota_results.append(quota_result)
+                    if not quota_result["quota_filled"] and quota_result["monthly_quota"] > 0:
+                        logger.info(
+                            f"[Quota] Campaign {cid} needs {quota_result['gap']} more leads "
+                            f"— Flow A trigger will be wired in a future directive."
+                        )
+
     # Compile summary
     total_enriched = len(enriched_lead_ids)
     total_scored = sum(1 for r in scoring_results if r["success"])
@@ -564,6 +668,7 @@ async def daily_enrichment_flow(
         "dncr_checked": dncr_result.get("total", 0),
         "dncr_blocked": dncr_result.get("on_dncr", 0),
         "enrichment_results": enrichment_results,
+        "quota_results": quota_results,  # list of quota check results per campaign
         "completed_at": datetime.now(UTC).isoformat(),
     }
 

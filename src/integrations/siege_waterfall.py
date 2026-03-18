@@ -838,114 +838,11 @@ class SiegeWaterfall:
                 )
             )
 
-        # ===== POST-T1.5 SIZE GATE =====
-        # CEO Directive #144 Addendum 2: Size filtering immediately after T1.5
-        # CEO Directive #148: Don't HELD if LinkedIn URL wasn't found (linkedin_url_unknown)
-        employee_count = (
-            enriched_data.get("linkedin_company_size")
-            or enriched_data.get("company_size")
-            or enriched_data.get("employee_count")
-        )
-
         # Directive #148: If we couldn't find a LinkedIn URL, continue without T1.5
-        # Tag the lead but don't HELD - they can still be enriched via other channels
+        # Tag the lead - they can still be enriched via other channels
         if enriched_data.get("linkedin_url_unknown"):
-            enriched_data["size_gate_skipped"] = True
-            enriched_data["size_gate_skip_reason"] = "LinkedIn URL not found via SERP"
-            logger.info("[SIZE_GATE] Skipping size gate - LinkedIn URL not found (Directive #148)")
             # Continue to other tiers without employee count filtering
-        elif not employee_count:
-            # HELD: T1.5 ran (we had LinkedIn URL) but no size data
-            tier_results.append(
-                TierResult(
-                    tier=EnrichmentTier.LINKEDIN_COMPANY,  # Use LINKEDIN_COMPANY tier for SIZE_GATE
-                    success=False,
-                    skipped=False,
-                    skip_reason="No company size data — LinkedIn profile incomplete",
-                )
-            )
-            enriched_data["status"] = "HELD"
-            enriched_data["hold_reason"] = "No company size data — LinkedIn profile incomplete"
-            logger.warning("[SIZE_GATE] Lead HELD - no employee count from T1.5")
-            # Return early - do not fire deeper tiers
-            # CEO Directive #149: Include field conflicts in early return lineage
-            early_lineage = [
-                {
-                    "tier": r.tier.value if hasattr(r.tier, "value") else str(r.tier),
-                    "success": r.success,
-                    "skipped": r.skipped,
-                    "skip_reason": r.skip_reason,
-                    "cost_aud": r.cost_aud,
-                    "timestamp": r.timestamp,
-                    "error": r.error,
-                }
-                for r in tier_results
-            ]
-            if field_conflicts:
-                early_lineage.extend(field_conflicts)
-            return EnrichmentResult(
-                lead_id=lead.get("id") or lead.get("lead_id"),
-                original_data=lead,
-                enriched_data=enriched_data,
-                tier_results=tier_results,
-                total_cost_aud=total_cost_aud,
-                sources_used=sum(1 for r in tier_results if r.success),
-                als_bonus_applied=False,
-                als_bonus_amount=0,
-                enrichment_lineage=early_lineage,
-                started_at=started_at,
-                completed_at=datetime.now(UTC).isoformat(),
-            )
-
-        # Check campaign size constraints (from ICP criteria)
-        icp_size_min = icp_criteria.get("employee_min")
-        icp_size_max = icp_criteria.get("employee_max")
-        if icp_size_min or icp_size_max:
-            if not self._check_size_in_range(employee_count, icp_size_min, icp_size_max):
-                tier_results.append(
-                    TierResult(
-                        tier=EnrichmentTier.LINKEDIN_COMPANY,  # Use LINKEDIN_COMPANY tier for SIZE_GATE
-                        success=False,
-                        skipped=False,
-                        skip_reason=f"Company size {employee_count} outside campaign range ({icp_size_min}-{icp_size_max})",
-                    )
-                )
-                enriched_data["status"] = "HELD"
-                enriched_data["hold_reason"] = (
-                    f"Company size {employee_count} outside campaign range"
-                )
-                logger.info(
-                    f"[SIZE_GATE] Lead HELD - size {employee_count} outside {icp_size_min}-{icp_size_max}"
-                )
-                # Return early - do not fire deeper tiers
-                # CEO Directive #149: Include field conflicts in early return lineage
-                size_gate_lineage = [
-                    {
-                        "tier": r.tier.value if hasattr(r.tier, "value") else str(r.tier),
-                        "success": r.success,
-                        "skipped": r.skipped,
-                        "skip_reason": r.skip_reason,
-                        "cost_aud": r.cost_aud,
-                        "timestamp": r.timestamp,
-                        "error": r.error,
-                    }
-                    for r in tier_results
-                ]
-                if field_conflicts:
-                    size_gate_lineage.extend(field_conflicts)
-                return EnrichmentResult(
-                    lead_id=lead.get("id") or lead.get("lead_id"),
-                    original_data=lead,
-                    enriched_data=enriched_data,
-                    tier_results=tier_results,
-                    total_cost_aud=total_cost_aud,
-                    sources_used=sum(1 for r in tier_results if r.success),
-                    als_bonus_applied=False,
-                    als_bonus_amount=0,
-                    enrichment_lineage=size_gate_lineage,
-                    started_at=started_at,
-                    completed_at=datetime.now(UTC).isoformat(),
-                )
+            pass
 
         # ===== TIER 3: Leadmagic Email (ALS >= 35 only) =====
         if EnrichmentTier.LEADMAGIC_EMAIL not in skip_tiers:
@@ -2711,8 +2608,6 @@ class SiegeWaterfall:
     ) -> bool:
         """
         Parse LinkedIn size string (e.g. '11-50') and check against constraints.
-
-        CEO Directive #144 Addendum 2: Size filtering at SIZE_GATE.
 
         Args:
             size_str: Company size string like "11-50", "51-200", or integer

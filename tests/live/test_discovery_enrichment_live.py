@@ -223,6 +223,7 @@ class TestLiveDiscoveryEnrichment:
         # Cleanup
         await abn_client.close()
 
+    @pytest.mark.skip(reason="Live Bright Data API test — requires active credentials and live network. Run manually on demand, not in CI baseline.")
     @pytest.mark.asyncio
     async def test_linkedin_company_enrichment_advisible(self, bright_data_client):
         """
@@ -396,6 +397,7 @@ class TestLiveDiscoveryEnrichment:
         # Cleanup
         await bright_data_client.close()
 
+    @pytest.mark.skip(reason="Live Bright Data API test — requires active credentials and live network. Run manually on demand, not in CI baseline.")
     @pytest.mark.asyncio
     async def test_full_pipeline_advisible(self, bright_data_client, abn_client):
         """

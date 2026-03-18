@@ -113,7 +113,7 @@ class LeadAllocatorService:
             params["countries"] = countries
 
         # NOTE: employee_min/employee_max removed per CEO Directive #144 Addendum 2
-        # Size filtering now happens at SIZE_GATE in siege_waterfall.py after T1.5 enrichment
+        # Size filtering via confidence_scorer — see src/engines/confidence_scorer.py
 
         if icp_criteria.get("seniorities"):
             seniorities = icp_criteria["seniorities"]

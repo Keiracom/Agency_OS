@@ -14,7 +14,7 @@ RULES APPLIED:
   - Rule 13: JIT validation before enrichment
 
 ENRICHMENT WATERFALL:
-  Stage 1: Apollo data (already in pool from population)
+  Stage 1: Lead data (already in pool from population)
   Stage 2: LinkedIn person scrape (profile + posts, pending Camoufox)
   Stage 3: LinkedIn company scrape (profile + posts, pending Camoufox)
   Stage 4: Claude analysis (pain points, personalization, hooks)

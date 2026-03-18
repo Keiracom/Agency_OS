@@ -857,7 +857,7 @@ Respond in JSON format only:
                 siege_result = await self.siege_waterfall.enrich_lead(
                     siege_data,
                     skip_tiers=[
-                        EnrichmentTier.HUNTER,  # Skip email (no person data)
+                        EnrichmentTier.LEADMAGIC_EMAIL,  # Skip email (no person data)
                         EnrichmentTier.IDENTITY,  # Skip mobile (no person data)
                     ],
                 )

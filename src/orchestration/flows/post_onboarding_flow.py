@@ -19,7 +19,7 @@ This flow is triggered after client onboarding completes and ICP is confirmed.
 It performs:
 1. AI campaign suggestions based on ICP
 2. Campaign creation (as drafts)
-3. Lead sourcing from Apollo based on ICP
+3. Lead sourcing based on ICP
 4. Lead assignment to campaigns
 5. Promotion of lead_pool rows to leads table (Directive #184 Fix 1)
 
@@ -227,7 +227,6 @@ async def source_leads_task(
     """
     Source leads based on ICP criteria.
 
-    NOTE: Apollo integration removed (CEO Directive #003).
     Uses pool_population_flow which relies on Siege Waterfall.
 
     Args:

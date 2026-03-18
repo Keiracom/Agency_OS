@@ -64,10 +64,10 @@ ICP_CATEGORY_WHITELIST = {
     "marketing services",
 }
 
-# Industry strings that indicate agency (from Apollo/LinkedIn)
+# Industry strings that indicate agency (from LinkedIn/enrichment data)
 # Includes both space-separated and underscore-separated formats (Directive #046)
 ICP_INDUSTRY_WHITELIST = {
-    # Space-separated formats (LinkedIn/Apollo standard)
+    # Space-separated formats (LinkedIn standard)
     "marketing and advertising",
     "marketing & advertising",
     "advertising services",
@@ -198,7 +198,7 @@ ICP_CATEGORY_BLACKLIST = {
     "workforce",
 }
 
-# Industry strings that are never ICP (from Apollo/LinkedIn)
+# Industry strings that are never ICP (from LinkedIn/enrichment data)
 ICP_INDUSTRY_BLACKLIST = {
     "construction",
     "staffing & recruiting",
@@ -356,7 +356,7 @@ class ICPFilterService:
         - Underscore normalization for format-agnostic matching
 
         Args:
-            industry: Apollo/LinkedIn industry field
+            industry: Industry field from enrichment data
             sub_industry: Sub-industry if available
 
         Returns:
@@ -403,7 +403,7 @@ class ICPFilterService:
         Check if industry is on HARD EXCLUDE list.
 
         Args:
-            industry: Apollo/LinkedIn industry field
+            industry: Industry field from enrichment data
             sub_industry: Sub-industry if available
 
         Returns:

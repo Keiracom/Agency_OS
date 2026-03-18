@@ -366,7 +366,7 @@ class ICPDiscoveryAgent(BaseAgent):
             f"[STUB] Tier F3: Google search disabled (FCO-003). "
             f"Would have searched for '{company_name}' client mentions."
         )
-        # google_results remains empty - fallback extraction will use Apollo/LinkedIn data only
+        # google_results remains empty - fallback extraction will use LinkedIn data only
 
         # Now use PortfolioFallbackSkill to extract clients from all sources
         if legacy_description or linkedin_description or google_results:

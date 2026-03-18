@@ -1496,9 +1496,9 @@ class ScorerEngine(BaseEngine):
         Awards +15 when lead has confirmed data from 3+ independent sources:
         - ABN (Australian Business Number verification)
         - GMB (Google My Business)
-        - Hunter (email verification)
+        - Leadmagic (email verification)
         - LinkedIn (profile data)
-        - Apollo / Prospeo (enrichment)
+        - Prospeo (enrichment)
         - DataForSEO (web presence)
 
         Args:

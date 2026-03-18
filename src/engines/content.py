@@ -1110,7 +1110,7 @@ Return as JSON with: {{"opening": "...", "value_prop": "...", "cta": "..."}}"""
         Generate personalized email for a pool lead using Smart Prompt system.
 
         Pool leads have richer data than legacy leads since they come directly
-        from Apollo with full enrichment. This method leverages ALL that data.
+        with full enrichment. This method leverages ALL that data.
 
         Args:
             db: Database session (passed by caller)

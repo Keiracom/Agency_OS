@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 class EnrichedCompany(BaseModel):
     """
-    Enriched company data from Apollo/LinkedIn.
+    Enriched company data from LinkedIn/enrichment pipeline.
 
     Represents a portfolio company with full enrichment data.
     """

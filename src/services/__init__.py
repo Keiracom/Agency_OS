@@ -48,7 +48,7 @@ Phase 16 additions (Reply Handling):
 - ResponseTimingService: Calculate response delays and schedule reply sending
 
 Phase 19 additions (ICP Refinement from CIS):
-- WhoRefinementService: Apply WHO conversion patterns to refine Apollo search criteria
+- WhoRefinementService: Apply WHO conversion patterns to refine ICP search criteria
 
 Phase 22 additions (Content QA):
 - ContentQAService: Pre-send content quality validation (placeholders, length, spam)

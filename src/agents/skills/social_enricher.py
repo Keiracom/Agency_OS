@@ -22,7 +22,7 @@ EXPORTS:
 HOW IT HELPS FIND LEADS:
 1. Scrapes agency's LinkedIn description, Instagram bio, Facebook about
 2. Uses Claude to extract client/company names mentioned
-3. Returns additional portfolio companies to enrich via Apollo
+3. Returns additional portfolio companies to enrich
 4. More portfolio data -> Better ICP derivation -> More accurate lead targeting
 """
 
@@ -72,7 +72,7 @@ class SocialClientExtractorSkill(
     This skill:
     1. Fetches social profile data (descriptions, bios) via Camoufox (pending)
     2. Uses Claude to identify company/client names mentioned
-    3. Returns additional portfolio companies for Apollo enrichment
+    3. Returns additional portfolio companies for enrichment
 
     Use case: Agency LinkedIn descriptions often mention key clients:
     "We've helped brands like Nike, Coca-Cola, and local businesses..."
@@ -347,7 +347,7 @@ VERIFICATION CHECKLIST:
 USE CASE FLOW:
 1. ICP extraction gets portfolio companies from website
 2. SocialClientExtractorSkill finds MORE companies from social profiles
-3. All companies get enriched via Apollo
+3. All companies get enriched via Siege Waterfall
 4. ICPDeriver analyzes enriched companies → derives ICP
-5. ICP used to find similar leads via Apollo search
+5. ICP used to find similar leads via lead search
 """

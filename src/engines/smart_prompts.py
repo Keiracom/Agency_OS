@@ -56,7 +56,6 @@ FIELD_PRIORITIES: dict[str, tuple[FieldPriority, str]] = {
     "research.pain_points": (FieldPriority.HIGH, "Direct personalization hooks"),
     "research.icebreakers": (FieldPriority.HIGH, "Pre-researched conversation starters"),
     # NOTE: sdk_research fields removed per FCO-002 deprecation
-    # SDK agents deprecated - using Apollo enrichment data instead
     "engagement.previous_objections": (FieldPriority.HIGH, "Must address in follow-ups"),
     "engagement.reply_intent": (FieldPriority.HIGH, "Context from previous replies"),
     # Social posts - HIGH priority for personalization hooks (Directive 052 Part A)
@@ -362,7 +361,6 @@ async def build_full_lead_context(
 
     # NOTE: SDK enrichment deprecated per FCO-002
     # sdk_enrichment and sdk_signals fields are now ignored
-    # Personalization uses research.* and signals.* from Apollo enrichment
 
     # Add engagement history if requested
     if include_engagement:
@@ -401,7 +399,7 @@ async def build_full_pool_lead_context(
     Build comprehensive context for a pool lead.
 
     Pool leads have richer data than legacy leads since they come
-    directly from Apollo with full enrichment.
+    with full enrichment.
 
     Args:
         db: Database session
@@ -514,7 +512,7 @@ async def build_full_pool_lead_context(
     if row.employment_history:
         context["person"]["employment_history"] = row.employment_history
 
-    # Add enrichment data if available (raw Apollo data)
+    # Add enrichment data if available
     if row.enrichment_data:
         enrich = row.enrichment_data
         if enrich.get("intent_topics"):

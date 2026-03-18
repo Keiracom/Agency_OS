@@ -287,7 +287,6 @@ class GMBScraperAdapter:
     """
     Adapter for Google Maps Business scraper via Bright Data.
 
-    CEO Directive #036: Replaced deprecated Apify with Bright Data Web Scraper API.
     Dataset: gd_m8ebnr0q2qlklc02fz (Google Maps Business Information)
     Method: discover_by=location
     Cost: ~$0.001/lead AUD
@@ -437,9 +436,8 @@ class LeadmagicEmailAdapter:
     """
     Adapter for Leadmagic email finding.
 
-    Replaces HunterClientAdapter - CEO Directive: Hunter deprecated.
     Implements: Tier 3 of Siege Waterfall - Email Discovery.
-    Cost: $0.015 AUD per lookup (was Hunter $0.019)
+    Cost: $0.015 AUD per lookup
     """
 
     def __init__(self):
@@ -519,7 +517,6 @@ class LeadmagicEmailAdapter:
 
 
 # Import Leadmagic client for Tier 3 email and Tier 5 mobile enrichment
-# Replaces Kaspr - CEO Directive: Kaspr deprecated
 try:
     from src.integrations.leadmagic import LeadmagicClient, get_leadmagic_client
 
@@ -564,7 +561,6 @@ class SiegeWaterfall:
     """
     Unified interface for 5-tier Australian B2B enrichment.
 
-    Replaces Apollo as single source of truth for lead enrichment.
     Orchestrates a cost-efficient waterfall with graceful degradation.
 
     Usage:

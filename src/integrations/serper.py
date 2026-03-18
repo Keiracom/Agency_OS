@@ -379,7 +379,7 @@ def get_serper_client() -> SerperClient:
 # VERIFICATION CHECKLIST
 # ============================================
 # [x] Contract comment at top with FILE, TASK, PHASE, PURPOSE
-# [x] Follows integration pattern (like apollo.py)
+# [x] Follows integration pattern
 # [x] Uses dependency injection pattern
 # [x] Retry logic with tenacity
 # [x] Proper error handling with APIError/IntegrationError

@@ -15,7 +15,7 @@ DEPENDENCIES:
 LAYER: 3 (services)
 CONSUMERS: scout.py, pool_population_flow.py
 
-This service automatically refines Apollo search criteria based on WHO conversion
+This service automatically refines ICP search criteria based on WHO conversion
 patterns. It merges learned patterns (which titles/industries/sizes convert best)
 with the original ICP to improve lead quality over time.
 
@@ -222,7 +222,7 @@ class WhoRefinementService:
         Strategy:
         - Keep all base titles (respect original ICP)
         - Add high-lift titles not already in base (up to MAX_BOOST_ITEMS)
-        - Move high-lift titles to front of list (Apollo may prioritize)
+        - Move high-lift titles to front of list
 
         Args:
             base_titles: Original ICP titles
@@ -259,7 +259,7 @@ class WhoRefinementService:
         titles_to_add = high_lift_titles[:MAX_BOOST_ITEMS]
 
         # Reorder: high-lift titles first, then original base titles
-        # This prioritizes high-converting titles in Apollo search
+        # This prioritizes high-converting titles
         final_titles = titles_to_add + list(base_titles)
 
         return {
@@ -330,7 +330,7 @@ class WhoRefinementService:
 
         # If no overlap, add top high-lift to front
         if not prioritized:
-            # Add high-lift industries that Apollo understands
+            # Add high-lift industries
             # (keep original base, prepend high-lift)
             final = high_lift[:3] + list(base_industries)
             return {

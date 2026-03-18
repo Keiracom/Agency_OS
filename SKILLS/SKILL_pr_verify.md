@@ -14,7 +14,7 @@ STEP 2: confirm only specified files modified
 STEP 3: run pytest
   pytest tests/ -q 2>&1 | tail -5
   Paste verbatim.
-  Required: 765 passed, 0 failed, 4 skipped or better.
+  Required: 797 passed, 0 failed, 22 skipped or better.
   If any test fails: stop. Report test name + traceback.
 
 STEP 4: rebase against main
@@ -31,7 +31,7 @@ STEP 6: create PR
   gh pr create \
     --title "fix: [description] (#NNN)" \
     --body "Directive #NNN | Files: [list] | \
-Tests: 765 passed | Deprecated: clean"
+Tests: 797 passed | Deprecated: clean"
   Paste PR URL verbatim.
 
 STEP 7: verify PR diff

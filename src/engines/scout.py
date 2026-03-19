@@ -1307,13 +1307,27 @@ class ScoutEngine(BaseEngine):
             "personal_email": enrichment.get("personal_email") or lead.personal_email,
             "seniority_level": enrichment.get("seniority") or lead.seniority_level,
             # Organization data
-            "organization_industry": enrichment.get("organization_industry"),
-            "organization_employee_count": enrichment.get("organization_employee_count"),
+            # Directive #224: T1.5 stores under linkedin_company_* keys; fall back to those
+            # if the canonical organization_* keys are absent.
+            "organization_industry": (
+                enrichment.get("organization_industry")
+                or enrichment.get("linkedin_company_industry")
+            ),
+            "organization_employee_count": (
+                enrichment.get("organization_employee_count")
+                or enrichment.get("linkedin_company_size")
+            ),
             "organization_country": enrichment.get("organization_country"),
             "organization_founded_year": enrichment.get("organization_founded_year"),
             "organization_is_hiring": enrichment.get("organization_is_hiring"),
             "organization_website": enrichment.get("organization_website"),
-            "organization_linkedin_url": enrichment.get("organization_linkedin_url"),
+            # Directive #224: T1.5 stores URL as linkedin_company_url; company_linkedin_url
+            # is the resolve_linkedin_url key. Accept all three.
+            "organization_linkedin_url": (
+                enrichment.get("organization_linkedin_url")
+                or enrichment.get("linkedin_company_url")
+                or enrichment.get("company_linkedin_url")
+            ),
             # Enrichment metadata
             "enrichment_source": enrichment.get("source"),
             "enrichment_confidence": enrichment.get("confidence"),

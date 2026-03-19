@@ -53,7 +53,7 @@ ZIP_URLS = [
 # Entity type codes to EXCLUDE
 EXCLUDE_INDIVIDUAL = {"IND", "SIF", "SAI"}
 EXCLUDE_SUPER = {"SMF", "SAF", "ADF", "SUP", "PST", "SSS"}
-EXCLUDE_TRUST = {"TRT", "FPT", "STR", "LPT", "PTT", "CSF", "CCN", "LCR", "LCN", "CSS", "CSA", "CSP", "SCB", "SCN", "SCR", "SCC", "SCO", "POF", "DTT", "FUT", "DST", "FXT", "HYT", "PQT", "PUT", "CMT", "DES"}
+EXCLUDE_TRUST = {"TRT", "FPT", "STR", "LPT", "PTT", "CSF", "CCN", "LCR", "LCN", "CSS", "CSA", "CSP", "SCB", "SCN", "SCR", "SCC", "SCO", "POF", "DTT", "FUT", "DST", "FXT", "HYT", "PQT", "PUT", "CMT", "DES", "CUT"}  # CUT added: Directive #227
 EXCLUDE_GOVERNMENT = {"SGE", "LGE", "CGE", "TGE", "SGA", "LGA", "TGA", "CGA", "SGC", "LGC", "SGP", "TGE"}
 EXCLUDE_CHARITY_NFP = {"DIT", "NPF", "NPB", "NPE", "NRF"}
 

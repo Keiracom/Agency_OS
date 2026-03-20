@@ -57,18 +57,36 @@ EXCLUDE_TRUST = {"TRT", "FPT", "STR", "LPT", "PTT", "CSF", "CCN", "LCR", "LCN", 
 EXCLUDE_GOVERNMENT = {"SGE", "LGE", "CGE", "TGE", "SGA", "LGA", "TGA", "CGA", "SGC", "LGC", "SGP", "TGE"}
 EXCLUDE_CHARITY_NFP = {"DIT", "NPF", "NPB", "NPE", "NRF"}
 
-# Name-based exclusion patterns (Directive #229)
+# Name-based exclusion patterns (Directive #229, updated #233)
 # These indicate shell/holding/non-ICP entities regardless of entity type code.
+# NOTE: PASTORAL intentionally excluded per Directive #233 — PASTORAL companies have
+# valid GMB presence (e.g. PARABELLA PASTORAL COMPANY confirmed in pilots).
 NAME_EXCLUDE_EXACT = {
-    "NOMINEES", "CUSTODIANS", "PASTORAL",
+    "NOMINEES", "CUSTODIANS",
     "FUNDS MANAGEMENT", "SUPER FUND", "FUNDRAISING",
-    "PROPERTIES",  # standalone property holding indicator
 }
 
-# Regex-based patterns (applied to full name)
+# Regex-based patterns (applied to full COALESCE name)
+# PASTORAL removed from this regex per Directive #233 CEO decision.
 import re as _re
 NAME_EXCLUDE_REGEX = _re.compile(
-    r"\b(NOMINEES|CUSTODIANS|PASTORAL|FUNDS\s+MANAGEMENT|SUPER\s+FUND|FUNDRAISING|PROPERTIES)\b",
+    r"\b(NOMINEES|CUSTODIANS|FUNDS\s+MANAGEMENT|SUPER\s+FUND|FUNDRAISING)\b",
+    _re.IGNORECASE,
+)
+
+# ACN-only name filter (Directive #233 — Cat 4)
+# Rejects records whose name is purely an ACN number with no trading identity.
+# Matches: "ACN 123 456 789", "ACN123456789", "ACN 12 345 678 901" etc.
+ACN_ONLY_REGEX = _re.compile(
+    r"^ACN[\s\-]?\d[\d\s\-]{8,}$",
+    _re.IGNORECASE,
+)
+
+# PROPERTIES + personal-surname filter (Directive #233 — Cat 5, narrowed from #229)
+# Rejects: "SMITH PROPERTIES", "JONES PROPERTIES PTY LTD" (single surname + PROPERTIES)
+# Retains: "AUSTRALIA WIDE PROPERTIES GROUP", "NATIONAL PROPERTIES INVESTMENT" etc.
+PROPERTIES_PERSONAL_REGEX = _re.compile(
+    r"^[A-Z][A-Za-z\-\']{1,20}\s+PROPERTIES(?:\s+(?:PTY\.?\s+)?(?:LTD\.?|LIMITED))?$",
     _re.IGNORECASE,
 )
 # FINANCE only excluded when paired with a personal/family name structure
@@ -81,6 +99,28 @@ FINANCE_BUSINESS_WORDS = _re.compile(
     r"\b(SERVICES|SOLUTIONS|CONSULTING|GROUP|PARTNERS|MANAGEMENT|CAPITAL|ADVISORY)\b",
     _re.IGNORECASE,
 )
+
+# Python mirror of strip_legal_suffix() PostgreSQL function (Directive #232/#233)
+# Applied at ingestion time so display_name is populated without a separate batch job.
+_SUFFIX_STRIP_RE = _re.compile(
+    r"\s+(?:PTY\.?\s+LTD\.?|PTY\.?\s+LIMITED|PROPRIETARY\s+LIMITED|PROPRIETARY\s+LTD\.?"
+    r"|PTY|P\/L\.?|LIMITED|LTD\.?)\s*$",
+    _re.IGNORECASE,
+)
+_NUMBER_SUFFIX_RE = _re.compile(r"\s+No\.?\s*\d+\s*$", _re.IGNORECASE)
+_THE_PREFIX_RE = _re.compile(r"^The\s+Trustee\s+for\s+", _re.IGNORECASE)
+
+
+def _compute_display_name(name: str | None) -> str | None:
+    """Python equivalent of DB strip_legal_suffix() for ingestion-time computation."""
+    if not name:
+        return None
+    result = name.strip()
+    result = _THE_PREFIX_RE.sub("", result)
+    result = _NUMBER_SUFFIX_RE.sub("", result)
+    result = _SUFFIX_STRIP_RE.sub("", result)
+    return result.strip() or name.strip()
+
 
 # Business indicator words for PTR (Partnership) entity type filter
 PTR_BUSINESS_INDICATORS = _re.compile(
@@ -103,7 +143,9 @@ class FilterStats:
     government: int = 0
     superannuation: int = 0
     charities_nfp: int = 0
-    name_based: int = 0        # Directive #229: shell/holding name patterns
+    name_based: int = 0        # Directive #229/#233: shell/holding name patterns
+    acn_only: int = 0          # Directive #233: ACN-only names (Cat 4)
+    properties_personal: int = 0  # Directive #233: surname+PROPERTIES (Cat 5, narrowed)
     ptr_personal: int = 0      # Directive #229: personal-name PTR partnerships
 
 
@@ -142,6 +184,8 @@ class LoadStats:
         logger.info(f"  - superannuation: {self.filter_breakdown.superannuation:,}")
         logger.info(f"  - charities_nfp: {self.filter_breakdown.charities_nfp:,}")
         logger.info(f"  - name_based: {self.filter_breakdown.name_based:,}")
+        logger.info(f"  - acn_only: {self.filter_breakdown.acn_only:,}")
+        logger.info(f"  - properties_personal: {self.filter_breakdown.properties_personal:,}")
         logger.info(f"  - ptr_personal: {self.filter_breakdown.ptr_personal:,}")
         logger.info(f"final_qualified_count: {self.qualified_count:,}")
         logger.info(f"time_elapsed: {self.elapsed_seconds:.2f}s ({self.elapsed_seconds/60:.1f}m)")
@@ -163,6 +207,7 @@ class BusinessRecord:
     status: str
     abn_status_code: str
     registration_date: date | None
+    display_name: str | None = None  # Directive #232/#233: pre-computed at ingestion time
 
 
 async def download_file(url: str, dest: Path) -> None:
@@ -329,6 +374,23 @@ def parse_abn_xml_streaming(xml_path: Path, stats: LoadStats) -> Iterator[Busine
                 elem.clear()
                 continue
 
+        # FILTER 7b: ACN-only names (Directive #233 — Cat 4)
+        # Rejects records with no trading identity beyond bare ACN number.
+        if ACN_ONLY_REGEX.match(_check_name):
+            stats.filter_breakdown.acn_only += 1
+            stats.total_filtered += 1
+            elem.clear()
+            continue
+
+        # FILTER 7c: PROPERTIES + personal surname (Directive #233 — Cat 5, narrowed)
+        # Rejects "SMITH PROPERTIES PTY LTD" style shell holding entities.
+        # Does NOT reject "NATIONAL PROPERTIES GROUP" or "AUSTRALIA PROPERTIES INVESTMENT".
+        if PROPERTIES_PERSONAL_REGEX.match(_check_name):
+            stats.filter_breakdown.properties_personal += 1
+            stats.total_filtered += 1
+            elem.clear()
+            continue
+
         # FILTER 8: PTR personal-name partnerships (Directive #229)
         # Exclude PTR entities whose name contains no recognised business indicator word
         if entity_type_code == "PTR" and not PTR_BUSINESS_INDICATORS.search(_check_name):
@@ -399,7 +461,12 @@ def parse_abn_xml_streaming(xml_path: Path, stats: LoadStats) -> Iterator[Busine
                 )
             except (ValueError, TypeError):
                 reg_date = None
-        
+
+        # display_name: pre-compute at ingestion time (Directive #232/#233)
+        # = COALESCE(trading_name, legal_name) with legal suffixes stripped.
+        # Avoids a separate batch-population pass on BU refresh.
+        display_name = _compute_display_name(trading_name or legal_name)
+
         # Clean up to free memory
         elem.clear()
         
@@ -416,6 +483,7 @@ def parse_abn_xml_streaming(xml_path: Path, stats: LoadStats) -> Iterator[Busine
             status="active",
             abn_status_code=status_code,
             registration_date=reg_date,
+            display_name=display_name,
         )
         
         # Progress logging
@@ -440,7 +508,7 @@ async def upsert_batch(
         return
     
     async with pool.acquire() as conn:
-        # Prepare data for batch insert
+        # Prepare data for batch insert (display_name included — Directive #232/#233)
         values = [
             (
                 r.abn,
@@ -455,20 +523,23 @@ async def upsert_batch(
                 r.status,
                 r.abn_status_code,
                 r.registration_date,
+                r.display_name,
             )
             for r in records
         ]
         
-        # Use executemany with UPSERT
+        # Use executemany with UPSERT — display_name populated at write time
         result = await conn.executemany(
             """
             INSERT INTO business_universe (
                 abn, acn, legal_name, trading_name, entity_type, entity_type_code,
-                state, postcode, gst_registered, status, abn_status_code, registration_date
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::date)
+                state, postcode, gst_registered, status, abn_status_code,
+                registration_date, display_name
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::date, $13)
             ON CONFLICT (abn) DO UPDATE SET
                 legal_name = EXCLUDED.legal_name,
                 trading_name = EXCLUDED.trading_name,
+                display_name = EXCLUDED.display_name,
                 entity_type = EXCLUDED.entity_type,
                 entity_type_code = EXCLUDED.entity_type_code,
                 state = EXCLUDED.state,

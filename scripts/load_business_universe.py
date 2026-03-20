@@ -57,6 +57,39 @@ EXCLUDE_TRUST = {"TRT", "FPT", "STR", "LPT", "PTT", "CSF", "CCN", "LCR", "LCN", 
 EXCLUDE_GOVERNMENT = {"SGE", "LGE", "CGE", "TGE", "SGA", "LGA", "TGA", "CGA", "SGC", "LGC", "SGP", "TGE"}
 EXCLUDE_CHARITY_NFP = {"DIT", "NPF", "NPB", "NPE", "NRF"}
 
+# Name-based exclusion patterns (Directive #229)
+# These indicate shell/holding/non-ICP entities regardless of entity type code.
+NAME_EXCLUDE_EXACT = {
+    "NOMINEES", "CUSTODIANS", "PASTORAL",
+    "FUNDS MANAGEMENT", "SUPER FUND", "FUNDRAISING",
+    "PROPERTIES",  # standalone property holding indicator
+}
+
+# Regex-based patterns (applied to full name)
+import re as _re
+NAME_EXCLUDE_REGEX = _re.compile(
+    r"\b(NOMINEES|CUSTODIANS|PASTORAL|FUNDS\s+MANAGEMENT|SUPER\s+FUND|FUNDRAISING|PROPERTIES)\b",
+    _re.IGNORECASE,
+)
+# FINANCE only excluded when paired with a personal/family name structure
+# Heuristic: 1-2 capitalized words before FINANCE with no other business word
+FINANCE_PERSONAL_REGEX = _re.compile(
+    r"^(?:[A-Z][A-Za-z]+(?:\s+(?:&|AND)\s+[A-Z][A-Za-z]+)?\s+)?[A-Z][A-Za-z]+\s+FINANCE\s*(?:PTY|LTD|LIMITED)?$",
+    _re.IGNORECASE,
+)
+FINANCE_BUSINESS_WORDS = _re.compile(
+    r"\b(SERVICES|SOLUTIONS|CONSULTING|GROUP|PARTNERS|MANAGEMENT|CAPITAL|ADVISORY)\b",
+    _re.IGNORECASE,
+)
+
+# Business indicator words for PTR (Partnership) entity type filter
+PTR_BUSINESS_INDICATORS = _re.compile(
+    r"\b(pty|ltd|services|group|agency|studio|media|digital|marketing|consulting|solutions|"
+    r"advisory|associates|partners|enterprises|industries|technology|technologies|"
+    r"logistics|transport|construction|engineering|training|education)\b",
+    _re.IGNORECASE,
+)
+
 BATCH_SIZE = 1000
 PROGRESS_LOG_INTERVAL = 100_000
 
@@ -70,6 +103,8 @@ class FilterStats:
     government: int = 0
     superannuation: int = 0
     charities_nfp: int = 0
+    name_based: int = 0        # Directive #229: shell/holding name patterns
+    ptr_personal: int = 0      # Directive #229: personal-name PTR partnerships
 
 
 @dataclass
@@ -106,6 +141,8 @@ class LoadStats:
         logger.info(f"  - government: {self.filter_breakdown.government:,}")
         logger.info(f"  - superannuation: {self.filter_breakdown.superannuation:,}")
         logger.info(f"  - charities_nfp: {self.filter_breakdown.charities_nfp:,}")
+        logger.info(f"  - name_based: {self.filter_breakdown.name_based:,}")
+        logger.info(f"  - ptr_personal: {self.filter_breakdown.ptr_personal:,}")
         logger.info(f"final_qualified_count: {self.qualified_count:,}")
         logger.info(f"time_elapsed: {self.elapsed_seconds:.2f}s ({self.elapsed_seconds/60:.1f}m)")
         logger.info("=" * 60)
@@ -263,7 +300,43 @@ def parse_abn_xml_streaming(xml_path: Path, stats: LoadStats) -> Iterator[Busine
             stats.total_filtered += 1
             elem.clear()
             continue
-        
+
+        # FILTER 7: Name-based exclusions (Directive #229 — shell/holding indicators)
+        # Read trading name early for name-based checks (also used below for DB write)
+        _trading_name_elem = None
+        _trading_name_early = None
+        for _other_entity in elem.findall(".//OtherEntity/NonIndividualName[@type='TRD']/NonIndividualNameText"):
+            if _other_entity is not None and _other_entity.text:
+                _trading_name_early = _other_entity.text
+                break
+        # Fall back to legal name for name check if no trading name yet
+        _legal_name_early_elem = elem.find(".//MainEntity/NonIndividualName/NonIndividualNameText")
+        _check_name = (_trading_name_early or (
+            _legal_name_early_elem.text if _legal_name_early_elem is not None else ""
+        ) or "").upper()
+
+        if NAME_EXCLUDE_REGEX.search(_check_name):
+            stats.filter_breakdown.name_based += 1
+            stats.total_filtered += 1
+            elem.clear()
+            continue
+
+        # FINANCE exclusion: only when paired with a personal/family name pattern
+        if "FINANCE" in _check_name and not FINANCE_BUSINESS_WORDS.search(_check_name):
+            if FINANCE_PERSONAL_REGEX.match(_check_name.title()):
+                stats.filter_breakdown.name_based += 1
+                stats.total_filtered += 1
+                elem.clear()
+                continue
+
+        # FILTER 8: PTR personal-name partnerships (Directive #229)
+        # Exclude PTR entities whose name contains no recognised business indicator word
+        if entity_type_code == "PTR" and not PTR_BUSINESS_INDICATORS.search(_check_name):
+            stats.filter_breakdown.ptr_personal += 1
+            stats.total_filtered += 1
+            elem.clear()
+            continue
+
         # Extract remaining fields for qualified records
         acn_elem = elem.find(".//ASICNumber")
         acn = acn_elem.text if acn_elem is not None else None

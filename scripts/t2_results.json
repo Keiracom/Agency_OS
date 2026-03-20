@@ -1,0 +1,117 @@
+[
+  {
+    "id": "c98a78de-16ab-430a-b815-e42689d874c7",
+    "company_name": "Zeemo",
+    "gmb_data": {
+      "name": "Zeemo",
+      "phone": "+61 1300 881 594",
+      "website": "https://zeemo.com.au/",
+      "address": "g02/66 Victor Cres, Narre Warren VIC 3805, Australia",
+      "category": "Marketing agency",
+      "rating": 4.7,
+      "reviews_count": 14,
+      "place_id": "ChIJsX2xjDUV1moR1tjdDLLKtYs",
+      "match_score": 1.0
+    }
+  },
+  {
+    "id": "8b9789f9-8fb9-4054-afd2-e9978013a9a1",
+    "company_name": "Think Creative Agency",
+    "gmb_data": {
+      "name": "Think Creative Agency",
+      "phone": "+61 2 8068 2293",
+      "website": "https://thinkcreativeagency.com.au/",
+      "address": "Suite 2, Level 10, Tower 1/475 Victoria Ave, Chatswood NSW 2067, Australia",
+      "category": "Advertising agency",
+      "rating": 4.7,
+      "reviews_count": 21,
+      "place_id": "ChIJvwint-muEmsRYYnIKOmkpGE",
+      "match_score": 1.0
+    }
+  },
+  {
+    "id": "118a46ae-4bca-485b-8d7b-96952f43b419",
+    "company_name": "Defiant Digital",
+    "gmb_data": null
+  },
+  {
+    "id": "4113220b-6f04-40be-8d1e-92c2810736b3",
+    "company_name": "McKenzie Partners",
+    "gmb_data": {
+      "name": "McKenzie Partners",
+      "phone": "+61 2 9318 6200",
+      "website": "http://www.mckenzie.com.au/",
+      "address": "Level 1/11/17 Buckingham St, Surry Hills NSW 2010, Australia",
+      "category": "Advertising agency",
+      "rating": 4.6,
+      "reviews_count": 10,
+      "place_id": "ChIJazJnYqeMtAER0CUolA5Jtq0",
+      "match_score": 1.0
+    }
+  },
+  {
+    "id": "3a470c3f-a856-41ca-a2e1-d0506a8cd0de",
+    "company_name": "Nous Company",
+    "gmb_data": null
+  },
+  {
+    "id": "f883b096-167f-495d-935b-c0efec6a1157",
+    "company_name": "Soak Creative",
+    "gmb_data": {
+      "name": "SOAK Creative",
+      "phone": "+61 1300 418 868",
+      "website": "https://soak.co/?utm_campaign=gmb",
+      "address": "Level 6/200 Adelaide St, Brisbane City QLD 4000, Australia",
+      "category": "Branding agency",
+      "rating": 5,
+      "reviews_count": 5,
+      "place_id": "ChIJr1t-LCZZkWsRv1ko2awvt38",
+      "match_score": 1.0
+    }
+  },
+  {
+    "id": "d3d2f5c7-50b0-4c28-80a8-d7d7886aa746",
+    "company_name": "Nimbl",
+    "gmb_data": {
+      "name": "nimbl",
+      "phone": "+61 3 9069 3222",
+      "website": "https://nimbl.com.au/",
+      "address": "Unit 11/46-50 Regent St, Richmond VIC 3121, Australia",
+      "category": "Internet marketing service",
+      "rating": 5,
+      "reviews_count": 25,
+      "place_id": "ChIJ12_hYSVo1moRObmwq-nT9vg",
+      "match_score": 1.0
+    }
+  },
+  {
+    "id": "78f52075-2ada-4cb7-9e25-1b0de944c2b2",
+    "company_name": "LittleBIG Marketing",
+    "gmb_data": {
+      "name": "littleBIG Marketing & PR",
+      "phone": "+61 3 9025 9574",
+      "website": "http://littlebig.marketing/",
+      "address": "35 Jessie St, Cremorne VIC 3121, Australia",
+      "category": "Marketing agency",
+      "rating": 4.4,
+      "reviews_count": 7,
+      "place_id": "ChIJCRjmF_BC1moRltdgDDsv5HA",
+      "match_score": 0.8837209302325582
+    }
+  },
+  {
+    "id": "e29ef89c-6f5e-4f42-bdb6-e62b63a37b2a",
+    "company_name": "Anchor Digital Marketing",
+    "gmb_data": {
+      "name": "Anchor Digital Marketing",
+      "phone": "+61 1300 971 392",
+      "website": "https://anchordigital.com.au/",
+      "address": "2 Warner St, Fortitude Valley QLD 4006, Australia",
+      "category": "Marketing agency",
+      "rating": 5,
+      "reviews_count": 28,
+      "place_id": "ChIJAQAwk65QkWsRF-A1fq2lA2M",
+      "match_score": 1.0
+    }
+  }
+]

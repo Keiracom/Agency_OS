@@ -226,43 +226,23 @@ def main(dry_run=False):
     print("Cohort: NULL trading_name businesses (COALESCE fix)")
 
     # ── Phase 0: Select 1,000 from NULL trading_name cohort ──────────────────
-    print("\n[Phase 0] Selecting businesses (COALESCE cohort)...")
+    print("\n[Phase 0] Selecting businesses (display_name cohort — Directive #232)...")
 
-    # COALESCE fix: apply all name filters to COALESCE(trading_name, legal_name)
-    # WHERE trading_name IS NULL: explicitly targets the new cohort
+    # Directive #232: use display_name directly (pre-computed COALESCE + suffix-stripped).
+    # No COALESCE at query time, no NULL trading_name filter, no strip_sfx() at runtime.
+    # display_name = strip_legal_suffix(COALESCE(trading_name, legal_name)) for all 2.4M rows.
     selection_sql = r"""
         SELECT
             abn,
-            COALESCE(trading_name, legal_name) AS trading_name,
+            display_name AS trading_name,
             state,
             postcode
         FROM business_universe
         WHERE abn NOT IN (SELECT abn FROM gmb_pilot_results)
           AND state = 'NSW'
           AND trading_name IS NULL
-          AND legal_name IS NOT NULL
-          AND entity_type_code NOT IN ('CUT')
+          AND display_name IS NOT NULL
           AND entity_type_code = 'PRV'
-          -- Apply all name exclusion filters to COALESCE result (= legal_name here)
-          AND legal_name NOT ILIKE '%HOLDINGS%'
-          AND legal_name NOT ILIKE '%INVESTMENTS%'
-          AND legal_name NOT ILIKE '%CAPITAL%'
-          AND legal_name NOT ILIKE '%VENTURES%'
-          AND legal_name NOT ILIKE '%ENTERPRISES%'
-          AND legal_name NOT ILIKE '%MANAGEMENT CO%'
-          AND legal_name NOT ILIKE '%NOMINEES%'
-          AND legal_name NOT ILIKE '%CUSTODIANS%'
-          AND legal_name NOT ILIKE '%PASTORAL%'
-          AND legal_name NOT ILIKE '%FUNDS MANAGEMENT%'
-          AND legal_name NOT ILIKE '%SUPER FUND%'
-          AND legal_name NOT ILIKE '%FUNDRAISING%'
-          AND legal_name NOT ILIKE '%PROPERTIES%'
-          AND legal_name !~ 'ACN[[:space:]]+[0-9]+'
-          -- Exclude obvious numbered/shell holding companies
-          AND legal_name !~ '^[A-Z]\s+(NO\.?\s*)?[0-9]+'
-          -- Require at least one word with 3+ chars (filter out pure initials)
-          AND legal_name ~ '[A-Za-z]{3}'
-          -- PTR personal-name filter: entity_type_code = PRV already excludes PTR
         ORDER BY RANDOM()
         LIMIT 1000
     """
@@ -308,16 +288,13 @@ def main(dry_run=False):
     BUSINESSES_FILE.write_text(json.dumps(businesses))
     print(f"  Saved to {BUSINESSES_FILE}")
 
-    # ── Phase 1: Build BD inputs with legal suffix stripping ─────────────────
+    # ── Phase 1: Build BD inputs (display_name already suffix-stripped, no runtime strip needed) ──
     print("\n[Phase 1] Building BD inputs...")
     inputs = []
-    stripped_count = 0
     for b in businesses:
-        kn = strip_legal_suffix(b["trading_name"])
-        if kn != b["trading_name"]:
-            stripped_count += 1
-        inputs.append({"keyword": f"{kn} {b['postcode']}", "country": "AU", "lat": ""})
-    print(f"  Built {len(inputs)} inputs | Legal suffixes stripped: {stripped_count}/{len(inputs)}")
+        # display_name is pre-stripped at storage time (Directive #232) — use directly
+        inputs.append({"keyword": f"{b['trading_name']} {b['postcode']}", "country": "AU", "lat": ""})
+    print(f"  Built {len(inputs)} inputs (display_name pre-stripped, no runtime suffix stripping)")
 
     # ── Phase 2: Trigger BD snapshot ─────────────────────────────────────────
     print("\n[Phase 2] Triggering BD batch snapshot...")
@@ -374,7 +351,8 @@ def main(dry_run=False):
         if error_businesses:
             retry_inputs = [
                 {
-                    "keyword": f"{strip_legal_suffix(b['trading_name'])} {b.get('state', 'NSW')}",
+                    # display_name already stripped — use directly for retry keyword
+                    "keyword": f"{b['trading_name']} {b.get('state', 'NSW')}",
                     "country": "AU",
                     "lat": "",
                 }

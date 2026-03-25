@@ -164,17 +164,14 @@ async def run_stage1(dfs_client: DFSGMapsClient, db_pool):
                 SET
                     abn = ar.abn,
                     entity_type = ar.entity_type,
-                    entity_type_code = ar.entity_type_code,
                     gst_registered = CASE WHEN ar.gst_registered = true THEN true ELSE false END,
                     registration_date = ar.registration_date,
-                    abn_status = ar.abn_status,
                     abr_matched_at = NOW()
                 FROM abn_registry ar
                 WHERE bu.id = ANY($1::uuid[])
                   AND bu.abn IS NULL
                   AND LOWER(bu.display_name) = LOWER(ar.display_name)
                   AND LOWER(bu.state) = LOWER(ar.state)
-                  AND ar.abn_status = 'Active'
                 """,
                 inserted_ids,
             )

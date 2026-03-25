@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 # Haiku pricing (AUD) — input/output per token
 HAIKU_INPUT_COST_PER_TOKEN = Decimal("0.00000124")   # $1.24 AUD / 1M tokens
 HAIKU_OUTPUT_COST_PER_TOKEN = Decimal("0.00000620")  # $6.20 AUD / 1M tokens
-HAIKU_MODEL = "claude-3-5-haiku-20241022"
+HAIKU_MODEL = "claude-haiku-4-5-20251001"
 BATCH_DELAY_SECONDS = 0.5  # 500ms between Haiku calls (rate limit buffer)
 
 SYSTEM_PROMPT = """You are a B2B outreach specialist writing on behalf of an Australian marketing agency. Generate personalised outreach messages for a specific prospect business.
@@ -304,6 +305,13 @@ AVAILABLE CHANNELS: {channels_str}"""
                 content: str = result["content"]
                 input_tokens: int = result["input_tokens"]
                 output_tokens: int = result["output_tokens"]
+
+                # Strip markdown code fences — some model versions wrap JSON in ```json...```
+                content = content.strip()
+                if content.startswith("```"):
+                    content = re.sub(r"^```(?:\w+)?\n?", "", content)
+                    content = re.sub(r"\n?```\s*$", "", content.strip())
+                    content = content.strip()
 
                 parsed = json.loads(content)
                 return parsed, input_tokens, output_tokens

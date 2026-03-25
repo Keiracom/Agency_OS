@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import datetime
+import json
 from datetime import timezone
 
 # Category A — max 35
@@ -80,6 +81,7 @@ class Stage3Propensity:
                 else:
                     below_threshold += 1
 
+                reasons_serialized = [json.dumps(r) for r in reasons]
                 await self.db.execute("""
                     UPDATE business_universe SET
                         propensity_score = $1,
@@ -89,7 +91,7 @@ class Stage3Propensity:
                         pipeline_stage = 3,
                         pipeline_status = 'scored'
                     WHERE id = $3
-                """, score, reasons, row["id"])
+                """, score, reasons_serialized, row["id"])
                 scored += 1
             except Exception as e:
                 errors.append({"id": str(row["id"]), "error": str(e)})

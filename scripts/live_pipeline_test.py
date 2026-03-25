@@ -45,7 +45,7 @@ TEST_SUBURBS = [
     {"name": "Redfern",      "state": "NSW", "lat": -33.8928, "lng": 151.2041},
     {"name": "Darlinghurst", "state": "NSW", "lat": -33.8794, "lng": 151.2193},
 ]
-CATEGORY = "digital marketing agency"
+CATEGORY = "dentist"
 STAGE1_SPEND_CAP = 5.0  # AUD — for 5 suburbs this should be ~$0.15
 
 # ── IMPORTS ────────────────────────────────────────────────────────────────────

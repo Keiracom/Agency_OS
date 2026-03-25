@@ -81,6 +81,7 @@ class CISService:
         subject_line: str | None = None,
         hook_type: str | None = None,
         personalization_level: str = "basic",
+        business_universe_id: UUID | str | None = None,
         session: AsyncSession | None = None,
     ) -> dict[str, Any]:
         """
@@ -101,6 +102,7 @@ class CISService:
             subject_line: Email subject for pattern matching
             hook_type: Content hook type (pain_point, social_proof, question, etc.)
             personalization_level: none, basic, deep, sdk_enhanced
+            business_universe_id: FK to business_universe product table (optional)
             session: Optional database session
 
         Returns:
@@ -122,6 +124,7 @@ class CISService:
                     subject_line,
                     hook_type,
                     personalization_level,
+                    business_universe_id,
                 )
         return await self._record_outreach_outcome_impl(
             db,
@@ -136,6 +139,7 @@ class CISService:
             subject_line,
             hook_type,
             personalization_level,
+            business_universe_id,
         )
 
     async def _record_outreach_outcome_impl(
@@ -152,6 +156,7 @@ class CISService:
         subject_line: str | None,
         hook_type: str | None,
         personalization_level: str,
+        business_universe_id: UUID | str | None = None,
     ) -> dict[str, Any]:
         """Implementation of record_outreach_outcome."""
         try:
@@ -165,11 +170,13 @@ class CISService:
                     activity_id, lead_id, client_id, campaign_id, channel,
                     sequence_step, sent_at, als_score_at_send, als_tier_at_send,
                     subject_hash, hook_type, personalization_level,
+                    business_universe_id,
                     created_at, updated_at
                 ) VALUES (
                     :activity_id, :lead_id, :client_id, :campaign_id, :channel,
                     :sequence_step, NOW(), :propensity_score, :propensity_tier,
                     :subject_hash, :hook_type, :personalization_level,
+                    :business_universe_id,
                     NOW(), NOW()
                 )
                 RETURNING id
@@ -189,6 +196,7 @@ class CISService:
                     "subject_hash": subject_hash,
                     "hook_type": hook_type,
                     "personalization_level": personalization_level,
+                    "business_universe_id": str(business_universe_id) if business_universe_id else None,
                 },
             )
             row = result.fetchone()

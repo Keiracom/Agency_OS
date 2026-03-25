@@ -674,7 +674,7 @@ class ScoutEngine(BaseEngine):
             if linkedin_url or employee_count or industry:
                 await db.execute(
                     text("""
-                        UPDATE business_universe SET
+                        UPDATE abn_registry SET
                             linkedin_company_url = COALESCE(:linkedin_url, linkedin_company_url),
                             linkedin_employee_count = COALESCE(:employee_count, linkedin_employee_count),
                             linkedin_industry = COALESCE(:industry, linkedin_industry),
@@ -706,7 +706,7 @@ class ScoutEngine(BaseEngine):
             if any(v is not None for v in [organic_etv, organic_count, paid_cost, domain_rank]):
                 await db.execute(
                     text("""
-                        UPDATE business_universe SET
+                        UPDATE abn_registry SET
                             dfs_organic_traffic = COALESCE(:organic_etv, dfs_organic_traffic),
                             dfs_organic_keywords = COALESCE(:organic_count, dfs_organic_keywords),
                             dfs_paid_traffic_cost = COALESCE(:paid_cost, dfs_paid_traffic_cost),
@@ -752,7 +752,7 @@ class ScoutEngine(BaseEngine):
             _conf_score = score_business_confidence(_signals)
             await db.execute(
                 text("""
-                    UPDATE business_universe SET
+                    UPDATE abn_registry SET
                         revenue_confidence_score = :score,
                         revenue_confidence_updated = NOW(),
                         updated_at = NOW()
@@ -770,7 +770,7 @@ class ScoutEngine(BaseEngine):
             try:
                 await db.execute(
                     text("""
-                        UPDATE business_universe
+                        UPDATE abn_registry
                         SET opportunity_score = COALESCE(:opp_score, opportunity_score),
                             opportunity_reason = COALESCE(:opp_reason, opportunity_reason),
                             updated_at = NOW()

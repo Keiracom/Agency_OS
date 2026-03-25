@@ -237,7 +237,7 @@ class DFSGMapsClient:
             "gmb_rating": (raw_item.get("rating") or {}).get("value"),
             "gmb_review_count": (raw_item.get("rating") or {}).get("votes_count"),
             "gmb_category": raw_item.get("category"),
-            "gmb_additional_categories": json.dumps(raw_item.get("additional_categories") or []),
+            "gmb_additional_categories": raw_item.get("additional_categories") or [],
             "gmb_work_hours": json.dumps(raw_item.get("work_hours")) if raw_item.get("work_hours") else None,
             "gmb_total_photos": raw_item.get("total_photos"),
             "gmb_maps_url": raw_item.get("maps_url"),

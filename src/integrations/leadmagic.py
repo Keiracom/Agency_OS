@@ -538,7 +538,7 @@ class LeadmagicClient:
             found = bool(email)
 
             # Parse status
-            status_str = response.get("status", "unknown").lower()
+            status_str = (response.get("status") or "unknown").lower()
             try:
                 status = EmailStatus(status_str)
             except ValueError:
@@ -650,7 +650,7 @@ class LeadmagicClient:
             found = bool(mobile)
 
             # Parse status
-            status_str = response.get("status", "unknown").lower()
+            status_str = (response.get("status") or "unknown").lower()
             try:
                 status = MobileStatus(status_str)
             except ValueError:

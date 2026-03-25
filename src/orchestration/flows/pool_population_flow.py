@@ -683,7 +683,7 @@ async def populate_pool_from_icp_task(
                         UPDATE lead_pool lp
                         SET abn = bu.abn,
                             updated_at = NOW()
-                        FROM business_universe bu
+                        FROM abn_registry bu
                         WHERE (
                             LOWER(bu.trading_name) = LOWER(lp.company_name)
                             OR LOWER(bu.legal_name) = LOWER(lp.company_name)

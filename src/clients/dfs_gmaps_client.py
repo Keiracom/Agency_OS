@@ -33,6 +33,8 @@ DFS_STATUS_SUCCESS = 20000
 DFS_STATUS_IN_QUEUE = 20100
 DFS_STATUS_AUTH_FAILURE = 40200
 DFS_STATUS_INVALID_LOCATION = 40501
+DFS_STATUS_TASK_HANDED = 40601    # Maps-specific: task accepted, not yet processing
+DFS_STATUS_TASK_PROCESSING = 40602  # Maps-specific: task in queue, keep polling
 
 # Poll settings
 TASK_POLL_MAX_ATTEMPTS = 10
@@ -253,10 +255,10 @@ class DFSGMapsClient:
             dfs_status = task.get("status_code")
             dfs_message = task.get("status_message", "")
 
-            if dfs_status == DFS_STATUS_IN_QUEUE:
+            if dfs_status in (DFS_STATUS_IN_QUEUE, DFS_STATUS_TASK_HANDED, DFS_STATUS_TASK_PROCESSING):
                 if attempt < TASK_POLL_MAX_ATTEMPTS:
                     logger.debug(
-                        f"DFS task {task_id} still queued (attempt {attempt}/{TASK_POLL_MAX_ATTEMPTS}), "
+                        f"DFS task {task_id} not ready (status {dfs_status}, attempt {attempt}/{TASK_POLL_MAX_ATTEMPTS}), "
                         f"waiting {wait_s:.1f}s"
                     )
                     await asyncio.sleep(wait_s)

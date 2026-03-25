@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 DFS_BASE_URL = "https://api.dataforseo.com/v3"
 DFS_SERP_TASK_POST = "/serp/google/organic/task_post"
-DFS_SERP_TASK_GET = "/serp/google/organic/task_get"
+DFS_SERP_TASK_GET = "/serp/google/organic/task_get/regular"
 
 DFS_STATUS_SUCCESS = 20000
 DFS_STATUS_IN_QUEUE = 20100

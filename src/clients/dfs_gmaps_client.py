@@ -26,7 +26,7 @@ COST_PER_SEARCH_AUD = Decimal("0.003")  # $0.002 USD * ~1.55 AUD/USD
 
 DFS_GMAPS_BASE_URL = "https://api.dataforseo.com/v3"
 DFS_TASK_POST_ENDPOINT = "/serp/google/maps/task_post"
-DFS_TASK_GET_ENDPOINT = "/serp/google/maps/task_get"
+DFS_TASK_GET_ENDPOINT = "/serp/google/maps/task_get/regular"
 
 # DFS status codes
 DFS_STATUS_SUCCESS = 20000

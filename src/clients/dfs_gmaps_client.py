@@ -25,20 +25,12 @@ logger = logging.getLogger(__name__)
 COST_PER_SEARCH_AUD = Decimal("0.003")  # $0.002 USD * ~1.55 AUD/USD
 
 DFS_GMAPS_BASE_URL = "https://api.dataforseo.com/v3"
-DFS_TASK_POST_ENDPOINT = "/serp/google/maps/task_post"
-DFS_TASK_GET_ENDPOINT = "/serp/google/maps/task_get/advanced"
+DFS_GMAPS_LIVE_ENDPOINT = "/serp/google/maps/live/advanced"
 
 # DFS status codes
 DFS_STATUS_SUCCESS = 20000
-DFS_STATUS_IN_QUEUE = 20100
 DFS_STATUS_AUTH_FAILURE = 40200
 DFS_STATUS_INVALID_LOCATION = 40501
-DFS_STATUS_TASK_HANDED = 40601    # Maps-specific: task accepted, not yet processing
-DFS_STATUS_TASK_PROCESSING = 40602  # Maps-specific: task in queue, keep polling
-
-# Poll settings
-TASK_POLL_MAX_ATTEMPTS = 10
-TASK_POLL_INITIAL_WAIT_S = 2.0
 
 
 # ============================================
@@ -158,7 +150,7 @@ class DFSGMapsClient:
             }
         ]
 
-        response = await client.post(DFS_TASK_POST_ENDPOINT, json=payload)
+        response = await client.post(DFS_GMAPS_LIVE_ENDPOINT, json=payload)
 
         if response.status_code in (429, 500, 502, 503):
             response.raise_for_status()  # triggers tenacity retry
@@ -172,7 +164,7 @@ class DFSGMapsClient:
             raise APIError(
                 service="dfs_gmaps",
                 status_code=0,
-                message="DFS task_post returned no tasks",
+                message="DFS live endpoint returned no tasks",
             )
 
         task = tasks[0]
@@ -185,106 +177,26 @@ class DFSGMapsClient:
         if dfs_status == DFS_STATUS_AUTH_FAILURE:
             raise DFSAuthError("DataForSEO authentication failed")
 
-        if dfs_status not in (DFS_STATUS_SUCCESS, DFS_STATUS_IN_QUEUE):
+        if dfs_status != DFS_STATUS_SUCCESS:
             raise APIError(
                 service="dfs_gmaps",
                 status_code=dfs_status,
                 message=f"DFS error {dfs_status}: {dfs_message}",
             )
 
-        # Extract task_id
-        task_data = (task.get("data") or {})
-        task_id = task_data.get("id") or (
-            (task.get("result") or [{}])[0].get("id")
-        )
+        # Parse results directly — live endpoint returns synchronously
+        result_list = task.get("result") or []
+        raw_items = result_list[0].get("items") or [] if result_list else []
 
-        # Fallback: id may sit directly on the task
-        if not task_id:
-            task_id = task.get("id")
-
-        if not task_id:
-            raise APIError(
-                service="dfs_gmaps",
-                status_code=dfs_status,
-                message="DFS task_post did not return a task_id",
-            )
-
-        # Fetch results
-        raw_items = await self.fetch_task_results(task_id)
         self.queries_made += 1
-
         results = [self.map_to_bu_columns(item) for item in raw_items]
 
-        cost = self.estimated_cost_aud
         logger.info(
-            f"DFS GMaps: {category} @ {lat},{lng} → {len(results)} results, cost AUD {cost}"
+            f"DFS GMaps live: {category} @ {lat},{lng} → {len(results)} results, "
+            f"cost AUD {self.estimated_cost_aud}"
         )
 
         return results
-
-    # --------------------------------------------------
-    # Task result fetcher
-    # --------------------------------------------------
-
-    async def fetch_task_results(self, task_id: str) -> list[dict]:
-        """
-        Fetch results for a submitted DFS Google Maps task.
-
-        Polls with exponential backoff if the task is still queued
-        (DFS status 20100).
-
-        Args:
-            task_id: Task ID returned by task_post
-
-        Returns:
-            List of raw DFS item dicts, or [] if no results.
-        """
-        client = await self._get_client()
-        wait_s = TASK_POLL_INITIAL_WAIT_S
-
-        for attempt in range(1, TASK_POLL_MAX_ATTEMPTS + 1):
-            response = await client.get(f"{DFS_TASK_GET_ENDPOINT}/{task_id}")
-            response.raise_for_status()
-            data = response.json()
-
-            tasks = data.get("tasks", [])
-            if not tasks:
-                return []
-
-            task = tasks[0]
-            dfs_status = task.get("status_code")
-            dfs_message = task.get("status_message", "")
-
-            if dfs_status in (DFS_STATUS_IN_QUEUE, DFS_STATUS_TASK_HANDED, DFS_STATUS_TASK_PROCESSING):
-                if attempt < TASK_POLL_MAX_ATTEMPTS:
-                    logger.debug(
-                        f"DFS task {task_id} not ready (status {dfs_status}, attempt {attempt}/{TASK_POLL_MAX_ATTEMPTS}), "
-                        f"waiting {wait_s:.1f}s"
-                    )
-                    await asyncio.sleep(wait_s)
-                    wait_s = min(wait_s * 2, 30.0)
-                    continue
-                else:
-                    logger.warning(
-                        f"DFS task {task_id} still queued after {TASK_POLL_MAX_ATTEMPTS} attempts"
-                    )
-                    return []
-
-            if dfs_status != DFS_STATUS_SUCCESS:
-                raise APIError(
-                    service="dfs_gmaps",
-                    status_code=dfs_status,
-                    message=f"DFS error {dfs_status}: {dfs_message}",
-                )
-
-            result_list = task.get("result") or []
-            if not result_list:
-                return []
-
-            items = result_list[0].get("items") or []
-            return items
-
-        return []
 
     # --------------------------------------------------
     # Field mapper

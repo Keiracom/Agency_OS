@@ -19,17 +19,12 @@ logger = logging.getLogger(__name__)
 # ============================================
 
 DFS_BASE_URL = "https://api.dataforseo.com/v3"
-DFS_SERP_TASK_POST = "/serp/google/organic/task_post"
-DFS_SERP_TASK_GET = "/serp/google/organic/task_get/regular"
+DFS_SERP_LIVE_ENDPOINT = "/serp/google/organic/live/advanced"
 
 DFS_STATUS_SUCCESS = 20000
-DFS_STATUS_IN_QUEUE = 20100
 DFS_STATUS_AUTH_FAILURE = 40200
 
 COST_PER_SERP_AUD = Decimal("0.00930")  # $0.006 USD * 1.55 AUD/USD
-
-DFS_SERP_POLL_ATTEMPTS = 10
-DFS_SERP_POLL_INITIAL_WAIT = 3.0  # SERP tasks take longer than GMaps
 
 DFS_SERP_LOCATION_AU = 2036
 DFS_LINKEDIN_IN_PATTERN = "linkedin.com/in/"
@@ -97,9 +92,9 @@ class DFSSerpClient:
         location_parts = " ".join(filter(None, [suburb, state]))
         query = f'"{business_name}" {location_parts} site:linkedin.com/in/'
 
-        # POST — ONE task per POST (gotcha: no batch)
+        # Single POST to live endpoint — synchronous, no polling
         client = await self._get_client()
-        resp = await client.post(DFS_SERP_TASK_POST, json=[{
+        resp = await client.post(DFS_SERP_LIVE_ENDPOINT, json=[{
             "keyword": query,
             "location_code": DFS_SERP_LOCATION_AU,
             "language_code": "en",
@@ -110,42 +105,21 @@ class DFSSerpClient:
         resp.raise_for_status()
         data = resp.json()
 
-        status_code = data["tasks"][0]["status_code"]
+        task = data["tasks"][0]
+        status_code = task["status_code"]
         if status_code == DFS_STATUS_AUTH_FAILURE:
             raise DFSSerpAuthError("DFS SERP authentication failed")
-        if status_code not in (DFS_STATUS_SUCCESS, DFS_STATUS_IN_QUEUE):
+        if status_code != DFS_STATUS_SUCCESS:
             raise DFSSerpError(
-                f"DFS SERP error {status_code}: {data['tasks'][0].get('status_message', '')}"
+                f"DFS SERP error {status_code}: {task.get('status_message', '')}"
             )
 
-        task_id = data["tasks"][0]["id"]
         self.queries_made += 1
 
-        # Poll for results
-        items = await self._fetch_serp_results(task_id)
+        # Parse results directly
+        result = task.get("result") or []
+        items = result[0].get("items") or [] if result else []
         return self._extract_dm(items)
-
-    async def _fetch_serp_results(self, task_id: str) -> list[dict]:
-        """Poll task_get until ready. Returns organic items list."""
-        import asyncio
-        client = await self._get_client()
-        wait = DFS_SERP_POLL_INITIAL_WAIT
-        for attempt in range(DFS_SERP_POLL_ATTEMPTS):
-            resp = await client.get(f"{DFS_SERP_TASK_GET}/{task_id}")
-            resp.raise_for_status()
-            data = resp.json()
-            task = data["tasks"][0]
-            if task["status_code"] == DFS_STATUS_IN_QUEUE:
-                await asyncio.sleep(wait)
-                wait = min(wait * 2, 30.0)
-                continue
-            if task["status_code"] != DFS_STATUS_SUCCESS:
-                raise DFSSerpError(f"Task {task_id} failed: {task['status_code']}")
-            result = task.get("result") or []
-            if not result:
-                return []
-            return result[0].get("items") or []
-        return []
 
     def _extract_dm(self, items: list[dict]) -> dict | None:
         """Find first linkedin.com/in/ result and extract DM fields."""

@@ -1,0 +1,665 @@
+# FILE: src/clients/dfs_labs_client.py
+# PURPOSE: DataForSEO Labs + Domain Analytics client for pipeline v4 discovery/intelligence
+# PHASE: Pipeline v4 — Stages 1 & 2
+# DEPENDENCIES: httpx, tenacity, src.config.settings
+# DIRECTIVE: #255
+
+"""
+DFS Labs Client — Directive #255
+Wraps 7 DataForSEO endpoints for pipeline v4 discovery and intelligence.
+"""
+
+import base64
+import logging
+import time
+from decimal import Decimal
+
+import httpx
+from tenacity import before_sleep_log, retry, stop_after_attempt, wait_exponential
+
+from src.config.settings import settings
+
+logger = logging.getLogger(__name__)
+
+# ============================================
+# Module-level Constants
+# ============================================
+
+DFS_BASE_URL = "https://api.dataforseo.com"
+
+DFS_STATUS_SUCCESS = 20000
+DFS_STATUS_AUTH_FAILURE = 40200
+DFS_STATUS_NO_DATA = 40501
+
+AUD_RATE = Decimal("1.55")
+
+
+# ============================================
+# Custom Exceptions
+# ============================================
+
+
+class DFSAuthError(Exception):
+    """Raised when DataForSEO authentication fails."""
+    pass
+
+
+# ============================================
+# Client
+# ============================================
+
+
+class DFSLabsClient:
+    """
+    Async client for DataForSEO Labs and Domain Analytics APIs.
+
+    Wraps 7 endpoints for pipeline v4 discovery and intelligence:
+    - get_categories()             — FREE, cached
+    - domains_by_technology()      — $0.015/call, S1 Source A discovery
+    - competitors_domain()         — $0.011/call, S1 Source B discovery
+    - domain_rank_overview()       — $0.010/call, S2 budget/traffic signal
+    - domain_technologies()        — $0.010/call, S2 tech stack detection
+    - keywords_for_site()          — $0.011/call, keyword intelligence
+    - historical_rank_overview()   — $0.106/call, trend signal (EXPENSIVE — gate callers)
+    """
+
+    def __init__(self, login: str, password: str) -> None:
+        self.login = login
+        self.password = password
+        self._client: httpx.AsyncClient | None = None
+
+        # Pre-compute Basic Auth header
+        credentials = f"{self.login}:{self.password}"
+        encoded = base64.b64encode(credentials.encode()).decode()
+        self._auth_header = f"Basic {encoded}"
+
+        # Per-endpoint cost counters
+        self._cost_domains_by_technology = Decimal("0")
+        self._cost_competitors_domain = Decimal("0")
+        self._cost_domain_rank_overview = Decimal("0")
+        self._cost_domain_technologies = Decimal("0")
+        self._cost_keywords_for_site = Decimal("0")
+        self._cost_historical_rank_overview = Decimal("0")
+
+        # Cache for get_categories (free, rarely changes)
+        self._categories_cache: list[dict] | None = None
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Lazy-init httpx.AsyncClient with Basic Auth header."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                base_url=DFS_BASE_URL,
+                headers={
+                    "Authorization": self._auth_header,
+                    "Content-Type": "application/json",
+                },
+                timeout=30.0,
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Close the underlying httpx client."""
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
+
+    @property
+    def total_cost_usd(self) -> float:
+        """Total API cost in USD for this client instance."""
+        total = (
+            self._cost_domains_by_technology
+            + self._cost_competitors_domain
+            + self._cost_domain_rank_overview
+            + self._cost_domain_technologies
+            + self._cost_keywords_for_site
+            + self._cost_historical_rank_overview
+        )
+        return float(total)
+
+    @property
+    def total_cost_aud(self) -> float:
+        """Total API cost in AUD for this client instance."""
+        total_usd = (
+            self._cost_domains_by_technology
+            + self._cost_competitors_domain
+            + self._cost_domain_rank_overview
+            + self._cost_domain_technologies
+            + self._cost_keywords_for_site
+            + self._cost_historical_rank_overview
+        )
+        return float(total_usd * AUD_RATE)
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=30),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
+    async def _post(
+        self,
+        endpoint: str,
+        payload: list,
+        cost_per_call: Decimal,
+        cost_attr: str,
+    ) -> dict:
+        """
+        POST to a DataForSEO endpoint with retry, cost tracking, and error handling.
+
+        Args:
+            endpoint: API endpoint path (e.g. /v3/dataforseo_labs/google/...)
+            payload: Request payload list
+            cost_per_call: USD cost to add to counter
+            cost_attr: Name of the instance attribute to accumulate cost into
+
+        Returns:
+            tasks[0].result[0] or empty dict
+
+        Raises:
+            DFSAuthError: If DFS returns auth failure status
+            httpx.HTTPStatusError: On 429/500/502/503 (triggers tenacity retry)
+        """
+        client = await self._get_client()
+        t0 = time.monotonic()
+        response = await client.post(endpoint, json=payload)
+        elapsed = time.monotonic() - t0
+
+        # Trigger tenacity retry on transient HTTP errors
+        if response.status_code in (429, 500, 502, 503):
+            response.raise_for_status()
+
+        response.raise_for_status()
+        data = response.json()
+
+        tasks = data.get("tasks", [])
+        if not tasks:
+            logger.warning(f"DFS {endpoint}: no tasks in response")
+            return {}
+
+        task = tasks[0]
+        dfs_status = task.get("status_code")
+        dfs_message = task.get("status_message", "")
+
+        # Auth failure
+        if dfs_status == DFS_STATUS_AUTH_FAILURE:
+            raise DFSAuthError(f"DataForSEO authentication failed: {dfs_message}")
+
+        # No data — expected for small/unknown domains
+        if dfs_status == DFS_STATUS_NO_DATA:
+            logger.info(
+                f"DFS {endpoint}: 40501 no data (expected for unknown domains), "
+                f"elapsed={elapsed:.2f}s"
+            )
+            return {"items": [], "total_count": 0}
+
+        # Accumulate cost
+        current = getattr(self, cost_attr, Decimal("0"))
+        setattr(self, cost_attr, current + cost_per_call)
+
+        logger.info(
+            f"DFS {endpoint}: status={dfs_status}, cost_usd={cost_per_call}, "
+            f"elapsed={elapsed:.2f}s"
+        )
+
+        result = task.get("result") or []
+        return result[0] if result else {}
+
+    # ============================================
+    # ENDPOINT 1: get_categories
+    # ============================================
+
+    async def get_categories(self) -> list[dict]:
+        """
+        Fetch DataForSEO Labs categories (FREE, cached after first call).
+
+        Returns:
+            List of dicts with category_code and category_name.
+        """
+        if self._categories_cache is not None:
+            return self._categories_cache
+
+        client = await self._get_client()
+        response = await client.get("/v3/dataforseo_labs/categories")
+        response.raise_for_status()
+        data = response.json()
+
+        tasks = data.get("tasks", [])
+        if not tasks:
+            return []
+
+        task = tasks[0]
+        dfs_status = task.get("status_code")
+        if dfs_status == DFS_STATUS_AUTH_FAILURE:
+            raise DFSAuthError("DataForSEO authentication failed")
+
+        result = task.get("result") or []
+        categories = result[0] if result else []
+
+        # Normalize to list of {category_code, category_name}
+        if isinstance(categories, list):
+            self._categories_cache = categories
+        elif isinstance(categories, dict):
+            # Some DFS endpoints wrap in a dict
+            self._categories_cache = list(categories.values()) if categories else []
+        else:
+            self._categories_cache = []
+
+        logger.info(f"DFS categories: fetched {len(self._categories_cache)} categories")
+        return self._categories_cache
+
+    # ============================================
+    # ENDPOINT 2: domains_by_technology
+    # ============================================
+
+    async def domains_by_technology(
+        self,
+        technology_name: str,
+        country: str = "Australia",
+        limit: int = 100,
+        offset: int = 0,
+        filters: list | None = None,
+    ) -> dict:
+        """
+        Find domains using a specific technology in a given country.
+
+        Cost: $0.015 USD per call
+
+        Args:
+            technology_name: Technology to search for (e.g. "HubSpot")
+            country: Country name (default "Australia")
+            limit: Max results (default 100)
+            offset: Pagination offset (default 0)
+            filters: Optional DFS filter list
+
+        Returns:
+            {"total_count": int, "items": [{"domain": str, "title": str,
+              "description": str, "technologies": dict}]}
+        """
+        payload_item: dict = {
+            "technologies": [technology_name],
+            "country_iso_code": "AU",
+            "limit": limit,
+            "offset": offset,
+        }
+        if filters:
+            payload_item["filters"] = filters
+
+        result = await self._post(
+            endpoint="/v3/domain_analytics/technologies/domains_by_technology/live",
+            payload=[payload_item],
+            cost_per_call=Decimal("0.015"),
+            cost_attr="_cost_domains_by_technology",
+        )
+
+        items = result.get("items") or []
+        total_count = result.get("total_count", 0)
+
+        return {
+            "total_count": total_count,
+            "items": [
+                {
+                    "domain": item.get("domain"),
+                    "title": item.get("title"),
+                    "description": item.get("description"),
+                    "technologies": item.get("technologies", {}),
+                }
+                for item in items
+            ],
+        }
+
+    # ============================================
+    # ENDPOINT 3: competitors_domain
+    # ============================================
+
+    async def competitors_domain(
+        self,
+        target_domain: str,
+        location_code: int = 2036,
+        language_code: str = "en",
+        limit: int = 100,
+        filters: list | None = None,
+    ) -> dict:
+        """
+        Find competitor domains sharing organic keywords with the target.
+
+        Cost: $0.011 USD per call
+
+        Args:
+            target_domain: Domain to find competitors for
+            location_code: DFS location code (default 2036 = Australia)
+            language_code: Language code (default "en")
+            limit: Max results (default 100)
+            filters: Optional DFS filter list
+
+        Returns:
+            {"items": [{"domain": str, "avg_position": float, "intersections": int,
+              "full_domain_metrics": {"organic": {...}, "paid": {...}}}]}
+        """
+        payload_item: dict = {
+            "target": target_domain,
+            "location_code": location_code,
+            "language_code": language_code,
+            "limit": limit,
+        }
+        if filters:
+            payload_item["filters"] = filters
+
+        result = await self._post(
+            endpoint="/v3/dataforseo_labs/google/competitors_domain/live",
+            payload=[payload_item],
+            cost_per_call=Decimal("0.011"),
+            cost_attr="_cost_competitors_domain",
+        )
+
+        items = result.get("items") or []
+        return {
+            "items": [
+                {
+                    "domain": item.get("domain"),
+                    "avg_position": item.get("avg_position"),
+                    "intersections": item.get("intersections"),
+                    "full_domain_metrics": item.get("full_domain_metrics", {}),
+                }
+                for item in items
+            ]
+        }
+
+    # ============================================
+    # ENDPOINT 4: domain_rank_overview
+    # ============================================
+
+    async def domain_rank_overview(
+        self,
+        target_domain: str,
+        location_code: int = 2036,
+        language_code: str = "en",
+    ) -> dict | None:
+        """
+        Get organic and paid traffic overview for a domain.
+
+        Cost: $0.010 USD per call
+
+        CRITICAL: result path is tasks[0].result[0].items[0], NOT tasks[0].result[0]
+
+        Args:
+            target_domain: Domain to fetch overview for
+            location_code: DFS location code (default 2036 = Australia)
+            language_code: Language code (default "en")
+
+        Returns:
+            Dict with 8 mapped SEO metric fields, or None if domain not indexed.
+        """
+        result = await self._post(
+            endpoint="/v3/dataforseo_labs/google/domain_rank_overview/live",
+            payload=[{
+                "target": target_domain,
+                "location_code": location_code,
+                "language_code": language_code,
+            }],
+            cost_per_call=Decimal("0.010"),
+            cost_attr="_cost_domain_rank_overview",
+        )
+
+        # CRITICAL: result is tasks[0].result[0], but metrics are in .items[0]
+        items = result.get("items") or []
+        if not items:
+            logger.info(f"DFS domain_rank_overview: no data for {target_domain}")
+            return None
+
+        item = items[0]
+        metrics = item.get("metrics", {})
+        organic = metrics.get("organic", {})
+        paid = metrics.get("paid", {})
+
+        return {
+            "dfs_organic_etv": organic.get("etv"),
+            "dfs_paid_etv": paid.get("etv"),
+            "dfs_organic_keywords": organic.get("count"),
+            "dfs_paid_keywords": paid.get("count"),
+            "dfs_organic_pos_1": organic.get("pos_1"),
+            "dfs_organic_pos_2_3": organic.get("pos_2_3"),
+            "dfs_organic_pos_4_10": organic.get("pos_4_10"),
+            "dfs_organic_pos_11_20": organic.get("pos_11_20"),
+        }
+
+    # ============================================
+    # ENDPOINT 5: domain_technologies
+    # ============================================
+
+    async def domain_technologies(self, target_domain: str) -> dict | None:
+        """
+        Get the technology stack for a domain.
+
+        Cost: $0.010 USD per call (may make 2 calls for www. fallback)
+
+        GOTCHA: Redirected domains fail. Falls back to www. prefix if bare domain
+        returns no technologies.
+
+        The technologies response is a NESTED DICT by category:
+        {"servers": {"web_servers": ["Nginx"]}, "analytics": {...}}
+
+        Args:
+            target_domain: Domain to detect technologies for
+
+        Returns:
+            {"tech_stack": [str], "tech_categories": dict, "tech_stack_depth": int}
+            or None if no technologies detected after both attempts.
+        """
+
+        async def _fetch_technologies(domain: str) -> dict | None:
+            result = await self._post(
+                endpoint="/v3/domain_analytics/technologies/domain_technologies/live",
+                payload=[{"target": domain}],
+                cost_per_call=Decimal("0.010"),
+                cost_attr="_cost_domain_technologies",
+            )
+            tech_categories = result.get("technologies")
+            if not tech_categories:
+                return None
+            return tech_categories
+
+        # First attempt: bare domain
+        tech_categories = await _fetch_technologies(target_domain)
+
+        # Fallback: try www. prefix if bare domain returned nothing
+        if tech_categories is None and not target_domain.startswith("www."):
+            www_domain = f"www.{target_domain}"
+            logger.info(
+                f"DFS domain_technologies: no data for {target_domain}, "
+                f"retrying with {www_domain}"
+            )
+            tech_categories = await _fetch_technologies(www_domain)
+
+        if not tech_categories:
+            logger.info(f"DFS domain_technologies: no technologies for {target_domain}")
+            return None
+
+        # Flatten nested dict: {"servers": {"web_servers": ["Nginx"]}} → ["Nginx"]
+        all_techs: list[str] = []
+        for _category, subcategories in tech_categories.items():
+            if isinstance(subcategories, dict):
+                for _subcat, tech_list in subcategories.items():
+                    if isinstance(tech_list, list):
+                        all_techs.extend(tech_list)
+            elif isinstance(subcategories, list):
+                all_techs.extend(subcategories)
+
+        unique_techs = list(dict.fromkeys(all_techs))  # preserve order, deduplicate
+
+        return {
+            "tech_stack": unique_techs,
+            "tech_categories": tech_categories,
+            "tech_stack_depth": len(unique_techs),
+        }
+
+    # ============================================
+    # ENDPOINT 6: keywords_for_site
+    # ============================================
+
+    async def keywords_for_site(
+        self,
+        target_domain: str,
+        location_code: int = 2036,
+        language_code: str = "en",
+        limit: int = 100,
+        filters: list | None = None,
+    ) -> dict:
+        """
+        Get organic keywords for a domain.
+
+        Cost: $0.011 USD per call
+
+        Args:
+            target_domain: Domain to fetch keywords for
+            location_code: DFS location code (default 2036 = Australia)
+            language_code: Language code (default "en")
+            limit: Max results (default 100)
+            filters: Optional DFS filter list (NO order_by support)
+
+        Returns:
+            {"items": [{"keyword": str, "search_volume": int, "cpc": float,
+              "competition": float, "position": int}]}
+        """
+        payload_item: dict = {
+            "target": target_domain,
+            "location_code": location_code,
+            "language_code": language_code,
+            "limit": limit,
+        }
+        if filters:
+            payload_item["filters"] = filters
+
+        result = await self._post(
+            endpoint="/v3/dataforseo_labs/google/keywords_for_site/live",
+            payload=[payload_item],
+            cost_per_call=Decimal("0.011"),
+            cost_attr="_cost_keywords_for_site",
+        )
+
+        items = result.get("items") or []
+        mapped_items = []
+        for item in items:
+            keyword_info = item.get("keyword_info") or {}
+            serp_info = item.get("serp_info") or {}
+            serp_items = serp_info.get("serp") or []
+            # position: first SERP item's rank_group
+            position = serp_items[0].get("rank_group") if serp_items else None
+
+            mapped_items.append({
+                "keyword": item.get("keyword"),
+                "search_volume": keyword_info.get("search_volume"),
+                "cpc": keyword_info.get("cpc"),
+                "competition": keyword_info.get("competition"),
+                "position": position,
+            })
+
+        return {"items": mapped_items}
+
+    # ============================================
+    # ENDPOINT 7: historical_rank_overview
+    # ============================================
+
+    async def historical_rank_overview(
+        self,
+        target_domain: str,
+        location_code: int = 2036,
+        language_code: str = "en",
+    ) -> dict | None:
+        """
+        Get historical monthly rank data for a domain.
+
+        Cost: $0.106 USD per call — EXPENSIVE. Callers must gate this.
+
+        Args:
+            target_domain: Domain to fetch history for
+            location_code: DFS location code (default 2036 = Australia)
+            language_code: Language code (default "en")
+
+        Returns:
+            {"items": [{"year": int, "month": int, "metrics": {...}}]}
+            or None if no history available.
+        """
+        result = await self._post(
+            endpoint="/v3/dataforseo_labs/google/historical_rank_overview/live",
+            payload=[{
+                "target": target_domain,
+                "location_code": location_code,
+                "language_code": language_code,
+            }],
+            cost_per_call=Decimal("0.106"),
+            cost_attr="_cost_historical_rank_overview",
+        )
+
+        items = result.get("items") or []
+        if not items:
+            logger.info(f"DFS historical_rank_overview: no history for {target_domain}")
+            return None
+
+        return {
+            "items": [
+                {
+                    "year": item.get("year"),
+                    "month": item.get("month"),
+                    "metrics": item.get("metrics", {}),
+                }
+                for item in items
+            ]
+        }
+
+    # ============================================
+    # Utility
+    # ============================================
+
+    @staticmethod
+    def canonicalize_domain(domain: str) -> str:
+        """
+        Canonicalize a domain for storage.
+
+        Strips protocol (https://, http://), trailing slashes, and www. prefix.
+        Returns lowercase bare domain.
+
+        Used for storage. API calls may add www. as needed
+        (see domain_technologies fallback).
+
+        Examples:
+            "https://www.example.com.au/" → "example.com.au"
+            "http://example.com" → "example.com"
+            "example.com" → "example.com"
+            "WWW.EXAMPLE.COM.AU" → "example.com.au"
+        """
+        domain = domain.strip().lower()
+        # Strip protocol
+        for prefix in ("https://", "http://"):
+            if domain.startswith(prefix):
+                domain = domain[len(prefix):]
+        # Strip trailing slashes
+        domain = domain.rstrip("/")
+        # Strip www. prefix
+        if domain.startswith("www."):
+            domain = domain[4:]
+        return domain
+
+
+# ============================================
+# Module-level Singleton
+# ============================================
+
+_client: DFSLabsClient | None = None
+
+
+def get_dfs_labs_client() -> DFSLabsClient:
+    """Get or create the module-level DFSLabsClient singleton."""
+    global _client
+    if _client is None:
+        _client = DFSLabsClient(
+            login=settings.dataforseo_login,
+            password=settings.dataforseo_password,
+        )
+    return _client
+
+
+async def close_dfs_labs_client() -> None:
+    """Close and clear the module-level DFSLabsClient singleton."""
+    global _client
+    if _client is not None:
+        await _client.close()
+        _client = None

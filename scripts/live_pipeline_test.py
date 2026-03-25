@@ -172,6 +172,10 @@ async def run_stage1(dfs_client: DFSGMapsClient, db_pool):
                   AND bu.abn IS NULL
                   AND LOWER(bu.display_name) = LOWER(ar.display_name)
                   AND LOWER(bu.state) = LOWER(ar.state)
+                  AND NOT EXISTS (
+                    SELECT 1 FROM business_universe other
+                    WHERE other.abn = ar.abn AND other.id != bu.id
+                  )
                 """,
                 inserted_ids,
             )

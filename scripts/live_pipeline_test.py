@@ -105,6 +105,7 @@ async def run_stage1(dfs_client: DFSGMapsClient, db_pool):
 
             try:
                 # discover_by_coordinates returns pre-mapped bu-column dicts
+                t_call = time.time()
                 results = await dfs_client.discover_by_coordinates(
                     lat=suburb["lat"],
                     lng=suburb["lng"],
@@ -112,7 +113,8 @@ async def run_stage1(dfs_client: DFSGMapsClient, db_pool):
                     zoom=14,
                     depth=100,
                 )
-                log.info(f"    {suburb['name']}: {len(results)} results from DFS")
+                elapsed = time.time() - t_call
+                log.info(f"    {suburb['name']}: {len(results)} results in {elapsed:.2f}s")
                 total_discovered += len(results)
 
                 for bu_row in results:

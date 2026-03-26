@@ -23,8 +23,8 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #270 (Manual trim)
-- Next directive: #271 (signal config schema redesign)
+- Last directive issued: #272 (Layer 2 Discovery Engine — IN PROGRESS)
+- Next directive: #273 (Layer 3 cheap filter)
 - Test baseline: 1009 passed, 2 failed (pre-existing DFS serp client tests), 28 skipped
 - Last merged PRs: #233 (dedup + blocklist), #232 (bug fixes), #231 (live test v2), #230 (stages 6+7)
 - Architecture: **v6 ratified Mar 27 2026** — spend + gaps + fit discovery (10-layer engine)
@@ -76,6 +76,16 @@ Output: their SERP competitors. Network expansion — one good prospect generate
 
 All results deduped against BU + agency exclusion list.
 Output: raw domains into BU, pipeline_stage = 1.
+
+**Layer 2 implementation (Directive #272 — IN PROGRESS):**
+- Class: `src/pipeline/layer_2_discovery.py` → `Layer2Discovery`
+- 5 sources run concurrently via asyncio.gather (source failure does not abort run)
+- New DFS endpoints added to `dfs_labs_client.py`: `domain_metrics_by_categories`, `google_ads_advertisers`, `domains_by_html_terms`, `google_jobs_advertisers`
+- Rate limiting: configurable `daily_budget_usd` (default $10.0) — stops when budget would be exceeded
+- Idempotency: skips existing BU rows by domain/place_id
+- Migration 030: adds `discovery_batch_id uuid`, `no_domain boolean`, `dfs_discovery_category text`, `dfs_discovery_keyword text`
+- Cost per run: ~$0.47 (marketing_agency, all 5 sources) → expected 500–2,000 raw domains
+- Note: uses DFS Labs/SERP endpoints per v6 spec — NOT DFS GMaps coordinate sweep (v4/v5 pattern)
 
 ---
 
@@ -457,7 +467,7 @@ v5 era (#247–#270): all 7 pipeline stages built, tested, and live on main. Sup
 | Directive | What | Status |
 |-----------|------|--------|
 | #271 | Signal config schema redesign (services + competitor_config + discovery_config) | Next |
-| #272 | Layer 2 discovery engine (multi-source: Categories, Ads Search, HTML Terms, Jobs, Competitors) | Queued |
+| #272 | Layer 2 discovery engine (multi-source: Categories, Ads Search, HTML Terms, Jobs, Competitors) | IN PROGRESS |
 | #273 | Layer 3 cheap filter + Bulk Domain Metrics client | Queued |
 | #274 | Layer 4 qualification (Domain Technologies + Rank Overview + Historical Rank) | Queued |
 | #275 | Layer 5 fit scoring (multi-service, per-service problem/budget/gap scoring) | Queued |

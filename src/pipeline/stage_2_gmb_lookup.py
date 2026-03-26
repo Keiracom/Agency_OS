@@ -57,6 +57,7 @@ class Stage2GMBLookup:
             FROM business_universe
             WHERE pipeline_stage = 1
             AND domain IS NOT NULL AND domain <> ''
+            AND domain LIKE '%.au'
             ORDER BY discovered_at ASC
             LIMIT $1
             """,

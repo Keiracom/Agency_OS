@@ -30,7 +30,8 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 - Architecture: v5 ratified Mar 26 2026 — signal-first discovery
 - **All 7 pipeline stages S1-S7 are built and tested as of March 26 2026**
 - **Live Test v2 (#265): RAN Mar 26 2026. Cost $0.14. 3 bugs found (see Section 20). S1 ✅ S2 ⚠️ S3 ⚠️ S4 ⚠️ S5/S6/S7 ✅ (data gap). Fixes in #266.**
-- **Live Test v2 Rerun (#266): PARTIAL PASS. Mar 26 2026. BUG-265-1/2/3 fixed; S2 advanced 30 rows, S3 skipped 2 NULL domains, S4 scored 25/28 above threshold. New bug BUG-266-1 (S5 EmailFinderResult type error) blocked S5-S7. Cost $0.67.**
+- **Live Test v2 Rerun (#266): PASS. Mar 26 2026. All 4 bugs fixed. S4: 23/26 above threshold. S5: 7 DMs found (GMB+Leadmagic). S6: 7 validated (email:3, voice:2). S7: 4 messages generated at $0.0047. Pipeline working end-to-end. First real Haiku outreach messages produced.**
+- **S5 waterfall simplified: GMBContactExtractor → LeadmagicPersonFinder (Jina removed — too slow for DM waterfall)**
 
 ---
 
@@ -274,7 +275,7 @@ Meta:
 | #263 | Stage 5 DM Waterfall (Stage5DMWaterfall) | COMPLETE |
 | #264 | Stage 6 Reachability + Stage 7 Haiku message gen | COMPLETE — ALL STAGES S1-S7 BUILT |
 | #265 | Live Test v2 — full S1-S7 pipeline validation | COMPLETE — 3 bugs found, fixes in #266 |
-| #266 | Live Test v2 Bug Fixes + Rerun (BUG-265-1/2/3) | COMPLETE — BUG-265-1/2/3 fixed; new BUG-266-1 found (S5 type error) |
+| #266 | Live Test v2 Bug Fixes + Rerun | COMPLETE — all 4 bugs fixed; pipeline working end-to-end; first Haiku messages generated |
 
 Previously completed in current sprint:
 - #247: Schema migration (BU fresh + abn_registry + junction tables) ✅
@@ -478,11 +479,11 @@ Compliance: SPAM Act 2003, DNCR registered, TCP Code (voice), Australian-built
 
 ### Live Test v2 Rerun (#266) Findings — Mar 26 2026
 
-~~**BUG-265-1 (HIGH) — S2: already_enriched rows not advanced to stage=2**~~ **FIXED in #266**
-~~**BUG-265-2 (MEDIUM) — S3: NULL domain not guarded before DFS tech call**~~ **FIXED in #266**
-~~**BUG-265-3 (HIGH/data) — S4: pre-existing stage=3 rows score 0 (NULL signal data)**~~ **FIXED in #266**
-
-**BUG-266-1 (HIGH) — S5: EmailFinderResult object passed as string to DB**
+~~**BUG-265-1** — S2 stage advancement~~ FIXED #266
+~~**BUG-265-2** — S3 NULL domain guard~~ FIXED #266
+~~**BUG-265-3** — S4 NULL signal scoring~~ FIXED #266
+~~**BUG-266-1** — S5 EmailFinderResult type error~~ FIXED #266
+**S5 waterfall simplified:** Jina/WebsiteContactScraper removed. New order: GMBContactExtractor → LeadmagicPersonFinder.
 Stage5DMWaterfall._write_result passes the raw `EmailFinderResult` dataclass object instead of `email_result.email` string as query argument $3. Causes `asyncpg.exceptions.DataError: expected str, got EmailFinderResult`. Blocks all S5-S7 processing. Fix: extract `.email` attribute before passing to execute().
 
-**Live run stats (#266):** S2 advanced 30 already-enriched rows, S3 profiled 28 rows (2 NULL domain skipped), S4 scored 25/28 above threshold (BUG-265-3 fix confirmed working). S5 crashed on first row — BUG-266-1. Total $0.67 in 305.9s.
+**Live run stats (#266 final):** S2 advanced 30 rows, S3 profiled 26 (NULL domains skipped), S4 scored 23/26 above threshold, S5 found 7 DMs (GMB+Leadmagic, Jina removed), S6 validated 7 (email:3, voice:2, physical:7), S7 generated 4 messages at $0.0047. Pipeline working end-to-end. First real Haiku outreach messages produced. Total cost ~$1.30 across all runs.

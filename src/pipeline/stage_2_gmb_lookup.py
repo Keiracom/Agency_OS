@@ -87,18 +87,27 @@ class Stage2GMBLookup:
         no_gmb = 0
         errors = 0
 
-        for row in to_process:
+        async def _safe_lookup(row: asyncpg.Record) -> bool | None:
+            """Wrapper that catches per-row errors for gather()."""
             try:
-                ok = await self._lookup_and_update(row["id"], row["domain"])
-                if ok:
-                    enriched += 1
-                else:
-                    no_gmb += 1
+                return await self._lookup_and_update(row["id"], row["domain"])
             except Exception as e:
                 logger.error(f"Stage 2 error for {row['domain']}: {e}")
+                return None  # signals error
+
+        # Submit ALL BD jobs concurrently — BD processes in parallel, we poll in parallel.
+        # BD's per-job latency (~35s) becomes the TOTAL latency regardless of batch size.
+        # asyncpg serialises DB writes internally when coroutines share a connection.
+        # Directive #268: replaces sequential for-loop (was O(n×35s), now O(35s)).
+        results = await asyncio.gather(*[_safe_lookup(row) for row in to_process])
+
+        for outcome in results:
+            if outcome is True:
+                enriched += 1
+            elif outcome is False:
+                no_gmb += 1
+            else:
                 errors += 1
-            if self.delay > 0:
-                await asyncio.sleep(self.delay)
 
         result = {
             "enriched": enriched,

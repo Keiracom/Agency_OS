@@ -13,11 +13,11 @@ from src.enrichment.signal_config import SignalConfig, ServiceSignal
 def make_config(channel_config=None):
     import uuid
     return SignalConfig(
-        id=str(uuid.uuid4()), vertical_slug="marketing_agency",
-        display_name="MktAgency", description=None,
-        service_signals=[],
+        id=str(uuid.uuid4()), vertical="marketing_agency",
+        services=[],
         discovery_config={},
         enrichment_gates={"min_score_to_enrich": 30, "min_score_to_dm": 50, "min_score_to_outreach": 65},
+        competitor_config={},
         channel_config=channel_config or {"email": True, "linkedin": True, "voice": True, "sms": False},
         created_at=datetime.now(), updated_at=datetime.now(),
     )

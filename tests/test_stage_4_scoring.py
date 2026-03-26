@@ -23,12 +23,11 @@ def make_config(services=None):
     import uuid
     return SignalConfig(
         id=str(uuid.uuid4()),
-        vertical_slug="marketing_agency",
-        display_name="Marketing Agency",
-        description=None,
-        service_signals=services or [make_service()],
+        vertical="marketing_agency",
+        services=services or [make_service()],
         discovery_config={},
         enrichment_gates={"min_score_to_enrich": 30, "min_score_to_dm": 50, "min_score_to_outreach": 65},
+        competitor_config={},
         channel_config={},
         created_at=datetime.now(),
         updated_at=datetime.now(),

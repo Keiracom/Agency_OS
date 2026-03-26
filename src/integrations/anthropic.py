@@ -40,6 +40,11 @@ class AnthropicClient:
             "output": 6.20,  # $4 USD × 1.55
             "cached": 0.124,  # 90% discount on cached
         },
+        "claude-haiku-4-5-20251001": {
+            "input": 1.24,  # $0.80 USD × 1.55
+            "output": 6.20,  # $4 USD × 1.55
+            "cached": 0.124,  # 90% discount on cached
+        },
         "claude-sonnet-4-20250514": {
             "input": 4.65,  # $3 USD × 1.55
             "output": 23.25,  # $15 USD × 1.55

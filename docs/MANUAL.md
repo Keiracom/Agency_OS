@@ -23,13 +23,12 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #255 (DFS Labs client — 7 endpoints, 17 new tests)
-- Next directive: #256 (Signal Configuration Schema — in progress)
-- Test baseline: 899 passed, 9 failed (all pre-existing), 25 skipped
+- Last directive issued: #264 (Stage 6 + Stage 7 — reachability validation + Haiku message gen)
+- Next directive: TBD
+- Test baseline: 987 passed, 2 failed (pre-existing DFS serp client tests), 28 skipped
 - Last merged PRs: #219 (live test fixes), #220 (DFS Labs client)
-- Open PRs: #221 (research-1 standing brief config), #222 (this PR — #256 signal config)
 - Architecture: v5 ratified Mar 26 2026 — signal-first discovery
-- Elliottbot received architecture correction briefing and confirmed updated context
+- **All 7 pipeline stages S1-S7 are built and tested as of March 26 2026**
 
 ---
 
@@ -60,6 +59,10 @@ All-in COGS: ~$0.49 USD ($0.76 AUD) per prospect.
 **S4 Implementation (built #262):** `src/pipeline/stage_4_scoring.py` — `Stage4Scorer` class. Scores per service signal; best match stored as `best_match_service` (S7 uses this to select outreach angle). Four dimensions: budget (digital spend signals), pain (reputation + gap signals), gap (service-specific tech gaps), fit (category + stack alignment). Reachability scored on confirmed channel access; recalculated after S5/S6. Gate: `min_score_to_enrich` from `signal_configurations` (default 30). All businesses progress to pipeline_stage=4 — low scorers filtered by `WHERE propensity_score < threshold` in downstream queries. New migration: `025_scoring_columns.sql` (score_reason, best_match_service, linkedin_company_url, scored_at).
 
 **S5 Implementation (built #263):** `src/pipeline/stage_5_dm_waterfall.py` — `Stage5DMWaterfall` class. Gate: `min_score_to_dm` (default 50) from `signal_configurations`. Waterfall order (cheapest first): `GMBContactExtractor` (free, BU data) → `WebsiteContactScraper` (free, Jina AI) → `LeadmagicPersonFinder` (paid, ~$0.015/email). Protocol-based: adding BD LinkedIn = adding one class to sources list. Stops at first valid result (name + contact method). Recalculates `reachability_score` after DM found. All rows progress to pipeline_stage=5; rows with no DM get `dm_source='none'` (S7 generates company-level outreach). New columns: `dm_phone`, `dm_found_at` (migration 026).
+
+**S6 Implementation (built #264):** `src/pipeline/stage_6_reachability.py` — `Stage6Reachability` class. Validates dm_email (format check), dm_phone (AU pattern), dm_linkedin_url (LinkedIn profile URL pattern), physical address. Determines `outreach_channels` (text[]) from validated channels filtered by `channel_config`. Recalculates `reachability_score` from confirmed channels. All rows progress to pipeline_stage=6. New columns: `outreach_channels TEXT[]`, `outreach_messages JSONB` (migration 027).
+
+**S7 Implementation (built #264):** `src/pipeline/stage_7_haiku.py` — `Stage7Haiku` class. Gate: `min_score_to_outreach=65`. Generates channel-specific messages (email: 3-line cold email <100 words; linkedin: <300 char connection note; voice: structured knowledge card JSON; sms: 1 sentence). Model: `claude-haiku-4-5-20251001`. Messages stored in `outreach_messages JSONB` on BU. All rows progress to pipeline_stage=7. No campaign dependency — operates directly on BU.
 
 **KEY PRINCIPLE:** Expensive enrichment (S3 at $0.02/biz) runs ONLY on businesses surviving S1–S2 filters. Cheap discovery first, expensive intelligence second. NEVER run DFS Rank on 4,000 businesses when only 600 survive the filters.
 
@@ -267,7 +270,7 @@ Meta:
 | #261 | Stage 3 DFS rank + technology profile (Stage3DFSProfile) | COMPLETE |
 | #262 | Stage 4 scoring redesign (budget/pain/gap/fit) | COMPLETE |
 | #263 | Stage 5 DM Waterfall (Stage5DMWaterfall) | COMPLETE |
-| #264 | Live test v2 (compare to #253 dentist baseline) | **next** |
+| #264 | Stage 6 Reachability + Stage 7 Haiku message gen | COMPLETE — ALL STAGES S1-S7 BUILT |
 
 Previously completed in current sprint:
 - #247: Schema migration (BU fresh + abn_registry + junction tables) ✅

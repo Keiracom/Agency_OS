@@ -85,6 +85,8 @@ class DFSLabsClient:
         self._cost_google_ads_advertisers = Decimal("0")
         self._cost_domains_by_html_terms = Decimal("0")
         self._cost_google_jobs_advertisers = Decimal("0")
+        # Layer 3 bulk filter endpoint (Directive #274)
+        self._cost_bulk_domain_metrics = Decimal("0")
 
         # Cache for get_categories (free, rarely changes)
         self._categories_cache: list[dict] | None = None
@@ -122,6 +124,7 @@ class DFSLabsClient:
             + self._cost_google_ads_advertisers
             + self._cost_domains_by_html_terms
             + self._cost_google_jobs_advertisers
+            + self._cost_bulk_domain_metrics
         )
         return float(total)
 
@@ -139,6 +142,7 @@ class DFSLabsClient:
             + self._cost_google_ads_advertisers
             + self._cost_domains_by_html_terms
             + self._cost_google_jobs_advertisers
+            + self._cost_bulk_domain_metrics
         )
         return float(total_usd * AUD_RATE)
 
@@ -776,6 +780,61 @@ class DFSLabsClient:
                 domain = (parsed.netloc or "").lstrip("www.").lower().rstrip("/")
             results.append({"domain": domain, "employer_name": employer})
         return [r for r in results if r["domain"]]
+
+    # ============================================
+    # ENDPOINT 12: bulk_domain_metrics  (Directive #274 — Layer 3)
+    # ============================================
+
+    async def bulk_domain_metrics(
+        self,
+        domains: list[str],
+    ) -> list[dict]:
+        """
+        Fetch traffic + authority metrics for up to 1,000 domains in one call.
+        Used by Layer 3 cheap filter to eliminate dead/parked domains.
+
+        Cost: ~$0.001/domain (TBD — verify against DFS pricing).
+        Batching: caller is responsible for passing ≤1000 domains per call.
+
+        NOTE: Pricing TBD — directive says $0.02/batch-of-1000; Manual says $0.001/domain.
+        Using $0.001/domain in cost tracking until verified against DFS API pricing page.
+
+        Returns list of:
+        {
+            "domain": str,
+            "organic_etv": float,      # estimated organic traffic value USD
+            "paid_etv": float,         # estimated paid traffic value USD
+            "backlinks_count": int,    # total backlinks
+            "domain_rank": int,        # DFS domain rank score (0-100)
+        }
+        Missing fields default to 0.
+        """
+        if not domains:
+            return []
+
+        # TODO: verify exact endpoint path against DFS Labs API docs
+        # Most likely: /v3/dataforseo_labs/google/bulk_traffic_estimation/live
+        # Fallback if above fails: /v3/domain_analytics/whois/overview/live
+        result = await self._post(
+            endpoint="/v3/dataforseo_labs/google/bulk_traffic_estimation/live",
+            payload=[{"targets": domains, "location_name": "Australia", "language_name": "English"}],
+            cost_per_call=Decimal("0.10") + Decimal(str(len(domains))) * Decimal("0.001"),  # $0.10/task + $0.001/domain
+            cost_attr="_cost_bulk_domain_metrics",
+        )
+        items = result.get("items") or []
+        results = []
+        for item in items:
+            metrics = item.get("metrics", {})
+            organic = metrics.get("organic") or {}
+            paid = metrics.get("paid") or {}
+            results.append({
+                "domain": item.get("target") or item.get("domain", ""),
+                "organic_etv": float(organic.get("etv") or 0),
+                "paid_etv": float(paid.get("etv") or 0),
+                "backlinks_count": int(item.get("backlinks") or item.get("backlinks_count") or 0),
+                "domain_rank": int(item.get("domain_rank") or 0),
+            })
+        return results
 
     # ============================================
     # Utility

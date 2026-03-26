@@ -51,6 +51,8 @@ Core principle: Discovery is by SERVICE THE AGENCY SELLS, not by industry or loc
 
 All-in COGS: ~$0.49 USD ($0.76 AUD) per prospect.
 
+**S1 Implementation (built #259):** `src/pipeline/stage_1_discovery.py` — `Stage1Discovery` class. Reads `signal_configurations` for vertical → extracts `all_dfs_technologies` → paginates `DFS.domains_by_technology()` per tech → deduplicates by domain → inserts/updates BU with `pipeline_stage=1`. Handles pagination (each page = $0.015). Delay configurable between techs (default 0.5s).
+
 **KEY PRINCIPLE:** Expensive enrichment (S3 at $0.02/biz) runs ONLY on businesses surviving S1–S2 filters. Cheap discovery first, expensive intelligence second. NEVER run DFS Rank on 4,000 businesses when only 600 survive the filters.
 
 BD LinkedIn reinstated for social scraping ($0.0015/record) — deferred post-core pipeline build.
@@ -252,8 +254,8 @@ Meta:
 | #256 | Signal config schema + seed marketing_agency | IN PROGRESS |
 | #257 | BU migration (add ~15 DFS intelligence columns) | Queued |
 | #258 | Stage 1 redesign (3-source discovery) | Queued |
-| #259 | Stage 2 new (marketing intelligence) | Queued |
-| #260 | Stage 3 update (About page + social) | Queued |
+| #259 | Stage 1 DFS signal-first discovery | COMPLETE |
+| #260 | Stage 2 new (marketing intelligence) | **next** |
 | #261 | Stage 4 scoring redesign (budget/pain/gap/fit) | Queued |
 | #262 | Stage 5 DM waterfall | Queued |
 | #263 | Stages 6-7 update | Queued |

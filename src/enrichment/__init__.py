@@ -14,6 +14,7 @@ Key components:
 - discovery_modes: Mode A/B/C discovery logic
 - waterfall_v2: Full enrichment pipeline
 - campaign_trigger: Auto-triggers discovery on campaign activation
+- signal_config: Signal configuration repository (Directive #256)
 """
 
 from .campaign_trigger import CampaignDiscoveryTrigger
@@ -27,6 +28,12 @@ from .discovery_modes import (
 from .waterfall_v2 import (
     LeadRecord,
     WaterfallV2,
+)
+from .signal_config import (
+    ServiceSignal,
+    SignalConfig,
+    SignalConfigRepository,
+    VerticalNotFoundError,
 )
 
 __all__ = [
@@ -44,4 +51,9 @@ __all__ = [
     "WaterfallV2",
     # Campaign trigger
     "CampaignDiscoveryTrigger",
+    # Signal configuration (Directive #256)
+    "ServiceSignal",
+    "SignalConfig",
+    "SignalConfigRepository",
+    "VerticalNotFoundError",
 ]

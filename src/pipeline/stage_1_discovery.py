@@ -20,6 +20,7 @@ import asyncpg
 
 from src.clients.dfs_labs_client import DFSLabsClient
 from src.enrichment.signal_config import SignalConfig, SignalConfigRepository
+from src.utils.domain_blocklist import is_blocked
 
 logger = logging.getLogger(__name__)
 
@@ -148,55 +149,47 @@ class Stage1Discovery:
     ) -> bool:
         """
         Insert domain if new, append technology if exists.
-        Returns True if new row inserted, False if existing row updated.
+        Returns True if new row inserted, False if existing row updated or blocked.
+        Directive #267: checks domain blocklist before any DB operation;
+        uses INSERT ... ON CONFLICT for atomic upsert (no TOCTOU races).
         """
-        now = datetime.now(timezone.utc)
-        existing = await self.conn.fetchrow(
-            "SELECT id, dfs_technologies FROM business_universe WHERE domain = $1",
-            domain,
-        )
-
-        if existing is None:
-            # New domain — insert
-            await self.conn.execute(
-                """
-                INSERT INTO business_universe (
-                    display_name,
-                    domain,
-                    dfs_technologies,
-                    dfs_discovery_sources,
-                    dfs_technology_detected_at,
-                    pipeline_stage,
-                    pipeline_updated_at,
-                    discovered_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                """,
-                item.get("title") or domain,   # display_name
-                domain,
-                [technology_name],              # dfs_technologies
-                [DISCOVERY_SOURCE],             # dfs_discovery_sources
-                now,
-                PIPELINE_STAGE_S1,
-                now,
-                now,
-            )
-            return True
-        else:
-            # Existing domain — append tech if not already present
-            existing_techs: list[str] = list(existing["dfs_technologies"] or [])
-            if technology_name not in existing_techs:
-                existing_techs.append(technology_name)
-                await self.conn.execute(
-                    """
-                    UPDATE business_universe
-                    SET dfs_technologies = $1,
-                        dfs_technology_detected_at = $2,
-                        pipeline_updated_at = $3
-                    WHERE domain = $4
-                    """,
-                    existing_techs,
-                    now,
-                    now,
-                    domain,
-                )
+        if is_blocked(domain):
+            logger.debug(f"S1: skipping blocked domain {domain!r}")
             return False
+
+        now = datetime.now(timezone.utc)
+
+        result = await self.conn.fetchrow(
+            """
+            INSERT INTO business_universe (
+                display_name,
+                domain,
+                dfs_technologies,
+                dfs_discovery_sources,
+                dfs_technology_detected_at,
+                pipeline_stage,
+                pipeline_updated_at,
+                discovered_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            ON CONFLICT (domain) DO UPDATE
+                SET dfs_technologies = (
+                        SELECT array(
+                            SELECT DISTINCT unnest(
+                                business_universe.dfs_technologies || EXCLUDED.dfs_technologies
+                            )
+                        )
+                    ),
+                    dfs_technology_detected_at = EXCLUDED.dfs_technology_detected_at,
+                    pipeline_updated_at = EXCLUDED.pipeline_updated_at
+            RETURNING (xmax = 0) AS inserted
+            """,
+            item.get("title") or domain,   # display_name
+            domain,
+            [technology_name],              # dfs_technologies
+            [DISCOVERY_SOURCE],             # dfs_discovery_sources
+            now,
+            PIPELINE_STAGE_S1,
+            now,
+            now,
+        )
+        return bool(result["inserted"]) if result else False

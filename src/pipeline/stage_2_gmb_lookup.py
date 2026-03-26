@@ -56,6 +56,7 @@ class Stage2GMBLookup:
             SELECT id, domain, gmb_place_id
             FROM business_universe
             WHERE pipeline_stage = 1
+            AND domain IS NOT NULL AND domain <> ''
             ORDER BY discovered_at ASC
             LIMIT $1
             """,
@@ -124,6 +125,9 @@ class Stage2GMBLookup:
         Look up GMB for domain and update BU.
         Returns True if GMB found, False if not.
         """
+        if not domain:
+            logger.warning(f"S2: skipping row {row_id} — empty domain")
+            return False
         now = datetime.now(timezone.utc)
         business_name = extract_business_name(domain)
         logger.info(f"Stage 2: {domain} → searching '{business_name}'")

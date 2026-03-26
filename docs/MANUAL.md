@@ -210,7 +210,38 @@ Outreach sequence per prospect:
 - CIS tables all 0 rows (not yet populated)
 - BU House Seed strategy: 10% of campaign volume, gap-fill by default, steerable toward institutional buyer industries when deal in pipeline — must be disclosed to customers with incentive
 
-~30 new enrichment columns added by Architecture v5 for DFS intelligence data — migration pending (#257).
+**New DFS intelligence columns (added #257, total BU columns: ~97):**
+
+S1 Discovery:
+- `dfs_technologies` jsonb — raw tech array from DFS domains_by_technology
+- `dfs_discovery_sources` text[] — all sources that found this business
+- `dfs_technology_detected_at` timestamptz
+
+S3 DFS Rank Overview:
+- `dfs_organic_etv` numeric — estimated organic traffic value (USD)
+- `dfs_paid_etv` numeric — estimated paid traffic cost (USD) — THE BUDGET SIGNAL
+- `dfs_organic_keywords` integer
+- `dfs_paid_keywords` integer
+- `dfs_organic_pos_1/2_3/4_10/11_20` integer — position distribution
+- `dfs_rank_fetched_at` timestamptz
+
+S3 DFS Domain Technologies:
+- `tech_stack` text[] — flat deduplicated technology list
+- `tech_categories` jsonb — nested dict by category
+- `tech_stack_depth` integer — count of unique technologies
+- `tech_gaps` text[] — must_not_have_tech items absent (computed)
+- `dfs_tech_fetched_at` timestamptz
+
+S4 Scoring (v5 budget/pain/gap/fit):
+- `score_budget` integer (0-30)
+- `score_pain` integer (0-30)
+- `score_gap` integer (0-25)
+- `score_fit` integer (0-15)
+- (composite `propensity_score` + `reachability_score` retained from v4)
+
+Meta:
+- `pipeline_updated_at` timestamptz
+- `enrichment_cost_usd` numeric (complements existing `enrichment_cost_aud`)
 
 ---
 

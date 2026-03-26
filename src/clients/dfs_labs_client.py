@@ -80,6 +80,11 @@ class DFSLabsClient:
         self._cost_domain_technologies = Decimal("0")
         self._cost_keywords_for_site = Decimal("0")
         self._cost_historical_rank_overview = Decimal("0")
+        # Layer 2 discovery endpoints (Directive #272)
+        self._cost_domain_metrics_by_categories = Decimal("0")
+        self._cost_google_ads_advertisers = Decimal("0")
+        self._cost_domains_by_html_terms = Decimal("0")
+        self._cost_google_jobs_advertisers = Decimal("0")
 
         # Cache for get_categories (free, rarely changes)
         self._categories_cache: list[dict] | None = None
@@ -113,6 +118,10 @@ class DFSLabsClient:
             + self._cost_domain_technologies
             + self._cost_keywords_for_site
             + self._cost_historical_rank_overview
+            + self._cost_domain_metrics_by_categories
+            + self._cost_google_ads_advertisers
+            + self._cost_domains_by_html_terms
+            + self._cost_google_jobs_advertisers
         )
         return float(total)
 
@@ -126,6 +135,10 @@ class DFSLabsClient:
             + self._cost_domain_technologies
             + self._cost_keywords_for_site
             + self._cost_historical_rank_overview
+            + self._cost_domain_metrics_by_categories
+            + self._cost_google_ads_advertisers
+            + self._cost_domains_by_html_terms
+            + self._cost_google_jobs_advertisers
         )
         return float(total_usd * AUD_RATE)
 
@@ -604,6 +617,165 @@ class DFSLabsClient:
                 for item in items
             ]
         }
+
+    # ============================================
+    # ENDPOINT 8: domain_metrics_by_categories  (Directive #272 — Layer 2)
+    # ============================================
+
+    async def domain_metrics_by_categories(
+        self,
+        category_codes: list[int],
+        location_name: str = "Australia",
+        paid_etv_min: float = 0.0,
+    ) -> list[dict]:
+        """
+        Discover domains with Google Ads spend in specified categories.
+        Uses location_name (NOT location_code — causes 40501 error per DFS gotcha).
+        Cost: ~$0.10/call.
+        Returns list of {"domain": str, "paid_etv": float, "organic_etv": float}.
+        TODO: verify exact payload format against DFS API docs before live run.
+        """
+        result = await self._post(
+            endpoint="/v3/dataforseo_labs/google/domain_metrics_by_categories/live",
+            payload=[{
+                "category_codes": category_codes,
+                "location_name": location_name,
+                "language_name": "English",
+                "filters": [["metrics.organic.etv", ">", 0]],
+            }],
+            cost_per_call=Decimal("0.10"),
+            cost_attr="_cost_domain_metrics_by_categories",
+        )
+        items = result.get("items") or []
+        results = []
+        for item in items:
+            metrics = item.get("metrics", {})
+            paid_etv = (metrics.get("paid") or {}).get("etv", 0) or 0
+            organic_etv = (metrics.get("organic") or {}).get("etv", 0) or 0
+            if paid_etv >= paid_etv_min:
+                domain = item.get("domain") or item.get("target")
+                if domain:
+                    results.append({"domain": domain, "paid_etv": paid_etv, "organic_etv": organic_etv})
+        return results
+
+    # ============================================
+    # ENDPOINT 9: google_ads_advertisers  (Directive #272 — Layer 2)
+    # ============================================
+
+    async def google_ads_advertisers(
+        self,
+        keyword: str,
+        location_name: str = "Australia",
+    ) -> list[dict]:
+        """
+        Find domains currently bidding on a keyword via Google Ads SERP.
+        Cost: ~$0.006/call.
+        Returns list of {"domain": str, "title": str, "url": str}.
+        TODO: verify payload format against DFS API docs before live run.
+        """
+        from urllib.parse import urlparse
+        result = await self._post(
+            endpoint="/v3/serp/google/ads/live/advanced",
+            payload=[{
+                "keyword": keyword,
+                "location_name": location_name,
+                "language_name": "English",
+                "depth": 100,
+            }],
+            cost_per_call=Decimal("0.006"),
+            cost_attr="_cost_google_ads_advertisers",
+        )
+        items = result.get("items") or []
+        results = []
+        for item in items:
+            url = item.get("url") or item.get("domain")
+            if not url:
+                continue
+            parsed = urlparse(url)
+            domain = parsed.netloc or url
+            if domain.startswith("www."):
+                domain = domain[4:]
+            results.append({
+                "domain": domain.lower().rstrip("/"),
+                "title": item.get("title", ""),
+                "url": url,
+            })
+        return results
+
+    # ============================================
+    # ENDPOINT 10: domains_by_html_terms  (Directive #272 — Layer 2)
+    # ============================================
+
+    async def domains_by_html_terms(
+        self,
+        include_term: str,
+        exclude_term: str | None = None,
+        location_name: str = "Australia",
+    ) -> list[dict]:
+        """
+        Find domains that contain include_term but NOT exclude_term in their HTML.
+        Cost: ~$0.01/call.
+        Returns list of {"domain": str}.
+        TODO: verify payload format against DFS API docs before live run.
+        """
+        payload_item: dict = {
+            "include": [include_term],
+            "location_name": location_name,
+            "language_name": "English",
+            "limit": 100,
+        }
+        if exclude_term:
+            payload_item["exclude"] = [exclude_term]
+
+        result = await self._post(
+            endpoint="/v3/domain_analytics/technologies/domains_by_html_terms/live",
+            payload=[payload_item],
+            cost_per_call=Decimal("0.01"),
+            cost_attr="_cost_domains_by_html_terms",
+        )
+        items = result.get("items") or []
+        return [{"domain": item["domain"]} for item in items if item.get("domain")]
+
+    # ============================================
+    # ENDPOINT 11: google_jobs_advertisers  (Directive #272 — Layer 2)
+    # ============================================
+
+    async def google_jobs_advertisers(
+        self,
+        keyword: str,
+        location_name: str = "Australia",
+    ) -> list[dict]:
+        """
+        Find employers posting jobs for a keyword (growth signal — they have budget).
+        Cost: ~$0.006/call.
+        Returns list of {"domain": str, "employer_name": str}.
+        TODO: verify payload format against DFS API docs before live run.
+        """
+        from urllib.parse import urlparse
+        result = await self._post(
+            endpoint="/v3/serp/google/jobs/live/advanced",
+            payload=[{
+                "keyword": keyword,
+                "location_name": location_name,
+                "language_name": "English",
+                "depth": 100,
+            }],
+            cost_per_call=Decimal("0.006"),
+            cost_attr="_cost_google_jobs_advertisers",
+        )
+        items = result.get("items") or []
+        results = []
+        for item in items:
+            url = item.get("url") or item.get("apply_link") or ""
+            employer = item.get("employer_name") or item.get("company") or ""
+            if not url and not employer:
+                continue
+            domain = ""
+            if url:
+                parsed = urlparse(url)
+                domain = (parsed.netloc or "").lstrip("www.").lower().rstrip("/")
+            results.append({"domain": domain, "employer_name": employer})
+        return [r for r in results if r["domain"]]
 
     # ============================================
     # Utility

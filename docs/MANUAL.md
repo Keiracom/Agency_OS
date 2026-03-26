@@ -1,8 +1,8 @@
 # Agency OS Manual
 
-Last updated: 2026-03-26 20:54 UTC
-Directive #269: Architecture v6 ratified Mar 27 2026
-Next scheduled update: Directive #270 completion (signal config schema redesign)
+Last updated: 2026-03-26 21:08 UTC
+Directive #270: Manual trim (34k → target <22k)
+Next scheduled update: Directive #271 completion (signal config schema redesign)
 
 > **Primary store.** This file is the CEO SSOT. Google Doc is an auto-generated mirror.
 > After every save-trigger write, verify with: `cat docs/MANUAL.md | grep "SECTION"`
@@ -23,16 +23,14 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #269 (Architecture v6 Ratification)
-- Next directive: #270 (signal config schema redesign)
+- Last directive issued: #270 (Manual trim)
+- Next directive: #271 (signal config schema redesign)
 - Test baseline: 992 passed, 2 failed (pre-existing DFS serp client tests), 28 skipped
-- Last merged PRs: #233 (dedup + blocklist), #232 (bug fixes + live rerun), #231 (live test v2), #230 (stages 6+7)
+- Last merged PRs: #233 (dedup + blocklist), #232 (bug fixes), #231 (live test v2), #230 (stages 6+7)
 - Architecture: **v6 ratified Mar 27 2026** — spend + gaps + fit discovery (10-layer engine)
-- **All 7 pipeline stages S1-S7 are built and tested as of March 26 2026 (v5 era)**
-- **v6 build sequence starts at #270 — see Section 12**
-- **Live Test v2 (#265–#266): PASS. All 4 bugs fixed. Pipeline working end-to-end. First real Haiku outreach messages produced.**
-- **S5 waterfall: GMBContactExtractor → LeadmagicPersonFinder (Jina removed — too slow)**
-- **Directive #268: S4 qualification gate confirmed working. BUG-268-1 (S1 unnest jsonb) + BUG-268-2 (BD GMB 401) open — fix in v6 sprint**
+- **All 7 pipeline stages S1-S7 built and on main (v5 era). v6 rebuild starts at #271 — see Section 12**
+- **Live Test v2 (#265–#266): PASS. Pipeline working end-to-end. First Haiku messages produced.**
+- **Open bugs: BUG-268-1 (S1 unnest jsonb) + BUG-268-2 (BD GMB 401) — fix in v6 sprint**
 
 ---
 
@@ -293,7 +291,7 @@ competitor_config: jsonb:
   }
 ```
 
-Current schema (pre-#270): `service_signals` jsonb (instead of `services`), no `competitor_config` column. Redesign is Directive #270.
+Current schema (pre-#271): `service_signals` jsonb (instead of `services`), no `competitor_config` column. Redesign is Directive #271.
 
 ---
 
@@ -407,25 +405,11 @@ Siege Waterfall is proprietary. Never describe it as a vendor.
 
 ---
 
-## SECTION 9 — DFS GMAPS OPERATIONAL RULES (confirmed Mar 25 2026)
+## SECTION 9 — DATA PROVIDER OPERATIONAL NOTES
 
-- depth=100 same cost as depth=20 ($0.002 per request)
-- Suburb names FAIL (error 40501) — must use coordinates: `location_coordinate="-33.89,151.27,14z"`
-- 14z = optimal zoom level
-- place_id in every result — use for dedup
-- $50 USD/day spending cap = 25,000 queries/day — not a blocker
-- Full Sydney one category = $1.24 (620 suburbs)
-- Elkfox CSV for AU suburb → lat/lng mapping (free, MIT licensed)
-
-**DFS Labs API Critical Gotchas (from #254):**
-1. Field name `technologies` NOT `technology_paths` (domains_by_technology)
-2. domain_rank_overview result at `result[0].items[0]` NOT `result[0]`
-3. historical_rank $0.106/call — gate behind propensity, NEVER batch
-4. keywords_for_site has NO order_by — filters only
-5. Redirected domains fail — use canonical `www.domain.com`
-6. AU location_code = 2036
-7. domain_metrics_by_categories 40501 with location_code — retry with location_name
-8. BD LinkedIn `gd_lwxmeb2u1cniijd7t4` profiles + `gd_lwxkxvnf1cynvib9co` posts — $0.0015/record
+- BD GMB dataset: `gd_m8ebnr0q2qlklc02fz` (Google Maps full information). Discovery mode: `type=discover_new&discover_by=keyword`. Enrichment mode: `discover_by=location` or `discover_by=place_id`.
+- DFS spending cap: $50 USD/day — not a blocker for normal runs.
+- AU suburb → lat/lng mapping: Elkfox CSV (`src/data/au_suburbs.csv`, MIT licensed, 16,875 records).
 
 ---
 
@@ -447,13 +431,7 @@ Voice AI / Alex details:
 - "Show don't tell" personalisation — references prospect's situation, doesn't pitch features
 - Knowledge base card per prospect: company name, trigger, talking point, objective, fallback
 
-Outreach sequence per prospect:
-- Day 1: Email (personalised, references specific signals)
-- Day 3: LinkedIn (connection + note, different angle)
-- Day 6: Email follow-up (new angle, deeper signal ref)
-- Day 8: Voice AI (TCP compliant, 4–5PM timing)
-- Day 12: SMS (final touch, case study link)
-- Conditional triggers between steps (if no reply). Re-engagement at 90 days.
+Outreach sequence timing: defined in Layer 10 scheduling engine (Directive #278).
 
 ---
 
@@ -462,86 +440,34 @@ Outreach sequence per prospect:
 - BU is THE PRODUCT — one row per discovered business, all intelligence accumulates over time
 - abn_registry = renamed 2.9M ABR table, enrichment source only (not the BU itself)
 - campaign_leads junction table for agency claims on prospects
-- ABR match bonus: ~10% SQL match, ~67% API match
+- ABR match rates: ~10% SQL match, ~67% API match
 - 468 leads + 429 lead_pool = historical test data, archived
 - CIS tables all 0 rows (not yet populated)
 - BU House Seed strategy: 10% of campaign volume, gap-fill by default, steerable toward institutional buyer industries when deal in pipeline — must be disclosed to customers with incentive
-
-**New DFS intelligence columns (added #257, total BU columns: ~97):**
-
-S1 Discovery:
-- `dfs_technologies` jsonb — raw tech array from DFS domains_by_technology
-- `dfs_discovery_sources` text[] — all sources that found this business
-- `dfs_technology_detected_at` timestamptz
-
-S3 DFS Rank Overview:
-- `dfs_organic_etv` numeric — estimated organic traffic value (USD)
-- `dfs_paid_etv` numeric — estimated paid traffic cost (USD) — THE BUDGET SIGNAL
-- `dfs_organic_keywords` integer
-- `dfs_paid_keywords` integer
-- `dfs_organic_pos_1/2_3/4_10/11_20` integer — position distribution
-- `dfs_rank_fetched_at` timestamptz
-
-S3 DFS Domain Technologies:
-- `tech_stack` text[] — flat deduplicated technology list
-- `tech_categories` jsonb — nested dict by category
-- `tech_stack_depth` integer — count of unique technologies
-- `tech_gaps` text[] — must_not_have_tech items absent (computed)
-- `dfs_tech_fetched_at` timestamptz
-
-S4 Scoring (v5 budget/pain/gap/fit):
-- `score_budget` integer (0-30)
-- `score_pain` integer (0-30)
-- `score_gap` integer (0-25)
-- `score_fit` integer (0-15)
-- (composite `propensity_score` + `reachability_score` retained from v4)
-
-Meta:
-- `pipeline_updated_at` timestamptz
-- `enrichment_cost_usd` numeric (complements existing `enrichment_cost_aud`)
+- BU schema: ~97 columns. Query `information_schema.columns WHERE table_name = 'business_universe'` for current column list. Key signal fields: `dfs_paid_etv` (budget), `tech_gaps` (service gaps), `propensity_score` + `reachability_score` (two separate scores, both 0–100).
 
 ---
 
 ## SECTION 12 — BUILD SEQUENCE (active)
 
-### v6 Build Sequence (active — starts #270)
+v5 era (#247–#270): all 7 pipeline stages built, tested, and live on main. Superseded by v6.
+
+### v6 Build Sequence (active — starts #271)
 
 | Directive | What | Status |
 |-----------|------|--------|
-| #270 | Signal config schema redesign (services + competitor_config + discovery_config) | Next |
-| #271 | Layer 2 discovery engine (multi-source: Categories, Ads Search, HTML Terms, Jobs, Competitors) | Queued |
-| #272 | Layer 3 cheap filter + Bulk Domain Metrics client | Queued |
-| #273 | Layer 4 qualification (Domain Technologies + Rank Overview + Historical Rank) | Queued |
-| #274 | Layer 5 fit scoring (multi-service, per-service problem/budget/gap scoring) | Queued |
-| #275 | Layer 6 competitive intelligence (5 endpoints, top-prospect gating) | Queued |
-| #276 | Layer 7–8 (GMB enrichment + DM waterfall — mostly reuse from v5) | Queued |
-| #277 | Layer 9 message generation (Haiku redesign with Agency Profile + competitive data) | Queued |
-| #278 | Layer 10 scheduling engine | Queued |
-| #279 | Quota loop | Queued |
-| #280 | Full pipeline live test v3 | Queued |
-| #281 | Prefect wiring | Queued |
-
-### v5 Era (complete — March 26 2026)
-
-| Directive | What | Status |
-|-----------|------|--------|
-| #256 | Signal config schema + seed marketing_agency | COMPLETE |
-| #257 | BU DFS intelligence columns (22 new cols) | COMPLETE — PR #223 merged |
-| #258 | Cleanup sweep: 9 test fixes | COMPLETE — PR #224 merged |
-| #259 | Stage 1 DFS signal-first discovery | COMPLETE — PR #225 merged |
-| #260 | Stage 2 GMB reverse lookup | COMPLETE — PR #226 merged |
-| #261 | Stage 3 DFS rank + technology profile | COMPLETE — PR #227 merged |
-| #262 | Stage 4 scoring (budget/pain/gap/fit) | COMPLETE — PR #228 merged |
-| #263 | Stage 5 DM Waterfall | COMPLETE — PR #229 merged |
-| #264 | Stage 6 Reachability + Stage 7 Haiku | COMPLETE — ALL STAGES S1-S7 BUILT — PR #230 merged |
-| #265 | Live Test v2 — full S1-S7 validation | COMPLETE — PR #231 merged |
-| #266 | Live Test v2 bug fixes + rerun | COMPLETE — PR #232 merged |
-| #267 | Dedup + blocklist + S2 NULL filter | COMPLETE — PR #233 merged |
-| #268 | S4 qualification gate + calibration run | COMPLETE — BUG-268-1 + BUG-268-2 open |
-| #269 | Architecture v6 ratification + Manual update | COMPLETE |
-
-Previously completed (v4 era):
-- #247–#255: v4 pipeline + DFS client ✅ (built against v4 architecture, superseded by v5/v6)
+| #271 | Signal config schema redesign (services + competitor_config + discovery_config) | Next |
+| #272 | Layer 2 discovery engine (multi-source: Categories, Ads Search, HTML Terms, Jobs, Competitors) | Queued |
+| #273 | Layer 3 cheap filter + Bulk Domain Metrics client | Queued |
+| #274 | Layer 4 qualification (Domain Technologies + Rank Overview + Historical Rank) | Queued |
+| #275 | Layer 5 fit scoring (multi-service, per-service problem/budget/gap scoring) | Queued |
+| #276 | Layer 6 competitive intelligence (5 endpoints, top-prospect gating) | Queued |
+| #277 | Layer 7–8 (GMB enrichment + DM waterfall — mostly reuse from v5) | Queued |
+| #278 | Layer 9 message generation (Haiku redesign with Agency Profile + competitive data) | Queued |
+| #279 | Layer 10 scheduling engine | Queued |
+| #280 | Quota loop | Queued |
+| #281 | Full pipeline live test v3 | Queued |
+| #282 | Prefect wiring | Queued |
 
 ---
 
@@ -656,25 +582,7 @@ Dave's lane:
 
 ## SECTION 17 — OUTREACH + CONTENT (pre-launch)
 
-Landing page: v5 built (`agency_os_v5.html`). Bloomberg aesthetic. "Who built yours?" hero headline.
-- PENDING: Remotion video embedded as hero
-- PENDING: Stripe Checkout wired to pricing CTAs
-- PENDING: Live founding counter from Supabase (not hardcoded)
-
-Video plan (5 versions):
-- V1: Pure dashboard animation, looping, 30sec (website hero)
-- V2: Maya in-dashboard walkthrough, 60–90sec (product demo)
-- V3: Maya as HeyGen avatar presenter, 60sec (LinkedIn/social)
-- V4: Customer-specific with industry variables, 30–60sec (outbound)
-- V5: Results/case study, 60sec (post-launch social proof)
-
-Tech: Remotion (React video renderer) + HeyGen (Maya avatar, ~$59/mo Creator plan)
-
-Content pipeline: Prefect Flow #28 — Claude API → Remotion → HeyGen → Distribution APIs → Notify Dave.
-
-Demo mode: Built into dashboard via `?demo=true` URL param. Seeded demo data in Supabase demo tenant.
-
-Setup call: 15-minute activation call (not sales, not demo). Connect CRM + LinkedIn, watch dashboard populate live.
+Landing page (`agency_os_v5.html`) is built with Bloomberg aesthetic and "Who built yours?" hero. Pending: Remotion video hero, Stripe Checkout on pricing CTAs, live founding counter from Supabase. Video strategy: 5 versions (dashboard animation, Maya walkthrough, HeyGen avatar, customer-specific, results) built via Remotion + HeyGen (Maya avatar). Content distribution via Prefect Flow #28 (Claude API → Remotion → HeyGen → distribution APIs). Demo mode active via `?demo=true` URL param with seeded Supabase demo tenant. Onboarding starts with a 15-minute activation call (CRM + LinkedIn connect, watch dashboard populate live).
 
 ---
 
@@ -720,68 +628,12 @@ Compliance: SPAM Act 2003, DNCR registered, TCP Code (voice), Australian-built
 
 - Supabase: 29 security advisor errors need resolution
 - BD LinkedIn account needs funding before social scraping (T-DM3/T-DM4) works
-- Current leads table contains denormalised copies — contradicts ratified BU architecture, needs fixing
 - ARCHITECTURE.md Section 5 needs T-DM3 corrected endpoints + price ($0.0015, not $0.0025)
 - Remotion video + Stripe checkout pending for landing page
-- Design system directive #027 not yet executed
-- Facebook as discovery source 3: REJECTED (do not revisit)
-- `test_dfs_serp_client.py` has pre-existing collection error (Pydantic v2 deprecation)
-- `test_campaign_claimer.py` 5 failures: AsyncMock + `conn.transaction()` mock setup bug (pre-existing from #252)
-- `test_dfs_gmaps_client.py` 2 failures: `gmb_work_hours` type mismatch + `fetch_task_results` attribute (pre-existing from #248)
-- Google Drive Manual was stale at #168 — restored by Manual Restoration Directive (Mar 26 2026)
+- S7 prompt engineering needed (backlog — deferred post-#281)
+- S2 parallelisation needed (production speed — currently sequential)
+- signal_configurations schema needs redesign (#271)
+- BUG-268-1: S1 `unnest(jsonb)` fails — fix: `jsonb_array_elements_text()` + `jsonb_agg(DISTINCT elem)` pattern
+- BUG-268-2: BD GMB returning 401 on new-domain discovery requests — credentials issue in BD account (Dave to check dashboard)
 
-### Live Test v2 Rerun (#266) Findings — Mar 26 2026
 
-~~**BUG-265-1** — S2 stage advancement~~ FIXED #266
-~~**BUG-265-2** — S3 NULL domain guard~~ FIXED #266
-~~**BUG-265-3** — S4 NULL signal scoring~~ FIXED #266
-~~**BUG-266-1** — S5 EmailFinderResult type error~~ FIXED #266
-~~**BUG-266-1 (DB)** — Duplicate domains in BU (non-atomic SELECT+INSERT)~~ FIXED #267 — migration 028: dedup + partial UNIQUE index; S1 ON CONFLICT upsert
-~~**BUG-266-2** — Platform/social/gov domains in BU (no blocklist)~~ FIXED #267 — domain_blocklist.py + S1 is_blocked() guard
-~~**BUG-266-3** — S2 BD 401 on NULL/empty domains~~ FIXED #267 — added AND domain IS NOT NULL AND domain <> '' to S2 SELECT
-~~**BUG-266-4** — Dead Jina test (test_falls_through_to_website_scraper)~~ FIXED #267 — test removed, test_waterfall_gmb_then_leadmagic_only added
-
-**S5 waterfall:** Jina/WebsiteContactScraper removed. Order: GMBContactExtractor → LeadmagicPersonFinder.
-
-**Live run stats (#266 final):** S2 advanced 30 rows, S3 profiled 26 (NULL domains skipped), S4 scored 23/26 above threshold, S5 found 7 DMs (GMB+Leadmagic, Jina removed), S6 validated 7 (email:3, voice:2, physical:7), S7 generated 4 messages at $0.0047. Pipeline working end-to-end. First real Haiku outreach messages produced. Total cost ~$1.30 across all runs.
-
-## SECTION 21 — FUNNEL METRICS (calibration run #268, Mar 26 2026)
-
-### Real conversion rates (calibration run — partial due to S1 bug)
-
-| Stage | Input | Output | Conversion | Cost |
-|-------|-------|--------|------------|------|
-| S1 Discovery | - | 0 | - | $0.00 |
-| S2 GMB Lookup | 0 | 28 | - (stale data) | $0.00 |
-| S3 DFS Profile | 28 | 44 | 157% (stale backlog) | $0.865 |
-| S4 Scoring | 44 | 0 | 0% (all dental, wrong vertical) | free |
-| S5 DM Discovery | 0 | 16 | - (stale pre-existing data) | $0.00 |
-| S6 Reachability | 16 | 20 | 125% (stale pre-existing data) | free |
-| S7 Message Gen | 20 | 0 | 0% (no marketing_agency leads) | $0.00 |
-| **TOTAL** | - | 0 | 0% end-to-end | **$0.865** |
-
-### Tier projections (based on calibration run)
-
-**NOTE: Tier projections not calculable — S1 failed (0 fresh domains). Fix BUG-268-1 first, then re-run.**
-
-| Tier | Outreach target | S1 domains needed | Estimated cost |
-|------|-----------------|-------------------|----------------|
-| Spark $750 | 150 leads | N/A | N/A |
-| Ignition $2,500 | 600 leads | N/A | N/A |
-| Velocity $5,000 | 1,500 leads | N/A | N/A |
-
-### Key findings from this run
-
-- **S4 qualification gate CONFIRMED WORKING**: correctly rejected all 44 dental clinics as "GMB category 'dentist' not in vertical" — gate is live and filtering correctly
-- **S5 DM waterfall**: 16/20 (80%) DM found via Leadmagic; sources_used = {'leadmagic': 16}
-- **S6 channel breakdown**: email 3/20 (15%), physical 20/20 (100%), linkedin 10/20 (50%)
-- **S3 DFS profile cost**: ~$0.0197 per domain ($0.865 / 44 domains)
-- **BrightData GMB**: 401 Unauthorized on all S2 new-domain requests (credentials issue in BD account)
-
-### Notes
-- Calibration run date: March 26 2026
-- Vertical: marketing_agency
-- Budget used: $0.865 of $10 cap
-- Qualification gate active: 100% of batch disqualified (dental clinics, wrong vertical in backlog)
-- **BUG-268-1**: S1 fails with `function unnest(jsonb) does not exist` — `dfs_technologies` col is `jsonb` type, but ON CONFLICT clause uses `unnest()` which requires array type. Fix: replace `unnest(...)` with `jsonb_array_elements_text(...)` + `jsonb_agg(DISTINCT elem)` pattern. Re-calibration required after fix.
-- **BUG-268-2**: BrightData GMB returning 401 on all new-domain discovery requests (S2 enrichment blocked for new domains)

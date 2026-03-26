@@ -20,7 +20,7 @@ from decimal import Decimal
 import asyncpg
 from dotenv import load_dotenv
 
-load_dotenv("/home/elliotbot/.config/agency-os/.env")
+load_dotenv("/home/elliotbot/.config/agency-os/.env", override=True)
 
 from src.clients.dfs_labs_client import DFSLabsClient
 from src.clients.bright_data_gmb_client import BrightDataGMBClient

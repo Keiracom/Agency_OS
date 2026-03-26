@@ -14,6 +14,10 @@ from decimal import Decimal
 from typing import Any
 
 import httpx
+from dotenv import load_dotenv
+
+# Load .env with override=True so Datasets key wins over Scrapers key in shell env (#268)
+load_dotenv("/home/elliotbot/.config/agency-os/.env", override=True)
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +57,9 @@ class BrightDataGMBClient:
         Search for a GMB listing by business name.
         Returns mapped GMB dict or None if not found.
         """
-        query = f"{business_name} {country}"
+        # With discover_by=location, country is passed separately in the body.
+        # keyword = business name only (no country suffix needed).
+        query = business_name
         async with httpx.AsyncClient(timeout=30) as client:
             # Trigger dataset snapshot
             snapshot_id = await self._trigger_snapshot(client, query)
@@ -74,15 +80,19 @@ class BrightDataGMBClient:
             return None
 
     async def _trigger_snapshot(self, client: httpx.AsyncClient, query: str) -> str | None:
-        """Trigger a Bright Data dataset snapshot. Returns snapshot_id."""
+        """Trigger a Bright Data dataset snapshot. Returns snapshot_id.
+        
+        Uses discover_by=location with country=AU + keyword (not discover_by=keyword
+        which is unsupported by this dataset). Fix: Directive #268.
+        """
         url = f"{BD_API_BASE}/trigger"
         params = {
             "dataset_id": BD_GMB_DATASET_ID,
             "include_errors": "true",
             "type": "discover_new",
-            "discover_by": "keyword",
+            "discover_by": "location",
         }
-        body = [{"keyword": query}]
+        body = [{"country": "AU", "keyword": query}]
         try:
             resp = await client.post(url, headers=self._headers, params=params, json=body)
             resp.raise_for_status()

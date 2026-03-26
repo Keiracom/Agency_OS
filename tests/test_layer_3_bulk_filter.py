@@ -221,7 +221,7 @@ async def test_budget_cap_stops_batching():
 
 @pytest.mark.asyncio
 async def test_cost_tracking_correct():
-    """500 domains → estimated_cost_usd ≈ 0.50 (500 * $0.001)."""
+    """500 domains → estimated_cost_usd ≈ 0.60 ($0.10/task + 500 * $0.001/domain)."""
     domain_ids = [str(uuid.uuid4()) for _ in range(500)]
     domains = [f"site{i}.com" for i in range(500)]
     rows = [make_domain_row(d, domain_ids[i]) for i, d in enumerate(domains)]
@@ -236,6 +236,6 @@ async def test_cost_tracking_correct():
         MockRepo.return_value.get_config = AsyncMock(return_value=config)
         stats = await engine.run("marketing_agency", daily_budget_usd=100.0)
 
-    assert abs(stats.estimated_cost_usd - 0.50) < 0.001
+    assert abs(stats.estimated_cost_usd - 0.60) < 0.001  # $0.10 task + $0.50 domain cost
     assert stats.batches_called == 1
     assert stats.total_processed == 500

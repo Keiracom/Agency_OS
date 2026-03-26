@@ -818,7 +818,7 @@ class DFSLabsClient:
         result = await self._post(
             endpoint="/v3/dataforseo_labs/google/bulk_traffic_estimation/live",
             payload=[{"targets": domains, "location_name": "Australia", "language_name": "English"}],
-            cost_per_call=Decimal(str(len(domains) * 0.001)),
+            cost_per_call=Decimal("0.10") + Decimal(str(len(domains))) * Decimal("0.001"),  # $0.10/task + $0.001/domain
             cost_attr="_cost_bulk_domain_metrics",
         )
         items = result.get("items") or []

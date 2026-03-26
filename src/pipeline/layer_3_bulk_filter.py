@@ -8,7 +8,8 @@ Consumers: orchestration flows
 Directive: #274
 
 v6 design: cheapest possible gate before spending real money in Layer 4.
-Cost: ~$0.001/domain → filters ~60-70% of Layer 2 output.
+Cost: $0.10/task + $0.001/domain = $1.10 per 1,000 domains (DFS Historical Bulk Traffic Estimation).
+1,500 domains = 2 batches = ~$2.20. Still 20x cheaper than individual domain_rank_overview ($0.02/domain).
 """
 from __future__ import annotations
 
@@ -111,7 +112,7 @@ class Layer3BulkFilter:
         accumulated_cost = 0.0
         for i in range(0, len(domains_all), BATCH_SIZE):
             batch = domains_all[i:i + BATCH_SIZE]
-            batch_cost = len(batch) * 0.001  # ~$0.001/domain
+            batch_cost = 0.10 + len(batch) * 0.001  # $0.10/task + $0.001/domain (DFS bulk_traffic_estimation)
 
             if accumulated_cost + batch_cost > daily_budget_usd:
                 logger.warning(

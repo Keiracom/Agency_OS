@@ -143,6 +143,44 @@ class BrightDataGMBClient:
             logger.error(f"BD GMB fetch failed: {e.response.status_code}")
             return None
 
+    @staticmethod
+    def _extract_category(raw_cat: Any) -> str | None:
+        """
+        Normalise BD GMB category field to a plain lowercase string.
+
+        BD returns categories in several formats:
+          - str: "Advertising agency"
+          - list of dicts: [{"id": "advertising_agency", "title": "Advertising agency"}, ...]
+          - str repr of list: "[{'id': 'advertising_agency', ...}]"
+
+        We always extract the first category's id (snake_case) for consistent
+        comparison with signal_configurations.gmb_categories.
+        Directive #268 fix.
+        """
+        if not raw_cat:
+            return None
+        # Already a list of dicts (parsed JSON)
+        if isinstance(raw_cat, list):
+            first = raw_cat[0] if raw_cat else {}
+            return str(first.get("id", "")).lower() or None
+        # Plain string
+        if isinstance(raw_cat, str):
+            s = raw_cat.strip()
+            if not s:
+                return None
+            # Python list repr: "[{'id': 'advertising_agency', ...}]"
+            if s.startswith("[{"):
+                import ast
+                try:
+                    parsed = ast.literal_eval(s)
+                    if parsed and isinstance(parsed[0], dict):
+                        return str(parsed[0].get("id", "")).lower() or None
+                except Exception:
+                    pass
+            # Plain string category — normalise to snake_case
+            return s.lower().replace(" ", "_").replace("-", "_")
+        return None
+
     def _map_item(self, raw: dict) -> dict[str, Any] | None:
         """Map a Bright Data GMB record to BU column names."""
         place_id = raw.get("place_id") or raw.get("id")
@@ -150,7 +188,7 @@ class BrightDataGMBClient:
             return None
         return {
             "gmb_place_id": place_id,
-            "gmb_category": raw.get("category") or raw.get("type"),
+            "gmb_category": self._extract_category(raw.get("category") or raw.get("type")),
             "gmb_rating": raw.get("rating"),
             "gmb_review_count": raw.get("reviews") or raw.get("review_count"),
             "gmb_work_hours": raw.get("working_hours") or raw.get("work_hours"),

@@ -17,7 +17,7 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-BRIGHT_DATA_API_KEY = os.getenv("BRIGHT_DATA_API_KEY", "2bab0747-ede2-4437-9b6f-6a77e8f0ca3e")
+BRIGHT_DATA_API_KEY = os.getenv("BRIGHTDATA_API_KEY", "")
 BD_GMB_DATASET_ID = "gd_l7q7dkf244hwjntr0"   # Google Maps listings
 BD_API_BASE = "https://api.brightdata.com/datasets/v3"
 COST_PER_RECORD_USD = Decimal("0.001")

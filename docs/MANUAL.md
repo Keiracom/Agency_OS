@@ -105,8 +105,7 @@ Output: surviving domains, pipeline_stage = 2.
 - REJECT → pipeline_stage=-1, filter_reason='bulk_metrics_below_threshold'
 - no_domain rows: advance to pipeline_stage=2 without API call (→ Layer 7 GMB path)
 - Migration 031: adds filter_reason text, backlinks_count int, domain_rank int
-- Pricing: $0.10/task + $0.001/domain = $1.10 per 1,000 domains (DFS confirmed). 1,500 domains = $2.20. 20× cheaper than individual domain_rank_overview ($0.02/domain)
-- Cost for 1,500 domains: 2 batches
+- **Confirmed pricing (DFS): $0.10/task + $0.001/domain = $1.10 per 1,000 domains. 1,500 domains = 2 batches = $2.20. 20× cheaper than individual domain_rank_overview ($0.02/domain)**
 
 ---
 

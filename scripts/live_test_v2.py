@@ -1,27 +1,27 @@
 #!/usr/bin/env python3
 """
-Live Test v2 — Full Pipeline Validation
-Directive #265
-
-Runs the complete v5 pipeline (S1-S7) against real APIs.
-Budget cap: $15 USD. Stop if approaching.
+Calibration Run — Directive #268
+Fresh 100 domains through full S1-S7 pipeline.
+Purpose: establish real funnel conversion rates for tier cost projections.
+Budget cap: $10 USD.
 """
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import sys
 import time
+from collections import Counter, defaultdict
 from datetime import datetime
 from decimal import Decimal
 
 import asyncpg
 from dotenv import load_dotenv
 
-load_dotenv("/home/elliotbot/.config/agency-os/.env")
+load_dotenv("/home/elliotbot/.config/agency-os/.env", override=True)
 
-# -- stage and client imports --
 from src.clients.dfs_labs_client import DFSLabsClient
 from src.clients.bright_data_gmb_client import BrightDataGMBClient
 from src.integrations.leadmagic import LeadmagicClient
@@ -42,7 +42,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-BUDGET_CAP = 15.0
+BUDGET_CAP = 10.0
 VERTICAL = "marketing_agency"
 
 AGENCY_PROFILE = {
@@ -65,28 +65,13 @@ class CostTracker:
         self.breakdown[stage] = self.breakdown.get(stage, 0.0) + amount
         log.info(f"[COST] {stage}: +${amount:.4f} (total: ${self.total:.4f})")
         if self.total >= self.cap * 0.9:
-            raise RuntimeError(
-                f"BUDGET CAP APPROACHING: ${self.total:.4f} of ${self.cap} — stopping pipeline"
-            )
+            raise RuntimeError(f"BUDGET CAP APPROACHING: ${self.total:.4f} of ${self.cap}")
 
     def report(self):
         log.info("=== COST BREAKDOWN ===")
         for stage, cost in self.breakdown.items():
             log.info(f"  {stage}: ${cost:.4f}")
         log.info(f"  TOTAL: ${self.total:.4f}")
-
-
-def stage_timer(name: str):
-    """Context helper — returns elapsed seconds."""
-    class _T:
-        def __enter__(self):
-            self._t = time.time()
-            log.info(f"--- {name} START ---")
-            return self
-        def __exit__(self, *_):
-            self.elapsed = time.time() - self._t
-            log.info(f"--- {name} DONE ({self.elapsed:.1f}s) ---")
-    return _T()
 
 
 async def count_at_stage(conn, stage: int) -> int:
@@ -100,215 +85,303 @@ async def main():
     start_time = time.time()
     bugs: list[str] = []
     cost = CostTracker(cap=BUDGET_CAP)
+    funnel: dict[str, dict] = {}
 
-    log.info("=== LIVE TEST v2 START ===")
+    log.info("=== CALIBRATION RUN — DIRECTIVE #268 ===")
     log.info(f"Time: {datetime.utcnow().isoformat()}")
     log.info(f"Budget cap: ${BUDGET_CAP}")
     log.info(f"Vertical: {VERTICAL}")
 
-    # -- DB connection --
-    dsn = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
-    if not dsn:
-        raise RuntimeError("No DATABASE_URL found in environment")
-    # Strip SQLAlchemy dialect prefix (+asyncpg) if present
-    dsn = dsn.replace("postgresql+asyncpg://", "postgresql://")
-    log.info(f"Connecting to DB (DSN found: yes)")
+    dsn = os.environ.get("DATABASE_URL", "").replace("postgresql+asyncpg://", "postgresql://")
     conn = await asyncpg.connect(dsn, statement_cache_size=0)
-    # PgBouncer in transaction mode returns JSONB as text — register codec
-    import json as _json
-    await conn.set_type_codec(
-        "jsonb",
-        encoder=_json.dumps,
-        decoder=_json.loads,
-        schema="pg_catalog",
-        format="text",
-    )
-    await conn.set_type_codec(
-        "json",
-        encoder=_json.dumps,
-        decoder=_json.loads,
-        schema="pg_catalog",
-        format="text",
-    )
+    await conn.set_type_codec("jsonb", encoder=json.dumps, decoder=json.loads, schema="pg_catalog", format="text")
+    await conn.set_type_codec("json", encoder=json.dumps, decoder=json.loads, schema="pg_catalog", format="text")
     log.info("DB connected")
 
     try:
-        # -- Baseline counts --
-        for s in range(1, 8):
-            n = await count_at_stage(conn, s)
-            log.info(f"[BASELINE] pipeline_stage={s}: {n} rows")
+        # Baseline before run
+        pre_s1 = await count_at_stage(conn, 1)
+        log.info(f"[PRE-RUN] stage=1 baseline: {pre_s1} rows")
 
-        # -- Client setup --
-        dfs_login = os.environ.get("DATAFORSEO_LOGIN", "")
-        dfs_password = os.environ.get("DATAFORSEO_PASSWORD", "")
-        if not dfs_login or not dfs_password:
-            raise RuntimeError("DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD not set")
-
-        dfs_client = DFSLabsClient(login=dfs_login, password=dfs_password)
+        dfs_client = DFSLabsClient(
+            login=os.environ["DATAFORSEO_LOGIN"],
+            password=os.environ["DATAFORSEO_PASSWORD"],
+        )
         gmb_client = BrightDataGMBClient()
         leadmagic_client = LeadmagicClient()
         anthropic_client = AnthropicClient()
-
         signal_repo = SignalConfigRepository(conn)
-        log.info("All clients initialised")
+        log.info("Clients initialised")
 
-        # ------------------------------------------------------------------ S1
-        with stage_timer("S1: DFS Discovery") as t1:
-            try:
-                stage1 = Stage1Discovery(dfs_client, signal_repo, conn)
-                # Use run_batch() to cap domains per tech (run() defaults to 1000)
-                config = await signal_repo.get_config(VERTICAL)
-                result1 = await stage1.run_batch(
-                    vertical_slug=VERTICAL,
-                    technologies=config.all_dfs_technologies,
-                    max_domains_per_tech=50,
-                )
-                log.info(f"S1 result: {result1}")
-                s1_cost = float(result1.get("cost_usd", 0))
-                cost.add("S1_discovery", s1_cost)
-                n_s1 = await count_at_stage(conn, 1)
-                log.info(f"[FUNNEL] After S1: {n_s1} rows at stage=1")
-            except Exception as e:
-                bugs.append(f"S1 FATAL: {e}")
-                log.error(f"S1 error: {e}", exc_info=True)
+        # ─────────────────────────────────────────── S1
+        t0 = time.time()
+        log.info("--- S1: DFS Discovery (max 25/tech) ---")
+        try:
+            stage1 = Stage1Discovery(dfs_client, signal_repo, conn)
+            config = await signal_repo.get_config(VERTICAL)
+            result1 = await stage1.run_batch(
+                vertical_slug=VERTICAL,
+                technologies=config.all_dfs_technologies,
+                max_domains_per_tech=25,
+            )
+            log.info(f"S1: {result1}")
+            cost.add("S1", float(result1.get("cost_usd", 0)))
+            post_s1 = await count_at_stage(conn, 1)
+            s1_new = post_s1 - pre_s1
+            funnel["S1"] = {"in": "-", "out": result1.get("discovered", 0), "cost": float(result1.get("cost_usd", 0)), "time": time.time()-t0}
+            log.info(f"[FUNNEL] S1: {result1.get('discovered',0)} new discovered, {result1.get('duplicates_skipped',0)} dupes skipped, {result1.get('blocklist_filtered',0)} blocklisted")
+        except Exception as e:
+            bugs.append(f"S1: {e}")
+            log.error(f"S1 error: {e}", exc_info=True)
+            funnel["S1"] = {"in": "-", "out": 0, "cost": 0}
 
-        # ------------------------------------------------------------------ S2
-        with stage_timer("S2: GMB Lookup") as t2:
-            try:
-                stage2 = Stage2GMBLookup(gmb_client, conn)
-                result2 = await stage2.run(batch_size=30)
-                log.info(f"S2 result: {result2}")
-                s2_cost = float(result2.get("cost_usd", 0))
-                cost.add("S2_gmb", s2_cost)
-                n_s2 = await count_at_stage(conn, 2)
-                log.info(f"[FUNNEL] After S2: {n_s2} rows at stage=2")
-            except Exception as e:
-                bugs.append(f"S2 FATAL: {e}")
-                log.error(f"S2 error: {e}", exc_info=True)
+        # ─────────────────────────────────────────── S2
+        t0 = time.time()
+        log.info("--- S2: GMB Reverse Lookup (batch_size=41) ---")
+        try:
+            stage2 = Stage2GMBLookup(gmb_client, conn)
+            result2 = await stage2.run(batch_size=41)
+            log.info(f"S2: {result2}")
+            cost.add("S2", float(result2.get("cost_usd", 0)))
+            n_s2 = await count_at_stage(conn, 2)
+            funnel["S2"] = {"in": funnel.get("S1", {}).get("out", 0), "out": result2.get("enriched", 0) + result2.get("already_enriched", 0), "cost": float(result2.get("cost_usd", 0)), "time": time.time()-t0}
+            log.info(f"[FUNNEL] S2 → stage=2: {n_s2} rows | enriched={result2.get('enriched',0)} already={result2.get('already_enriched',0)} no_gmb={result2.get('no_gmb_found',0)}")
+        except Exception as e:
+            bugs.append(f"S2: {e}")
+            log.error(f"S2 error: {e}", exc_info=True)
+            funnel["S2"] = {"in": 0, "out": 0, "cost": 0}
 
-        # ------------------------------------------------------------------ S3
-        with stage_timer("S3: DFS Profile") as t3:
-            try:
-                stage3 = Stage3DFSProfile(dfs_client, signal_repo, conn, delay=0.2)
-                result3 = await stage3.run(VERTICAL, batch_size=30)
-                log.info(f"S3 result: {result3}")
-                s3_cost = float(result3.get("cost_usd", 0))
-                cost.add("S3_dfs_profile", s3_cost)
-                n_s3 = await count_at_stage(conn, 3)
-                log.info(f"[FUNNEL] After S3: {n_s3} rows at stage=3")
-            except Exception as e:
-                bugs.append(f"S3 FATAL: {e}")
-                log.error(f"S3 error: {e}", exc_info=True)
+        # ─────────────────────────────────────────── S3
+        t0 = time.time()
+        log.info("--- S3: DFS Profile (batch_size=41) ---")
+        try:
+            stage3 = Stage3DFSProfile(dfs_client, signal_repo, conn, delay=0.2)
+            result3 = await stage3.run(VERTICAL, batch_size=41)
+            log.info(f"S3: {result3}")
+            cost.add("S3", float(result3.get("cost_usd", 0)))
+            n_s3 = await count_at_stage(conn, 3)
+            funnel["S3"] = {"in": funnel.get("S2", {}).get("out", 0), "out": result3.get("profiled", 0), "cost": float(result3.get("cost_usd", 0)), "time": time.time()-t0}
+            log.info(f"[FUNNEL] S3 → stage=3: {n_s3} rows | profiled={result3.get('profiled',0)}")
+        except Exception as e:
+            bugs.append(f"S3: {e}")
+            log.error(f"S3 error: {e}", exc_info=True)
+            funnel["S3"] = {"in": 0, "out": 0, "cost": 0}
 
-        # ------------------------------------------------------------------ S4
-        with stage_timer("S4: Scoring") as t4:
-            try:
-                stage4 = Stage4Scorer(signal_repo, conn)
-                result4 = await stage4.run(VERTICAL)
-                log.info(f"S4 result: {result4}")
-                cost.add("S4_scoring", 0.0)  # free
-                n_s4 = await count_at_stage(conn, 4)
-                log.info(f"[FUNNEL] After S4: {n_s4} rows at stage=4")
-            except Exception as e:
-                bugs.append(f"S4 FATAL: {e}")
-                log.error(f"S4 error: {e}", exc_info=True)
+        # ─────────────────────────────────────────── S4
+        t0 = time.time()
+        log.info("--- S4: Scoring + Qualification ---")
+        try:
+            stage4 = Stage4Scorer(signal_repo, conn)
+            result4 = await stage4.run(VERTICAL)
+            log.info(f"S4: {result4}")
+            cost.add("S4", 0.0)
+            n_s4 = await count_at_stage(conn, 4)
 
-        # ------------------------------------------------------------------ S5
-        with stage_timer("S5: DM Waterfall") as t5:
-            try:
-                stage5 = Stage5DMWaterfall(leadmagic_client, signal_repo, conn, extra_sources=None)
-                result5 = await stage5.run(VERTICAL, batch_size=10)
-                log.info(f"S5 result: {result5}")
-                s5_cost = float(result5.get("cost_usd", 0))
-                cost.add("S5_dm_waterfall", s5_cost)
-                n_s5 = await count_at_stage(conn, 5)
-                log.info(f"[FUNNEL] After S5: {n_s5} rows at stage=5")
-            except Exception as e:
-                bugs.append(f"S5 FATAL: {e}")
-                log.error(f"S5 error: {e}", exc_info=True)
+            # Detailed score distribution query
+            dist = await conn.fetch("""
+                SELECT
+                    CASE
+                        WHEN propensity_score = 0 THEN '0 (disqualified)'
+                        WHEN propensity_score <= 20 THEN '1-20'
+                        WHEN propensity_score <= 40 THEN '21-40'
+                        WHEN propensity_score <= 60 THEN '41-60'
+                        WHEN propensity_score <= 80 THEN '61-80'
+                        ELSE '81-100'
+                    END as bucket,
+                    COUNT(*) as count,
+                    best_match_service
+                FROM business_universe
+                WHERE pipeline_stage = 4
+                  AND pipeline_updated_at > NOW() - INTERVAL '10 minutes'
+                GROUP BY bucket, best_match_service
+                ORDER BY bucket
+            """)
+            log.info("[S4] Score distribution (this run):")
+            for row in dist:
+                log.info(f"  {row['bucket']:20s} | {row['best_match_service'] or 'none':20s} | {row['count']} rows")
 
-        # ------------------------------------------------------------------ S6
-        with stage_timer("S6: Reachability") as t6:
-            try:
-                stage6 = Stage6Reachability(signal_repo, conn)
-                result6 = await stage6.run(VERTICAL, batch_size=100)
-                log.info(f"S6 result: {result6}")
-                cost.add("S6_reachability", 0.0)  # free
-                n_s6 = await count_at_stage(conn, 6)
-                log.info(f"[FUNNEL] After S6: {n_s6} rows at stage=6")
-            except Exception as e:
-                bugs.append(f"S6 FATAL: {e}")
-                log.error(f"S6 error: {e}", exc_info=True)
+            # Disqualification reasons
+            disq = await conn.fetch("""
+                SELECT score_reason, COUNT(*) as count
+                FROM business_universe
+                WHERE pipeline_stage = 4
+                  AND propensity_score = 0
+                  AND pipeline_updated_at > NOW() - INTERVAL '10 minutes'
+                GROUP BY score_reason
+                ORDER BY count DESC
+                LIMIT 10
+            """)
+            if disq:
+                log.info("[S4] Disqualification reasons:")
+                for row in disq:
+                    log.info(f"  {row['count']:3d}x {row['score_reason']}")
 
-        # ------------------------------------------------------------------ S7
-        with stage_timer("S7: Haiku Message Generation") as t7:
-            try:
-                stage7 = Stage7Haiku(anthropic_client, signal_repo, conn)
-                result7 = await stage7.run(VERTICAL, agency_profile=AGENCY_PROFILE, batch_size=5)
-                log.info(f"S7 result: {result7}")
-                s7_cost = float(result7.get("cost_usd", 0))
-                cost.add("S7_haiku", s7_cost)
-                n_s7 = await count_at_stage(conn, 7)
-                log.info(f"[FUNNEL] After S7: {n_s7} rows at stage=7")
-            except Exception as e:
-                bugs.append(f"S7 FATAL: {e}")
-                log.error(f"S7 error: {e}", exc_info=True)
+            # Avg score for qualified
+            avg_row = await conn.fetchrow("""
+                SELECT AVG(propensity_score) as avg_score, COUNT(*) as qualified_count
+                FROM business_universe
+                WHERE pipeline_stage = 4
+                  AND propensity_score > 0
+                  AND pipeline_updated_at > NOW() - INTERVAL '10 minutes'
+            """)
+            if avg_row:
+                log.info(f"[S4] Qualified: {avg_row['qualified_count']} | Avg propensity: {float(avg_row['avg_score'] or 0):.1f}")
 
-        # ------------------------------------------------------------------ Print Haiku samples
+            funnel["S4"] = {
+                "in": funnel.get("S3", {}).get("out", 0),
+                "out": result4.get("above_threshold", 0),
+                "qualified": result4.get("scored", 0) - result4.get("below_threshold", 0),
+                "cost": 0,
+                "time": time.time()-t0,
+            }
+            log.info(f"[FUNNEL] S4 → stage=4: {n_s4} rows | above_gate={result4.get('above_threshold',0)} below={result4.get('below_threshold',0)}")
+        except Exception as e:
+            bugs.append(f"S4: {e}")
+            log.error(f"S4 error: {e}", exc_info=True)
+            funnel["S4"] = {"in": 0, "out": 0, "cost": 0}
+
+        # ─────────────────────────────────────────── S5
+        t0 = time.time()
+        log.info("--- S5: DM Waterfall (batch_size=20) ---")
+        try:
+            stage5 = Stage5DMWaterfall(leadmagic_client, signal_repo, conn)
+            result5 = await stage5.run(VERTICAL, batch_size=20)
+            log.info(f"S5: {result5}")
+            cost.add("S5", float(result5.get("cost_usd", 0)))
+            n_s5 = await count_at_stage(conn, 5)
+            sources = result5.get("sources_used", {})
+            log.info(f"[S5] Sources used: {sources}")
+            funnel["S5"] = {"in": funnel.get("S4", {}).get("out", 0), "out": result5.get("found", 0), "cost": float(result5.get("cost_usd", 0)), "time": time.time()-t0}
+            log.info(f"[FUNNEL] S5 → stage=5: {n_s5} rows | DMs found={result5.get('found',0)} not_found={result5.get('not_found',0)}")
+        except Exception as e:
+            bugs.append(f"S5: {e}")
+            log.error(f"S5 error: {e}", exc_info=True)
+            funnel["S5"] = {"in": 0, "out": 0, "cost": 0}
+
+        # ─────────────────────────────────────────── S6
+        t0 = time.time()
+        log.info("--- S6: Reachability ---")
+        try:
+            stage6 = Stage6Reachability(signal_repo, conn)
+            result6 = await stage6.run(VERTICAL, batch_size=100)
+            log.info(f"S6: {result6}")
+            cost.add("S6", 0.0)
+            channels = result6.get("channels_confirmed", {})
+            n_s6 = await count_at_stage(conn, 6)
+            total_validated = result6.get("validated", 0)
+            log.info(f"[S6] Channel breakdown: {channels}")
+            if total_validated:
+                for ch, cnt in channels.items():
+                    log.info(f"  {ch}: {cnt}/{total_validated} = {cnt*100//total_validated}%")
+            funnel["S6"] = {"in": funnel.get("S5", {}).get("out", 0), "out": total_validated, "cost": 0, "time": time.time()-t0}
+            log.info(f"[FUNNEL] S6 → stage=6: {n_s6} rows | validated={total_validated}")
+        except Exception as e:
+            bugs.append(f"S6: {e}")
+            log.error(f"S6 error: {e}", exc_info=True)
+            funnel["S6"] = {"in": 0, "out": 0, "cost": 0}
+
+        # ─────────────────────────────────────────── S7
+        t0 = time.time()
+        log.info("--- S7: Haiku Message Generation (batch_size=10) ---")
+        try:
+            stage7 = Stage7Haiku(anthropic_client, signal_repo, conn)
+            result7 = await stage7.run(VERTICAL, agency_profile=AGENCY_PROFILE, batch_size=10)
+            log.info(f"S7: {result7}")
+            cost.add("S7", float(result7.get("cost_usd", 0)))
+            n_s7 = await count_at_stage(conn, 7)
+            funnel["S7"] = {"in": funnel.get("S6", {}).get("out", 0), "out": result7.get("messages_generated", 0), "cost": float(result7.get("cost_usd", 0)), "time": time.time()-t0}
+            log.info(f"[FUNNEL] S7 → stage=7: {n_s7} rows | messages={result7.get('messages_generated',0)}")
+        except Exception as e:
+            bugs.append(f"S7: {e}")
+            log.error(f"S7 error: {e}", exc_info=True)
+            funnel["S7"] = {"in": 0, "out": 0, "cost": 0}
+
+        # ─────────────────────────────────────────── Print samples
         log.info("=== HAIKU MESSAGE SAMPLES ===")
         try:
-            rows = await conn.fetch(
-                """
-                SELECT domain, display_name, outreach_messages
+            rows = await conn.fetch("""
+                SELECT domain, display_name, dm_name, dm_title, outreach_messages, propensity_score
                 FROM business_universe
-                WHERE outreach_messages IS NOT NULL
-                  AND pipeline_stage = 7
+                WHERE pipeline_stage = 7
+                  AND outreach_messages IS NOT NULL
+                  AND pipeline_updated_at > NOW() - INTERVAL '30 minutes'
                 ORDER BY propensity_score DESC NULLS LAST
                 LIMIT 3
-                """
-            )
-            if not rows:
-                log.info("No Haiku messages found (0 rows at stage=7 with outreach_messages)")
+            """)
             for i, row in enumerate(rows, 1):
-                log.info(f"\n--- Sample {i}: {row['display_name']} ({row['domain']}) ---")
-                import json
                 msgs = row["outreach_messages"]
                 if isinstance(msgs, str):
                     msgs = json.loads(msgs)
+                print(f"\n{'='*60}")
+                print(f"Sample {i}: {row['display_name'] or row['domain']}")
+                print(f"DM: {row['dm_name']} ({row['dm_title']}) | Score: {row['propensity_score']}")
                 if isinstance(msgs, dict):
-                    for channel, text in msgs.items():
-                        log.info(f"  [{channel.upper()}]\n{text}\n")
-                else:
-                    log.info(f"  {msgs}")
+                    for ch, txt in msgs.items():
+                        print(f"\n  [{ch.upper()}]\n{txt}")
         except Exception as e:
-            bugs.append(f"HAIKU_SAMPLE_QUERY: {e}")
-            log.error(f"Error fetching haiku samples: {e}", exc_info=True)
-
-        # -- FINAL PIPELINE FUNNEL --
-        log.info("=== FINAL PIPELINE FUNNEL ===")
-        for s in range(1, 8):
-            n = await count_at_stage(conn, s)
-            log.info(f"  stage={s}: {n} rows")
+            log.error(f"Sample query error: {e}")
 
     except RuntimeError as budget_err:
         log.error(f"STOPPED: {budget_err}")
         bugs.append(f"BUDGET: {budget_err}")
     except Exception as e:
-        log.error(f"PIPELINE ERROR: {e}", exc_info=True)
+        log.error(f"FATAL: {e}", exc_info=True)
         bugs.append(f"FATAL: {e}")
     finally:
         await conn.close()
         elapsed = time.time() - start_time
-        log.info("=== SUMMARY ===")
-        log.info(f"Total time: {elapsed:.1f}s")
+
+        # ─────────────────────────────────────────── FUNNEL TABLE
+        print("\n" + "="*70)
+        print("FUNNEL CONVERSION TABLE")
+        print("="*70)
+        print(f"{'STAGE':<12} {'IN':>6} {'OUT':>6} {'RATE':>7} {'COST':>8}")
+        print("-"*70)
+        stages = ["S1", "S2", "S3", "S4", "S5", "S6", "S7"]
+        total_cost = 0.0
+        for s in stages:
+            d = funnel.get(s, {})
+            inn = d.get("in", "-")
+            out = d.get("out", 0)
+            rate = f"{out*100//inn:.0f}%" if isinstance(inn, int) and inn > 0 else "-"
+            c = d.get("cost", 0)
+            total_cost += c
+            print(f"{s:<12} {str(inn):>6} {str(out):>6} {rate:>7} ${c:>7.4f}")
+        print("-"*70)
+        print(f"{'TOTAL':<12} {'':>6} {'':>6} {'':>7} ${total_cost:>7.4f}")
+
+        # ─────────────────────────────────────────── TIER PROJECTIONS
+        s1_out = funnel.get("S1", {}).get("out", 1)
+        s7_out = funnel.get("S7", {}).get("out", 0)
+        overall_rate = s7_out / max(s1_out, 1)
+        cost_per_s1 = total_cost / max(s1_out, 1)
+
+        print("\n" + "="*70)
+        print("TIER PROJECTIONS (based on this run)")
+        print("="*70)
+        print(f"Overall S1→S7 conversion rate: {overall_rate*100:.1f}%")
+        print(f"Cost per S1 domain: ${cost_per_s1:.4f}")
+        print()
+        print(f"{'TIER':<12} {'TARGET':>8} {'S1 NEEDED':>10} {'EST COST':>10}")
+        print("-"*45)
+        for tier, target in [("Spark", 150), ("Ignition", 600), ("Velocity", 1500)]:
+            if overall_rate > 0:
+                s1_needed = int(target / overall_rate)
+                est_cost = s1_needed * cost_per_s1
+            else:
+                s1_needed = "N/A"
+                est_cost = 0
+            print(f"{tier:<12} {target:>8} {str(s1_needed):>10} ${est_cost:>9.2f}")
+
+        print(f"\nTotal time: {elapsed:.1f}s")
         cost.report()
         if bugs:
-            log.info("=== BUGS FOUND ===")
+            print("\n=== BUGS FOUND ===")
             for b in bugs:
-                log.info(f"  {b}")
+                print(f"  {b}")
         else:
-            log.info("=== NO BUGS — ALL STAGES PASSED ===")
-        log.info("=== LIVE TEST v2 END ===")
+            print("\n=== NO BUGS ===")
+        print("=== CALIBRATION RUN END ===")
 
 
 if __name__ == "__main__":

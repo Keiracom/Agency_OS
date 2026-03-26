@@ -248,3 +248,87 @@ async def test_null_tech_stack_still_scores_fit():
     # When has_tech_data=True but empty, score should be 0 (all gaps exist but none matched)
     score_empty = _calc_gap_score(svc_techs, detected, gaps, has_tech_data=True)
     assert score_empty == 0
+
+
+# ─── Qualification gate tests (#268) ─────────────────────────────────────────
+
+def make_scorer_direct():
+    """Create Stage4Scorer instance for direct _qualifies testing."""
+    from unittest.mock import MagicMock
+    signal_repo = MagicMock()
+    conn = MagicMock()
+    return Stage4Scorer(signal_repo, conn)
+
+
+def test_qualifies_rejects_null_domain():
+    """Business with NULL domain is disqualified."""
+    scorer = make_scorer_direct()
+    config = make_config()
+    ok, reason = scorer._qualifies({"domain": None, "gmb_place_id": "abc", "dfs_paid_keywords": 10}, config)
+    assert ok is False
+    assert "domain" in reason.lower()
+
+
+def test_qualifies_rejects_blocked_domain():
+    """Business with facebook.com domain is disqualified."""
+    scorer = make_scorer_direct()
+    config = make_config()
+    ok, reason = scorer._qualifies({"domain": "facebook.com", "gmb_place_id": "abc", "dfs_paid_keywords": 10}, config)
+    assert ok is False
+    assert "blocked" in reason.lower() or "domain" in reason.lower()
+
+
+def test_qualifies_rejects_no_gmb_no_address():
+    """Business with no GMB and no address is disqualified."""
+    scorer = make_scorer_direct()
+    config = make_config()
+    ok, reason = scorer._qualifies({
+        "domain": "acme.com.au", "gmb_place_id": None, "state": None, "suburb": None,
+        "dfs_paid_keywords": 10,
+    }, config)
+    assert ok is False
+    assert "address" in reason.lower() or "gmb" in reason.lower()
+
+
+def test_qualifies_rejects_no_signal_data():
+    """Business with no DFS or tech signals is disqualified."""
+    scorer = make_scorer_direct()
+    config = make_config()
+    ok, reason = scorer._qualifies({
+        "domain": "acme.com.au", "gmb_place_id": "ChIJ123",
+        "dfs_paid_keywords": None, "dfs_organic_etv": None,
+        "tech_stack": None, "tech_stack_depth": None,
+        "dfs_paid_etv": None, "dfs_organic_keywords": None,
+    }, config)
+    assert ok is False
+    assert "signal" in reason.lower()
+
+
+def test_qualifies_accepts_valid_business():
+    """Business meeting all criteria passes qualification."""
+    scorer = make_scorer_direct()
+    config = make_config(services=[make_service(cats=["digital_marketing_agency"])])
+    ok, reason = scorer._qualifies({
+        "domain": "acme-agency.com.au",
+        "gmb_place_id": "ChIJ123",
+        "gmb_category": "Digital Marketing Agency",
+        "dfs_paid_keywords": 15,
+        "state": "NSW",
+        "suburb": "Sydney",
+    }, config)
+    assert ok is True
+    assert reason == ""
+
+
+def test_qualifies_rejects_wrong_gmb_category():
+    """Business with GMB category outside vertical is disqualified."""
+    scorer = make_scorer_direct()
+    config = make_config(services=[make_service(cats=["digital_marketing_agency"])])
+    ok, reason = scorer._qualifies({
+        "domain": "dentist.com.au",
+        "gmb_place_id": "ChIJ456",
+        "gmb_category": "Dental Clinic",
+        "dfs_paid_keywords": 20,
+    }, config)
+    assert ok is False
+    assert "category" in reason.lower()

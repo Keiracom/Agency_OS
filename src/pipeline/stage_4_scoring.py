@@ -21,6 +21,7 @@ from typing import Any
 import asyncpg
 
 from src.enrichment.signal_config import ServiceSignal, SignalConfig, SignalConfigRepository
+from src.utils.domain_blocklist import is_blocked
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ class Stage4Scorer:
         rows = await self.conn.fetch(
             """
             SELECT id, domain, gmb_category, gmb_rating, gmb_review_count,
-                   gmb_place_id, phone, address, linkedin_company_url,
+                   gmb_place_id, phone, address, state, suburb, linkedin_company_url,
                    dfs_paid_keywords, dfs_paid_etv, dfs_organic_etv,
                    dfs_organic_keywords, tech_stack, tech_gaps,
                    tech_stack_depth, tech_categories, dfs_technologies
@@ -82,6 +83,22 @@ class Stage4Scorer:
 
         for row in rows:
             business = dict(row)
+
+            # Pre-scoring qualification gate — answers "should we score this?"
+            qualified, disqualify_reason = self._qualifies(business, config)
+            if not qualified:
+                await self._write_scores(
+                    row_id=business["id"],
+                    propensity=0,
+                    reachability=0,
+                    dim_scores={},
+                    best_service=None,
+                    reason=disqualify_reason,
+                )
+                scored += 1
+                below += 1
+                continue
+
             propensity, best_service, dim_scores = self._score_propensity(
                 business, config
             )
@@ -103,6 +120,58 @@ class Stage4Scorer:
                 below += 1
 
         return {"scored": scored, "above_threshold": above, "below_threshold": below}
+
+    def _qualifies(
+        self,
+        business: dict,
+        config: SignalConfig,
+    ) -> tuple[bool, str]:
+        """
+        Pre-scoring qualification gate.
+        Answers: "should we score this business at all?"
+
+        Returns (True, "") if qualified.
+        Returns (False, reason) if disqualified — business scores 0 and never reaches S5.
+
+        Criteria (ALL must pass):
+        1. Domain is not NULL, not empty, and not a blocked platform domain
+        2. Has GMB listing (gmb_place_id) OR physical location (state/suburb)
+        3. Has at least one DFS/tech signal column populated
+        4. GMB category matches at least one category in the vertical's signal config
+        """
+        # 1. Domain check
+        domain = business.get("domain") or ""
+        if not domain or is_blocked(domain):
+            return False, f"Does not meet qualification criteria: invalid or blocked domain ({domain!r})"
+
+        # 2. Physical presence check
+        has_gmb = bool(business.get("gmb_place_id"))
+        has_address = bool(business.get("state") or business.get("suburb"))
+        if not has_gmb and not has_address:
+            return False, "Does not meet qualification criteria: no GMB listing and no physical address"
+
+        # 3. At least one signal column populated
+        signal_cols = [
+            "dfs_paid_keywords", "dfs_paid_etv", "dfs_organic_etv",
+            "dfs_organic_keywords", "tech_stack", "tech_stack_depth",
+        ]
+        has_signals = any(
+            business.get(col) not in (None, 0, [], "")
+            for col in signal_cols
+        )
+        if not has_signals:
+            return False, "Does not meet qualification criteria: no DFS or technology signal data"
+
+        # 4. GMB category matches vertical (optional — controlled by require_category_match)
+        require_cat = config.enrichment_gates.get("require_category_match", True)
+        if require_cat:
+            gmb_cat = _normalise_category(business.get("gmb_category"))
+            if gmb_cat:
+                all_cats = {_normalise_category(c) for c in config.all_gmb_categories}
+                if all_cats and gmb_cat not in all_cats:
+                    return False, f"Does not meet qualification criteria: GMB category '{gmb_cat}' not in vertical"
+
+        return True, ""
 
     def _score_propensity(
         self,

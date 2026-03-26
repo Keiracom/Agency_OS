@@ -153,6 +153,12 @@ class Stage1Discovery:
         Directive #267: checks domain blocklist before any DB operation;
         uses INSERT ... ON CONFLICT for atomic upsert (no TOCTOU races).
         """
+        # AU-only filter: only accept domains with .au TLD (#268)
+        # DFS country_iso_code=AU doesn't guarantee TLD — post-filter for quality
+        if not domain.lower().endswith(".au"):
+            logger.debug(f"S1: skipping non-AU domain {domain!r}")
+            return False
+
         if is_blocked(domain):
             logger.debug(f"S1: skipping blocked domain {domain!r}")
             return False
@@ -171,13 +177,13 @@ class Stage1Discovery:
                 pipeline_updated_at,
                 discovered_at
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            ON CONFLICT (domain) DO UPDATE
+            ON CONFLICT (domain) WHERE domain IS NOT NULL AND domain <> '' DO UPDATE
                 SET dfs_technologies = (
-                        SELECT array(
-                            SELECT DISTINCT unnest(
-                                business_universe.dfs_technologies || EXCLUDED.dfs_technologies
-                            )
-                        )
+                        SELECT jsonb_agg(DISTINCT elem ORDER BY elem)
+                        FROM jsonb_array_elements_text(
+                            COALESCE(business_universe.dfs_technologies, '[]'::jsonb)
+                            || COALESCE(EXCLUDED.dfs_technologies, '[]'::jsonb)
+                        ) AS elem
                     ),
                     dfs_technology_detected_at = EXCLUDED.dfs_technology_detected_at,
                     pipeline_updated_at = EXCLUDED.pipeline_updated_at

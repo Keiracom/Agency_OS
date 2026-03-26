@@ -12,7 +12,6 @@ import pytest
 
 from src.clients.dfs_serp_client import (
     COST_PER_SERP_AUD,
-    DFS_STATUS_IN_QUEUE,
     DFS_STATUS_SUCCESS,
     DFSSerpClient,
 )

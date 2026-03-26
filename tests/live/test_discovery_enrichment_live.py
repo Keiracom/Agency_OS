@@ -79,6 +79,7 @@ class TestLiveDiscoveryEnrichment:
     Uses AdVisible (advisible.com.au) as test target.
     """
 
+    @pytest.mark.skip(reason="Live Bright Data API test — requires active credentials and live network. Run manually on demand, not in CI baseline.")
     @pytest.mark.asyncio
     async def test_gmb_discovery_advisible(self, bright_data_client):
         """
@@ -270,6 +271,7 @@ class TestLiveDiscoveryEnrichment:
         # Cleanup
         await bright_data_client.close()
 
+    @pytest.mark.skip(reason="Live Bright Data API test — requires active credentials and live network. Run manually on demand, not in CI baseline.")
     @pytest.mark.asyncio
     async def test_decision_maker_discovery_advisible(self, bright_data_client):
         """

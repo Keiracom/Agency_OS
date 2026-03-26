@@ -57,6 +57,8 @@ All-in COGS: ~$0.49 USD ($0.76 AUD) per prospect.
 
 **S3 Implementation (built #261):** `src/pipeline/stage_3_dfs_profile.py` — `Stage3DFSProfile` class. Calls `DFS.domain_rank_overview` + `DFS.domain_technologies` concurrently per domain. Field mapping: rank → dfs_organic_etv/keywords/pos_*, tech → tech_stack/categories/depth. Calculates tech_gaps (signal technologies NOT in domain's detected stack — key input for S4 gap scoring). pipeline_stage=3 on all processed rows. Cost: ~$0.03/business. Note: dfs_domain_rank and dfs_backlinks_count dropped (DFS rank endpoint does not return scalar rank; digital maturity signals = dfs_organic_etv + dfs_organic_keywords).
 
+**S4 Implementation (built #262):** `src/pipeline/stage_4_scoring.py` — `Stage4Scorer` class. Scores per service signal; best match stored as `best_match_service` (S7 uses this to select outreach angle). Four dimensions: budget (digital spend signals), pain (reputation + gap signals), gap (service-specific tech gaps), fit (category + stack alignment). Reachability scored on confirmed channel access; recalculated after S5/S6. Gate: `min_score_to_enrich` from `signal_configurations` (default 30). All businesses progress to pipeline_stage=4 — low scorers filtered by `WHERE propensity_score < threshold` in downstream queries. New migration: `025_scoring_columns.sql` (score_reason, best_match_service, linkedin_company_url, scored_at).
+
 **KEY PRINCIPLE:** Expensive enrichment (S3 at $0.02/biz) runs ONLY on businesses surviving S1–S2 filters. Cheap discovery first, expensive intelligence second. NEVER run DFS Rank on 4,000 businesses when only 600 survive the filters.
 
 BD LinkedIn reinstated for social scraping ($0.0015/record) — deferred post-core pipeline build.
@@ -261,8 +263,8 @@ Meta:
 | #259 | Stage 1 DFS signal-first discovery | COMPLETE |
 | #260 | Stage 2 new (marketing intelligence) | COMPLETE |
 | #261 | Stage 3 DFS rank + technology profile (Stage3DFSProfile) | COMPLETE |
-| #262 | Stage 4 scoring redesign (budget/pain/gap/fit) | **next** |
-| #263 | Stages 6-7 update | Queued |
+| #262 | Stage 4 scoring redesign (budget/pain/gap/fit) | COMPLETE |
+| #263 | Stages 6-7 update | **next** |
 | #264 | Live test v2 (compare to #253 dentist baseline) | Queued |
 
 Previously completed in current sprint:

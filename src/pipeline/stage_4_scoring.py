@@ -162,12 +162,14 @@ class Stage4Scorer:
         if not has_signals:
             return False, "Does not meet qualification criteria: no DFS or technology signal data"
 
-        # 4. GMB category matches vertical
-        gmb_cat = _normalise_category(business.get("gmb_category"))
-        if gmb_cat:
-            all_cats = {_normalise_category(c) for c in config.all_gmb_categories}
-            if all_cats and gmb_cat not in all_cats:
-                return False, f"Does not meet qualification criteria: GMB category '{gmb_cat}' not in vertical"
+        # 4. GMB category matches vertical (optional — controlled by require_category_match)
+        require_cat = config.enrichment_gates.get("require_category_match", True)
+        if require_cat:
+            gmb_cat = _normalise_category(business.get("gmb_category"))
+            if gmb_cat:
+                all_cats = {_normalise_category(c) for c in config.all_gmb_categories}
+                if all_cats and gmb_cat not in all_cats:
+                    return False, f"Does not meet qualification criteria: GMB category '{gmb_cat}' not in vertical"
 
         return True, ""
 

@@ -25,7 +25,7 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 - Last directive issued: #270 (Manual trim)
 - Next directive: #271 (signal config schema redesign)
-- Test baseline: 992 passed, 2 failed (pre-existing DFS serp client tests), 28 skipped
+- Test baseline: 1009 passed, 2 failed (pre-existing DFS serp client tests), 28 skipped
 - Last merged PRs: #233 (dedup + blocklist), #232 (bug fixes), #231 (live test v2), #230 (stages 6+7)
 - Architecture: **v6 ratified Mar 27 2026** — spend + gaps + fit discovery (10-layer engine)
 - **All 7 pipeline stages S1-S7 built and on main (v5 era). v6 rebuild starts at #271 — see Section 12**
@@ -638,6 +638,6 @@ Compliance: SPAM Act 2003, DNCR registered, TCP Code (voice), Australian-built
 ### Directive Log
 | Directive | What | Status |
 |-----------|------|--------|
-| #271 | Signal config schema v6 (migration 029 + model + 6-service seed) | IN PROGRESS — PR pending |
+| #271 | Signal config schema v6 (migration 029 + model + 6-service seed) | COMPLETE — PR #235 open |
 
 

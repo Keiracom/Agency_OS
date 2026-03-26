@@ -25,14 +25,15 @@ def _make_client() -> DFSSerpClient:
     return DFSSerpClient(login="test_user", password="test_pass")
 
 
-def _task_post_response(task_id: str = "task-001") -> dict:
-    return {
-        "tasks": [{
-            "id": task_id,
-            "status_code": DFS_STATUS_SUCCESS,
-            "status_message": "Ok.",
-        }]
+def _task_post_response(task_id: str = "task-001", items: list[dict] | None = None) -> dict:
+    task: dict = {
+        "id": task_id,
+        "status_code": DFS_STATUS_SUCCESS,
+        "status_message": "Ok.",
     }
+    if items is not None:
+        task["result"] = [{"items": items}]
+    return {"tasks": [task]}
 
 
 def _task_get_response(task_id: str, items: list[dict]) -> dict:
@@ -87,7 +88,7 @@ async def test_find_dm_returns_mapped_fields():
         )
     ]
     mock_http = _mock_http_client(
-        _task_post_response(task_id),
+        _task_post_response(task_id, items),
         _task_get_response(task_id, items),
     )
     client._client = mock_http
@@ -140,7 +141,7 @@ async def test_dm_confidence_lower_at_position_5():
         )
     ]
     mock_http = _mock_http_client(
-        _task_post_response(task_id),
+        _task_post_response(task_id, items),
         _task_get_response(task_id, items),
     )
     client._client = mock_http

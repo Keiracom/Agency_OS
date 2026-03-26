@@ -205,3 +205,46 @@ async def test_returns_correct_counts():
     result = await scorer.run("marketing_agency")
     assert result["scored"] == 2
     assert result["above_threshold"] + result["below_threshold"] == 2
+
+
+# ─── BUG-265-3 regression tests ──────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_scores_partial_data_gracefully():
+    """Business with NULL DFS data but valid GMB data should score > 0."""
+    from src.pipeline.stage_4_scoring import Stage4Scorer
+    # Row with NULL DFS data but valid GMB signals
+    row = make_row(
+        tech_stack=None,          # NULL — never fetched
+        tech_gaps=None,           # NULL
+        dfs_paid_keywords=None,
+        dfs_paid_etv=None,
+        dfs_organic_etv=None,
+        dfs_organic_keywords=None,
+        gmb_category="Marketing Agency",
+        gmb_rating=4.2,
+        gmb_review_count=25,
+        gmb_place_id="ChIJ123",
+    )
+    scorer, _, conn, config = make_scorer(rows=[row])
+    result = await scorer.run("marketing_agency")
+    assert result["scored"] == 1
+    # propensity_score is the 5th positional arg in the UPDATE
+    args = conn.execute.call_args[0]
+    propensity = args[5]
+    assert propensity > 0, f"Expected propensity > 0, got {propensity}"
+
+
+@pytest.mark.asyncio
+async def test_null_tech_stack_still_scores_fit():
+    """NULL tech_stack should not zero out the entire score."""
+    from src.pipeline.stage_4_scoring import _calc_gap_score
+    # When has_tech_data=False (NULL), gap score should be neutral (25)
+    svc_techs = {"google ads", "facebook pixel", "hubspot"}
+    detected = set()   # nothing detected (tech_stack was NULL)
+    gaps = set()       # no gaps calculated either
+    score = _calc_gap_score(svc_techs, detected, gaps, has_tech_data=False)
+    assert score == 25, f"Expected neutral gap score 25, got {score}"
+    # When has_tech_data=True but empty, score should be 0 (all gaps exist but none matched)
+    score_empty = _calc_gap_score(svc_techs, detected, gaps, has_tech_data=True)
+    assert score_empty == 0

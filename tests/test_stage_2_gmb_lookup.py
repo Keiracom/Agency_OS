@@ -143,3 +143,21 @@ async def test_returns_correct_counts():
     assert result["enriched"] == 1
     assert result["no_gmb_found"] == 1
     assert result["already_enriched"] == 1
+
+
+# ─── BUG-265-1 regression tests ──────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_advances_already_enriched_to_stage_2():
+    """Rows with existing GMB data must be advanced to stage=2."""
+    rows = [make_row("already-done.com.au", gmb_place_id="ChIJexisting")]
+    stage, client, conn = make_stage(rows=rows)
+    result = await stage.run()
+    assert result["already_enriched"] == 1
+    # The UPDATE to pipeline_stage=2 must be called for already_enriched rows
+    conn.execute.assert_called_once()
+    update_sql = conn.execute.call_args[0][0]
+    assert "pipeline_stage" in update_sql
+    # pipeline_stage=2 must appear in the positional args
+    from src.pipeline.stage_2_gmb_lookup import PIPELINE_STAGE_S2
+    assert PIPELINE_STAGE_S2 in conn.execute.call_args[0]

@@ -18,7 +18,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 BRIGHT_DATA_API_KEY = os.getenv("BRIGHTDATA_API_KEY", "")
-BD_GMB_DATASET_ID = "gd_l7q7dkf244hwjntr0"   # Google Maps listings
+BD_GMB_DATASET_ID = "gd_m8ebnr0q2qlklc02fz"   # Google Maps full information (verified in BD inventory)
 BD_API_BASE = "https://api.brightdata.com/datasets/v3"
 COST_PER_RECORD_USD = Decimal("0.001")
 POLL_INTERVAL_S = 5
@@ -79,6 +79,8 @@ class BrightDataGMBClient:
         params = {
             "dataset_id": BD_GMB_DATASET_ID,
             "include_errors": "true",
+            "type": "discover_new",
+            "discover_by": "keyword",
         }
         body = [{"keyword": query}]
         try:

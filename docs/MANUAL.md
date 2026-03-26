@@ -132,7 +132,7 @@ Approval flow:
 | T1.25 | ABR SearchByASIC | Trading name lookup | Free | ✅ Live |
 | T1.5 | Bright Data LinkedIn | Company enrichment | $0.75/1k | ✅ Live |
 | T-DM0 | DataForSEO | Ad spend detection | Variable | ✅ Live |
-| T2 | Bright Data GMB | GMB discovery + enrichment | $0.001/record | ✅ Live |
+| T2 | Bright Data GMB | GMB discovery + enrichment | $0.001/record | ✅ Live — dataset `gd_m8ebnr0q2qlklc02fz` (Google Maps full information), keyword discovery mode: `type=discover_new&discover_by=keyword` |
 | T3+T5 | Leadmagic | Email + mobile (Essential plan) | Variable | ✅ Live |
 | DFS | DataForSEO Labs | 7 endpoints (PR #220) | Variable | ✅ Live |
 | Jina | Jina AI Reader | Website scraping fallback | Free | ✅ Live |

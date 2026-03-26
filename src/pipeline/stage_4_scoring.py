@@ -143,7 +143,10 @@ class Stage4Scorer:
         Compute raw 0-100 scores for budget, pain, gap, fit dimensions.
         Inputs used per dimension are documented; scoring logic is proprietary.
         """
-        tech_stack: list[str] = list(business.get("tech_stack") or [])
+        # BUG-265-3: preserve None vs empty-list distinction for tech data
+        tech_stack_raw = business.get("tech_stack")
+        has_tech_data = tech_stack_raw is not None  # None = never fetched, [] = fetched but empty
+        tech_stack: list[str] = list(tech_stack_raw or [])
         tech_stack_lower = {t.lower() for t in tech_stack}
         tech_gaps: list[str] = list(business.get("tech_gaps") or [])
 
@@ -151,7 +154,8 @@ class Stage4Scorer:
         paid_kw = business.get("dfs_paid_keywords") or 0
         paid_etv = float(business.get("dfs_paid_etv") or 0)
         organic_etv = float(business.get("dfs_organic_etv") or 0)
-        budget_score = _calc_budget_score(paid_kw, paid_etv, organic_etv)
+        gmb_rating = float(business.get("gmb_rating") or 0)
+        budget_score = _calc_budget_score(paid_kw, paid_etv, organic_etv, gmb_rating=gmb_rating)
 
         # Pain dimension: signals indicating visible business problems
         gmb_rating = float(business.get("gmb_rating") or 0)
@@ -162,7 +166,7 @@ class Stage4Scorer:
         # Gap dimension: specific technology gaps matching this service's signals
         svc_techs_lower = {t.lower() for t in (svc.dfs_technologies or [])}
         svc_gaps_lower = {t.lower() for t in tech_gaps}
-        gap_score = _calc_gap_score(svc_techs_lower, tech_stack_lower, svc_gaps_lower)
+        gap_score = _calc_gap_score(svc_techs_lower, tech_stack_lower, svc_gaps_lower, has_tech_data=has_tech_data)
 
         # Fit dimension: alignment between business profile and service signals
         gmb_cat = _normalise_category(business.get("gmb_category"))
@@ -280,7 +284,7 @@ class Stage4Scorer:
 # These functions contain the scoring algorithm. Logic is proprietary.
 # Comments describe inputs and outputs only.
 
-def _calc_budget_score(paid_kw: int, paid_etv: float, organic_etv: float) -> int:
+def _calc_budget_score(paid_kw: int, paid_etv: float, organic_etv: float, gmb_rating: float = 0.0) -> int:
     """Budget score from paid keyword activity and traffic value signals."""
     score = 0
     if paid_kw > 0:
@@ -293,6 +297,9 @@ def _calc_budget_score(paid_kw: int, paid_etv: float, organic_etv: float) -> int
         score += 15
     elif organic_etv > 0:
         score += 5
+    # BUG-265-3: partial GMB signal when no DFS data — business is active
+    if paid_kw == 0 and organic_etv == 0 and gmb_rating > 0:
+        score += 15
     return min(score, 100)
 
 
@@ -318,8 +325,12 @@ def _calc_gap_score(
     svc_techs: set[str],
     detected: set[str],
     gaps: set[str],
+    has_tech_data: bool = True,
 ) -> int:
     """Gap score from service-specific technology gaps."""
+    # BUG-265-3: neutral score when tech data was never fetched
+    if not has_tech_data:
+        return 25
     if not svc_techs:
         return 0
     service_gaps = svc_techs - detected

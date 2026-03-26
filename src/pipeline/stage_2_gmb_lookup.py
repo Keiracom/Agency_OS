@@ -62,8 +62,24 @@ class Stage2GMBLookup:
             batch_size,
         )
 
-        already_enriched = sum(1 for r in rows if r["gmb_place_id"])
+        already_enriched_rows = [r for r in rows if r["gmb_place_id"]]
+        already_enriched = len(already_enriched_rows)
         to_process = [r for r in rows if not r["gmb_place_id"]]
+
+        # BUG-265-1: advance already-enriched rows to stage=2 (they were stuck at stage=1)
+        now = datetime.now(timezone.utc)
+        for row in already_enriched_rows:
+            await self.conn.execute(
+                """
+                UPDATE business_universe SET
+                    pipeline_stage = $1,
+                    pipeline_updated_at = $2
+                WHERE id = $3
+                """,
+                PIPELINE_STAGE_S2,
+                now,
+                row["id"],
+            )
 
         enriched = 0
         no_gmb = 0

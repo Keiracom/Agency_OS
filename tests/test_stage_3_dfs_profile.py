@@ -203,3 +203,19 @@ async def test_maps_dfs_fields_to_bu_columns_correctly():
     ]
     for col in expected_cols:
         assert col in update_sql, f"Expected column '{col}' in UPDATE but not found"
+
+
+# ─── BUG-265-2 regression tests ──────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_skips_null_domain_rows():
+    """Rows with NULL domain should be skipped, not cause DFS errors."""
+    null_row = MagicMock()
+    null_row.__getitem__ = lambda self, k: {"id": "uuid-null", "domain": None}[k]
+    stage, dfs, _, conn = make_stage(rows=[null_row])
+    result = await stage.run("marketing_agency")
+    # Row is skipped — no DFS call, no error count
+    dfs.domain_rank_overview.assert_not_called()
+    dfs.domain_technologies.assert_not_called()
+    assert result["api_errors"] == 0
+    assert result["profiled"] == 0

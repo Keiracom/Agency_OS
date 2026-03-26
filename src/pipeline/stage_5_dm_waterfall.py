@@ -4,7 +4,7 @@ Directive #263
 
 Finds decision makers for businesses above the DM score threshold.
 Waterfall: cheapest source first, stop on first success.
-Sources: GMBContactExtractor (free) → WebsiteContactScraper (free) → LeadmagicPersonFinder (paid)
+Sources: GMBContactExtractor (free, instant) → LeadmagicPersonFinder (paid, fast)
 
 S5 finds DMs ONLY. No message generation, no outreach.
 """
@@ -192,7 +192,12 @@ class LeadmagicPersonFinder:
         email = None
         try:
             email_resp = await self.lm.find_email(first, last, domain)
-            email = (email_resp or {}).get("email") if isinstance(email_resp, dict) else email_resp
+            if isinstance(email_resp, dict):
+                email = email_resp.get("email")
+            elif hasattr(email_resp, "email"):
+                email = email_resp.email  # EmailFinderResult object
+            else:
+                email = email_resp
         except Exception as e:
             logger.debug(f"Leadmagic email lookup failed for {domain}: {e}")
 
@@ -234,10 +239,10 @@ class Stage5DMWaterfall:
     ) -> None:
         self.conn = conn
         self.signal_repo = signal_repo
-        # Waterfall order: cheapest first
+        # Waterfall order: GMB (free, instant) → Leadmagic (paid, fast)
+        # WebsiteContactScraper removed — Jina latency (~16s/page × 4 pages) too slow for DM waterfall
         self.sources: list[DMSource] = [
             GMBContactExtractor(),
-            WebsiteContactScraper(),
             LeadmagicPersonFinder(leadmagic_client),
             *(extra_sources or []),
         ]

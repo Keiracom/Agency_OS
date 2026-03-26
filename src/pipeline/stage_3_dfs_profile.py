@@ -77,6 +77,10 @@ class Stage3DFSProfile:
         errors = 0
 
         for row in rows:
+            # BUG-265-2: skip NULL/empty domain rows — do NOT call DFS
+            if not row["domain"]:
+                logger.warning(f"Stage 3: skipping NULL domain for row {row['id']}")
+                continue
             try:
                 await self._profile_domain(
                     row_id=row["id"],

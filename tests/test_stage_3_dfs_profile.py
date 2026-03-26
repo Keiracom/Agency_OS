@@ -22,12 +22,11 @@ def make_signal_config(technologies: list[str] = None):
     ]
     return SignalConfig(
         id=str(uuid.uuid4()),
-        vertical_slug="marketing_agency",
-        display_name="Marketing Agency",
-        description=None,
-        service_signals=services,
+        vertical="marketing_agency",
+        services=services,
         discovery_config={},
         enrichment_gates={},
+        competitor_config={},
         channel_config={},
         created_at=datetime.now(),
         updated_at=datetime.now(),

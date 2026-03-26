@@ -51,7 +51,7 @@ async def test_get_config_returns_valid_structure():
     config = await repo.get_config("marketing_agency")
     assert isinstance(config, SignalConfig)
     assert config.vertical_slug == "marketing_agency"
-    assert config.display_name == "Marketing Agency"
+    assert config.vertical == "marketing_agency"
     assert len(config.service_signals) == 1
     assert isinstance(config.service_signals[0], ServiceSignal)
 
@@ -69,7 +69,7 @@ async def test_get_config_missing_vertical_raises():
 async def test_list_verticals_includes_marketing_agency():
     conn = AsyncMock()
     row = MagicMock()
-    row.__getitem__ = lambda self, k: "marketing_agency" if k == "vertical_slug" else None
+    row.__getitem__ = lambda self, k: "marketing_agency" if k == "vertical" else None
     conn.fetch.return_value = [row]
     repo = SignalConfigRepository(conn)
     verticals = await repo.list_verticals()
@@ -110,12 +110,11 @@ def test_enrichment_gate_defaults():
     import uuid, datetime
     config = SignalConfig(
         id=str(uuid.uuid4()),
-        vertical_slug="test",
-        display_name="Test",
-        description=None,
-        service_signals=[],
+        vertical="test",
+        services=[],
         discovery_config={},
         enrichment_gates={"min_score_to_enrich": 30, "min_score_to_dm": 50, "min_score_to_outreach": 65},
+        competitor_config={},
         channel_config={},
         created_at=datetime.datetime.now(),
         updated_at=datetime.datetime.now(),

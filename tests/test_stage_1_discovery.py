@@ -25,12 +25,11 @@ def make_signal_config(technologies: list[str] | None = None):
     ]
     return SignalConfig(
         id=str(uuid.uuid4()),
-        vertical_slug="marketing_agency",
-        display_name="Marketing Agency",
-        description="Test",
-        service_signals=services,
+        vertical="marketing_agency",
+        services=services,
         discovery_config={},
         enrichment_gates={"min_score_to_enrich": 30, "min_score_to_dm": 50, "min_score_to_outreach": 65},
+        competitor_config={},
         channel_config={"email": True, "linkedin": True, "voice": True, "sms": False},
         created_at=datetime.now(),
         updated_at=datetime.now(),
@@ -153,8 +152,8 @@ async def test_deduplicates_technologies_across_services():
         ServiceSignal("svc2", "S2", ["Google Ads", "HubSpot"], [], {}),
     ]
     config = SignalConfig(
-        id=str(uuid.uuid4()), vertical_slug="test", display_name="T", description=None,
-        service_signals=services, discovery_config={}, enrichment_gates={}, channel_config={},
+        id=str(uuid.uuid4()), vertical="test",
+        services=services, discovery_config={}, enrichment_gates={}, competitor_config={}, channel_config={},
         created_at=datetime.now(), updated_at=datetime.now(),
     )
     techs = config.all_dfs_technologies

@@ -23,12 +23,13 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #264 (Stage 6 + Stage 7 — reachability validation + Haiku message gen)
-- Next directive: TBD
+- Last directive issued: #265 (Live Test v2 — full S1-S7 pipeline validation)
+- Next directive: #266 (bug fixes from live test v2)
 - Test baseline: 987 passed, 2 failed (pre-existing DFS serp client tests), 28 skipped
 - Last merged PRs: #219 (live test fixes), #220 (DFS Labs client)
 - Architecture: v5 ratified Mar 26 2026 — signal-first discovery
 - **All 7 pipeline stages S1-S7 are built and tested as of March 26 2026**
+- **Live Test v2 (#265): RAN Mar 26 2026. Cost $0.14. 3 bugs found (see Section 20). S1 ✅ S2 ⚠️ S3 ⚠️ S4 ⚠️ S5/S6/S7 ✅ (data gap). Fixes in #266.**
 
 ---
 
@@ -271,6 +272,7 @@ Meta:
 | #262 | Stage 4 scoring redesign (budget/pain/gap/fit) | COMPLETE |
 | #263 | Stage 5 DM Waterfall (Stage5DMWaterfall) | COMPLETE |
 | #264 | Stage 6 Reachability + Stage 7 Haiku message gen | COMPLETE — ALL STAGES S1-S7 BUILT |
+| #265 | Live Test v2 — full S1-S7 pipeline validation | COMPLETE — 3 bugs found, fixes in #266 |
 
 Previously completed in current sprint:
 - #247: Schema migration (BU fresh + abn_registry + junction tables) ✅
@@ -471,3 +473,16 @@ Compliance: SPAM Act 2003, DNCR registered, TCP Code (voice), Australian-built
 - `test_campaign_claimer.py` 5 failures: AsyncMock + `conn.transaction()` mock setup bug (pre-existing from #252)
 - `test_dfs_gmaps_client.py` 2 failures: `gmb_work_hours` type mismatch + `fetch_task_results` attribute (pre-existing from #248)
 - Google Drive Manual was stale at #168 — restored by Manual Restoration Directive (Mar 26 2026)
+
+### Live Test v2 (#265) Findings — Mar 26 2026
+
+**BUG-265-1 (HIGH) — S2: already_enriched rows not advanced to stage=2**
+Stage2GMBLookup identifies rows where `gmb_place_id` already exists as `already_enriched` and skips them without advancing to `pipeline_stage=2`. They remain stuck at stage=1 permanently. Fix: advance already-enriched rows to stage=2. ~30 rows affected in this run; 2461 at stage=1 are blocked.
+
+**BUG-265-2 (MEDIUM) — S3: NULL domain not guarded before DFS tech call**
+Stage3DFSProfile calls DFS `domain_technologies` with `domain=None` when `domain` column is NULL on BU row. Results in `'NoneType' object has no attribute 'startswith'` warning + wasted API call ($0.01). Fix: skip/filter rows where domain IS NULL before DFS calls.
+
+**BUG-265-3 (HIGH/data) — S4: pre-existing stage=3 rows score 0 (NULL signal data)**
+48 rows from pre-v5 pipeline runs have NULL in scoring columns (dfs_organic_etv, dfs_organic_keywords, tech_stack, tech_gaps). S4 correctly scores these as 0 but this blocks the entire S5-S7 funnel. Fix: ensure S3 populates signal columns before S4 runs; or add a re-enrichment path for legacy rows.
+
+**Live run stats:** S1 discovered 50 new domains ($0.06), S3 profiled 2 rows ($0.08), total $0.14 in 83.7s. S5/S6/S7 processed 0 rows (all blocked at S4 gate — expected given BUG-265-3). No crashes, no budget overrun.

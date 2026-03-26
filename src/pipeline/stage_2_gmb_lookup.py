@@ -87,26 +87,83 @@ class Stage2GMBLookup:
         no_gmb = 0
         errors = 0
 
-        async def _safe_lookup(row: asyncpg.Record) -> bool | None:
-            """Wrapper that catches per-row errors for gather()."""
+        # ── Phase 1: fetch all GMB data concurrently ─────────────────────────
+        # Submit all BD jobs at once. BD processes in parallel on their side.
+        # Pure httpx — no DB operations. Safe to run fully concurrent.
+        # Directive #268: O(n×35s) → O(35s) for the expensive part.
+        async def _fetch_gmb(row: asyncpg.Record) -> tuple[str, str, dict | None]:
+            """Returns (row_id, domain, gmb_data_or_None). No DB writes."""
             try:
-                return await self._lookup_and_update(row["id"], row["domain"])
+                business_name = extract_business_name(row["domain"])
+                logger.info(f"Stage 2: {row['domain']} → searching '{business_name}'")
+                data = await self.gmb.search_by_name(business_name)
+                return row["id"], row["domain"], data
             except Exception as e:
-                logger.error(f"Stage 2 error for {row['domain']}: {e}")
-                return None  # signals error
+                logger.error(f"Stage 2 fetch error for {row['domain']}: {e}")
+                return row["id"], row["domain"], None
 
-        # Submit ALL BD jobs concurrently — BD processes in parallel, we poll in parallel.
-        # BD's per-job latency (~35s) becomes the TOTAL latency regardless of batch size.
-        # asyncpg serialises DB writes internally when coroutines share a connection.
-        # Directive #268: replaces sequential for-loop (was O(n×35s), now O(35s)).
-        results = await asyncio.gather(*[_safe_lookup(row) for row in to_process])
+        fetch_results = await asyncio.gather(*[_fetch_gmb(row) for row in to_process])
 
-        for outcome in results:
-            if outcome is True:
-                enriched += 1
-            elif outcome is False:
-                no_gmb += 1
-            else:
+        # ── Phase 2: write results to DB sequentially ────────────────────────
+        # asyncpg requires one active operation per connection. Sequential writes
+        # are fast (<1ms each) so total DB write time is negligible.
+        now = datetime.now(timezone.utc)
+        for row_id, domain, gmb_data in fetch_results:
+            try:
+                if gmb_data:
+                    await self.conn.execute(
+                        """
+                        UPDATE business_universe SET
+                            gmb_place_id = $1,
+                            gmb_category = $2,
+                            gmb_rating = $3,
+                            gmb_review_count = $4,
+                            gmb_work_hours = $5,
+                            gmb_claimed = $6,
+                            gmb_maps_url = $7,
+                            gmb_cid = $8,
+                            address = COALESCE($9, address),
+                            phone = COALESCE($10, phone),
+                            lat = COALESCE($11, lat),
+                            lng = COALESCE($12, lng),
+                            state = COALESCE(
+                                (SELECT regexp_match($9, ',\\s*([A-Z]{2,3})\\s+\\d{4}'))[1],
+                                state
+                            ),
+                            suburb = COALESCE(
+                                (SELECT (regexp_match($9, '^([^,]+),'))[1]),
+                                suburb
+                            ),
+                            address_source = 'gmb',
+                            pipeline_stage = $13,
+                            pipeline_updated_at = $14
+                        WHERE id = $15
+                        """,
+                        gmb_data.get("gmb_place_id"),
+                        gmb_data.get("gmb_category"),
+                        gmb_data.get("gmb_rating"),
+                        gmb_data.get("gmb_review_count"),
+                        gmb_data.get("gmb_work_hours"),
+                        gmb_data.get("gmb_claimed"),
+                        gmb_data.get("gmb_maps_url"),
+                        gmb_data.get("gmb_cid"),
+                        gmb_data.get("address"),
+                        gmb_data.get("phone"),
+                        gmb_data.get("lat"),
+                        gmb_data.get("lng"),
+                        PIPELINE_STAGE_S2,
+                        now,
+                        row_id,
+                    )
+                    enriched += 1
+                else:
+                    await self.conn.execute(
+                        "UPDATE business_universe SET pipeline_stage=$1, pipeline_updated_at=$2 WHERE id=$3",
+                        PIPELINE_STAGE_S2, now, row_id,
+                    )
+                    no_gmb += 1
+            except Exception as e:
+                logger.error(f"Stage 2 DB write error for {domain}: {e}")
                 errors += 1
 
         result = {
@@ -127,80 +184,19 @@ class Stage2GMBLookup:
         )
         if not row:
             return {"status": "not_found"}
-        ok = await self._lookup_and_update(row["id"], row["domain"])
-        return {"status": "enriched" if ok else "no_gmb_found"}
-
-    async def _lookup_and_update(self, row_id: str, domain: str) -> bool:
-        """
-        Look up GMB for domain and update BU.
-        Returns True if GMB found, False if not.
-        """
-        if not domain:
-            logger.warning(f"S2: skipping row {row_id} — empty domain")
-            return False
-        now = datetime.now(timezone.utc)
         business_name = extract_business_name(domain)
-        logger.info(f"Stage 2: {domain} → searching '{business_name}'")
-
         gmb_data = await self.gmb.search_by_name(business_name)
-
+        now = datetime.now(timezone.utc)
         if gmb_data:
             await self.conn.execute(
-                """
-                UPDATE business_universe SET
-                    gmb_place_id = $1,
-                    gmb_category = $2,
-                    gmb_rating = $3,
-                    gmb_review_count = $4,
-                    gmb_work_hours = $5,
-                    gmb_claimed = $6,
-                    gmb_maps_url = $7,
-                    gmb_cid = $8,
-                    address = COALESCE($9, address),
-                    phone = COALESCE($10, phone),
-                    lat = COALESCE($11, lat),
-                    lng = COALESCE($12, lng),
-                    state = COALESCE(
-                        (SELECT regexp_match($9, ',\\s*([A-Z]{2,3})\\s+\\d{4}'))[1],
-                        state
-                    ),
-                    suburb = COALESCE(
-                        (SELECT (regexp_match($9, '^([^,]+),'))[1]),
-                        suburb
-                    ),
-                    address_source = 'gmb',
-                    pipeline_stage = $13,
-                    pipeline_updated_at = $14
-                WHERE id = $15
-                """,
-                gmb_data.get("gmb_place_id"),
-                gmb_data.get("gmb_category"),
-                gmb_data.get("gmb_rating"),
-                gmb_data.get("gmb_review_count"),
-                gmb_data.get("gmb_work_hours"),
-                gmb_data.get("gmb_claimed"),
-                gmb_data.get("gmb_maps_url"),
-                gmb_data.get("gmb_cid"),
-                gmb_data.get("address"),
-                gmb_data.get("phone"),
-                gmb_data.get("lat"),
-                gmb_data.get("lng"),
-                PIPELINE_STAGE_S2,
-                now,
-                row_id,
+                "UPDATE business_universe SET gmb_place_id=$1, gmb_category=$2, pipeline_stage=$3, pipeline_updated_at=$4 WHERE id=$5",
+                gmb_data.get("gmb_place_id"), gmb_data.get("gmb_category"),
+                PIPELINE_STAGE_S2, now, row["id"],
             )
-            return True
+            return {"status": "enriched"}
         else:
-            # No GMB — still progress to S2
             await self.conn.execute(
-                """
-                UPDATE business_universe SET
-                    pipeline_stage = $1,
-                    pipeline_updated_at = $2
-                WHERE id = $3
-                """,
-                PIPELINE_STAGE_S2,
-                now,
-                row_id,
+                "UPDATE business_universe SET pipeline_stage=$1, pipeline_updated_at=$2 WHERE id=$3",
+                PIPELINE_STAGE_S2, now, row["id"],
             )
-            return False
+            return {"status": "no_gmb_found"}

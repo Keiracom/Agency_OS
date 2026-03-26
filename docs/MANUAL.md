@@ -59,6 +59,8 @@ All-in COGS: ~$0.49 USD ($0.76 AUD) per prospect.
 
 **S4 Implementation (built #262):** `src/pipeline/stage_4_scoring.py` — `Stage4Scorer` class. Scores per service signal; best match stored as `best_match_service` (S7 uses this to select outreach angle). Four dimensions: budget (digital spend signals), pain (reputation + gap signals), gap (service-specific tech gaps), fit (category + stack alignment). Reachability scored on confirmed channel access; recalculated after S5/S6. Gate: `min_score_to_enrich` from `signal_configurations` (default 30). All businesses progress to pipeline_stage=4 — low scorers filtered by `WHERE propensity_score < threshold` in downstream queries. New migration: `025_scoring_columns.sql` (score_reason, best_match_service, linkedin_company_url, scored_at).
 
+**S5 Implementation (built #263):** `src/pipeline/stage_5_dm_waterfall.py` — `Stage5DMWaterfall` class. Gate: `min_score_to_dm` (default 50) from `signal_configurations`. Waterfall order (cheapest first): `GMBContactExtractor` (free, BU data) → `WebsiteContactScraper` (free, Jina AI) → `LeadmagicPersonFinder` (paid, ~$0.015/email). Protocol-based: adding BD LinkedIn = adding one class to sources list. Stops at first valid result (name + contact method). Recalculates `reachability_score` after DM found. All rows progress to pipeline_stage=5; rows with no DM get `dm_source='none'` (S7 generates company-level outreach). New columns: `dm_phone`, `dm_found_at` (migration 026).
+
 **KEY PRINCIPLE:** Expensive enrichment (S3 at $0.02/biz) runs ONLY on businesses surviving S1–S2 filters. Cheap discovery first, expensive intelligence second. NEVER run DFS Rank on 4,000 businesses when only 600 survive the filters.
 
 BD LinkedIn reinstated for social scraping ($0.0015/record) — deferred post-core pipeline build.
@@ -264,8 +266,8 @@ Meta:
 | #260 | Stage 2 new (marketing intelligence) | COMPLETE |
 | #261 | Stage 3 DFS rank + technology profile (Stage3DFSProfile) | COMPLETE |
 | #262 | Stage 4 scoring redesign (budget/pain/gap/fit) | COMPLETE |
-| #263 | Stages 6-7 update | **next** |
-| #264 | Live test v2 (compare to #253 dentist baseline) | Queued |
+| #263 | Stage 5 DM Waterfall (Stage5DMWaterfall) | COMPLETE |
+| #264 | Live test v2 (compare to #253 dentist baseline) | **next** |
 
 Previously completed in current sprint:
 - #247: Schema migration (BU fresh + abn_registry + junction tables) ✅

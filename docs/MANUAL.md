@@ -23,9 +23,9 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #272 (Layer 2 Discovery Engine — COMPLETE, PR #236 merged)
-- Next directive: #273 (Layer 3 cheap filter)
-- Test baseline: 1022 passed, 2 failed (pre-existing), 28 skipped
+- Last directive issued: #274 (Layer 3 Bulk Domain Filter — IN PROGRESS)
+- Next directive: #275 (Layer 4 qualification)
+- Test baseline: 1024 passed, 0 failed, 28 skipped
 - Test baseline: 1009 passed, 2 failed (pre-existing DFS serp client tests), 28 skipped
 - Last merged PRs: #233 (dedup + blocklist), #232 (bug fixes), #231 (live test v2), #230 (stages 6+7)
 - Architecture: **v6 ratified Mar 27 2026** — spend + gaps + fit discovery (10-layer engine)
@@ -97,6 +97,16 @@ b) Domain blocklist (platforms, government, etc).
 c) AU verification (domain TLD or GMB confirms AU).
 
 Output: surviving domains, pipeline_stage = 2.
+
+**Layer 3 implementation (Directive #274 — IN PROGRESS):**
+- Class: `src/pipeline/layer_3_bulk_filter.py` → `Layer3BulkFilter`
+- Endpoint 12 added to `dfs_labs_client.py`: `bulk_domain_metrics` (batch up to 1000 domains/call)
+- Filter thresholds (configurable via enrichment_gates): REJECT if organic_etv=0 AND paid_etv=0 AND backlinks<5; PASS if organic_etv>0 OR paid_etv>0 OR backlinks≥10
+- REJECT → pipeline_stage=-1, filter_reason='bulk_metrics_below_threshold'
+- no_domain rows: advance to pipeline_stage=2 without API call (→ Layer 7 GMB path)
+- Migration 031: adds filter_reason text, backlinks_count int, domain_rank int
+- Pricing note: $0.001/domain per Manual ($1/1000); directive spec says $0.02/batch — TBD verify at DFS
+- Cost for 1,500 domains: 2 batches
 
 ---
 
@@ -469,7 +479,8 @@ v5 era (#247–#270): all 7 pipeline stages built, tested, and live on main. Sup
 |-----------|------|--------|
 | #271 | Signal config schema redesign (services + competitor_config + discovery_config) | Next |
 | #272 | Layer 2 discovery engine (multi-source: Categories, Ads Search, HTML Terms, Jobs, Competitors) | COMPLETE — PR #236 merged |
-| #273 | Layer 3 cheap filter + Bulk Domain Metrics client | Queued |
+| #273 | Fix pre-existing DFS SERP test failures | COMPLETE — PR #237 merged |
+| #274 | Layer 3 cheap filter + Bulk Domain Metrics client | IN PROGRESS |
 | #274 | Layer 4 qualification (Domain Technologies + Rank Overview + Historical Rank) | Queued |
 | #275 | Layer 5 fit scoring (multi-service, per-service problem/budget/gap scoring) | Queued |
 | #276 | Layer 6 competitive intelligence (5 endpoints, top-prospect gating) | Queued |

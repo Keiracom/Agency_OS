@@ -137,10 +137,10 @@ async def main():
 
         # ─────────────────────────────────────────── S2
         t0 = time.time()
-        log.info("--- S2: GMB Reverse Lookup (batch_size=5) ---")
+        log.info("--- S2: GMB Reverse Lookup (batch_size=41) ---")
         try:
             stage2 = Stage2GMBLookup(gmb_client, conn)
-            result2 = await stage2.run(batch_size=5)
+            result2 = await stage2.run(batch_size=41)
             log.info(f"S2: {result2}")
             cost.add("S2", float(result2.get("cost_usd", 0)))
             n_s2 = await count_at_stage(conn, 2)
@@ -153,10 +153,10 @@ async def main():
 
         # ─────────────────────────────────────────── S3
         t0 = time.time()
-        log.info("--- S3: DFS Profile (batch_size=20) ---")
+        log.info("--- S3: DFS Profile (batch_size=41) ---")
         try:
             stage3 = Stage3DFSProfile(dfs_client, signal_repo, conn, delay=0.2)
-            result3 = await stage3.run(VERTICAL, batch_size=20)
+            result3 = await stage3.run(VERTICAL, batch_size=41)
             log.info(f"S3: {result3}")
             cost.add("S3", float(result3.get("cost_usd", 0)))
             n_s3 = await count_at_stage(conn, 3)

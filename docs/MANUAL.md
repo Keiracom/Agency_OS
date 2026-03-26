@@ -23,7 +23,7 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #266 (Live Test v2 Bug Fixes + Rerun)
+- Last directive issued: #268 (Calibration Run — Funnel Metrics)
 - Next directive: #267
 - Test baseline: 987 passed, 2 failed (pre-existing DFS serp client tests), 28 skipped
 - Last merged PRs: #219 (live test fixes), #220 (DFS Labs client)
@@ -493,3 +493,44 @@ Compliance: SPAM Act 2003, DNCR registered, TCP Code (voice), Australian-built
 **S5 waterfall:** Jina/WebsiteContactScraper removed. Order: GMBContactExtractor → LeadmagicPersonFinder.
 
 **Live run stats (#266 final):** S2 advanced 30 rows, S3 profiled 26 (NULL domains skipped), S4 scored 23/26 above threshold, S5 found 7 DMs (GMB+Leadmagic, Jina removed), S6 validated 7 (email:3, voice:2, physical:7), S7 generated 4 messages at $0.0047. Pipeline working end-to-end. First real Haiku outreach messages produced. Total cost ~$1.30 across all runs.
+
+## SECTION 21 — FUNNEL METRICS (calibration run #268, Mar 26 2026)
+
+### Real conversion rates (calibration run — partial due to S1 bug)
+
+| Stage | Input | Output | Conversion | Cost |
+|-------|-------|--------|------------|------|
+| S1 Discovery | - | 0 | - | $0.00 |
+| S2 GMB Lookup | 0 | 28 | - (stale data) | $0.00 |
+| S3 DFS Profile | 28 | 44 | 157% (stale backlog) | $0.865 |
+| S4 Scoring | 44 | 0 | 0% (all dental, wrong vertical) | free |
+| S5 DM Discovery | 0 | 16 | - (stale pre-existing data) | $0.00 |
+| S6 Reachability | 16 | 20 | 125% (stale pre-existing data) | free |
+| S7 Message Gen | 20 | 0 | 0% (no marketing_agency leads) | $0.00 |
+| **TOTAL** | - | 0 | 0% end-to-end | **$0.865** |
+
+### Tier projections (based on calibration run)
+
+**NOTE: Tier projections not calculable — S1 failed (0 fresh domains). Fix BUG-268-1 first, then re-run.**
+
+| Tier | Outreach target | S1 domains needed | Estimated cost |
+|------|-----------------|-------------------|----------------|
+| Spark $750 | 150 leads | N/A | N/A |
+| Ignition $2,500 | 600 leads | N/A | N/A |
+| Velocity $5,000 | 1,500 leads | N/A | N/A |
+
+### Key findings from this run
+
+- **S4 qualification gate CONFIRMED WORKING**: correctly rejected all 44 dental clinics as "GMB category 'dentist' not in vertical" — gate is live and filtering correctly
+- **S5 DM waterfall**: 16/20 (80%) DM found via Leadmagic; sources_used = {'leadmagic': 16}
+- **S6 channel breakdown**: email 3/20 (15%), physical 20/20 (100%), linkedin 10/20 (50%)
+- **S3 DFS profile cost**: ~$0.0197 per domain ($0.865 / 44 domains)
+- **BrightData GMB**: 401 Unauthorized on all S2 new-domain requests (credentials issue in BD account)
+
+### Notes
+- Calibration run date: March 26 2026
+- Vertical: marketing_agency
+- Budget used: $0.865 of $10 cap
+- Qualification gate active: 100% of batch disqualified (dental clinics, wrong vertical in backlog)
+- **BUG-268-1**: S1 fails with `function unnest(jsonb) does not exist` — `dfs_technologies` col is `jsonb` type, but ON CONFLICT clause uses `unnest()` which requires array type. Fix: replace `unnest(...)` with `jsonb_array_elements_text(...)` + `jsonb_agg(DISTINCT elem)` pattern. Re-calibration required after fix.
+- **BUG-268-2**: BrightData GMB returning 401 on all new-domain discovery requests (S2 enrichment blocked for new domains)

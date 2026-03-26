@@ -1,8 +1,8 @@
 # Agency OS Manual
 
-Last updated: 2026-03-26 21:08 UTC
-Directive #270: Manual trim (34k → target <22k)
-Next scheduled update: Directive #271 completion (signal config schema redesign)
+Last updated: 2026-03-26 21:55 UTC
+Directive #271: Signal config schema v6 — migration 029 in progress
+Next scheduled update: Directive #271 completion (PR merge)
 
 > **Primary store.** This file is the CEO SSOT. Google Doc is an auto-generated mirror.
 > After every save-trigger write, verify with: `cat docs/MANUAL.md | grep "SECTION"`
@@ -291,7 +291,7 @@ competitor_config: jsonb:
   }
 ```
 
-Current schema (pre-#271): `service_signals` jsonb (instead of `services`), no `competitor_config` column. Redesign is Directive #271.
+Migration 029 (Directive #271): DROP old table → CREATE v6 schema (`vertical`, `services`, `discovery_config`, `enrichment_gates`, `competitor_config`, `channel_config`) → seed marketing_agency with 6 services (paid_ads, seo, social_media_marketing, web_design, marketing_automation, content_marketing). Python model updated (`src/enrichment/signal_config.py`). BUG-268-1 confirmed pre-fixed (stage_1_discovery.py already uses jsonb_array_elements_text). DFS v2 audit: PASS — all calls on /v3/.
 
 ---
 
@@ -632,8 +632,12 @@ Compliance: SPAM Act 2003, DNCR registered, TCP Code (voice), Australian-built
 - Remotion video + Stripe checkout pending for landing page
 - S7 prompt engineering needed (backlog — deferred post-#281)
 - S2 parallelisation needed (production speed — currently sequential)
-- signal_configurations schema needs redesign (#271)
-- BUG-268-1: S1 `unnest(jsonb)` fails — fix: `jsonb_array_elements_text()` + `jsonb_agg(DISTINCT elem)` pattern
+- BUG-268-1: CONFIRMED PRE-FIXED — stage_1_discovery.py already uses jsonb_array_elements_text() (no action needed)
 - BUG-268-2: BD GMB returning 401 on new-domain discovery requests — credentials issue in BD account (Dave to check dashboard)
+
+### Directive Log
+| Directive | What | Status |
+|-----------|------|--------|
+| #271 | Signal config schema v6 (migration 029 + model + 6-service seed) | IN PROGRESS — PR pending |
 
 

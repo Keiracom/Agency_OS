@@ -61,7 +61,7 @@ All-in COGS: ~$0.49 USD ($0.76 AUD) per prospect.
 
 **S4 Implementation (built #262):** `src/pipeline/stage_4_scoring.py` — `Stage4Scorer` class. Scores per service signal; best match stored as `best_match_service` (S7 uses this to select outreach angle). Four dimensions: budget (digital spend signals), pain (reputation + gap signals), gap (service-specific tech gaps), fit (category + stack alignment). Reachability scored on confirmed channel access; recalculated after S5/S6. Gate: `min_score_to_enrich` from `signal_configurations` (default 30). All businesses progress to pipeline_stage=4 — low scorers filtered by `WHERE propensity_score < threshold` in downstream queries. New migration: `025_scoring_columns.sql` (score_reason, best_match_service, linkedin_company_url, scored_at).
 
-**S5 Implementation (built #263):** `src/pipeline/stage_5_dm_waterfall.py` — `Stage5DMWaterfall` class. Gate: `min_score_to_dm` (default 50) from `signal_configurations`. Waterfall order (cheapest first): `GMBContactExtractor` (free, BU data) → `WebsiteContactScraper` (free, Jina AI) → `LeadmagicPersonFinder` (paid, ~$0.015/email). Protocol-based: adding BD LinkedIn = adding one class to sources list. Stops at first valid result (name + contact method). Recalculates `reachability_score` after DM found. All rows progress to pipeline_stage=5; rows with no DM get `dm_source='none'` (S7 generates company-level outreach). New columns: `dm_phone`, `dm_found_at` (migration 026).
+**S5 Implementation (built #263, updated #267):** `src/pipeline/stage_5_dm_waterfall.py` — `Stage5DMWaterfall` class. Gate: `min_score_to_dm` (default 50) from `signal_configurations`. Waterfall: GMBContactExtractor (free) → LeadmagicPersonFinder (paid). WebsiteContactScraper/Jina removed (#267). Protocol-based: adding BD LinkedIn = adding one class to sources list. Stops at first valid result (name + contact method). Recalculates `reachability_score` after DM found. All rows progress to pipeline_stage=5; rows with no DM get `dm_source='none'` (S7 generates company-level outreach). New columns: `dm_phone`, `dm_found_at` (migration 026).
 
 **S6 Implementation (built #264):** `src/pipeline/stage_6_reachability.py` — `Stage6Reachability` class. Validates dm_email (format check), dm_phone (AU pattern), dm_linkedin_url (LinkedIn profile URL pattern), physical address. Determines `outreach_channels` (text[]) from validated channels filtered by `channel_config`. Recalculates `reachability_score` from confirmed channels. All rows progress to pipeline_stage=6. New columns: `outreach_channels TEXT[]`, `outreach_messages JSONB` (migration 027).
 
@@ -147,8 +147,10 @@ Approval flow:
 | T2 | Bright Data GMB | GMB discovery + enrichment | $0.001/record | ✅ Live — dataset `gd_m8ebnr0q2qlklc02fz` (Google Maps full information), keyword discovery mode: `type=discover_new&discover_by=keyword` |
 | T3+T5 | Leadmagic | Email + mobile (Essential plan) | Variable | ✅ Live |
 | DFS | DataForSEO Labs | 7 endpoints (PR #220) | Variable | ✅ Live |
-| Jina | Jina AI Reader | Website scraping fallback | Free | ✅ Live |
+| Jina | Jina AI Reader | Website scraping fallback | Free | ~~Live~~ Removed from S5 (#267) |
 | BD Web | Bright Data Unlocker | Heavy scraping | Variable | ✅ Live |
+
+Domain blocklist (`src/utils/domain_blocklist.py`) filters platform/social/government domains before BU insert. Blocklist checked in S1 before any INSERT. Covers: social platforms (facebook.com, instagram.com, etc.), search/tech giants (google.com, etc.), website builders, hosting/infra, and *.gov.au subdomains. Directive #267.
 
 DEPRECATED — do not use: Hunter.io, Kaspr, Proxycurl, Apollo (enrichment), Clay (enrichment)
 
@@ -483,7 +485,11 @@ Compliance: SPAM Act 2003, DNCR registered, TCP Code (voice), Australian-built
 ~~**BUG-265-2** — S3 NULL domain guard~~ FIXED #266
 ~~**BUG-265-3** — S4 NULL signal scoring~~ FIXED #266
 ~~**BUG-266-1** — S5 EmailFinderResult type error~~ FIXED #266
-**S5 waterfall simplified:** Jina/WebsiteContactScraper removed. New order: GMBContactExtractor → LeadmagicPersonFinder.
-Stage5DMWaterfall._write_result passes the raw `EmailFinderResult` dataclass object instead of `email_result.email` string as query argument $3. Causes `asyncpg.exceptions.DataError: expected str, got EmailFinderResult`. Blocks all S5-S7 processing. Fix: extract `.email` attribute before passing to execute().
+~~**BUG-266-1 (DB)** — Duplicate domains in BU (non-atomic SELECT+INSERT)~~ FIXED #267 — migration 028: dedup + partial UNIQUE index; S1 ON CONFLICT upsert
+~~**BUG-266-2** — Platform/social/gov domains in BU (no blocklist)~~ FIXED #267 — domain_blocklist.py + S1 is_blocked() guard
+~~**BUG-266-3** — S2 BD 401 on NULL/empty domains~~ FIXED #267 — added AND domain IS NOT NULL AND domain <> '' to S2 SELECT
+~~**BUG-266-4** — Dead Jina test (test_falls_through_to_website_scraper)~~ FIXED #267 — test removed, test_waterfall_gmb_then_leadmagic_only added
+
+**S5 waterfall:** Jina/WebsiteContactScraper removed. Order: GMBContactExtractor → LeadmagicPersonFinder.
 
 **Live run stats (#266 final):** S2 advanced 30 rows, S3 profiled 26 (NULL domains skipped), S4 scored 23/26 above threshold, S5 found 7 DMs (GMB+Leadmagic, Jina removed), S6 validated 7 (email:3, voice:2, physical:7), S7 generated 4 messages at $0.0047. Pipeline working end-to-end. First real Haiku outreach messages produced. Total cost ~$1.30 across all runs.

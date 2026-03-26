@@ -87,20 +87,16 @@ async def test_finds_dm_from_gmb_first():
 
 
 @pytest.mark.asyncio
-async def test_falls_through_to_website_scraper():
-    """First source returns None → second source is tried."""
-    source_1 = MagicMock(source_name="gmb")
-    source_1.find = AsyncMock(return_value=None)
-    source_2 = MagicMock(source_name="website")
-    source_2.find = AsyncMock(return_value=DMResult(
-        name="Bob Director", email="bob@biz.com.au", source="website"
-    ))
-    stage, conn, _ = make_stage()
-    stage.sources = [source_1, source_2]
-    result = await stage.run("marketing_agency")
-    assert result["found"] == 1
-    source_1.find.assert_called_once()
-    source_2.find.assert_called_once()
+async def test_waterfall_gmb_then_leadmagic_only():
+    """Waterfall has exactly 2 sources: GMB then Leadmagic. No Jina/website."""
+    lm = MagicMock()
+    signal_repo = MagicMock()
+    conn = MagicMock()
+    stage = Stage5DMWaterfall(lm, signal_repo, conn)
+    source_names = [s.source_name for s in stage.sources]
+    assert "gmb" in source_names[0].lower() or "gmb" in type(stage.sources[0]).__name__.lower()
+    assert "leadmagic" in source_names[-1].lower() or "leadmagic" in type(stage.sources[-1]).__name__.lower()
+    assert not any("website" in n.lower() or "jina" in n.lower() for n in source_names)
 
 
 @pytest.mark.asyncio

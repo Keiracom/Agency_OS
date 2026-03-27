@@ -1,0 +1,1137 @@
+{
+  "directive": 276,
+  "timestamp": "2026-03-27T03:39:25.779515+00:00",
+  "total_cost_usd": 0.0675,
+  "domains_tested": [
+    "1300smiles.com.au",
+    "affordabledental.com.au",
+    "ahpdentalmedical.com.au",
+    "adelaidedentist.com.au",
+    "addcdental.com.au"
+  ],
+  "results": {
+    "ep1_website": [
+      {
+        "domain": "1300smiles.com.au",
+        "source": "direct",
+        "status_code": 200,
+        "raw_size_bytes": 505089,
+        "cms": "Unknown",
+        "ga4": false,
+        "ga4_id": null,
+        "gtm": false,
+        "gtm_id": null,
+        "google_ads": false,
+        "google_ads_id": null,
+        "fb_pixel": false,
+        "fb_pixel_id": null,
+        "hubspot": false,
+        "activecampaign": false,
+        "mailchimp": false,
+        "salesforce": false,
+        "crm": "None",
+        "intercom": false,
+        "drift": false,
+        "livechat": false,
+        "tidio": false,
+        "chat": "None",
+        "hotdoc": false,
+        "calendly": false,
+        "booking_system": "detected",
+        "ssl": true,
+        "blog_exists": true,
+        "services_listed": [],
+        "locations_mentioned": 140,
+        "team_page": true,
+        "copyright_year": "2014",
+        "contact_form": false,
+        "phone_numbers": [
+          "073 0 000-1",
+          "089043369883238",
+          "07 0 0 0-3-3",
+          "097 0 00-1",
+          "+61 1300 764 537"
+        ],
+        "cta_button": true,
+        "meta_title": "Affordable Dentists Near You | 1300SMILES Dentists",
+        "meta_description": "1300SMILES Dentists is your local dental practice for accessible and affordable dental treatment. Find your nearest clinic and book an appointment today!",
+        "h1": null,
+        "schema_markup": true,
+        "sitemap_xml": true,
+        "robots_txt": true,
+        "_time_seconds": 1.54
+      },
+      {
+        "domain": "affordabledental.com.au",
+        "source": "direct",
+        "status_code": 200,
+        "raw_size_bytes": 209774,
+        "cms": "WordPress",
+        "ga4": false,
+        "ga4_id": null,
+        "gtm": true,
+        "gtm_id": "GTM-NMRJRMF",
+        "google_ads": false,
+        "google_ads_id": null,
+        "fb_pixel": false,
+        "fb_pixel_id": null,
+        "hubspot": false,
+        "activecampaign": false,
+        "mailchimp": false,
+        "salesforce": false,
+        "crm": "None",
+        "intercom": false,
+        "drift": false,
+        "livechat": false,
+        "tidio": false,
+        "chat": "None",
+        "hotdoc": false,
+        "calendly": false,
+        "booking_system": "detected",
+        "ssl": true,
+        "blog_exists": true,
+        "services_listed": [],
+        "locations_mentioned": 11,
+        "team_page": true,
+        "copyright_year": "2026",
+        "contact_form": true,
+        "phone_numbers": [
+          "091 16 16 14",
+          "026-03-27 05",
+          "091 8 12 8",
+          "086 16 12 16",
+          "+61272529622"
+        ],
+        "cta_button": true,
+        "meta_title": "Your Trusted Dental Care Provider - Affordable Dental",
+        "meta_description": "Transform your smile at Affordable Dental with expert, patient-focused care tailored to your needs for a radiant, healthy smile. Book an appointment today!",
+        "h1": null,
+        "schema_markup": true,
+        "sitemap_xml": false,
+        "robots_txt": true,
+        "_time_seconds": 6.45
+      },
+      {
+        "domain": "ahpdentalmedical.com.au",
+        "source": "direct",
+        "status_code": 200,
+        "raw_size_bytes": 276722,
+        "cms": "Unknown",
+        "ga4": true,
+        "ga4_id": "G-QDMNQJMWJG",
+        "gtm": true,
+        "gtm_id": "GTM-TNMRKBS",
+        "google_ads": false,
+        "google_ads_id": null,
+        "fb_pixel": false,
+        "fb_pixel_id": null,
+        "hubspot": false,
+        "activecampaign": false,
+        "mailchimp": false,
+        "salesforce": false,
+        "crm": "None",
+        "intercom": false,
+        "drift": false,
+        "livechat": false,
+        "tidio": false,
+        "chat": "None",
+        "hotdoc": false,
+        "calendly": false,
+        "booking_system": "None",
+        "ssl": true,
+        "blog_exists": false,
+        "services_listed": [
+          "\n                All Rights Reserved\n            "
+        ],
+        "locations_mentioned": 3,
+        "team_page": true,
+        "copyright_year": null,
+        "contact_form": true,
+        "phone_numbers": [
+          "0662747 63",
+          "0668219 53",
+          "0662747 34",
+          "05397975-05",
+          "0769231 23"
+        ],
+        "cta_button": true,
+        "meta_title": "Medical &amp; Dental Supplies Australia - AHP Dental & Medical",
+        "meta_description": "AHP Dental &amp; Medical supplies a wide range of dental and medical products from leading global brands. Browse the range and buy online.",
+        "h1": null,
+        "schema_markup": false,
+        "sitemap_xml": false,
+        "robots_txt": true,
+        "_time_seconds": 1.73
+      },
+      {
+        "domain": "adelaidedentist.com.au",
+        "source": "direct",
+        "status_code": 200,
+        "raw_size_bytes": 54757,
+        "cms": "WordPress",
+        "ga4": true,
+        "ga4_id": "G-1EPZJH5KNT",
+        "gtm": false,
+        "gtm_id": null,
+        "google_ads": true,
+        "google_ads_id": "AW-959770167",
+        "fb_pixel": false,
+        "fb_pixel_id": null,
+        "hubspot": false,
+        "activecampaign": false,
+        "mailchimp": false,
+        "salesforce": false,
+        "crm": "None",
+        "intercom": false,
+        "drift": false,
+        "livechat": false,
+        "tidio": false,
+        "chat": "None",
+        "hotdoc": false,
+        "calendly": false,
+        "booking_system": "detected",
+        "ssl": true,
+        "blog_exists": false,
+        "services_listed": [],
+        "locations_mentioned": 13,
+        "team_page": false,
+        "copyright_year": "2026",
+        "contact_form": true,
+        "phone_numbers": [
+          "+61882671894"
+        ],
+        "cta_button": true,
+        "meta_title": "North Adelaide Dental Care",
+        "meta_description": "Adelaide Dentists providing high-quality, comfortable dental care to North Adelaide and surrounds in a modern and relaxed environment. Services include IV sedation, Implant and General Dentistry.",
+        "h1": "Welcome to North Adelaide Dental Care",
+        "schema_markup": true,
+        "sitemap_xml": true,
+        "robots_txt": true,
+        "_time_seconds": 1.79
+      },
+      {
+        "domain": "addcdental.com.au",
+        "source": "direct",
+        "status_code": 200,
+        "raw_size_bytes": 152192,
+        "cms": "WordPress",
+        "ga4": true,
+        "ga4_id": "G-TIMES",
+        "gtm": false,
+        "gtm_id": null,
+        "google_ads": false,
+        "google_ads_id": null,
+        "fb_pixel": true,
+        "fb_pixel_id": "1406087332793677",
+        "hubspot": false,
+        "activecampaign": false,
+        "mailchimp": false,
+        "salesforce": false,
+        "crm": "None",
+        "intercom": false,
+        "drift": false,
+        "livechat": false,
+        "tidio": false,
+        "chat": "None",
+        "hotdoc": false,
+        "calendly": false,
+        "booking_system": "detected",
+        "ssl": true,
+        "blog_exists": false,
+        "services_listed": [
+          "Monday           8 am - Late",
+          "Tuesday           8 am - 8 pm",
+          "Wednesday      8 am - Late",
+          "Thursday          8 am - 8 pm",
+          "Friday               8 am - 5 pm",
+          "Saturday           8 am - 5 pm",
+          "Sunday              Closed"
+        ],
+        "locations_mentioned": 51,
+        "team_page": true,
+        "copyright_year": "2024",
+        "contact_form": true,
+        "phone_numbers": [
+          "04077906850505",
+          "08077573420",
+          "08077525583",
+          "08 9276 1540",
+          "026-03-27 02"
+        ],
+        "cta_button": true,
+        "meta_title": "Dentist Perth - ADDC Dental in Dianella",
+        "meta_description": "ADDC Dental in Dianella is a Perth Dentist offering wide range of dental services: General Treatments, Root Canal Treatments or Teeth Whitening. If you are in need of an Emergency Service in Perth, ADDC Dental offer 24/7 Online Booking. Book today - Call us on 9276 1540.",
+        "h1": "___________",
+        "schema_markup": true,
+        "sitemap_xml": true,
+        "robots_txt": true,
+        "_time_seconds": 6.76
+      }
+    ],
+    "ep7_pagespeed": [
+      {
+        "domain": "1300smiles.com.au",
+        "error": "Expecting value: line 1 column 1 (char 0)",
+        "_time_seconds": 0.15
+      },
+      {
+        "domain": "affordabledental.com.au",
+        "error": "Expecting value: line 1 column 1 (char 0)",
+        "_time_seconds": 0.1
+      },
+      {
+        "domain": "ahpdentalmedical.com.au",
+        "error": "Expecting value: line 1 column 1 (char 0)",
+        "_time_seconds": 0.1
+      },
+      {
+        "domain": "adelaidedentist.com.au",
+        "error": "Expecting value: line 1 column 1 (char 0)",
+        "_time_seconds": 0.1
+      },
+      {
+        "domain": "addcdental.com.au",
+        "error": "Expecting value: line 1 column 1 (char 0)",
+        "_time_seconds": 0.1
+      }
+    ],
+    "ep3_competitors": [
+      {
+        "domain": "1300smiles.com.au",
+        "competitors_found": 5,
+        "competitors": [
+          {
+            "domain": "1300smiles.com.au",
+            "avg_position": 47.518314424635335,
+            "common_keywords": 6170,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "facebook.com",
+            "avg_position": 25.034304207119742,
+            "common_keywords": 4635,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "instagram.com",
+            "avg_position": 39.48087899543379,
+            "common_keywords": 3504,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "healthdirect.gov.au",
+            "avg_position": 18.935198401370254,
+            "common_keywords": 3503,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "healthengine.com.au",
+            "avg_position": 21.034432765494746,
+            "common_keywords": 2759,
+            "organic_etv": null,
+            "visibility": null
+          }
+        ],
+        "raw_task_cost": 0.0105,
+        "_time_seconds": 1.84
+      },
+      {
+        "domain": "affordabledental.com.au",
+        "competitors_found": 5,
+        "competitors": [
+          {
+            "domain": "affordabledental.com.au",
+            "avg_position": 35.53634894991922,
+            "common_keywords": 1238,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "smile.com.au",
+            "avg_position": 38.77628361858191,
+            "common_keywords": 818,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "youtube.com",
+            "avg_position": 54.88128491620112,
+            "common_keywords": 716,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "reddit.com",
+            "avg_position": 44.601027397260275,
+            "common_keywords": 584,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "facebook.com",
+            "avg_position": 46.80172413793103,
+            "common_keywords": 580,
+            "organic_etv": null,
+            "visibility": null
+          }
+        ],
+        "raw_task_cost": 0.0105,
+        "_time_seconds": 1.58
+      },
+      {
+        "domain": "ahpdentalmedical.com.au",
+        "competitors_found": 5,
+        "competitors": [
+          {
+            "domain": "ahpdentalmedical.com.au",
+            "avg_position": 26.435254237288135,
+            "common_keywords": 1475,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "youtube.com",
+            "avg_position": 34.85749185667753,
+            "common_keywords": 1228,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "amazon.com.au",
+            "avg_position": 19.476429287863592,
+            "common_keywords": 997,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "ebay.com.au",
+            "avg_position": 30.273972602739725,
+            "common_keywords": 949,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "henryschein.com.au",
+            "avg_position": 10.138646288209607,
+            "common_keywords": 916,
+            "organic_etv": null,
+            "visibility": null
+          }
+        ],
+        "raw_task_cost": 0.0105,
+        "_time_seconds": 1.7
+      },
+      {
+        "domain": "adelaidedentist.com.au",
+        "competitors_found": 5,
+        "competitors": [
+          {
+            "domain": "adelaidedentist.com.au",
+            "avg_position": 40.29847494553377,
+            "common_keywords": 459,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "facebook.com",
+            "avg_position": 35.701492537313435,
+            "common_keywords": 268,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "youtube.com",
+            "avg_position": 48.93801652892562,
+            "common_keywords": 242,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "healthdirect.gov.au",
+            "avg_position": 23.551724137931036,
+            "common_keywords": 232,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "bupadental.com.au",
+            "avg_position": 26.014150943396228,
+            "common_keywords": 212,
+            "organic_etv": null,
+            "visibility": null
+          }
+        ],
+        "raw_task_cost": 0.0105,
+        "_time_seconds": 2.18
+      },
+      {
+        "domain": "addcdental.com.au",
+        "competitors_found": 5,
+        "competitors": [
+          {
+            "domain": "addcdental.com.au",
+            "avg_position": 40.51174934725849,
+            "common_keywords": 766,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "youtube.com",
+            "avg_position": 52.059701492537314,
+            "common_keywords": 469,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "healthdirect.gov.au",
+            "avg_position": 26.915300546448087,
+            "common_keywords": 366,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "smile.com.au",
+            "avg_position": 48.770392749244714,
+            "common_keywords": 331,
+            "organic_etv": null,
+            "visibility": null
+          },
+          {
+            "domain": "facebook.com",
+            "avg_position": 44.69207317073171,
+            "common_keywords": 328,
+            "organic_etv": null,
+            "visibility": null
+          }
+        ],
+        "raw_task_cost": 0.0105,
+        "_time_seconds": 0.76
+      }
+    ],
+    "ep4_backlinks": [
+      {
+        "domain": "1300smiles.com.au",
+        "error": "No result items",
+        "raw": {
+          "version": "0.1.20260318",
+          "status_code": 20000,
+          "status_message": "Ok.",
+          "time": "0 sec.",
+          "cost": 0,
+          "tasks_count": 1,
+          "tasks_error": 1,
+          "tasks": [
+            {
+              "id": "03270533-1070-0265-0000-49b6cd4c0077",
+              "status_code": 40204,
+              "status_message": "Access denied. Visit Plans and Subscriptions to activate your subscription and get access to this API: https://app.dataforseo.com/backlinks-subscription .",
+              "time": "0 sec.",
+              "cost": 0,
+              "result_count": 0,
+              "path": [
+                "v3",
+                "backlinks",
+                "summary",
+                "live"
+              ],
+              "data": {
+                "api": "backlinks",
+                "function": "summary",
+                "target": "1300smiles.com.au",
+                "limit": 1
+              },
+              "result": null
+            }
+          ]
+        },
+        "_time_seconds": 0.18
+      },
+      {
+        "domain": "affordabledental.com.au",
+        "error": "No result items",
+        "raw": {
+          "version": "0.1.20260318",
+          "status_code": 20000,
+          "status_message": "Ok.",
+          "time": "0 sec.",
+          "cost": 0,
+          "tasks_count": 1,
+          "tasks_error": 1,
+          "tasks": [
+            {
+              "id": "03270533-1070-0265-0000-949b30876301",
+              "status_code": 40204,
+              "status_message": "Access denied. Visit Plans and Subscriptions to activate your subscription and get access to this API: https://app.dataforseo.com/backlinks-subscription .",
+              "time": "0 sec.",
+              "cost": 0,
+              "result_count": 0,
+              "path": [
+                "v3",
+                "backlinks",
+                "summary",
+                "live"
+              ],
+              "data": {
+                "api": "backlinks",
+                "function": "summary",
+                "target": "affordabledental.com.au",
+                "limit": 1
+              },
+              "result": null
+            }
+          ]
+        },
+        "_time_seconds": 0.18
+      },
+      {
+        "domain": "ahpdentalmedical.com.au",
+        "error": "No result items",
+        "raw": {
+          "version": "0.1.20260318",
+          "status_code": 20000,
+          "status_message": "Ok.",
+          "time": "0 sec.",
+          "cost": 0,
+          "tasks_count": 1,
+          "tasks_error": 1,
+          "tasks": [
+            {
+              "id": "03270533-1070-0265-0000-ddc8bc1fc737",
+              "status_code": 40204,
+              "status_message": "Access denied. Visit Plans and Subscriptions to activate your subscription and get access to this API: https://app.dataforseo.com/backlinks-subscription .",
+              "time": "0 sec.",
+              "cost": 0,
+              "result_count": 0,
+              "path": [
+                "v3",
+                "backlinks",
+                "summary",
+                "live"
+              ],
+              "data": {
+                "api": "backlinks",
+                "function": "summary",
+                "target": "ahpdentalmedical.com.au",
+                "limit": 1
+              },
+              "result": null
+            }
+          ]
+        },
+        "_time_seconds": 0.15
+      },
+      {
+        "domain": "adelaidedentist.com.au",
+        "error": "No result items",
+        "raw": {
+          "version": "0.1.20260318",
+          "status_code": 20000,
+          "status_message": "Ok.",
+          "time": "0 sec.",
+          "cost": 0,
+          "tasks_count": 1,
+          "tasks_error": 1,
+          "tasks": [
+            {
+              "id": "03270533-1070-0265-0000-5bb835ed7572",
+              "status_code": 40204,
+              "status_message": "Access denied. Visit Plans and Subscriptions to activate your subscription and get access to this API: https://app.dataforseo.com/backlinks-subscription .",
+              "time": "0 sec.",
+              "cost": 0,
+              "result_count": 0,
+              "path": [
+                "v3",
+                "backlinks",
+                "summary",
+                "live"
+              ],
+              "data": {
+                "api": "backlinks",
+                "function": "summary",
+                "target": "adelaidedentist.com.au",
+                "limit": 1
+              },
+              "result": null
+            }
+          ]
+        },
+        "_time_seconds": 0.18
+      },
+      {
+        "domain": "addcdental.com.au",
+        "error": "No result items",
+        "raw": {
+          "version": "0.1.20260318",
+          "status_code": 20000,
+          "status_message": "Ok.",
+          "time": "0 sec.",
+          "cost": 0,
+          "tasks_count": 1,
+          "tasks_error": 1,
+          "tasks": [
+            {
+              "id": "03270533-1070-0265-0000-92efba59b3d9",
+              "status_code": 40204,
+              "status_message": "Access denied. Visit Plans and Subscriptions to activate your subscription and get access to this API: https://app.dataforseo.com/backlinks-subscription .",
+              "time": "0 sec.",
+              "cost": 0,
+              "result_count": 0,
+              "path": [
+                "v3",
+                "backlinks",
+                "summary",
+                "live"
+              ],
+              "data": {
+                "api": "backlinks",
+                "function": "summary",
+                "target": "addcdental.com.au",
+                "limit": 1
+              },
+              "result": null
+            }
+          ]
+        },
+        "_time_seconds": 0.19
+      }
+    ],
+    "ep6_serp": [
+      {
+        "domain": "1300smiles.com.au",
+        "brand_query": "1300 Smiles",
+        "own_rank": 1,
+        "gmb_showing": false,
+        "top_results": [
+          {
+            "rank": 1,
+            "domain": "www.1300smiles.com.au",
+            "title": "1300SMILES Dentists: Affordable Dentists Near You",
+            "url": "https://www.1300smiles.com.au/"
+          },
+          {
+            "rank": 3,
+            "domain": "www.facebook.com",
+            "title": "1300SMILES Dentists (@1300SMILESDentists)",
+            "url": "https://www.facebook.com/1300SMILESDentists/"
+          },
+          {
+            "rank": 4,
+            "domain": "healthengine.com.au",
+            "title": "1300SMILES - Strathpine - Book an Appointment Online",
+            "url": "https://healthengine.com.au/dentist/qld/strathpine/1300smiles-strathpine/s89535"
+          },
+          {
+            "rank": 5,
+            "domain": "www.yelp.com",
+            "title": "1300 SMILES DENTIST CHATSWOOD",
+            "url": "https://www.yelp.com/biz/1300-smiles-dentist-chatswood-chatswood"
+          },
+          {
+            "rank": 6,
+            "domain": "www.facebook.com",
+            "title": "1300SMILES | Rockhampton QLD",
+            "url": "https://www.facebook.com/1300SMILESrockhampton/"
+          },
+          {
+            "rank": 7,
+            "domain": "www.myhealth1st.com.au",
+            "title": "1300 Smiles - Townsville City",
+            "url": "https://www.myhealth1st.com.au/find/dentists/qld/townsville/townsville/1300-smiles-townsville-city"
+          },
+          {
+            "rank": 8,
+            "domain": "www.healthdirect.gov.au",
+            "title": "1300SMILES Dentists Toowoomba",
+            "url": "https://www.healthdirect.gov.au/australian-health-services/healthcare-service/toowoomba-4350-qld/1300-smiles-loughlin-family-dental/dentists/d9931e67-f88c-f6e6-f2cf-bd1e19715c78"
+          }
+        ],
+        "total_items": 10,
+        "raw_task_cost": 0.002,
+        "_time_seconds": 9.23
+      },
+      {
+        "domain": "affordabledental.com.au",
+        "brand_query": "Affordable Dental",
+        "own_rank": 4,
+        "gmb_showing": true,
+        "top_results": [
+          {
+            "rank": 4,
+            "domain": "affordabledental.com.au",
+            "title": "Affordable Dental: Your Trusted Dental Care Provider",
+            "url": "https://affordabledental.com.au/"
+          },
+          {
+            "rank": 5,
+            "domain": "www.smile.com.au",
+            "title": "Top-Rated Dental Cover From $79 a Year | smile.com.au",
+            "url": "https://www.smile.com.au/"
+          },
+          {
+            "rank": 6,
+            "domain": "www.affordabledentist.sydney",
+            "title": "Affordable Dentist Sydney | $99 Dental Practice in Sydney",
+            "url": "https://www.affordabledentist.sydney/"
+          },
+          {
+            "rank": 7,
+            "domain": "budgetdental.com.au",
+            "title": "Budget Dental | Affordable & Professional Dentist Mount Gravatt",
+            "url": "https://budgetdental.com.au/"
+          },
+          {
+            "rank": 9,
+            "domain": "www.healthdirect.gov.au",
+            "title": "Affordable Dental Charlestown",
+            "url": "https://www.healthdirect.gov.au/australian-health-services/healthcare-service/charlestown-2290-nsw/affordable-dental-charlestown/dentists/ad11541c-a425-4dcd-aa40-162b70d62980"
+          },
+          {
+            "rank": 11,
+            "domain": "www.fixeddental.com.au",
+            "title": "Fixed Price Dental: Find and book dentists near you",
+            "url": "https://www.fixeddental.com.au/"
+          },
+          {
+            "rank": 12,
+            "domain": "auroraeppingdental.com.au",
+            "title": "Affordable Dental Services in Epping",
+            "url": "https://auroraeppingdental.com.au/dental-services/"
+          }
+        ],
+        "total_items": 13,
+        "raw_task_cost": 0.002,
+        "_time_seconds": 4.15
+      },
+      {
+        "domain": "ahpdentalmedical.com.au",
+        "brand_query": "AHP Dental Medical",
+        "own_rank": 1,
+        "gmb_showing": false,
+        "top_results": [
+          {
+            "rank": 1,
+            "domain": "www.ahpdentalmedical.com.au",
+            "title": "AHP Dental & Medical: Medical & Dental Supplies Australia",
+            "url": "https://www.ahpdentalmedical.com.au/"
+          },
+          {
+            "rank": 2,
+            "domain": "www.medicalsearch.com.au",
+            "title": "AHP Dental & Medical",
+            "url": "https://www.medicalsearch.com.au/ahp-dental-and-medical/s/18632"
+          },
+          {
+            "rank": 3,
+            "domain": "au.linkedin.com",
+            "title": "AHP Dental & Medical",
+            "url": "https://au.linkedin.com/company/ahp-dental-medical"
+          },
+          {
+            "rank": 4,
+            "domain": "www.tga.gov.au",
+            "title": "AHP DENTAL AND MEDICAL PTY LIMITED",
+            "url": "https://www.tga.gov.au/resources/sponsor/ahp-dental-and-medical-pty-limited"
+          },
+          {
+            "rank": 5,
+            "domain": "abr.business.gov.au",
+            "title": "Current details for ABN 43 629 495 174",
+            "url": "https://abr.business.gov.au/ABN/View?abn=43629495174"
+          },
+          {
+            "rank": 6,
+            "domain": "www.yelp.com",
+            "title": "AHP DENTAL & MEDICAL PTY LTD - Updated March 2026",
+            "url": "https://www.yelp.com/biz/ahp-dental-and-medical-pty-ltd-hornsby"
+          },
+          {
+            "rank": 7,
+            "domain": "about.me",
+            "title": "AHP Dental Medical - Australia",
+            "url": "https://about.me/ahpdentalmedical"
+          }
+        ],
+        "total_items": 11,
+        "raw_task_cost": 0.002,
+        "_time_seconds": 14.24
+      },
+      {
+        "domain": "adelaidedentist.com.au",
+        "brand_query": "Adelaide Dentist",
+        "own_rank": 4,
+        "gmb_showing": true,
+        "top_results": [
+          {
+            "rank": 4,
+            "domain": "www.adelaidedentist.com.au",
+            "title": "North Adelaide Dental Care",
+            "url": "https://www.adelaidedentist.com.au/"
+          },
+          {
+            "rank": 5,
+            "domain": "perfectsmile.com.au",
+            "title": "Perfect Smile | Adelaide Dentist",
+            "url": "https://perfectsmile.com.au/"
+          },
+          {
+            "rank": 7,
+            "domain": "adelaidedentalcare.com.au",
+            "title": "Adelaide Dental Care | Dentist Appointments in Adelaide CBD",
+            "url": "https://adelaidedentalcare.com.au/"
+          },
+          {
+            "rank": 8,
+            "domain": "www.adelaidefamilydental.com.au",
+            "title": "Adelaide Family Dental: Dentist in Adelaide SA",
+            "url": "https://www.adelaidefamilydental.com.au/"
+          },
+          {
+            "rank": 9,
+            "domain": "www.dental.sa.gov.au",
+            "title": "Adelaide Dental Hospital (by referral only) \u2022 Clinics",
+            "url": "https://www.dental.sa.gov.au/find-a-clinic/adelaide-dental-hospital"
+          },
+          {
+            "rank": 10,
+            "domain": "www.adelaidesmileandimplantcentre.com.au",
+            "title": "Cosmetic Dentist Adelaide | Adelaide Smile & Implant Centre",
+            "url": "https://www.adelaidesmileandimplantcentre.com.au/"
+          },
+          {
+            "rank": 11,
+            "domain": "malverndentalandsmiledesign.com",
+            "title": "Malvern Dental & Smile Design: Cosmetic Dentist Adelaide",
+            "url": "https://malverndentalandsmiledesign.com/"
+          },
+          {
+            "rank": 12,
+            "domain": "citycentraldental.com.au",
+            "title": "City Central Dental Adelaide CBD Dentists | Preventative ...",
+            "url": "https://citycentraldental.com.au/"
+          },
+          {
+            "rank": 13,
+            "domain": "www.adicentre.com.au",
+            "title": "Alpha Dental & Implant Centre: Prospect Dentist Adelaide",
+            "url": "https://www.adicentre.com.au/"
+          }
+        ],
+        "total_items": 14,
+        "raw_task_cost": 0.002,
+        "_time_seconds": 5.68
+      },
+      {
+        "domain": "addcdental.com.au",
+        "brand_query": "ADDC Dental",
+        "own_rank": 1,
+        "gmb_showing": false,
+        "top_results": [
+          {
+            "rank": 1,
+            "domain": "addcdental.com.au",
+            "title": "Dentist Perth - ADDC Dental in Dianella",
+            "url": "https://addcdental.com.au/"
+          },
+          {
+            "rank": 2,
+            "domain": "totalcosmeticcare.com.au",
+            "title": "ADDC Dental",
+            "url": "https://totalcosmeticcare.com.au/addc-dental/"
+          },
+          {
+            "rank": 3,
+            "domain": "www.hotdoc.com.au",
+            "title": "Alexander Drive Dental Clinic - Book Dentists Online with ...",
+            "url": "https://www.hotdoc.com.au/medical-centres/dianella-WA-6059/alexander-drive-dental-clinic/doctors"
+          },
+          {
+            "rank": 4,
+            "domain": "www.adccdental.com.au",
+            "title": "Dentist | Dental | Dental Clinic | Calamvale | Brisbane",
+            "url": "https://www.adccdental.com.au/"
+          },
+          {
+            "rank": 5,
+            "domain": "totalcosmeticcare.com.au",
+            "title": "ADDC Total Cosmetic Care",
+            "url": "https://totalcosmeticcare.com.au/"
+          },
+          {
+            "rank": 6,
+            "domain": "www.instagram.com",
+            "title": "Alexander Drive Dental Clinic (@addcdental) \u00b7 Dianella, WA",
+            "url": "https://www.instagram.com/addcdental/"
+          },
+          {
+            "rank": 7,
+            "domain": "www.hcf.com.au",
+            "title": "HCF health insurance | Your health comes first | HCF",
+            "url": "https://www.hcf.com.au/"
+          }
+        ],
+        "total_items": 11,
+        "raw_task_cost": 0.002,
+        "_time_seconds": 2.32
+      }
+    ],
+    "ep5_onpage": [
+      {
+        "domain": "1300smiles.com.au",
+        "pages_crawled": null,
+        "pages_with_issues": null,
+        "duplicate_title": null,
+        "duplicate_description": null,
+        "broken_resources": null,
+        "pages_without_h1": null,
+        "crawl_progress": "finished",
+        "raw_task_cost": 0.00125,
+        "_time_seconds": 58.84
+      },
+      {
+        "domain": "affordabledental.com.au",
+        "pages_crawled": null,
+        "pages_with_issues": null,
+        "duplicate_title": null,
+        "duplicate_description": null,
+        "broken_resources": null,
+        "pages_without_h1": null,
+        "crawl_progress": "finished",
+        "raw_task_cost": 0.00125,
+        "_time_seconds": 37.37
+      },
+      {
+        "domain": "ahpdentalmedical.com.au",
+        "pages_crawled": null,
+        "pages_with_issues": null,
+        "duplicate_title": null,
+        "duplicate_description": null,
+        "broken_resources": null,
+        "pages_without_h1": null,
+        "crawl_progress": "finished",
+        "raw_task_cost": 0.00125,
+        "_time_seconds": 73.93
+      },
+      {
+        "domain": "adelaidedentist.com.au",
+        "error": "on_page poll timeout after 60s, crawl not finished",
+        "task_id": "03270537-1070-0216-0000-c5dd9b83801e",
+        "_time_seconds": 82.87
+      },
+      {
+        "domain": "addcdental.com.au",
+        "pages_crawled": null,
+        "pages_with_issues": null,
+        "duplicate_title": null,
+        "duplicate_description": null,
+        "broken_resources": null,
+        "pages_without_h1": null,
+        "crawl_progress": "finished",
+        "raw_task_cost": 0.00125,
+        "_time_seconds": 34.86
+      }
+    ],
+    "ep8_social": [
+      {
+        "domain": "1300smiles.com.au",
+        "facebook": null,
+        "instagram": null,
+        "fb_link_on_site": "https://www.facebook.com/1300SMILESdentists/",
+        "ig_link_on_site": "https://www.instagram.com/1300smilesdentists/",
+        "fb_exists": false,
+        "fb_url_checked": "https://www.facebook.com/1300SMILESdentists/",
+        "ig_exists": false,
+        "ig_url_checked": "https://www.instagram.com/1300smilesdentists/",
+        "_time_seconds": 1.22
+      },
+      {
+        "domain": "affordabledental.com.au",
+        "facebook": null,
+        "instagram": null,
+        "fb_link_on_site": "https://www.facebook.com/profile.php?id=61577100130482",
+        "ig_link_on_site": "https://www.instagram.com/affordabledentalau/",
+        "fb_exists": false,
+        "fb_url_checked": "https://www.facebook.com/profile.php?id=61577100130482",
+        "ig_exists": false,
+        "ig_url_checked": "https://www.instagram.com/affordabledentalau/",
+        "_time_seconds": 4.27
+      },
+      {
+        "domain": "ahpdentalmedical.com.au",
+        "facebook": null,
+        "instagram": null,
+        "fb_link_on_site": "https://www.facebook.com/AHPDentalMedical/",
+        "ig_link_on_site": "https://www.instagram.com/ahpdentalmedical/",
+        "fb_exists": false,
+        "fb_url_checked": "https://www.facebook.com/AHPDentalMedical/",
+        "ig_exists": false,
+        "ig_url_checked": "https://www.instagram.com/ahpdentalmedical/",
+        "_time_seconds": 0.74
+      },
+      {
+        "domain": "adelaidedentist.com.au",
+        "facebook": null,
+        "instagram": null,
+        "fb_link_on_site": "https://www.facebook.com/northadelaidedentalcare/",
+        "ig_link_on_site": null,
+        "fb_exists": false,
+        "fb_url_checked": "https://www.facebook.com/northadelaidedentalcare/",
+        "ig_exists": false,
+        "ig_url_checked": "https://www.instagram.com/adelaidedentist",
+        "_time_seconds": 1.39
+      },
+      {
+        "domain": "addcdental.com.au",
+        "facebook": null,
+        "instagram": null,
+        "fb_link_on_site": "https://www.facebook.com/addc124",
+        "ig_link_on_site": null,
+        "fb_exists": false,
+        "fb_url_checked": "https://www.facebook.com/addc124",
+        "ig_exists": false,
+        "ig_url_checked": "https://www.instagram.com/addcdental",
+        "_time_seconds": 3.0
+      }
+    ],
+    "ep9_jina": [
+      {
+        "domain": "1300smiles.com.au",
+        "status_code": 200,
+        "content_length": 60709,
+        "content_preview": "# Affordable Dentists Near You | 1300SMILES Dentists\n\nThis website stores cookies on your computer. These cookies are used to collect information about how you interact with our website and allow us to remember you. We use this information in order to improve and customize your browsing experience and for analytics and metrics about our visitors both on this website and other media. To find out more about the cookies we use, see our Privacy Policy.\n\nIf you decline, your information won\u2019t be tracked when you visit this website. A single cookie will be used in your browser to remember your preference not to be tracked.\n\nCookies settings\n\nAccept Decline\n\n[](https://www.1300smiles.com.au/)\n\n[Services](https://www.1300smiles.com.au/services/)\n\nServices\n\n    [Cosmetic Dentistry](https://www.1300smiles.com.au/services/cosmetic-dentistry/)\n    [Preventative Dentistry](https://www.1300smiles.com.au/services/preventative-dentistry/)\n    [Restorative Dentistry](https://www.1300smiles.com.au/services/restorative-dentistry/)\n    [Orthodontics](https://www.1300smiles.com.au/services/orthodontics/)\n    [Children's Dentistry](https://www.1300smiles.com.au/services/childrens-dentistry/)\n    [General Dentistry](https://www.1300smiles.com.au/services/general-dentistry/)\n\n    [Dental Bridges](https://www.1300smiles.com.au/services/cosmetic-dentistry/dental-bridges/)\n    [Dental Crowns](https://www.1300smiles.com.au/services/cosmetic-dentistry/dental-crowns/)\n    [Dental Implants](https://www.1300smiles.com.au/services/cosmetic-dentistry/dental-implants/)\n    [Teeth Whitening](https://www.1300smiles.com.au/services/cosmetic-dentistry/teeth-whitening/)\n    [Veneers](https://www.1300smiles.com.au/services/cosmetic-dentistry/veneers/)\n\n    [Bruxism & TMJ](https://www.1300smiles.com.au/services/preventative-dentistry/bruxism/)\n    [Mouthguards](https://www.1300smiles.com.au/services/preventative-dentistry/mouthguards/)\n    [Sleep Apnoea](https://www.1300smiles.com.au/services/preventative-d",
+        "title": "Affordable Dentists Near You | 1300SMILES Dentists",
+        "_time_seconds": 4.65
+      }
+    ],
+    "ep2_gmb": [
+      {
+        "domain": "1300smiles.com.au",
+        "error": "Expecting value: line 1 column 1 (char 0)",
+        "_time_seconds": 0.36
+      },
+      {
+        "domain": "affordabledental.com.au",
+        "error": "Expecting value: line 1 column 1 (char 0)",
+        "_time_seconds": 0.04
+      },
+      {
+        "domain": "ahpdentalmedical.com.au",
+        "error": "Expecting value: line 1 column 1 (char 0)",
+        "_time_seconds": 0.04
+      },
+      {
+        "domain": "adelaidedentist.com.au",
+        "error": "Expecting value: line 1 column 1 (char 0)",
+        "_time_seconds": 0.04
+      },
+      {
+        "domain": "addcdental.com.au",
+        "error": "Expecting value: line 1 column 1 (char 0)",
+        "_time_seconds": 0.04
+      }
+    ]
+  }
+}

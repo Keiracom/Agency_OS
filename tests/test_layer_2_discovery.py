@@ -150,9 +150,12 @@ async def test_discovery_computes_trajectory():
     STABLE: organic_etv=105, prev=100 (5% change — within ±10%).
     Trajectory is computed in-memory; stats counters must match.
     """
-    assert _compute_trajectory(120.0, 100.0) == "GROWING"
-    assert _compute_trajectory(80.0, 100.0) == "DECLINING"
-    assert _compute_trajectory(105.0, 100.0) == "STABLE"
+    # _compute_trajectory now returns fractional change as float | None
+    assert _compute_trajectory(120.0, 100.0) == pytest.approx(0.20)
+    assert _compute_trajectory(80.0, 100.0) == pytest.approx(-0.20)
+    assert _compute_trajectory(105.0, 100.0) == pytest.approx(0.05)
+    assert _compute_trajectory(100.0, None) is None
+    assert _compute_trajectory(100.0, 0.0) is None
 
     cfg = {"category_codes": [10233]}
     results = [
@@ -173,9 +176,9 @@ async def test_discovery_computes_trajectory():
         MockRepo.return_value.get_config = AsyncMock(return_value=config)
         stats = await engine.run("marketing_agency", daily_budget_usd=10.0)
 
-    assert stats.trajectory_growing == 1
-    assert stats.trajectory_declining == 1
-    assert stats.trajectory_stable == 1
+    # All 3 domains have organic_etv_prev set, so trajectory is a float for each
+    assert stats.trajectory_with_value == 3
+    assert stats.trajectory_none == 0
 
 
 # ─── Test 5: Gate 1 — budget floor filter ─────────────────────────────────────

@@ -75,11 +75,6 @@ _FOREIGN_TLDS = frozenset(
     }
 )
 
-# Trajectory thresholds
-_GROWING_THRESHOLD = 10.0  # >10% change → GROWING
-_DECLINING_THRESHOLD = -10.0  # <-10% change → DECLINING
-
-
 @dataclass
 class DiscoveryStats:
     category_codes: list[int] = field(default_factory=list)
@@ -92,11 +87,9 @@ class DiscoveryStats:
     run_id: uuid.UUID = field(default_factory=uuid.uuid4)
     budget_exceeded: bool = False
     source_errors: list[str] = field(default_factory=list)
-    # Trajectory counts (computed in memory; no trajectory DB column)
-    trajectory_growing: int = 0
-    trajectory_declining: int = 0
-    trajectory_stable: int = 0
-    trajectory_unknown: int = 0
+    # Trajectory counts (written to trajectory column in BU)
+    trajectory_with_value: int = 0
+    trajectory_none: int = 0
 
 
 def _normalise_domain(url_or_domain: str) -> str:
@@ -127,22 +120,18 @@ def _is_au_domain(domain: str) -> bool:
     return all(not d.endswith(tld) for tld in _FOREIGN_TLDS)  # neutral TLD — keep
 
 
-def _compute_trajectory(organic_etv_current: float, organic_etv_prev: float | None) -> str:
+def _compute_trajectory(organic_etv_current: float, organic_etv_prev: float | None) -> float | None:
     """
     Compute domain traffic trajectory from current vs previous organic ETV.
 
-    Returns: "GROWING" | "DECLINING" | "STABLE" | "UNKNOWN"
+    Returns fractional change: (current - prev) / prev, e.g. 0.50 for +50%, -0.20 for -20%.
+    Returns None if organic_etv_prev is None or <= 0.
     """
     if organic_etv_prev is None:
-        return "UNKNOWN"
+        return None
     if organic_etv_prev <= 0:
-        return "UNKNOWN"
-    change_pct = (organic_etv_current - organic_etv_prev) / organic_etv_prev * 100
-    if change_pct > _GROWING_THRESHOLD:
-        return "GROWING"
-    if change_pct < _DECLINING_THRESHOLD:
-        return "DECLINING"
-    return "STABLE"
+        return None
+    return (organic_etv_current - organic_etv_prev) / organic_etv_prev
 
 
 class Layer2Discovery:
@@ -252,18 +241,14 @@ class Layer2Discovery:
                     stats.domains_deduped += 1
                     continue
 
-                # Trajectory computation (in-memory only; no trajectory DB column)
+                # Trajectory computation — written to trajectory column in BU
                 organic_etv_current = float(item.get("organic_etv") or 0)
                 organic_etv_prev = item.get("organic_etv_prev")
                 trajectory = _compute_trajectory(organic_etv_current, organic_etv_prev)
-                if trajectory == "GROWING":
-                    stats.trajectory_growing += 1
-                elif trajectory == "DECLINING":
-                    stats.trajectory_declining += 1
-                elif trajectory == "STABLE":
-                    stats.trajectory_stable += 1
+                if trajectory is not None:
+                    stats.trajectory_with_value += 1
                 else:
-                    stats.trajectory_unknown += 1
+                    stats.trajectory_none += 1
 
                 # Insert new domain
                 await self._conn.execute(
@@ -279,8 +264,9 @@ class Layer2Discovery:
                         dfs_organic_etv,
                         dfs_paid_etv,
                         dfs_discovery_sources,
-                        no_domain
-                    ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9, false)
+                        no_domain,
+                        trajectory
+                    ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9, false, $10)
                     ON CONFLICT (domain) WHERE domain IS NOT NULL AND domain <> ''
                     DO NOTHING
                     """,
@@ -293,6 +279,7 @@ class Layer2Discovery:
                     organic_etv_current,
                     float(item.get("paid_etv") or 0),
                     ["layer2"],
+                    trajectory,
                 )
                 stats.domains_inserted += 1
 
@@ -301,8 +288,7 @@ class Layer2Discovery:
             f"returned={stats.domains_returned} au_filtered={stats.domains_au_filtered} "
             f"blocked={stats.domains_blocked} deduped={stats.domains_deduped} "
             f"inserted={stats.domains_inserted} cost=${stats.cost_usd} "
-            f"trajectory: growing={stats.trajectory_growing} declining={stats.trajectory_declining} "
-            f"stable={stats.trajectory_stable} unknown={stats.trajectory_unknown}"
+            f"trajectory: with_value={stats.trajectory_with_value} none={stats.trajectory_none}"
         )
 
         # Auto-apply Gate 1 after all inserts

@@ -1,52 +1,71 @@
 """
 Contract: src/pipeline/layer_2_discovery.py
-Purpose: Layer 2 multi-source domain discovery engine — reads signal_configurations.discovery_config,
-         runs 5 DFS sources concurrently, deduplicates by domain, writes to business_universe.
-Layer: 4 - orchestration (uses asyncpg connection directly like stage_1_discovery)
+Purpose: Layer 2 category-based domain discovery — single DFS source, sequential per-category
+Layer: 4 - orchestration (uses asyncpg connection directly)
 Imports: clients, enrichment, utils
 Consumers: orchestration flows
-Directive: #272
+Directive: #280
 
-v6 design: discovers broadly (all 5 sources), deduplicates, passes to Layer 3
-for cheap filtering. No scoring here — pure discovery.
+v7 design: single source (domain_metrics_by_categories), sequential per category code,
+AU domain filter, blocklist, dedup, trajectory computation, writes to business_universe.
 """
 from __future__ import annotations
 
-import asyncio
 import logging
 import uuid
 from dataclasses import dataclass, field
-from typing import Any
+from decimal import Decimal
 from urllib.parse import urlparse
 
 import asyncpg
 
-from src.clients.dfs_labs_client import DFSLabsClient, get_dfs_labs_client
-from src.enrichment.signal_config import SignalConfig, SignalConfigRepository
+from src.clients.dfs_labs_client import DFSLabsClient
+from src.enrichment.signal_config import SignalConfigRepository
 from src.utils.domain_blocklist import is_blocked
 
 logger = logging.getLogger(__name__)
 
-# Cost per source call (USD)
-COST_DOMAIN_METRICS_BY_CATEGORIES = 0.10
-COST_ADS_SEARCH = 0.006
-COST_HTML_TERMS = 0.01
-COST_JOBS = 0.006
-COST_COMPETITORS_DOMAIN = 0.01
+# pipeline_stage value for Layer 2 discoveries (matches Stage 1 convention)
+PIPELINE_STAGE_DISCOVERED = 1
+
+# Cost per domain_metrics_by_categories call (USD)
+COST_PER_CATEGORY_CALL = Decimal("0.10")
+
+# AU TLDs to keep unconditionally
+_AU_TLDS = frozenset({
+    ".com.au", ".net.au", ".org.au", ".edu.au", ".id.au", ".asn.au",
+})
+
+# Known foreign country-code TLDs to reject
+_FOREIGN_TLDS = frozenset({
+    ".co.uk", ".co.nz", ".ca", ".ie", ".us", ".de", ".fr", ".co.in",
+    ".co.za", ".co.jp", ".cn", ".nl", ".se", ".no", ".dk", ".fi",
+    ".it", ".es", ".pt", ".ru", ".pl", ".com.br", ".com.mx",
+    ".org.uk", ".me.uk",
+})
+
+# Trajectory thresholds
+_GROWING_THRESHOLD = 10.0    # >10% change → GROWING
+_DECLINING_THRESHOLD = -10.0  # <-10% change → DECLINING
 
 
 @dataclass
 class DiscoveryStats:
-    total_raw: int = 0
-    unique_domains: int = 0
-    written_new: int = 0
-    written_skip: int = 0  # existing domain, skipped (idempotency)
-    no_domain_count: int = 0
-    blocked_count: int = 0
-    sources_used: list[str] = field(default_factory=list)
-    source_errors: list[str] = field(default_factory=list)
-    estimated_cost_usd: float = 0.0
+    category_codes: list[int] = field(default_factory=list)
+    domains_returned: int = 0
+    domains_au_filtered: int = 0   # rejected by AU filter
+    domains_blocked: int = 0        # rejected by blocklist
+    domains_deduped: int = 0        # already in BU, skipped
+    domains_inserted: int = 0       # new rows written
+    cost_usd: Decimal = field(default_factory=lambda: Decimal("0"))
+    run_id: uuid.UUID = field(default_factory=uuid.uuid4)
     budget_exceeded: bool = False
+    source_errors: list[str] = field(default_factory=list)
+    # Trajectory counts (computed in memory; no trajectory DB column)
+    trajectory_growing: int = 0
+    trajectory_declining: int = 0
+    trajectory_stable: int = 0
+    trajectory_unknown: int = 0
 
 
 def _normalise_domain(url_or_domain: str) -> str:
@@ -59,16 +78,56 @@ def _normalise_domain(url_or_domain: str) -> str:
     return s
 
 
+def _is_au_domain(domain: str) -> bool:
+    """
+    Return True if domain is likely Australian.
+
+    Keep: explicit .au TLDs (.com.au, .net.au, etc.)
+    Keep: .com (assumed AU since returned from AU location query)
+    Kill: known foreign country-code TLDs (.co.uk, .ca, .de, etc.)
+    Keep: neutral TLDs (.io, .co, .net, .org) — no strong signal either way
+    """
+    d = domain.lower()
+    for tld in _AU_TLDS:
+        if d.endswith(tld):
+            return True
+    if d.endswith(".com"):
+        return True
+    for tld in _FOREIGN_TLDS:
+        if d.endswith(tld):
+            return False
+    return True  # neutral TLD — keep
+
+
+def _compute_trajectory(organic_etv_current: float, organic_etv_prev: float | None) -> str:
+    """
+    Compute domain traffic trajectory from current vs previous organic ETV.
+
+    Returns: "GROWING" | "DECLINING" | "STABLE" | "UNKNOWN"
+    """
+    if organic_etv_prev is None:
+        return "UNKNOWN"
+    if organic_etv_prev <= 0:
+        return "UNKNOWN"
+    change_pct = (organic_etv_current - organic_etv_prev) / organic_etv_prev * 100
+    if change_pct > _GROWING_THRESHOLD:
+        return "GROWING"
+    if change_pct < _DECLINING_THRESHOLD:
+        return "DECLINING"
+    return "STABLE"
+
+
 class Layer2Discovery:
     """
-    Layer 2 of the v6 pipeline: multi-source domain discovery.
+    Layer 2 of the v7 pipeline: category-based domain discovery using DFS.
 
-    Reads discovery_config from signal_configurations, runs 5 DFS sources
-    concurrently, deduplicates, filters blocklist, and writes to business_universe.
+    Reads category_codes from signal_configurations.discovery_config,
+    calls domain_metrics_by_categories once per code (sequential, not parallel),
+    applies AU filter + blocklist + dedup, and writes new rows to business_universe.
 
     Usage:
         engine = Layer2Discovery(conn, dfs_client)
-        stats = await engine.run("marketing_agency", daily_budget_usd=10.0)
+        stats = await engine.run("marketing_agency")
     """
 
     def __init__(
@@ -81,251 +140,155 @@ class Layer2Discovery:
 
     async def run(
         self,
-        vertical: str,
+        vertical_slug: str = "marketing_agency",
         batch_id: uuid.UUID | None = None,
         daily_budget_usd: float = 10.0,
     ) -> DiscoveryStats:
         """
-        Run full Layer 2 discovery for a vertical.
+        Run Layer 2 discovery for a vertical.
+
+        Calls domain_metrics_by_categories once per category code (sequential).
+        Applies AU filter, blocklist, dedup, then inserts new domains into BU.
 
         Args:
-            vertical: Vertical slug (e.g. "marketing_agency")
+            vertical_slug: Vertical slug (e.g. "marketing_agency")
             batch_id: Optional batch UUID for tracking. Generated if not provided.
-            daily_budget_usd: Stop discovery if accumulated cost would exceed this.
+            daily_budget_usd: Stop if accumulated cost would exceed this (budget gate).
 
         Returns:
-            DiscoveryStats with counts and cost estimate.
+            DiscoveryStats with per-run counts and cost.
         """
-        stats = DiscoveryStats()
-        batch_id = batch_id or uuid.uuid4()
+        run_id = batch_id or uuid.uuid4()
+        stats = DiscoveryStats(run_id=run_id)
 
         # Load signal config
-        config = await SignalConfigRepository(self._conn).get_config(vertical)
-        discovery_cfg = config.discovery_config
+        config = await SignalConfigRepository(self._conn).get_config(vertical_slug)
+        category_codes: list[int] = config.discovery_config.get("category_codes", [])
+        stats.category_codes = category_codes
 
-        # Run all sources concurrently
-        source_results = await self._run_all_sources(
-            discovery_cfg, stats, daily_budget_usd
-        )
-
-        # Merge + deduplicate by domain
-        seen_domains: dict[str, dict] = {}
-        for item in source_results:
-            domain = _normalise_domain(item.get("domain", ""))
-            if not domain:
-                stats.no_domain_count += 1
-                continue
-            if domain not in seen_domains:
-                seen_domains[domain] = item
-
-        stats.total_raw = len(source_results)
-        stats.unique_domains = len(seen_domains)
-
-        # Filter blocklist
-        clean: dict[str, dict] = {}
-        for domain, item in seen_domains.items():
-            if is_blocked(domain):
-                stats.blocked_count += 1
-            else:
-                clean[domain] = item
-
-        # Write to BU
-        for domain, item in clean.items():
-            written = await self._upsert_domain(
-                domain=domain,
-                item=item,
-                batch_id=batch_id,
+        if not category_codes:
+            logger.warning(
+                f"Layer2 [{vertical_slug}]: no category_codes in discovery_config, nothing to do"
             )
-            if written:
-                stats.written_new += 1
-            else:
-                stats.written_skip += 1
+            return stats
+
+        accumulated_cost = Decimal("0")
+
+        # Sequential — one category at a time to avoid rate limits
+        for code in category_codes:
+            if accumulated_cost + COST_PER_CATEGORY_CALL > Decimal(str(daily_budget_usd)):
+                logger.warning(
+                    f"Layer2 [{vertical_slug}]: budget gate hit at ${accumulated_cost:.3f} "
+                    f"(limit=${daily_budget_usd}), stopping after {stats.domains_inserted} inserts"
+                )
+                stats.budget_exceeded = True
+                break
+
+            try:
+                results = await self._dfs.domain_metrics_by_categories(
+                    category_codes=[code],
+                    location_name="Australia",
+                    paid_etv_min=0.0,
+                )
+            except Exception as exc:
+                logger.error(f"Layer2 [{vertical_slug}] category={code} DFS error: {exc}")
+                stats.source_errors.append(f"category={code}: {exc}")
+                continue
+
+            accumulated_cost += COST_PER_CATEGORY_CALL
+            stats.cost_usd += COST_PER_CATEGORY_CALL
+            stats.domains_returned += len(results)
+
+            for item in results:
+                raw_domain = item.get("domain", "")
+                domain = _normalise_domain(raw_domain)
+                if not domain:
+                    continue
+
+                # AU filter
+                if not _is_au_domain(domain):
+                    stats.domains_au_filtered += 1
+                    continue
+
+                # Blocklist check
+                if is_blocked(domain):
+                    stats.domains_blocked += 1
+                    continue
+
+                # Dedup: skip if domain already in BU
+                existing = await self._conn.fetchval(
+                    "SELECT 1 FROM business_universe WHERE domain = $1 LIMIT 1",
+                    domain,
+                )
+                if existing is not None:
+                    stats.domains_deduped += 1
+                    continue
+
+                # Trajectory computation (in-memory only; no trajectory DB column)
+                organic_etv_current = float(item.get("organic_etv") or 0)
+                organic_etv_prev = item.get("organic_etv_prev")
+                trajectory = _compute_trajectory(organic_etv_current, organic_etv_prev)
+                if trajectory == "GROWING":
+                    stats.trajectory_growing += 1
+                elif trajectory == "DECLINING":
+                    stats.trajectory_declining += 1
+                elif trajectory == "STABLE":
+                    stats.trajectory_stable += 1
+                else:
+                    stats.trajectory_unknown += 1
+
+                # Insert new domain
+                await self._conn.execute(
+                    """
+                    INSERT INTO business_universe (
+                        domain,
+                        pipeline_stage,
+                        pipeline_status,
+                        discovery_source,
+                        discovery_batch_id,
+                        discovered_at,
+                        dfs_discovery_category,
+                        dfs_organic_etv,
+                        dfs_paid_etv,
+                        dfs_discovery_sources,
+                        no_domain
+                    ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9, false)
+                    ON CONFLICT (domain) WHERE domain IS NOT NULL AND domain <> ''
+                    DO NOTHING
+                    """,
+                    domain,
+                    PIPELINE_STAGE_DISCOVERED,
+                    "discovered",
+                    "dfs_categories",
+                    run_id,
+                    str(code),
+                    organic_etv_current,
+                    float(item.get("paid_etv") or 0),
+                    ["layer2"],
+                )
+                stats.domains_inserted += 1
 
         logger.info(
-            f"Layer2 [{vertical}] batch={batch_id}: "
-            f"raw={stats.total_raw} unique={stats.unique_domains} "
-            f"new={stats.written_new} skip={stats.written_skip} "
-            f"blocked={stats.blocked_count} cost≈${stats.estimated_cost_usd:.3f}"
+            f"Layer2 [{vertical_slug}] run={run_id}: "
+            f"returned={stats.domains_returned} au_filtered={stats.domains_au_filtered} "
+            f"blocked={stats.domains_blocked} deduped={stats.domains_deduped} "
+            f"inserted={stats.domains_inserted} cost=${stats.cost_usd} "
+            f"trajectory: growing={stats.trajectory_growing} declining={stats.trajectory_declining} "
+            f"stable={stats.trajectory_stable} unknown={stats.trajectory_unknown}"
         )
         return stats
 
-    async def _run_all_sources(
+    async def run_batch(
         self,
-        cfg: dict,
-        stats: DiscoveryStats,
-        daily_budget_usd: float,
-    ) -> list[dict]:
-        """Run all 5 sources concurrently. Individual failures are caught and logged."""
-        accumulated_cost = 0.0
-
-        async def source_a() -> list[dict]:
-            nonlocal accumulated_cost
-            codes = cfg.get("category_codes", [])
-            threshold = float(cfg.get("ad_spend_threshold", 0))
-            if not codes:
-                return []
-            cost = COST_DOMAIN_METRICS_BY_CATEGORIES * len(codes)
-            if accumulated_cost + cost > daily_budget_usd:
-                logger.warning(f"Layer2 budget cap hit before source_a (would cost ${cost:.2f})")
-                stats.budget_exceeded = True
-                return []
-            results = await self._dfs.domain_metrics_by_categories(
-                category_codes=codes,
-                paid_etv_min=threshold,
-            )
-            accumulated_cost += cost
-            stats.estimated_cost_usd += cost
-            stats.sources_used.append("domain_metrics_by_categories")
-            return [{"domain": r["domain"], "dfs_paid_etv": r["paid_etv"]} for r in results]
-
-        async def source_b() -> list[dict]:
-            nonlocal accumulated_cost
-            keywords = cfg.get("keywords_for_ads_search", [])
-            if not keywords:
-                return []
-            cost = COST_ADS_SEARCH * len(keywords)
-            if accumulated_cost + cost > daily_budget_usd:
-                logger.warning("Layer2 budget cap hit before source_b")
-                stats.budget_exceeded = True
-                return []
-            all_results = []
-            for kw in keywords:
-                results = await self._dfs.google_ads_advertisers(keyword=kw)
-                all_results.extend([{"domain": r["domain"], "dfs_discovery_keyword": kw} for r in results])
-            accumulated_cost += cost
-            stats.estimated_cost_usd += cost
-            stats.sources_used.append("google_ads_advertisers")
-            return all_results
-
-        async def source_c() -> list[dict]:
-            nonlocal accumulated_cost
-            combos = cfg.get("html_gap_combos", [])
-            if not combos:
-                return []
-            cost = COST_HTML_TERMS * len(combos)
-            if accumulated_cost + cost > daily_budget_usd:
-                logger.warning("Layer2 budget cap hit before source_c")
-                stats.budget_exceeded = True
-                return []
-            all_results = []
-            for combo in combos:
-                results = await self._dfs.domains_by_html_terms(
-                    include_term=combo.get("has", ""),
-                    exclude_term=combo.get("missing"),
-                )
-                all_results.extend([{"domain": r["domain"]} for r in results])
-            accumulated_cost += cost
-            stats.estimated_cost_usd += cost
-            stats.sources_used.append("domains_by_html_terms")
-            return all_results
-
-        async def source_d() -> list[dict]:
-            nonlocal accumulated_cost
-            keywords = cfg.get("job_search_keywords", [])
-            if not keywords:
-                return []
-            cost = COST_JOBS * len(keywords)
-            if accumulated_cost + cost > daily_budget_usd:
-                logger.warning("Layer2 budget cap hit before source_d")
-                stats.budget_exceeded = True
-                return []
-            all_results = []
-            for kw in keywords:
-                results = await self._dfs.google_jobs_advertisers(keyword=kw)
-                all_results.extend([{"domain": r["domain"], "dfs_discovery_keyword": kw} for r in results])
-            accumulated_cost += cost
-            stats.estimated_cost_usd += cost
-            stats.sources_used.append("google_jobs_advertisers")
-            return all_results
-
-        async def source_e() -> list[dict]:
-            nonlocal accumulated_cost
-            if not cfg.get("competitor_expansion", False):
-                return []
-            # Get top BU domains from prior runs (pipeline_stage>=4, propensity>=50)
-            prior_rows = await self._conn.fetch(
-                "SELECT domain FROM business_universe "
-                "WHERE pipeline_stage >= 4 AND propensity_score >= 50 "
-                "AND domain IS NOT NULL LIMIT 20"
-            )
-            if not prior_rows:
-                logger.info("Layer2 source_e: no prior BU data, skipping competitor expansion")
-                return []
-            cost = COST_COMPETITORS_DOMAIN * len(prior_rows)
-            if accumulated_cost + cost > daily_budget_usd:
-                logger.warning("Layer2 budget cap hit before source_e")
-                stats.budget_exceeded = True
-                return []
-            all_results = []
-            for row in prior_rows:
-                competitors_result = await self._dfs.competitors_domain(target_domain=row["domain"])
-                # competitors_domain returns {"items": [...]} not a plain list
-                competitor_items = competitors_result.get("items", []) if isinstance(competitors_result, dict) else []
-                all_results.extend([
-                    {"domain": c.get("domain", "")}
-                    for c in competitor_items
-                    if c.get("domain")
-                ])
-            accumulated_cost += cost
-            stats.estimated_cost_usd += cost
-            stats.sources_used.append("competitors_domain")
-            return all_results
-
-        # Wrap each source to catch errors individually
-        async def safe(coro_fn, name: str) -> list[dict]:
-            try:
-                return await coro_fn()
-            except Exception as exc:
-                logger.error(f"Layer2 source {name} failed: {exc}")
-                stats.source_errors.append(f"{name}: {exc}")
-                return []
-
-        results = await asyncio.gather(
-            safe(source_a, "source_a"),
-            safe(source_b, "source_b"),
-            safe(source_c, "source_c"),
-            safe(source_d, "source_d"),
-            safe(source_e, "source_e"),
-        )
-        return [item for sublist in results for item in sublist]
-
-    async def _upsert_domain(
-        self,
-        domain: str,
-        item: dict,
-        batch_id: uuid.UUID,
-    ) -> bool:
+        vertical_slugs: list[str],
+    ) -> dict[str, DiscoveryStats]:
         """
-        Insert domain into business_universe. Skip if domain already exists (idempotency).
-        Returns True if new row written, False if skipped.
-        """
-        # Idempotency: check if domain already exists
-        existing = await self._conn.fetchval(
-            "SELECT id FROM business_universe WHERE domain = $1 LIMIT 1",
-            domain,
-        )
-        if existing is not None:
-            return False  # skip — already in BU
+        Run Layer 2 discovery for multiple verticals sequentially.
 
-        await self._conn.execute(
-            """
-            INSERT INTO business_universe (
-                domain,
-                display_name,
-                dfs_discovery_sources,
-                discovery_batch_id,
-                discovered_at,
-                pipeline_stage,
-                no_domain,
-                dfs_discovery_keyword
-            ) VALUES ($1, $2, $3, $4, NOW(), 1, false, $5)
-            ON CONFLICT (domain) WHERE domain IS NOT NULL AND domain <> ''
-            DO NOTHING
-            """,
-            domain,
-            item.get("display_name") or item.get("employer_name"),
-            ["layer2"],
-            batch_id,
-            item.get("dfs_discovery_keyword"),
-        )
-        return True
+        Returns:
+            dict mapping vertical_slug → DiscoveryStats
+        """
+        results: dict[str, DiscoveryStats] = {}
+        for slug in vertical_slugs:
+            results[slug] = await self.run(slug)
+        return results

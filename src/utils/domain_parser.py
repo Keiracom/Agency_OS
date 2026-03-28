@@ -10,15 +10,24 @@ Examples:
   "digitalgrowth.co" → "Digitalgrowth"  (single word, keep as-is)
   "the-local-seo-agency.com" → "The Local Seo Agency"
 """
+
 from __future__ import annotations
 
 import re
 
 # Multi-part TLDs to strip (order matters — longer first)
 _MULTI_PART_TLDS = {
-    ".com.au", ".net.au", ".org.au", ".edu.au", ".gov.au",
-    ".co.nz", ".net.nz", ".org.nz",
-    ".co.uk", ".org.uk", ".me.uk",
+    ".com.au",
+    ".net.au",
+    ".org.au",
+    ".edu.au",
+    ".gov.au",
+    ".co.nz",
+    ".net.nz",
+    ".org.nz",
+    ".co.uk",
+    ".org.uk",
+    ".me.uk",
 }
 _SINGLE_TLDS = re.compile(r"\.[a-z]{2,6}$")
 
@@ -43,7 +52,6 @@ def extract_business_name(domain: str) -> str:
 
     # Strip subdomains (keep only second-level domain + TLD for stripping)
     # e.g. "app.acme.com.au" → "acme.com.au"
-    parts = name.split(".")
     # If more than 3 parts (sub.name.com.au = 4), drop leading subdomain(s)
     # We identify the TLD boundary by checking against known multi-part TLDs
     for tld in _MULTI_PART_TLDS:

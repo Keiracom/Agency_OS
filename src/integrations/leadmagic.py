@@ -723,9 +723,7 @@ class LeadmagicClient:
                 return response
             return response.get("data", response) if isinstance(response, dict) else []
         except Exception as e:
-            logger.warning(
-                f"[Leadmagic] find_employees failed for {company_domain}: {e}"
-            )
+            logger.warning(f"[Leadmagic] find_employees failed for {company_domain}: {e}")
             return []
 
     # ========================================
@@ -760,9 +758,7 @@ class LeadmagicClient:
                 return None
             return response
         except Exception as e:
-            logger.warning(
-                f"[Leadmagic] find_by_role failed for {company_domain}: {e}"
-            )
+            logger.warning(f"[Leadmagic] find_by_role failed for {company_domain}: {e}")
             return None
 
     # ========================================

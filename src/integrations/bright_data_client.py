@@ -661,8 +661,14 @@ class BrightDataClient:
             {first_name, last_name, title, linkedin_url} or None
         """
         DEFAULT_PRIORITY = [
-            "owner", "founder", "director", "ceo",
-            "managing director", "md", "head of", "general manager",
+            "owner",
+            "founder",
+            "director",
+            "ceo",
+            "managing director",
+            "md",
+            "head of",
+            "general manager",
         ]
         priority_titles = [t.lower() for t in (target_titles or DEFAULT_PRIORITY)]
 
@@ -711,18 +717,8 @@ class BrightDataClient:
         name_parts = full_name.split(" ", 1) if full_name else []
         first_name = best.get("first_name") or (name_parts[0] if name_parts else "")
         last_name = best.get("last_name") or (name_parts[1] if len(name_parts) > 1 else "")
-        title = (
-            best.get("current_job_title")
-            or best.get("headline")
-            or best.get("title")
-            or ""
-        )
-        linkedin_url = (
-            best.get("url")
-            or best.get("linkedin_url")
-            or best.get("profile_url")
-            or ""
-        )
+        title = best.get("current_job_title") or best.get("headline") or best.get("title") or ""
+        linkedin_url = best.get("url") or best.get("linkedin_url") or best.get("profile_url") or ""
 
         logger.info(
             "search_linkedin_people_found",

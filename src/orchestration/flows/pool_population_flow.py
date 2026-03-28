@@ -169,8 +169,7 @@ async def log_location_sweep(
         )
         await session.commit()
     logger.info(
-        f"[Discovery] Sweeping {location} for campaign {campaign_id} — "
-        f"{leads_found} leads found"
+        f"[Discovery] Sweeping {location} for campaign {campaign_id} — {leads_found} leads found"
     )
 
 
@@ -484,12 +483,13 @@ async def populate_pool_from_icp_task(
 
     def _extract_domain(website: str) -> str | None:
         from urllib.parse import urlparse
+
         if not website:
             return None
         try:
             parsed = urlparse(website if "://" in website else f"https://{website}")
             host = parsed.netloc or parsed.path
-            return host.lstrip("www.").lower() or None
+            return host.removeprefix("www.").lower() or None
         except Exception:
             return None
 
@@ -516,12 +516,9 @@ async def populate_pool_from_icp_task(
 
     # Build all inputs at once and issue a single batched BD call
     inputs = [
-        {"keyword": _map_industry_to_gmb_category(ind), "country": "AU"}
-        for ind, _loc in combos
+        {"keyword": _map_industry_to_gmb_category(ind), "country": "AU"} for ind, _loc in combos
     ]
-    logger.info(
-        f"Tier 3 GMB batch discovery: {len(inputs)} combos, client={client_id}"
-    )
+    logger.info(f"Tier 3 GMB batch discovery: {len(inputs)} combos, client={client_id}")
     try:
         records = await bd_client._scraper_request(
             DATASET_IDS["gmb_business"],
@@ -608,22 +605,24 @@ async def populate_pool_from_icp_task(
             continue
         seen_keys.add(dedup_key)
 
-        rows_to_insert.append({
-            "client_id": str(client_id),
-            "company_name": company_name,
-            "company_domain": domain,
-            "company_website": website,
-            "company_state": state_code,
-            "company_country": record.get("country_code") or "AU",
-            "phone": phone,
-            "industry": industry,
-            "city": city,
-            "gmb_rating": gmb_rating,
-            "gmb_review_count": gmb_review_count,
-            "gmb_place_id": gmb_place_id,
-            "gmb_category": gmb_category,
-            "gmb_maps_url": gmb_maps_url,
-        })
+        rows_to_insert.append(
+            {
+                "client_id": str(client_id),
+                "company_name": company_name,
+                "company_domain": domain,
+                "company_website": website,
+                "company_state": state_code,
+                "company_country": record.get("country_code") or "AU",
+                "phone": phone,
+                "industry": industry,
+                "city": city,
+                "gmb_rating": gmb_rating,
+                "gmb_review_count": gmb_review_count,
+                "gmb_place_id": gmb_place_id,
+                "gmb_category": gmb_category,
+                "gmb_maps_url": gmb_maps_url,
+            }
+        )
 
     # Directive #194 Fix 1: TRUE bulk INSERT — single VALUES clause = 1 network call
     # Before: 443 sequential await db.execute() = 604s

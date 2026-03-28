@@ -36,7 +36,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
@@ -643,15 +643,12 @@ async def score_promoted_leads_task(client_id: UUID) -> dict[str, Any]:
                     failed += 1
                     errors.append({"lead_id": str(lead_id), "error": result.error})
             except Exception as e:
-                logger.warning(
-                    f"[score_promoted_leads] Exception scoring lead {lead_id}: {e}"
-                )
+                logger.warning(f"[score_promoted_leads] Exception scoring lead {lead_id}: {e}")
                 failed += 1
                 errors.append({"lead_id": str(lead_id), "error": str(e)})
 
     logger.info(
-        f"[score_promoted_leads] Complete for client {client_id}: "
-        f"{scored} scored, {failed} failed"
+        f"[score_promoted_leads] Complete for client {client_id}: {scored} scored, {failed} failed"
     )
 
     return {
@@ -866,7 +863,9 @@ async def post_onboarding_setup_flow(
         icp_status = await verify_icp_ready_task(client_id)
 
         if not icp_status["ready"]:
-            logger.error(f"Post-onboarding failed at verify_icp_ready_task: {icp_status.get('error')}")
+            logger.error(
+                f"Post-onboarding failed at verify_icp_ready_task: {icp_status.get('error')}"
+            )
             return {
                 "success": False,
                 "client_id": str(client_id),
@@ -961,7 +960,6 @@ async def post_onboarding_setup_flow(
             bypass_als_gate=True,
         )
         leads_promoted = promotion_result.get("promoted", 0)
-        promoted_lead_ids = promotion_result.get("lead_ids", [])
 
         if promotion_result.get("errors"):
             logger.warning(
@@ -972,11 +970,14 @@ async def post_onboarding_setup_flow(
         # enrichment_flow.get_leads_needing_enrichment_task requires Campaign.status == ACTIVE.
         # Onboarding creates campaigns in 'draft' status — activate them now, before Flow B fires.
         async with get_db_session() as _db:
-            await _db.execute(text("""
+            await _db.execute(
+                text("""
                 UPDATE campaigns
                 SET status = 'active', updated_at = NOW()
                 WHERE client_id = :client_id AND status = 'draft'
-            """), {"client_id": str(client_id)})
+            """),
+                {"client_id": str(client_id)},
+            )
             await _db.commit()
         logger.info(f"[post_onboarding] campaigns activated for client {client_id}")
 
@@ -988,20 +989,24 @@ async def post_onboarding_setup_flow(
         # Query unenriched leads directly — works on FIRST RUN and RE-RUNS.
         # Old approach: rely on promoted_lead_ids [] from re-runs → silent skip (bug).
         import time as _time
+
         import httpx as _httpx
 
         leads_enriched = 0  # enrichment now async — Flow B tracks its own count
-        leads_scored = 0    # scoring happens inside Flow B after enrichment
+        leads_scored = 0  # scoring happens inside Flow B after enrichment
 
         try:
             async with get_db_session() as _db:
-                _unenriched_result = await _db.execute(text("""
+                _unenriched_result = await _db.execute(
+                    text("""
                     SELECT id FROM leads
                     WHERE client_id = :client_id
                       AND status = 'new'
                       AND enriched_at IS NULL
                     LIMIT 500
-                """), {"client_id": str(client_id)})
+                """),
+                    {"client_id": str(client_id)},
+                )
                 unenriched_ids = [str(row.id) for row in _unenriched_result.fetchall()]
 
             unenriched_count = len(unenriched_ids)
@@ -1065,7 +1070,9 @@ async def post_onboarding_setup_flow(
             "campaigns_created": len(campaigns_created),
             "campaigns": campaigns_created,
             "leads_sourced": leads_sourced,
-            "leads_assigned": sum(a["leads_assigned"] for a in assignments) if assignments else leads_sourced,
+            "leads_assigned": sum(a["leads_assigned"] for a in assignments)
+            if assignments
+            else leads_sourced,
             "leads_promoted": leads_promoted,
             "leads_enriched": leads_enriched,
             "leads_scored": leads_scored,

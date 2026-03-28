@@ -51,6 +51,7 @@ class DFSSerpError(Exception):
 class DFSSerpClient:
     def __init__(self, login: str, password: str) -> None:
         import base64
+
         self._auth_header = "Basic " + base64.b64encode(f"{login}:{password}".encode()).decode()
         self._client: httpx.AsyncClient | None = None
         self.queries_made: int = 0
@@ -94,14 +95,19 @@ class DFSSerpClient:
 
         # Single POST to live endpoint — synchronous, no polling
         client = await self._get_client()
-        resp = await client.post(DFS_SERP_LIVE_ENDPOINT, json=[{
-            "keyword": query,
-            "location_code": DFS_SERP_LOCATION_AU,
-            "language_code": "en",
-            "device": "desktop",
-            "os": "windows",
-            "depth": 10,
-        }])
+        resp = await client.post(
+            DFS_SERP_LIVE_ENDPOINT,
+            json=[
+                {
+                    "keyword": query,
+                    "location_code": DFS_SERP_LOCATION_AU,
+                    "language_code": "en",
+                    "device": "desktop",
+                    "os": "windows",
+                    "depth": 10,
+                }
+            ],
+        )
         resp.raise_for_status()
         data = resp.json()
 
@@ -110,9 +116,7 @@ class DFSSerpClient:
         if status_code == DFS_STATUS_AUTH_FAILURE:
             raise DFSSerpAuthError("DFS SERP authentication failed")
         if status_code != DFS_STATUS_SUCCESS:
-            raise DFSSerpError(
-                f"DFS SERP error {status_code}: {task.get('status_message', '')}"
-            )
+            raise DFSSerpError(f"DFS SERP error {status_code}: {task.get('status_message', '')}")
 
         self.queries_made += 1
 
@@ -151,7 +155,7 @@ class DFSSerpClient:
         # Strip trailing ' | LinkedIn' or ' - LinkedIn'
         for suffix in [" | LinkedIn", " - LinkedIn", "| LinkedIn"]:
             if suffix in title:
-                title = title[:title.rfind(suffix)]
+                title = title[: title.rfind(suffix)]
         parts = [p.strip() for p in title.split(" - ")]
         name = parts[0] if parts else None
         job_title = parts[1] if len(parts) > 1 else None

@@ -196,7 +196,9 @@ class CISService:
                     "subject_hash": subject_hash,
                     "hook_type": hook_type,
                     "personalization_level": personalization_level,
-                    "business_universe_id": str(business_universe_id) if business_universe_id else None,
+                    "business_universe_id": str(business_universe_id)
+                    if business_universe_id
+                    else None,
                 },
             )
             row = result.fetchone()

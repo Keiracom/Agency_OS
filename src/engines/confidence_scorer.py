@@ -6,8 +6,8 @@ Ratified: March 17 2026 | Directive #215
 Amended: March 18 2026 | Directive #218 — removed ghost signals
 See ARCHITECTURE.md Section 5 for signal definitions.
 """
-from typing import Any
 
+from typing import Any
 
 CONFIDENCE_FLOOR_TO_ENRICH = 35
 

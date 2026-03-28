@@ -119,9 +119,7 @@ class Lead(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     # Phase 16: Conversion Intelligence learning columns
     als_components: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     als_weights_used: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    scored_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    scored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # === Organization Data ===
     organization_industry: Mapped[str | None] = mapped_column(Text, nullable=True)

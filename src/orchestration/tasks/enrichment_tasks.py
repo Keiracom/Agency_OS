@@ -209,7 +209,6 @@ async def enrich_batch_task(
                 )
                 failed += 1
 
-
         return {
             "total": len(lead_ids),
             "successful": successful,

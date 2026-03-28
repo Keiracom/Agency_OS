@@ -155,7 +155,9 @@ class WaterfallV2:
         "leadmagic_mobile": 0.077,  # T5: Leadmagic mobile finder
     }
 
-    def __init__(self, bright_data_client=None, abn_client=None, leadmagic_client=None, supabase_client=None):
+    def __init__(
+        self, bright_data_client=None, abn_client=None, leadmagic_client=None, supabase_client=None
+    ):
         """
         Initialize waterfall with all integration clients.
 

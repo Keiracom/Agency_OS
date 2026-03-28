@@ -8,18 +8,18 @@ Reads signal config → extracts technology list → calls DFS domains_by_techno
 
 Discovers ONLY. No enrichment, no scoring, no outreach.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
-from decimal import Decimal
+from datetime import UTC, datetime
 from typing import Any
 
 import asyncpg
 
 from src.clients.dfs_labs_client import DFSLabsClient
-from src.enrichment.signal_config import SignalConfig, SignalConfigRepository
+from src.enrichment.signal_config import SignalConfigRepository
 from src.utils.domain_blocklist import is_blocked
 
 logger = logging.getLogger(__name__)
@@ -144,9 +144,7 @@ class Stage1Discovery:
 
         return discovered, dupes, api_calls
 
-    async def _upsert_domain(
-        self, domain: str, technology_name: str, item: dict
-    ) -> bool:
+    async def _upsert_domain(self, domain: str, technology_name: str, item: dict) -> bool:
         """
         Insert domain if new, append technology if exists.
         Returns True if new row inserted, False if existing row updated or blocked.
@@ -163,7 +161,7 @@ class Stage1Discovery:
             logger.debug(f"S1: skipping blocked domain {domain!r}")
             return False
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         result = await self.conn.fetchrow(
             """
@@ -189,10 +187,10 @@ class Stage1Discovery:
                     pipeline_updated_at = EXCLUDED.pipeline_updated_at
             RETURNING (xmax = 0) AS inserted
             """,
-            item.get("title") or domain,   # display_name
+            item.get("title") or domain,  # display_name
             domain,
-            [technology_name],              # dfs_technologies
-            [DISCOVERY_SOURCE],             # dfs_discovery_sources
+            [technology_name],  # dfs_technologies
+            [DISCOVERY_SOURCE],  # dfs_discovery_sources
             now,
             PIPELINE_STAGE_S1,
             now,

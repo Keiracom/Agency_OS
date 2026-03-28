@@ -7,9 +7,7 @@
 from __future__ import annotations
 
 import csv
-import os
 from pathlib import Path
-from typing import Optional
 
 # Default CSV path — bundled in repo
 _DEFAULT_CSV = Path(__file__).parent / "au_suburbs.csv"
@@ -36,7 +34,7 @@ class SuburbCoordinateLoader:
         suburbs = loader.get_suburbs_by_state("NSW")
     """
 
-    def __init__(self, csv_path: Optional[str] = None) -> None:
+    def __init__(self, csv_path: str | None = None) -> None:
         self._csv_path = Path(csv_path) if csv_path else _DEFAULT_CSV
         self._rows: list[dict] = []
         self._loaded = False
@@ -86,7 +84,7 @@ class SuburbCoordinateLoader:
         if not self._loaded:
             self.load()
 
-    def get_coordinates(self, suburb: str, state: str) -> Optional[tuple[float, float]]:
+    def get_coordinates(self, suburb: str, state: str) -> tuple[float, float] | None:
         """Return (lat, lng) for a suburb+state, or None if not found.
 
         Case-insensitive match on both suburb and state.

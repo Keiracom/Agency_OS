@@ -17,7 +17,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.integrations.anthropic import get_anthropic_client
-
 from src.models.client import Client
 from src.models.client_intelligence import ClientIntelligence
 

@@ -10,12 +10,12 @@ Propensity is computed per service signal in the config.
 The highest-scoring service determines the outreach angle for S7.
 S4 is the budget gate — only high-propensity businesses progress to S5.
 """
+
 from __future__ import annotations
 
-import asyncio
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import asyncpg
@@ -99,9 +99,7 @@ class Stage4Scorer:
                 below += 1
                 continue
 
-            propensity, best_service, dim_scores = self._score_propensity(
-                business, config
-            )
+            propensity, best_service, dim_scores = self._score_propensity(business, config)
             reachability = self._score_reachability(business)
             reason = self._generate_reason(business, best_service, dim_scores)
 
@@ -142,23 +140,30 @@ class Stage4Scorer:
         # 1. Domain check
         domain = business.get("domain") or ""
         if not domain or is_blocked(domain):
-            return False, f"Does not meet qualification criteria: invalid or blocked domain ({domain!r})"
+            return (
+                False,
+                f"Does not meet qualification criteria: invalid or blocked domain ({domain!r})",
+            )
 
         # 2. Physical presence check
         has_gmb = bool(business.get("gmb_place_id"))
         has_address = bool(business.get("state") or business.get("suburb"))
         if not has_gmb and not has_address:
-            return False, "Does not meet qualification criteria: no GMB listing and no physical address"
+            return (
+                False,
+                "Does not meet qualification criteria: no GMB listing and no physical address",
+            )
 
         # 3. At least one signal column populated
         signal_cols = [
-            "dfs_paid_keywords", "dfs_paid_etv", "dfs_organic_etv",
-            "dfs_organic_keywords", "tech_stack", "tech_stack_depth",
+            "dfs_paid_keywords",
+            "dfs_paid_etv",
+            "dfs_organic_etv",
+            "dfs_organic_keywords",
+            "tech_stack",
+            "tech_stack_depth",
         ]
-        has_signals = any(
-            business.get(col) not in (None, 0, [], "")
-            for col in signal_cols
-        )
+        has_signals = any(business.get(col) not in (None, 0, [], "") for col in signal_cols)
         if not has_signals:
             return False, "Does not meet qualification criteria: no DFS or technology signal data"
 
@@ -169,7 +174,10 @@ class Stage4Scorer:
             if gmb_cat:
                 all_cats = {_normalise_category(c) for c in config.all_gmb_categories}
                 if all_cats and gmb_cat not in all_cats:
-                    return False, f"Does not meet qualification criteria: GMB category '{gmb_cat}' not in vertical"
+                    return (
+                        False,
+                        f"Does not meet qualification criteria: GMB category '{gmb_cat}' not in vertical",
+                    )
 
         return True, ""
 
@@ -235,7 +243,9 @@ class Stage4Scorer:
         # Gap dimension: specific technology gaps matching this service's signals
         svc_techs_lower = {t.lower() for t in (svc.dfs_technologies or [])}
         svc_gaps_lower = {t.lower() for t in tech_gaps}
-        gap_score = _calc_gap_score(svc_techs_lower, tech_stack_lower, svc_gaps_lower, has_tech_data=has_tech_data)
+        gap_score = _calc_gap_score(
+            svc_techs_lower, tech_stack_lower, svc_gaps_lower, has_tech_data=has_tech_data
+        )
 
         # Fit dimension: alignment between business profile and service signals
         gmb_cat = _normalise_category(business.get("gmb_category"))
@@ -293,9 +303,8 @@ class Stage4Scorer:
         if top_gaps:
             parts.append(f"missing {', '.join(top_gaps[:2])}")
 
-        sentence1 = (
-            f"Best match: {best_service.label}. "
-            + (" — ".join(parts) + "." if parts else "Limited tech signal detected.")
+        sentence1 = f"Best match: {best_service.label}. " + (
+            " — ".join(parts) + "." if parts else "Limited tech signal detected."
         )
 
         paid_kw = business.get("dfs_paid_keywords") or 0
@@ -317,7 +326,7 @@ class Stage4Scorer:
         reason: str,
     ) -> None:
         """Write all scores and stage progression to BU."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await self.conn.execute(
             """
             UPDATE business_universe SET
@@ -353,7 +362,10 @@ class Stage4Scorer:
 # These functions contain the scoring algorithm. Logic is proprietary.
 # Comments describe inputs and outputs only.
 
-def _calc_budget_score(paid_kw: int, paid_etv: float, organic_etv: float, gmb_rating: float = 0.0) -> int:
+
+def _calc_budget_score(
+    paid_kw: int, paid_etv: float, organic_etv: float, gmb_rating: float = 0.0
+) -> int:
     """Budget score from paid keyword activity and traffic value signals."""
     score = 0
     if paid_kw > 0:

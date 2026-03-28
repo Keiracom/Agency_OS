@@ -25,15 +25,15 @@ from .discovery_modes import (
     DiscoveryRecord,
     MapsFirstDiscovery,
 )
-from .waterfall_v2 import (
-    LeadRecord,
-    WaterfallV2,
-)
 from .signal_config import (
     ServiceSignal,
     SignalConfig,
     SignalConfigRepository,
     VerticalNotFoundError,
+)
+from .waterfall_v2 import (
+    LeadRecord,
+    WaterfallV2,
 )
 
 __all__ = [

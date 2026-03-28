@@ -522,9 +522,7 @@ class ICPScraperEngine(BaseEngine):
                 )
             if jina_response.status_code == 200 and len(jina_response.text) >= 200:
                 markdown_content = jina_response.text
-                logger.info(
-                    f"Tier 2 (Jina) success for {url}: {len(markdown_content):,} chars"
-                )
+                logger.info(f"Tier 2 (Jina) success for {url}: {len(markdown_content):,} chars")
                 # Wrap markdown in minimal HTML for pipeline compatibility
                 jina_html = (
                     f"<html><body>"
@@ -595,9 +593,7 @@ class ICPScraperEngine(BaseEngine):
                     )
                 if bd_response.status_code == 200 and len(bd_response.text) >= 500:
                     bd_html = bd_response.text
-                    logger.info(
-                        f"Tier 3 (Bright Data) success for {url}: {len(bd_html):,} chars"
-                    )
+                    logger.info(f"Tier 3 (Bright Data) success for {url}: {len(bd_html):,} chars")
                     social_links = self._extract_social_links(bd_html)
                     bd_page = ScrapedPage(
                         url=canonical_url,
@@ -890,7 +886,6 @@ Respond in JSON format only:
                     )
             except Exception as e:
                 logger.warning(f"Siege Waterfall failed for {company_name}: {e}")
-
 
         # ============================================
         # TIER 1: Google Business (excellent for local Australian businesses)

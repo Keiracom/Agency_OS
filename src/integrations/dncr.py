@@ -237,7 +237,9 @@ class DNCRClient:
             DNCR must be configured for production — fail-closed to prevent compliance violations.
         """
         if not self._enabled:
-            logger.warning("DNCR not configured — blocking contact to prevent compliance violation (DNCR_NOT_CONFIGURED)")
+            logger.warning(
+                "DNCR not configured — blocking contact to prevent compliance violation (DNCR_NOT_CONFIGURED)"
+            )
             return True
 
         # Check cache first
@@ -307,7 +309,9 @@ class DNCRClient:
             {"+61412345678": True, "+61498765432": False, ...}
         """
         if not self._enabled:
-            logger.warning("DNCR not configured — blocking all numbers to prevent compliance violation (DNCR_NOT_CONFIGURED)")
+            logger.warning(
+                "DNCR not configured — blocking all numbers to prevent compliance violation (DNCR_NOT_CONFIGURED)"
+            )
             return dict.fromkeys(phones, True)
 
         results = {}

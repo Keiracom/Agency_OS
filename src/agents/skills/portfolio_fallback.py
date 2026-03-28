@@ -66,7 +66,9 @@ class PortfolioFallbackSkill(
     """
 
     name = "portfolio_fallback"
-    description = "Extract client names from company descriptions/Google when website has no portfolio"
+    description = (
+        "Extract client names from company descriptions/Google when website has no portfolio"
+    )
 
     class Input(BaseModel):
         """Input for portfolio fallback extraction."""
@@ -75,7 +77,9 @@ class PortfolioFallbackSkill(
         legacy_description: str | None = Field(
             default=None, description="Company description (may mention clients)"
         )
-        legacy_keywords: list[str] = Field(default_factory=list, description="Company keywords/tags")
+        legacy_keywords: list[str] = Field(
+            default_factory=list, description="Company keywords/tags"
+        )
         linkedin_description: str | None = Field(
             default=None, description="LinkedIn company description (may mention clients)"
         )

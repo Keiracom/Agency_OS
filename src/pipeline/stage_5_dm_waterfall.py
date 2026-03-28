@@ -8,19 +8,18 @@ Sources: GMBContactExtractor (free, instant) → LeadmagicPersonFinder (paid, fa
 
 S5 finds DMs ONLY. No message generation, no outreach.
 """
+
 from __future__ import annotations
 
-import asyncio
 import logging
 import re
 from abc import abstractmethod
-from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
-import httpx
 import asyncpg
+import httpx
 
 from src.enrichment.signal_config import SignalConfigRepository
 
@@ -31,15 +30,25 @@ DM_SOURCE_NONE = "none"
 
 # Title priority: owner/founder roles first, senior exec second
 PRIORITY_TITLES = [
-    "owner", "founder", "co-founder", "director", "ceo",
-    "chief executive", "managing director", "md",
-    "general manager", "head of", "principal", "partner",
+    "owner",
+    "founder",
+    "co-founder",
+    "director",
+    "ceo",
+    "chief executive",
+    "managing director",
+    "md",
+    "general manager",
+    "head of",
+    "principal",
+    "partner",
 ]
 
 
 @dataclass
 class DMResult:
     """A found decision maker with at least name + one contact method."""
+
     name: str
     title: str | None = None
     email: str | None = None
@@ -55,6 +64,7 @@ class DMResult:
 
 class DMSource(Protocol):
     """Protocol for DM discovery sources. Implement to add a new source."""
+
     source_name: str
 
     @abstractmethod
@@ -68,6 +78,7 @@ class GMBContactExtractor:
     Free source — extract contact from GMB data already in BU.
     Uses existing gmb_phone and business name. No API calls.
     """
+
     source_name = "gmb"
 
     async def find(self, business: dict[str, Any]) -> DMResult | None:
@@ -85,6 +96,7 @@ class WebsiteContactScraper:
     Free source — scrape /contact or /about page via Jina AI Reader.
     Extracts name, email, phone using patterns.
     """
+
     source_name = "website"
     _jina_base = "https://r.jina.ai"
     _timeout = 30
@@ -120,7 +132,11 @@ class WebsiteContactScraper:
         # Email pattern
         emails = re.findall(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}", text)
         # Filter out noreply/info/admin
-        emails = [e for e in emails if not re.match(r"^(noreply|info|admin|hello|contact|support)@", e, re.I)]
+        emails = [
+            e
+            for e in emails
+            if not re.match(r"^(noreply|info|admin|hello|contact|support)@", e, re.I)
+        ]
         # Phone pattern (AU format)
         phones = re.findall(r"(?:\+61|0)[0-9\s\-\.]{8,12}", text)
         # Name: look for "Owner:" / "Founder:" / "Director:" labels
@@ -150,6 +166,7 @@ class LeadmagicPersonFinder:
     Uses find_employees to identify owner/director, then find_email.
     Cost: ~$0.015 per email found.
     """
+
     source_name = "leadmagic"
 
     def __init__(self, leadmagic_client: Any) -> None:
@@ -163,7 +180,11 @@ class LeadmagicPersonFinder:
         # Step 1: Find employees and identify best DM candidate
         try:
             employees_resp = await self.lm.find_employees(domain, limit=10)
-            employees = employees_resp if isinstance(employees_resp, list) else (employees_resp or {}).get("data", [])
+            employees = (
+                employees_resp
+                if isinstance(employees_resp, list)
+                else (employees_resp or {}).get("data", [])
+            )
         except Exception as e:
             logger.warning(f"Leadmagic find_employees failed for {domain}: {e}")
             employees = []
@@ -302,7 +323,9 @@ class Stage5DMWaterfall:
                     logger.info(f"DM found via {source.source_name} for {business.get('domain')}")
                     return result
             except Exception as e:
-                logger.warning(f"Source {source.source_name} failed for {business.get('domain')}: {e}")
+                logger.warning(
+                    f"Source {source.source_name} failed for {business.get('domain')}: {e}"
+                )
         return None
 
     async def _write_result(
@@ -312,7 +335,7 @@ class Stage5DMWaterfall:
         business: dict[str, Any],
     ) -> None:
         """Write DM result and recalculate reachability."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         reachability = self._recalculate_reachability(business, dm)
 
         await self.conn.execute(
@@ -352,7 +375,7 @@ class Stage5DMWaterfall:
         score = 0
         email = (dm.email if dm else None) or business.get("dm_email")
         phone = (dm.phone if dm else None) or business.get("dm_phone") or business.get("phone")
-        linkedin = (dm.linkedin_url if dm else None)
+        linkedin = dm.linkedin_url if dm else None
 
         if email:
             score += 30

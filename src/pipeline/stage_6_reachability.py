@@ -8,11 +8,12 @@ which outreach channels are actually available.
 Reads pipeline_stage=5, writes pipeline_stage=6.
 Updates reachability_score and outreach_channels.
 """
+
 from __future__ import annotations
 
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import asyncpg
@@ -89,7 +90,9 @@ class Stage6Reachability:
         Returns {validated, channels_confirmed}
         """
         config = await self.signal_repo.get_config(vertical_slug)
-        channel_config = config.channel_config  # e.g. {"email": True, "linkedin": True, "voice": True, "sms": False}
+        channel_config = (
+            config.channel_config
+        )  # e.g. {"email": True, "linkedin": True, "voice": True, "sms": False}
 
         rows = await self.conn.fetch(
             """
@@ -109,7 +112,7 @@ class Stage6Reachability:
         for row in rows:
             channels = self._validate_channels(dict(row), channel_config)
             reachability = calculate_reachability(channels)
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
 
             await self.conn.execute(
                 """
@@ -141,13 +144,17 @@ class Stage6Reachability:
         confirmed = []
         if channel_config.get("email") and validate_email(business.get("dm_email")):
             confirmed.append("email")
-        if channel_config.get("linkedin") and validate_linkedin_url(business.get("dm_linkedin_url")):
+        if channel_config.get("linkedin") and validate_linkedin_url(
+            business.get("dm_linkedin_url")
+        ):
             confirmed.append("linkedin")
         if channel_config.get("voice") and validate_au_phone(business.get("dm_phone")):
             confirmed.append("voice")
         if channel_config.get("sms") and validate_au_phone(business.get("dm_phone")):
             confirmed.append("sms")
-        has_address = any([business.get("address"), business.get("state"), business.get("gmb_place_id")])
+        has_address = any(
+            [business.get("address"), business.get("state"), business.get("gmb_place_id")]
+        )
         if has_address:
             confirmed.append("physical")
         return confirmed

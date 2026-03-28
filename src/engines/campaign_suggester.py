@@ -234,10 +234,7 @@ class CampaignSuggesterEngine(BaseEngine):
             client.icp_keywords,
             client.icp_exclusions,
         ]
-        sparse_count = sum(
-            1 for f in icp_fields
-            if not f or (isinstance(f, list) and len(f) == 0)
-        )
+        sparse_count = sum(1 for f in icp_fields if not f or (isinstance(f, list) and len(f) == 0))
         sparse_note = ""
         if sparse_count >= 5:
             sparse_note = (
@@ -298,8 +295,7 @@ class CampaignSuggesterEngine(BaseEngine):
                 f"AI suggestion parse failed on first attempt. Raw response: {content!r:.500}. Retrying."
             )
             retry_prompt = (
-                prompt
-                + "\n\nYour previous response could not be parsed as JSON. "
+                prompt + "\n\nYour previous response could not be parsed as JSON. "
                 "Return ONLY a JSON array this time."
             )
             retry_response = await client.messages.create(
@@ -347,7 +343,7 @@ class CampaignSuggesterEngine(BaseEngine):
                         "Claude response contained non-JSON preamble — extracted array. "
                         "Prompt may not be working optimally."
                     )
-                    json_str = json_str[first_bracket:last_bracket + 1]
+                    json_str = json_str[first_bracket : last_bracket + 1]
                 else:
                     logger.error("No JSON array found in Claude response")
                     return None

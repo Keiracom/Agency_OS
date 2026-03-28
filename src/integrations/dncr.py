@@ -233,12 +233,12 @@ class DNCRClient:
             False if the number is not on the DNCR (ok to contact)
 
         Note:
-            If DNCR is not configured, returns False (allows sending)
-            This is to avoid blocking all SMS when API is not set up.
+            If DNCR is not configured, returns True (blocks sending).
+            DNCR must be configured for production — fail-closed to prevent compliance violations.
         """
         if not self._enabled:
-            logger.debug("DNCR not configured, allowing contact")
-            return False
+            logger.warning("DNCR not configured — blocking contact to prevent compliance violation (DNCR_NOT_CONFIGURED)")
+            return True
 
         # Check cache first
         cached_result = await self._get_from_cache(phone)
@@ -307,7 +307,8 @@ class DNCRClient:
             {"+61412345678": True, "+61498765432": False, ...}
         """
         if not self._enabled:
-            return dict.fromkeys(phones, False)
+            logger.warning("DNCR not configured — blocking all numbers to prevent compliance violation (DNCR_NOT_CONFIGURED)")
+            return dict.fromkeys(phones, True)
 
         results = {}
         uncached_phones = []

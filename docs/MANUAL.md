@@ -1,8 +1,8 @@
 # Agency OS Manual
 
 Last updated: 2026-03-28 UTC
-Directive #278: v7 architecture alignment — documentation only
-Next scheduled update: Directive #279 (Sprint 0 — clean house)
+Directive #279: Sprint 0 — clean house — COMPLETE
+Next scheduled update: Directive #280 (Sprint 1 — discovery engine)
 
 > **Primary store.** This file is the CEO SSOT. Google Doc is an auto-generated mirror.
 > After every save-trigger write, verify with: `cat docs/MANUAL.md | grep "SECTION"`
@@ -23,10 +23,10 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #278 (v7 architecture alignment — documentation only)
-- Next directive: #279 (Sprint 0 — clean house)
-- Test baseline: 1032 passed, 0 failed, 28 skipped
-- Last merged PR: #238 (Layer 3 bulk filter — now superseded by v7)
+- Last directive issued: #279 (Sprint 0 — clean house — COMPLETE)
+- Next directive: #280 (Sprint 1 — discovery engine)
+- Test baseline: 992 passed, 0 failed, 28 skipped
+- Last merged PR: #239 (v7 architecture alignment)
 - Architecture: **v7 ratified Mar 28 2026** — signal-first organic discovery, free intelligence sweep, proven with live AU data across 5 dental domains
 - **v6 pipeline SUPERSEDED. Layer 2 (5-source parallel) and Layer 3 (bulk filter) replaced. Layer 4 (DFS tech/rank/historical) replaced with free scrape stack.**
 - **Live testing confirmed: domain_metrics_by_categories returns 22,592 AU dental domains at $0.001/domain. Google Ads Transparency free scraper: 5/5 AU coverage. Website scraping direct HTTP: 5/5 coverage, full tech stack, FREE.**
@@ -485,7 +485,7 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 
 | Sprint | Directive(s) | What | Status |
 |--------|-------------|------|--------|
-| Sprint 0 | #279 | Clean house: delete 7 deprecated stage files, fix DNCR hard-block, verify test baseline 1032/0/28 | Queued |
+| Sprint 0 | #279 | Clean house: delete 7 deprecated stage files, fix DNCR hard-block, verify test baseline 1032/0/28 | COMPLETE — PR feat/279-sprint0-cleanup |
 | Sprint 1 | #280 | Discovery engine: rebuild layer_2_discovery.py → single domain_metrics_by_categories call, remove 4 dead sources | Queued |
 | Sprint 2 | #281–#282 | Free intelligence sweep: website scraper (direct HTTP), Google Ads Transparency Center (Python scraper), DNS+TLS check, phone carrier lookup | Queued |
 | Sprint 3 | #283–#284 | Paid enrichment: Brand SERP, Indexed Pages, Competitors expansion, GMB full enrichment, Reviews sentiment | Queued |
@@ -675,11 +675,9 @@ Compliance: SPAM Act 2003, DNCR registered, TCP Code (voice), Australian-built
 | Uncalibrated scoring | HIGH | All 5 scorers use v6 signal assumptions. v7 signals (scrape-based, Ads Transparency) not yet wired. Scores meaningless until Sprint 4. |
 | domain_metrics_by_categories coverage gaps | MEDIUM | Returns organic-signal domains. New businesses with low organic = excluded. Supplement with Google Ads Advertisers endpoint for paid-only businesses. |
 | Leadmagic plan unpurchased | HIGH | All Leadmagic calls in mock mode. Must purchase before Sprint 5 go-live. Dave action required. |
-| DNCR fail-open | HIGH | If DNCR_API_KEY unset, calls proceed without DNCR check. Fix in Sprint 0. Must hard-block. |
 | ABN JOIN false negatives | MEDIUM | ~10% SQL match rate (vs 67% API). Sole traders often registered under personal name, not trading name. Supplement with ABN live API for unmatched rows. |
 | GMB match rate 80% | MEDIUM | 4/5 (80%) proven at small scale. May degrade at scale for rural or less-established businesses. No hard dependency — GMB miss = continue without GMB signals. |
 | category_codes hardcoded | MEDIUM | [13418,13420,13421] for marketing_agency only. Multi-vertical requires Sprint 7 seed migrations. No dynamic mapping from client services to DFS codes. |
-| Old stage files not deleted | LOW | stageN_* (no underscore) coexist with stage_N_* active files. Delete in Sprint 0. |
 | Deprecated v6 Layer 2/3 code still present | LOW | layer_2_discovery.py (5-source) and layer_3_bulk_filter.py not deleted. Rebuild in Sprint 1. |
 | Sender ABN in email footer unconfirmed | MEDIUM | email_signature_service.py signature exists. ABN inclusion in footer not confirmed. Verify before outreach goes live. |
 

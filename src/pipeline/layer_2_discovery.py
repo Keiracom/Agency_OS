@@ -75,6 +75,7 @@ _FOREIGN_TLDS = frozenset(
     }
 )
 
+
 @dataclass
 class DiscoveryStats:
     category_codes: list[int] = field(default_factory=list)

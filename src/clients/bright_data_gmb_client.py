@@ -81,7 +81,7 @@ class BrightDataGMBClient:
 
     async def _trigger_snapshot(self, client: httpx.AsyncClient, query: str) -> str | None:
         """Trigger a Bright Data dataset snapshot. Returns snapshot_id.
-        
+
         Uses discover_by=location with country=AU + keyword (not discover_by=keyword
         which is unsupported by this dataset). Fix: Directive #268.
         """

@@ -74,7 +74,7 @@ def _normalise_domain(url_or_domain: str) -> str:
     if s.startswith(("http://", "https://")):
         parsed = urlparse(s)
         s = parsed.netloc or s
-    s = s.lstrip("www.").rstrip("/")
+    s = s.removeprefix("www.").rstrip("/")
     return s
 
 
@@ -93,10 +93,7 @@ def _is_au_domain(domain: str) -> bool:
             return True
     if d.endswith(".com"):
         return True
-    for tld in _FOREIGN_TLDS:
-        if d.endswith(tld):
-            return False
-    return True  # neutral TLD — keep
+    return all(not d.endswith(tld) for tld in _FOREIGN_TLDS)  # neutral TLD — keep
 
 
 def _compute_trajectory(organic_etv_current: float, organic_etv_prev: float | None) -> str:

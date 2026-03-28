@@ -43,7 +43,6 @@ def extract_business_name(domain: str) -> str:
 
     # Strip subdomains (keep only second-level domain + TLD for stripping)
     # e.g. "app.acme.com.au" → "acme.com.au"
-    parts = name.split(".")
     # If more than 3 parts (sub.name.com.au = 4), drop leading subdomain(s)
     # We identify the TLD boundary by checking against known multi-part TLDs
     for tld in _MULTI_PART_TLDS:

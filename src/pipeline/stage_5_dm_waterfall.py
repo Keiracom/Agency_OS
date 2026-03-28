@@ -10,17 +10,15 @@ S5 finds DMs ONLY. No message generation, no outreach.
 """
 from __future__ import annotations
 
-import asyncio
 import logging
 import re
 from abc import abstractmethod
-from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
-import httpx
 import asyncpg
+import httpx
 
 from src.enrichment.signal_config import SignalConfigRepository
 
@@ -312,7 +310,7 @@ class Stage5DMWaterfall:
         business: dict[str, Any],
     ) -> None:
         """Write DM result and recalculate reachability."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         reachability = self._recalculate_reachability(business, dm)
 
         await self.conn.execute(

@@ -721,7 +721,7 @@ class SiegeWaterfall:
                 logger.warning(f"[enrich_lead] Tier 1 ABN raised unexpectedly: {_e}")
                 return TierResult(tier=EnrichmentTier.ABN, success=False, error=str(_e))
 
-        async def _run_t2_gmb() -> "TierResult | None":
+        async def _run_t2_gmb() -> TierResult | None:
             # Skip if T0 already has GMB data or tier is in skip list (avoid wasted API call)
             if EnrichmentTier.GMB in skip_tiers or has_gmb_from_t0:
                 return None  # handled in post-processing below

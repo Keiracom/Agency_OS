@@ -685,7 +685,9 @@ async def daily_enrichment_flow(
                     if not quota_result["quota_filled"] and quota_result["monthly_quota"] > 0:
                         gap = quota_result["gap"]
                         # Get next unswept location for this campaign
-                        from src.orchestration.flows.pool_population_flow import get_next_unswept_location
+                        from src.orchestration.flows.pool_population_flow import (
+                            get_next_unswept_location,
+                        )
                         next_loc = await get_next_unswept_location(
                             campaign_id=cid,
                             candidate_locations=AUSTRALIAN_SUBURBS_NSW,

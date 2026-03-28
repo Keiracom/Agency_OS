@@ -12,10 +12,9 @@ S4 is the budget gate — only high-propensity businesses progress to S5.
 """
 from __future__ import annotations
 
-import asyncio
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import asyncpg
@@ -317,7 +316,7 @@ class Stage4Scorer:
         reason: str,
     ) -> None:
         """Write all scores and stage progression to BU."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await self.conn.execute(
             """
             UPDATE business_universe SET

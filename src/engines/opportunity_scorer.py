@@ -10,7 +10,6 @@ See ARCHITECTURE.md Section 6.
 """
 from typing import Any
 
-
 OPPORTUNITY_PRIORITY_THRESHOLD = 60
 
 STRUCTURAL_GAP_INDUSTRIES = [

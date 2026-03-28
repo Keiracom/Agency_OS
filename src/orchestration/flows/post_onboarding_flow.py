@@ -36,7 +36,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
@@ -961,7 +961,6 @@ async def post_onboarding_setup_flow(
             bypass_als_gate=True,
         )
         leads_promoted = promotion_result.get("promoted", 0)
-        promoted_lead_ids = promotion_result.get("lead_ids", [])
 
         if promotion_result.get("errors"):
             logger.warning(
@@ -988,6 +987,7 @@ async def post_onboarding_setup_flow(
         # Query unenriched leads directly — works on FIRST RUN and RE-RUNS.
         # Old approach: rely on promoted_lead_ids [] from re-runs → silent skip (bug).
         import time as _time
+
         import httpx as _httpx
 
         leads_enriched = 0  # enrichment now async — Flow B tracks its own count

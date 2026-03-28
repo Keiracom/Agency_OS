@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import asyncpg
@@ -69,7 +69,7 @@ class Stage2GMBLookup:
         to_process = [r for r in rows if not r["gmb_place_id"]]
 
         # BUG-265-1: advance already-enriched rows to stage=2 (they were stuck at stage=1)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         for row in already_enriched_rows:
             await self.conn.execute(
                 """
@@ -107,7 +107,7 @@ class Stage2GMBLookup:
         # ── Phase 2: write results to DB sequentially ────────────────────────
         # asyncpg requires one active operation per connection. Sequential writes
         # are fast (<1ms each) so total DB write time is negligible.
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         for row_id, domain, gmb_data in fetch_results:
             try:
                 if gmb_data:
@@ -186,7 +186,7 @@ class Stage2GMBLookup:
             return {"status": "not_found"}
         business_name = extract_business_name(domain)
         gmb_data = await self.gmb.search_by_name(business_name)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if gmb_data:
             await self.conn.execute(
                 "UPDATE business_universe SET gmb_place_id=$1, gmb_category=$2, pipeline_stage=$3, pipeline_updated_at=$4 WHERE id=$5",

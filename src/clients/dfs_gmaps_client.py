@@ -4,7 +4,6 @@
 # DEPENDENCIES: httpx, tenacity, src.config.settings, src.exceptions
 # DIRECTIVE: #248
 
-import asyncio
 import base64
 import json
 import logging

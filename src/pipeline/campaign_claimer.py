@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import logging
-from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -85,21 +84,20 @@ class CampaignClaimer:
         claimed = 0
         errors: list[dict] = []
 
-        async with self.db.acquire() as conn:
-            async with conn.transaction():
-                rows = await conn.fetch(select_sql, *params)
+        async with self.db.acquire() as conn, conn.transaction():
+            rows = await conn.fetch(select_sql, *params)
 
-                for row in rows:
-                    try:
-                        await conn.execute("""
-                            INSERT INTO campaign_leads
-                                (campaign_id, business_universe_id, client_id, status, claimed_at)
-                            VALUES ($1, $2, $3, 'never_touched', NOW())
-                            ON CONFLICT (campaign_id, business_universe_id) DO NOTHING
-                        """, campaign_id, row["bu_id"], client_id)
-                        claimed += 1
-                    except Exception as e:
-                        errors.append({"bu_id": str(row["bu_id"]), "error": str(e)})
+            for row in rows:
+                try:
+                    await conn.execute("""
+                        INSERT INTO campaign_leads
+                            (campaign_id, business_universe_id, client_id, status, claimed_at)
+                        VALUES ($1, $2, $3, 'never_touched', NOW())
+                        ON CONFLICT (campaign_id, business_universe_id) DO NOTHING
+                    """, campaign_id, row["bu_id"], client_id)
+                    claimed += 1
+                except Exception as e:
+                    errors.append({"bu_id": str(row["bu_id"]), "error": str(e)})
 
         return {
             "claimed": claimed,

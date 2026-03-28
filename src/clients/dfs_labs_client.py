@@ -777,7 +777,7 @@ class DFSLabsClient:
             domain = ""
             if url:
                 parsed = urlparse(url)
-                domain = (parsed.netloc or "").lstrip("www.").lower().rstrip("/")
+                domain = (parsed.netloc or "").removeprefix("www.").lower().rstrip("/")
             results.append({"domain": domain, "employer_name": employer})
         return [r for r in results if r["domain"]]
 

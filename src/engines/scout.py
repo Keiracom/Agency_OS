@@ -50,14 +50,20 @@ logger = logging.getLogger(__name__)
 # from src.agents.sdk_agents.enrichment_agent import run_sdk_enrichment
 from src.agents.skills.research_skills import DeepResearchSkill
 from src.engines.base import BaseEngine, EngineResult
+from src.engines.confidence_scorer import (  # Directive #215
+    meets_enrichment_threshold,
+    score_business_confidence,
+)
+from src.engines.opportunity_scorer import (  # Directive #217
+    get_opportunity_reason,
+    is_priority_opportunity,
+    score_business_opportunity,
+)
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
-
 from src.integrations.camoufox_scraper import CamoufoxScraper
-from src.integrations.redis import enrichment_cache
-from src.engines.confidence_scorer import score_business_confidence, meets_enrichment_threshold  # Directive #215
-from src.engines.opportunity_scorer import score_business_opportunity, get_opportunity_reason, is_priority_opportunity  # Directive #217
 from src.integrations.dataforseo import get_dataforseo_client  # Directive #218: pre-gate DataForSEO
 from src.integrations.leadmagic import get_leadmagic_client
+from src.integrations.redis import enrichment_cache
 from src.integrations.siege_waterfall import EnrichmentTier, SiegeWaterfall, get_siege_waterfall
 from src.models.base import LeadStatus
 from src.models.lead import Lead
@@ -343,6 +349,7 @@ class ScoutEngine(BaseEngine):
             bd_client = self.siege_waterfall.bright_data_client
             if bd_client is not None:
                 from sqlalchemy import select as sa_select
+
                 from src.models.lead import Lead as LeadModel
 
                 # Fetch organization_linkedin_url for all leads in the batch

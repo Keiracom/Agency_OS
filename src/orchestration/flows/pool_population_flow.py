@@ -489,7 +489,7 @@ async def populate_pool_from_icp_task(
         try:
             parsed = urlparse(website if "://" in website else f"https://{website}")
             host = parsed.netloc or parsed.path
-            return host.lstrip("www.").lower() or None
+            return host.removeprefix("www.").lower() or None
         except Exception:
             return None
 

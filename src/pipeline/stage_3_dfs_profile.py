@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import asyncpg
@@ -113,7 +113,7 @@ class Stage3DFSProfile:
         signal_technologies: set[str],
     ) -> None:
         """Pull rank + tech data for a single domain and update BU."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Call both endpoints concurrently
         rank_data, tech_data = await asyncio.gather(

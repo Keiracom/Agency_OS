@@ -37,7 +37,4 @@ def is_blocked(domain: str | None) -> bool:
     if d in BLOCKED_DOMAINS:
         return True
     # Subdomain of blocked domain (e.g. rfs.nsw.gov.au)
-    for blocked in BLOCKED_DOMAINS:
-        if d.endswith("." + blocked):
-            return True
-    return False
+    return any(d.endswith("." + blocked) for blocked in BLOCKED_DOMAINS)

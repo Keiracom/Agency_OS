@@ -12,14 +12,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
-from decimal import Decimal
+from datetime import UTC, datetime
 from typing import Any
 
 import asyncpg
 
 from src.clients.dfs_labs_client import DFSLabsClient
-from src.enrichment.signal_config import SignalConfig, SignalConfigRepository
+from src.enrichment.signal_config import SignalConfigRepository
 from src.utils.domain_blocklist import is_blocked
 
 logger = logging.getLogger(__name__)
@@ -163,7 +162,7 @@ class Stage1Discovery:
             logger.debug(f"S1: skipping blocked domain {domain!r}")
             return False
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         result = await self.conn.fetchrow(
             """

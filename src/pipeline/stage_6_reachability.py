@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import asyncpg
@@ -109,7 +109,7 @@ class Stage6Reachability:
         for row in rows:
             channels = self._validate_channels(dict(row), channel_config)
             reachability = calculate_reachability(channels)
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
 
             await self.conn.execute(
                 """

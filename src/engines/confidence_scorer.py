@@ -8,7 +8,6 @@ See ARCHITECTURE.md Section 5 for signal definitions.
 """
 from typing import Any
 
-
 CONFIDENCE_FLOOR_TO_ENRICH = 35
 
 

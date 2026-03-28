@@ -15,7 +15,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import asyncpg
@@ -221,7 +221,7 @@ class Stage7Haiku:
 
     async def _write_messages(self, row_id: str, messages: dict[str, str]) -> None:
         """Store messages in outreach_messages JSONB and advance pipeline."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await self.conn.execute(
             """
             UPDATE business_universe SET
